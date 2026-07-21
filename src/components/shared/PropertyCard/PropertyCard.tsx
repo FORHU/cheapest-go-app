@@ -1,9 +1,15 @@
 "use client";
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
+import Image from 'next/image';
+import { useTranslations } from 'next-intl';
 import { motion } from 'framer-motion';
 import { MapPin, Star, Wifi, Car, Utensils, Coffee } from 'lucide-react';
-import { Property } from '@/data/mockProperties';
+import { type Property } from '@/types';
+import { getCurrencySymbol, convertCurrency } from '@/lib/currency';
+import { buildPropertySlug } from '@/lib/utils';
+import { useUserCurrency } from '@/stores/searchStore';
+import SaveButton from '@/components/common/SaveButton';
 
 /**
  * Unified PropertyCard component variants
@@ -48,6 +54,8 @@ export interface PropertyCardProps {
     includes?: string[];
     /** Price label suffix */
     priceLabel?: string;
+    /** Preload this image (use for first visible card) */
+    priority?: boolean;
 }
 
 /**
@@ -67,23 +75,29 @@ const AmenityIcon: React.FC<{ amenity: string }> = ({ amenity }) => {
 /**
  * Rating label based on score
  */
-const getRatingLabel = (rating: number): string => {
-    if (rating >= 9) return 'Exceptional';
-    if (rating >= 8) return 'Excellent';
-    if (rating >= 7) return 'Very Good';
-    if (rating >= 6) return 'Good';
-    return 'Average';
+type Translator = ReturnType<typeof useTranslations>;
+
+const getRatingLabel = (rating: number, t: Translator): string => {
+    if (rating === 0) return '';
+    if (rating >= 9) return t('exceptional');
+    if (rating >= 8) return t('excellent');
+    if (rating >= 7) return t('veryGood');
+    if (rating >= 6) return t('good');
+    if (rating >= 5) return t('average');
+    return t('poor');
 };
 
 /**
  * Rating badge color based on score - distinct colors for each level
  */
 const getRatingColor = (rating: number): string => {
-    if (rating >= 9) return 'bg-indigo-600';    // Exceptional - Deep indigo/purple
-    if (rating >= 8) return 'bg-emerald-500';   // Excellent - Vibrant green
-    if (rating >= 7) return 'bg-teal-500';      // Very Good - Teal
-    if (rating >= 6) return 'bg-blue-500';      // Good - Blue
-    return 'bg-amber-500';                       // Average - Warm amber/orange
+    if (rating === 0) return 'bg-slate-400';
+    if (rating >= 9)  return 'bg-emerald-600';
+    if (rating >= 8)  return 'bg-blue-600';
+    if (rating >= 7)  return 'bg-blue-500';
+    if (rating >= 6)  return 'bg-amber-500';
+    if (rating >= 5)  return 'bg-orange-500';
+    return 'bg-red-500';
 };
 
 /**
@@ -119,18 +133,36 @@ const VerticalCard: React.FC<PropertyCardProps> = ({
     badgeColor = 'green',
     includes,
     priceLabel,
+    priority = false,
     index = 0,
     onClick,
     className = '',
 }) => {
+    const tRatings = useTranslations('hotels.ratings');
+    const tCard = useTranslations('hotels.card');
+    const [mounted, setMounted] = useState(false);
+    useEffect(() => setMounted(true), []);
+    const targetCurrency = useUserCurrency();
+
     // Use property object values or individual props
     const imgSrc = property?.image || image || '';
     const displayName = property?.name || name || '';
     const displayLocation = property?.location || location || '';
     const displayRating = property?.rating || rating;
     const displayReviews = property?.reviews || reviews;
-    const displayPrice = property?.price || price || 0;
-    const displayOriginalPrice = property?.originalPrice || originalPrice;
+
+    // Skip conversion until mounted — EXCHANGE_RATES may differ between server (static)
+    // and client (live rates from a previous page visit), causing hydration mismatches.
+    const sourceCurrency = property?.currency || 'KRW';
+    const rawPrice = property?.price || price || 0;
+    const rawOriginalPrice = property?.originalPrice || originalPrice;
+
+    const displayPrice = mounted ? convertCurrency(rawPrice, sourceCurrency, targetCurrency) : rawPrice;
+    const displayOriginalPrice = rawOriginalPrice
+        ? (mounted ? convertCurrency(rawOriginalPrice, sourceCurrency, targetCurrency) : rawOriginalPrice)
+        : undefined;
+    const symbol = getCurrencySymbol(mounted ? targetCurrency : sourceCurrency);
+    
     const displayBadges = property?.badges || (badge ? [badge] : []);
 
     const badgeClasses = {
@@ -141,7 +173,7 @@ const VerticalCard: React.FC<PropertyCardProps> = ({
 
     return (
         <motion.div
-            initial={{ opacity: 0, y: 30 }}
+            initial={{ opacity: index < 6 ? 0 : 1, y: index < 6 ? 30 : 0 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{
@@ -155,19 +187,23 @@ const VerticalCard: React.FC<PropertyCardProps> = ({
             className={`relative group cursor-pointer ${className}`}
         >
             {/* Glow effect on hover */}
-            <div className="absolute -inset-0.5 bg-gradient-to-r from-blue-500 via-purple-500 to-cyan-500 rounded-xl opacity-0 group-hover:opacity-75 blur-xl transition-all duration-500 group-hover:duration-200" />
+            <div className="absolute -inset-0.5 bg-linear-to-r from-blue-500 via-purple-500 to-cyan-500 rounded-2xl opacity-0 group-hover:opacity-75 blur-xl transition-all duration-500 group-hover:duration-200" />
 
             {/* Card content — Airbnb-style size/layout: 4:3 image, rounded corners */}
-            <div className="relative bg-white dark:bg-slate-900 rounded-xl overflow-hidden border border-slate-200/50 dark:border-slate-700/50 shadow-sm hover:shadow-md dark:shadow-black/20 backdrop-blur-sm transition-shadow h-full flex flex-col">
-                <div className="relative aspect-[2/1] sm:aspect-[4/3] overflow-hidden rounded-t-xl landscape-compact-img landscape-img flex-shrink-0">
-                    <motion.div
-                        className="absolute inset-0 bg-cover bg-center"
-                        style={{ backgroundImage: `url(${imgSrc})` }}
-                        whileHover={{ scale: 1.1 }}
-                        transition={{ duration: 0.6 }}
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
-
+            <div className="relative bg-white dark:bg-slate-900 rounded-2xl overflow-hidden border border-slate-200/50 dark:border-slate-700/50 shadow-sm hover:shadow-md dark:shadow-black/20 backdrop-blur-sm transition-shadow h-full flex flex-col">
+                <div className="relative aspect-2/1 sm:aspect-4/3 overflow-hidden rounded-t-2xl landscape-compact-img landscape-img shrink-0">
+                    {imgSrc && (
+                        <Image
+                            src={imgSrc}
+                            alt={displayName}
+                            fill
+                            sizes="(max-width: 640px) 220px, (max-width: 768px) 260px, 320px"
+                            className="object-cover transition-transform duration-500 group-hover:scale-110"
+                            priority={priority}
+                            loading={priority ? undefined : 'lazy'}
+                        />
+                    )}
+                    <div className="absolute inset-0 bg-linear-to-t from-black/60 via-transparent to-transparent" />
                     {displayBadges.length > 0 && (
                         <motion.div
                             initial={{ x: -20, opacity: 0 }}
@@ -175,41 +211,42 @@ const VerticalCard: React.FC<PropertyCardProps> = ({
                             transition={{ delay: index * 0.1 + 0.3 }}
                             className={`absolute top-1.5 left-1.5 sm:top-3 sm:left-3 px-1.5 py-px sm:px-3 sm:py-1 ${badgeClasses[badgeColor]} text-white text-[9px] sm:text-xs font-medium rounded-full flex items-center gap-0.5 sm:gap-1 shadow-lg landscape-badge`}
                         >
-                            {badgeColor === 'blue' && <Star size={8} fill="currentColor" className="flex-shrink-0 sm:w-[10px] sm:h-[10px]" />}
+                            {badgeColor === 'blue' && <Star size={10} fill="currentColor" className="shrink-0" />}
                             {displayBadges[0]}
                         </motion.div>
                     )}
+                    
+                    <div className="absolute top-2 left-2 sm:top-3 sm:left-3 z-10">
+                        <SaveButton
+                            type="hotel"
+                            title={displayName}
+                            subtitle={displayLocation}
+                            price={rawPrice}
+                            currency={sourceCurrency}
+                            imageUrl={imgSrc}
+                            deepLink={property?.id ? `/property/${buildPropertySlug(property.name, property.id)}` : '#'}
+                            snapshot={property as any}
+                            size="sm"
+                        />
+                    </div>
                 </div>
 
-                <div className="p-1.5 sm:p-3 md:p-4 landscape-compact-content flex flex-col flex-1">
-                    <h3 className="font-semibold text-slate-900 dark:text-white text-[11px] sm:text-sm line-clamp-2 min-h-[2.4em] leading-tight group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+                <div className="p-3 sm:p-4 flex flex-col flex-1">
+                    <h3 className="font-bold text-slate-900 dark:text-white text-sm sm:text-base line-clamp-1 leading-tight group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
                         {displayName}
                     </h3>
-                    <p className="text-[9px] sm:text-xs text-slate-500 dark:text-slate-400 -mt-1 flex items-center gap-0.5 sm:gap-1 min-w-0">
-                        <MapPin className="w-2 h-2 sm:w-3 sm:h-3 text-blue-500 flex-shrink-0" />
+                    <p className="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400 mt-1 flex items-center gap-1 min-w-0">
+                        <MapPin className="w-3 h-3 text-blue-500 shrink-0" />
                         <span className="truncate">{displayLocation}</span>
                     </p>
 
-                    {displayRating && (
-                        <div className="flex items-center gap-0.5 sm:gap-1.5 mt-0.5 sm:mt-1 flex-wrap">
-                            <span className="px-1 py-px sm:px-1.5 sm:py-0.5 bg-gradient-to-r from-blue-500 to-blue-600 text-white text-[9px] sm:text-xs font-bold rounded-md shadow-sm">
-                                {displayRating}
-                            </span>
-                            {displayReviews && (
-                                <span className="text-[8px] sm:text-xs text-slate-500 dark:text-slate-400">
-                                    ({displayReviews.toLocaleString()} reviews)
-                                </span>
-                            )}
-                        </div>
-                    )}
-
-                    {/* Includes/tags */}
+                    {/* Tags (optional) */}
                     {includes && includes.length > 0 && (
-                        <div className="flex flex-wrap gap-0.5 sm:gap-1 mt-1 sm:mt-1.5 content-start">
-                            {includes.map((inc) => (
+                        <div className="flex flex-wrap gap-1 mt-2">
+                            {includes.slice(0, 2).map((inc) => (
                                 <span
                                     key={inc}
-                                    className="text-[8px] sm:text-xs bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/30 dark:to-emerald-900/30 text-green-600 dark:text-green-400 px-1 py-px sm:px-2 sm:py-0.5 rounded-full border border-green-200 dark:border-green-800"
+                                    className="text-[10px] bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 px-2 py-0.5 rounded-md"
                                 >
                                     {inc}
                                 </span>
@@ -217,20 +254,43 @@ const VerticalCard: React.FC<PropertyCardProps> = ({
                         </div>
                     )}
 
-                    <div className="mt-auto pt-1 sm:pt-2 flex items-baseline gap-0.5 sm:gap-1.5 flex-wrap">
-                        {displayOriginalPrice && (
-                            <span className="text-[8px] sm:text-xs text-slate-400 line-through">
-                                ₱{displayOriginalPrice.toLocaleString()}
-                            </span>
-                        )}
-                        <span className="text-xs sm:text-base lg:text-xl font-bold bg-gradient-to-r from-slate-900 to-slate-700 dark:from-white dark:to-slate-300 bg-clip-text text-transparent">
-                            ₱{displayPrice.toLocaleString()}
-                            {priceLabel && (
-                                <span className="font-normal text-slate-500 text-[8px] sm:text-sm">
-                                    {priceLabel}
+                    {/* Bottom Row: Rating and Price */}
+                    <div className="mt-auto pt-3 flex items-center justify-between">
+                        {displayRating ? (
+                            <div className="flex items-center gap-2">
+                                <span className={`px-1.5 py-0.5 ${getRatingColor(displayRating)} text-white text-[10px] sm:text-xs font-bold rounded`}>
+                                    {displayRating.toFixed(1)}
                                 </span>
+                                <span className="text-[10px] sm:text-xs font-medium text-slate-700 dark:text-slate-300">
+                                    {getRatingLabel(displayRating, tRatings)}
+                                </span>
+                            </div>
+                        ) : <div />}
+
+                        <div className="text-right">
+                            {property?.priceLoading ? (
+                                <div className="flex flex-col items-end gap-1">
+                                    <div className="h-5 w-20 bg-slate-200 dark:bg-slate-700 rounded animate-pulse" />
+                                    <div className="h-3 w-10 bg-slate-100 dark:bg-slate-800 rounded animate-pulse" />
+                                </div>
+                            ) : (
+                                <>
+                                    <div className="flex items-baseline gap-1">
+                                        <span className="text-sm sm:text-lg font-bold text-blue-600 dark:text-blue-400">
+                                            {symbol}{displayPrice.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                                        </span>
+                                        <span className="text-[10px] text-slate-500 dark:text-slate-400 font-normal">
+                                            {tCard('perNight')}
+                                        </span>
+                                    </div>
+                                    {displayOriginalPrice && displayOriginalPrice > displayPrice && (
+                                        <div className="text-[10px] text-slate-400 line-through leading-none mt-0.5">
+                                            {symbol}{displayOriginalPrice.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                                        </div>
+                                    )}
+                                </>
                             )}
-                        </span>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -247,48 +307,100 @@ const HorizontalCard: React.FC<PropertyCardProps> = ({
     onClick,
     className = '',
 }) => {
+    const tRatings = useTranslations('hotels.ratings');
+    const tCard = useTranslations('hotels.card');
+    const [mounted, setMounted] = useState(false);
+    useEffect(() => setMounted(true), []);
+    const targetCurrency = useUserCurrency();
     if (!property) return null;
+
+    // Skip conversion until mounted — EXCHANGE_RATES may differ between server (static)
+    // and client (live rates from a previous page visit), causing hydration mismatches.
+    const sourceCurrency = property.currency || 'KRW';
+    const displayPrice = mounted ? convertCurrency(property.price, sourceCurrency, targetCurrency) : property.price;
+    const displayOriginalPrice = property.originalPrice
+        ? (mounted ? convertCurrency(property.originalPrice, sourceCurrency, targetCurrency) : property.originalPrice)
+        : undefined;
+    const symbol = getCurrencySymbol(mounted ? targetCurrency : sourceCurrency);
 
     // Get star rating from property (1-5 scale hotel stars)
     const hotelStars = Math.min(5, Math.max(1, Math.round((property.rating || 0) / 2)));
 
     return (
         <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, amount: 0.1 }}
-            transition={{ delay: index * 0.03, duration: 0.4, ease: [0.25, 0.1, 0.25, 1] }}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: index < 8 ? index * 0.04 : 0, duration: 0.35, ease: [0.25, 0.1, 0.25, 1] }}
             className={`flex flex-col md:flex-row bg-white dark:bg-slate-900 rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-700 shadow-sm hover:shadow-lg hover:border-blue-300 dark:hover:border-blue-600 transition-all group cursor-pointer ${className}`}
             onClick={onClick}
         >
             {/* Image Section */}
-            <div className="md:w-[240px] relative h-[140px] md:h-auto flex-shrink-0 p-2 md:p-3 md:pr-0">
-                <div
-                    className="absolute inset-2 md:inset-3 md:right-0 bg-cover bg-center rounded-xl transition-transform duration-500 group-hover:scale-105"
-                    style={{ backgroundImage: `url(${property.image})` }}
-                />
+            <div className="md:w-[240px] relative h-[110px] md:h-auto shrink-0 p-1.5 md:p-3 md:pr-0">
+                <div className="absolute inset-2 md:inset-3 md:right-0 rounded-xl overflow-hidden">
+                    {property.image ? (
+                        <Image
+                            src={property.image}
+                            alt={property.name}
+                            fill
+                            sizes="240px"
+                            className="object-cover object-center transition-transform duration-500 group-hover:scale-105"
+                            loading="lazy"
+                        />
+                    ) : (
+                        <div className="w-full h-full bg-linear-to-br from-slate-100 to-slate-200 dark:from-slate-700 dark:to-slate-800 flex items-center justify-center">
+                            <svg viewBox="0 0 64 64" className="w-12 h-12 text-slate-300 dark:text-slate-600" fill="currentColor">
+                                <rect x="8" y="20" width="48" height="36" rx="2"/>
+                                <rect x="14" y="28" width="8" height="8" fill="white" opacity="0.6"/>
+                                <rect x="28" y="28" width="8" height="8" fill="white" opacity="0.6"/>
+                                <rect x="42" y="28" width="8" height="8" fill="white" opacity="0.6"/>
+                                <rect x="14" y="42" width="8" height="8" fill="white" opacity="0.6"/>
+                                <rect x="28" y="42" width="8" height="8" fill="white" opacity="0.6"/>
+                                <rect x="42" y="42" width="8" height="8" fill="white" opacity="0.6"/>
+                                <rect x="24" y="8" width="16" height="16" rx="1"/>
+                                <rect x="30" y="50" width="4" height="6" fill="white" opacity="0.6"/>
+                            </svg>
+                        </div>
+                    )}
+                </div>
                 {/* Heart icon */}
-                <button
-                    className="absolute top-3 left-3 w-8 h-8 md:w-10 md:h-10 rounded-full bg-white/90 dark:bg-slate-800/90 flex items-center justify-center hover:bg-white dark:hover:bg-slate-700 transition-colors shadow-sm"
-                    onClick={(e) => e.stopPropagation()}
-                >
-                    <svg className="w-3.5 h-3.5 md:w-4 md:h-4 text-slate-600 dark:text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-                    </svg>
-                </button>
+                <div className="absolute top-3 left-3 z-10">
+                    <SaveButton
+                        type="hotel"
+                        title={property.name}
+                        subtitle={property.location}
+                        price={property.price}
+                        currency={property.currency || 'KRW'}
+                        imageUrl={property.image}
+                        deepLink={`/property/${buildPropertySlug(property.name, property.id)}`}
+                        snapshot={property as any}
+                        size="sm"
+                    />
+                </div>
             </div>
 
             {/* Content Section */}
             <div className="flex-1 p-2 md:p-4 flex flex-col justify-between">
                 <div className="mt-1 md:mt-0">
-                    {/* Hotel Name */}
-                    <h3 className="text-[12px] landscape:text-[11px] lg:text-xl font-bold text-slate-900 dark:text-white mb-0.5 md:mb-1 group-hover:text-blue-600 transition-colors line-clamp-1">
-                        {property.name}
-                    </h3>
+                    {/* Refundable badge */}
+                    {property.refundableTag === 'RFN' && (
+                        <span className="inline-flex items-center gap-1 text-[9px] lg:text-xs font-semibold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/30 border border-emerald-200 dark:border-emerald-800 px-1.5 py-0.5 rounded-full mb-1">
+                            <svg className="w-2.5 h-2.5 lg:w-3 lg:h-3 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg>
+                            {tCard('freeCancellation')}
+                        </span>
+                    )}
+                    {/* Hotel Name with rank number */}
+                    <div className="flex items-center gap-1.5 mb-0.5 md:mb-1">
+                        <span className="shrink-0 w-5 h-5 lg:w-6 lg:h-6 rounded-full bg-blue-500 flex items-center justify-center">
+                            <span className={`text-white font-bold leading-none ${(index + 1) > 99 ? 'text-[7px] lg:text-[9px]' : (index + 1) > 9 ? 'text-[9px] lg:text-[11px]' : 'text-[10px] lg:text-[12px]'}`}>{index + 1}</span>
+                        </span>
+                        <h3 className="text-[11px] landscape:text-[10px] lg:text-xl font-bold text-slate-900 dark:text-white group-hover:text-blue-600 transition-colors line-clamp-1">
+                            {property.name}
+                        </h3>
+                    </div>
 
                     {/* Location */}
-                    <div className="flex items-center text-[10px] landscape:text-[9px] lg:text-sm text-slate-500 dark:text-slate-400 mb-2 md:mb-4">
-                        <MapPin className="w-2.5 h-2.5 lg:w-4 lg:h-4 mr-0.5 md:mr-1 shrink-0" />
+                    <div className="flex items-center text-[9px] landscape:text-[8.5px] lg:text-sm text-slate-500 dark:text-slate-400 mb-1.5 md:mb-4">
+                        <MapPin className="w-2 h-2 lg:w-4 lg:h-4 mr-0.5 md:mr-1 shrink-0" />
                         <span className="line-clamp-1">{property.location}</span>
                     </div>
                 </div>
@@ -296,29 +408,73 @@ const HorizontalCard: React.FC<PropertyCardProps> = ({
                 <div className="flex items-end justify-between mt-1 md:mt-4">
                     {/* Rating Section */}
                     <div className="flex items-center gap-1.5 md:gap-2">
-                        <div className="px-1.5 py-0.5 lg:px-2 lg:py-1 bg-blue-600 text-white text-[9px] landscape:text-[8px] lg:text-sm font-bold rounded-md md:rounded-lg">
-                            {property.rating.toFixed(1)}
-                        </div>
-                        <span className="text-[9px] landscape:text-[8px] lg:text-sm font-medium text-slate-700 dark:text-slate-300">
-                            {getRatingLabel(property.rating)}
-                        </span>
+                        {property.rating > 0 ? (
+                            <>
+                                <div className={`px-1.5 py-0.5 lg:px-2 lg:py-1 ${getRatingColor(property.rating)} text-white text-[9px] landscape:text-[8px] lg:text-sm font-bold rounded-md md:rounded-lg`}>
+                                    {property.rating.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}
+                                </div>
+                                <div className="flex flex-col gap-0.5">
+                                    <div className="relative inline-flex gap-px">
+                                        {Array.from({ length: 5 }).map((_, i) => (
+                                            <svg key={i} width="11" height="11" viewBox="0 0 24 24" className="text-slate-200 dark:text-slate-700 shrink-0">
+                                                <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" fill="currentColor" />
+                                            </svg>
+                                        ))}
+                                        <div className="absolute inset-0 overflow-hidden flex gap-px" style={{ width: `${Math.min(100, Math.max(0, (property.rating / 10) * 100))}%` }}>
+                                            {Array.from({ length: 5 }).map((_, i) => (
+                                                <svg key={i} width="11" height="11" viewBox="0 0 24 24" className="text-blue-500 shrink-0">
+                                                    <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" fill="currentColor" />
+                                                </svg>
+                                            ))}
+                                        </div>
+                                    </div>
+                                    <span className="text-[9px] landscape:text-[8px] lg:text-xs font-medium text-slate-600 dark:text-slate-400 leading-none">
+                                        {getRatingLabel(property.rating, tRatings)}
+                                    </span>
+                                </div>
+                            </>
+                        ) : (property as any).starRating > 0 ? (
+                            <div className="relative inline-flex gap-px">
+                                {Array.from({ length: 5 }).map((_, i) => (
+                                    <svg key={i} width="11" height="11" viewBox="0 0 24 24" className="text-slate-200 dark:text-slate-700 shrink-0">
+                                        <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" fill="currentColor" />
+                                    </svg>
+                                ))}
+                                <div className="absolute inset-0 overflow-hidden flex gap-px" style={{ width: `${(property as any).starRating * 20}%` }}>
+                                    {Array.from({ length: 5 }).map((_, i) => (
+                                        <svg key={i} width="11" height="11" viewBox="0 0 24 24" className="text-blue-500 shrink-0">
+                                            <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" fill="currentColor" />
+                                        </svg>
+                                    ))}
+                                </div>
+                            </div>
+                        ) : null}
                     </div>
 
                     {/* Price Section */}
                     <div className="text-right">
-                        {property.originalPrice && property.originalPrice > property.price && (
-                            <div className="text-[8px] landscape:text-[7px] lg:text-sm text-slate-400 line-through leading-none mb-0.5 md:mb-1">
-                                ₱{property.originalPrice.toLocaleString()}
+                        {property.priceLoading ? (
+                            <div className="flex flex-col items-end gap-1.5">
+                                <div className="h-6 w-24 bg-slate-200 dark:bg-slate-700 rounded animate-pulse" />
+                                <div className="h-3 w-12 bg-slate-100 dark:bg-slate-800 rounded animate-pulse" />
                             </div>
+                        ) : (
+                            <>
+                                {displayOriginalPrice && displayOriginalPrice > displayPrice && (
+                                    <div className="text-[8px] landscape:text-[7px] lg:text-sm text-slate-400 line-through leading-none mb-0.5 md:mb-1">
+                                        {symbol}{displayOriginalPrice.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                                    </div>
+                                )}
+                                <div className="flex items-baseline gap-1 md:gap-1.5">
+                                    <span className="text-[12px] landscape:text-[11px] lg:text-2xl font-bold text-blue-600 dark:text-blue-400 leading-none">
+                                        {symbol}{displayPrice.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                                    </span>
+                                    <span className="text-[8px] landscape:text-[7px] lg:text-sm text-slate-500 dark:text-slate-400">
+                                        {tCard('perNight')}
+                                    </span>
+                                </div>
+                            </>
                         )}
-                        <div className="flex items-baseline gap-1 md:gap-1.5">
-                            <span className="text-[13px] landscape:text-[12px] lg:text-2xl font-bold text-blue-600 dark:text-blue-400 leading-none">
-                                ₱{property.price.toLocaleString()}
-                            </span>
-                            <span className="text-[8px] landscape:text-[7px] lg:text-sm text-slate-500 dark:text-slate-400">
-                                /night
-                            </span>
-                        </div>
                     </div>
                 </div>
             </div>

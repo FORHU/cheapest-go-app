@@ -3,12 +3,14 @@ import { persist } from 'zustand/middleware';
 import { useShallow } from 'zustand/react/shallow';
 
 export interface Destination {
-    type: 'city' | 'airport' | 'history';
+    type: 'city' | 'airport' | 'history' | 'country';
     title: string;
     subtitle: string;
     code?: string;
     countryCode?: string;
     id?: string;
+    lowestPrice?: number;
+    priceCurrency?: string;
 }
 
 export interface DateRange {
@@ -39,6 +41,9 @@ export interface SearchFilters {
     minReviewsCount: number;
     facilities: number[];
     strictFacilityFiltering: boolean;
+    propertyTypes: string[];   // 'hotel' | 'apartment' | 'resort' | 'villa'
+    boardTypes: string[];      // board/meal plan codes: 'RO' | 'BB' | 'HB' | 'FB' | 'AI'
+    refundable: boolean | null; // true = refundable only, null = show all
 }
 
 /** Destination suggestions state */
@@ -100,6 +105,9 @@ interface SearchState {
     setFilters: (filters: Partial<SearchFilters>) => void;
     toggleStarRating: (star: number) => void;
     toggleFacility: (facilityId: number) => void;
+    togglePropertyType: (type: string) => void;
+    toggleBoardType: (code: string) => void;
+    setRefundable: (value: boolean | null) => void;
     resetFilters: () => void;
 
     // Destination suggestions (moved from DestinationPicker useState)
@@ -119,6 +127,7 @@ interface SearchState {
     addRecentSearch: (destination: Destination) => void;
     removeRecentSearch: (title: string) => void;
     clearRecentSearches: () => void;
+    updateRecentSearchPrice: (title: string, price: number, currency: string) => void;
     reset: () => void;
 
     // Flight Actions
@@ -150,6 +159,9 @@ const initialFilters: SearchFilters = {
     minReviewsCount: 0,
     facilities: [],
     strictFacilityFiltering: false,
+    propertyTypes: [],
+    boardTypes: [],
+    refundable: null,
 };
 
 const initialSuggestions: SuggestionsState = {
@@ -178,8 +190,8 @@ export const useSearchStore = create<SearchState>()(
             destinationQuery: '',
             dates: initialDates,
             travelers: initialTravelers,
-            userCurrency: 'PHP',
-            userCountry: 'PH',
+            userCurrency: process.env.NEXT_PUBLIC_DEFAULT_CURRENCY ?? 'USD',
+            userCountry: process.env.NEXT_PUBLIC_DEFAULT_COUNTRY ?? 'US',
             recentSearches: [],
             activeDropdown: null,
             isSearching: false,
@@ -197,9 +209,29 @@ export const useSearchStore = create<SearchState>()(
 
             setDestinationQuery: (destinationQuery) => set({ destinationQuery }),
 
-            setDates: (dates) => set((state) => ({
-                dates: { ...state.dates, ...dates }
-            })),
+            setDates: (dates) => set((state) => {
+                const newDates = { ...state.dates, ...dates };
+                
+                // Safety check: ensure checkIn is not today or in the past
+                if (newDates.checkIn) {
+                    const today = new Date();
+                    today.setHours(0, 0, 0, 0);
+                    if (newDates.checkIn <= today) {
+                        const tomorrow = new Date(today);
+                        tomorrow.setDate(today.getDate() + 1);
+                        newDates.checkIn = tomorrow;
+                        
+                        // If checkOut is now before or same as checkIn, move it to checkIn + 1 day
+                        if (newDates.checkOut && newDates.checkOut <= newDates.checkIn) {
+                            const dayAfterTomorrow = new Date(tomorrow);
+                            dayAfterTomorrow.setDate(tomorrow.getDate() + 1);
+                            newDates.checkOut = dayAfterTomorrow;
+                        }
+                    }
+                }
+                
+                return { dates: newDates };
+            }),
 
             setTravelers: (travelers) => set((state) => ({
                 travelers: { ...state.travelers, ...travelers }
@@ -216,6 +248,12 @@ export const useSearchStore = create<SearchState>()(
 
             removeRecentSearch: (title) => set((state) => ({
                 recentSearches: state.recentSearches.filter((d) => d.title !== title),
+            })),
+
+            updateRecentSearchPrice: (title, price, currency) => set((state) => ({
+                recentSearches: state.recentSearches.map((d) =>
+                    d.title === title ? { ...d, lowestPrice: price, priceCurrency: currency } : d
+                ),
             })),
 
             setActiveDropdown: (activeDropdown) => set({ activeDropdown }),
@@ -242,6 +280,22 @@ export const useSearchStore = create<SearchState>()(
                 return { filters: { ...state.filters, facilities: newFacilities } };
             }),
 
+            togglePropertyType: (type) => set((state) => {
+                const cur = state.filters.propertyTypes;
+                const next = cur.includes(type) ? cur.filter(t => t !== type) : [...cur, type];
+                return { filters: { ...state.filters, propertyTypes: next } };
+            }),
+
+            toggleBoardType: (code) => set((state) => {
+                const cur = state.filters.boardTypes;
+                const next = cur.includes(code) ? cur.filter(c => c !== code) : [...cur, code];
+                return { filters: { ...state.filters, boardTypes: next } };
+            }),
+
+            setRefundable: (value) => set((state) => ({
+                filters: { ...state.filters, refundable: value }
+            })),
+
             resetFilters: () => set({ filters: initialFilters }),
 
             // Suggestions actions
@@ -264,6 +318,7 @@ export const useSearchStore = create<SearchState>()(
                 filters: initialFilters,
                 isMobileFiltersOpen: false,
                 suggestions: initialSuggestions,
+                flightState: initialFlightState,
             }),
 
             // Flight Actions Implementation
@@ -278,6 +333,12 @@ export const useSearchStore = create<SearchState>()(
                 const newFlights = [...state.flightState.flights];
                 if (newFlights[index]) {
                     newFlights[index] = { ...newFlights[index], ...segment };
+
+                    // Round-trip location syncing: automatically update return flight
+                    if (state.flightState.tripType === 'round-trip' && index === 0 && newFlights[1]) {
+                        if (segment.origin) newFlights[1].destination = segment.origin;
+                        if (segment.destination) newFlights[1].origin = segment.destination;
+                    }
 
                     // Date order auto-validation: enforce chronological order
                     if (segment.date) {
@@ -351,7 +412,22 @@ export const useSearchStore = create<SearchState>()(
                 userCurrency: state.userCurrency,
                 userCountry: state.userCountry,
                 searchMode: state.searchMode,
+                flightState: state.flightState,
             }) as SearchState,
+            // Bump version to migrate existing users from PHP to KRW default
+            version: 1,
+            migrate: (persisted: any, version: number) => {
+                if (version === 0) {
+                    // Migrate old PHP default → KRW
+                    if (persisted.userCurrency === 'PHP') {
+                        persisted.userCurrency = 'KRW';
+                    }
+                    if (persisted.userCountry === 'PH') {
+                        persisted.userCountry = 'KR';
+                    }
+                }
+                return persisted;
+            },
         }
     )
 );

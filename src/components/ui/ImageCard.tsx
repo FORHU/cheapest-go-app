@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { motion } from 'framer-motion';
+import Image from 'next/image';
 
 interface ImageCardProps {
   image: string;
@@ -40,20 +41,25 @@ export const ImageCard: React.FC<ImageCardProps> = ({
       onClick={onClick}
       className={`group cursor-pointer ${className}`}
     >
-      <div className={`relative ${aspectClasses[aspectRatio]} rounded-xl overflow-hidden mb-2`}>
-        <div
-          className="absolute inset-0 bg-cover bg-center transition-transform duration-500 group-hover:scale-110"
-          style={{ backgroundImage: `url(${image})` }}
+      <div className={`relative ${aspectClasses[aspectRatio]} rounded-xl overflow-hidden mb-2 shadow-sm`}>
+        <Image
+          src={image}
+          alt={title}
+          fill
+          sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+          className="object-cover transition-transform duration-500 group-hover:scale-105"
+          priority={index < 4}
+          loading={index < 4 ? undefined : 'lazy'}
         />
         {overlay && (
-          <div className="absolute inset-0 bg-linear-to-t from-black/50 to-transparent" />
+          <div className="absolute inset-0 bg-linear-to-t from-black/60 to-transparent z-10" />
         )}
         {badge && (
-          <div className="absolute top-2 left-2">
+          <div className="absolute top-2 left-2 z-20">
             {badge}
           </div>
         )}
-        <span className="absolute bottom-3 left-3 text-white font-semibold text-sm">
+        <span className="absolute bottom-3 left-3 text-white font-semibold text-sm z-20">
           {title}
         </span>
       </div>

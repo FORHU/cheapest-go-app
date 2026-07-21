@@ -1,35 +1,34 @@
 "use client";
 
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { MapPin, History, Plane, Building2, X } from 'lucide-react';
+import { MapPin, History, Plane, Building2, Globe, X } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
+import { queryKeys } from '@/lib/queryClient';
+import { apiFetch } from '@/lib/api/client';
 import {
     Destination,
     useSearchStore,
     useDestinationQuery,
     useRecentSearches,
     useActiveDropdown,
-    useSuggestions,
-    useSuggestionsLoading
 } from '@/stores/searchStore';
-
-
+import { useTranslations } from 'next-intl';
 
 interface DestinationPickerProps {
     hideIcon?: boolean;
     forceOpen?: boolean;
+    onSelect?: (destination: Destination) => void;
 }
 
-export const DestinationPicker: React.FC<DestinationPickerProps> = ({ hideIcon, forceOpen }) => {
+export const DestinationPicker: React.FC<DestinationPickerProps> = ({ hideIcon, forceOpen, onSelect }) => {
+    const t = useTranslations('landing.search');
     const ref = useRef<HTMLDivElement>(null);
 
     // Store
     const query = useDestinationQuery();
     const recentSearches = useRecentSearches();
     const activeDropdown = useActiveDropdown();
-    // Use store selectors for suggestions/loading (no useState)
-    const suggestions = useSuggestions();
-    const loading = useSuggestionsLoading();
 
     const {
         setDestination,
@@ -37,9 +36,25 @@ export const DestinationPicker: React.FC<DestinationPickerProps> = ({ hideIcon, 
         addRecentSearch,
         setActiveDropdown,
         removeRecentSearch,
-        setSuggestions,
-        setSuggestionsLoading
     } = useSearchStore();
+
+    // Debounce the query string so the query key only changes after the user pauses
+    const [debouncedQuery, setDebouncedQuery] = useState(query);
+    useEffect(() => {
+        const t = setTimeout(() => setDebouncedQuery(query), 400);
+        return () => clearTimeout(t);
+    }, [query]);
+
+    const { data: suggestions = [], isFetching: loading } = useQuery<Destination[]>({
+        queryKey: queryKeys.autocomplete.destinations(debouncedQuery),
+        queryFn: async () => {
+            const result = await apiFetch('/api/autocomplete', { query: debouncedQuery });
+            return result.success ? result.data : [];
+        },
+        enabled: debouncedQuery.length >= 2,
+        staleTime: 5 * 60 * 1000, // cache 5 min — TGX destination codes don't change
+        placeholderData: (prev) => prev,
+    });
 
     const isOpen = forceOpen || activeDropdown === 'destination';
     const onClose = () => {
@@ -64,43 +79,29 @@ export const DestinationPicker: React.FC<DestinationPickerProps> = ({ hideIcon, 
         setDestination(destination);
         setDestinationQuery(destination.title);
         addRecentSearch(destination);
+        if (onSelect) onSelect(destination);
         onClose();
+
+        // Resolve TGX destination code in background after selection (city type only).
+        // Updates the stored destination with the code so search can use it directly.
+        if (destination.type === 'city' && !destination.code) {
+            apiFetch('/api/autocomplete/resolve', { cityName: destination.title })
+                .then((res: any) => {
+                    if (res?.success && res.code) {
+                        const enriched = { ...destination, code: res.code };
+                        setDestination(enriched);
+                        addRecentSearch(enriched);
+                    }
+                })
+                .catch(() => { });
+        }
     };
-
-    // Debounced Autocomplete via API route
-    useEffect(() => {
-        const timer = setTimeout(async () => {
-            if (!query || query.length < 2) {
-                setSuggestions([]);
-                return;
-            }
-
-            setSuggestionsLoading(true);
-            try {
-                const { apiFetch } = await import('@/lib/api/client');
-                const result = await apiFetch('/api/autocomplete', { query });
-
-                if (result.success) {
-                    setSuggestions(result.data);
-                } else {
-                    setSuggestions([]);
-                }
-            } catch (error) {
-                console.error("Autocomplete failed:", error);
-                setSuggestions([]);
-            } finally {
-                setSuggestionsLoading(false);
-            }
-        }, 500);
-
-        return () => clearTimeout(timer);
-    }, [query, setSuggestions, setSuggestionsLoading]);
-
 
     const getIcon = (type: Destination['type']) => {
         switch (type) {
             case 'history': return <History size={18} />;
             case 'airport': return <Plane size={18} />;
+            case 'country': return <Globe size={18} />;
             default: return <Building2 size={18} />;
         }
     };
@@ -114,17 +115,18 @@ export const DestinationPicker: React.FC<DestinationPickerProps> = ({ hideIcon, 
                     animate={{ opacity: 1, y: 0, scale: 1 }}
                     exit={forceOpen ? { opacity: 1, y: 0, scale: 1 } : { opacity: 0, y: 10, scale: 0.95 }}
                     transition={{ duration: 0.2 }}
+                    style={{ willChange: 'auto' }}
                     className={forceOpen
-                        ? "w-full z-10"
-                        : "absolute top-full left-0 mt-4 w-[500px] min-w-[500px] max-w-[500px] bg-white dark:bg-[#0f172a] shadow-2xl rounded-2xl border border-slate-200 dark:border-white/10 overflow-hidden z-[100]"
+                        ? "w-full z-10 font-sans"
+                        : "absolute top-full left-0 mt-4 w-[500px] min-w-[500px] max-w-[500px] bg-white dark:bg-[#0f172a] shadow-2xl rounded-2xl border border-slate-200 dark:border-white/10 overflow-hidden z-[100] font-sans isolate [backdrop-filter:none]"
                     }
                     onClick={(e) => e.stopPropagation()}
                 >
                     {/* Search Header */}
-                    <div className={`${forceOpen ? 'p-3' : 'p-4'} border-b border-slate-100 dark:border-white/5`}>
+                    <div className={`${forceOpen ? 'p-3' : 'p-4 border-b border-slate-100 dark:border-white/5'}`}>
                         {!forceOpen && (
-                            <span className="text-[10px] text-slate-400 font-bold uppercase tracking-widest block mb-1">
-                                Where to?
+                            <span className="text-[9px] text-slate-500 font-mono font-medium uppercase tracking-wider block mb-1 text-left">
+                                {t('whereTo')}
                             </span>
                         )}
                         <div className="flex items-center gap-2">
@@ -134,10 +136,16 @@ export const DestinationPicker: React.FC<DestinationPickerProps> = ({ hideIcon, 
                                 type="text"
                                 value={query}
                                 onChange={(e) => setDestinationQuery(e.target.value)}
-                                placeholder="Search destinations..."
-                                className={`bg-transparent border-none p-0 font-normal focus:ring-0 outline-none w-full text-slate-900 dark:text-white placeholder-slate-400 ${forceOpen ? 'text-[11px]' : 'text-xl'}`}
+                                onFocus={(e) => e.target.select()}
+                                placeholder={t('searchDestinationsPlaceholder')}
+                                className={`bg-transparent border-none p-0 font-bold focus:ring-0 outline-none w-full text-slate-900 dark:text-white placeholder:font-normal placeholder-slate-400 font-sans ${forceOpen ? 'text-[10px]' : 'text-[13px]'}`}
                             />
-                            {loading && <div className="animate-spin h-4 w-4 border-2 border-primary border-t-transparent rounded-full" />}
+                            {loading && (
+                                <div className="relative h-4 w-4 shrink-0">
+                                    <div className="absolute inset-0 border-2 border-slate-200 dark:border-white/10 rounded-full" />
+                                    <div className="absolute inset-0 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+                                </div>
+                            )}
                             {query && (
                                 <button
                                     onClick={() => setDestinationQuery('')}
@@ -151,76 +159,122 @@ export const DestinationPicker: React.FC<DestinationPickerProps> = ({ hideIcon, 
 
                     {/* Results List */}
                     <div className="max-h-[240px] overflow-y-auto py-2 thin-scrollbar">
-                        {/* 1. Recent Searches (only if no query) */}
-                        {!query && recentSearches.length > 0 && (
-                            <>
-                                <div className={`${forceOpen ? 'px-2' : 'px-6'} py-1.5 text-[9px] font-normal uppercase text-slate-400 tracking-widest`}>
-                                    Recent Searches
-                                </div>
-                                {recentSearches.map((item, i) => (
-                                    <div
-                                        key={i}
-                                        onClick={() => handleSelect(item)}
-                                        className={`${forceOpen ? 'px-2' : 'px-6'} py-2 hover:bg-slate-50 dark:hover:bg-white/5 flex items-center justify-between cursor-pointer group transition-colors`}
-                                    >
-                                        <div className="flex items-center gap-3">
-                                            <div className="mt-0.5 text-slate-400 group-hover:text-amber-500 transition-colors">
-                                                <History size={14} />
-                                            </div>
-                                            <div>
-                                                <h5 className="text-[11px] font-normal group-hover:text-amber-500 transition-colors text-slate-900 dark:text-white">
-                                                    {item.title}
-                                                </h5>
-                                                <p className="text-[10px] font-normal text-slate-400">{item.subtitle}</p>
-                                            </div>
-                                        </div>
-                                        <button
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                removeRecentSearch(item.title);
-                                            }}
-                                            className="opacity-0 group-hover:opacity-100 p-1 hover:bg-slate-200 dark:hover:bg-white/10 rounded-full transition-all"
-                                        >
-                                            <X size={14} className="text-slate-400" />
-                                        </button>
+                        <AnimatePresence mode="wait">
+                            {/* 1. Recent Searches (only if no query) */}
+                            {!query && recentSearches.length > 0 && (
+                                <motion.div
+                                    key="recent-searches"
+                                    initial={{ opacity: 0, y: 5 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    exit={{ opacity: 0, y: -5 }}
+                                    transition={{ duration: 0.15 }}
+                                >
+                                    <div className={`${forceOpen ? 'px-2' : 'px-6'} py-1.5 text-[8px] font-mono font-medium uppercase text-slate-500 tracking-wider text-left`}>
+                                        {t('recentSearches')}
                                     </div>
-                                ))}
-                            </>
-                        )}
-
-                        {/* 2. Autocomplete Suggestions */}
-                        {query && (
-                            <>
-                                <div className={`${forceOpen ? 'px-2' : 'px-6'} py-1.5 text-[9px] font-normal uppercase text-slate-400 tracking-widest`}>
-                                    LiteAPI Results
-                                </div>
-                                {suggestions.length > 0 ? (
-                                    suggestions.map((item, i) => (
-                                        <div
+                                    {recentSearches.map((item, i) => (
+                                        <motion.div
                                             key={i}
+                                            initial={{ opacity: 0, x: -4 }}
+                                            animate={{ opacity: 1, x: 0 }}
+                                            transition={{ delay: i * 0.02 }}
                                             onClick={() => handleSelect(item)}
-                                            className={`${forceOpen ? 'px-2' : 'px-6'} py-2 hover:bg-slate-50 dark:hover:bg-white/5 flex items-start gap-3 cursor-pointer group transition-colors`}
+                                            className={`${forceOpen ? 'px-2' : 'px-6'} py-2 hover:bg-slate-50 dark:hover:bg-slate-800 flex items-center justify-between cursor-pointer group`}
                                         >
-                                            <div className="mt-0.5 text-slate-400 group-hover:text-blue-500 transition-colors">
-                                                {getIcon(item.type)}
+                                            <div className="flex items-center gap-3">
+                                                <div className="mt-0.5 text-slate-400 group-hover:text-amber-500">
+                                                    <History size={14} />
+                                                </div>
+                                                <div className="text-left">
+                                                    <h5 className="text-[11px] font-bold group-hover:text-amber-500 text-slate-900 dark:text-white">
+                                                        {item.title}
+                                                    </h5>
+                                                    <p className="text-[10px] font-normal text-slate-400">{item.subtitle}</p>
+                                                </div>
                                             </div>
-                                            <div className="flex-1">
-                                                <h5 className="text-[11px] font-normal group-hover:text-blue-500 transition-colors text-slate-900 dark:text-white">
-                                                    {item.title}
-                                                </h5>
-                                                <p className="text-[10px] font-normal text-slate-400 truncate max-w-[280px]">
-                                                    {item.subtitle}
-                                                </p>
-                                            </div>
+                                            <button
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    removeRecentSearch(item.title);
+                                                }}
+                                                className="opacity-0 group-hover:opacity-100 p-1 hover:bg-slate-200 dark:hover:bg-white/10 rounded-full transition-all"
+                                            >
+                                                <X size={14} className="text-slate-400" />
+                                            </button>
+                                        </motion.div>
+                                    ))}
+                                </motion.div>
+                            )}
+
+                            {/* 2. Autocomplete Suggestions */}
+                            {query && (() => {
+                                const countries = suggestions.filter(s => s.type === 'country');
+                                const cities = suggestions.filter(s => s.type !== 'country');
+
+                                if (suggestions.length === 0) {
+                                    return (
+                                        <motion.div
+                                            key="no-results"
+                                            initial={{ opacity: 0 }}
+                                            animate={{ opacity: 1 }}
+                                            className="px-6 py-4 text-center text-slate-400 text-sm"
+                                        >
+                                            {loading ? t('searching') : t('noResults')}
+                                        </motion.div>
+                                    );
+                                }
+
+                                const renderItem = (item: Destination, i: number) => (
+                                    <motion.div
+                                        key={i}
+                                        initial={{ opacity: 0, x: -4 }}
+                                        animate={{ opacity: 1, x: 0 }}
+                                        transition={{ delay: i * 0.02 }}
+                                        onClick={() => handleSelect(item)}
+                                        className={`${forceOpen ? 'px-2' : 'px-6'} py-2 hover:bg-slate-50 dark:hover:bg-slate-800 flex items-start gap-3 cursor-pointer group`}
+                                    >
+                                        <div className={`mt-0.5 text-slate-400 ${item.type === 'country' ? 'group-hover:text-emerald-500' : 'group-hover:text-blue-500'}`}>
+                                            {getIcon(item.type)}
                                         </div>
-                                    ))
-                                ) : (
-                                    <div className="px-6 py-4 text-center text-slate-400 text-sm">
-                                        {loading ? "Searching..." : "No results found"}
-                                    </div>
-                                )}
-                            </>
-                        )}
+                                        <div className="flex-1 text-left">
+                                            <h5 className={`text-[11px] font-bold text-slate-900 dark:text-white ${item.type === 'country' ? 'group-hover:text-emerald-500' : 'group-hover:text-blue-500'}`}>
+                                                {item.title}
+                                            </h5>
+                                            <p className="text-[10px] font-normal text-slate-400 truncate max-w-[280px]">
+                                                {item.subtitle}
+                                            </p>
+                                        </div>
+                                    </motion.div>
+                                );
+
+                                return (
+                                    <motion.div
+                                        key="suggestions"
+                                        initial={{ opacity: 0, y: 5 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        exit={{ opacity: 0, y: -5 }}
+                                        transition={{ duration: 0.15 }}
+                                    >
+                                        {countries.length > 0 && (
+                                            <>
+                                                <div className={`${forceOpen ? 'px-2' : 'px-6'} py-1.5 text-[8px] font-mono font-medium uppercase text-slate-500 tracking-wider`}>
+                                                    {t('countries')}
+                                                </div>
+                                                {countries.map(renderItem)}
+                                            </>
+                                        )}
+                                        {cities.length > 0 && (
+                                            <>
+                                                <div className={`${forceOpen ? 'px-2' : 'px-6'} py-1.5 text-[8px] font-mono font-medium uppercase text-slate-500 tracking-wider ${countries.length > 0 ? 'mt-1' : ''}`}>
+                                                    {t('cities')}
+                                                </div>
+                                                {cities.map(renderItem)}
+                                            </>
+                                        )}
+                                    </motion.div>
+                                );
+                            })()}
+                        </AnimatePresence>
                     </div>
                 </motion.div>
             )}

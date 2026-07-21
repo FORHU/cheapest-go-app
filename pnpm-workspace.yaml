@@ -1,0 +1,7 @@
+onlyBuiltDependencies:
+  - '@parcel/watcher'
+  - '@swc/core'
+  - sharp
+  - '@sentry/cli'
+  - '@prisma/engines'
+  - prisma

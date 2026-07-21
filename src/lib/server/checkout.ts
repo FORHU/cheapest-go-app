@@ -1,5 +1,5 @@
-import { checkoutSchema, guestDetailsSchema } from '@/lib/schemas/checkout';
-import type { CheckoutFormData, BookingForType } from '@/components/checkout/types';
+import { userDetailsSchema } from '@/lib/schemas/checkout';
+import type { CheckoutFormData } from '@/components/checkout/types';
 import type { Guest } from '@/services/booking.service';
 
 /**
@@ -7,19 +7,15 @@ import type { Guest } from '@/services/booking.service';
  * Returns either success or a record of field-level errors.
  */
 export function validateCheckoutForm(
-  formData: CheckoutFormData,
-  bookingFor: BookingForType
+  formData: CheckoutFormData
 ): { success: true } | { success: false; errors: Record<string, string> } {
   const errors: Record<string, string> = {};
 
-  const mainResult = checkoutSchema.safeParse({
+  const mainResult = userDetailsSchema.safeParse({
     firstName: formData.firstName,
     lastName: formData.lastName,
     email: formData.email,
     phone: formData.phone,
-    cardNumber: formData.cardNumber,
-    expiry: formData.expiry,
-    cvc: formData.cvc,
   });
 
   if (!mainResult.success) {
@@ -28,16 +24,20 @@ export function validateCheckoutForm(
     }
   }
 
-  if (bookingFor === 'someone_else') {
-    const guestResult = guestDetailsSchema.safeParse({
-      guestFirstName: formData.guestFirstName,
-      guestLastName: formData.guestLastName,
-    });
-    if (!guestResult.success) {
-      for (const [field, msgs] of Object.entries(guestResult.error.flatten().fieldErrors)) {
-        if (msgs?.[0]) errors[field] = msgs[0];
-      }
-    }
+  const additionalGuests = formData.additionalGuests ?? [];
+  for (let i = 0; i < additionalGuests.length; i++) {
+    const g = additionalGuests[i];
+    if (!g.firstName?.trim()) errors[`guest_${i}_firstName`] = 'First name is required';
+    if (!g.lastName?.trim()) errors[`guest_${i}_lastName`] = 'Last name is required';
+  }
+
+  const childGuests = formData.childGuests ?? [];
+  for (let i = 0; i < childGuests.length; i++) {
+    const c = childGuests[i];
+    if (!c.firstName?.trim()) errors[`child_${i}_firstName`] = 'First name is required';
+    if (!c.lastName?.trim()) errors[`child_${i}_lastName`] = 'Last name is required';
+    const age = parseInt(c.age, 10);
+    if (c.age === '' || isNaN(age) || age < 0 || age > 17) errors[`child_${i}_age`] = 'Enter a valid age (0–17)';
   }
 
   if (Object.keys(errors).length > 0) {
@@ -52,21 +52,47 @@ export function validateCheckoutForm(
  */
 export function buildGuestPayload(
   formData: CheckoutFormData,
-  bookingFor: BookingForType,
   specialRequests?: string
 ): Guest[] {
-  const primaryGuest: Guest = {
-    occupancyNumber: 1,
-    firstName: bookingFor === 'myself' ? formData.firstName : formData.guestFirstName,
-    lastName: bookingFor === 'myself' ? formData.lastName : formData.guestLastName,
-    email: formData.email,
-  };
+  const guests: Guest[] = [
+    {
+      occupancyNumber: 1,
+      firstName: formData.firstName,
+      lastName: formData.lastName,
+      email: formData.email,
+      ...(specialRequests?.trim() ? { remarks: specialRequests.trim() } : {}),
+    },
+  ];
 
-  if (specialRequests?.trim()) {
-    primaryGuest.remarks = specialRequests.trim();
+  const additionalGuests = formData.additionalGuests ?? [];
+  for (let i = 0; i < additionalGuests.length; i++) {
+    const g = additionalGuests[i];
+    if (g.firstName || g.lastName) {
+      guests.push({
+        occupancyNumber: i + 2,
+        firstName: g.firstName,
+        lastName: g.lastName,
+        email: formData.email,
+      });
+    }
   }
 
-  return [primaryGuest];
+  const adultCount = 1 + additionalGuests.length;
+  const childGuests = formData.childGuests ?? [];
+  for (let i = 0; i < childGuests.length; i++) {
+    const c = childGuests[i];
+    if (c.firstName || c.lastName) {
+      guests.push({
+        occupancyNumber: adultCount + i + 1,
+        firstName: c.firstName,
+        lastName: c.lastName,
+        email: formData.email,
+        age: parseInt(c.age, 10) || 10,
+      });
+    }
+  }
+
+  return guests;
 }
 
 /**

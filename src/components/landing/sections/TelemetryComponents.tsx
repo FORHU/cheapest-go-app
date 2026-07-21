@@ -1,3 +1,5 @@
+// DEMO ONLY — TelemetryCard renders mock flight/weather data for UI demonstration purposes.
+// Values like "BA0178", "72°", "45% humidity" are illustrative and not sourced from a live API.
 import React from 'react';
 import { motion } from 'framer-motion';
 import { Activity, Plane, Sun, Cloud, CloudSun, TrendingDown } from 'lucide-react';
@@ -10,15 +12,14 @@ export const StatusBadge = () => (
     </div>
 );
 
-export const VersionBadge = () => (
+export const VersionBadge = ({ label = 'Smart Price Tracking' }: { label?: string }) => (
     <motion.div
-        initial={{ opacity: 0, y: 10 }}
+        initial={false}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.2 }}
         className="mb-6 inline-flex items-center gap-2 px-3 py-1 rounded-full border dark:border-obsidian-accent/20 border-alabaster-accent/20 dark:bg-obsidian-accent/5 bg-alabaster-accent/5 shadow-sm"
     >
         <Activity className="w-3 h-3 dark:text-obsidian-accent text-alabaster-accent" />
-        <span className="text-xs font-mono dark:text-obsidian-accent text-alabaster-accent tracking-wide uppercase">V 2.0.4 Precision Engine Live</span>
+        <span className="text-xs font-display font-semibold dark:text-obsidian-accent text-alabaster-accent tracking-widest uppercase">{label}</span>
     </motion.div>
 );
 

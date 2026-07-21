@@ -1,16 +1,32 @@
 "use client";
 
-import React, { useState, useMemo, useCallback } from 'react';
-import { Plane, Luggage, ArrowRight } from 'lucide-react';
+import React, { useState, useCallback, useEffect } from 'react';
+import { Plane, Luggage, ArrowRight, Heart, ExternalLink, Trash2 } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { toast } from 'sonner';
+import { useUser, useAuthLoading } from '@/stores/authStore';
 import type { BookingRecord, FlightBookingRecord } from '@/services/booking.service';
 import BookingCard from './BookingCard';
 import FlightBookingCard from './FlightBookingCard';
 import type { TripsData } from '@/lib/trips';
+import { useTranslations } from 'next-intl';
+// Realtime replaced with polling — no Supabase client needed
 
-type TabValue = 'upcoming' | 'past' | 'all';
-const VALID_TABS: TabValue[] = ['upcoming', 'past', 'all'];
+type TabValue = 'upcoming' | 'past' | 'all' | 'wishlist';
+const VALID_TABS: TabValue[] = ['upcoming', 'past', 'all', 'wishlist'];
+
+interface SavedTrip {
+  id: string;
+  type: 'flight' | 'hotel';
+  title: string;
+  subtitle?: string;
+  price?: number;
+  currency: string;
+  image_url?: string;
+  deep_link: string;
+  created_at: string;
+}
 
 interface TripsContentProps {
   initialData: TripsData;
@@ -23,14 +39,76 @@ function isFlight(b: MixedBooking): b is FlightBookingRecord {
 }
 
 export function TripsContent({ initialData }: TripsContentProps) {
+  const t = useTranslations('trips');
   const router = useRouter();
   const searchParams = useSearchParams();
+  const user = useUser();
+  const isLoading = useAuthLoading();
+
+  // Redirect if logged out while on page
+  useEffect(() => {
+    if (!isLoading && !user) {
+      router.push('/');
+    }
+  }, [user, isLoading, router]);
+
+  // Poll for booking status changes every 30 seconds while the tab is visible.
+  // Replaces the Supabase Realtime subscription (postgres_changes) which required
+  // the Supabase WebSocket service. router.refresh() re-runs Server Components
+  // so the page gets fresh data without a full reload.
+  useEffect(() => {
+    if (!user) return;
+
+    // Only poll for "in-progress" bookings (awaiting_ticket, pnr_created, booked)
+    // where status changes are expected. Stop polling once stable.
+    let interval: ReturnType<typeof setInterval> | null = null;
+
+    const startPolling = () => {
+      interval = setInterval(() => {
+        if (document.visibilityState === 'visible') {
+          router.refresh();
+        }
+      }, 30_000); // 30-second poll
+    };
+
+    startPolling();
+    return () => { if (interval) clearInterval(interval); };
+  }, [user, router]);
 
   const rawTab = searchParams?.get('tab');
   const activeTab: TabValue = VALID_TABS.includes(rawTab as TabValue) ? (rawTab as TabValue) : 'upcoming';
 
   const [visibleCount, setVisibleCount] = useState(10);
   const [typeFilter, setTypeFilter] = useState<'all' | 'hotels' | 'flights'>('all');
+  const [savedTrips, setSavedTrips] = useState<SavedTrip[]>([]);
+  const [savedLoading, setSavedLoading] = useState(false);
+
+  useEffect(() => {
+    if (activeTab !== 'wishlist') return;
+    setSavedLoading(true);
+    fetch('/api/saved-trips')
+      .then(r => r.json())
+      .then(j => setSavedTrips(j.data ?? []))
+      .catch(() => { })
+      .finally(() => setSavedLoading(false));
+  }, [activeTab]);
+
+  const removeSaved = async (id: string) => {
+    // Optimistic: drop it from the list immediately so the UI feels instant,
+    // then reconcile with the server. Previously this awaited the round-trip
+    // before removing anything, so the row lingered for the whole request
+    // (worst on a cold dev route compile) with no feedback.
+    const snapshot = savedTrips;
+    setSavedTrips(prev => prev.filter(t => t.id !== id));
+    try {
+      const res = await fetch(`/api/saved-trips/${id}`, { method: 'DELETE' });
+      if (!res.ok) throw new Error(`Delete failed: ${res.status}`);
+    } catch (err) {
+      console.error('[TripsContent] removeSaved failed:', err);
+      setSavedTrips(snapshot); // revert
+      toast.error(t('wishlist.removeError'));
+    }
+  };
 
   const counts = {
     upcoming: initialData.upcomingBookings.length + initialData.upcomingFlightBookings.length,
@@ -74,6 +152,8 @@ export function TripsContent({ initialData }: TripsContentProps) {
     router.refresh();
   }, [router]);
 
+  if (!user) return null;
+
   return (
     <main className="min-h-screen pt-4 pb-16 px-3 sm:pt-6 sm:pb-20 sm:px-4 md:px-6 lg:px-8">
       <div className="max-w-7xl mx-auto w-full">
@@ -81,10 +161,10 @@ export function TripsContent({ initialData }: TripsContentProps) {
         <div className="mb-4 sm:mb-6 md:mb-8">
           <h1 className="text-[clamp(1.25rem,4vw,1.875rem)] font-display font-bold text-slate-900 dark:text-white mb-1 sm:mb-2 flex items-center gap-2 sm:gap-3">
             <Plane className="w-6 h-6 sm:w-7 sm:h-7 md:w-8 md:h-8 text-blue-600 flex-shrink-0" />
-            <span>My Trips</span>
+            <span>{t('myTrips')}</span>
           </h1>
           <p className="text-[clamp(0.75rem,2vw,1rem)] text-slate-500 dark:text-slate-400">
-            View and manage your bookings
+            {t('subtitle')}
           </p>
         </div>
 
@@ -97,7 +177,7 @@ export function TripsContent({ initialData }: TripsContentProps) {
               : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300'
               }`}
           >
-            <span>Upcoming</span>
+            <span>{t('tabs.upcoming')}</span>
             {counts.upcoming > 0 && (
               <span className="px-1.5 sm:px-2 py-0.5 text-[clamp(0.5625rem,1.5vw,0.75rem)] bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-full">
                 {counts.upcoming}
@@ -114,7 +194,7 @@ export function TripsContent({ initialData }: TripsContentProps) {
               : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300'
               }`}
           >
-            Past
+            {t('tabs.past')}
             {activeTab === 'past' && (
               <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600 dark:bg-blue-400" />
             )}
@@ -126,32 +206,139 @@ export function TripsContent({ initialData }: TripsContentProps) {
               : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300'
               }`}
           >
-            All
+            {t('tabs.all')}
             {activeTab === 'all' && (
               <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600 dark:bg-blue-400" />
             )}
           </button>
+          <button
+            onClick={() => handleTabChange('wishlist')}
+            className={`px-2 py-2 sm:px-3 sm:py-2.5 md:px-4 md:py-3 text-[clamp(0.6875rem,2vw,0.875rem)] font-medium transition-colors relative whitespace-nowrap flex items-center gap-1.5 ${activeTab === 'wishlist'
+              ? 'text-rose-500 dark:text-rose-400'
+              : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300'
+              }`}
+          >
+            <Heart size={13} className={activeTab === 'wishlist' ? 'fill-rose-500 text-rose-500' : ''} />
+            {t('tabs.wishlist')}
+            {activeTab === 'wishlist' && (
+              <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-rose-500 dark:bg-rose-400" />
+            )}
+          </button>
         </div>
 
+        {/* ── Wishlist tab ── */}
+        {activeTab === 'wishlist' && (
+          <div>
+            {savedLoading ? (
+              <div className="space-y-3">
+                {[1, 2, 3].map(i => (
+                  <div key={i} className="h-20 rounded-xl bg-slate-100 dark:bg-slate-800 animate-pulse" />
+                ))}
+              </div>
+            ) : savedTrips.length === 0 ? (
+              <div className="text-center py-16">
+                <div className="w-16 h-16 mx-auto mb-4 bg-rose-50 dark:bg-rose-900/20 rounded-full flex items-center justify-center">
+                  <Heart className="w-8 h-8 text-rose-300" />
+                </div>
+                <h2 className="text-lg font-bold text-slate-900 dark:text-white mb-2">{t('wishlist.emptyTitle')}</h2>
+                <p className="text-slate-500 dark:text-slate-400 mb-6 text-sm">
+                  {t('wishlist.emptyDesc')}
+                </p>
+                <Link
+                  href="/"
+                  className="inline-flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-full transition-colors"
+                >
+                  {t('exploreDestinations')}
+                  <ArrowRight className="w-4 h-4" />
+                </Link>
+              </div>
+            ) : (
+              <div className="space-y-2.5">
+                {savedTrips.map(trip => (
+                  <div key={trip.id} className="flex items-center gap-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 hover:border-slate-300 dark:hover:border-slate-600 transition-colors group">
+                    {/* Thumbnail — the saved image, with the type icon as a
+                        fallback behind it (shows through if there's no image or
+                        it fails to load). */}
+                    <div className={`w-12 h-12 rounded-lg overflow-hidden shrink-0 relative flex items-center justify-center ${trip.type === 'flight' ? 'bg-blue-50 dark:bg-blue-900/30' : 'bg-amber-50 dark:bg-amber-900/30'}`}>
+                      {trip.type === 'flight'
+                        ? <Plane size={16} className="text-blue-600 dark:text-blue-400" />
+                        : <Luggage size={16} className="text-amber-600 dark:text-amber-400" />}
+                      {trip.image_url && (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={trip.image_url}
+                          alt={trip.title}
+                          loading="lazy"
+                          onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                          className="absolute inset-0 w-full h-full object-cover"
+                        />
+                      )}
+                    </div>
+
+                    {/* Info */}
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-slate-900 dark:text-white truncate">{trip.title}</p>
+                      {trip.subtitle && (
+                        <p className="text-xs text-slate-500 dark:text-slate-400 truncate">{trip.subtitle}</p>
+                      )}
+                      <p className="text-[10px] text-slate-400 mt-0.5">
+                        {t('wishlist.savedOn', { date: new Date(trip.created_at).toLocaleDateString() })}
+                      </p>
+                    </div>
+
+                    {/* Price */}
+                    {trip.price && (
+                      <div className="text-right shrink-0">
+                        <p className="text-sm font-bold text-slate-900 dark:text-white">
+                          {new Intl.NumberFormat('en-US', { style: 'currency', currency: trip.currency, maximumFractionDigits: 0 }).format(trip.price)}
+                        </p>
+                        <p className="text-[10px] text-slate-400">{t('wishlist.perPerson')}</p>
+                      </div>
+                    )}
+
+                    {/* Actions */}
+                    <div className="flex items-center gap-1.5 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <Link
+                        href={trip.deep_link}
+                        className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 transition-colors"
+                        title={t('wishlist.searchAgain')}
+                      >
+                        <ExternalLink size={13} />
+                      </Link>
+                      <button
+                        onClick={() => removeSaved(trip.id)}
+                        className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-rose-50 dark:hover:bg-rose-900/20 text-slate-400 hover:text-rose-500 transition-colors"
+                        title={t('wishlist.removeFromWishlist')}
+                      >
+                        <Trash2 size={13} />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Content — data is server-fetched, loading state handled by Suspense */}
-        {displayedBookings.length === 0 ? (
+        {activeTab !== 'wishlist' && (displayedBookings.length === 0 ? (
           <div className="text-center py-12 sm:py-16 md:py-20">
             <div className="w-16 h-16 sm:w-20 sm:h-20 mx-auto mb-4 sm:mb-6 bg-slate-100 dark:bg-white/5 rounded-full flex items-center justify-center">
               <Luggage className="w-8 h-8 sm:w-10 sm:h-10 text-slate-400" />
             </div>
             <h2 className="text-[clamp(1rem,3vw,1.25rem)] font-bold text-slate-900 dark:text-white mb-2 px-4">
-              {activeTab === 'upcoming' ? 'No upcoming trips' : activeTab === 'past' ? 'No past trips' : 'No trips yet'}
+              {activeTab === 'upcoming' ? t('emptyState.upcomingTitle') : activeTab === 'past' ? t('emptyState.pastTitle') : t('emptyState.allTitle')}
             </h2>
             <p className="text-[clamp(0.8125rem,2vw,1rem)] text-slate-500 dark:text-slate-400 mb-4 sm:mb-6 px-4">
               {activeTab === 'upcoming'
-                ? "Time to plan your next adventure!"
-                : "Start exploring and book your first trip"}
+                ? t('emptyState.upcomingDesc')
+                : t('emptyState.otherDesc')}
             </p>
             <Link
               href="/"
               className="inline-flex items-center gap-2 px-4 py-2.5 sm:px-6 sm:py-3 bg-blue-600 hover:bg-blue-700 text-white text-[clamp(0.8125rem,2vw,1rem)] font-medium rounded-full transition-colors"
             >
-              Explore destinations
+              {t('exploreDestinations')}
               <ArrowRight className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
             </Link>
           </div>
@@ -178,12 +365,12 @@ export function TripsContent({ initialData }: TripsContentProps) {
                   onClick={() => setVisibleCount(prev => prev + 10)}
                   className="px-4 py-2 sm:px-6 sm:py-3 text-[clamp(0.6875rem,2vw,0.875rem)] font-medium text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-900/30 rounded-full transition-colors"
                 >
-                  View more ({displayedBookings.length - visibleCount} remaining)
+                  {t('viewMore', { count: displayedBookings.length - visibleCount })}
                 </button>
               </div>
             )}
           </div>
-        )}
+        ))}
       </div>
     </main>
   );

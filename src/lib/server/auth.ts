@@ -1,23 +1,44 @@
-import { createClient } from '@/utils/supabase/server';
-import type { SupabaseClient, User } from '@supabase/supabase-js';
+/**
+ * Server-side authentication helpers.
+ * Replaces the Supabase Auth version — no @supabase dependency.
+ */
+
+import { getSession } from '@/lib/auth/session';
+import { createAdminClient } from '@/utils/postgres/admin';
+import type { SessionUser } from '@/lib/auth/session';
 
 export interface AuthResult {
-  user: User | null;
-  supabase: SupabaseClient;
-  error: string | null;
+    user: SessionUser | null;
+    error: string | null;
 }
 
 /**
- * Get the currently authenticated user from the server-side Supabase client.
- * Returns { user, supabase, error } — caller decides how to handle unauthenticated state.
+ * Get the currently authenticated user from the session cookie.
+ * Drop-in replacement for the previous Supabase-based implementation.
+ * Returns { user, error } — callers decide how to handle unauthenticated state.
  */
 export async function getAuthenticatedUser(): Promise<AuthResult> {
-  const supabase = await createClient();
-  const { data: { user }, error } = await supabase.auth.getUser();
+    const { user } = await getSession();
+    if (!user) {
+        return { user: null, error: 'Not authenticated' };
+    }
+    return { user, error: null };
+}
 
-  if (error || !user) {
-    return { user: null, supabase, error: 'Not authenticated' };
-  }
+/**
+ * Fetch the user's full profile from the database.
+ */
+export async function getUserProfile(userId: string) {
+    const db = createAdminClient();
+    const { data, error } = await db
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .single();
 
-  return { user, supabase, error: null };
+    if (error) {
+        console.error('[getUserProfile] Error fetching profile:', error);
+        return null;
+    }
+    return data;
 }

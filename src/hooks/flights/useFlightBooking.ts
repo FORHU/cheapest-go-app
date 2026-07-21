@@ -3,16 +3,30 @@ import { useRouter } from 'next/navigation';
 import { useMutation } from '@tanstack/react-query';
 import { z } from 'zod';
 import { flightBookingSchema, FlightPassengerForm, FlightContactForm } from '@/lib/schemas/flight';
-import type { FlightOffer } from '@/lib/flights/types';
-import { createClient } from '@/utils/supabase/client';
+import type { FlightOffer } from '@/types/flights';
+import type { SelectedSeat } from '@/types/seatMap';
+import type { SelectedBag } from '@/types/bags';
+import { invokeEdgeFunction } from '@/utils/postgres/functions';
+import { useUser } from '@/stores/authStore';
+import { useUserCurrency } from '@/stores/searchStore';
+import { clientFetch } from '@/lib/api/client';
 
 export type BookingStep = 'form' | 'submitting' | 'payment' | 'success' | 'error';
+
+export interface PriceChangedData {
+    oldPrice: number;
+    newPrice: number;
+    currency: string;
+}
 
 export function useFlightBooking() {
     const router = useRouter();
     const [offer, setOffer] = useState<FlightOffer | null>(null);
+    const [offerExpiresAt, setOfferExpiresAt] = useState<Date | null>(null);
     const [step, setStep] = useState<BookingStep>('form');
     const [errorMsg, setErrorMsg] = useState('');
+    const [priceChangedData, setPriceChangedData] = useState<PriceChangedData | null>(null);
+    const [duplicateBookingData, setDuplicateBookingData] = useState<{ existingBookingId: string; route: string; departureDate: string } | null>(null);
     const [bookingResult, setBookingResult] = useState<{
         bookingId?: string;
         pnr?: string;
@@ -21,9 +35,36 @@ export function useFlightBooking() {
     const [clientSecret, setClientSecret] = useState('');
 
     // HIGH-2 FIX: Idempotency key to prevent double bookings
-    const idempotencyKeyRef = useRef<string>(crypto.randomUUID());
+    // Helper to generate UUIDs safely on HTTP or HTTPS
+    const generateId = (): string => {
+        if (typeof crypto !== 'undefined') {
+            if (crypto.randomUUID) {
+                return crypto.randomUUID();
+            }
+            if (crypto.getRandomValues) {
+                const bytes = new Uint8Array(16);
+                crypto.getRandomValues(bytes);
+                bytes[6] = (bytes[6] & 0x0f) | 0x40;
+                bytes[8] = (bytes[8] & 0x3f) | 0x80;
+                const hex = Array.from(bytes).map(b => b.toString(16).padStart(2, '0'));
+                return `${hex[0]}${hex[1]}${hex[2]}${hex[3]}-${hex[4]}${hex[5]}-${hex[6]}${hex[7]}-${hex[8]}${hex[9]}-${hex.slice(10).join('')}`;
+            }
+        }
+        // Very last resort fallback matching uuid structure if all crypto fails
+        let d = new Date().getTime();
+        return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
+            const r = (d + Math.random() * 16) % 16 | 0;
+            d = Math.floor(d / 16);
+            return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16);
+        });
+    };
+
+    const idempotencyKeyRef = useRef<string>(generateId());
     // Tracks the booking session ID after Stripe payment, for PNR confirmation
     const bookingSessionIdRef = useRef<string | null>(null);
+
+    const [selectedSeats, setSelectedSeats] = useState<SelectedSeat[]>([]);
+    const [selectedBags, setSelectedBags] = useState<SelectedBag[]>([]);
 
     const [passengers, setPassengers] = useState<FlightPassengerForm[]>(() => {
         if (typeof window !== 'undefined') {
@@ -31,9 +72,27 @@ export function useFlightBooking() {
             if (saved) {
                 try { return JSON.parse(saved); } catch (e) { console.error('Error parsing saved passengers:', e); }
             }
+
+            // Initialize from search passenger counts so the form matches the searched itinerary
+            const searchCounts = sessionStorage.getItem('flightSearchPassengers');
+            if (searchCounts) {
+                try {
+                    const { adults = 1, children = 0, infants = 0 } = JSON.parse(searchCounts);
+                    const blank = (type: 'ADT' | 'CHD' | 'INF'): FlightPassengerForm => ({
+                        type, firstName: '', lastName: '', gender: 'M' as 'M' | 'F', birthDate: '',
+                        nationality: 'KR', passport: '', passportExpiry: '',
+                    });
+                    const forms: FlightPassengerForm[] = [
+                        ...Array.from({ length: adults }, () => blank('ADT')),
+                        ...Array.from({ length: children }, () => blank('CHD')),
+                        ...Array.from({ length: infants }, () => blank('INF')),
+                    ];
+                    if (forms.length > 0) return forms;
+                } catch (e) { console.error('Error parsing search passengers:', e); }
+            }
         }
         return [{
-            type: 'ADT', firstName: '', lastName: '', gender: '', birthDate: '',
+            type: 'ADT', firstName: '', lastName: '', gender: 'M' as 'M' | 'F', birthDate: '',
             nationality: 'KR', passport: '', passportExpiry: '',
         }];
     });
@@ -51,6 +110,39 @@ export function useFlightBooking() {
         };
     });
 
+    const user = useUser();
+    const userCurrency = useUserCurrency();
+
+    // Autofill from profile when user logs in
+    useEffect(() => {
+        if (!user) return;
+
+        // Autofill Passenger 1 if blank
+        setPassengers(prev => {
+            if (prev.length > 0 && !prev[0].firstName && !prev[0].lastName) {
+                const next = [...prev];
+                next[0] = {
+                    ...next[0],
+                    firstName: user.firstName || '',
+                    lastName: user.lastName || '',
+                };
+                return next;
+            }
+            return prev;
+        });
+
+        // Autofill Contact if blank
+        setContact(prev => {
+            if (!prev.email) {
+                return {
+                    ...prev,
+                    email: user.email || '',
+                };
+            }
+            return prev;
+        });
+    }, [user]);
+
     // Effect to persist passengers and contact to sessionStorage
     useEffect(() => {
         if (typeof window !== 'undefined') {
@@ -58,6 +150,31 @@ export function useFlightBooking() {
             sessionStorage.setItem('flightContact', JSON.stringify(contact));
         }
     }, [passengers, contact]);
+
+    // Recovery: if the user hard-refreshed during the Stripe payment step,
+    // selectedFlight is gone but flightBookingSessionId + flightPaymentIntentId remain.
+    // Auto-confirm so the booking isn't left in limbo.
+    // Only recover if the payment was initiated within the last 30 minutes — prevents
+    // stale keys from a previous failed/expired booking from re-triggering confirm.
+    useEffect(() => {
+        if (typeof window === 'undefined') return;
+        const recoverySessionId = sessionStorage.getItem('flightBookingSessionId');
+        const recoveryPaymentIntentId = sessionStorage.getItem('flightPaymentIntentId');
+        const ts = Number(sessionStorage.getItem('flightBookingTs') || '0');
+        const ageMs = Date.now() - ts;
+        const THIRTY_MIN = 30 * 60 * 1000;
+        if (recoverySessionId && recoveryPaymentIntentId && ageMs < THIRTY_MIN) {
+            console.log('[useFlightBooking] Detected payment-step refresh — auto-confirming booking');
+            bookingSessionIdRef.current = recoverySessionId;
+            pollForBooking(recoveryPaymentIntentId);
+        } else if (recoverySessionId || recoveryPaymentIntentId) {
+            // Stale keys — clear them so they don't interfere
+            sessionStorage.removeItem('flightBookingSessionId');
+            sessionStorage.removeItem('flightPaymentIntentId');
+            sessionStorage.removeItem('flightBookingTs');
+        }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
     useEffect(() => {
         const raw = sessionStorage.getItem('selectedFlight');
@@ -69,9 +186,31 @@ export function useFlightBooking() {
         let parsedOffer: FlightOffer;
         try {
             parsedOffer = JSON.parse(raw);
+            if (!parsedOffer || !parsedOffer.price || !parsedOffer.price.total || !parsedOffer.segments) {
+                // Failsafe for invalid cache structure (e.g. leftover unmapped raw objects)
+                throw new Error("Invalid cached flight format");
+            }
         } catch {
+            sessionStorage.removeItem('selectedFlight');
             router.replace('/');
             return;
+        }
+
+        // Duffel offers have a hard expiry — check it before allowing the user to proceed.
+        // If the offer is already expired (e.g. user returns to the page hours later),
+        // show an error immediately instead of letting them fill the form and fail at payment.
+        const rawOffer = (parsedOffer as any).raw || (parsedOffer as any)._rawOffer || (parsedOffer as any).rawOffer;
+        const expiresAt = rawOffer?.expires_at ?? (parsedOffer as any).expires_at ?? parsedOffer.lastTicketDate;
+        if (expiresAt) {
+            const expiryDate = new Date(expiresAt);
+            if (expiryDate < new Date()) {
+                sessionStorage.removeItem('selectedFlight');
+                setErrorMsg('This flight offer has expired. Please search again for current availability.');
+                setStep('error');
+                setOffer(parsedOffer);
+                return;
+            }
+            setOfferExpiresAt(expiryDate);
         }
 
         if (parsedOffer.farePolicy?.policyVersion === 'revalidated') {
@@ -82,27 +221,32 @@ export function useFlightBooking() {
         // Auto-revalidate the flight
         let isMounted = true;
         const revalidate = async () => {
-            const supabase = createClient();
-            const { data: { user } } = await supabase.auth.getUser();
+            
 
             try {
-                const { data, error } = await supabase.functions.invoke('revalidate-flight', {
-                    body: {
-                        provider: parsedOffer.provider,
-                        userId: user?.id || 'anonymous',
-                        flightPayload: {
-                            oldPrice: parsedOffer.price.total,
-                            currency: parsedOffer.price.currency,
-                            traceId: parsedOffer.provider.startsWith('mystifly') ? parsedOffer.offerId : undefined,
-                            flight: parsedOffer.provider === 'duffel'
-                                ? ((parsedOffer as any)._rawOffer || (parsedOffer as any).rawOffer || parsedOffer)
-                                : undefined,
-                        }
+                const data = await invokeEdgeFunction('revalidate-flight', {
+                    provider: parsedOffer.provider,
+                    userId: user?.id || 'anonymous',
+                    flightPayload: {
+                        oldPrice: parsedOffer?.price?.total,
+                        currency: parsedOffer?.price?.currency,
+                        traceId: parsedOffer?.provider?.startsWith('mystifly') ? ((parsedOffer as any).traceId ?? parsedOffer.offerId) : undefined,
+                        flight: parsedOffer?.provider === 'duffel'
+                            ? ((parsedOffer as any).raw || (parsedOffer as any)._rawOffer || (parsedOffer as any).rawOffer || parsedOffer)
+                            : undefined,
                     }
                 });
 
-                if (error) throw error;
                 if (!data.success) throw new Error(data.error || 'Revalidation failed');
+                if (!data.seatsAvailable) {
+                    // SearchIdentifier errors mean the revalidation API can't run — not that
+                    // the flight is unavailable. Soft-pass and let the booking API validate.
+                    const isSearchIdError = /searchIdentifier.*empty|cannot revalidate/i.test(data.error || '');
+                    if (!isSearchIdError) {
+                        throw new Error(data.error || 'Flight is no longer available. Please search again.');
+                    }
+                    console.warn('[useFlightBooking] SearchIdentifier revalidation error — soft-passing, proceeding with original offer');
+                }
 
                 const revalidatedOffer = {
                     ...parsedOffer,
@@ -112,11 +256,16 @@ export function useFlightBooking() {
                     },
                     farePolicy: data.farePolicy,
                     policyChanged: data.priceChanged || (JSON.stringify(parsedOffer.farePolicy) !== JSON.stringify(data.farePolicy)),
+                    seatsRemaining: data.seatsRemaining ?? parsedOffer.seatsRemaining,
                 };
 
                 if (isMounted) {
                     sessionStorage.setItem('selectedFlight', JSON.stringify(revalidatedOffer));
                     setOffer(revalidatedOffer);
+                    // Re-extract expiry from the revalidated offer's raw offer
+                    const rRaw = (revalidatedOffer as any).raw || (revalidatedOffer as any)._rawOffer || (revalidatedOffer as any).rawOffer;
+                    const rExpiry = rRaw?.expires_at ?? (revalidatedOffer as any).expires_at ?? revalidatedOffer.lastTicketDate;
+                    if (rExpiry) setOfferExpiresAt(new Date(rExpiry));
                 }
             } catch (err) {
                 console.error('[useFlightBooking] Revalidation failed:', err);
@@ -139,7 +288,7 @@ export function useFlightBooking() {
 
     const addPassenger = () => {
         setPassengers(prev => [...prev, {
-            type: 'ADT', firstName: '', lastName: '', gender: '', birthDate: '',
+            type: 'ADT', firstName: '', lastName: '', gender: 'M' as 'M' | 'F', birthDate: '',
             nationality: 'KR', passport: '', passportExpiry: '',
         }]);
     };
@@ -150,14 +299,20 @@ export function useFlightBooking() {
     };
 
     const bookMutation = useMutation({
-        mutationFn: async ({ offer, passengers, contact }: { offer: FlightOffer, passengers: FlightPassengerForm[], contact: FlightContactForm }) => {
+        mutationFn: async ({ offer, passengers, contact, seats, bags }: { offer: FlightOffer, passengers: FlightPassengerForm[], contact: FlightContactForm, seats: SelectedSeat[], bags: SelectedBag[] }) => {
+            const bundleHotelId = typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('bundleHotelId') : null;
+
             // Client-side auth check (fast-fail UX; server re-verifies via JWT)
-            const supabase = createClient();
-            const { data: { user } } = await supabase.auth.getUser();
+            
 
             if (!user) {
                 throw new Error("unauthenticated");
             }
+
+            const seatServiceIds = seats.map(s => s.serviceId);
+            const seatTotal = seats.reduce((sum, s) => sum + s.price, 0);
+            const bagServiceIds = bags.map(b => b.serviceId);
+            const bagTotal = bags.reduce((sum, b) => sum + b.price, 0);
 
             // CRITICAL-2 FIX: Do NOT send rawOffer/_raw — server rebuilds from normalized data
             const flightPayload = {
@@ -182,14 +337,14 @@ export function useFlightBooking() {
                 })),
                 // CRITICAL FIX: Only Duffel require the raw offer to complete booking
                 ...(offer.provider === 'duffel' ? {
-                    _rawOffer: (offer as any)._rawOffer || (offer as any).rawOffer || offer,
+                    _rawOffer: (offer as any).raw || (offer as any)._rawOffer || (offer as any).rawOffer || offer,
                 } : {}),
             };
 
             // CRITICAL-3 FIX: Don't send userId — server extracts it from JWT
-            const res = await fetch('/api/flights/book', {
+            const res = await clientFetch('/api/flights/book', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: { 'Content-Type': 'application/json', 'X-Requested-By': 'cheapestgo-client' },
                 body: JSON.stringify({
                     provider: offer.provider,
                     flight: flightPayload,
@@ -197,15 +352,30 @@ export function useFlightBooking() {
                     contact,
                     idempotencyKey: idempotencyKeyRef.current,
                     farePolicy: offer.farePolicy,
+                    ...(seatServiceIds.length > 0 ? { seatServiceIds, seatTotal } : {}),
+                    ...(bagServiceIds.length > 0 ? { bagServiceIds, bagTotal } : {}),
+                    ...((offer as any)._confirmedPrice !== undefined ? { confirmedPrice: (offer as any)._confirmedPrice } : {}),
+                    ...(bundleHotelId ? { bundleHotelId } : {}),
+                    displayCurrency: userCurrency || 'USD',
                 }),
             });
 
             const data = await res.json();
             if (!data.success) {
-                throw new Error(data.error || 'Booking failed');
+                if (data.error === 'price_changed') {
+                    const err = new Error('price_changed') as any;
+                    err.priceChangedData = { oldPrice: data.oldPrice, newPrice: data.newPrice, currency: data.currency };
+                    throw err;
+                }
+                if (data.error === 'offer_replaced') {
+                    const err = new Error('offer_replaced') as any;
+                    err.newOffer = data.newOffer;
+                    throw err;
+                }
+                throw new Error(data.errorCode || data.error || 'booking_failed');
             }
 
-            return data.data;
+            return data.data ?? data;
         },
         onMutate: () => {
             setStep('submitting');
@@ -219,6 +389,16 @@ export function useFlightBooking() {
                 // Store the session ID so we can poll for PNR after webhook processes
                 bookingSessionIdRef.current = data.sessionId;
                 setBookingResult({ bookingId: data.sessionId });
+                // Remove selectedFlight and persist session ID so that if the user
+                // hard-refreshes during the Stripe payment step we can recover the
+                // in-flight booking rather than letting them re-submit the same offer.
+                if (typeof window !== 'undefined') {
+                    sessionStorage.removeItem('selectedFlight');
+                    sessionStorage.setItem('flightBookingSessionId', data.sessionId);
+                    sessionStorage.setItem('flightPaymentIntentId', data.paymentIntentId || '');
+                    // Timestamp lets the recovery effect ignore stale data from prior failed attempts
+                    sessionStorage.setItem('flightBookingTs', String(Date.now()));
+                }
                 return;
             }
 
@@ -234,93 +414,208 @@ export function useFlightBooking() {
             if (typeof window !== 'undefined') {
                 sessionStorage.removeItem('flightPassengers');
                 sessionStorage.removeItem('flightContact');
+                sessionStorage.removeItem('flightSearchPassengers');
             }
             sessionStorage.removeItem('selectedFlight');
         },
-        onError: (error) => {
+        onError: (error: any) => {
             if (error.message === "unauthenticated") {
-                setErrorMsg("You need to sign in to complete your booking.");
-                setStep('form'); // CRITICAL FIX: reset loading state
+                setErrorMsg('CODE:unauthenticated');
+                setStep('form');
                 if (typeof window !== 'undefined') {
-                    // Import the store and open the modal
                     import('@/stores/authStore').then(({ useAuthStore }) => {
-                        useAuthStore.getState().openAuthModal('email');
+                        const redirectPath = window.location.pathname + window.location.search;
+                        useAuthStore.getState().openAuthModal('email', redirectPath);
                     });
                 }
+            } else if (error.message === 'price_changed' && error.priceChangedData) {
+                setPriceChangedData(error.priceChangedData);
+                setStep('form');
+                idempotencyKeyRef.current = generateId();
+            } else if (error.message === 'offer_replaced' && error.newOffer) {
+                if (typeof window !== 'undefined') sessionStorage.setItem('selectedFlight', JSON.stringify(error.newOffer));
+                setOffer(error.newOffer);
+                const rRaw = (error.newOffer as any).raw || (error.newOffer as any)._rawOffer || (error.newOffer as any).rawOffer;
+                const rExpiry = rRaw?.expires_at ?? error.newOffer.expires_at ?? error.newOffer.lastTicketDate;
+                if (rExpiry) setOfferExpiresAt(new Date(rExpiry));
+                setSelectedSeats([]);
+                setSelectedBags([]);
+                setErrorMsg('CODE:offer_replaced_seats_cleared');
+                setStep('form');
+                idempotencyKeyRef.current = generateId();
             } else {
-                setErrorMsg(error.message || 'Booking failed. Please try again.');
+                setErrorMsg('CODE:' + (error.message || 'booking_failed'));
                 setStep('error');
-                // Generate a new idempotency key for retry
-                idempotencyKeyRef.current = crypto.randomUUID();
+                idempotencyKeyRef.current = generateId();
             }
         }
     });
 
     // ─── Confirm booking after Stripe payment succeeds ───────────────
-    // Calls /api/flights/confirm which verifies the PaymentIntent server-side
-    // and directly triggers create-booking. Works without stripe listen locally.
+    // Strategy: poll the DB every 2s AND kick off the confirm/create-booking call
+    // after 3s in parallel. Whatever resolves first wins. This means:
+    //   - Webhook fast path: booking appears in DB within ~5s → poll wins
+    //   - No webhook (local dev) or slow webhook: confirm/create-booking wins at ~20-25s
+    //     instead of waiting 15s before even starting it (was 35-45s total before)
     const pollForBooking = useCallback(async (paymentIntentId: string) => {
         const sessionId = bookingSessionIdRef.current;
 
         if (!sessionId || !paymentIntentId) {
+            // Should not happen in normal flow — both are set before Stripe renders.
+            // Showing success without confirmation would be a lie; surface an error instead.
+            console.error('[pollForBooking] Missing sessionId or paymentIntentId — cannot confirm booking', { sessionId, paymentIntentId });
+            setErrorMsg('Booking session data is missing. Please contact support with your payment reference.');
+            setStep('error');
+            return;
+        }
+
+        setStep('submitting');
+
+        if (typeof window !== 'undefined') {
+            sessionStorage.removeItem('flightPassengers');
+            sessionStorage.removeItem('flightContact');
+            sessionStorage.removeItem('flightSearchPassengers');
+            sessionStorage.removeItem('selectedFlight');
+            sessionStorage.removeItem('flightBookingSessionId');
+            sessionStorage.removeItem('flightPaymentIntentId');
+            sessionStorage.removeItem('flightBookingTs');
+        }
+
+        let resolved = false;
+
+        // ── Confirm fallback (starts after 3s delay) ──────────────────
+        // Runs in parallel with DB polling. create-booking is idempotent so
+        // it's safe even if the webhook also fires.
+        const confirmPromise = new Promise<{ type: 'confirm'; data: any; ok: boolean }>(resolve => {
+            setTimeout(async () => {
+                if (resolved) return;
+                try {
+                    const res = await clientFetch('/api/flights/confirm', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'X-Requested-By': 'cheapestgo-client' },
+                        body: JSON.stringify({ paymentIntentId, sessionId }),
+                    });
+                    const data = await res.json();
+                    resolve({ type: 'confirm', data, ok: res.ok });
+                } catch (e) {
+                    console.error('[pollForBooking] confirm fetch error:', e);
+                    resolve({ type: 'confirm', data: null, ok: false });
+                }
+            }, 3000);
+        });
+
+        // ── DB polling loop (every 2s, up to 45s total) ───────────────
+        const pollPromise = new Promise<{ type: 'poll'; data: any }>(resolve => {
+            const POLL_INTERVAL_MS = 2000;
+            const POLL_TIMEOUT_MS = 45000;
+            const pollStart = Date.now();
+
+            const tick = async () => {
+                if (resolved) return;
+                try {
+                    const statusRes = await fetch(`/api/flights/booking-status?sessionId=${encodeURIComponent(sessionId)}`);
+                    const statusData = await statusRes.json();
+                    // Only resolve when the booking is in a terminal state — not while
+                    // it's still processing. A booking row without PNR or confirmed status
+                    // means the airline hasn't responded yet; keep polling until it's final.
+                    const isTerminal = statusData.failed || statusData.pnr || statusData.status === 'confirmed';
+                    if (statusData.found && isTerminal) {
+                        resolve({ type: 'poll', data: statusData });
+                        return;
+                    }
+                } catch { /* network hiccup, keep polling */ }
+
+                if (Date.now() - pollStart < POLL_TIMEOUT_MS) {
+                    setTimeout(tick, POLL_INTERVAL_MS);
+                }
+                // Polling timed out — confirmPromise will resolve eventually
+            };
+
+            setTimeout(tick, POLL_INTERVAL_MS); // first poll after 2s
+        });
+
+        // ── Race: whichever resolves first wins ───────────────────────
+        const winner = await Promise.race([pollPromise, confirmPromise]);
+        resolved = true;
+
+        if (winner.type === 'poll') {
+            const d = winner.data;
+            if (d.failed) {
+                setErrorMsg(d.errorCode ? 'CODE:' + d.errorCode : (d.error || 'CODE:booking_failed_refunded'));
+                setStep('error');
+                return;
+            }
+            if (d.pnr) setBookingResult(prev => ({ ...prev, bookingId: d.bookingId, pnr: d.pnr }));
             setStep('success');
             return;
         }
 
-        // Show a loading state while confirming
-        setStep('submitting');
-
-        // Clear session storage now that payment is done
-        if (typeof window !== 'undefined') {
-            sessionStorage.removeItem('flightPassengers');
-            sessionStorage.removeItem('flightContact');
-            sessionStorage.removeItem('selectedFlight');
-        }
-
-        try {
-            const res = await fetch('/api/flights/confirm', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ paymentIntentId, sessionId }),
-            });
-
-            const data = await res.json();
-
-            // Provider-level failure (e.g. Mystifly "Pending Need", fare expired, etc.)
-            // Payment was NOT captured in these cases — show error, not success.
-            if (!res.ok || data.success === false) {
-                const errMsg = data.error || 'Booking could not be completed. Your card has not been charged.';
-                setErrorMsg(errMsg);
-                setStep('error');
-                return;
+        // confirm won
+        const { data, ok } = winner;
+        if (!data || !ok || data.success === false) {
+            const errMsg = data?.errorCode ? 'CODE:' + data.errorCode : (data?.error || 'CODE:booking_card_not_charged');
+            setErrorMsg(errMsg);
+            setStep('error');
+            if (typeof window !== 'undefined') {
+                sessionStorage.removeItem('flightBookingSessionId');
+                sessionStorage.removeItem('flightPaymentIntentId');
+                sessionStorage.removeItem('flightBookingTs');
             }
-
-            if (data.success && data.pnr) {
-                setBookingResult(prev => ({
-                    ...prev,
-                    bookingId: data.bookingId,
-                    pnr: data.pnr,
-                    tickets: data.tickets,
-                }));
-            }
-            // Success — booking confirmed (PNR may still be pending for some providers)
-            setStep('success');
-        } catch (e) {
-            // Network-level error — payment may already have been captured
-            // Show success to avoid confusion but log the error
-            console.error('[confirmBooking] Network error during confirm:', e);
-            setStep('success');
+            return;
         }
+        if (data.pnr) {
+            setBookingResult(prev => ({ ...prev, bookingId: data.bookingId, pnr: data.pnr, tickets: data.tickets }));
+        }
+        setStep('success');
     }, []);
 
+
+    const confirmPriceChange = () => {
+        if (!offer || !priceChangedData) return;
+        setPriceChangedData(null);
+        // Re-submit with the confirmed new price baked into the offer so the server skips the check
+        const confirmedOffer = {
+            ...offer,
+            price: { ...offer.price, total: priceChangedData.newPrice },
+            _confirmedPrice: priceChangedData.newPrice,
+        } as FlightOffer;
+        bookMutation.mutate({ offer: confirmedOffer, passengers, contact, seats: selectedSeats, bags: selectedBags });
+    };
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         if (!offer) return;
 
+        // Validate passenger count matches the original search
+        const searchCounts = typeof window !== 'undefined'
+            ? sessionStorage.getItem('flightSearchPassengers')
+            : null;
+        if (searchCounts) {
+            try {
+                const { adults = 1, children = 0, infants = 0 } = JSON.parse(searchCounts);
+                const expected = adults + children + infants;
+                if (passengers.length !== expected) {
+                    setErrorMsg(`This fare was searched for ${expected} passenger(s) but ${passengers.length} passenger form(s) are filled. Please match the passenger count to your search.`);
+                    return;
+                }
+            } catch { /* ignore parse errors, let server validate */ }
+        }
+
+        // Duffel offer expiry: no client-side buffer needed — the server's auto-refresh
+        // handles expired offers by creating a new offer_request. Only block if the
+        // offer is already past its expiry AND no rawOffer is available to refresh with.
+        if (offer.provider === 'duffel') {
+            const rawOffer = (offer as any).raw || (offer as any)._rawOffer || (offer as any).rawOffer;
+            if (!rawOffer?.id) {
+                setErrorMsg('Flight offer data missing. Please go back and select the flight again.');
+                setStep('error');
+                return;
+            }
+        }
+
         try {
             flightBookingSchema.parse({ passengers, contact });
-            bookMutation.mutate({ offer, passengers, contact });
+            bookMutation.mutate({ offer, passengers, contact, seats: selectedSeats, bags: selectedBags });
         } catch (error) {
             if (error instanceof z.ZodError) {
                 setErrorMsg(error.issues[0].message);
@@ -330,13 +625,26 @@ export function useFlightBooking() {
         }
     };
 
+    // Clear "expired" error when user starts reselecting
+    useEffect(() => {
+        if (errorMsg.toLowerCase().includes('expired') || errorMsg.toLowerCase().includes('cleared')) {
+            setErrorMsg('');
+        }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [selectedSeats, selectedBags]);
+
     return {
         offer,
+        offerExpiresAt,
         step,
-        setStep, // Exported to allow manual transition if needed
+        setStep,
         errorMsg,
+        setErrorMsg,
+        priceChangedData,
+        duplicateBookingData,
+        dismissDuplicateWarning: () => setDuplicateBookingData(null),
         bookingResult,
-        clientSecret, // Exported for Stripe Elements provider
+        clientSecret,
         passengers,
         contact,
         updatePassenger,
@@ -344,7 +652,12 @@ export function useFlightBooking() {
         removePassenger,
         setContact,
         handleSubmit,
-        pollForBooking, // Called by StripeEmbeddedCheckout onSuccess to start PNR polling
+        confirmPriceChange,
+        selectedSeats,
+        setSelectedSeats,
+        selectedBags,
+        setSelectedBags,
+        pollForBooking,
         router,
     };
 }

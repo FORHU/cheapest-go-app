@@ -1,22 +1,24 @@
 "use client";
 
 import { useState, useEffect } from 'react';
+import { useTranslations } from 'next-intl';
 
 interface NavTab {
-    label: string;
+    labelKey: string;
     sectionId: string;
 }
 
 const tabs: NavTab[] = [
-    { label: 'Overview', sectionId: 'overview-section' },
-    { label: 'Rooms', sectionId: 'room-list-section' },
-    { label: 'Location', sectionId: 'location' },
-    { label: 'Amenities', sectionId: 'amenities-section' },
-    { label: 'Policies', sectionId: 'policies' },
-    { label: 'Reviews', sectionId: 'reviews-section' },
+    { labelKey: 'overview', sectionId: 'overview-section' },
+    { labelKey: 'rooms', sectionId: 'room-list-section' },
+    { labelKey: 'location', sectionId: 'location' },
+    { labelKey: 'amenities', sectionId: 'amenities-section' },
+    { labelKey: 'policies', sectionId: 'policies' },
+    { labelKey: 'reviews', sectionId: 'reviews-section' },
 ];
 
 export default function PropertyNav() {
+    const t = useTranslations('propertyNav');
     const [activeTab, setActiveTab] = useState('overview-section');
 
     // Scroll to section when tab is clicked — let the scroll listener
@@ -64,7 +66,7 @@ export default function PropertyNav() {
                             : 'text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-white/5'
                             }`}
                     >
-                        {tab.label}
+                        {t(tab.labelKey)}
                     </button>
                 ))}
             </div>

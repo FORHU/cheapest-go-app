@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronDown } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 
 const FAQItem = ({ question, answer, index }: { question: string, answer: string, index: number }) => {
     const [isOpen, setIsOpen] = useState(false);
@@ -62,19 +63,21 @@ const FAQSection: React.FC<FAQSectionProps> = ({
     hotelFacilities,
     hotelImportantInformation
 }) => {
+    const t = useTranslations('property.faq');
+
     // Build FAQs dynamically from real LiteAPI data
     const faqs: { question: string; answer: string }[] = [];
 
     if (checkInTime) {
         faqs.push({
-            question: "What time is check-in at this property?",
-            answer: `Check-in time is ${checkInTime}`
+            question: t('checkInQuestion'),
+            answer: t('checkInAnswer', { time: checkInTime })
         });
     }
     if (checkOutTime) {
         faqs.push({
-            question: "What are the check-out times?",
-            answer: `Check-out time is ${checkOutTime}`
+            question: t('checkOutQuestion'),
+            answer: t('checkOutAnswer', { time: checkOutTime })
         });
     }
 
@@ -91,8 +94,8 @@ const FAQSection: React.FC<FAQSectionProps> = ({
                 f.toLowerCase().includes('parking') || f.toLowerCase().includes('car park')
             );
             faqs.push({
-                question: `Does ${propertyName} have parking?`,
-                answer: `Yes, the property offers ${parkingFacility || 'parking facilities'}.`
+                question: t('parkingQuestion', { name: propertyName }),
+                answer: t('parkingAnswer', { facility: parkingFacility || 'parking facilities' })
             });
         }
 
@@ -102,8 +105,8 @@ const FAQSection: React.FC<FAQSectionProps> = ({
         );
         if (hasWifi) {
             faqs.push({
-                question: `Is WiFi available at ${propertyName}?`,
-                answer: "Yes, WiFi is available at the property."
+                question: t('wifiQuestion', { name: propertyName }),
+                answer: t('wifiAnswer')
             });
         }
 
@@ -114,8 +117,8 @@ const FAQSection: React.FC<FAQSectionProps> = ({
                 f.toLowerCase().includes('pool') || f.toLowerCase().includes('swimming')
             );
             faqs.push({
-                question: `Does ${propertyName} have a pool?`,
-                answer: `Yes, the property has ${poolFacility || 'a swimming pool'}.`
+                question: t('poolQuestion', { name: propertyName }),
+                answer: t('poolAnswer', { facility: poolFacility || 'a swimming pool' })
             });
         }
 
@@ -125,8 +128,8 @@ const FAQSection: React.FC<FAQSectionProps> = ({
         );
         if (hasRestaurant) {
             faqs.push({
-                question: `Is there a restaurant at ${propertyName}?`,
-                answer: "Yes, the property has an on-site restaurant."
+                question: t('restaurantQuestion', { name: propertyName }),
+                answer: t('restaurantAnswer')
             });
         }
     }
@@ -134,14 +137,27 @@ const FAQSection: React.FC<FAQSectionProps> = ({
     // Important information as FAQ if available
     if (hotelImportantInformation) {
         faqs.push({
-            question: "Is there anything important I should know before booking?",
+            question: t('importantQuestion'),
             answer: hotelImportantInformation
         });
     }
 
-    // If no FAQs can be generated, hide the section
+    // Generic fallback FAQs — always useful regardless of data availability
     if (faqs.length === 0) {
-        return null;
+        faqs.push(
+            {
+                question: t('fallbackCancellationQuestion', { name: propertyName }),
+                answer: t('fallbackCancellationAnswer')
+            },
+            {
+                question: t('fallbackPaymentQuestion', { name: propertyName }),
+                answer: t('fallbackPaymentAnswer')
+            },
+            {
+                question: t('fallbackModificationQuestion'),
+                answer: t('fallbackModificationAnswer')
+            }
+        );
     }
 
     return (
@@ -153,7 +169,7 @@ const FAQSection: React.FC<FAQSectionProps> = ({
                 transition={{ duration: 0.5 }}
                 className="text-[14px] lg:text-xl font-bold text-slate-900 dark:text-white mb-2 lg:mb-6"
             >
-                Frequently asked questions
+                {t('title')}
             </motion.h2>
 
             <div className="space-y-1">

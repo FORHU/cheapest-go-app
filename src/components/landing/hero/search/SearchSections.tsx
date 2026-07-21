@@ -6,8 +6,10 @@ import { useSearchStore, useDestination, useDestinationQuery, useDates, useTrave
 import { DestinationPicker } from './DestinationPicker';
 import { DatePicker } from './DatePicker';
 import { TravelersPicker } from './TravelersPicker';
+import { useTranslations, useLocale } from 'next-intl';
 
 export const DestinationSection: React.FC = () => {
+    const t = useTranslations('landing.search');
     const { setActiveDropdown } = useSearchStore();
     const destination = useDestination();
     const query = useDestinationQuery();
@@ -20,11 +22,11 @@ export const DestinationSection: React.FC = () => {
             >
                 <MapPin className="text-slate-400 group-hover:text-alabaster-accent dark:group-hover:text-obsidian-accent transition-colors shrink-0" size={20} />
                 <div className="ml-3 flex flex-col justify-center w-full text-left min-w-0">
-                    <label className="text-[10px] uppercase font-mono text-slate-500 font-medium tracking-wider">
-                        Where to?
+                    <label className="text-ui-label">
+                        {t('whereTo')}
                     </label>
-                    <div className="text-sm font-bold text-slate-900 dark:text-white truncate max-w-[150px]">
-                        {destination?.title || query || 'Search destination'}
+                    <div className="text-ui-value truncate max-w-[150px]">
+                        {destination?.title || query || t('searchDestination')}
                     </div>
                 </div>
             </div>
@@ -34,53 +36,84 @@ export const DestinationSection: React.FC = () => {
 
 };
 
-export const DateSection: React.FC = () => {
+export const CheckInSection: React.FC = () => {
+    const t = useTranslations('landing.search');
+    const locale = useLocale();
     const { setActiveDropdown } = useSearchStore();
-    const { checkIn, checkOut } = useDates();
+    const { checkIn } = useDates();
 
-    const formatDateRange = () => {
-        if (!checkIn && !checkOut) return 'Select dates';
-        const options: Intl.DateTimeFormatOptions = { month: 'short', day: 'numeric' };
-        const checkInStr = checkIn ? new Date(checkIn).toLocaleDateString('en-US', options) : 'Start';
-        const checkOutStr = checkOut ? new Date(checkOut).toLocaleDateString('en-US', options) : 'End';
-        return `${checkInStr} — ${checkOutStr}`;
+    const formatDate = (date: Date | null) => {
+        if (!date) return t('selectDate');
+        return new Date(date).toLocaleDateString(locale, { weekday: 'short', month: 'short', day: 'numeric' });
     };
 
     return (
         <div className="flex-1 min-w-0 relative h-16 group">
             <div
                 className="w-full h-full flex items-center px-4 cursor-pointer hover:bg-slate-50 dark:hover:bg-white/5 transition-colors"
-                onClick={() => setActiveDropdown('dates')}
+                onClick={() => setActiveDropdown('dates-in')}
+                data-datepicker-trigger
             >
-                <Calendar className="text-slate-400 group-hover:text-alabaster-accent dark:group-hover:text-obsidian-accent transition-colors shrink-0" size={20} />
+                <Calendar className="text-slate-400 group-hover:text-blue-600 transition-colors shrink-0" size={20} />
                 <div className="ml-3 flex flex-col justify-center w-full text-left min-w-0">
-                    <label className="text-[10px] uppercase font-mono text-slate-500 font-medium tracking-wider">
-                        Dates
+                    <label className="text-ui-label">
+                        {t('checkIn')}
                     </label>
-                    <div className="text-sm font-bold text-slate-900 dark:text-white truncate">
-                        {formatDateRange()}
+                    <div className="text-ui-value truncate">
+                        {formatDate(checkIn)}
                     </div>
                 </div>
             </div>
-            <DatePicker />
+            <DatePicker triggerDropdown="dates-in" />
         </div>
     );
+};
 
+export const CheckOutSection: React.FC = () => {
+    const t = useTranslations('landing.search');
+    const locale = useLocale();
+    const { setActiveDropdown } = useSearchStore();
+    const { checkOut } = useDates();
+
+    const formatDate = (date: Date | null) => {
+        if (!date) return t('selectDate');
+        return new Date(date).toLocaleDateString(locale, { weekday: 'short', month: 'short', day: 'numeric' });
+    };
+
+    return (
+        <div className="flex-1 min-w-0 relative h-16 group">
+            <div
+                className="w-full h-full flex items-center px-4 cursor-pointer hover:bg-slate-50 dark:hover:bg-white/5 transition-colors"
+                onClick={() => setActiveDropdown('dates-out')}
+                data-datepicker-trigger
+            >
+                <Calendar className="text-slate-400 group-hover:text-blue-600 transition-colors shrink-0" size={20} />
+                <div className="ml-3 flex flex-col justify-center w-full text-left min-w-0">
+                    <label className="text-ui-label">
+                        {t('checkOut')}
+                    </label>
+                    <div className="text-ui-value truncate">
+                        {formatDate(checkOut)}
+                    </div>
+                </div>
+            </div>
+            <DatePicker initialCheckOutMode triggerDropdown="dates-out" />
+        </div>
+    );
 };
 
 export const TravelersSection: React.FC = () => {
+    const t = useTranslations('landing.search');
     const { setActiveDropdown } = useSearchStore();
-    const { adults, children, rooms } = useTravelers();
+    const { adults, children } = useTravelers();
     const activeDropdown = useActiveDropdown();
 
     const totalTravelers = adults + children;
     const isTravelersOpen = activeDropdown === 'travelers';
 
     const formatTravelers = () => {
-        const parts = [];
-        parts.push(`${totalTravelers} ${totalTravelers === 1 ? 'Guest' : 'Guests'}`);
-        if (rooms > 1) parts.push(`${rooms} Rooms`);
-        return parts.join(', ');
+        const total = totalTravelers;
+        return total === 1 ? t('guest', { count: total }) : t('guestPlural', { count: total });
     };
 
     return (
@@ -91,10 +124,10 @@ export const TravelersSection: React.FC = () => {
             >
                 <User className="text-slate-400 group-hover:text-alabaster-accent dark:group-hover:text-obsidian-accent transition-colors shrink-0" size={20} />
                 <div className="ml-3 flex flex-col justify-center w-full text-left min-w-0">
-                    <label className="text-[10px] uppercase font-mono text-slate-500 font-medium tracking-wider">
-                        Travelers
+                    <label className="text-ui-label">
+                        {t('travelers')}
                     </label>
-                    <div className="text-sm font-bold text-slate-900 dark:text-white truncate pr-6">
+                    <div className="text-ui-value truncate pr-6">
                         {formatTravelers()}
                     </div>
                 </div>

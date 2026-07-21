@@ -1,15 +1,15 @@
 import { z } from 'zod';
 
 export const userDetailsSchema = z.object({
-    firstName: z.string().min(1, 'First name is required'),
-    lastName: z.string().min(1, 'Last name is required'),
-    email: z.string().min(1, 'Email is required').email('Please enter a valid email'),
-    phone: z.string().optional(),
+    firstName: z.string().min(1, 'First name is required').max(100, 'First name is too long'),
+    lastName: z.string().min(1, 'Last name is required').max(100, 'Last name is too long'),
+    email: z.string().min(1, 'Email is required').email('Please enter a valid email').max(254, 'Email is too long'),
+    phone: z.string().max(20, 'Phone number is too long').optional(),
 });
 
 export const guestDetailsSchema = z.object({
-    guestFirstName: z.string().min(1, 'Guest first name is required'),
-    guestLastName: z.string().min(1, 'Guest last name is required'),
+    guestFirstName: z.string().min(1, 'Guest first name is required').max(100, 'First name is too long'),
+    guestLastName: z.string().min(1, 'Guest last name is required').max(100, 'Last name is too long'),
 });
 
 export const paymentSchema = z.object({

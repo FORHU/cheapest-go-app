@@ -2,17 +2,19 @@
 
 import React from 'react';
 import { Check, X } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 
 interface PasswordRequirementsProps {
     password: string;
 }
 
 export const PasswordRequirements: React.FC<PasswordRequirementsProps> = ({ password }) => {
+    const t = useTranslations('auth');
     const requirements = [
-        { label: 'At least 8 characters', met: password.length >= 8 },
-        { label: 'One uppercase letter', met: /[A-Z]/.test(password) },
-        { label: 'One lowercase letter', met: /[a-z]/.test(password) },
-        { label: 'One number', met: /\d/.test(password) },
+        { label: t('passwordRequirements.minLength'), met: password.length >= 8 },
+        { label: t('passwordRequirements.uppercase'), met: /[A-Z]/.test(password) },
+        { label: t('passwordRequirements.lowercase'), met: /[a-z]/.test(password) },
+        { label: t('passwordRequirements.number'), met: /\d/.test(password) },
     ];
 
     if (!password) return null;

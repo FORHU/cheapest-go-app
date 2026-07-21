@@ -1,0 +1,92 @@
+name: Deploy Staging
+
+on:
+  push:
+    branches: [staging]
+  workflow_dispatch:
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - run: npm ci --ignore-scripts
+      - run: npx tsc --noEmit
+      - run: npm test -- --run
+
+  deploy:
+    needs: ci
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build and push image to ECR
+        env:
+          REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          REPOSITORY: ${{ secrets.ECR_REPOSITORY }}
+          SHA: ${{ github.sha }}
+        run: |
+          docker build \
+            --build-arg NEXT_PUBLIC_MAPBOX_TOKEN="${{ secrets.NEXT_PUBLIC_MAPBOX_TOKEN }}" \
+            --build-arg NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY="${{ secrets.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY }}" \
+            --build-arg NEXT_PUBLIC_SITE_URL="${{ secrets.NEXT_PUBLIC_SITE_URL }}" \
+            -t $REGISTRY/$REPOSITORY:$SHA \
+            -t $REGISTRY/$REPOSITORY:staging-latest \
+            .
+          docker push $REGISTRY/$REPOSITORY:$SHA
+          docker push $REGISTRY/$REPOSITORY:staging-latest
+
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -H "${{ secrets.EC2_HOST }}" >> ~/.ssh/known_hosts || true
+          echo "StrictHostKeyChecking no" >> ~/.ssh/config
+
+      - name: Write .env to EC2
+        run: |
+          printf '%s' "${{ secrets.ENV }}" | \
+            ssh -i ~/.ssh/id_rsa \
+                ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} \
+                "cat > ~/.env && chmod 600 ~/.env"
+
+      - name: Deploy to EC2
+        env:
+          REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          REPOSITORY: ${{ secrets.ECR_REPOSITORY }}
+          REGION: ${{ secrets.AWS_REGION }}
+          HOST: ${{ secrets.EC2_HOST }}
+          USER: ${{ secrets.EC2_USER }}
+        run: |
+          ECR_PASSWORD=$(aws ecr get-login-password --region "$REGION")
+          IMAGE="$REGISTRY/$REPOSITORY:staging-latest"
+
+          ssh -i ~/.ssh/id_rsa "$USER@$HOST" bash -s << EOF
+            echo "$ECR_PASSWORD" | docker login --username AWS --password-stdin $REGISTRY
+            docker pull $IMAGE
+            docker stop cheapestgo-staging 2>/dev/null || true
+            docker rm   cheapestgo-staging 2>/dev/null || true
+            docker run -d \
+              --name cheapestgo-staging \
+              --restart=always \
+              -p 3000:3000 \
+              --env-file ~/.env \
+              $IMAGE
+            docker image prune -f
+          EOF

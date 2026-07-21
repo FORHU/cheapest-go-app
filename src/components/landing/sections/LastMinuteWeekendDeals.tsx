@@ -1,43 +1,238 @@
 "use client";
 
-import React from 'react';
-import { Sparkles } from 'lucide-react';
-import { SectionHeader, HorizontalScroll } from '@/components/ui';
-import { PropertyCard } from '@/components/shared';
-import { weekendDeals } from '@/data';
+import React, { useState, useEffect, useRef } from 'react';
+import Image from 'next/image';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Sparkles, MapPin } from 'lucide-react';
+import { toast } from 'sonner';
+import SaveButton from '@/components/common/SaveButton';
+import { type WeekendDeal } from '@/types';
+import { convertCurrency, getCurrencySymbol } from '@/lib/currency';
+import { useUserCurrency } from '@/stores/searchStore';
+import { useDragScroll } from '@/hooks/useDragScroll';
 
-export const LastMinuteWeekendDeals: React.FC = () => {
+// ── Helpers ───────────────────────────────────────────────────────────────────
+function getRatingLabel(r: number): string {
+  if (r >= 9) return 'Exceptional';
+  if (r >= 8) return 'Excellent';
+  if (r >= 7) return 'Very Good';
+  if (r >= 6) return 'Good';
+  return 'Average';
+}
+
+function getRatingColor(r: number): string {
+  if (r >= 9) return 'bg-emerald-600';
+  if (r >= 8) return 'bg-blue-600';
+  if (r >= 7) return 'bg-blue-500';
+  if (r >= 6) return 'bg-amber-500';
+  return 'bg-orange-500';
+}
+
+// ── Card ──────────────────────────────────────────────────────────────────────
+interface FlashGetawayCardProps {
+  deal: WeekendDeal;
+  index: number;
+  variant?: 'carousel' | 'grid';
+}
+
+const FlashGetawayCardImpl: React.FC<FlashGetawayCardProps> = ({ deal, index, variant = 'carousel' }) => {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+
+  const currency = useUserCurrency();
+  const symbol = getCurrencySymbol(mounted ? currency : 'KRW');
+  const price = mounted
+    ? Math.round(convertCurrency(deal.salePrice || 0, 'KRW', currency))
+    : Math.round(deal.salePrice || 0);
+  const originalPrice = mounted
+    ? Math.round(convertCurrency(deal.originalPrice || 0, 'KRW', currency))
+    : Math.round(deal.originalPrice || 0);
+
+  const deepLink = `/hotels?q=${encodeURIComponent(deal.location)}`;
+
   return (
-    <section className="w-full py-4 md:py-8 lg:py-10 landscape-compact-py">
-      <div className="max-w-[1400px] mx-auto px-4 sm:px-6">
-        <SectionHeader
-          title="Flash Getaways"
-          subtitle="Limited-time offers on premium stays"
-          badge={{ icon: <Sparkles size={14} />, text: 'Hot Deals', variant: 'amber' }}
-          actionHref="/deals"
-        />
+    <motion.div
+      initial={index === 0 ? false : { opacity: 0, x: 40 }}
+      whileInView={{ opacity: 1, x: 0 }}
+      viewport={{ once: true }}
+      transition={{ delay: index * 0.07 }}
+      whileHover={{ y: -4, transition: { duration: 0.2 } }}
+      style={variant === 'carousel' ? { width: 'clamp(200px, calc(20% - 10px), 260px)' } : undefined}
+      className={variant === 'grid' ? 'cursor-pointer' : 'shrink-0 snap-start cursor-pointer'}
+      onClick={() => toast.info(deal.name, { description: 'Live hotel search will be available at launch.' })}
+    >
+      <div className="h-full flex flex-col rounded-2xl overflow-hidden bg-white dark:bg-slate-900 shadow-sm dark:shadow-none group">
 
-        <HorizontalScroll gap={4} scrollAmount={320}>
-          {weekendDeals.map((deal, i) => (
-            <div
-              key={deal.id}
-              className="flex-shrink-0 w-[220px] sm:w-[260px] md:w-[320px] landscape-compact-card snap-start flex flex-col"
-            >
-              <PropertyCard
-                image={deal.image}
-                name={deal.name}
-                location={deal.location}
-                rating={deal.rating}
-                reviews={deal.reviews}
-                originalPrice={deal.originalPrice}
-                price={deal.salePrice}
-                badge={deal.badge}
-                badgeColor="green"
-                className="h-full flex flex-col flex-1"
-              />
+        {/* ── Image ───────────────────────────────────────────── */}
+        <div className="relative h-[155px] overflow-hidden shrink-0">
+          {deal.image ? (
+            <Image
+              src={deal.image}
+              alt={deal.name}
+              fill
+              sizes="(max-width: 640px) 220px, (max-width: 768px) 240px, 260px"
+              className="object-cover transition-transform duration-700 group-hover:scale-105"
+              priority={index === 0}
+              loading={index === 0 ? undefined : 'lazy'}
+            />
+          ) : (
+            <div className="absolute inset-0 bg-gradient-to-br from-blue-900 to-slate-900" />
+          )}
+          <div className="absolute inset-0 bg-gradient-to-b from-black/10 via-transparent to-black/75" />
+
+          {/* Badge */}
+          {deal.badge && (
+            <div className="absolute top-3 left-3">
+              <span className="px-2.5 py-1 bg-blue-600 text-white text-xs font-normal rounded-full shadow">
+                {deal.badge}
+              </span>
             </div>
+          )}
+
+          {/* Save button */}
+          <div className="absolute top-3 right-3" onClick={e => e.stopPropagation()}>
+            <SaveButton
+              type="hotel"
+              title={deal.name}
+              subtitle={deal.location}
+              price={price}
+              currency={currency}
+              imageUrl={deal.image || undefined}
+              deepLink={deepLink}
+              size="sm"
+            />
+          </div>
+
+          {/* Price overlay */}
+          <div className="absolute bottom-3 left-3 flex items-baseline gap-1.5">
+            {originalPrice > 0 && originalPrice > price && (
+              <span className="text-xs text-white/60 line-through">
+                {symbol}{originalPrice.toLocaleString()}
+              </span>
+            )}
+            <span className="text-base font-normal text-white drop-shadow">
+              {symbol}{price.toLocaleString()}/night
+            </span>
+          </div>
+        </div>
+
+        {/* ── Content ─────────────────────────────────────────── */}
+        <div className="p-3 flex flex-col gap-2 flex-1">
+          <h3 className="text-xs font-normal text-slate-900 dark:text-white line-clamp-1 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+            {deal.name}
+          </h3>
+          <div className="flex items-center gap-1.5">
+            <MapPin className="w-3 h-3 text-blue-500 shrink-0" />
+            <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-1">{deal.location}</p>
+          </div>
+
+          {/* Footer: rating + disclaimer */}
+          <div className="flex items-center justify-between mt-auto pt-2 border-t border-slate-100 dark:border-slate-700/60">
+            {deal.rating > 0 ? (
+              <div className="flex items-center gap-1.5">
+                <span className={`px-1.5 py-0.5 ${getRatingColor(deal.rating)} text-white text-[10px] font-bold rounded`}>
+                  {deal.rating.toFixed(1)}
+                </span>
+                <span className="text-[10px] font-medium text-slate-700 dark:text-slate-300">
+                  {getRatingLabel(deal.rating)}
+                </span>
+              </div>
+            ) : <div />}
+            <span className="text-[10px] italic text-slate-400">Prices may change</span>
+          </div>
+        </div>
+      </div>
+    </motion.div>
+  );
+};
+
+const FlashGetawayCard = React.memo(FlashGetawayCardImpl);
+FlashGetawayCard.displayName = 'FlashGetawayCard';
+
+// ── Section ───────────────────────────────────────────────────────────────────
+export const LastMinuteWeekendDeals: React.FC<{ deals?: WeekendDeal[] }> = ({ deals }) => {
+  const displayDeals = deals || [];
+  const gridRef = useRef<HTMLDivElement>(null);
+  const { ref: rowRef, dragProps } = useDragScroll<HTMLDivElement>();
+  const [showAll, setShowAll] = useState(false);
+
+  return (
+    <section className="w-full py-2 md:py-4 lg:py-5">
+      <div className="max-w-[1400px] mx-auto px-4 sm:px-6">
+
+        {/* Header */}
+        <div className="flex items-start justify-between mb-4">
+          <div>
+            <div className="flex items-center gap-2 mb-1">
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 text-xs font-medium">
+                <Sparkles size={12} />
+                Hot Deals
+              </span>
+            </div>
+            <h2 className="text-lg sm:text-xl font-display font-bold text-slate-900 dark:text-white">
+              Flash Getaways
+            </h2>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+              Limited-time offers on premium stays
+            </p>
+          </div>
+
+          <div className="flex items-center gap-2 mt-1">
+            <button
+              onClick={() => {
+                setShowAll(v => !v);
+                if (!showAll) setTimeout(() => gridRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
+              }}
+              className="text-sm text-blue-500 hover:text-blue-600 font-medium mr-1 hidden sm:flex items-center gap-0.5 transition-colors"
+            >
+              {showAll ? 'Show less ↑' : 'View all →'}
+            </button>
+          </div>
+        </div>
+
+        {/* Horizontal scroll row */}
+        <div
+          ref={rowRef}
+          {...dragProps}
+          className="flex overflow-x-auto snap-x snap-mandatory gap-3 pt-5 pb-3 -mt-5 -mx-4 sm:-mx-6 px-4 sm:px-6 scroll-px-4 sm:scroll-px-6 cursor-grab active:cursor-grabbing select-none"
+          style={{ scrollbarWidth: 'none', msOverflowStyle: 'none', WebkitOverflowScrolling: 'touch' }}
+        >
+          {displayDeals.map((deal, i) => (
+            <FlashGetawayCard key={deal.id} deal={deal} index={i} />
           ))}
-        </HorizontalScroll>
+        </div>
+
+        {/* "View all" expanded grid */}
+        <AnimatePresence>
+          {showAll && (
+            <motion.div
+              ref={gridRef}
+              key="flash-deals-grid"
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 16 }}
+              transition={{ duration: 0.28, ease: 'easeOut' }}
+              className="mt-6"
+            >
+              <div className="flex items-center justify-between mb-3">
+                <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">
+                  All {displayDeals.length} deals
+                </p>
+                <button
+                  onClick={() => setShowAll(false)}
+                  className="text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors"
+                >
+                  Collapse ↑
+                </button>
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+                {displayDeals.map((deal, i) => (
+                  <FlashGetawayCard key={deal.id} deal={deal} index={i} variant="grid" />
+                ))}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     </section>
   );

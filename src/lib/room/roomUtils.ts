@@ -247,9 +247,17 @@ export function groupRoomsByName(roomTypes: RoomType[]): GroupedRoom[] {
         }
     });
 
-    // Sort rate options by price within each group
+    // Sort rate options by price, then deduplicate by (price, boardName, refundable)
     groups.forEach((group) => {
         group.rateOptions.sort((a, b) => a.price - b.price);
+
+        const seen = new Set<string>();
+        group.rateOptions = group.rateOptions.filter((rate) => {
+            const key = `${rate.price}|${rate.boardName || 'Room only'}|${rate.refundable}`;
+            if (seen.has(key)) return false;
+            seen.add(key);
+            return true;
+        });
     });
 
     return Array.from(groups.values());

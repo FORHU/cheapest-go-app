@@ -1,12 +1,11 @@
-import type { User as SupabaseUser, Session } from '@supabase/supabase-js';
-
-// Application User type (simplified from Supabase)
+// Application User type
 export interface User {
     id: string;
     email: string;
-    firstName: string;
-    lastName: string;
+    firstName?: string;
+    lastName?: string;
     avatar?: string;
+    role?: 'user' | 'admin';
 }
 
 // Auth step in the authentication flow
@@ -23,5 +22,17 @@ export interface RegisterData {
 // Social login providers
 export type SocialProvider = 'google' | 'apple' | 'facebook';
 
-// Re-export Supabase types for convenience
-export type { SupabaseUser, Session };
+// Legacy type aliases — kept for gradual migration of components that reference them.
+// These now map to our own types rather than Supabase types.
+export type SupabaseUser = {
+    id: string;
+    email?: string;
+    user_metadata: Record<string, unknown>;
+    app_metadata: Record<string, unknown>;
+};
+
+export type Session = {
+    user: SupabaseUser;
+    access_token: string;
+    expires_at?: number;
+};

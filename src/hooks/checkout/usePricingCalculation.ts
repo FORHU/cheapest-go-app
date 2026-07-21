@@ -2,15 +2,31 @@
 
 import { useMemo } from 'react';
 import { useProperty, useSelectedRoom, useBookingDates } from '@/stores/bookingStore';
+import { useCheckoutStore } from '@/stores/checkoutStore';
+import { convertCurrency } from '@/lib/currency';
+
+interface Surcharge {
+    chargeType: string;
+    mandatory: boolean;
+    price: { net: number; gross: number; currency: string };
+}
 
 interface PriceData {
     price?: number;
     tax?: number;
     total?: number;
+    currency?: string;
+    surcharges?: Surcharge[];
 }
 
 interface UsePricingCalculationOptions {
     priceData: PriceData | null;
+}
+
+interface ConvertedSurcharge {
+    chargeType: string;
+    mandatory: boolean;
+    amount: number;
 }
 
 interface UsePricingCalculationReturn {
@@ -20,11 +36,13 @@ interface UsePricingCalculationReturn {
     roomPrice: number;
     taxes: number;
     totalPrice: number;
+    surcharges: ConvertedSurcharge[];
 }
 
 /**
  * Hook to compute pricing and display values for checkout.
- * Memoized for performance.
+ * Applies client-side currency conversion when the user's selected currency
+ * differs from the room's original search currency.
  */
 export function usePricingCalculation({
     priceData,
@@ -32,25 +50,47 @@ export function usePricingCalculation({
     const property = useProperty();
     const selectedRoom = useSelectedRoom();
     const { checkIn, checkOut } = useBookingDates();
+    const selectedCurrency = useCheckoutStore((state) => state.selectedCurrency);
 
     return useMemo(() => {
-        const displayProperty = property || { name: "Grand Sierra Pines Baguio", rating: 4.8, image: "" };
-        const displayRoom = selectedRoom || { title: "Deluxe King Room", price: 5200 };
+        const displayProperty = property || { name: "", rating: 0, image: "" };
+        const displayRoom = selectedRoom || { title: "", price: 0, currency: "" };
+        
         const totalNights = (checkIn && checkOut)
             ? Math.ceil((checkOut.getTime() - checkIn.getTime()) / (1000 * 60 * 60 * 24))
-            : 2;
-        const baseRoomPrice = displayRoom.price || 5200;
-        const roomPrice = priceData?.price ?? (baseRoomPrice * totalNights);
-        const taxes = priceData?.tax ?? (roomPrice * 0.12);
-        const totalPrice = priceData?.total ?? (roomPrice + taxes);
+            : 0;
+
+        const baseRoomPrice = displayRoom.price || 0;
+
+        // Raw values from the prebook response — always in the room's original search currency
+        const rawRoomPrice = priceData?.price ?? (baseRoomPrice * totalNights);
+        const rawTaxes = priceData?.tax ?? (rawRoomPrice * 0.12);
+        const rawTotal = priceData?.total ?? (rawRoomPrice + rawTaxes);
+
+        // The currency the raw prices are denominated in.
+        // When prebook data is present, use priceData.currency (authoritative from LiteAPI).
+        // Fall back to the room's stored search currency, then selectedCurrency.
+        const sourceCurrency = priceData?.currency || displayRoom.currency || selectedCurrency;
+
+        // Apply client-side conversion when the display currency differs
+        const roomPrice = convertCurrency(rawRoomPrice, sourceCurrency, selectedCurrency);
+        const taxes = convertCurrency(rawTaxes, sourceCurrency, selectedCurrency);
+        const totalPrice = convertCurrency(rawTotal, sourceCurrency, selectedCurrency);
+
+        const surcharges: ConvertedSurcharge[] = (priceData?.surcharges ?? []).map(s => ({
+            chargeType: s.chargeType,
+            mandatory: s.mandatory,
+            amount: Math.round(convertCurrency(s.price.gross, s.price.currency || sourceCurrency, selectedCurrency) * 100) / 100,
+        }));
 
         return {
             displayProperty,
             displayRoom,
             totalNights,
-            roomPrice,
-            taxes,
-            totalPrice,
+            roomPrice: Math.round(roomPrice * 100) / 100,
+            taxes: Math.round(taxes * 100) / 100,
+            totalPrice: Math.round(totalPrice * 100) / 100,
+            surcharges,
         };
-    }, [property, selectedRoom, checkIn, checkOut, priceData]);
+    }, [property, selectedRoom, checkIn, checkOut, priceData, selectedCurrency]);
 }

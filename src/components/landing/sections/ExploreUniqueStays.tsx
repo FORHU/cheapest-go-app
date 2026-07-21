@@ -1,107 +1,219 @@
 "use client";
 
-import React, { useState } from 'react';
-import { motion } from 'framer-motion';
-import { Sparkles, Star } from 'lucide-react';
-import { TabList, SparkleEffect, HorizontalScroll } from '@/components/ui';
-import { uniqueStays, uniqueTabs } from '@/data';
+import React, { useState, useEffect, useRef } from 'react';
+import Image from 'next/image';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Star } from 'lucide-react';
+import SaveButton from '@/components/common/SaveButton';
+import { type SimpleProperty, uniqueTabs } from '@/types';
+import { convertCurrency, getCurrencySymbol } from '@/lib/currency';
+import { useUserCurrency } from '@/stores/searchStore';
+import { useDragScroll } from '@/hooks/useDragScroll';
 
-export const ExploreUniqueStays: React.FC = () => {
-  const [activeTab, setActiveTab] = useState(uniqueTabs[0]);
+// ── Card ──────────────────────────────────────────────────────────────────────
+interface UniqueStayCardProps {
+  stay: SimpleProperty;
+  index: number;
+  variant?: 'carousel' | 'grid';
+}
+
+const UniqueStayCardImpl: React.FC<UniqueStayCardProps> = ({ stay, index, variant = 'carousel' }) => {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+
+  const currency = useUserCurrency();
+  const symbol   = getCurrencySymbol(mounted ? currency : 'KRW');
+  const price    = mounted
+    ? Math.round(convertCurrency(stay.price || 0, 'KRW', currency))
+    : Math.round(stay.price || 0);
+
+  const deepLink = `/hotels?q=${encodeURIComponent(stay.location)}`;
 
   return (
-    <section className="relative w-full py-4 md:py-8 lg:py-10 landscape:py-3 landscape-compact-py overflow-hidden">
+    <motion.div
+      initial={index === 0 ? false : { opacity: 0, x: 40 }}
+      whileInView={{ opacity: 1, x: 0 }}
+      viewport={{ once: true }}
+      transition={{ delay: index * 0.07 }}
+      whileHover={{ y: -4, transition: { duration: 0.2 } }}
+      style={variant === 'carousel' ? { width: 'clamp(200px, calc(20% - 10px), 260px)' } : undefined}
+      className={variant === 'grid' ? 'cursor-pointer' : 'shrink-0 snap-start cursor-pointer'}
+    >
+      <div className="h-full flex flex-col rounded-2xl overflow-hidden bg-white dark:bg-slate-900 shadow-sm dark:shadow-none group">
 
-      <div className="relative max-w-[1400px] mx-auto px-4 sm:px-6">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          className="flex items-center gap-2 mb-1"
-        >
-          <motion.div
-            animate={{ rotate: [0, 15, -15, 0] }}
-            transition={{ duration: 2, repeat: Infinity }}
-          >
-            <Sparkles size={24} className="text-amber-500" />
-          </motion.div>
-          <h2 className="text-base sm:text-2xl md:text-3xl landscape:text-sm font-display font-bold text-slate-900 dark:text-white">
-            Extraordinary Escapes
-          </h2>
-        </motion.div>
-        <motion.p
-          initial={{ opacity: 0, y: 10 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ delay: 0.1 }}
-          className="text-slate-500 dark:text-slate-400 text-[10px] sm:text-sm md:text-base landscape:text-[10px] mb-3 sm:mb-4 landscape:mb-2"
-        >
-          One-of-a-kind places from glamping to floating villas
-        </motion.p>
+        {/* ── Image ─────────────────────────────────────────── */}
+        <div className="relative h-[155px] overflow-hidden shrink-0">
+          {stay.image ? (
+            <Image
+              src={stay.image}
+              alt={stay.name}
+              fill
+              sizes="(max-width: 640px) 220px, (max-width: 768px) 240px, 260px"
+              className="object-cover transition-transform duration-700 group-hover:scale-105"
+              priority={index === 0}
+              loading={index === 0 ? undefined : 'lazy'}
+            />
+          ) : (
+            <div className="absolute inset-0 bg-gradient-to-br from-emerald-900 to-slate-900" />
+          )}
+          <div className="absolute inset-0 bg-gradient-to-b from-black/10 via-transparent to-black/75" />
 
-        <TabList
-          tabs={uniqueTabs}
-          activeTab={activeTab}
-          onTabChange={setActiveTab}
-          className="mb-4 landscape:mb-2"
-        />
+          {/* Stay badge */}
+          {stay.badge && (
+            <div className="absolute top-3 left-3">
+              <span className="px-2.5 py-1 bg-blue-600 text-white text-xs font-normal rounded-full">
+                {stay.badge}
+              </span>
+            </div>
+          )}
 
-        <HorizontalScroll gap={4} scrollAmount={320}>
-          {uniqueStays.map((stay, i) => (
-            <motion.div
-              key={stay.id}
-              initial={{ opacity: 0, y: 20, scale: 0.98 }}
-              whileInView={{ opacity: 1, y: 0, scale: 1 }}
-              viewport={{ once: true }}
-              transition={{
-                delay: i * 0.06,
-                type: 'spring',
-                stiffness: 100
+          {/* Save button */}
+          <div className="absolute top-3 right-3" onClick={e => e.stopPropagation()}>
+            <SaveButton
+              type="hotel"
+              title={stay.name}
+              subtitle={stay.location}
+              price={price}
+              currency={currency}
+              imageUrl={stay.image || undefined}
+              deepLink={deepLink}
+              size="sm"
+            />
+          </div>
+
+          {/* Price overlay */}
+          <div className="absolute bottom-3 left-3">
+            <span className="text-base font-normal text-white drop-shadow">
+              {symbol}{price.toLocaleString()}/night
+            </span>
+          </div>
+        </div>
+
+        {/* ── Content ───────────────────────────────────────── */}
+        <div className="p-3 flex flex-col gap-1.5 flex-1">
+          <h3 className="text-xs font-normal text-slate-900 dark:text-white line-clamp-1 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+            {stay.name}
+          </h3>
+          <div className="flex items-center gap-1.5">
+            <span className="w-1.5 h-1.5 rounded-full bg-blue-500 shrink-0" />
+            <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-1">
+              {stay.location}
+            </p>
+          </div>
+        </div>
+      </div>
+    </motion.div>
+  );
+};
+
+const UniqueStayCard = React.memo(UniqueStayCardImpl);
+UniqueStayCard.displayName = 'UniqueStayCard';
+
+// ── Section ───────────────────────────────────────────────────────────────────
+export const ExploreUniqueStays: React.FC<{ stays?: SimpleProperty[] }> = ({ stays }) => {
+  const [activeTab, setActiveTab] = useState(uniqueTabs[0]);
+  const displayStays = stays || [];
+  const gridRef   = useRef<HTMLDivElement>(null);
+  const { ref: rowRef, dragProps } = useDragScroll<HTMLDivElement>();
+  const [showAll,    setShowAll]    = useState(false);
+
+  return (
+    <section className="w-full py-2 md:py-4 lg:py-5">
+      <div className="max-w-[1400px] mx-auto px-4 sm:px-6">
+
+        {/* Header */}
+        <div className="flex items-start justify-between mb-3">
+          <div>
+            <div className="flex items-center gap-2 mb-1">
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 text-xs font-medium">
+                <Star size={12} />
+                Unique Stays
+              </span>
+            </div>
+            <h2 className="text-lg sm:text-xl font-display font-bold text-slate-900 dark:text-white">
+              Extraordinary Escapes
+            </h2>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+              One-of-a-kind places from glamping to floating villas
+            </p>
+          </div>
+
+          <div className="flex items-center gap-2 mt-1">
+            <button
+              onClick={() => {
+                setShowAll(v => !v);
+                if (!showAll) setTimeout(() => gridRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
               }}
-              whileHover={{ y: -6, scale: 1.02 }}
-              className="flex-shrink-0 w-[220px] sm:w-[260px] md:w-[320px] landscape:w-[160px] landscape-compact-card snap-start relative group cursor-pointer flex flex-col"
+              className="text-sm text-blue-500 hover:text-blue-600 font-medium mr-1 hidden sm:flex items-center gap-0.5 transition-colors"
             >
-              {/* Glow effect */}
-              <div className="absolute -inset-1 bg-gradient-to-r from-amber-400 via-orange-500 to-pink-500 rounded-2xl opacity-0 group-hover:opacity-70 blur-xl transition-all duration-500 pointer-events-none" />
+              {showAll ? 'Show less ↑' : 'View all →'}
+            </button>
+          </div>
+        </div>
 
-              <div className="relative bg-white dark:bg-slate-900 rounded-xl overflow-hidden border border-slate-200/50 dark:border-slate-700/50 shadow-lg flex flex-col h-full flex-1">
-                <div className="relative aspect-[2/1] sm:aspect-[4/3] md:aspect-[3/2] overflow-hidden flex-shrink-0 landscape-compact-img landscape-img">
-                  <motion.div
-                    className="absolute inset-0 bg-cover bg-center"
-                    style={{ backgroundImage: `url(${stay.image})` }}
-                    whileHover={{ scale: 1.15 }}
-                    transition={{ duration: 0.6 }}
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent" />
+        {/* Unique stays tabs */}
+        <div
+          className="flex items-center gap-2 mb-4 overflow-x-auto pb-1"
+          style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+        >
+          {uniqueTabs.map(tab => (
+            <button
+              key={tab}
+              onClick={() => setActiveTab(tab)}
+              className={`shrink-0 px-3.5 py-1.5 rounded-full text-xs font-normal transition-all ${
+                activeTab === tab
+                  ? 'bg-blue-600 text-white shadow-sm'
+                  : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:border-blue-400 dark:hover:border-blue-500'
+              }`}
+            >
+              {tab}
+            </button>
+          ))}
+        </div>
 
-                  {/* Animated badge */}
-                  <motion.div
-                    initial={{ scale: 0 }}
-                    animate={{ scale: 1 }}
-                    transition={{ delay: i * 0.06 + 0.2, type: 'spring' }}
-                    className="absolute top-1 left-1 sm:top-2 sm:left-2 px-1.5 py-px sm:px-2.5 sm:py-1 bg-gradient-to-r from-blue-500 to-purple-600 text-white text-[8px] sm:text-xs font-medium rounded-full flex items-center gap-0.5 sm:gap-1 shadow-lg landscape-badge"
-                  >
-                    <Star size={8} fill="currentColor" className="animate-pulse flex-shrink-0 sm:w-[10px] sm:h-[10px]" />
-                    {stay.badge}
-                  </motion.div>
-                </div>
+        {/* Horizontal scroll row */}
+        <div
+          ref={rowRef}
+          {...dragProps}
+          className="flex overflow-x-auto snap-x snap-mandatory gap-3 pt-5 pb-3 -mt-5 -mx-4 sm:-mx-6 px-4 sm:px-6 scroll-px-4 sm:scroll-px-6 cursor-grab active:cursor-grabbing select-none"
+          style={{ scrollbarWidth: 'none', msOverflowStyle: 'none', WebkitOverflowScrolling: 'touch' }}
+        >
+          {displayStays.map((stay, i) => (
+            <UniqueStayCard key={stay.id} stay={stay} index={i} />
+          ))}
+        </div>
 
-                <div className="p-1.5 sm:p-3 landscape:p-1.5 landscape-compact-content flex flex-col flex-1">
-                  <h3 className="font-semibold text-slate-900 dark:text-white text-[11px] sm:text-sm landscape:text-[10px] truncate group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
-                    {stay.name}
-                  </h3>
-                  <p className="text-[9px] sm:text-xs landscape:text-[9px] text-slate-500 dark:text-slate-400 mt-0.5 truncate">{stay.location}</p>
-                  <p className="text-[11px] sm:text-base landscape:text-[10px] font-bold mt-auto pt-1 sm:pt-1.5 landscape:pt-0.5">
-                    <span className="bg-gradient-to-r from-slate-900 to-slate-700 dark:from-white dark:to-slate-300 bg-clip-text text-transparent">
-                      ₱{stay.price.toLocaleString()}
-                    </span>
-                    <span className="font-normal text-slate-400 text-[8px] sm:text-sm landscape:text-[8px]">/night</span>
-                  </p>
-                </div>
+        {/* "View all" expanded grid */}
+        <AnimatePresence>
+          {showAll && (
+            <motion.div
+              ref={gridRef}
+              key="unique-stays-grid"
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 16 }}
+              transition={{ duration: 0.28, ease: 'easeOut' }}
+              className="mt-6"
+            >
+              <div className="flex items-center justify-between mb-3">
+                <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">
+                  All {displayStays.length} stays
+                </p>
+                <button
+                  onClick={() => setShowAll(false)}
+                  className="text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors"
+                >
+                  Collapse ↑
+                </button>
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+                {displayStays.map((stay, i) => (
+                  <UniqueStayCard key={stay.id} stay={stay} index={i} variant="grid" />
+                ))}
               </div>
             </motion.div>
-          ))}
-        </HorizontalScroll>
+          )}
+        </AnimatePresence>
       </div>
     </section>
   );

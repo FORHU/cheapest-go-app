@@ -12,6 +12,7 @@ interface PasswordFieldProps {
     disabled?: boolean;
     placeholder?: string;
     showRequirements?: boolean;
+    label?: string;
 }
 
 function getPasswordRequirements(password: string): PasswordRequirement[] {
@@ -31,6 +32,7 @@ export function PasswordField({
     disabled,
     placeholder = 'Enter your password',
     showRequirements = false,
+    label = 'Password',
 }: PasswordFieldProps) {
     const [showPassword, setShowPassword] = useState(false);
     const requirements = showRequirements ? getPasswordRequirements(value) : [];
@@ -38,7 +40,7 @@ export function PasswordField({
     return (
         <div>
             <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-                Password
+                {label}
             </label>
             <div className="relative">
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />

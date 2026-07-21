@@ -2,7 +2,8 @@
 
 import React, { useState } from 'react';
 import { Star, Wifi, Car, Utensils, Coffee, Check } from 'lucide-react';
-import { Property } from '@/data/mockProperties';
+import { type Property } from '@/types';
+import { useTranslations } from 'next-intl';
 
 interface ReviewsData {
     reviews: any[];
@@ -36,11 +37,11 @@ function stripHtml(html: string): string {
 }
 
 // Import centralized rating helper functions
-import { getRatingLabel, getRatingColor as getRatingBgColor } from '@/lib/property/fetchReviews';
+import { getRatingLabel, getRatingColor as getRatingBgColor } from '@/lib/property/reviewsUtils';
 
 const PropertyOverview: React.FC<PropertyOverviewProps> = ({ property, reviewsData }) => {
     // Use real review data if available, fallback to property data
-    const rating = reviewsData?.averageRating || property.rating;
+    const rating = Number(reviewsData?.averageRating || property.rating) || 0;
     const reviewCount = reviewsData?.totalCount || property.reviews;
 
     // UI state for expanding description and amenities
@@ -49,6 +50,8 @@ const PropertyOverview: React.FC<PropertyOverviewProps> = ({ property, reviewsDa
 
     const descriptionText = stripHtml(property.description);
     const isDescriptionLong = descriptionText.length > 150;
+    const t = useTranslations('propertyOverview');
+    const tRatings = useTranslations('hotels.ratings');
 
     return (
         <div id="overview-section" className="space-y-4 md:space-y-8 scroll-mt-24 md:scroll-mt-36">
@@ -86,10 +89,12 @@ const PropertyOverview: React.FC<PropertyOverviewProps> = ({ property, reviewsDa
                     </div>
                     <div>
                         <div className="font-extra-bold text-[11px] lg:text-base text-slate-900 dark:text-white">
-                            {getRatingLabel(rating)}
+                            {tRatings(getRatingLabel(rating))}
                         </div>
                         <div className="text-[9px] lg:text-sm text-slate-600 dark:text-slate-300">
-                            {reviewCount.toLocaleString()} verified review{reviewCount !== 1 ? 's' : ''}
+                            {reviewCount !== 1
+                                ? t('verifiedReviews', { count: reviewCount.toLocaleString() })
+                                : t('verifiedReview', { count: reviewCount.toLocaleString() })}
                         </div>
                     </div>
                 </div>
@@ -97,7 +102,7 @@ const PropertyOverview: React.FC<PropertyOverviewProps> = ({ property, reviewsDa
 
             <div className="flex flex-col gap-4 md:gap-8">
                 <div className="w-full">
-                    <h2 className="text-[12px] lg:text-xl font-bold text-slate-900 dark:text-white mb-1 lg:mb-4">About this property</h2>
+                    <h2 className="text-[12px] lg:text-xl font-bold text-slate-900 dark:text-white mb-1 lg:mb-4">{t('aboutProperty')}</h2>
                     <div className={`text-[10px] lg:text-sm text-slate-700 dark:text-slate-300 space-y-1.5 lg:space-y-4 leading-relaxed whitespace-pre-line ${(!isDescriptionExpanded && isDescriptionLong) ? 'line-clamp-4' : ''}`}>
                         {descriptionText}
                     </div>
@@ -106,16 +111,16 @@ const PropertyOverview: React.FC<PropertyOverviewProps> = ({ property, reviewsDa
                             onClick={() => setIsDescriptionExpanded(!isDescriptionExpanded)}
                             className="text-blue-600 text-[10px] lg:text-sm font-medium hover:underline mt-1 lg:mt-2 focus:outline-none"
                         >
-                            {isDescriptionExpanded ? 'Show less' : 'Read more'}
+                            {isDescriptionExpanded ? t('showLess') : t('readMore')}
                         </button>
                     )}
                 </div>
 
                 {/* Popular amenities - Full width grid */}
                 <div id="amenities-section" className="w-full scroll-mt-24 lg:scroll-mt-36">
-                    <h3 className="text-[11px] lg:text-sm font-bold text-slate-900 dark:text-white mb-1 lg:mb-4">Popular amenities</h3>
+                    <h3 className="text-[11px] lg:text-sm font-bold text-slate-900 dark:text-white mb-1 lg:mb-4">{t('popularAmenities')}</h3>
                     <div className="grid grid-cols-2 lg:grid-cols-3 gap-1 lg:gap-4">
-                        {(isAmenitiesExpanded ? property.amenities : property.amenities.slice(0, 6)).map((amenity, i) => (
+                        {(Array.isArray(property.amenities) ? (isAmenitiesExpanded ? property.amenities : property.amenities.slice(0, 6)) : []).map((amenity, i) => (
                             <div key={i} className="flex items-center text-[10px] lg:text-sm text-slate-700 dark:text-slate-300">
                                 {amenity === 'Free WiFi' && <Wifi size={11} className="mr-1 lg:mr-3 shrink-0" />}
                                 {amenity === 'Parking' && <Car size={11} className="mr-1 lg:mr-3 shrink-0" />}
@@ -126,12 +131,12 @@ const PropertyOverview: React.FC<PropertyOverviewProps> = ({ property, reviewsDa
                             </div>
                         ))}
                     </div>
-                    {property.amenities.length > 6 && (
+                    {Array.isArray(property.amenities) && property.amenities.length > 6 && (
                         <button
                             onClick={() => setIsAmenitiesExpanded(!isAmenitiesExpanded)}
                             className="text-blue-600 text-[10px] lg:text-sm font-medium hover:underline mt-1.5 lg:mt-4 focus:outline-none"
                         >
-                            {isAmenitiesExpanded ? 'Show less amenities' : `See all ${property.amenities.length} amenities`}
+                            {isAmenitiesExpanded ? t('showLessAmenities') : t('seeAllAmenities', { count: property.amenities.length })}
                         </button>
                     )}
                 </div>
@@ -141,9 +146,9 @@ const PropertyOverview: React.FC<PropertyOverviewProps> = ({ property, reviewsDa
             <div className="bg-emerald-50 dark:bg-emerald-900/10 p-2 lg:p-4 rounded-xl flex gap-1.5 lg:gap-3 text-[10px] lg:text-sm">
                 <Check size={14} className="text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
                 <div>
-                    <span className="font-bold text-emerald-900 dark:text-emerald-200">Cleaning and safety practices</span>
+                    <span className="font-bold text-emerald-900 dark:text-emerald-200">{t('cleaningSafety.title')}</span>
                     <p className="text-emerald-800 dark:text-emerald-300 mt-0.5 lg:mt-1">
-                        This property has extensive hygiene measures in place, including contactless check-in and enhanced cleaning protocols.
+                        {t('cleaningSafety.description')}
                     </p>
                 </div>
             </div>

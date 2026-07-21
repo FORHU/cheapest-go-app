@@ -1,5 +1,6 @@
 import React from 'react';
 import { Clock, Info, XCircle, CheckCircle, AlertTriangle, LogOut } from 'lucide-react';
+import { sanitizeHtml } from '@/lib/sanitize-html';
 
 interface CancellationPolicy {
     cancelTime?: string;
@@ -128,29 +129,27 @@ const PoliciesSection: React.FC<PoliciesSectionProps> = ({
             <h2 className="text-[14px] lg:text-xl font-bold text-slate-900 dark:text-white mb-3 lg:mb-6">Policies</h2>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 lg:gap-8">
-                {/* Check-in / Check-out */}
-                {(checkInTime || checkOutTime) && (
-                    <div className="space-y-1.5 lg:space-y-4">
-                        <h3 className="text-[11px] lg:text-sm font-bold text-slate-900 dark:text-white flex items-center gap-1.5 lg:gap-2">
-                            <Clock size={12} className="lg:hidden" /><Clock size={18} className="hidden lg:block" />
-                            Check-in & Check-out
-                        </h3>
-                        <div className="bg-slate-50 dark:bg-slate-800/50 rounded-lg p-2 lg:p-4 space-y-1.5 lg:space-y-3">
-                            {checkInTime && (
-                                <div className="flex justify-between items-center">
-                                    <span className="text-[10px] lg:text-sm text-slate-600 dark:text-slate-400">Check-in</span>
-                                    <span className="text-[10px] lg:text-sm font-medium text-slate-900 dark:text-white">{checkInTime}</span>
-                                </div>
-                            )}
-                            {checkOutTime && (
-                                <div className="flex justify-between items-center">
-                                    <span className="text-[10px] lg:text-sm text-slate-600 dark:text-slate-400">Check-out</span>
-                                    <span className="text-[10px] lg:text-sm font-medium text-slate-900 dark:text-white">{checkOutTime}</span>
-                                </div>
-                            )}
+                {/* Check-in / Check-out — always shown; falls back to "Contact property" */}
+                <div className="space-y-1.5 lg:space-y-4">
+                    <h3 className="text-[11px] lg:text-sm font-bold text-slate-900 dark:text-white flex items-center gap-1.5 lg:gap-2">
+                        <Clock size={12} className="lg:hidden" /><Clock size={18} className="hidden lg:block" />
+                        Check-in & Check-out
+                    </h3>
+                    <div className="bg-slate-50 dark:bg-slate-800/50 rounded-lg p-2 lg:p-4 space-y-1.5 lg:space-y-3">
+                        <div className="flex justify-between items-center">
+                            <span className="text-[10px] lg:text-sm text-slate-600 dark:text-slate-400">Check-in</span>
+                            <span className="text-[10px] lg:text-sm font-medium text-slate-900 dark:text-white">
+                                {checkInTime || 'Contact property'}
+                            </span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                            <span className="text-[10px] lg:text-sm text-slate-600 dark:text-slate-400">Check-out</span>
+                            <span className="text-[10px] lg:text-sm font-medium text-slate-900 dark:text-white">
+                                {checkOutTime || 'Contact property'}
+                            </span>
                         </div>
                     </div>
-                )}
+                </div>
 
                 {/* Cancellation Policy */}
                 {cancellationPolicies && (
@@ -220,7 +219,7 @@ const PoliciesSection: React.FC<PoliciesSectionProps> = ({
                             {cancellationPolicies.hotelRemarks && (
                                 <div
                                     className="text-xs text-slate-500 dark:text-slate-400 mt-2 [&_ul]:list-disc [&_ul]:pl-4 [&_ol]:list-decimal [&_ol]:pl-4"
-                                    dangerouslySetInnerHTML={{ __html: cancellationPolicies.hotelRemarks }}
+                                    dangerouslySetInnerHTML={{ __html: sanitizeHtml(cancellationPolicies.hotelRemarks) }}
                                 />
                             )}
                         </div>
@@ -237,7 +236,7 @@ const PoliciesSection: React.FC<PoliciesSectionProps> = ({
                     </h3>
                     <div
                         className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-2 lg:p-4 text-[10px] lg:text-sm text-slate-700 dark:text-slate-300 whitespace-pre-line [&_ul]:list-disc [&_ul]:pl-5 [&_ul]:space-y-1 [&_ol]:list-decimal [&_ol]:pl-5 [&_ol]:space-y-1"
-                        dangerouslySetInnerHTML={{ __html: hotelImportantInformation }}
+                        dangerouslySetInnerHTML={{ __html: sanitizeHtml(hotelImportantInformation) }}
                     />
                 </div>
             )}

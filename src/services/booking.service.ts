@@ -12,6 +12,7 @@ export interface PrebookParams {
   offerId: string;
   currency: string;
   voucherCode?: string;
+  roomName?: string;
 }
 
 /**
@@ -23,6 +24,7 @@ export interface Guest {
   lastName: string;
   email: string;
   remarks?: string;
+  age?: number;
 }
 
 /**
@@ -40,11 +42,32 @@ export interface BookingParams {
     method: string;
     transactionId?: string;
   };
+  // Stripe payment intent (for server-side verification)
+  paymentIntentId?: string;
+  // Hotel metadata for DB record
+  propertyName?: string;
+  propertyImage?: string;
+  roomName?: string;
+  checkIn?: string;
+  checkOut?: string;
+  adults?: number;
+  children?: number;
+  currency?: string;
+  specialRequests?: string;
+  voucherCode?: string;
+  discountAmount?: number;
+  cancellationPolicies?: CancellationPolicy;
 }
 
 /**
  * Prebook response from LiteAPI
  */
+export interface TgxSurcharge {
+  chargeType: string;
+  mandatory: boolean;
+  price: { net: number; gross: number; currency: string };
+}
+
 export interface PrebookResponse {
   prebookId: string;
   price?: {
@@ -52,6 +75,8 @@ export interface PrebookResponse {
     taxes?: number;
     total: number;
   };
+  surcharges?: TgxSurcharge[];
+  currency?: string;
   status?: string;
   /** Cancellation policies from prebook response */
   cancellationPolicies?: CancellationPolicy;
@@ -59,6 +84,10 @@ export interface PrebookResponse {
   secretKey?: string;
   /** Payment SDK transaction ID (when usePaymentSdk: true) */
   transactionId?: string;
+  /** True when prebook could not quote the user's selected room and substituted another */
+  roomSubstituted?: boolean;
+  /** The name of the room that was actually quoted (when roomSubstituted is true) */
+  substitutedRoomName?: string;
 }
 
 /**
@@ -101,6 +130,8 @@ export interface BookingRecord {
   user_id: string;
   property_name: string;
   property_image?: string;
+  property_lat?: number;
+  property_lng?: number;
   room_name: string;
   check_in: string;
   check_out: string;
@@ -111,7 +142,7 @@ export interface BookingRecord {
   holder_first_name: string;
   holder_last_name: string;
   holder_email: string;
-  status: 'pending' | 'confirmed' | 'completed' | 'cancelled';
+  status: 'pending' | 'confirmed' | 'completed' | 'cancelled' | 'cancelled_refunded' | 'cancelled_refund_failed';
   special_requests?: string;
   created_at: string;
   updated_at: string;
@@ -222,6 +253,7 @@ export interface FlightSegmentRecord {
   destination: string;
   departure: string;
   arrival: string;
+  itinerary_index: number;
 }
 
 /**
@@ -235,6 +267,7 @@ export interface FlightPassengerRecord {
   type: string;
   passport?: string | null;
   ticket_number?: string | null;
+  seat_number?: string | null;
 }
 
 /**
@@ -244,11 +277,16 @@ export interface FlightBookingRecord {
   id: string;
   user_id: string;
   pnr: string;
-  provider: 'duffel' | 'mystifly';
+  provider: 'duffel' | 'mystifly_v2';
   total_price: number;
+  supplier_cost?: number;
+  charged_price?: number;
+  markup_pct?: number;
   currency?: string;
+  payment_intent_id?: string;
+  session_id?: string;
   trip_type?: 'one-way' | 'round-trip' | 'multi-city';
-  status: 'booked' | 'pnr_created' | 'awaiting_ticket' | 'ticketed' | 'failed' | 'cancel_requested' | 'cancelled' | 'cancel_failed' | 'refund_pending' | 'refund_failed' | 'refunded';
+  status: 'booked' | 'pnr_created' | 'awaiting_ticket' | 'ticketed' | 'failed' | 'cancel_requested' | 'cancelled' | 'cancel_failed' | 'refund_pending' | 'refund_failed' | 'refunded' | 'cancelled_provider_missing';
   created_at: string;
 
   fare_policy?: any;

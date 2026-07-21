@@ -1,10 +1,10 @@
-﻿"use client";
+"use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { createPortal } from 'react-dom';
+import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Search, Map as MapIcon, RotateCcw, X } from 'lucide-react';
-import { Map } from '@/components/ui/map';
 import { useSearchFilters, useSearchStore } from '@/stores/searchStore';
 import { STAR_RATINGS, GUEST_RATING_OPTIONS, REVIEW_COUNT_OPTIONS, FACILITIES } from '@/lib/constants';
 import { FilterSection } from './FilterSection';
@@ -12,6 +12,8 @@ import { CheckboxItem } from './CheckboxItem';
 import { RadioItem } from './RadioItem';
 import { ActiveFiltersSummary } from './ActiveFiltersSummary';
 import { GlobalSparkle } from '@/components/ui/GlobalSparkle';
+import { useBodyScrollLock } from '@/hooks/useBodyScrollLock';
+import { useTranslations } from 'next-intl';
 
 interface SearchFiltersProps {
     initialFacilities?: Array<{ id: number; name: string }>;
@@ -20,7 +22,7 @@ interface SearchFiltersProps {
 
 const SearchFilters = ({ initialFacilities, previewCoordinates }: SearchFiltersProps) => {
     const router = useRouter();
-    const searchParams = useSearchParams();
+    const t = useTranslations('hotels.filters');
     const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
     const initializedRef = useRef(false);
 
@@ -42,28 +44,53 @@ const SearchFilters = ({ initialFacilities, previewCoordinates }: SearchFiltersP
         return unique;
     }, [initialFacilities]);
     const filters = useSearchFilters();
-    const { setFilters, toggleStarRating, toggleFacility, resetFilters, isMobileFiltersOpen, setIsMobileFiltersOpen } = useSearchStore();
-    const { hotelName, starRating, minRating, minReviewsCount, facilities, strictFacilityFiltering } = filters;
+    const {
+        setFilters, toggleStarRating, toggleFacility,
+        togglePropertyType, toggleBoardType, setRefundable,
+        resetFilters, isMobileFiltersOpen, setIsMobileFiltersOpen,
+    } = useSearchStore();
+    useBodyScrollLock(isMobileFiltersOpen);
+    const { hotelName, starRating, minRating, minReviewsCount, facilities, strictFacilityFiltering, propertyTypes, boardTypes, refundable } = filters;
+
+    const PROPERTY_TYPE_OPTIONS = [
+        { value: 'hotel', label: t('propertyTypes.hotel') },
+        { value: 'apartment', label: t('propertyTypes.apartment') },
+        { value: 'resort', label: t('propertyTypes.resort') },
+        { value: 'villa', label: t('propertyTypes.villa') },
+    ];
+
+    const BOARD_TYPE_OPTIONS = [
+        { code: 'RO', label: t('boardTypes.roomOnly') },
+        { code: 'BB', label: t('boardTypes.breakfast') },
+        { code: 'HB', label: t('boardTypes.halfBoard') },
+        { code: 'FB', label: t('boardTypes.fullBoard') },
+        { code: 'AI', label: t('boardTypes.allInclusive') },
+    ];
 
     // Initialize filters from URL params on mount (only once)
     useEffect(() => {
         if (initializedRef.current) return;
         initializedRef.current = true;
 
+        const params = new URLSearchParams(window.location.search);
+        const refundableParam = params.get('refundable');
         const urlFilters = {
-            hotelName: searchParams?.get('hotelName') || '',
-            starRating: searchParams?.get('starRating')?.split(',').map(Number).filter(n => !isNaN(n)) || [],
-            minRating: Number(searchParams?.get('minRating')) || 0,
-            minReviewsCount: Number(searchParams?.get('minReviewsCount')) || 0,
-            facilities: searchParams?.get('facilities')?.split(',').map(Number).filter(n => !isNaN(n)) || [],
-            strictFacilityFiltering: searchParams?.get('strictFacilityFiltering') === 'true',
+            hotelName: params.get('hotelName') || '',
+            starRating: params.get('starRating')?.split(',').map(Number).filter(n => !isNaN(n)) || [],
+            minRating: Number(params.get('minRating')) || 0,
+            minReviewsCount: Number(params.get('minReviewsCount')) || 0,
+            facilities: params.get('facilities')?.split(',').map(Number).filter(n => !isNaN(n)) || [],
+            strictFacilityFiltering: params.get('strictFacilityFiltering') === 'true',
+            propertyTypes: params.get('propertyTypes')?.split(',').filter(Boolean) || [],
+            boardTypes: params.get('boardTypes')?.split(',').filter(Boolean) || [],
+            refundable: refundableParam === 'true' ? true : refundableParam === 'false' ? false : null,
         };
         setFilters(urlFilters);
-    }, [searchParams, setFilters]);
+    }, [setFilters]);
 
     // URL update helper
     const updateURL = useCallback((params: Record<string, string | null>) => {
-        const current = new URLSearchParams(searchParams?.toString() || '');
+        const current = new URLSearchParams(window.location.search);
         Object.entries(params).forEach(([key, value]) => {
             if (value === null || value === '' || value === '0') {
                 current.delete(key);
@@ -72,7 +99,7 @@ const SearchFilters = ({ initialFacilities, previewCoordinates }: SearchFiltersP
             }
         });
         router.push(`/search?${current.toString()}`);
-    }, [router, searchParams]);
+    }, [router]);
 
     // Debounced hotel name search
     const handleHotelNameChange = useCallback((value: string) => {
@@ -116,18 +143,40 @@ const SearchFilters = ({ initialFacilities, previewCoordinates }: SearchFiltersP
 
     const handleResetFilters = useCallback(() => {
         resetFilters();
-        const current = new URLSearchParams(searchParams?.toString() || '');
-        ['hotelName', 'starRating', 'minRating', 'minReviewsCount', 'facilities', 'strictFacilityFiltering'].forEach(key => {
+        const current = new URLSearchParams(window.location.search);
+        ['hotelName', 'starRating', 'minRating', 'minReviewsCount', 'facilities', 'strictFacilityFiltering', 'propertyTypes', 'boardTypes', 'refundable'].forEach(key => {
             current.delete(key);
         });
         router.push(`/search?${current.toString()}`);
-    }, [resetFilters, searchParams, router]);
+    }, [resetFilters, router]);
+
+    const handlePropertyTypeToggle = useCallback((type: string) => {
+        togglePropertyType(type);
+        const newTypes = propertyTypes.includes(type)
+            ? propertyTypes.filter(t => t !== type)
+            : [...propertyTypes, type];
+        updateURL({ propertyTypes: newTypes.length > 0 ? newTypes.join(',') : null });
+    }, [togglePropertyType, propertyTypes, updateURL]);
+
+    const handleBoardTypeToggle = useCallback((code: string) => {
+        toggleBoardType(code);
+        const newCodes = boardTypes.includes(code)
+            ? boardTypes.filter(c => c !== code)
+            : [...boardTypes, code];
+        updateURL({ boardTypes: newCodes.length > 0 ? newCodes.join(',') : null });
+    }, [toggleBoardType, boardTypes, updateURL]);
+
+    const handleRefundableChange = useCallback((value: boolean | null) => {
+        setRefundable(value);
+        updateURL({ refundable: value === true ? 'true' : value === false ? 'false' : null });
+    }, [setRefundable, updateURL]);
 
     const hasActiveFilters = hotelName || starRating.length > 0 || minRating > 0 ||
-        minReviewsCount > 0 || facilities.length > 0;
+        minReviewsCount > 0 || facilities.length > 0 ||
+        propertyTypes.length > 0 || boardTypes.length > 0 || refundable !== null;
 
     const content = (
-        <div className="w-full flex-shrink-0 space-y-4 pb-20 lg:pb-0">            {/* Header with Reset */}
+        <div className="w-full shrink-0 space-y-4 pb-20 lg:pb-0">            {/* Header with Reset */}
             <motion.div
                 initial={{ opacity: 0, y: 10 }}
                 whileInView={{ opacity: 1, y: 0 }}
@@ -135,40 +184,40 @@ const SearchFilters = ({ initialFacilities, previewCoordinates }: SearchFiltersP
                 transition={{ duration: 0.4 }}
                 className="pb-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between"
             >
-                <h3 className="font-display font-bold text-slate-900 dark:text-white">Filter by</h3>
+                <h3 className="text-sm font-display font-bold text-slate-900 dark:text-white">{t('filterBy')}</h3>
                 {hasActiveFilters && (
                     <button
                         onClick={handleResetFilters}
                         className="flex items-center gap-1 text-sm text-blue-600 hover:text-blue-700 transition-colors"
                     >
                         <RotateCcw size={14} />
-                        Reset
+                        {t('reset')}
                     </button>
                 )}
             </motion.div>
 
             {/* Search by Property Name */}
             <div className="py-4 border-b border-slate-200 dark:border-slate-800">
-                <h4 className="font-semibold text-sm text-slate-900 dark:text-white mb-3">Search by property name</h4>
+                <h4 className="font-bold text-[10px] uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">{t('searchByPropertyName')}</h4>
                 <div className="relative">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
+                    <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" size={12} />
                     <input
                         type="text"
                         value={hotelName}
                         onChange={(e) => handleHotelNameChange(e.target.value)}
                         placeholder="e.g. Marriott"
-                        className="w-full pl-9 pr-3 py-2.5 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+                        className="w-full pl-8 pr-2.5 py-1.5 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg text-[11px] text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-blue-500/50"
                     />
                 </div>
             </div>
 
             {/* Star Rating */}
-            <FilterSection title="Star rating" index={1}>
+            <FilterSection title={t('starRating')} index={1}>
                 <div className="flex flex-col gap-1">
                     {STAR_RATINGS.map(star => (
                         <CheckboxItem
                             key={star}
-                            label={`${star} star${star !== 1 ? 's' : ''}`}
+                            label={t('starCount', { count: star })}
                             checked={starRating.includes(star)}
                             onChange={() => handleStarRatingToggle(star)}
                         />
@@ -177,7 +226,7 @@ const SearchFilters = ({ initialFacilities, previewCoordinates }: SearchFiltersP
             </FilterSection>
 
             {/* Guest Rating */}
-            <FilterSection title="Guest rating" index={2}>
+            <FilterSection title={t('guestRating')} index={2}>
                 {GUEST_RATING_OPTIONS.map(option => (
                     <RadioItem
                         key={option.value}
@@ -190,7 +239,7 @@ const SearchFilters = ({ initialFacilities, previewCoordinates }: SearchFiltersP
             </FilterSection>
 
             {/* Minimum Reviews */}
-            <FilterSection title="Minimum reviews" index={3}>
+            <FilterSection title={t('minimumReviews')} index={3}>
                 {REVIEW_COUNT_OPTIONS.map(option => (
                     <RadioItem
                         key={option.value}
@@ -202,8 +251,54 @@ const SearchFilters = ({ initialFacilities, previewCoordinates }: SearchFiltersP
                 ))}
             </FilterSection>
 
+            {/* Property Type */}
+            <FilterSection title={t('propertyTypes')} index={4}>
+                <div className="flex flex-col gap-1">
+                    {PROPERTY_TYPE_OPTIONS.map(opt => (
+                        <CheckboxItem
+                            key={opt.value}
+                            label={opt.label}
+                            checked={propertyTypes.includes(opt.value)}
+                            onChange={() => handlePropertyTypeToggle(opt.value)}
+                        />
+                    ))}
+                </div>
+            </FilterSection>
+
+            {/* Room Features */}
+            <FilterSection title={t('roomFeatures')} index={5}>
+                <div className="flex flex-col gap-1 mb-3">
+                    <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-1">{t('mealPlan')}</p>
+                    {BOARD_TYPE_OPTIONS.map(opt => (
+                        <CheckboxItem
+                            key={opt.code}
+                            label={opt.label}
+                            checked={boardTypes.includes(opt.code)}
+                            onChange={() => handleBoardTypeToggle(opt.code)}
+                        />
+                    ))}
+                </div>
+                <div className="pt-2 border-t border-slate-200 dark:border-slate-700">
+                    <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-1.5">{t('cancellation')}</p>
+                    <div className="flex flex-col gap-1">
+                        <RadioItem
+                            name="refundable"
+                            label={t('any')}
+                            checked={refundable === null}
+                            onChange={() => handleRefundableChange(null)}
+                        />
+                        <RadioItem
+                            name="refundable"
+                            label={t('freeCancellationOnly')}
+                            checked={refundable === true}
+                            onChange={() => handleRefundableChange(true)}
+                        />
+                    </div>
+                </div>
+            </FilterSection>
+
             {/* Amenities */}
-            <FilterSection title="Amenities" index={4}>
+            <FilterSection title={t('amenities')} index={6}>
                 <div className="grid grid-cols-2 gap-2">
                     {facilityOptions.map((facility) => (
                         <CheckboxItem
@@ -218,12 +313,12 @@ const SearchFilters = ({ initialFacilities, previewCoordinates }: SearchFiltersP
                 {facilities.length > 1 && (
                     <div className="mt-4 pt-3 border-t border-slate-200 dark:border-slate-700">
                         <CheckboxItem
-                            label="Must have ALL selected amenities"
+                            label={t('mustHaveAllSelectedAmenities')}
                             checked={strictFacilityFiltering}
                             onChange={handleStrictFilteringToggle}
                         />
                         <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 ml-7">
-                            When enabled, only shows hotels with every selected amenity
+                            {t('strictAmenitiesDescription')}
                         </p>
                     </div>
                 )}
@@ -234,76 +329,73 @@ const SearchFilters = ({ initialFacilities, previewCoordinates }: SearchFiltersP
         </div>
     );
 
+    const mobileModal = (
+        <AnimatePresence>
+            {isMobileFiltersOpen && (
+                <>
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 z-90 bg-black/40 lg:hidden pointer-events-auto"
+                        onClick={() => setIsMobileFiltersOpen(false)}
+                    />
+                    <motion.div
+                        initial={{ opacity: 0, y: "100%", scale: 1 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, y: "100%" }}
+                        transition={{ type: "spring", damping: 25, stiffness: 200 }}
+                        className="fixed bottom-0 left-0 right-0 sm:top-[88px] sm:bottom-auto sm:left-auto sm:w-[340px] sm:max-h-[calc(100vh-120px)] max-h-[85vh] z-100 bg-alabaster dark:bg-obsidian bg-grid-alabaster dark:bg-grid-obsidian bg-size-40px_40px flex flex-col lg:hidden shadow-2xl rounded-t-3xl sm:rounded-2xl border-t sm:border border-slate-200/50 dark:border-slate-800/50 overflow-hidden"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        {/* Background Sparkles */}
+                        <div className="absolute inset-0 z-0 pointer-events-none opacity-50">
+                            <GlobalSparkle />
+                        </div>
+
+                        {/* Header */}
+                        <div className="p-3 border-b border-slate-200/50 dark:border-white/5 flex items-center justify-between bg-white/80 dark:bg-slate-900/80 backdrop-blur-md sticky top-0 z-10 shrink-0">
+                            <button
+                                onClick={() => setIsMobileFiltersOpen(false)}
+                                className="p-1.5 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors -ml-1.5"
+                            >
+                                <X size={16} className="text-slate-700 dark:text-slate-300" />
+                            </button>
+                            <h2 className="text-sm font-bold text-slate-900 dark:text-white absolute left-1/2 -translate-x-1/2">{t('filters')}</h2>
+                            <div className="w-8 relative z-20">
+                                {/* Intentionally left blank to balance the flex layout */}
+                            </div>
+                        </div>
+
+                        {/* Filter Content */}
+                        <div className="flex-1 overflow-y-auto p-5 custom-scrollbar relative z-10">
+                            {content}
+                        </div>
+
+                        {/* Fixed Footer */}
+                        <div className="p-4 border-t border-slate-200/50 dark:border-white/5 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md flex justify-center shrink-0 relative z-10">
+                            <button
+                                onClick={() => setIsMobileFiltersOpen(false)}
+                                className="w-full max-w-sm py-2 bg-alabaster-accent dark:bg-obsidian-accent text-white rounded-lg text-xs font-bold flex items-center justify-center transition-transform active:scale-[0.98] shadow-md hover:shadow-lg"
+                            >
+                                {t('showPlaces')}
+                            </button>
+                        </div>
+                    </motion.div>
+                </>
+            )}
+        </AnimatePresence>
+    );
+
     return (
         <>
             {/* Desktop persistent sidebar */}
-            <div className="hidden lg:block w-[280px] flex-shrink-0">
+            <div className="hidden lg:block w-[280px] shrink-0">
                 {content}
             </div>
 
-            {/* Mobile modal overlay as a Dropdown */}
-            <AnimatePresence>
-                {isMobileFiltersOpen && (
-                    <>
-                        <motion.div
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            exit={{ opacity: 0 }}
-                            className="fixed inset-0 z-[90] bg-black/40 backdrop-blur-sm lg:hidden pointer-events-auto"
-                            onClick={() => setIsMobileFiltersOpen(false)}
-                        />
-                        <motion.div
-                            initial={{ opacity: 0, y: "100%", scale: 1 }}
-                            animate={{ opacity: 1, y: 0, scale: 1 }}
-                            exit={{ opacity: 0, y: "100%" }}
-                            transition={{ type: "spring", damping: 25, stiffness: 200 }}
-                            className="fixed bottom-0 left-0 right-0 sm:top-[88px] sm:bottom-auto sm:left-auto sm:w-[340px] sm:max-h-[calc(100vh-120px)] max-h-[85vh] z-[100] bg-alabaster dark:bg-obsidian bg-grid-alabaster dark:bg-grid-obsidian bg-[length:40px_40px] flex flex-col lg:hidden shadow-2xl rounded-t-3xl sm:rounded-2xl border-t sm:border border-slate-200/50 dark:border-slate-800/50 overflow-hidden"
-                            onClick={(e) => e.stopPropagation()}
-                        >
-                            {/* Background Sparkles */}
-                            <div className="absolute inset-0 z-0 pointer-events-none opacity-50">
-                                <GlobalSparkle />
-                            </div>
-
-                            {/* Header */}
-                            <div className="p-4 border-b border-slate-200/50 dark:border-white/5 flex items-center justify-between bg-white/80 dark:bg-slate-900/80 backdrop-blur-md sticky top-0 z-10 flex-shrink-0">
-                                <button
-                                    onClick={() => setIsMobileFiltersOpen(false)}
-                                    className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors -ml-2"
-                                >
-                                    <X size={20} className="text-slate-700 dark:text-slate-300" />
-                                </button>
-                                <h2 className="font-semibold text-slate-900 dark:text-white absolute left-1/2 -translate-x-1/2">Filters</h2>
-                                <div className="w-auto relative z-20">
-                                    {hasActiveFilters && (
-                                        <button
-                                            onClick={handleResetFilters}
-                                            className="text-sm font-semibold text-slate-900 dark:text-white underline underline-offset-2"
-                                        >
-                                            Clear all
-                                        </button>
-                                    )}
-                                </div>
-                            </div>
-
-                            {/* Filter Content */}
-                            <div className="flex-1 overflow-y-auto p-5 custom-scrollbar relative z-10">
-                                {content}
-                            </div>
-
-                            {/* Fixed Footer */}
-                            <div className="p-4 border-t border-slate-200/50 dark:border-white/5 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md flex justify-center flex-shrink-0 relative z-10">
-                                <button
-                                    onClick={() => setIsMobileFiltersOpen(false)}
-                                    className="w-full max-w-sm py-3.5 bg-alabaster-accent dark:bg-obsidian-accent text-white rounded-xl font-bold flex items-center justify-center transition-transform active:scale-[0.98] shadow-md hover:shadow-lg"
-                                >
-                                    Show places
-                                </button>
-                            </div>
-                        </motion.div>
-                    </>
-                )}
-            </AnimatePresence>
+            {/* Mobile modal — rendered via portal at document.body to avoid stacking context issues */}
+            {typeof window !== 'undefined' && createPortal(mobileModal, document.body)}
         </>
     );
 };

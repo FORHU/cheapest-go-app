@@ -5,8 +5,10 @@ import { motion, Variants } from 'framer-motion';
 import { PlaneTakeoff, Calendar, User, Search } from 'lucide-react';
 import { TiltCard } from './ui/TiltCard';
 import { VersionBadge } from './landing/sections/TelemetryComponents';
+import { useTranslations } from 'next-intl';
 
 const Hero = () => {
+  const t = useTranslations('landing.hero');
   // Staggered text animation variants
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -33,7 +35,7 @@ const Hero = () => {
       {/* Background Glow */}
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[300px] bg-alabaster-accent/5 dark:bg-obsidian-accent/10 blur-[100px] rounded-full pointer-events-none z-[-1]" />
 
-      <VersionBadge />
+      <VersionBadge label={t('smartPriceTracking')} />
 
       <motion.div
         variants={containerVariants}

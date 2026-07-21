@@ -4,6 +4,7 @@ import React from 'react';
 import { AirportAutocomplete } from '@/components/inputs/AirportAutocomplete';
 import { Destination } from '@/stores/searchStore';
 import type { Airport } from '@/lib/airports';
+import { useTranslations } from 'next-intl';
 
 interface FlightLocationPickerProps {
     value: Destination | null;
@@ -24,7 +25,7 @@ function destinationToAirport(dest: Destination | null): Airport | null {
     return {
         iata: dest.code || '',
         name: dest.subtitle || '',
-        city: dest.title || '',
+        city: (dest.title || '').replace(/\s\([A-Z]{3}\)$/, '').trim(),
         country: '',
         countryCode: dest.countryCode || '',
     };
@@ -45,16 +46,21 @@ export const FlightLocationPicker: React.FC<FlightLocationPickerProps> = ({
     value,
     onChange,
     label,
-    placeholder = "Search airport...",
+    placeholder,
     isOpen,
     onToggle,
     excludeId,
 }) => {
-    const airportValue = destinationToAirport(value);
+    const t = useTranslations('landing.search');
+    const resolvedPlaceholder = placeholder ?? t('searchAirport');
+    const airportValue = React.useMemo(() => {
+        return destinationToAirport(value);
+    }, [value]);
 
     const handleAirportChange = (airport: Airport | null) => {
         if (airport) {
-            onChange(airportToDestination(airport));
+            const dest = airportToDestination(airport);
+            onChange(dest);
         } else {
             onChange(null);
         }
@@ -65,7 +71,7 @@ export const FlightLocationPicker: React.FC<FlightLocationPickerProps> = ({
             value={airportValue}
             onChange={handleAirportChange}
             label={label}
-            placeholder={placeholder}
+            placeholder={resolvedPlaceholder}
             isOpen={isOpen}
             onToggle={onToggle}
             excludeIata={excludeId}
