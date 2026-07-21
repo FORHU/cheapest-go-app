@@ -5,17 +5,19 @@ import { ArrowLeftRight, X, RefreshCw } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { EXCHANGE_RATES, convertCurrency, getCurrencySymbol, refreshExchangeRates } from '@/lib/currency';
 
-/** Format a converted amount in its target currency, gracefully. */
-function formatMoney(amount: number, currency: string): string {
-    try {
-        return new Intl.NumberFormat(undefined, {
-            style: 'currency',
-            currency,
-            maximumFractionDigits: amount >= 100 ? 0 : 2,
-        }).format(amount);
-    } catch {
-        return `${getCurrencySymbol(currency)}${amount.toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
-    }
+/**
+ * Format a converted amount as a plain number.
+ *
+ * The currency is already labelled twice in the result row — by the symbol on the
+ * left and the selector on the right — so formatting with `style: 'currency'` here
+ * printed it a third time ("IDR IDR 1,794,500") and overflowed the row, which
+ * `truncate` then clipped to "IDR 1,…". Currencies without a symbol in
+ * getCurrencySymbol() fall back to their code, which made this much worse.
+ */
+function formatAmount(amount: number): string {
+    return new Intl.NumberFormat(undefined, {
+        maximumFractionDigits: amount >= 100 ? 0 : 2,
+    }).format(amount);
 }
 
 interface CurrencyConverterCardProps {
@@ -91,7 +93,7 @@ export function CurrencyConverterCard({ originCurrency, destinationCurrency }: C
             </button>
 
             {open && (
-                <div className="absolute top-full right-0 mt-2 w-[290px] max-w-[calc(100vw-24px)] bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl rounded-xl border border-slate-200/80 dark:border-slate-700/80 shadow-2xl z-50 animate-in fade-in zoom-in-95 slide-in-from-top-2 origin-top-right duration-200 p-4">
+                <div className="absolute top-full right-0 mt-2 w-[320px] max-w-[calc(100vw-24px)] bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl rounded-xl border border-slate-200/80 dark:border-slate-700/80 shadow-2xl z-50 animate-in fade-in zoom-in-95 slide-in-from-top-2 origin-top-right duration-200 p-4">
                     <div className="flex items-center justify-between mb-3">
                         <p className="text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">{t('title')}</p>
                         <button onClick={(e) => { e.stopPropagation(); setOpen(false); }} className="p-1 -mr-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors">
@@ -132,8 +134,11 @@ export function CurrencyConverterCard({ originCurrency, destinationCurrency }: C
                     {/* Result + To */}
                     <div className="flex items-center gap-2 rounded-xl bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800/40 px-3 py-2">
                         <span className="text-blue-400 text-sm font-semibold shrink-0">{getCurrencySymbol(to)}</span>
-                        <span className="flex-1 min-w-0 truncate text-blue-700 dark:text-blue-300 font-extrabold text-base tabular-nums">
-                            {formatMoney(converted, to)}
+                        <span
+                            title={`${formatAmount(converted)} ${to}`}
+                            className="flex-1 min-w-0 truncate text-blue-700 dark:text-blue-300 font-extrabold text-base tabular-nums"
+                        >
+                            {formatAmount(converted)}
                         </span>
                         <div className="relative shrink-0">
                             <select value={to} onChange={(e) => setTo(e.target.value)} className={selectCls}>

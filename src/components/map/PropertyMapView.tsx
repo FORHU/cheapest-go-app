@@ -12,7 +12,8 @@ import { MapPopup } from './MapPopup';
 import { MapPOIPopup } from './MapPOIPopup';
 import { NearbyPlaceMarker } from './NearbyPlaceMarker';
 import { NearbyPlacePopup } from './NearbyPlacePopup';
-import { MapGemsPanel } from './MapGemsPanel';
+import { MapRadiusSelector } from './MapRadiusSelector';
+import { buildPlaceholderNearbyPlaces } from './placeholderNearbyPlaces';
 import { useNearbyGems } from '@/components/property/hooks/useNearbyGems';
 import type { NearbyPlace } from './useMapNearbyPlaces';
 import { computeBounds } from './types';
@@ -110,6 +111,11 @@ function detectPOI(
     };
 }
 
+// Recommended places render as circular POI icons directly on the map — no card
+// carousel. The discovery category is fixed; the radius is chosen by the user via
+// MapRadiusSelector, and nothing is plotted until they pick one.
+const NEARBY_CATEGORY = 'all';
+
 const PropertyMapView = React.memo(function PropertyMapView({
     properties,
     selectedId,
@@ -131,9 +137,8 @@ const PropertyMapView = React.memo(function PropertyMapView({
     const markerJustClickedRef = useRef(false);
     const targetCurrency = useUserCurrency();
 
-    // Nearby gems state
-    const [nearbyCategory, setNearbyCategory] = useState('all');
-    const [nearbyRadius, setNearbyRadius] = useState(1000);
+    // Nearby gems state. `null` radius = nothing chosen yet → no POI icons plotted.
+    const [nearbyRadius, setNearbyRadius] = useState<number | null>(null);
     const [activeGemName, setActiveGemName] = useState<string | null>(null);
     const [selectedNearbyPlace, setSelectedNearbyPlace] = useState<NearbyPlace | null>(null);
 
@@ -142,33 +147,43 @@ const PropertyMapView = React.memo(function PropertyMapView({
         [selectedId, properties]
     );
 
-    // Use the same rich data hook as the property detail page
-    const { nearbyGems, isFetchingGems } = useNearbyGems({
-        isLoaded: isMapLoaded && !!selectedProperty,
-        coordinates: selectedProperty
-            ? { lat: selectedProperty.coordinates.lat, lng: selectedProperty.coordinates.lng }
+    // The hotel that nearby places are measured from. On a single-property map (the
+    // booking destination view) anchor to that hotel directly, so the radius selector
+    // is usable without first clicking the pin. Multi-property maps (search results)
+    // still require an explicit selection, since there'd be no sensible anchor.
+    const anchorProperty = useMemo(
+        () => selectedProperty ?? (properties.length === 1 ? properties[0] : null),
+        [selectedProperty, properties]
+    );
+
+    // Use the same rich data hook as the property detail page. Gems are prefetched as
+    // soon as there's an anchor so icons appear instantly once a radius is picked.
+    const { nearbyGems } = useNearbyGems({
+        isLoaded: isMapLoaded && !!anchorProperty,
+        coordinates: anchorProperty
+            ? { lat: anchorProperty.coordinates.lat, lng: anchorProperty.coordinates.lng }
             : undefined,
-        selectedCategory: nearbyCategory,
+        selectedCategory: NEARBY_CATEGORY,
     });
 
-    // Filter gems client-side by the user's chosen radius
+    // Filter gems client-side by the user's chosen radius — empty until one is chosen.
     const filteredGems = useMemo(() => {
-        if (!selectedProperty || nearbyGems.length === 0) return [];
+        if (!anchorProperty || nearbyRadius === null || nearbyGems.length === 0) return [];
         return nearbyGems.filter((gem) => {
             const lng = gem.geometry?.coordinates[0];
             const lat = gem.geometry?.coordinates[1];
             if (lat == null || lng == null) return false;
             return haversineKm(
-                selectedProperty.coordinates.lat,
-                selectedProperty.coordinates.lng,
+                anchorProperty.coordinates.lat,
+                anchorProperty.coordinates.lng,
                 lat, lng,
             ) * 1000 <= nearbyRadius;
         });
-    }, [nearbyGems, selectedProperty, nearbyRadius]);
+    }, [nearbyGems, anchorProperty, nearbyRadius]);
 
     // Adapt gems to the NearbyPlace shape for map markers
-    const nearbyPlaceMarkers = useMemo<NearbyPlace[]>(() =>
-        filteredGems.map((gem) => ({
+    const nearbyPlaceMarkers = useMemo<NearbyPlace[]>(() => {
+        const fromGems: NearbyPlace[] = filteredGems.map((gem) => ({
             name: gem.properties?.name || '',
             category: gem.properties?.category || 'place',
             lat: gem.geometry?.coordinates[1],
@@ -177,17 +192,30 @@ const PropertyMapView = React.memo(function PropertyMapView({
             userRatingsTotal: gem.properties?.userRatingsTotal,
             placeId: gem.properties?.place_id,
             vicinity: gem.properties?.vicinity,
-        })),
-        [filteredGems]
-    );
+        }));
 
-    // Clear gem state when hotel is deselected
+        if (fromGems.length > 0) return fromGems;
+        if (!anchorProperty || nearbyRadius === null) return fromGems;
+        // TEMPORARY: discovery returns no places right now, so fall back to stand-ins
+        // in development to keep the icon + preview-card UI visible. Remove along with
+        // placeholderNearbyPlaces.ts once discovery works.
+        if (process.env.NODE_ENV !== 'development') return fromGems;
+
+        const { lat, lng } = anchorProperty.coordinates;
+        return buildPlaceholderNearbyPlaces(lat, lng).filter(
+            (p) => haversineKm(lat, lng, p.lat, p.lng) * 1000 <= nearbyRadius
+        );
+    }, [filteredGems, anchorProperty, nearbyRadius]);
+
+    // Reset the radius (and any open place) whenever the anchor hotel changes or goes
+    // away, so places never linger from a previously selected hotel. Keyed on the
+    // anchor rather than selectedId so clicking around a single-hotel map doesn't
+    // wipe the radius the user just chose.
     useEffect(() => {
-        if (!selectedId) {
-            setActiveGemName(null);
-            setSelectedNearbyPlace(null);
-        }
-    }, [selectedId]);
+        setNearbyRadius(null);
+        setActiveGemName(null);
+        setSelectedNearbyPlace(null);
+    }, [anchorProperty?.id]);
 
     const markerPrices = useMemo(() => {
         const prices: Record<string, number> = {};
@@ -202,42 +230,60 @@ const PropertyMapView = React.memo(function PropertyMapView({
         showDetailsPanel, setShowDetailsPanel,
         showLabels, setShowLabels,
         mapDetails, handleDetailToggle,
-        terrainEnabled, mapStyleUrl, standardConfig,
+        mapStyleUrl, standardConfig,
     } = useMapDetails();
+
+    // This map renders flat — no 3D buildings, objects or terrain. The Standard
+    // style ships them on by default, so they're explicitly switched off here.
+    const flatStandardConfig = useMemo(() => ({
+        ...standardConfig,
+        show3dObjects: false,
+        show3dBuildings: false,
+        show3dFacades: false,
+        show3dTrees: false,
+        show3dLandmarks: false,
+    }), [standardConfig]);
+
+    // Terrain only has meaning on a tilted 3D map, so it isn't offered here.
+    const flatMapDetails = useMemo(
+        () => mapDetails.filter((d) => d.id !== 'terrain'),
+        [mapDetails]
+    );
 
     const bounds = useMemo(() => computeBounds(properties), [properties]);
 
     const poiDistanceKm = useMemo(() => {
-        if (!poiPopup || !selectedProperty) return null;
+        if (!poiPopup || !anchorProperty) return null;
         return haversineKm(
-            selectedProperty.coordinates.lat, selectedProperty.coordinates.lng,
+            anchorProperty.coordinates.lat, anchorProperty.coordinates.lng,
             poiPopup.lat, poiPopup.lng,
         );
-    }, [poiPopup, selectedProperty]);
+    }, [poiPopup, anchorProperty]);
 
     const hoverDistanceKm = useMemo(() => {
-        if (!hoveredPOI || !selectedProperty) return null;
+        if (!hoveredPOI || !anchorProperty) return null;
         return haversineKm(
-            selectedProperty.coordinates.lat, selectedProperty.coordinates.lng,
+            anchorProperty.coordinates.lat, anchorProperty.coordinates.lng,
             hoveredPOI.lat, hoveredPOI.lng,
         );
-    }, [hoveredPOI, selectedProperty]);
+    }, [hoveredPOI, anchorProperty]);
 
     const nearbyPlaceDistanceKm = useMemo(() => {
-        if (!selectedNearbyPlace || !selectedProperty) return null;
+        if (!selectedNearbyPlace || !anchorProperty) return null;
         return haversineKm(
-            selectedProperty.coordinates.lat, selectedProperty.coordinates.lng,
+            anchorProperty.coordinates.lat, anchorProperty.coordinates.lng,
             selectedNearbyPlace.lat, selectedNearbyPlace.lng,
         );
-    }, [selectedNearbyPlace, selectedProperty]);
+    }, [selectedNearbyPlace, anchorProperty]);
 
+    // Only drawn once the user picks a radius — it visualises that chosen area.
     const radiusCircleGeoJSON = useMemo(() => {
-        if (!selectedProperty) return null;
+        if (!anchorProperty || nearbyRadius === null) return null;
         return createCircleGeoJSON(
-            [selectedProperty.coordinates.lng, selectedProperty.coordinates.lat],
+            [anchorProperty.coordinates.lng, anchorProperty.coordinates.lat],
             nearbyRadius,
         );
-    }, [selectedProperty, nearbyRadius]);
+    }, [anchorProperty, nearbyRadius]);
 
     const handleMarkerClick = useCallback((id: string) => {
         const property = properties.find((p) => p.id === id);
@@ -250,7 +296,7 @@ const PropertyMapView = React.memo(function PropertyMapView({
         onSelect(id);
         mapRef.current?.flyTo({
             center: [property.coordinates.lng, property.coordinates.lat],
-            zoom: 15, pitch: 45, duration: 800,
+            zoom: 15, duration: 800,
         });
     }, [properties, onSelect]);
 
@@ -290,8 +336,32 @@ const PropertyMapView = React.memo(function PropertyMapView({
             placeId: gem.properties?.place_id,
             vicinity: gem.properties?.vicinity,
         });
-        mapRef.current?.flyTo({ center: [lng, lat], zoom: 16, pitch: 30, duration: 600 });
+        mapRef.current?.flyTo({ center: [lng, lat], zoom: 16, duration: 600 });
     }, [activeGemName]);
+
+    /**
+     * Click handler for a circular POI icon. Prefers the backing gem (which carries
+     * the richer enriched data), but falls back to the marker's own NearbyPlace so
+     * placeholder pins — which have no gem behind them — still open a preview card.
+     */
+    const handleNearbyPlaceClick = useCallback((place: NearbyPlace) => {
+        const gem = filteredGems.find((g) => (g.properties?.name || g.name) === place.name);
+        if (gem) {
+            handleGemClick(gem);
+            return;
+        }
+
+        if (activeGemName === place.name) {
+            setActiveGemName(null);
+            setSelectedNearbyPlace(null);
+            return;
+        }
+
+        setActiveGemName(place.name);
+        setPoiPopup(null);
+        setSelectedNearbyPlace(place);
+        mapRef.current?.flyTo({ center: [place.lng, place.lat], zoom: 16, duration: 600 });
+    }, [filteredGems, handleGemClick, activeGemName]);
 
     const handleMapClick = useCallback((e: MapMouseEvent) => {
         if (markerJustClickedRef.current) return;
@@ -315,11 +385,17 @@ const PropertyMapView = React.memo(function PropertyMapView({
         if (poiPopup) return;
         const map = mapRef.current?.getMap();
         if (!map) return;
+        // Cursor is driven by the `has-pointer-cursor` class on the canvas container
+        // (see globals.css) — the same approach the search/property maps use. We never
+        // write map.getCanvas().style.cursor here: that inline value races Mapbox's own
+        // 60fps cursor resets and the restoreCursor patch, which left the canvas with no
+        // rendered cursor in the gaps (the "disappearing pointer" bug).
+        const container = map.getCanvasContainer();
         if (map.isMoving() || map.isZooming() || map.isRotating()) {
+            container.classList.remove('has-pointer-cursor');
             if (hoveredPOINameRef.current !== null) {
                 hoveredPOINameRef.current = null;
                 setHoveredPOI(null);
-                map.getCanvas().style.cursor = '';
             }
             return;
         }
@@ -331,15 +407,14 @@ const PropertyMapView = React.memo(function PropertyMapView({
         if (name === hoveredPOINameRef.current) return;
         hoveredPOINameRef.current = name;
         setHoveredPOI(poi);
-        map.getCanvas().style.cursor = poi ? 'pointer' : '';
+        container.classList.toggle('has-pointer-cursor', !!poi);
     }, [poiPopup]);
 
     const handleMouseLeave = useCallback(() => {
+        mapRef.current?.getMap()?.getCanvasContainer().classList.remove('has-pointer-cursor');
         if (hoveredPOINameRef.current !== null) {
             hoveredPOINameRef.current = null;
             setHoveredPOI(null);
-            const canvas = mapRef.current?.getMap()?.getCanvas();
-            if (canvas) canvas.style.cursor = '';
         }
     }, []);
 
@@ -380,22 +455,20 @@ const PropertyMapView = React.memo(function PropertyMapView({
             <Map
                 ref={mapRef}
                 mapStyle={mapStyleUrl}
-                standardConfig={mapType === 'default-3d' ? { ...standardConfig, show3dFacades: false } : undefined}
-                enable3DTerrain={terrainEnabled}
-                terrainExaggeration={1.5}
+                standardConfig={mapType === 'default-3d' ? flatStandardConfig : undefined}
                 initialViewState={{
                     longitude: bounds.centerLng || 120.596,
                     latitude: bounds.centerLat || 16.402,
                     zoom: 12, pitch: 0, bearing: 0,
                 }}
-                maxPitch={60}
+                maxPitch={0}
                 onClick={handleMapClick}
                 onMouseMove={handleMouseMove}
                 onMouseLeave={handleMouseLeave}
                 onLoad={handleMapLoad}
                 className="rounded-md overflow-hidden border border-slate-200 dark:border-slate-800"
             >
-                <NavigationControl position="top-right" showCompass visualizePitch />
+                <NavigationControl position="top-right" showCompass />
 
                 {/* Radius circle */}
                 {radiusCircleGeoJSON && (
@@ -421,15 +494,13 @@ const PropertyMapView = React.memo(function PropertyMapView({
                 ))}
 
                 {/* Nearby place dot markers */}
-                {selectedProperty && nearbyPlaceMarkers.map((place) => (
+                {anchorProperty && nearbyRadius !== null && nearbyPlaceMarkers.map((place) => (
                     <NearbyPlaceMarker
                         key={`${place.name}-${place.lat}-${place.lng}`}
                         place={place}
+                        variant="poi"
                         isSelected={activeGemName === place.name}
-                        onClick={(p) => {
-                            const gem = filteredGems.find(g => (g.properties?.name || g.name) === p.name);
-                            if (gem) handleGemClick(gem);
-                        }}
+                        onClick={handleNearbyPlaceClick}
                     />
                 ))}
 
@@ -493,18 +564,14 @@ const PropertyMapView = React.memo(function PropertyMapView({
                 </div>
             )}
 
-            {/* Nearby gems panel — slides up from bottom when a hotel is selected */}
-            {selectedProperty && (
-                <div className="absolute bottom-2 left-2 right-2 z-10">
-                    <MapGemsPanel
-                        gems={filteredGems}
-                        isLoading={isFetchingGems}
-                        selectedCategory={nearbyCategory}
-                        onCategoryChange={setNearbyCategory}
+            {/* Radius selector — controls how far out recommended places are shown.
+                Bottom-centred to clear the Mapbox logo (bottom-left) and attribution
+                (bottom-right). */}
+            {anchorProperty && (
+                <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-10">
+                    <MapRadiusSelector
                         radiusMeters={nearbyRadius}
                         onRadiusChange={setNearbyRadius}
-                        activeGemName={activeGemName}
-                        onGemClick={handleGemClick}
                     />
                 </div>
             )}
@@ -528,7 +595,7 @@ const PropertyMapView = React.memo(function PropertyMapView({
                 onClose={() => setShowDetailsPanel(false)}
                 mapType={mapType}
                 onMapTypeChange={setMapType}
-                details={mapDetails}
+                details={flatMapDetails}
                 onDetailToggle={handleDetailToggle}
                 showLabels={showLabels}
                 onLabelsToggle={() => setShowLabels((prev) => !prev)}

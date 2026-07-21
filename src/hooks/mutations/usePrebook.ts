@@ -3,6 +3,7 @@
 import { useMutation } from '@tanstack/react-query';
 import { useBookingActions } from '@/stores/bookingStore';
 import { apiFetch } from '@/lib/api/client';
+import { isRoomUnavailableError } from '@/lib/utils';
 import type { PrebookResponse } from '@/services';
 
 export interface UsePrebookOptions {
@@ -44,10 +45,13 @@ export function usePrebook(options?: UsePrebookOptions) {
       options?.onSuccess?.(data, variables);
     },
     onError: (error: Error) => {
-      console.error('[usePrebook] Error:', error);
-      const isUnavailable = /no longer available|not available|unavailable|sold out|no availability|try a different hotel|currently unavailable for booking/i.test(error.message);
-      if (isUnavailable) {
+      // "Room unavailable" is an expected outcome (prebook returned success:false),
+      // not a bug — log it as a warning so it doesn't surface in the Next.js dev
+      // error overlay. Only genuinely unexpected errors log as console.error.
+      if (isRoomUnavailableError(error.message)) {
         console.warn('[usePrebook] Room unavailable:', error.message);
+      } else {
+        console.error('[usePrebook] Error:', error);
       }
       options?.onError?.(error);
     },

@@ -19,6 +19,7 @@ import {
     type RegisterInput,
     type ProfileInput,
 } from "@/lib/schemas/auth";
+import { RETURN_TO_PARAM, safeReturnTo } from "@/lib/auth/returnTo";
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -52,7 +53,8 @@ interface AuthState {
     login: (email: string, password: string) => Promise<void>;
     register: (data: RegisterInput) => Promise<void>;
     logout: () => Promise<void>;
-    socialLogin: (provider: "google" | "apple" | "facebook") => Promise<void>;
+    /** `returnTo` overrides where the OAuth round trip lands; defaults to the current page. */
+    socialLogin: (provider: "google" | "apple" | "facebook", returnTo?: string) => Promise<void>;
     resetPassword: (email: string) => Promise<void>;
     resendConfirmation: (email: string) => Promise<void>;
     updateProfile: (data: ProfileInput) => Promise<void>;
@@ -149,11 +151,22 @@ export const useAuthStore = create<AuthState>((set, get) => {
                 set({ user: null });
             }),
 
-        socialLogin: async (provider) => {
+        socialLogin: async (provider, returnTo) => {
             // Redirect to server-side OAuth initiation route.
             // Currently only Google is supported.
             if (provider === 'google') {
-                window.location.href = '/api/auth/oauth/google';
+                // Where to land after Google sends the user back. Explicit arg wins,
+                // then a `next` already on the URL (we're on /login?next=…), then a
+                // path stashed by openAuthModal (in-page gate, e.g. flight booking),
+                // and finally wherever the user currently is.
+                let target = returnTo ?? null;
+                if (!target && typeof window !== 'undefined') {
+                    const urlNext = new URLSearchParams(window.location.search).get(RETURN_TO_PARAM);
+                    target = urlNext ?? get().redirectTo ?? window.location.pathname + window.location.search;
+                }
+                const safe = safeReturnTo(target);
+                const qs = safe === '/' ? '' : `?${RETURN_TO_PARAM}=${encodeURIComponent(safe)}`;
+                window.location.href = `/api/auth/oauth/google${qs}`;
                 return;
             }
             throw new Error(`OAuth provider "${provider}" is not configured yet.`);

@@ -3,6 +3,7 @@
 import { useEffect, useRef } from 'react';
 import { useSelectedRoom, useGuestCount } from '@/stores/bookingStore';
 import { useAuthStore, useUser } from '@/stores/authStore';
+import { isRoomUnavailableError } from '@/lib/utils';
 
 interface UseCheckoutPrebookOptions {
     selectedCurrency: string;
@@ -51,7 +52,7 @@ export function useCheckoutPrebook({
     // Auto-retry prebook after auth — only for auth errors, never for unavailable rooms
     useEffect(() => {
         const prebookKey = `${selectedRoom?.offerId}-${selectedCurrency}`;
-        const isUnavailable = /no longer available|not available|unavailable|sold out|no availability|try a different hotel|currently unavailable for booking/i.test(prebookError || '');
+        const isUnavailable = isRoomUnavailableError(prebookError);
         if (user && prebookError && !isUnavailable && selectedRoom?.offerId && !isAuthModalOpen) {
             prebookInitiatedRef.current = null;
             prebookFailedRef.current.delete(prebookKey);

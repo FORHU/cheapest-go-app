@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { PlaneTakeoff } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { AuthMode } from './types';
 
 interface AuthFooterProps {
@@ -10,16 +11,18 @@ interface AuthFooterProps {
 }
 
 export function AuthFooter({ mode, onToggleMode }: AuthFooterProps) {
+    const t = useTranslations('auth');
+
     return (
         <>
             {/* Toggle Mode */}
             <p className="mt-6 text-center text-sm text-slate-500 dark:text-slate-400">
-                {mode === 'signin' ? "Don't have an account? " : 'Already have an account? '}
+                {mode === 'signin' ? t('emailStep.noAccount') : t('emailStep.hasAccount')}{' '}
                 <button
                     onClick={onToggleMode}
                     className="text-blue-600 dark:text-blue-400 hover:underline font-medium"
                 >
-                    {mode === 'signin' ? 'Create one' : 'Sign in'}
+                    {mode === 'signin' ? t('actions.createOne') : t('actions.signIn')}
                 </button>
             </p>
 

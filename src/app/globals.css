@@ -286,22 +286,28 @@ body {
 
 /* ── Map Cursor ── */
 
-/* Mapbox GL JS resets canvas.style.cursor many times per second during its own
-   internal mousemove handling, so any CSS rule that relies on the inline style
-   being absent (cursor:'') loses the race. The fix: use !important on the canvas
-   so CSS beats Mapbox's inline-style resets unconditionally.
-   Pointer state is controlled by the has-pointer-cursor class on the container
-   (specificity 0,3,0 beats the grab rule's 0,2,0).
-   Grabbing is last in source order so it wins over pointer at equal specificity. */
+/* Chromium fails to PAINT the `grab`/`grabbing` cursor keywords over a
+   GPU-composited WebGL canvas (the Mapbox canvas): the computed value is
+   correct but no glyph is drawn, so the pointer looks like it vanished over
+   the map. Other keywords (`pointer`) paint fine — which is why hovering a POI
+   still shows a cursor. The fix is to supply an actual cursor IMAGE (a data-URI
+   SVG hand) instead of the keyword; an image cursor forces a paint and keeps
+   the grab-hand look. Each declaration keeps the bare keyword as a final
+   fallback in case the image ever fails to decode.
+   Pointer state is driven by the has-pointer-cursor class on the container
+   (set from JS on POI hover); its higher specificity wins over the grab rule. */
+:root {
+  --map-cursor-grab: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='26' height='26' viewBox='0 0 24 24'%3E%3Cpath d='M6 13V8.5a1.3 1.3 0 0 1 2.6 0V12h.6V6a1.3 1.3 0 0 1 2.6 0v6h.6V5.5a1.3 1.3 0 0 1 2.6 0V12h.6V7.5a1.3 1.3 0 0 1 2.6 0V15a6 6 0 0 1-6 6h-1a6 6 0 0 1-5.2-3l-2-3.5a1.3 1.3 0 0 1 2.2-1.3L6 14z' fill='%23fff' stroke='%23222' stroke-width='1'/%3E%3C/svg%3E") 12 12;
+  --map-cursor-grabbing: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='26' height='26' viewBox='0 0 24 24'%3E%3Cpath d='M6 12.5v-1a1.3 1.3 0 0 1 2.5-.5 1.3 1.3 0 0 1 2.5-.3 1.3 1.3 0 0 1 2.5-.1 1.3 1.3 0 0 1 2.5.4V15a6 6 0 0 1-6 6h-1a6 6 0 0 1-5.2-3l-1.6-2.8a1.3 1.3 0 0 1 2.2-1.3l.7 1.1z' fill='%23fff' stroke='%23222' stroke-width='1'/%3E%3C/svg%3E") 12 12;
+}
 .mapboxgl-map,
 .mapboxgl-canvas-container {
-  cursor: grab !important;
+  cursor: var(--map-cursor-grab), grab !important;
 }
 /* Target every canvas inside the map — Mapbox GL v3 Standard style can add
-   extra compositor canvases above .mapboxgl-canvas that have no class and
-   therefore no cursor, making the cursor invisible when those are on top. */
+   extra compositor canvases above .mapboxgl-canvas that have no class. */
 .mapboxgl-map canvas {
-  cursor: grab !important;
+  cursor: var(--map-cursor-grab), grab !important;
 }
 .mapboxgl-canvas-container.has-pointer-cursor .mapboxgl-canvas {
   cursor: pointer !important;
@@ -309,7 +315,7 @@ body {
 .mapboxgl-map:active,
 .mapboxgl-canvas-container:active,
 .mapboxgl-map:active canvas {
-  cursor: grabbing !important;
+  cursor: var(--map-cursor-grabbing), grabbing !important;
 }
 
 /* ── Map Performance Optimizations ── */

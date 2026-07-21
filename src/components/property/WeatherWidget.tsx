@@ -4,6 +4,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import Image from 'next/image';
 import { Droplets, Wind, Thermometer, Sun, Sunrise, Sunset, Umbrella, X, Cloud, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useTranslations } from 'next-intl';
+import { cn } from '@/lib/utils';
 import type { WeatherData } from '@/hooks/useWeather';
 
 interface WeatherWidgetProps {
@@ -16,6 +17,10 @@ interface WeatherWidgetProps {
 const formatTime = (isoStr: string) => {
     try {
         const d = new Date(isoStr);
+        // toLocaleTimeString() on an unparseable date returns the string
+        // "Invalid Date" instead of throwing, so the catch below never fires —
+        // guard explicitly or it leaks straight into the UI.
+        if (isNaN(d.getTime())) return '--:--';
         return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true });
     } catch {
         return '--:--';
@@ -43,12 +48,34 @@ const getUvLabel = (uv: number) => {
     return { labelKey: 'extreme', color: 'text-purple-500' };
 };
 
-/** Google Weather icon or fallback cloud icon */
-const WeatherIcon = ({ url, size = 20 }: { url: string | null; size?: number }) => {
-    if (url) {
-        return <Image src={url} alt="" width={size} height={size} className="shrink-0 select-none" draggable={false} unoptimized />;
+/**
+ * Google Weather icon with a coloured fallback.
+ *
+ * The remote icon is rendered unoptimized, so a null/404 URL previously left a
+ * blank gap with only a faint slate cloud behind it — which made the trigger chip
+ * look empty. Track load failures and fall back to a saturated icon instead.
+ */
+const WeatherIcon = ({ url, size = 20, className }: { url: string | null; size?: number; className?: string }) => {
+    const [failed, setFailed] = useState(false);
+
+    // Reset when the URL changes (e.g. after a refresh) so one bad icon isn't sticky.
+    useEffect(() => { setFailed(false); }, [url]);
+
+    if (url && !failed) {
+        return (
+            <Image
+                src={url}
+                alt=""
+                width={size}
+                height={size}
+                className={cn('shrink-0 select-none', className)}
+                draggable={false}
+                unoptimized
+                onError={() => setFailed(true)}
+            />
+        );
     }
-    return <Cloud size={size} className="text-slate-400 shrink-0" />;
+    return <Cloud size={size} className={cn('shrink-0', className ?? 'text-sky-500')} />;
 };
 
 export const WeatherWidget: React.FC<WeatherWidgetProps> = ({ weather, isLoading, isFullscreen = true }) => {
@@ -87,15 +114,20 @@ export const WeatherWidget: React.FC<WeatherWidgetProps> = ({ weather, isLoading
             {/* ── Trigger Button ── */}
             <button
                 onClick={(e) => { e.stopPropagation(); setOpen(o => !o); }}
-                className={`flex items-center rounded-xl shadow-lg border transition-all active:scale-95 cursor-pointer
+                aria-label={`Weather: ${current.temp}°, ${current.description}`}
+                className={`flex items-center rounded-xl shadow-sm border transition-all active:scale-95 cursor-pointer
                     ${isFullscreen ? 'gap-1.5 px-2.5 py-1.5' : 'gap-1 px-2 py-1'}
                     ${open
                         ? 'bg-blue-600 border-blue-600 text-white'
                         : 'bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800'
                     }`}
             >
-                <WeatherIcon url={open ? null : current.iconUrl} size={isFullscreen ? 18 : 16} />
-                <span className={`font-extrabold tracking-tight ${isFullscreen ? 'text-xs' : 'text-[10px]'} ${open ? 'text-white' : 'text-slate-800 dark:text-white'}`}>
+                <WeatherIcon
+                    url={open ? null : current.iconUrl}
+                    size={isFullscreen ? 20 : 16}
+                    className={open ? 'text-white' : 'text-sky-500'}
+                />
+                <span className={`font-extrabold tracking-tight tabular-nums ${isFullscreen ? 'text-xs' : 'text-[10px]'} ${open ? 'text-white' : 'text-slate-800 dark:text-white'}`}>
                     {current.temp}°
                 </span>
             </button>

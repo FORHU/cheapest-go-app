@@ -11,11 +11,7 @@ import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { getSqlAdmin } from '@/lib/db/postgres';
 import { createUserSession } from '@/lib/auth/session';
-
-function validateRedirectUrl(url: string): string {
-    if (!url.startsWith('/') || url.startsWith('//') || url.includes('://')) return '/';
-    return url;
-}
+import { RETURN_TO_COOKIE, safeReturnTo } from '@/lib/auth/returnTo';
 
 function getOrigin(request: Request): string {
     // Cloudflare can send comma-separated values — take the first only
@@ -128,10 +124,15 @@ export async function GET(request: Request) {
         return NextResponse.redirect(`${origin}/login?error=oauth_state`);
     }
 
+    // Where the user was before signing in — set by /api/auth/oauth/google.
+    // Read before the cookie is cleared below.
+    const returnTo = safeReturnTo(cookieStore.get(RETURN_TO_COOKIE)?.value);
+
     if (code && storedProvider === 'google') {
         // Clear state cookies
         cookieStore.delete('oauth_state');
         cookieStore.delete('oauth_provider');
+        cookieStore.delete(RETURN_TO_COOKIE);
 
         if (oauthErr) {
             console.error('[OAuth] Google error:', oauthErr);
@@ -155,7 +156,9 @@ export async function GET(request: Request) {
             const userId = await findOrCreateGoogleUser(googleUser);
             await createUserSession(userId);
 
-            return NextResponse.redirect(`${origin}/`);
+            // Back to the page that triggered the sign-in (e.g. /flights/book),
+            // so a half-filled form is still there. `/` only when there was none.
+            return NextResponse.redirect(`${origin}${returnTo}`);
         } catch (err: unknown) {
             const msg = err instanceof Error ? err.message : String(err);
             console.error('[OAuth] Google callback error:', msg);
@@ -168,7 +171,7 @@ export async function GET(request: Request) {
         const { getSession } = await import('@/lib/auth/session');
         const { user } = await getSession();
         if (user) {
-            const target = user.role === 'admin' ? '/admin' : validateRedirectUrl(searchParams.get('next') || '/');
+            const target = user.role === 'admin' ? '/admin' : safeReturnTo(searchParams.get('next') || returnTo);
             return NextResponse.redirect(`${origin}${target}`);
         }
     } catch (err: unknown) {

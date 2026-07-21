@@ -117,60 +117,61 @@ export function BookingDestinationView() {
 
     return (
         <div className="w-full h-[calc(100dvh-4rem)] min-h-[560px] flex flex-col">
-            {/* ── Top bar: booking confirmation + trip widgets ── */}
-            <div className="shrink-0 z-30 flex items-center justify-between gap-2 px-3 sm:px-5 py-2.5 border-b border-slate-200 dark:border-slate-800 bg-white/85 dark:bg-slate-950/85 backdrop-blur-xl">
-                {/* Confirmation */}
-                <div className="flex items-center gap-2.5 min-w-0">
-                    <div className="flex items-center justify-center w-9 h-9 rounded-xl bg-emerald-100 dark:bg-emerald-900/40 shrink-0">
-                        <CheckCircle className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
-                    </div>
-                    <div className="min-w-0">
-                        <div className="flex items-center gap-1.5">
-                            <p className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wide">{t('confirmed')}</p>
-                            {bookingId && (
-                                <span className="hidden sm:inline font-mono text-[10px] font-bold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded">
-                                    #{bookingId}
-                                </span>
-                            )}
-                            <span className="hidden lg:inline text-[10px] text-slate-400 dark:text-slate-500">· {t('emailed')}</span>
+            <div className="shrink-0 z-30 border-b border-slate-200 dark:border-slate-800 bg-white/85 dark:bg-slate-950/85 backdrop-blur-xl">
+                <div className="max-w-[1400px] mx-auto px-4 sm:px-6 py-2.5 flex items-center justify-between gap-2">
+                    {/* Confirmation */}
+                    <div className="flex items-center gap-2.5 min-w-0">
+                        <div className="flex items-center justify-center w-9 h-9 rounded-xl bg-emerald-100 dark:bg-emerald-900/40 shrink-0">
+                            <CheckCircle className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
                         </div>
-                        <p className="truncate text-sm font-bold text-slate-900 dark:text-white leading-tight">
-                            {hotel.name}
-                            {checkIn && checkOut && (
-                                <span className="hidden md:inline text-slate-400 dark:text-slate-500 font-medium">
-                                    {' · '}{dateFmt(checkIn)} – {dateFmt(checkOut)}
-                                </span>
-                            )}
-                        </p>
+                        <div className="min-w-0">
+                            <div className="flex items-center gap-1.5">
+                                <p className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wide">{t('confirmed')}</p>
+                                {bookingId && (
+                                    <span className="hidden sm:inline font-mono text-[10px] font-bold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded">
+                                        #{bookingId}
+                                    </span>
+                                )}
+                                <span className="hidden lg:inline text-[10px] text-slate-400 dark:text-slate-500">· {t('emailed')}</span>
+                            </div>
+                            <p className="truncate text-sm font-bold text-slate-900 dark:text-white leading-tight">
+                                {hotel.name}
+                                {checkIn && checkOut && (
+                                    <span className="hidden md:inline text-slate-400 dark:text-slate-500 font-medium">
+                                        {' · '}{dateFmt(checkIn)} – {dateFmt(checkOut)}
+                                    </span>
+                                )}
+                            </p>
+                        </div>
                     </div>
-                </div>
 
-                {/* Widgets */}
-                <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
-                    <DestinationClocks
-                        originLabel={originLabel}
-                        originTimeZone={originTimeZone}
-                        destinationLabel={destinationLabel}
-                        destinationTimeZone={destTimeZone}
-                    />
-                    <CurrencyConverterCard
-                        originCurrency={userCurrency}
-                        destinationCurrency={destinationCurrency}
-                    />
-                    <WeatherWidget weather={weather} isLoading={weatherLoading} onRefresh={refetch} isFullscreen />
-                    <button
-                        onClick={() => router.push('/trips')}
-                        className="hidden sm:flex items-center gap-1.5 rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 px-3 py-1.5 text-xs font-bold hover:opacity-90 transition-opacity active:scale-95"
-                    >
-                        <Luggage size={14} />
-                        <span className="hidden md:inline">{t('myTrips')}</span>
-                        <ArrowRight size={13} />
-                    </button>
+                    {/* Widgets */}
+                    <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+                        <DestinationClocks
+                            originLabel={originLabel}
+                            originTimeZone={originTimeZone}
+                            destinationLabel={destinationLabel}
+                            destinationTimeZone={destTimeZone}
+                        />
+                        <CurrencyConverterCard
+                            originCurrency={userCurrency}
+                            destinationCurrency={destinationCurrency}
+                        />
+                        <WeatherWidget weather={weather} isLoading={weatherLoading} onRefresh={refetch} isFullscreen />
+                        <button
+                            onClick={() => router.push('/trips')}
+                            className="hidden sm:flex items-center gap-1.5 rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 px-3 py-1.5 text-xs font-bold hover:opacity-90 transition-opacity active:scale-95"
+                        >
+                            <Luggage size={14} />
+                            <span className="hidden md:inline">{t('myTrips')}</span>
+                            <ArrowRight size={13} />
+                        </button>
+                    </div>
                 </div>
             </div>
 
             {/* ── Map (≥80% of the page) ── */}
-            <div className="relative flex-1 min-h-0">
+            <div className="relative flex-1 min-h-0 w-full max-w-[1400px] mx-auto px-4 sm:px-6 pt-4 pb-4">
                 <PropertyMapView
                     properties={properties}
                     selectedId={selectedId}
