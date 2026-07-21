@@ -1,40 +1,60 @@
 import React from 'react';
 import { Source, Layer } from 'react-map-gl/mapbox';
-import { clusterLayer, clusterCountLayer, unclusteredPointLayer, unclusteredPointTextLayer } from '../utils/mapLayerConfig';
+import { clusterLayer, clusterCountLayer, unclusteredBgLayer, unclusteredPriceLayer, clusterGlowLayer } from '../utils/mapLayerConfig';
 
 interface ClusterLayerProps {
     geoJsonData: any;
     shouldCluster: boolean;
-    selectedId: string | null;
+    targetCurrency: string;
+    symbol: string;
 }
 
-export const ClusterLayer = React.memo(({
-    geoJsonData,
-    shouldCluster,
-    selectedId,
-}: ClusterLayerProps) => {
+export const ClusterLayer = React.memo(({ geoJsonData, shouldCluster, targetCurrency, symbol }: ClusterLayerProps) => {
+    // Format for abbreviated prices (e.g., 1200 -> 1.2k). Sentinel 999_999_999 means all hotels still loading.
+    const priceTextField = [
+        'case',
+        ['>=', ['get', 'minPrice'], 999_999_999],
+        '···',
+        ['concat',
+            symbol,
+            [
+                'case',
+                ['>=', ['get', 'minPrice'], 1000000],
+                ['concat', ['round', ['/', ['get', 'minPrice'], 1000000]], 'M'],
+                ['>=', ['get', 'minPrice'], 1000],
+                ['concat', ['round', ['/', ['get', 'minPrice'], 1000]], 'k'],
+                ['to-string', ['round', ['get', 'minPrice']]]
+            ],
+            '+'
+        ]
+    ];
+
     return (
         <Source
             id="properties"
             type="geojson"
             data={geoJsonData}
             cluster={shouldCluster}
-            clusterMaxZoom={14}
-            clusterRadius={50}
+            clusterMaxZoom={16}
+            clusterRadius={60}
+            clusterProperties={{
+                minPrice: ['min', ['get', 'convertedPrice']]
+            }}
+            promoteId="id"
         >
             {/* Cluster Layers */}
+            <Layer {...clusterGlowLayer as any} />
             <Layer {...clusterLayer as any} />
-            <Layer {...clusterCountLayer as any} />
+            <Layer
+                {...clusterCountLayer as any}
+                layout={{
+                    ...clusterCountLayer.layout as any,
+                    'text-field': priceTextField as any
+                }}
+            />
 
-            {/* Point Layers */}
-            <Layer
-                {...unclusteredPointLayer as any}
-                filter={selectedId ? ['all', ['!', ['has', 'point_count']], ['!=', ['get', 'id'], selectedId]] : ['!', ['has', 'point_count']]}
-            />
-            <Layer
-                {...unclusteredPointTextLayer as any}
-                filter={selectedId ? ['all', ['!', ['has', 'point_count']], ['!=', ['get', 'id'], selectedId]] : ['!', ['has', 'point_count']]}
-            />
+            {/* Unclustered Property Layers (WebGL) - Removed in favor of React MapMarkers */}
         </Source>
     );
 });
+

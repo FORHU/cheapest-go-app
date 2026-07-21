@@ -3,8 +3,14 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { Smartphone, Star, Download, ChevronRight } from 'lucide-react';
+import { usePWAInstall } from '@/contexts/PWAInstallContext';
+import { useTranslations } from 'next-intl';
 
 const AppBanner = () => {
+  const { isInstallable, isIOS, isInstalled, triggerInstall } = usePWAInstall();
+  const canInstall = !isInstalled && (isInstallable || isIOS);
+  const t = useTranslations('appBanner');
+
   return (
     <section className="w-full py-3 md:py-6 landscape-compact:py-1">
       <div className="max-w-[1400px] mx-auto px-4 sm:px-6">
@@ -76,14 +82,14 @@ const AppBanner = () => {
                 >
                   <div className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-white/20 backdrop-blur-sm rounded-full mb-2">
                     <Smartphone size={11} className="text-white" />
-                    <span className="text-[10px] font-medium text-white">Mobile App</span>
+                    <span className="text-[10px] font-medium text-white">{t('badge')}</span>
                   </div>
 
                   <h3 className="text-sm sm:text-xl md:text-2xl font-display font-bold text-white mb-1.5 leading-tight">
-                    Travel smarter with our app
+                    {t('title')}
                   </h3>
                   <p className="text-[11px] sm:text-sm text-white/80 leading-relaxed max-w-md">
-                    Get exclusive app-only deals, instant notifications, and manage your trips on the go.
+                    {t('subtitle')}
                   </p>
                 </motion.div>
               </div>
@@ -101,15 +107,15 @@ const AppBanner = () => {
               <div className="flex justify-center gap-5">
                 <div>
                   <div className="text-base sm:text-xl font-mono font-bold text-white leading-tight">10M+</div>
-                  <div className="text-[10px] sm:text-xs text-white/60">Downloads</div>
+                  <div className="text-[10px] sm:text-xs text-white/60">{t('downloads')}</div>
                 </div>
                 <div>
                   <div className="text-base sm:text-xl font-mono font-bold text-white leading-tight">4.9</div>
-                  <div className="text-[10px] sm:text-xs text-white/60">App Rating</div>
+                  <div className="text-[10px] sm:text-xs text-white/60">{t('rating')}</div>
                 </div>
                 <div>
                   <div className="text-base sm:text-xl font-mono font-bold text-white leading-tight">15%</div>
-                  <div className="text-[10px] sm:text-xs text-white/60">Extra Savings</div>
+                  <div className="text-[10px] sm:text-xs text-white/60">{t('savings')}</div>
                 </div>
               </div>
 
@@ -118,10 +124,11 @@ const AppBanner = () => {
                 <motion.button
                   whileHover={{ scale: 1.03 }}
                   whileTap={{ scale: 0.98 }}
+                  onClick={canInstall ? triggerInstall : undefined}
                   className="flex justify-center items-center gap-1.5 px-4 py-2 bg-white text-slate-900 rounded-xl font-medium shadow-lg w-full sm:w-auto text-sm"
                 >
                   <Download size={15} />
-                  Download App
+                  {canInstall ? t('installBtn') : t('downloadBtn')}
                   <ChevronRight size={13} />
                 </motion.button>
                 <motion.button
@@ -129,7 +136,7 @@ const AppBanner = () => {
                   whileTap={{ scale: 0.98 }}
                   className="flex justify-center items-center gap-2 px-4 py-2 bg-white/20 text-white rounded-xl font-medium border border-white/30 backdrop-blur-sm w-full sm:w-auto text-sm"
                 >
-                  Learn More
+                  {t('learnMore')}
                 </motion.button>
               </div>
             </motion.div>

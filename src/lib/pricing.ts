@@ -1,0 +1,241 @@
+/**
+ * ─── Markup & Pricing Strategy ────────────────────────────────────────────────
+ *
+ * CheapestGo's markup is set to break even on Stripe processing fees only.
+ * Goal: collect exactly enough to cover Stripe (2.9% + $0.30 per transaction)
+ * with a small buffer for refunds and disputes. No profit margin is intended.
+ *
+ * Stripe account: US-registered, USD default (confirmed 2026-07-21).
+ * Stripe fee formula: chargedPrice × 0.029 + $0.30
+ *
+ * ## Break-even math
+ *
+ *   Break-even markup = (0.029 × basePrice + 0.30) / (0.971 × basePrice)
+ *                     ≈ 3.0% for any ticket above ~$100
+ *
+ *   We use 3.5% for flights and 5% for hotels to add a buffer for:
+ *     - Stripe refund fee (Stripe keeps the processing fee on refunds)
+ *     - Stripe dispute fee ($15 per chargeback)
+ *     - Stripe Radar fee ($0.05 per screened transaction if enabled)
+ *
+ * FLIGHTS — 4% markup
+ *   Raised from 3.5% because sub-$60 routes are common (Korean/SEA market) and
+ *   the Stripe $0.30 flat fee makes 3.5% go negative below ~$57.
+ *   At 4%, net after Stripe fees is approximately:
+ *     $50  flight → $52.00 charged → ~$0.19 buffer
+ *     $100 flight → $104.00 charged → ~$0.71 buffer
+ *     $300 flight → $312.00 charged → ~$2.75 buffer
+ *     $500 flight → $520.00 charged → ~$4.62 buffer
+ *
+ * HOTELS — 5% markup
+ *   Higher buffer to absorb the greater refund risk on multi-night stays.
+ *   At 5%, net after Stripe fees is approximately:
+ *     $300 hotel → $315.00 charged → ~$5.57 buffer
+ *     $600 hotel → $630.00 charged → ~$11.43 buffer
+ *
+ * ## How it works technically
+ *
+ *   1. Provider prices the fare at e.g. $300 (original cost).
+ *   2. We multiply by (1 + MARKUP_RATE) to get the customer price ($315).
+ *   3. Stripe charges the customer $315.
+ *   4. We pay the provider $300 from our Duffel balance / supplier account.
+ *   5. We keep the $15 difference, minus Stripe's ~$9.44 fee = ~$5.57 buffer.
+ *
+ *   Both the original price and the charged price are stored in the DB so
+ *   finance reporting always has an accurate margin view.
+ *
+ * ## Future: Bundles (flight + hotel)
+ *   Blended rate of 4% — between the flight and hotel rates.
+ *
+ * ─── Changing rates ───────────────────────────────────────────────────────────
+ *
+ *   Override via environment variables (no code change needed):
+ *     FLIGHT_MARKUP_PERCENTAGE=0.035   # 3.5%
+ *     HOTEL_MARKUP_PERCENTAGE=0.05     # 5%
+ *     BUNDLE_MARKUP_PERCENTAGE=0.04    # 4% — not yet active
+ *
+ *   Rates are clamped between 0 and 0.50 (50%) to prevent misconfiguration
+ *   from charging customers absurd prices.
+ *
+ * ─────────────────────────────────────────────────────────────────────────────
+ */
+
+// ── Default rates (overridable via env) ─────────────────────────────────────
+
+/** 4% — covers Stripe fees (2.9% + $0.30) including sub-$60 routes (Korean market) */
+export const FLIGHT_MARKUP = parseMarkupEnv('FLIGHT_MARKUP_PERCENTAGE', 0.04);
+
+/** 5% — covers Stripe fees with a larger buffer for multi-night refund risk */
+export const HOTEL_MARKUP = parseMarkupEnv('HOTEL_MARKUP_PERCENTAGE', 0.05);
+
+/** 4% — blended rate for flight + hotel bundles; not yet active */
+export const BUNDLE_MARKUP = parseMarkupEnv('BUNDLE_MARKUP_PERCENTAGE', 0.04);
+
+// Log effective rates once at module load so they appear in Vercel/server startup logs.
+// Makes misconfiguration immediately visible without needing to trace a booking.
+if (typeof process !== 'undefined') {
+    console.log(
+        `[pricing] Effective markup rates — ` +
+        `flights: ${(FLIGHT_MARKUP * 100).toFixed(1)}% ` +
+        `hotels: ${(HOTEL_MARKUP * 100).toFixed(1)}% ` +
+        `bundles: ${(BUNDLE_MARKUP * 100).toFixed(1)}%`
+    );
+}
+
+// ── Stripe fee constants ─────────────────────────────────────────────────────
+
+/** Stripe percentage fee per transaction (2.9%) */
+export const STRIPE_RATE = 0.029;
+
+/** Stripe flat fee per transaction in major currency units (USD $0.30, GBP £0.20, etc.) */
+export const STRIPE_FLAT_FEE = 0.30;
+
+// ── Core functions ───────────────────────────────────────────────────────────
+
+/**
+ * Apply a markup rate to a base price.
+ *
+ * @param basePrice  - Raw provider fare (what we pay the supplier)
+ * @param markupRate - Decimal markup (e.g. 0.08 for 8%)
+ * @returns          - Object with both the original and marked-up price
+ *
+ * @example
+ *   const { originalPrice, chargedPrice, markupAmount } = applyMarkup(500, FLIGHT_MARKUP);
+ *   // originalPrice: 500, chargedPrice: 540, markupAmount: 40
+ */
+export function applyMarkup(basePrice: number, markupRate: number): {
+    originalPrice: number;
+    chargedPrice: number;
+    markupAmount: number;
+    markupRate: number;
+} {
+    const chargedPrice = round2(basePrice * (1 + markupRate));
+    return {
+        originalPrice: round2(basePrice),
+        chargedPrice,
+        markupAmount: round2(chargedPrice - basePrice),
+        markupRate,
+    };
+}
+
+/**
+ * Convert a price to the integer amount Stripe expects.
+ *
+ * Stripe uses the smallest currency unit (cents for USD/EUR/GBP, etc.).
+ * Zero-decimal currencies (JPY, KRW, etc.) are passed as-is.
+ *
+ * @param price    - Price in major currency units (e.g. 540.00 USD)
+ * @param currency - ISO 4217 currency code (case-insensitive)
+ * @returns        - Integer amount for Stripe `amount` field
+ */
+export function toStripeAmount(price: number, currency: string): number {
+    return ZERO_DECIMAL_CURRENCIES.has(currency.toLowerCase())
+        ? Math.round(price)
+        : Math.round(price * 100);
+}
+
+/**
+ * Estimate net profit after applying markup and deducting Stripe fees.
+ * Useful for finance reporting — not used in the payment flow itself.
+ *
+ * @param basePrice  - Raw provider fare
+ * @param markupRate - Decimal markup applied
+ * @returns          - Approximate net profit after Stripe fees
+ */
+export function estimateNetProfit(basePrice: number, markupRate: number): number {
+    const { chargedPrice, markupAmount } = applyMarkup(basePrice, markupRate);
+    const stripeFee = calculateStripeFee(chargedPrice);
+    return round2(markupAmount - stripeFee);
+}
+
+/**
+ * Calculate Stripe fees for a given charged price.
+ *
+ * @param chargedPrice - Amount the customer actually paid
+ * @returns - Stripe fee amount
+ */
+export function calculateStripeFee(chargedPrice: number): number {
+    return round2(chargedPrice * STRIPE_RATE + STRIPE_FLAT_FEE);
+}
+
+/**
+ * Enriches a booking object with financial details (markup, supplier cost, net profit).
+ * Uses estimated formulas if data is missing from the database.
+ * 
+ * Formulas:
+ * - Standard (Flight): totalPrice / 1.04  (4% markup)
+ * - Standard (Hotel):  totalPrice / 1.05  (5% markup)
+ * - Bundle:           totalPrice / 1.04   (4% markup)
+ */
+export function enrichBookingFinances<T extends { 
+    type: string; 
+    totalAmount: number; 
+    supplierCost: number; 
+    markupAmount: number; 
+    profit: number;
+    markup_pct?: number;
+}>(booking: T): T & { 
+    markupPercentage: number; 
+    stripeFee: number;
+    isEstimated: boolean;
+} {
+    let markupRate = HOTEL_MARKUP; // default
+    if (booking.type === 'flight') markupRate = FLIGHT_MARKUP;
+    if (booking.type === 'bundle' || booking.type === 'hotel_bundle') markupRate = BUNDLE_MARKUP;
+
+    // Use stored markup percentage if available
+    if (booking.markup_pct) {
+        markupRate = booking.markup_pct;
+    }
+
+    let supplierCost = booking.supplierCost;
+    let markupAmount = booking.markupAmount;
+    let isEstimated = false;
+
+    // Fallback logic for missing financial data
+    if (supplierCost === 0 || supplierCost === booking.totalAmount) {
+        // supplierCost = totalPrice / (1 + rate)
+        supplierCost = round2(booking.totalAmount / (1 + markupRate));
+        markupAmount = round2(booking.totalAmount - supplierCost);
+        isEstimated = true;
+    } else if (markupAmount === 0 && supplierCost < booking.totalAmount) {
+        markupAmount = round2(booking.totalAmount - supplierCost);
+    }
+
+    const stripeFee = calculateStripeFee(booking.totalAmount);
+    const netProfit = round2(markupAmount - stripeFee);
+
+    return {
+        ...booking,
+        supplierCost,
+        markupAmount,
+        profit: netProfit,
+        markupPercentage: Number((markupRate * 100).toFixed(2)),
+        stripeFee,
+        isEstimated
+    };
+}
+
+// ── Helpers ──────────────────────────────────────────────────────────────────
+
+/** Currencies where Stripe expects the amount in whole units (no cents) */
+const ZERO_DECIMAL_CURRENCIES = new Set([
+    'bif', 'clp', 'djf', 'gnf', 'jpy', 'kmf', 'krw', 'mga',
+    'pyg', 'rwf', 'ugx', 'vnd', 'vuv', 'xaf', 'xof', 'xpf',
+]);
+
+function round2(n: number): number {
+    return Math.round(n * 100) / 100;
+}
+
+/**
+ * Read a markup rate from an environment variable.
+ * Clamps to [0, 0.50] to prevent misconfiguration from overcharging customers.
+ */
+function parseMarkupEnv(key: string, defaultValue: number): number {
+    const raw = process.env[key];
+    if (!raw) return defaultValue;
+    const parsed = parseFloat(raw);
+    if (isNaN(parsed)) return defaultValue;
+    return Math.max(0, Math.min(0.50, parsed));
+}

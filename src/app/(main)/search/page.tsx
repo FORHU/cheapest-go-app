@@ -1,86 +1,55 @@
-import { Suspense } from 'react';
-import SearchFilters from '@/components/search/SearchFilters';
-import SearchResults from '@/components/search/SearchResults';
-import { SearchMapView } from '@/components/search/SearchMapView';
-import { ResponsiveSearchHeader } from '@/components/search/ResponsiveSearchHeader';
-import BackButton from '@/components/common/BackButton';
-import { fetchSearchProperties, fetchFacilities } from '@/lib/search';
+import { HotelResultsClient } from '@/components/search/HotelResultsClient';
+import { MapResultsClient } from '@/components/search/MapResultsClient';
+import { CountryCityPicker } from '@/components/search/CountryCityPicker';
+import { getTranslations } from 'next-intl/server';
 
-export const metadata = {
-    title: 'Search Results - CheapestGo',
-    description: 'Find your perfect stay.',
-};
+export const dynamic = 'force-dynamic';
+
+export async function generateMetadata() {
+    const t = await getTranslations('hotels.searchPage');
+    const brandName = process.env.NEXT_PUBLIC_BRAND_NAME ?? 'CheapestGo';
+    return {
+        title: t('title', { brand: brandName }),
+        description: t('description', { brand: brandName }),
+        robots: { index: false, follow: false },
+        alternates: { canonical: '/search' },
+    };
+}
 
 export default async function SearchPage(props: {
     searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }) {
     const searchParams = await props.searchParams;
-    const viewMode = searchParams.view === 'map' ? 'map' : 'list';
 
-    // Parallel fetch: properties and facilities
-    const [initialProperties, initialFacilities] = await Promise.all([
-        fetchSearchProperties(searchParams as any),
-        fetchFacilities(),
-    ]);
+    const flatParams = Object.fromEntries(
+        Object.entries(searchParams).map(([k, v]) => [k, Array.isArray(v) ? v[0] ?? '' : v ?? ''])
+    ) as Record<string, string>;
 
-    // ─── MAP VIEW: Full Agoda-style split layout ────────────────────
+    const dest = flatParams.destination || '';
+    const viewMode = flatParams.view || 'map';
+
+    // ─── MAP VIEW ───────────────────────────────────────────────────
     if (viewMode === 'map') {
         return (
-            <main className="h-[calc(100vh-64px)] w-full overflow-hidden">
-                <Suspense
-                    fallback={
-                        <div className="flex h-full items-center justify-center">
-                            <div className="animate-pulse text-sm text-slate-500">Loading map...</div>
-                        </div>
-                    }
-                >
-                    <SearchMapView
-                        properties={initialProperties}
-                        destination={searchParams.destination as string || ''}
-                    />
-                </Suspense>
+            <main className="h-[calc(100dvh-109px)] md:h-[calc(100dvh-121px)] lg:h-[calc(100dvh-57px)] w-full overflow-hidden flex flex-col">
+                {flatParams.destinationType === 'country' && (
+                    <div className="shrink-0 px-3 pt-2">
+                        <CountryCityPicker searchParams={flatParams} />
+                    </div>
+                )}
+                <div className="flex-1 overflow-hidden">
+                    <MapResultsClient searchParams={flatParams} destination={dest} />
+                </div>
             </main>
         );
     }
 
-    // ─── LIST VIEW: Normal search page layout ───────────────────────
+    // ─── LIST VIEW ──────────────────────────────────────────────────
     return (
-        <main className="min-h-screen pt-3 md:pt-6 pb-8 md:pb-16 px-3 md:px-6">
-            <div className="max-w-[1400px] mx-auto">
-                {/* Back to Home */}
-                <div className="hidden lg:block mb-4">
-                    <BackButton label="Back to Home" href="/" />
-                </div>
-
-                {/* Responsive Compact Header */}
-                <ResponsiveSearchHeader />
-            </div>
-
-            <div className="max-w-[1400px] mx-auto flex flex-col lg:flex-row gap-4 sm:gap-6 lg:gap-8">
-                <Suspense fallback={
-                    <div className="w-full flex-shrink-0 lg:w-[280px] space-y-4">
-                        <div className="h-32 bg-slate-200 dark:bg-slate-700 rounded-xl animate-pulse" />
-                        <div className="h-8 bg-slate-200 dark:bg-slate-700 rounded w-1/2 animate-pulse" />
-                        <div className="space-y-3">
-                            {[1, 2, 3, 4, 5].map(i => (
-                                <div key={i} className="h-10 bg-slate-200 dark:bg-slate-700 rounded animate-pulse" />
-                            ))}
-                        </div>
-                    </div>
-                }>
-                    <SearchFilters
-                        initialFacilities={initialFacilities}
-                        previewCoordinates={
-                            initialProperties && initialProperties.length > 0 &&
-                                initialProperties[0].coordinates &&
-                                initialProperties[0].coordinates.lat !== 0
-                                ? initialProperties[0].coordinates
-                                : null
-                        }
-                    />
-                </Suspense>
-                <SearchResults initialProperties={initialProperties} />
-            </div>
-        </main>
+        <div className="max-w-[1400px] mx-auto px-4 sm:px-6 py-6">
+            <HotelResultsClient
+                searchParams={flatParams}
+            />
+        </div>
     );
 }

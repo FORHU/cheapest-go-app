@@ -1,34 +1,28 @@
 "use client";
 
+/**
+ * AuthListener — initialises the client-side auth state on page load.
+ *
+ * After Supabase migration this component polls /api/auth/me once on mount
+ * instead of using Supabase's real-time onAuthStateChange subscription.
+ * The Lucia session cookie is validated server-side on every request by
+ * the middleware, so no polling is needed for security — this is only
+ * for hydrating the Zustand store with the current user on initial render.
+ */
+
 import { useEffect } from 'react';
-import { createClient } from '@/utils/supabase/client';
 import { useAuthStore } from '@/stores/authStore';
 
 export const AuthListener = () => {
-    const { syncSession } = useAuthStore();
-    const supabase = createClient();
+    const { initSession, fetchAndSyncRole } = useAuthStore();
 
     useEffect(() => {
-        // Initialize
-        const initializeAuth = async () => {
-            try {
-                const { data: { session } } = await supabase.auth.getSession();
-                syncSession(session);
-            } catch (error) {
-                console.error('Error initializing auth:', error);
-            }
+        const init = async () => {
+            await initSession();
+            await fetchAndSyncRole();
         };
-        initializeAuth();
-
-        // Listen
-        const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-            syncSession(session);
-        });
-
-        return () => {
-            subscription.unsubscribe();
-        };
-    }, [syncSession]);
+        init();
+    }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
     return null;
 };

@@ -1,5 +1,20 @@
 import { LayerProps } from 'react-map-gl/mapbox';
 
+// ─── Cluster layers ──────────────────────────────────────────────────────────
+
+export const clusterGlowLayer: LayerProps = {
+    id: 'clusters-glow',
+    type: 'circle',
+    source: 'properties',
+    filter: ['has', 'point_count'],
+    paint: {
+        'circle-color': ['step', ['get', 'point_count'], '#3b82f6', 10, '#2563eb', 30, '#1d4ed8'],
+        'circle-radius': ['step', ['get', 'point_count'], 20, 10, 25, 30, 30],
+        'circle-blur': 0.8,
+        'circle-opacity': 0.4,
+    },
+};
+
 export const clusterLayer: LayerProps = {
     id: 'clusters',
     type: 'circle',
@@ -7,9 +22,10 @@ export const clusterLayer: LayerProps = {
     filter: ['has', 'point_count'],
     paint: {
         'circle-color': ['step', ['get', 'point_count'], '#3b82f6', 10, '#2563eb', 30, '#1d4ed8'],
-        'circle-radius': ['step', ['get', 'point_count'], 15, 10, 20, 30, 25],
-        'circle-stroke-width': 2,
+        'circle-radius': ['step', ['get', 'point_count'], 18, 10, 23, 30, 28],
+        'circle-stroke-width': 3,
         'circle-stroke-color': '#ffffff',
+        'circle-stroke-opacity': 0.9,
     },
 };
 
@@ -20,39 +36,86 @@ export const clusterCountLayer: LayerProps = {
     filter: ['has', 'point_count'],
     layout: {
         'text-field': '{point_count_abbreviated}',
-        'text-font': ['DIN Offc Pro Medium', 'Arial Unicode MS Bold'],
-        'text-size': 12,
+        'text-font': ['Open Sans Bold', 'Arial Unicode MS Bold'],
+        'text-size': 14,
     },
     paint: {
         'text-color': '#ffffff',
     },
 };
 
-export const unclusteredPointLayer: LayerProps = {
-    id: 'unclustered-point',
+// ─── Unclustered property marker layers ──────────────────────────────────────
+// These are GPU-rendered (WebGL) alternatives to per-property React <Marker>
+// components. Switching to these layers removes N DOM nodes from the page,
+// which eliminates the CSS transform layout thrashing that caused map pan lag.
+
+/**
+ * White circle pill background.
+ * Uses feature-state "hover" for the blue ring on hover,
+ * and feature-state "selected" for the elevated selected look.
+ */
+export const unclusteredBgLayer: LayerProps = {
+    id: 'unclustered-point',           // kept as 'unclustered-point' so existing queryRenderedFeatures checks still match
     type: 'circle',
     source: 'properties',
     filter: ['!', ['has', 'point_count']],
     paint: {
-        'circle-color': '#ffffff',
-        'circle-radius': 16,
-        'circle-stroke-width': 1,
-        'circle-stroke-color': '#94a3b8',
+        'circle-radius': [
+            'interpolate', ['linear'], ['zoom'],
+            10, 12,
+            15, 18,
+        ],
+        'circle-color': [
+            'case',
+            ['boolean', ['feature-state', 'selected'], false], '#3b82f6',
+            '#ffffff'
+        ],
+        'circle-stroke-width': [
+            'case',
+            ['boolean', ['feature-state', 'hover'], false], 2.5,
+            ['boolean', ['feature-state', 'selected'], false], 0,
+            1.5
+        ],
+        'circle-stroke-color': [
+            'case',
+            ['boolean', ['feature-state', 'hover'], false], '#3b82f6',
+            '#d1d5db'
+        ],
+        'circle-opacity': 0.97,
+        'circle-translate': [0, 0],
+        'circle-pitch-alignment': 'viewport',
     },
 };
 
-export const unclusteredPointTextLayer: LayerProps = {
+/**
+ * Price text on top of the circle.
+ * Colour inverts when the marker is selected (white-on-blue).
+ */
+export const unclusteredPriceLayer: LayerProps = {
     id: 'unclustered-point-text',
     type: 'symbol',
     source: 'properties',
     filter: ['!', ['has', 'point_count']],
     layout: {
-        'text-field': ['get', 'formattedPrice'],
-        'text-font': ['DIN Offc Pro Medium', 'Arial Unicode MS Bold'],
-        'text-size': 10,
-        'text-offset': [0, 0],
+        'text-field': ['get', 'displayPrice'],
+        'text-font': ['Open Sans Bold', 'Arial Unicode MS Bold'],
+        'text-size': [
+            'interpolate', ['linear'], ['zoom'],
+            10, 9,
+            15, 11,
+        ],
+        'text-anchor': 'center',
+        'text-allow-overlap': true,
+        'text-ignore-placement': true,
+        'text-pitch-alignment': 'viewport',
     },
     paint: {
-        'text-color': '#0f172a',
+        'text-color': [
+            'case',
+            ['boolean', ['feature-state', 'selected'], false], '#ffffff',
+            '#1e293b'
+        ],
+        'text-halo-color': 'rgba(0,0,0,0)',
+        'text-halo-width': 0,
     },
 };

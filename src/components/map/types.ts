@@ -1,4 +1,4 @@
-import type { Property } from '@/data/mockProperties';
+import { type Property } from '@/types';
 
 /** Props shared across map components for selection sync */
 export interface MapSelectionProps {

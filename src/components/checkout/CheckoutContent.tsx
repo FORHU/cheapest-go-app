@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useCallback, useEffect } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
     useProperty,
     useSelectedRoom,
@@ -12,33 +12,51 @@ import {
 import { useAuthStore, useUser } from '@/stores/authStore';
 import {
     useVoucherState,
-    useCheckoutStore,
+    useCheckoutActions,
 } from '@/stores/checkoutStore';
+import { useUserCurrency } from '@/stores/searchStore';
 import {
     useBookingFlow,
     useCheckoutForm,
     useCheckoutPrebook,
     usePricingCalculation,
 } from '@/hooks';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { apiFetch } from '@/lib/api/client';
-import { LogIn } from 'lucide-react';
+import { AlertTriangle, LogIn } from 'lucide-react';
 import { toast } from 'sonner';
+import { useTranslations } from 'next-intl';
 import BackButton from '@/components/common/BackButton';
 import AuthModal from '@/components/auth/AuthModal';
 import { validateCheckoutForm, buildGuestPayload, buildHolderPayload } from '@/lib/server/checkout';
+import { buildPropertySlug } from '@/lib/utils';
 import {
     BookingSuccess,
     UserDetailsForm,
-    BookingForSection,
     SpecialRequestsSection,
-    PaymentForm,
     BookingSummary,
     SubmitBookingButton,
-    VoucherInput,
-    AvailablePromos,
 } from '@/components/checkout';
+import dynamic from 'next/dynamic';
+
+// Stripe JS (~60 kB) is only needed when the user reaches the payment step.
+// Lazy-load so it doesn't inflate the initial checkout page bundle.
+const StripeEmbeddedCheckout = dynamic(
+    () => import('@/components/checkout/StripeEmbeddedCheckout'),
+    {
+        ssr: false,
+        loading: () => (
+            <div className="flex items-center justify-center h-48">
+                <div className="animate-spin h-8 w-8 border-2 border-blue-500 border-t-transparent rounded-full" />
+            </div>
+        ),
+    }
+);
 
 export function CheckoutContent() {
+    const t = useTranslations('checkout');
+    const router = useRouter();
+
     // Booking store selectors
     const property = useProperty();
     const selectedRoom = useSelectedRoom();
@@ -69,6 +87,7 @@ export function CheckoutContent() {
     // Form state hook
     const {
         formData,
+        setFormData,
         handleInputChange,
         bookingFor,
         setBookingFor,
@@ -76,10 +95,6 @@ export function CheckoutContent() {
         setIsWorkTravel,
         specialRequests,
         setSpecialRequests,
-        payeeFirstName,
-        setPayeeFirstName,
-        payeeLastName,
-        setPayeeLastName,
         phoneCountryCode,
         setPhoneCountryCode,
         selectedCurrency,
@@ -92,18 +107,124 @@ export function CheckoutContent() {
         clearFormErrors,
     } = useCheckoutForm();
 
+    const handleGuestChange = useCallback((index: number, field: 'firstName' | 'lastName', value: string) => {
+        const current = formData.additionalGuests ?? [];
+        const updated = [...current];
+        if (!updated[index]) updated[index] = { firstName: '', lastName: '' };
+        updated[index] = { ...updated[index], [field]: value };
+        setFormData({ additionalGuests: updated });
+    }, [formData.additionalGuests, setFormData]);
+
+    const handleChildChange = useCallback((index: number, field: 'firstName' | 'lastName' | 'age', value: string) => {
+        const current = formData.childGuests ?? [];
+        const updated = [...current];
+        if (!updated[index]) updated[index] = { firstName: '', lastName: '', age: '' };
+        updated[index] = { ...updated[index], [field]: value };
+        setFormData({ childGuests: updated });
+    }, [formData.childGuests, setFormData]);
+
     const prebookError = prebookErrorObj?.message || null;
+
+    // Stripe payment step state
+    const [step, setStep] = useState<'form' | 'payment'>('form');
+    const [clientSecret, setClientSecret] = useState<string | null>(null);
+    const [isCreatingPayment, setIsCreatingPayment] = useState(false);
+
+    // Duplicate booking warning dialog state
+    const [duplicateBooking, setDuplicateBooking] = useState<{
+        existingBookingId: string;
+        existingCheckIn?: string;
+        existingCheckOut?: string;
+    } | null>(null);
+
+    // Booking confirmation progress overlay
+    const [bookingStepIdx, setBookingStepIdx] = useState(0);
+    const bookingStepTimer = useRef<ReturnType<typeof setInterval> | null>(null);
+    const [showSuccess, setShowSuccess] = useState(false);
+
+    const bookingSteps = [
+        t('verifyingPayment'),
+        t('securingReservation'),
+        t('confirmingWithHotel'),
+        t('finalizingDetails'),
+    ];
+
+    useEffect(() => {
+        if (loading && step === 'payment') {
+            setBookingStepIdx(0);
+            setShowSuccess(false);
+            bookingStepTimer.current = setInterval(() => {
+                setBookingStepIdx((i) => Math.min(i + 1, bookingSteps.length - 1));
+            }, 4000);
+        } else if (isSuccess && !loading) {
+            // API done — fast-forward animation to final step
+            if (bookingStepTimer.current) {
+                clearInterval(bookingStepTimer.current);
+                bookingStepTimer.current = null;
+            }
+            setBookingStepIdx(bookingSteps.length - 1);
+        } else {
+            if (bookingStepTimer.current) {
+                clearInterval(bookingStepTimer.current);
+                bookingStepTimer.current = null;
+            }
+        }
+        return () => {
+            if (bookingStepTimer.current) clearInterval(bookingStepTimer.current);
+        };
+    }, [loading, step, isSuccess]);
+
+    // Reveal success screen once animation reaches the last step
+    useEffect(() => {
+        if (isSuccess && bookingStepIdx === bookingSteps.length - 1) {
+            const timer = setTimeout(() => setShowSuccess(true), 800);
+            return () => clearTimeout(timer);
+        }
+    }, [isSuccess, bookingStepIdx]);
+
+    // Global currency sync
+    const globalCurrency = useUserCurrency();
+    const { syncWithUserCurrency } = useCheckoutActions();
+
+    const searchParams = useSearchParams();
+    // Present when user arrived from the post-flight-booking bundle upsell → triggers 12% bundle rate
+    const bundleFlightIdFromUrl = searchParams.get('bundleFlightId') || undefined;
+    
+    // Save locally so it survives re-renders after we wipe sessionStorage on success
+    const [bundleFlightId, setBundleFlightId] = useState<string | undefined>(undefined);
+
+    // Persist to sessionStorage so it survives Stripe redirect (URL params are lost after payment)
+    useEffect(() => {
+        const stored = typeof window !== 'undefined' ? sessionStorage.getItem('bundleFlightId') : undefined;
+        if (bundleFlightIdFromUrl) {
+            sessionStorage.setItem('bundleFlightId', bundleFlightIdFromUrl);
+            setBundleFlightId(bundleFlightIdFromUrl);
+        } else if (stored) {
+            setBundleFlightId(stored);
+        }
+    }, [bundleFlightIdFromUrl]);
+
+    useEffect(() => {
+        // Sync currency from URL whenever it changes
+        const urlCurrency = searchParams.get('currency');
+        if (urlCurrency && urlCurrency !== selectedCurrency) {
+            syncWithUserCurrency(urlCurrency);
+        } else if (!urlCurrency) {
+            // Only sync from global if no URL override is present
+            syncWithUserCurrency(globalCurrency);
+        }
+    }, [globalCurrency, syncWithUserCurrency, searchParams, selectedCurrency]);
 
     // Reset success state from previous booking on mount
     useEffect(() => {
         setIsSuccess(false);
         setEmailSent(false);
 
-        // Sync currency from URL if present
+        // Sync currency from URL if present (initial load priority)
         const urlParams = new URLSearchParams(window.location.search);
         const urlCurrency = urlParams.get('currency');
         if (urlCurrency && urlCurrency !== selectedCurrency) {
-            useCheckoutStore.getState().setSelectedCurrency(urlCurrency);
+            syncWithUserCurrency(urlCurrency);
         }
     }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -115,7 +236,7 @@ export function CheckoutContent() {
     });
 
     // Pricing calculation hook
-    const { displayProperty, displayRoom, totalNights, taxes, totalPrice } = usePricingCalculation({
+    const { displayProperty, displayRoom, totalNights, roomPrice, taxes, totalPrice, surcharges } = usePricingCalculation({
         priceData,
     });
 
@@ -139,51 +260,129 @@ export function CheckoutContent() {
         }
     }, [setEmailSent]);
 
-    // Complete booking handler
-    const handleCompleteBooking = useCallback(async () => {
+    // Step 1: Validate form → create Stripe PaymentIntent → show payment UI
+    const handleProceedToPayment = useCallback(async () => {
         if (!user) {
-            openAuthModal('email');
+            const redirectPath = window.location.pathname + window.location.search;
+            openAuthModal('email', redirectPath);
             return;
         }
 
         // Validate form fields using server utility
         clearFormErrors();
-        const validation = validateCheckoutForm(formData, bookingFor);
+        const validation = validateCheckoutForm(formData);
         if (!validation.success) {
             setFormErrors(validation.errors);
-            toast.error('Please fix the highlighted fields before continuing.');
+            toast.error(t('validation.fixHighlighted'));
             return;
         }
 
+        if (!prebookId || !selectedRoom?.offerId) {
+            toast.error(t('validation.sessionExpired'));
+            return;
+        }
+
+        if (!priceData) {
+            toast.error(t('validation.priceVerifying'));
+            return;
+        }
+
+        // Always charge in selectedCurrency using the converted totalPrice.
+        // priceData.total is LiteAPI's raw amount (may be in IDR, USD, etc.) —
+        // using it directly with selectedCurrency would mismatch currency + amount.
+        const chargeAmount = appliedVoucher
+            ? appliedVoucher.finalPrice
+            : totalPrice;
+
+        if (!chargeAmount || chargeAmount <= 0) {
+            toast.error(t('validation.invalidPrice'));
+            return;
+        }
+
+        setIsCreatingPayment(true);
         try {
-            if (!prebookId || !selectedRoom?.offerId) {
-                throw new Error("Booking session expired. Please go back and select the room again.");
+            const result = await apiFetch<{ clientSecret: string; paymentIntentId: string }>(
+                '/api/booking/create-payment',
+                {
+                    prebookId,
+                    amount: chargeAmount,
+                    currency: selectedCurrency,
+                    holderEmail: formData.email,
+                    propertyName: property?.name || 'Hotel',
+                    roomName: selectedRoom?.title || 'Room',
+                    checkIn: checkIn?.toISOString().slice(0, 10),
+                    checkOut: checkOut?.toISOString().slice(0, 10),
+                    ...(bundleFlightId ? { bundleFlightId } : {}),
+                }
+            );
+
+            if (!result.success) {
+                const raw = result as unknown as Record<string, unknown>;
+                if (raw.code === 'DUPLICATE_BOOKING' && typeof raw.existingBookingId === 'string') {
+                    setDuplicateBooking({
+                        existingBookingId: raw.existingBookingId,
+                        existingCheckIn: typeof raw.existingCheckIn === 'string' ? raw.existingCheckIn : undefined,
+                        existingCheckOut: typeof raw.existingCheckOut === 'string' ? raw.existingCheckOut : undefined,
+                    });
+                    return;
+                }
+                throw new Error('error' in result ? result.error : 'Failed to create payment session');
             }
 
-            const guests = buildGuestPayload(formData, bookingFor, specialRequests);
+            if (!result.data?.clientSecret) {
+                throw new Error('Failed to create payment session');
+            }
+
+            setClientSecret(result.data.clientSecret);
+            setStep('payment');
+        } catch (err) {
+            const message = err instanceof Error ? err.message : t('validation.paymentSetupFailed');
+            toast.error(message);
+        } finally {
+            setIsCreatingPayment(false);
+        }
+    }, [user, prebookId, selectedRoom, formData, bookingFor, priceData, selectedCurrency, property, openAuthModal, totalPrice, clearFormErrors, setFormErrors, appliedVoucher, bundleFlightId]);
+
+    // Step 2: After Stripe payment succeeds → confirm with LiteAPI
+    const handlePaymentSuccess = useCallback(async (stripePaymentIntentId: string) => {
+        try {
+            if (!prebookId || !selectedRoom?.offerId) {
+                throw new Error("Booking session expired.");
+            }
+
+            const guests = buildGuestPayload(formData, specialRequests);
             const holder = buildHolderPayload(formData);
 
-            // Use direct card payment method
-            const payment = { method: "ACC_CREDIT_CARD" };
-
+            // Confirm booking with LiteAPI (payment already captured by Stripe)
             await completeBooking({
                 holder,
                 guests,
-                payment,
+                payment: { method: "ACC_CREDIT_CARD" },
+                paymentIntentId: stripePaymentIntentId,
+                propertyName: property?.name || 'Hotel',
+                propertyImage: property?.images?.[0] || undefined,
+                roomName: selectedRoom?.title || 'Room',
+                checkIn: checkIn ? checkIn.toISOString().split('T')[0] : '',
+                checkOut: checkOut ? checkOut.toISOString().split('T')[0] : '',
+                adults,
+                children,
+                currency: selectedCurrency,
+                specialRequests: specialRequests || undefined,
+                voucherCode: appliedVoucher?.code || undefined,
+                discountAmount: appliedVoucher?.discountAmount || 0,
+                cancellationPolicies: priceData?.cancellationPolicies || undefined,
             });
 
-            // Show success immediately - don't wait for email/save
+            // Show success immediately
             setIsSuccess(true);
 
             const confirmedBookingId = useBookingStore.getState().bookingId;
 
-            // Use server-calculated final price if voucher applied
             const finalBookingPrice = appliedVoucher
                 ? appliedVoucher.finalPrice
-                : (priceData?.total || totalPrice || 0);
+                : totalPrice;
 
-            // Run email and save in parallel for faster completion
-            // These are fire-and-forget - user sees success immediately
+            // Fire-and-forget post-booking tasks
             const postBookingTasks: Promise<unknown>[] = [
                 sendConfirmationEmail({
                     bookingId: confirmedBookingId || 'N/A',
@@ -199,27 +398,9 @@ export function CheckoutContent() {
             ];
 
             if (user && confirmedBookingId) {
-                postBookingTasks.push(
-                    apiFetch('/api/booking/save', {
-                        bookingId: confirmedBookingId,
-                        propertyName: property?.name || 'Hotel',
-                        propertyImage: property?.image,
-                        roomName: selectedRoom?.title || 'Room',
-                        checkIn: checkIn?.toISOString().split('T')[0] || '',
-                        checkOut: checkOut?.toISOString().split('T')[0] || '',
-                        adults,
-                        children,
-                        totalPrice: finalBookingPrice,
-                        currency: selectedCurrency,
-                        holderFirstName: formData.firstName,
-                        holderLastName: formData.lastName,
-                        holderEmail: formData.email,
-                        specialRequests: specialRequests || undefined,
-                        cancellationPolicy: priceData?.cancellationPolicies || undefined,
-                    }).catch(err => console.error("Failed to save booking:", err))
-                );
+                // /api/booking/confirm already persists the booking via confirmAndSaveTgxBooking —
+                // no need to call /api/booking/save again here.
 
-                // Record voucher usage if promo was applied
                 if (appliedVoucher) {
                     postBookingTasks.push(
                         apiFetch('/api/voucher/record', {
@@ -234,25 +415,197 @@ export function CheckoutContent() {
                 }
             }
 
-            // Execute in parallel without blocking
             Promise.all(postBookingTasks).catch(err =>
                 console.error("Post-booking tasks error:", err)
             );
         } catch (err) {
             const message = err instanceof Error ? err.message : 'Booking failed';
-            if (message.includes("fraud check") || message.includes("2013")) {
-                toast.error("Booking rejected by fraud prevention. Please use realistic information.");
+
+            // Session expired AFTER Stripe captured payment — the booking is NOT confirmed.
+            // Do NOT claim a refund will happen automatically (auth failed before refund logic runs).
+            if (message === 'Authentication required' || message.toLowerCase().includes('authentication')) {
+                toast.error(
+                    t('validation.sessionExpiredCharge', { id: stripePaymentIntentId }),
+                    { duration: 15000 }
+                );
+                openAuthModal('email', window.location.pathname + window.location.search);
+            } else if (message.includes("refunded")) {
+                toast.error(message);
             } else {
-                toast.error(`Booking failed: ${message}`);
+                toast.error(t('validation.bookingFailed', { message }));
             }
+            // Return to form so user can retry
+            setStep('form');
+            setClientSecret(null);
         }
-    }, [user, prebookId, selectedRoom, formData, bookingFor, specialRequests, completeBooking, setIsSuccess, sendConfirmationEmail, property, checkIn, checkOut, priceData, selectedCurrency, adults, children, openAuthModal, totalPrice, clearFormErrors, setFormErrors, appliedVoucher]);
+    }, [prebookId, selectedRoom, formData, bookingFor, specialRequests, completeBooking, setIsSuccess, sendConfirmationEmail, property, checkIn, checkOut, priceData, selectedCurrency, adults, children, user, totalPrice, appliedVoucher, openAuthModal]);
+
+    // When the user modifies check-in/check-out in BookingSummary:
+    // - No room selected (deal flow): just update store dates, user then clicks "Search rooms"
+    // - Room already selected: redirect to property page to re-select for the new dates
+    const handleDatesChange = useCallback((newCheckIn: Date, newCheckOut: Date) => {
+        useBookingStore.getState().setDates(newCheckIn, newCheckOut);
+        if (selectedRoom && property) {
+            const slug = buildPropertySlug(property.name, property.id);
+            const ci = newCheckIn.toISOString().slice(0, 10);
+            const co = newCheckOut.toISOString().slice(0, 10);
+            router.push(`/property/${slug}?checkIn=${ci}&checkOut=${co}&adults=${adults}&children=${children}`);
+        }
+    }, [selectedRoom, property, adults, children, router]);
 
     // Price to show on submit button (server-calculated if voucher applied)
     const displayTotalPrice = appliedVoucher ? appliedVoucher.finalPrice : totalPrice;
 
     // Success screen
-    if (isSuccess) {
+    useEffect(() => {
+        if (showSuccess && typeof window !== 'undefined') {
+            sessionStorage.removeItem('bundleFlightId');
+            sessionStorage.setItem('hasAlreadyBookedHotel', 'true');
+        }
+    }, [showSuccess]);
+
+    // Guard state for missing-dates picker — must be declared before any early returns
+    const [guardCheckIn, setGuardCheckIn] = useState('');
+    const [guardCheckOut, setGuardCheckOut] = useState('');
+
+    // Deal flow: property set but no room chosen yet — show date picker + room search CTA
+    if (property && !selectedRoom) {
+        const ci = checkIn ? checkIn.toISOString().slice(0, 10) : '';
+        const co = checkOut ? checkOut.toISOString().slice(0, 10) : '';
+        const propertyUrl = ci && co
+            ? `/property/${buildPropertySlug(property.name, property.id)}?checkIn=${ci}&checkOut=${co}&adults=${adults}&children=${children}`
+            : `/property/${buildPropertySlug(property.name, property.id)}`;
+
+        return (
+            <main className="min-h-screen pt-6 pb-20 px-4">
+                <div className="max-w-lg mx-auto space-y-6">
+                    <button onClick={() => router.back()} className="text-sm text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 flex items-center gap-1">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></svg>
+                        {t('back')}
+                    </button>
+
+                    <h1 className="text-2xl font-bold text-slate-900 dark:text-white">{t('completeYourBooking')}</h1>
+
+                    {/* Hotel card */}
+                    <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl overflow-hidden shadow-sm">
+                        <div className="flex gap-3 p-4">
+                            {property.image && (
+                                <img src={property.image} alt={property.name} className="w-20 h-20 rounded-lg object-cover shrink-0" />
+                            )}
+                            <div className="min-w-0">
+                                <p className="font-bold text-slate-900 dark:text-white text-sm leading-tight">{property.name}</p>
+                                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{property.location}</p>
+                                {property.rating > 0 && (
+                                    <span className="inline-flex items-center gap-1 mt-1.5 bg-blue-600 text-white text-[10px] font-bold px-1.5 py-0.5 rounded">
+                                        {property.rating.toFixed(1)}
+                                    </span>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* Inline date picker */}
+                        <div className="border-t border-slate-200 dark:border-white/10 p-4 space-y-3">
+                            <p className="text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wide">{t('selectYourDates')}</p>
+                            <div className="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label className="block text-xs text-slate-500 dark:text-slate-400 mb-1">{t('checkIn')}</label>
+                                    <input
+                                        type="date"
+                                        defaultValue={ci}
+                                        min={new Date().toISOString().slice(0, 10)}
+                                        onChange={e => {
+                                            const val = e.target.value;
+                                            if (val && checkOut) handleDatesChange(new Date(val), checkOut);
+                                            else if (val) useBookingStore.getState().setDates(new Date(val), checkOut);
+                                        }}
+                                        className="w-full border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-xs text-slate-500 dark:text-slate-400 mb-1">{t('checkOut')}</label>
+                                    <input
+                                        type="date"
+                                        defaultValue={co}
+                                        min={ci || new Date().toISOString().slice(0, 10)}
+                                        onChange={e => {
+                                            const val = e.target.value;
+                                            if (val && checkIn) handleDatesChange(checkIn, new Date(val));
+                                            else if (val) useBookingStore.getState().setDates(checkIn, new Date(val));
+                                        }}
+                                        className="w-full border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
+                                    />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <button
+                        onClick={() => router.push(propertyUrl)}
+                        disabled={!ci || !co}
+                        className="w-full py-3 bg-blue-600 hover:bg-blue-700 disabled:opacity-40 text-white font-semibold rounded-xl transition-colors"
+                    >
+                        {t('searchAvailableRooms')}
+                    </button>
+                </div>
+            </main>
+        );
+    }
+
+    // Guard: missing dates — show inline date picker before the form
+    const guardToday = new Date().toISOString().slice(0, 10);
+
+    if (!checkIn || !checkOut) {
+        const canSave = guardCheckIn && guardCheckOut && guardCheckOut > guardCheckIn;
+        return (
+            <main className="min-h-screen flex items-center justify-center px-4">
+                <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl shadow-lg p-6 w-full max-w-sm space-y-5">
+                    <div>
+                        <h2 className="text-lg font-bold text-slate-900 dark:text-white">{t('chooseYourDates')}</h2>
+                        <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">{t('pickDatesDescription')}</p>
+                    </div>
+                    <div className="space-y-3">
+                        <div>
+                            <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">{t('checkIn')}</label>
+                            <input
+                                type="date"
+                                value={guardCheckIn}
+                                min={guardToday}
+                                onChange={e => setGuardCheckIn(e.target.value)}
+                                className="w-full border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">{t('checkOut')}</label>
+                            <input
+                                type="date"
+                                value={guardCheckOut}
+                                min={guardCheckIn || guardToday}
+                                onChange={e => setGuardCheckOut(e.target.value)}
+                                className="w-full border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
+                            />
+                        </div>
+                    </div>
+                    <button
+                        disabled={!canSave}
+                        onClick={() => {
+                            if (!canSave) return;
+                            useBookingStore.getState().setDates(new Date(guardCheckIn), new Date(guardCheckOut));
+                        }}
+                        className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-40 text-white font-semibold rounded-lg transition-colors text-sm"
+                    >
+                        {t('continue')}
+                    </button>
+                    <button onClick={() => router.back()} className="w-full text-center text-sm text-slate-500 hover:text-slate-700 dark:hover:text-slate-300">
+                        {t('goBack')}
+                    </button>
+                </div>
+            </main>
+        );
+    }
+
+    if (showSuccess) {
+        // savings = 3% of base price; base = bundlePrice / 1.12, so savings = totalPrice * 3/112
+        const bundleSavings = bundleFlightId && totalPrice ? Math.round(totalPrice * 3 / 112 * 100) / 100 : undefined;
         return (
             <BookingSuccess
                 propertyName={property?.name || "Grand Sierra Pines"}
@@ -261,6 +614,10 @@ export function CheckoutContent() {
                 checkOut={checkOut}
                 email={formData.email}
                 emailSent={emailSent}
+                bundleFlightId={bundleFlightId}
+                bundleSavings={bundleSavings}
+                currency={selectedCurrency}
+                hotelDestination={property?.city}
             />
         );
     }
@@ -269,10 +626,12 @@ export function CheckoutContent() {
         <>
             <main className="min-h-screen pt-4 lg:pt-6 pb-20 px-3 lg:px-4 md:px-6 relative">
                 <div className="max-w-6xl mx-auto">
-                    {/* Desktop Text Back Button */}
-                    <div className="hidden md:flex mb-2 justify-between items-center">
-                        <BackButton label="Modify booking" />
-                    </div>
+                    {/* Desktop Text Back Button — hidden on payment step (has its own back button) */}
+                    {step !== 'payment' && (
+                        <div className="hidden md:flex mb-2 justify-between items-center">
+                            <BackButton label={t('modifyBooking')} />
+                        </div>
+                    )}
 
                     {/* Mobile Floating Back Button */}
                     <div className="md:hidden mt-2 mb-4">
@@ -287,109 +646,149 @@ export function CheckoutContent() {
                     </div>
 
                     <h1 className="text-[18px] lg:text-3xl font-display font-bold text-slate-900 dark:text-white mb-4 lg:mb-8 text-left">
-                        Secure your booking
+                        {t('secureYourBooking')}
                     </h1>
 
                     {/* Auth Required Banner */}
                     {!user && (
                         <div className="mb-6 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 p-4 rounded-lg">
                             <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
-                                <LogIn className="text-amber-600 dark:text-amber-400 flex-shrink-0" size={24} />
+                                <LogIn className="text-amber-600 dark:text-amber-400 shrink-0" size={24} />
                                 <div className="flex-1">
-                                    <h3 className="font-semibold text-amber-800 dark:text-amber-200">Sign in to complete your booking</h3>
+                                    <h3 className="font-semibold text-amber-800 dark:text-amber-200">{t('signInToComplete')}</h3>
                                     <p className="text-sm text-amber-600 dark:text-amber-400">
-                                        You'll receive booking confirmation and updates via email.
+                                        {t('signInBannerDesc')}
                                     </p>
                                 </div>
                                 <button
-                                    onClick={() => openAuthModal('email')}
+                                    onClick={() => {
+                                        const redirectPath = window.location.pathname + window.location.search;
+                                        openAuthModal('email', redirectPath);
+                                    }}
                                     className="px-4 py-2 min-h-[44px] bg-amber-500 hover:bg-amber-600 text-white font-medium rounded-lg transition-colors w-full sm:w-auto"
                                 >
-                                    Sign In
+                                    {t('signIn')}
                                 </button>
                             </div>
                         </div>
                     )}
 
-                    {/* Prebook Error */}
-                    {prebookError && !isAuthModalOpen && (
-                        <div className="mb-6 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700 p-4 rounded-lg text-red-600 dark:text-red-400">
-                            <strong>Error:</strong> {prebookError}
-                            <button
-                                onClick={retryPrebook}
-                                className="ml-4 px-3 py-1 bg-red-500 text-white rounded text-sm"
-                            >
-                                Retry
-                            </button>
+                    {/* Prebook Error — unavailability is handled inline near the button; show banner only for other errors */}
+                    {prebookError && !isAuthModalOpen && !(!user && /auth/i.test(prebookError)) && !/no longer available|not available|unavailable|sold out|try a different hotel|currently unavailable for booking/i.test(prebookError) && (
+                        <div className="mb-6 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700 p-4 rounded-lg">
+                            <p className="text-sm font-semibold text-red-700 dark:text-red-300 mb-1">{t('bookingErrorTitle')}</p>
+                            <p className="text-sm text-red-600 dark:text-red-400 mb-3">{prebookError}</p>
+                            <div className="flex items-center gap-3">
+                                <button
+                                    onClick={() => window.history.back()}
+                                    className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-sm font-semibold rounded-lg transition-colors"
+                                >
+                                    {t('goBackBtn')}
+                                </button>
+                                <button
+                                    onClick={retryPrebook}
+                                    className="px-4 py-2 border border-red-300 dark:border-red-600 text-red-600 dark:text-red-400 text-sm font-semibold rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                                >
+                                    {t('retry')}
+                                </button>
+                            </div>
                         </div>
                     )}
 
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 lg:gap-8">
-                        {/* Main Form */}
+                        {/* Main Content — switches between form and payment */}
                         <div className="lg:col-span-2 space-y-2.5 lg:space-y-6">
-                            <UserDetailsForm
-                                formData={formData}
-                                onInputChange={handleInputChange}
-                                phoneCountryCode={phoneCountryCode}
-                                onPhoneCountryChange={setPhoneCountryCode}
-                                isWorkTravel={isWorkTravel}
-                                onWorkTravelChange={setIsWorkTravel}
-                                errors={formErrors}
-                            />
+                            {step === 'form' ? (
+                                <>
+                                    {/* Duplicate booking inline banner */}
+                                    {duplicateBooking && (
+                                        <div className="rounded-xl border-2 border-red-300 dark:border-red-700 bg-red-50 dark:bg-red-900/20 p-3 lg:p-4 space-y-2.5">
+                                            <div className="flex items-center gap-2">
+                                                <AlertTriangle className="text-red-500 dark:text-red-400 shrink-0" size={18} />
+                                                <p className="text-sm font-bold text-red-700 dark:text-red-300">
+                                                    {t('duplicateBookingTitle', { hotel: property?.name || '' })}
+                                                    {duplicateBooking.existingCheckIn && duplicateBooking.existingCheckOut && (
+                                                        <> ({new Date(duplicateBooking.existingCheckIn).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} – {new Date(duplicateBooking.existingCheckOut).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })})</>
+                                                    )}
+                                                </p>
+                                            </div>
+                                            <p className="text-xs text-red-600 dark:text-red-400">{t('duplicateBookingDesc')}</p>
+                                            <div className="flex gap-2">
+                                                <button
+                                                    onClick={() => router.push(`/trips?highlight=${duplicateBooking.existingBookingId}`)}
+                                                    className="flex-1 py-2 text-xs font-bold bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors"
+                                                >
+                                                    {t('viewExistingBooking')}
+                                                </button>
+                                                <button
+                                                    onClick={() => router.push('/')}
+                                                    className="flex-1 py-2 text-xs font-medium border border-red-300 dark:border-red-700 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/30 rounded-lg transition-colors"
+                                                >
+                                                    {t('keepExistingBooking')}
+                                                </button>
+                                            </div>
+                                        </div>
+                                    )}
 
-                            <BookingForSection
-                                bookingFor={bookingFor}
-                                onBookingForChange={setBookingFor}
-                                formData={formData}
-                                onInputChange={handleInputChange}
-                                errors={formErrors}
-                            />
+                                    <UserDetailsForm
+                                        formData={formData}
+                                        onInputChange={handleInputChange}
+                                        phoneCountryCode={phoneCountryCode}
+                                        onPhoneCountryChange={setPhoneCountryCode}
+                                        isWorkTravel={isWorkTravel}
+                                        onWorkTravelChange={setIsWorkTravel}
+                                        errors={formErrors}
+                                        adults={adults}
+                                        children={children}
+                                        onGuestChange={handleGuestChange}
+                                        onChildChange={handleChildChange}
+                                    />
 
-                            <SpecialRequestsSection
-                                value={specialRequests}
-                                onChange={setSpecialRequests}
-                            />
+                                    <SpecialRequestsSection
+                                        value={specialRequests}
+                                        onChange={setSpecialRequests}
+                                    />
 
-                            {/* Voucher/Promo Section */}
-                            <VoucherInput
-                                bookingPrice={totalPrice}
-                                currency={selectedCurrency}
-                                onVoucherApplied={reprebookWithVoucher}
-                                onVoucherRemoved={reprebookWithoutVoucher}
-                            />
 
-                            {/* Available Promos (server-fetched) */}
-                            <AvailablePromos
-                                bookingPrice={totalPrice}
-                                currency={selectedCurrency}
-                                onVoucherApplied={reprebookWithVoucher}
-                            />
+                                    <div className="hidden lg:block">
+                                        <SubmitBookingButton
+                                            loading={loading || isCreatingPayment}
+                                            prebooking={prebooking}
+                                            prebookId={prebookId}
+                                            priceReady={!!priceData}
+                                            isAuthenticated={!!user}
+                                            totalPrice={displayTotalPrice}
+                                            prebookError={prebookError}
+                                            onSubmit={handleProceedToPayment}
+                                        />
+                                    </div>
+                                </>
+                            ) : (
+                                <>
+                                    {/* Payment step — Stripe Embedded Checkout */}
+                                    <div className="space-y-4">
+                                        <button
+                                            onClick={() => { setStep('form'); setClientSecret(null); }}
+                                            className="text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1"
+                                        >
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m12 19-7-7 7-7" /><path d="M19 12H5" /></svg>
+                                            {t('backToBookingDetails')}
+                                        </button>
 
-                            {/* Payment — Direct Card Form */}
-                            <PaymentForm
-                                formData={formData}
-                                onInputChange={handleInputChange}
-                                payeeFirstName={payeeFirstName}
-                                payeeLastName={payeeLastName}
-                                onPayeeFirstNameChange={setPayeeFirstName}
-                                onPayeeLastNameChange={setPayeeLastName}
-                                errors={formErrors}
-                            />
-
-                            <div className="hidden lg:block">
-                                <SubmitBookingButton
-                                    loading={loading}
-                                    prebooking={prebooking}
-                                    prebookId={prebookId}
-                                    isAuthenticated={!!user}
-                                    totalPrice={displayTotalPrice}
-                                    prebookError={prebookError}
-                                    onSubmit={handleCompleteBooking}
-                                />
-                            </div>
+                                        {clientSecret ? (
+                                            <StripeEmbeddedCheckout
+                                                clientSecret={clientSecret}
+                                                onSuccess={handlePaymentSuccess}
+                                            />
+                                        ) : (
+                                            <div className="p-8 text-center text-slate-500">{t('loadingPaymentForm')}</div>
+                                        )}
+                                    </div>
+                                </>
+                            )}
                         </div>
 
-                        {/* Sidebar Summary */}
+                        {/* Sidebar Summary — always visible */}
                         <div className="flex flex-col gap-4 lg:gap-6 lg:sticky lg:top-24 self-start">
                             <BookingSummary
                                 propertyName={displayProperty.name}
@@ -399,34 +798,66 @@ export function CheckoutContent() {
                                 reviewScore={property?.rating}
                                 reviewCount={property?.reviews}
                                 roomTitle={displayRoom.title}
-                                roomPrice={displayRoom.price}
+                                roomPrice={roomPrice}
                                 totalNights={totalNights}
                                 adults={adults}
                                 children={children}
                                 taxes={taxes}
+                                surcharges={surcharges}
                                 totalPrice={totalPrice}
                                 checkIn={checkIn}
                                 checkOut={checkOut}
                                 prebookId={prebookId}
                                 cancellationPolicies={priceData?.cancellationPolicies}
                                 appliedVoucher={appliedVoucher}
+                                isLoading={prebooking}
+                                onDatesChange={handleDatesChange}
                             />
 
-                            {/* Mobile-only Submit Button positioned after the summary */}
-                            <div className="block lg:hidden">
-                                <SubmitBookingButton
-                                    loading={loading}
-                                    prebooking={prebooking}
-                                    prebookId={prebookId}
-                                    isAuthenticated={!!user}
-                                    totalPrice={displayTotalPrice}
-                                    prebookError={prebookError}
-                                    onSubmit={handleCompleteBooking}
-                                />
-                            </div>
+                            {/* Mobile-only Submit Button — only on form step */}
+                            {step === 'form' && (
+                                <div className="block lg:hidden">
+                                    <SubmitBookingButton
+                                        loading={loading || isCreatingPayment}
+                                        prebooking={prebooking}
+                                        prebookId={prebookId}
+                                        isAuthenticated={!!user}
+                                        totalPrice={displayTotalPrice}
+                                        prebookError={prebookError}
+                                        priceReady={!!priceData}
+                                        onSubmit={handleProceedToPayment}
+                                    />
+                                </div>
+                            )}
                         </div>
                     </div>
                 </div>
+
+                {/* Booking confirmation overlay — covers form after Stripe payment succeeds */}
+                {(loading || (isSuccess && !showSuccess)) && step === 'payment' && (
+                    <div className="absolute inset-0 z-50 flex items-center justify-center bg-white/95 dark:bg-slate-900/95 backdrop-blur-sm rounded-lg">
+                        <div className="flex flex-col items-center gap-6 px-8 text-center max-w-xs">
+                            <div className="w-16 h-16 rounded-full border-4 border-blue-100 dark:border-blue-900 border-t-blue-600 animate-spin" />
+                            <div>
+                                <h2 className="text-lg font-bold text-slate-900 dark:text-white mb-1">{t('confirmingBooking')}</h2>
+                                <p className="text-sm text-blue-600 dark:text-blue-400 font-medium animate-pulse min-h-[20px]">
+                                    {bookingSteps[bookingStepIdx]}
+                                </p>
+                            </div>
+                            <div className="w-full space-y-2">
+                                {bookingSteps.map((label, i) => (
+                                    <div key={label} className={`flex items-center gap-2 text-xs ${i <= bookingStepIdx ? 'text-slate-700 dark:text-slate-200' : 'text-slate-400 dark:text-slate-600'}`}>
+                                        <span className={`w-4 h-4 rounded-full flex items-center justify-center shrink-0 text-[10px] font-bold ${i < bookingStepIdx ? 'bg-green-500 text-white' : i === bookingStepIdx ? 'bg-blue-600 text-white' : 'bg-slate-200 dark:bg-slate-700 text-slate-400'}`}>
+                                            {i < bookingStepIdx ? '✓' : i + 1}
+                                        </span>
+                                        {label}
+                                    </div>
+                                ))}
+                            </div>
+                            <p className="text-xs text-slate-400 dark:text-slate-500">{t('dontClosePage')}</p>
+                        </div>
+                    </div>
+                )}
             </main>
             <AuthModal />
         </>

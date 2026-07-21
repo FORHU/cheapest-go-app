@@ -1,0 +1,1879 @@
+{
+    "account": {
+        "backToHome": "返回首页",
+        "communications": {
+            "emailNotifications": "电子邮件通知",
+            "emailNotificationsDesc": "接收预订确认和更新",
+            "heading": "通讯偏好",
+            "marketingEmails": "营销邮件",
+            "marketingEmailsDesc": "接收优惠、促销和旅行小贴士",
+            "preferencesSaved": "偏好已保存",
+            "savePreferences": "保存偏好",
+            "subheading": "设置您要接收的通知和邮件",
+            "tripReminders": "旅行提醒",
+            "tripRemindersDesc": "在即将到来的旅行前获取提醒"
+        },
+        "help": {
+            "emailSupport": "邮件支持",
+            "faq1": "如何取消或修改我的预订？",
+            "faq2": "我什么时候会收到预订确认？",
+            "faq3": "如何申请退款？",
+            "faq4": "支持哪些付款方式？",
+            "faqTitle": "常见问题",
+            "heading": "帮助与支持",
+            "liveChat": "在线客服",
+            "liveChatDesc": "与支持团队在线聊天",
+            "subheading": "获取账户和预订相关帮助"
+        },
+        "nav": {
+            "communications": {
+                "description": "管理通知设置",
+                "title": "通讯"
+            },
+            "help": {
+                "description": "获取客户支持",
+                "title": "帮助与反馈"
+            },
+            "profile": {
+                "description": "查看和编辑您的个人信息",
+                "title": "个人资料"
+            },
+            "security": {
+                "description": "更新您的密码",
+                "title": "安全"
+            }
+        },
+        "profile": {
+            "cancel": "取消",
+            "edit": "编辑",
+            "emailAddress": "电子邮件地址",
+            "emailCannotChange": "电子邮件无法更改",
+            "fillAllFields": "请填写所有字段",
+            "firstName": "名",
+            "fullName": "全名",
+            "heading": "个人资料信息",
+            "lastName": "姓",
+            "save": "保存",
+            "saving": "保存中...",
+            "subheading": "管理您的个人信息",
+            "updateError": "个人资料更新失败",
+            "updateSuccess": "个人资料更新成功"
+        },
+        "sectionHeader": {
+            "edit": "编辑"
+        },
+        "security": {
+            "accountEmail": "账户邮箱",
+            "accountEmailSubtitle": "您的账户电子邮件地址",
+            "changePassword": "更改密码",
+            "confirmPassword": "确认新密码",
+            "currentPassword": "当前密码",
+            "emailCannotChange": "电子邮件无法更改",
+            "fillAllPasswordFields": "请填写所有密码字段",
+            "heading": "安全设置",
+            "newPassword": "新密码",
+            "newPasswordHint": "最少6个字符",
+            "passwordTooShort": "新密码至少需要6个字符",
+            "passwordUpdateError": "密码更新失败",
+            "passwordUpdateSuccess": "密码更新成功",
+            "passwordsDoNotMatch": "两次输入的新密码不一致",
+            "subheading": "管理您的密码和账户安全",
+            "updatePassword": "更新密码",
+            "updating": "更新中..."
+        },
+        "sidebar": {
+            "getEmails": "订阅邮件",
+            "greeting": "您好, {name}",
+            "membershipTier": "蓝色",
+            "partnerInfo": "您的账户可在 {brand} 及所有合作网站使用",
+            "pointsAmount": "₱ 0.00",
+            "pointsValue": "积分价值",
+            "promoSubtitle": "接收 {brand} 的优惠、小贴士和见解",
+            "promoTitle": "获取旅行灵感和优惠",
+            "signOut": "退出登录",
+            "viewRewardsActivity": "查看奖励活动"
+        }
+    },
+    "ai": {
+        "prompts": {
+            "bali": "巴厘岛海滨度假村，2位成人，2月14-21日...",
+            "cebu": "下个月宿务情侣周末游...",
+            "manila": "马尼拉附近家庭度假村，2大2小...",
+            "tokyo": "东京豪华酒店，每晚200美元以内，含泳池..."
+        }
+    },
+    "appBanner": {
+        "badge": "移动应用",
+        "downloadBtn": "下载应用",
+        "downloads": "次下载",
+        "installBtn": "安装应用",
+        "learnMore": "了解更多",
+        "rating": "应用评分",
+        "savings": "额外节省",
+        "subtitle": "获取独家应用专享优惠、即时通知并随时随地管理您的行程。",
+        "title": "使用我们的应用，让出行更智慧"
+    },
+    "auth": {
+        "signIn": {
+            "continueWithApple": "使用 Apple 继续",
+            "continueWithEmail": "使用邮箱继续",
+            "continueWithGoogle": "使用 Google 继续",
+            "emailLabel": "电子邮箱",
+            "emailPlaceholder": "your@email.com",
+            "orDivider": "或",
+            "privacyLink": "隐私政策",
+            "terms": "登录即表示您同意我们的{terms}和{privacy}。",
+            "termsLink": "服务条款",
+            "title": "登录 {brand}"
+        }
+    },
+    "checkout": {
+        "back": "返回",
+        "backToBookingDetails": "返回预订详情",
+        "bookingErrorTitle": "预订错误",
+        "bookingFor": {
+            "guestFirstName": "客人名字 *",
+            "guestLastName": "客人姓氏 *",
+            "myself": "我自己",
+            "someoneElse": "其他人",
+            "whoIsBooking": "预订是为谁？"
+        },
+        "cancellation": {
+            "cancelAfter": "在此后取消",
+            "cancelBy": "在此前取消",
+            "description": "取消房间需要多少费用？",
+            "earlyDepartureFee": "提前退房费：{amount}——如在预定日期前退房。",
+            "footer": "取消费用基于总预订金额。所有日期和时间均以GMT为准。",
+            "freeCancellation": "可免费取消——详见下方截止日期",
+            "freeCancellationLabel": "免费取消",
+            "fullRefund": "（全额退款）",
+            "noShowPenalty": "未入住罚款：{amount}——如未取消且未入住。",
+            "nonRefundable": "不可退款——此预订无法取消退款",
+            "refund": "退款{amount}",
+            "title": "取消政策"
+        },
+        "checkIn": "入住",
+        "checkOut": "退房",
+        "chooseYourDates": "选择日期",
+        "completeYourBooking": "完成预订",
+        "confirmingBooking": "正在确认预订",
+        "confirmingWithHotel": "正在与酒店确认...",
+        "continue": "继续",
+        "dontClosePage": "请不要关闭此页面",
+        "duplicateBookingDesc": "请先取消现有预订，或返回保留现有预订。",
+        "duplicateBookingTitle": "您在{hotel}已有时间重叠的预订",
+        "finalizingDetails": "正在完成预订详情...",
+        "goBack": "← 返回",
+        "goBackBtn": "返回",
+        "keepExistingBooking": "保留现有预订",
+        "loadingPaymentForm": "加载支付表单...",
+        "modifyBooking": "修改预订",
+        "payment": {
+            "card": "银行卡",
+            "cardNumber": "卡号",
+            "countries": {
+                "ID": "印度尼西亚",
+                "JP": "日本",
+                "KR": "韩国",
+                "MY": "马来西亚",
+                "PH": "菲律宾",
+                "SG": "新加坡",
+                "TH": "泰国",
+                "US": "美国",
+                "VN": "越南"
+            },
+            "country": "国家",
+            "mmYY": "月 / 年",
+            "payeeFirstName": "收款人名字",
+            "payeeLastName": "收款人姓氏",
+            "paymentInformation": "付款信息",
+            "securedMessage": "您的付款信息已加密保护。",
+            "securityCode": "安全码"
+        },
+        "pickDatesDescription": "选择入住和退房日期以继续。",
+        "promos": {
+            "applied": "已使用",
+            "apply": "使用",
+            "availableForBooking": "此预订可用优惠",
+            "availablePromos": "可用优惠",
+            "failedToApply": "应用优惠失败。请重试。",
+            "hotelDeal": "酒店优惠",
+            "loadingPromos": "正在加载可用优惠...",
+            "location": "位置",
+            "minAmount": "最低消费{amount}",
+            "newUser": "新用户",
+            "off": "优惠",
+            "promo": "促销",
+            "seasonal": "季节性",
+            "until": "至{date}",
+            "upTo": "最高{amount}"
+        },
+        "rating": {
+            "average": "一般",
+            "exceptional": "超棒",
+            "fabulous": "极好",
+            "good": "好",
+            "pleasant": "舒适",
+            "veryGood": "非常好"
+        },
+        "retry": "重试",
+        "searchAvailableRooms": "搜索可用房间 →",
+        "secureYourBooking": "安全预订",
+        "securingReservation": "正在确保您的预订...",
+        "selectYourDates": "选择您的日期",
+        "signIn": "登录",
+        "signInBannerDesc": "您将通过电子邮件收到预订确认和更新。",
+        "signInToComplete": "登录以完成预订",
+        "specialRequests": {
+            "placeholder": "酒店将尽力为您安排。",
+            "title": "有特殊要求吗？"
+        },
+        "stripe": {
+            "completePayment": "完成支付",
+            "loadError": "加载支付表单失败。请刷新后重试。",
+            "payNow": "立即支付",
+            "processing": "支付处理中...",
+            "unexpectedError": "发生意外错误。"
+        },
+        "submit": {
+            "continueToPayment": "继续付款 • {amount}",
+            "goBackDifferentHotel": "返回并选择其他酒店",
+            "goBackReselect": "返回并重新选择房间",
+            "hotelUnavailable": "酒店暂时不可用",
+            "hotelUnavailableDesc": "此酒店目前无法预订。请返回并选择其他酒店。",
+            "processingBooking": "正在处理您的预订...",
+            "sessionExpired": "房间会话已过期",
+            "sessionExpiredDesc": "您的房间保留已过期。请返回并重新选择房间以获取新会话——您可以选择同一房间。",
+            "signInToComplete": "登录以完成预订",
+            "verificationFailed": "验证失败——请参阅上方错误",
+            "verifyingPrice": "正在验证价格...",
+            "verifyingRoom": "正在验证房间...",
+            "waitingMessage": "请稍候，我们正在向酒店确认您的预订...",
+            "waitingWarning": "这最多需要30秒。请勿关闭此页面。"
+        },
+        "success": {
+            "bookFlightBundle": "立即预订航班，总费用享受套餐折扣。",
+            "bookingConfirmed": "预订成功！🎉",
+            "bookingId": "预订编号",
+            "bundleDeal": "✦ 套餐优惠",
+            "bundleDiscountApplied": "套餐折扣已应用",
+            "checkEmail": "查看电子邮件获取预订详情和更新",
+            "confirmationSentTo": "确认邮件发送至",
+            "flightHotelBundle": "航班 + 酒店套餐",
+            "needFlight": "需要飞往{destination}的航班？",
+            "reservationComplete": "您在<strong>{name}</strong>的预订已完成。",
+            "returnToHome": "返回首页",
+            "saveUpTo": "至高省8%",
+            "saved": "节省{amount}",
+            "searchFlightsAndBundle": "搜索航班 & 套餐",
+            "sent": "已发送",
+            "stayDuration": "入住时长",
+            "viewMyTrips": "查看我的行程"
+        },
+        "summary": {
+            "adult": "位成人",
+            "adults": "位成人",
+            "averagePerNight": "平均每晚",
+            "calculatingPerNight": "正在计算每晚价格...",
+            "checkInAndOut": "入住和退房",
+            "checkInLabel": "入住",
+            "checkOutLabel": "退房",
+            "child": "位儿童",
+            "children": "位儿童",
+            "edit": "编辑",
+            "night": "晚",
+            "nights": "晚",
+            "priceDetails": "价格明细",
+            "promoCode": "优惠码：{code}",
+            "roomConfirmed": "房间已确认",
+            "roomNights": "1间客房 × {nights} {count}",
+            "taxesAndFees": "税费",
+            "total": "总计",
+            "updateDates": "更新日期",
+            "youSave": "使用此优惠节省{amount}",
+            "yourRoom": "您的房间"
+        },
+        "title": "结算 | {brand}",
+        "userDetails": {
+            "age": "年龄 *",
+            "agePlaceholder": "0–17",
+            "childN": "儿童 {n}",
+            "email": "邮箱 *",
+            "emailPlaceholder": "邮箱",
+            "firstName": "名字 *",
+            "firstNamePlaceholder": "名字",
+            "guest1": "房客 1（本人）",
+            "guestN": "房客 {n}",
+            "lastName": "姓氏 *",
+            "lastNamePlaceholder": "姓氏",
+            "no": "否",
+            "phone": "电话 *",
+            "phonePlaceholder": "号码",
+            "title": "您的信息",
+            "travelingForWork": "因公出差？",
+            "yes": "是"
+        },
+        "validation": {
+            "bookingFailed": "预订确认失败：{message}。您的付款将自动退款。",
+            "fixHighlighted": "请先修正标红的字段。",
+            "invalidPrice": "无效的预订价格。请重试。",
+            "paymentSetupFailed": "支付设置失败",
+            "priceVerifying": "价格仍在验证中——请稍候重试。",
+            "requiresAuth": "需要身份验证",
+            "sessionExpired": "预订会话已过期。请返回并重新选择房间。",
+            "sessionExpiredCharge": "支付过程中会话已过期。您的银行卡已被扣款——请联系客服并提供付款参考：{id}"
+        },
+        "verifyingPayment": "正在验证支付...",
+        "viewExistingBooking": "查看现有预订",
+        "voucher": {
+            "apply": "使用",
+            "enterPromoCode": "输入优惠码",
+            "failedToValidate": "优惠码验证失败。请重试。",
+            "havePromoCode": "有优惠码？",
+            "off": "优惠",
+            "promoCode": "优惠码",
+            "removeVoucher": "移除优惠码",
+            "saved": "节省{amount}"
+        }
+    },
+    "currencyPicker": {
+        "label": "选择货币"
+    },
+    "deals": {
+        "all": "全部",
+        "allDealsCount": "共 {count} 个特惠",
+        "collapse": "收起 ↑",
+        "headerDefault": "独家特惠",
+        "headerPersonalized": "从 {city} 出发的航班特惠",
+        "oneWay": "单程",
+        "popularRoute": "热门路线",
+        "roundTrip": "往返",
+        "searchFlights": "搜索航班",
+        "subtitleDefault": "热门路线的超低票价",
+        "subtitlePersonalized": "从 {city} 出发的超低票价"
+    },
+    "errors": {
+        "generic": "出现错误，请重试。",
+        "notFound": "页面未找到。",
+        "searchFailed": "搜索失败，请检查网络连接后重试。"
+    },
+    "flightBook": {
+        "address": {
+            "addressLine": "地址 *",
+            "city": "城市 *",
+            "country": "国家 *",
+            "postalCode": "邮政编码 *",
+            "title": "绑定地址"
+        },
+        "ancillaryExpired": {
+            "description": "该票价不再提供辅助服务。您仍可以继续预订——座位和行李可直接在航司管理。",
+            "title": "此优惠不可用"
+        },
+        "backToDetails": "返回详情",
+        "bags": {
+            "added": "{count} 件行李已添加 · +{price}",
+            "addedPlural": "{count} 件行李已添加 · +{price}",
+            "carryOn": "随身行李",
+            "checked": "托运行李",
+            "errorDetail": "无法加载行李选项：{error}",
+            "free": "免费",
+            "loading": "正在加载行李选项…",
+            "notAvailable": "行李升级不可用",
+            "notSupported": "此航班不支持额外行李选择。",
+            "optional": "选择——添加托运或随身行李",
+            "refreshing": "正在刷新优惠…",
+            "title": "额外行李",
+            "upgradeTotal": "行李升级总计",
+            "weight": "最多 {weight} 公斤"
+        },
+        "bookingSteps": [
+            "正在确认付款...",
+            "正在保留座位...",
+            "正在与航司确认...",
+            "正在最终确定预订详情..."
+        ],
+        "confirmingBooking": "正在确认您的预订",
+        "contact": {
+            "email": "电子邮件 *",
+            "phone": "电话号码 *",
+            "title": "联系方式"
+        },
+        "countries": {
+            "AU": "澳大利亚",
+            "CA": "加拿大",
+            "CN": "中国",
+            "DE": "德国",
+            "FR": "法国",
+            "GB": "英国",
+            "IN": "印度",
+            "JP": "日本",
+            "KR": "韩国",
+            "MY": "马来西亚",
+            "PH": "菲律宾",
+            "SG": "新加坡",
+            "TH": "泰国",
+            "US": "美国",
+            "VN": "越南"
+        },
+        "datePicker": {
+            "cancel": "取消",
+            "days": [
+                "日",
+                "一",
+                "二",
+                "三",
+                "四",
+                "五",
+                "六"
+            ],
+            "month": "月份",
+            "months": [
+                "1月",
+                "2月",
+                "3月",
+                "4月",
+                "5月",
+                "6月",
+                "7月",
+                "8月",
+                "9月",
+                "10月",
+                "11月",
+                "12月"
+            ],
+            "select": "选择",
+            "selectDate": "选择日期",
+            "year": "年份"
+        },
+        "dealBanner": {
+            "dealApplied": "{discount} 优惠已应用",
+            "departs": "出发 {date}",
+            "perPerson": "/ 人",
+            "returns": "返回 {date}"
+        },
+        "dealGate": {
+            "dealUnavailable": "优惠已失效",
+            "noFlightsFound": "未找到此优惠的航班，优惠可能已过期。",
+            "searchAll": "搜索所有航班",
+            "searchMessages": [
+                "正在搜索可用航班…",
+                "正在检查座位可用性…",
+                "正在锁定最佳价格…",
+                "快要完成了…"
+            ],
+            "securingDeal": "正在确保您的优惠",
+            "somethingWrong": "出错了，请重试。",
+            "tryAgain": "重试"
+        },
+        "dontClosePage": "请不要关闭此页面",
+        "duplicate": {
+            "description": "发现一个出发日期为 {route} 的活动预订，日期为 {date}。请先取消现有预订，或返回。",
+            "keepExisting": "保留现有预订",
+            "title": "您已有一个当天的航班预订",
+            "viewExisting": "查看现有预订"
+        },
+        "error": {
+            "bookingFailed": "预订失败",
+            "bookingFailedDefault": "预订失败。请重试。",
+            "defaultMessage": "无法完成您的预订。",
+            "flightUnavailable": "航班不可用",
+            "goBack": "返回",
+            "notCharged": "您的信用卡<strong>尚未</strong>被抵费。请尝试另一个航班或日期。",
+            "notChargedShort": "请尝试另一个航班或日期。",
+            "searchAgain": "重新搜索",
+            "tryAgain": "重试"
+        },
+        "fareConditions": {
+            "allowedFee": "允许 · {fee} 费用",
+            "allowedFeeMayApply": "允许（可能产生费用）",
+            "changeAfter": "出发后更改",
+            "changeBefore": "出发前更改",
+            "disclaimer": "条件适用于每名乘客，并受航司政策约束。罚款按每张票计算。",
+            "free": "免费",
+            "fullyRefundable": "全额退款",
+            "nonRefundable": "不可退款",
+            "notAllowed": "不允许",
+            "partialRefund": "部分退款",
+            "refundAfter": "出发后退票",
+            "refundBefore": "出发前退票",
+            "title": "票价条件"
+        },
+        "farePolicy": {
+            "airlineConfirmed": "✓ 航司已确认",
+            "changesAllowed": "允许更改",
+            "finalRules": "航司已在预订时确认最终票价规则。",
+            "freeCancellation": "免费取消",
+            "indicativeOnly": "仅供参考——最终政策将在支付阶段确认。",
+            "nonRefundable": "不可退款",
+            "policyUpdated": "<strong>票价政策已更新。</strong>该福利的退款政策已发生变化，请在继续前仔细核查。",
+            "refundableFee": "可退款（费用：{fee}）",
+            "refundableFeesMayApply": "可退款（可能产生费用）",
+            "title": "票价政策"
+        },
+        "fareRules": {
+            "error": "无法加载票价规则",
+            "noRules": "航司未提供规则文本。",
+            "routeLabel": "航线 {number}",
+            "rule": "条规则",
+            "rules": "条规则",
+            "title": "票价规则",
+            "viewOnWebsite": "在航司网站上查看票价规则 →"
+        },
+        "genderOptions": {
+            "female": "女",
+            "male": "男"
+        },
+        "header": {
+            "oneWay": "预订到 {name}（{code}）",
+            "roundTrip": "往返 {name}（{code}）"
+        },
+        "offerExpiry": {
+            "expired": "此优惠已过期——请重新搜索。",
+            "expiresIn": "优惠将在 {time} 后过期——请在时间结束前完成预订。"
+        },
+        "orderSummary": {
+            "baseFare": "基础票价",
+            "economy": "经济舱",
+            "extraBags": "额外行李",
+            "nonstop": "直飞",
+            "passenger": "{count} 名乘客",
+            "passengerPlural": "{count} 名乘客",
+            "seatSelection": "座位选择",
+            "stops": "{count} 次经停",
+            "title": "订单摘要",
+            "total": "总计"
+        },
+        "passenger": {
+            "addPassenger": "+ 添加乘客",
+            "adult": "成人",
+            "birthdate": "生日 *",
+            "child": "儿童",
+            "firstName": "名 *",
+            "gender": "性别 *",
+            "infant": "婴儿",
+            "lastName": "姓 *",
+            "nationality": "国籍 *",
+            "passport": "护照号码 *",
+            "passportExpiry": "护照到期日 *",
+            "remove": "删除",
+            "title": "乘客 {number}"
+        },
+        "priceCalendar": {
+            "checkingPrices": "正在查看价格…",
+            "clickToSearch": "点击搜索此日期",
+            "clickToSearchWithPrice": "{price} — 点击搜索",
+            "datesFound": "{count} 个日期已查到价格",
+            "days": [
+                "日",
+                "一",
+                "二",
+                "三",
+                "四",
+                "五",
+                "六"
+            ],
+            "exploreOneWay": "按日期探索价格（单程）",
+            "exploreRoundTrip": "按日期探索价格（往返）",
+            "fetchingLive": "正在获取实时价格…",
+            "from": "从 {price} 起",
+            "loading": "加载中…",
+            "months": [
+                "1月",
+                "2月",
+                "3月",
+                "4月",
+                "5月",
+                "6月",
+                "7月",
+                "8月",
+                "9月",
+                "10月",
+                "11月",
+                "12月"
+            ],
+            "searchDates": "搜索 {month} 所有 {count} 个日期",
+            "searchingBestPrices": "正在搜索最佳价格…",
+            "tipDescription": "这些是该提供商附近日期的真实票价。点击任何日期即可立即搜索当天航班。",
+            "tipTitle": "提示：",
+            "updatingMonth": "正在更新月份…"
+        },
+        "priceChange": {
+            "accept": "接受新价格并继续",
+            "description": "此航班现在是 {newPrice}（原价 {oldPrice}）。您是否想要按新价格继续？",
+            "searchAgain": "重新搜索",
+            "title": "票价已变化"
+        },
+        "seats": {
+            "clear": "清除",
+            "done": "完成",
+            "errorDetail": "无法加载座位图：{error}",
+            "exitRowTooltip": "⚠ 紧急出口排",
+            "extraLegroomTooltip": "✦ 额外腿部空间",
+            "legend": {
+                "exitRow": "紧急出口排",
+                "extraLegroom": "额外腿部空间",
+                "free": "免费",
+                "paid": "付费",
+                "selected": "已选",
+                "taken": "已占"
+            },
+            "loading": "正在加载座位图…",
+            "notAvailable": "座位图不可用",
+            "notSupported": "此航班不支持通过我们的预订系统选择座位。",
+            "optional": "选择——在机舱图上选择座位",
+            "seatChosen": "· 已选座位 {designator}",
+            "seatLabel": "座位 {designator}",
+            "seatUpgrade": "座位升级：",
+            "seatsCount": "{selected}/{total} 座位",
+            "selected": "{count} 个座位已选· +{price}",
+            "selectedPlural": "{count} 个座位已选· +{price}",
+            "selectingFor": "为 {name} 选择",
+            "skip": "跳过",
+            "tapSeatBelow": "· 点击下方座位",
+            "tapToSelect": "点击选择座位",
+            "title": "座位选择"
+        },
+        "seatsRemaining": {
+            "available": "{count} 个座位可用",
+            "leftPlural": "{count} 个座位",
+            "onlyLeft": "仅剩 {count} 个座位！",
+            "onlyLeftPlural": "仅剩 {count} 个座位！"
+        },
+        "submitBtn": {
+            "confirm": "确认预订 · {price}",
+            "processing": "正在处理预订..."
+        },
+        "success": {
+            "addHotel": "添加酒店以完善您的旅行",
+            "addHotelDesc": "预订您在 {destination} 的入住，并通过我们的航班+酒店套餐享受优惠",
+            "addToThisTrip": "添加到此行程",
+            "boardingPassInfo": "您的登机牌将在办理入住时发放。您可以在办理入住后从航司的应用程序或网站下载。",
+            "bookSeparately": "单独预订",
+            "bookingConfirmed": "预订已确认！🎉",
+            "bookingId": "预订 ID",
+            "bundleDealBadge": "✦ 套餐优惠",
+            "bundleDiscountApplied": "已应用套餐优惠",
+            "bundleSavings": "套餐优惠",
+            "bundleSuccess": "您的航班已成功添加到套餐中。",
+            "checkInInfo": "网上办理入住通常在出发前 24–48 小时开放。访问航司网站并使用您的预订号 {pnr} 办理入住。",
+            "eTickets": "电子票",
+            "emailInfo": "您的电子票和预订确认函将在几分钟内发送到您的邮箱。",
+            "findHotels": "搜索 {destination} 的酒店",
+            "flightSuccess": "您的航班已成功预订。",
+            "pnr": "预订号",
+            "returnToHome": "返回首页",
+            "route": "航线",
+            "standardRate": "标准价格",
+            "total": "总计",
+            "viewMyTrips": "查看我的行程",
+            "whatsNext": "下一步"
+        },
+        "totalPrice": "总价"
+    },
+    "flights": {
+        "card": {
+            "availableFareOptions": "可用票价选项",
+            "bagsCount": "{count} 件行李",
+            "bestValue": "最佳价值",
+            "brandsAvailable": "{count} 个品牌可选",
+            "compareOptions": "比较 {count} 个选项",
+            "currentlySelected": "当前已选",
+            "direct": "直飞",
+            "freeCancellation": "免费取消",
+            "hideDetails": "隐藏详情",
+            "includesTaxesFees": "含税费",
+            "legLabel": "第{number}段",
+            "moreSegments": "+ {count} 个",
+            "noBag": "无行李",
+            "nonRefundable": "不可退款",
+            "nonstop": "直飞",
+            "onlySeatsLeft": "仅剩 {count} 个座位！",
+            "option": "选项",
+            "outbound": "去程",
+            "perPerson": "每人",
+            "perPersonShort": "/人",
+            "refundableFee": "可退款（预计费用：{fee}）",
+            "refundableFeesMayApply": "可退款（可能收取费用）",
+            "return": "返程",
+            "seatsAvailable": "{count} 个座位可用",
+            "seatsLeft": "剩余 {count} 个座位",
+            "select": "选择",
+            "selectFare": "选择 {fare}",
+            "showAllSegments": "显示所有航段",
+            "standard": "标准",
+            "stop": "次中转",
+            "stopCount": "{count}次中转",
+            "stopCountShort": "{count}次中转",
+            "stops": "次中转",
+            "stopsCount": "{count}次中转",
+            "thisFare": "此票价",
+            "viewDeal": "查看优惠"
+        },
+        "filtersPanel": {
+            "airlines": "航空公司",
+            "anyStops": "不限中转",
+            "branded": "品牌票价",
+            "cheapestFirst": "价格最低优先",
+            "earliestDeparture": "最早出发优先",
+            "fareType": "票价类型",
+            "fastestFirst": "用时最短优先",
+            "nonStopOnly": "仅直飞",
+            "provider": "供应商",
+            "refundableFares": "可退款票价",
+            "refundableFaresDescription": "允许取消并退款的票价",
+            "sortBy": "排序方式",
+            "stops": "中转",
+            "upToOneStop": "最多 1 次中转"
+        },
+        "priceAlert": {
+            "active": "提醒已启用",
+            "emailWhenDrops": "价格下降时邮件通知",
+            "enabled": "提醒已开启！价格下降时我们会发邮件通知您。",
+            "failed": "设置提醒失败",
+            "loading": "加载中...",
+            "remove": "移除价格提醒",
+            "removed": "提醒已移除",
+            "signInRequired": "请登录以设置价格提醒",
+            "trackPrice": "追踪价格"
+        },
+        "results": {
+            "allSeen": "您已浏览全部 {count} 个可用航班，祝您旅途愉快！",
+            "checkingProviders": "正在检查多个供应商",
+            "discoveringMore": "正在发现更多选项（{total} 项中的 {shown} 项）",
+            "duration": "飞行时长",
+            "empty": "该日期暂无可用航班。",
+            "filters": "筛选",
+            "loading": "正在寻找最优价格…",
+            "noFlightsDefaultMessage": "未找到航班，请调整筛选条件或尝试其他日期。",
+            "noFlightsTitle": "未找到航班",
+            "price": "价格",
+            "result": "{count, plural, other {个结果}}",
+            "searchFailedTitle": "搜索失败",
+            "searchingFlights": "正在搜索航班...",
+            "sortBy": "排序方式",
+            "stops": {
+                "any": "全部",
+                "direct": "直飞",
+                "oneStop": "经停1次",
+                "twoPlus": "经停2次以上"
+            },
+            "tryAgain": "重试"
+        },
+        "search": {
+            "adult": "{count} 位成人",
+            "adult_plural": "{count} 位成人",
+            "fetchingProviders": "正在从供应商获取数据...",
+            "newSearch": "重新搜索",
+            "providersSlow": "航班供应商响应较慢，请稍等，我们仍在寻找最优价格。",
+            "providersSlowDescription": "航班供应商响应较慢，请重试或调整搜索条件。",
+            "sources": "来源:",
+            "stillSearching": "仍在搜索...",
+            "takingLonger": "搜索时间比平时长",
+            "total_count": "（共 {count} 个）",
+            "tryAgain": "重试"
+        },
+        "validation": {
+            "fields": {
+                "returnDate": "返程日期",
+                "returnDestinationAirport": "返程到达机场",
+                "returnOriginAirport": "返程出发机场",
+                "segmentDate": "第 {index} 段日期",
+                "segmentDestinationAirport": "第 {index} 段到达机场",
+                "segmentOriginAirport": "第 {index} 段出发机场"
+            },
+            "missingInformation": "缺少信息",
+            "selectField": "请选择{field}"
+        }
+    },
+    "footer": {
+        "aboutUs": "关于我们",
+        "allRightsReserved": "Partners. 保留所有权利。",
+        "cars": "租车",
+        "company": "公司",
+        "contact": "联系我们",
+        "contactMinimal": "联系我们",
+        "cookies": "Cookie 政策",
+        "cookiesMinimal": "Cookie 设置",
+        "copyright": "© 2026 JTP Partners. 保留所有权利。",
+        "copyrightMinimal": "{brand} © 2026",
+        "enterprise": "企业服务",
+        "flights": "航班",
+        "flightsApi": "航班 API",
+        "hotels": "酒店",
+        "legal": "法律",
+        "module": "模块",
+        "network": "网络状况",
+        "paymentGateway": "支付网关",
+        "poweredBy": "由 Duffel 和 TravelgateX 提供支持",
+        "privacy": "隐私",
+        "privacyMinimal": "隐私政策",
+        "reportBug": "报告问题",
+        "support": "客服支持",
+        "tagline": "专为挑剔的旅行者设计。",
+        "taglinePrecision": "精准数据。绝不妥协。",
+        "terms": "条款",
+        "termsMinimal": "服务条款与条件"
+    },
+    "guestFavorites": {
+        "allFavoritesCount": "共 {count} 个最爱",
+        "collapse": "收起 ↑",
+        "headerHighlight": "最爱",
+        "headerMain": "旅客",
+        "subtitle": "深受旅客喜爱的高分酒店 · 每日更新"
+    },
+    "hotels": {
+        "allHotelsCount": "共 {count} 家酒店",
+        "bookNow": "立即预订",
+        "card": {
+            "freeCancelShort": "免费取消",
+            "freeCancellation": "免费取消",
+            "perNight": "/晚",
+            "reviews": "{count} 条评论",
+            "viewDeal": "查看优惠"
+        },
+        "collapse": "收起 ↑",
+        "filters": {
+            "activeFilters": "已启用筛选:",
+            "amenities": "设施",
+            "any": "不限",
+            "boardTypes": {
+                "allInclusive": "全包",
+                "breakfast": "含早餐",
+                "fullBoard": "全食宿",
+                "halfBoard": "半食宿",
+                "roomOnly": "仅住宿"
+            },
+            "cancellation": "取消政策",
+            "filterBy": "筛选条件",
+            "filters": "筛选",
+            "freeCancellationOnly": "仅显示可免费取消",
+            "guestRating": "住客评分",
+            "minimumReviews": "最低评论数",
+            "mustHaveAllAmenities": "必须包含所有已选设施",
+            "propertyType": "住宿类型",
+            "propertyTypes": {
+                "apartment": "公寓",
+                "hotel": "酒店",
+                "resort": "度假村",
+                "villa": "别墅"
+            },
+            "reset": "重置",
+            "roomFeatures": "房间特色",
+            "searchByPropertyName": "按住宿名称搜索",
+            "searchPlaceholder": "例如 Marriott",
+            "showPlaces": "查看结果",
+            "starCount": "{count} 星",
+            "starRating": "星级",
+            "strictAmenitiesDescription": "启用后，仅显示包含所有已选设施的酒店"
+        },
+        "fromPrice": "{price} 起",
+        "guestFavorite": "房客最爱",
+        "headerDefault": "热门酒店特惠",
+        "headerPersonalized": "在 {country} 的酒店特惠",
+        "mapSearch": {
+            "placeholder": "在地图上搜索位置..."
+        },
+        "mapView": {
+            "any": "不限",
+            "back": "返回",
+            "cancellation": "取消政策",
+            "checkIn": "入住",
+            "checkOut": "退房",
+            "clearFilters": "清除筛选",
+            "almostThere": "即将完成 — 精彩结果即将呈现…",
+            "checkingAvailabilityDates": "正在检查您所选日期的空房情况…",
+            "comparingRates": "正在比较 200+ 家酒店房价…",
+            "findingBestDeals": "正在查找该地区最优惠的价格…",
+            "securingLivePrices": "正在从供应商获取实时价格…",
+            "filterOptions": {
+                "boardTypes": {
+                    "allInclusive": "全包",
+                    "breakfast": "含早餐",
+                    "fullBoard": "全食宿",
+                    "halfBoard": "半食宿",
+                    "roomOnly": "仅客房"
+                },
+                "mealPlan": "膳食计划",
+                "propertyType": "住宿类型",
+                "propertyTypes": {
+                    "apartment": "公寓",
+                    "hotel": "酒店",
+                    "resort": "度假村",
+                    "villa": "别墅"
+                }
+            },
+            "filters": "筛选",
+            "findingHotels": "正在查找酒店",
+            "findingHotelsIn": "正在查找 {destination} 的酒店",
+            "guests": "住客",
+            "list": "列表",
+            "mapDetails": {
+                "biking": "骑行",
+                "default": "默认",
+                "default-3d": "3D 默认",
+                "explore": "探索",
+                "labels": "标签",
+                "mapType": "地图类型",
+                "satellite": "卫星",
+                "terrain": "地形",
+                "title": "地图详情",
+                "traffic": "交通",
+                "transit": "公交"
+            },
+            "nights": "晚",
+            "pricePerNight": "{min} – {max} /晚",
+            "search": "搜索",
+            "searchFallback": "搜索",
+            "swipeToBrowse": "滑动浏览"
+        },
+        "mobileSearch": {
+            "addDates": "添加日期",
+            "checkIn": "入住",
+            "checkInQuestion": "您的入住日期是？",
+            "checkOut": "退房",
+            "checkOutQuestion": "您的退房日期是？",
+            "clearAll": "全部清除",
+            "numberOfGuests": "住客人数",
+            "search": "搜索",
+            "searchCityHotel": "搜索城市或酒店",
+            "title": "搜索酒店",
+            "where": "位置",
+            "whereQuestion": "去哪里？",
+            "who": "住客",
+            "whoQuestion": "谁将出行？"
+        },
+        "perNight": "/晚",
+        "poiPopup": {
+            "fromHotel": "距离酒店",
+            "fromProperty": "距离住宿",
+            "kmFromHotel": "公里",
+            "kmFromProperty": "公里",
+            "mFromHotel": "米",
+            "mFromProperty": "米",
+            "viewOnGoogleMaps": "在 Google 地图上查看"
+        },
+        "pricesMayVary": "价格可能会有所变动",
+        "propertyDatePicker": {
+            "addDate": "添加日期",
+            "adult": "成人",
+            "adults": "成人",
+            "adultsLabel": "成人",
+            "checkAvailability": "查看可用房间",
+            "checkIn": "入住",
+            "checkOut": "退房",
+            "child": "儿童",
+            "childrenAges": "0–17岁",
+            "childrenLabel": "儿童",
+            "children": "儿童",
+            "done": "完成",
+            "guests": "住客",
+            "searching": "搜索中…",
+            "selectCheckIn": "选择入住日期",
+            "selectCheckOut": "选择退房日期",
+            "yourStay": "住宿信息"
+        },
+        "ratings": {
+            "average": "一般",
+            "belowAverage": "低于平均",
+            "excellent": "极好",
+            "exceptional": "超棒",
+            "fair": "一般",
+            "good": "好",
+            "pleasant": "舒适",
+            "poor": "较差",
+            "superb": "极好",
+            "veryGood": "非常好"
+        },
+        "searchPage": {
+            "description": "在全球范围内查找并预订最便宜的酒店、公寓和特色住宿。在 {brand} 比较价格，发现理想住处。",
+            "title": "搜索酒店与住宿 | {brand}"
+        },
+        "searchResults": {
+            "allProperties": "所有住宿",
+            "allResultsLoaded": "已加载全部 {count} 个结果",
+            "allResultsShown": "已显示全部 {count} 个结果",
+            "checkingAvailability": "正在检查可订情况…",
+            "discovery": {
+                "all": "全部发现",
+                "attraction": "景点 & 公园",
+                "grocery": "杂货",
+                "medical": "医院 & 健康",
+                "restaurant": "餐饮",
+                "transit": "交通"
+            },
+            "filteredCount": "{filtered}/{total}",
+            "found": "个已找到",
+            "foundCount": "找到 {count} 个",
+            "hotelsCount": "{count} 家酒店",
+            "hotelsFound": "找到 {count} 家酒店",
+            "loadMoreShowing": "加载更多 · 正在显示 {shown}/{total}",
+            "loadingMore": "正在加载更多酒店",
+            "map": "地图",
+            "noHotelsAvailable": "暂无可订酒店",
+            "noHotelsAvailableIn": "{destination} 暂无可订酒店",
+            "noHotelsFound": "未找到酒店",
+            "noHotelsFoundIn": "未找到 {destination} 的酒店",
+            "noPlacesFound": "该地区没有找到地点",
+            "noPropertiesFound": "未找到住宿",
+            "pricesMayChange": "价格可能会根据可订情况变化。",
+            "propertiesFound": "找到 {count} 个住宿",
+            "refreshPage": "出现问题。请刷新页面后重试。",
+            "searchFailed": "搜索失败，请重试。",
+            "searchUnavailable": "搜索暂不可用",
+            "searching": "正在搜索酒店…",
+            "searchingInDestination": "正在搜索 {destination} 的酒店",
+            "showMoreRemaining": "显示更多（剩余 {count} 个）",
+            "sort": {
+                "cheapest": "最便宜",
+                "mostReviewed": "评论最多",
+                "priceHighToLow": "价格：从高到低",
+                "recommended": "推荐",
+                "topRated": "评分最高"
+            },
+            "staysIn": "{destination} 的住宿",
+            "supplierUnavailable": "当前供应商可能暂不覆盖此目的地。请尝试其他日期、调整筛选条件，或搜索附近城市。",
+            "supplierUnavailableShort": "当前供应商可能暂不覆盖此目的地。请尝试其他日期或附近城市。",
+            "tryDifferentDates": "请尝试其他日期或附近城市。"
+        },
+        "subtitleDefault": "精心挑选，价格无可比拟",
+        "subtitlePersonalized": "{country} 的高分住宿 · 每日更新"
+    },
+    "landing": {
+        "hero": {
+            "cta": "搜索航班",
+            "monoSubtext": "随意提问，一键预订。",
+            "subtitle": "现代旅客的出行操作系统。",
+            "title": "全网最低价机票",
+            "smartPriceTracking": "智能价格追踪",
+            "titleLine1": "精准旅行。",
+            "titleLine2": "为您精雕细琢。"
+        },
+        "howItWorksSteps": {
+            "book": "预订您的旅程",
+            "bookNext": "仅需三个简单步骤。",
+            "bookStep": {
+                "description": "通过安全加密的结账流程，几分钟内即可完成预订。每次都能即时确认。",
+                "title": "预订"
+            },
+            "compareStep": {
+                "description": "浏览各大航空公司和酒店的实时价格。按价格、评分或设施进行筛选。",
+                "title": "比较"
+            },
+            "howItWorks": "使用方法",
+            "search": {
+                "description": "输入您的目的地、日期和出行人数，查找最佳航班和酒店。",
+                "title": "搜索"
+            }
+        },
+        "recentlyViewed": {
+            "flight": "航班",
+            "from": "起价",
+            "recentlySearched": "最近搜索",
+            "showLess": "收起",
+            "stay": "住宿",
+            "subtitle": "继续上次的搜索",
+            "title": "继续搜索",
+            "viewAll": "查看全部"
+        },
+        "search": {
+            "addGuests": "添加人数",
+            "adultAge": "12岁以上",
+            "adults": "成人",
+            "aiDevelopment": "AI 搜索正在开发中，敬请期待！",
+            "aiGreeting": "今天早上我能为您做些什么？",
+            "anyWeek": "任意周",
+            "anywhere": "任意地点",
+            "askAi": "向 AI 提问",
+            "bundle": {
+                "hotelBooked": "酒店已预订！",
+                "instructions": "输入您的 {from} 和 {to} 机场，选择日期，然后点击“搜索”即可打包并节省高达 8% 的费用。"
+            },
+            "cabinClass": {
+                "business": "商务舱",
+                "economy": "经济舱",
+                "first": "头等舱",
+                "premiumEconomy": "超级经济舱"
+            },
+            "cabinClassLabel": "舱位等级",
+            "calendar": "日历",
+            "checkIn": "入住",
+            "checkOut": "退房",
+            "childAge": "2至11岁",
+            "childLabel": "儿童{index}：{age}岁",
+            "children": "儿童",
+            "childrenAges": "0至17岁",
+            "cities": "城市",
+            "clearAll": "清除全部",
+            "comingSoon": "敬请期待",
+            "countries": "国家",
+            "days": [
+                "日",
+                "一",
+                "二",
+                "三",
+                "四",
+                "五",
+                "六"
+            ],
+            "depart": "出发日期",
+            "done": "完成",
+            "findDeals": "寻找最优价格",
+            "findingFlights": "正在寻找航班…",
+            "flexOptions": [
+                "精确日期",
+                "±1天",
+                "±2天",
+                "±3天",
+                "±7天"
+            ],
+            "flexibleDates": "灵活日期",
+            "from": "出发地",
+            "guest": "{count}人",
+            "guestPlural": "{count}人",
+            "guests": "{count} 位出行者",
+            "guestsPlural": "{count} 位出行者",
+            "guestsRooms": "客人与房间",
+            "infantAge": "2岁以下（抱坐）",
+            "infants": "婴儿",
+            "month": "月份",
+            "months": [
+                "一月",
+                "二月",
+                "三月",
+                "四月",
+                "五月",
+                "六月",
+                "七月",
+                "八月",
+                "九月",
+                "十月",
+                "十一月",
+                "十二月"
+            ],
+            "noAirportsFound": "未找到 \"{query}\" 的相关机场",
+            "noResults": "未找到结果",
+            "passengers": "乘客",
+            "placeholder": {
+                "airport": "城市或机场",
+                "date": "选择日期"
+            },
+            "recentSearches": "最近搜索",
+            "results": "结果",
+            "return": "返程日期",
+            "rooms": "房间",
+            "roomsNote": "每次预订限1间客房，如需更多请分开预订。",
+            "searchDestination": "搜索目的地",
+            "searchDestinationsPlaceholder": "搜索目的地...",
+            "searchFlightsHeader": "搜索航班",
+            "searchMode": {
+                "aiSearch": "AI 搜索",
+                "flights": "航班",
+                "stays": "住宿"
+            },
+            "searchAirport": "搜索机场...",
+            "searching": "搜索中...",
+            "selectDate": "选择日期",
+            "submit": "搜索",
+            "to": "目的地",
+            "travelers": "出行人数",
+            "tripType": {
+                "multiCity": "多城市",
+                "oneWay": "单程",
+                "roundTrip": "往返"
+            },
+            "typeToSearch": "输入城市名称或机场代码...",
+            "typeToSearchPrompt": "输入城市名称或机场代码进行搜索",
+            "whenTravel": "您打算何时出行？",
+            "whereTo": "去哪里？",
+            "year": "年份",
+            "yearsOld": "{age}岁"
+        }
+    },
+    "languagePicker": {
+        "cn": "中文",
+        "ja": "日本語",
+        "ko": "한국어",
+        "label": "选择语言"
+    },
+    "legal": {
+        "layout": {
+            "breadcrumb": "CheapestGo · 法律信息",
+            "effective": "生效日期：",
+            "lastUpdated": "最后更新：",
+            "disclaimer": {
+                "label": "注意：",
+                "body": "本文件仅供参考。CheapestGo建议在发布至生产环境之前，咨询具有资质的律师，以审核适用于您特定司法管辖区的条款。"
+            },
+            "contents": "目录",
+            "contact": {
+                "heading": "对本文件有疑问？",
+                "contactLine": "请通过以下方式联系我们：",
+                "address": "JTP Partners · 30 Wall Street, 8th Floor · New York, NY 10005 · 美国"
+            }
+        },
+        "cookiePolicy": {
+            "description": "CheapestGo使用Cookie及类似追踪技术的方式。",
+            "pageSubtitle": "介绍CheapestGo如何使用Cookie及类似技术。",
+            "pageTitle": "Cookie政策",
+            "title": "Cookie政策 — CheapestGo"
+        },
+        "privacyPolicy": {
+            "description": "CheapestGo收集、使用和保护您个人信息的方式。",
+            "pageSubtitle": "介绍我们如何收集、使用和保护您的个人信息。",
+            "pageTitle": "隐私政策",
+            "title": "隐私政策 — CheapestGo"
+        },
+        "refundPolicy": {
+            "description": "了解CheapestGo如何处理取消、退款及预订修改。",
+            "pageSubtitle": "有关取消、退款及预订变更的全部须知。",
+            "pageTitle": "退款与取消政策",
+            "title": "退款与取消政策 — CheapestGo"
+        },
+        "termsGate": {
+            "title": "开始之前",
+            "subtitle": "请查阅并同意我们的条款，以继续使用CheapestGo。",
+            "points": [
+                "您须年满18周岁且具备签订具有约束力合同的法律能力。",
+                "CheapestGo是中介机构，您的预订合同与酒店、航空公司或套餐提供商签订，而非与我们签订。",
+                "在付款处理完成并收到确认邮件之前，价格和可用性不予保证。",
+                "取消和退款遵循供应商政策及我们的退款与取消政策。",
+                "付款由Stripe处理。我们不存储您的银行卡信息。",
+                "争议通过纽约的具有约束力的仲裁解决，您放弃参与集体诉讼的权利。"
+            ],
+            "termsLink": "服务条款",
+            "privacyLink": "隐私政策",
+            "opensInNewTab": "将在新标签页中打开 — 不会丢失当前进度。",
+            "checkboxLabel": "我已阅读并同意服务条款和隐私政策。",
+            "acceptButton": "同意并继续"
+        },
+        "termsOfService": {
+            "description": "规范您使用CheapestGo的条款和条件。",
+            "pageSubtitle": "使用CheapestGo前，请仔细阅读这些条款。",
+            "pageTitle": "服务条款",
+            "title": "服务条款 — CheapestGo"
+        },
+        "content": {
+            "terms": {
+                "acceptance": {
+                    "title": "接受条款",
+                    "body": "访问或使用CheapestGo网站及服务（以下简称“平台”），即表示您同意受本服务条款（以下简称“条款”）及所有适用法律法规的约束。如您不同意本条款，您将无法使用本平台。CheapestGo由JTP Partners运营，地址为美国纽约州纽约市华尔街30号8楼10005。本条款构成您与CheapestGo之间具有法律约束力的协议。"
+                },
+                "eligibility": {
+                    "title": "使用资格",
+                    "intro": "使用CheapestGo，您须满足以下条件：",
+                    "items": [
+                        "年满18周岁",
+                        "具备签订具有约束力合同的法律能力",
+                        "未依据适用法律被禁止使用本平台",
+                        "创建账户或预订时提供准确、最新且完整的信息"
+                    ]
+                },
+                "accountRegistration": {
+                    "title": "账户注册",
+                    "intro": "使用平台的某些功能可能需要注册账户。您同意：",
+                    "items": [
+                        "注册时提供准确、真实的信息",
+                        "对登录凭据保密，不与第三方共享",
+                        "如发现账户被未经授权使用，立即通知我们",
+                        "对账户下发生的所有活动承担责任"
+                    ],
+                    "note": "CheapestGo保留暂停或终止违反本条款或长期不活跃账户的权利。"
+                },
+                "bookingProcess": {
+                    "title": "预订流程与确认",
+                    "intro": "通过CheapestGo进行预订时，您是与旅行供应商（酒店、航空公司或套餐提供商）签订合同，而非与CheapestGo签订。CheapestGo作为促成预订的中介机构。",
+                    "items": [
+                        { "label": "预订确认", "text": "仅当您收到CheapestGo发送的包含预订参考号的书面确认邮件时，预订方告确认。" },
+                        { "label": "准确性", "text": "您有责任在确认付款前确保所有预订信息（日期、客人姓名、房型）准确无误。" },
+                        { "label": "供应商条款", "text": "您的预订须遵守相关旅行供应商的条款及条件，包括其取消和未到场政策。" },
+                        { "label": "可用性", "text": "在付款成功处理并签发确认书之前，价格和可用性不予保证。" }
+                    ]
+                },
+                "pricing": {
+                    "title": "价格与付款",
+                    "items": [
+                        { "label": "价格", "text": "显示的价格直接来源于我们的旅行合作伙伴，反映当前批发价格。没有隐藏的平台费用。" },
+                        { "label": "货币", "text": "价格以您选择的货币显示。货币换算汇率仅供参考，付款时可能有所变动。" },
+                        { "label": "付款处理", "text": "所有付款均由Stripe, Inc.安全处理。付款即表示您同意Stripe的服务条款。CheapestGo不存储您的银行卡信息。" },
+                        { "label": "税费", "text": "显示价格包含适用的服务费。除非另有说明，酒店在入住时直接收取的当地税或旅游税不包含在内。" },
+                        { "label": "价格变动", "text": "在付款完成之前，价格可能会发生变化。对于预订确认前的价格波动，我们不承担责任。" }
+                    ]
+                },
+                "cancellations": {
+                    "title": "取消与退款",
+                    "textBefore": "取消和退款受本条款引用的我们的",
+                    "refundLinkText": "退款与取消政策",
+                    "textAfter": "约束。由于政策因酒店和价格类型而异，请在预订前仔细阅读。"
+                },
+                "prohibitedConduct": {
+                    "title": "禁止行为",
+                    "intro": "您同意不从事以下行为：",
+                    "items": [
+                        "以任何违法目的或违反相关法规的方式使用本平台",
+                        "进行虚假预订、使用被盗付款凭证或恶意申请信用卡退款",
+                        "试图对平台进行逆向工程、爬取或提取数据",
+                        "使用自动化机器人或脚本访问或与平台交互",
+                        "未经我们书面同意，为商业目的转售或再分发预订",
+                        "发布虚假或误导性信息、评价，或冒充任何个人或实体",
+                        "干扰平台的安全性、完整性或性能",
+                        "骚扰、威胁或伤害其他用户或CheapestGo员工"
+                    ]
+                },
+                "intellectualProperty": {
+                    "title": "知识产权",
+                    "body": "CheapestGo平台上的所有内容（包括标志、文字、图形、软件和设计）均为CheapestGo或其许可方的财产，受适用知识产权法律保护。未经事先书面同意，您不得复制、分发或创作我们内容的衍生作品。酒店和航班图片及描述由我们的合作伙伴（Duffel、Mystifly、TravelgateX、ONDA、Rakuten）及相关供应商根据许可提供。"
+                },
+                "disclaimers": {
+                    "title": "免责声明",
+                    "intro": "CheapestGo按“现状”和“可用”基础提供服务。我们不保证：",
+                    "items": [
+                        "平台将不间断、无错误或无病毒地运行",
+                        "酒店描述、照片或设施列表完全准确（这些由供应商提供）",
+                        "显示的价格始终是市场上最低的",
+                        "在供应商破产或超额预订的情况下，旅行供应商将履行所有预订"
+                    ],
+                    "note": "CheapestGo不对任何旅行供应商的行为、错误、遗漏、陈述、保证或过失承担责任。"
+                },
+                "liability": {
+                    "title": "责任限制",
+                    "body": "在适用法律允许的最大范围内，CheapestGo及其高管、董事、员工和关联公司对因使用平台或通过平台进行的任何预订而产生的间接、偶发、特殊、后果性或惩罚性损害（包括利润损失、数据丢失或商誉损失）不承担责任。我们对您因本条款产生的任何索赔的总赔偿责任不超过您为引起该索赔的预订所支付的总金额。"
+                },
+                "indemnification": {
+                    "title": "赔偿",
+                    "body": "您同意就因使用本平台、违反本条款或侵犯他人权利而产生的所有索赔、责任、损害、损失和费用（包括法律费用），对CheapestGo和JTP Partners进行赔偿、辩护和免责。"
+                },
+                "governingLaw": {
+                    "title": "适用法律与争议解决",
+                    "para1": "本条款受美国纽约州法律管辖，不适用其法律冲突规定。",
+                    "para2": "因本条款或使用CheapestGo引起的任何争议，应首先尝试通过善意协商解决。如在30天内无法解决，争议应根据美国仲裁协会（AAA）的规则，提交纽约市纽约州进行具有约束力的仲裁。您放弃参与集体诉讼或集体仲裁的权利。"
+                },
+                "changes": {
+                    "title": "条款变更",
+                    "body": "CheapestGo保留随时修改本条款的权利。如有重大变更，我们将通过电子邮件通知注册用户，并在平台上发布带有修订“最后更新”日期的更新版本。变更生效后继续使用平台，即表示您接受修订后的条款。"
+                },
+                "contact": {
+                    "title": "联系方式",
+                    "intro": "有关本条款的问题：",
+                    "email": "📧 support@cheapestgo.com",
+                    "address": "🏢 JTP Partners · 美国纽约州纽约市华尔街30号8楼 10005"
+                }
+            },
+            "privacy": {
+                "whoWeAre": {
+                    "title": "关于我们",
+                    "para1": "CheapestGo（以下简称“我们”）是由JTP Partners运营的在线旅行社，位于美国纽约州纽约市华尔街30号8楼10005。我们通过网站和移动平台，主要为东南亚旅行者提供酒店预订、航班套餐和旅行优惠服务。",
+                    "para2Before": "有关本隐私政策的问题，请联系我们：",
+                    "para2After": "。"
+                },
+                "informationWeCollect": {
+                    "title": "我们收集的信息",
+                    "directLabel": "您直接提供的信息：",
+                    "directItems": [
+                        "创建账户或预订时提供的姓名、电子邮件地址、电话号码和出生日期",
+                        "账单地址和支付信息（由Stripe安全处理——我们不存储卡号）",
+                        "旅行偏好、搜索记录和过往预订详情",
+                        "您通过电子邮件或支持渠道发送给我们的通信内容"
+                    ],
+                    "autoLabel": "自动收集的信息：",
+                    "autoItems": [
+                        "IP地址、浏览器类型、操作系统和设备标识符",
+                        "访问的页面、页面停留时间、点击的链接和来源URL",
+                        "Cookie、网络信标及类似追踪技术（请参阅我们的Cookie政策）",
+                        "从您的IP地址推导出的位置数据（国家/地区级别）"
+                    ],
+                    "thirdPartyLabel": "从第三方收集的信息：",
+                    "thirdPartyItems": [
+                        "来自我们合作伙伴（Duffel、Mystifly、TravelgateX、ONDA、Rakuten）的旅行可用性和价格数据",
+                        "来自Stripe的付款确认和欺诈检测信号",
+                        "来自我们用于改善平台的服务提供商的分析数据"
+                    ]
+                },
+                "howWeUse": {
+                    "title": "我们如何使用您的信息",
+                    "items": [
+                        "处理和确认您的旅行预订并发送预订确认信",
+                        "通过Stripe处理付款并防止欺诈",
+                        "创建和管理您的CheapestGo账户",
+                        "发送交易性电子邮件（预订确认、收据、行程更新）",
+                        "发送促销邮件和优惠提醒——仅在获得您同意的情况下，您可随时退订",
+                        "改善我们的平台、个性化内容并分析使用模式",
+                        "遵守法律义务并执行我们的服务条款",
+                        "回应您的咨询并提供客户支持"
+                    ]
+                },
+                "howWeShare": {
+                    "title": "我们如何共享您的信息",
+                    "intro": "我们不出售您的个人信息。我们仅在以下情况下共享您的数据：",
+                    "items": [
+                        { "label": "酒店和旅行供应商", "text": "为完成您的预订，我们将您的姓名、联系方式和预订信息与酒店及供应商共享。" },
+                        { "label": "Stripe", "text": "支付信息由Stripe, Inc.处理。Stripe的隐私政策规定了其处理您支付数据的方式。参见：", "linkText": "stripe.com/privacy", "linkHref": "https://stripe.com/privacy" },
+                        { "label": "旅行合作伙伴（Duffel、Mystifly、TravelgateX、ONDA、Rakuten）", "text": "搜索查询和预订详情通过我们的合作伙伴API处理，以获取可用性和价格信息。" },
+                        { "label": "Supabase", "text": "我们的数据库基础设施托管于Supabase。数据在存储和传输时均经过加密。" },
+                        { "label": "法律要求", "text": "在法律、法院命令要求，或为保护CheapestGo或他人的权利、财产或安全时，我们可能披露信息。" }
+                    ]
+                },
+                "cookies": {
+                    "title": "Cookie及追踪技术",
+                    "textBefore": "我们使用Cookie及类似技术来运营平台并改善您的体验。有关我们使用的Cookie及如何管理您的偏好设置的详细信息，请参阅我们的",
+                    "linkText": "Cookie政策",
+                    "textAfter": "。"
+                },
+                "dataRetention": {
+                    "title": "数据保留",
+                    "intro": "我们在以下必要期限内保留您的个人数据：",
+                    "items": [
+                        "维护您的账户并提供我们的服务",
+                        "遵守法律、税务和会计义务（财务记录通常为7年）",
+                        "解决争议并履行我们的协议"
+                    ],
+                    "note": "删除账户后，除法律要求保留的情况外，我们将在90天内删除或匿名化您的个人数据。"
+                },
+                "internationalTransfers": {
+                    "title": "国际数据传输",
+                    "body": "CheapestGo总部位于美国。当您从东南亚或其他地区使用我们的服务时，您的数据将被传输到美国并在美国进行处理。我们确保为国际传输建立了适当的保障措施，包括适用法律（包括《通用数据保护条例》及2012年菲律宾《数据隐私法》第10173号共和国法案）要求时的标准合同条款。"
+                },
+                "yourRights": {
+                    "title": "您的权利与选择",
+                    "intro": "根据您所在的司法管辖区，您可能拥有以下权利：",
+                    "items": [
+                        { "label": "访问权", "text": "请求获取我们持有的您的个人数据副本" },
+                        { "label": "更正权", "text": "请求更正不准确或不完整的数据" },
+                        { "label": "删除权", "text": "请求删除您的个人数据（“被遗忘权”）" },
+                        { "label": "可携权", "text": "以结构化、机器可读格式接收您的数据" },
+                        { "label": "退订权", "text": "随时使用邮件中的链接退订营销邮件" },
+                        { "label": "撤回同意权", "text": "在处理基于同意的情况下，您可随时撤回同意" }
+                    ],
+                    "emailBefore": "如需行使任何上述权利，请发送电子邮件至：",
+                    "emailAfter": "。我们将在30天内予以回复。"
+                },
+                "childrensPrivacy": {
+                    "title": "儿童隐私",
+                    "body": "CheapestGo不面向18岁以下的儿童。我们不会故意收集儿童的个人信息。如果您认为我们无意中收集了儿童的信息，请立即联系support@cheapestgo.com，我们将及时删除相关信息。"
+                },
+                "security": {
+                    "title": "安全措施",
+                    "body": "我们采用行业标准的技术和组织措施来保护您的个人数据，包括传输加密（TLS/HTTPS）、静态加密、访问控制和定期安全审查。支付数据由符合PCI DSS标准的Stripe专门处理。然而，通过互联网传输的方式并非完全安全，我们无法保证绝对的安全性。"
+                },
+                "changes": {
+                    "title": "政策变更",
+                    "body": "我们可能会不时更新本隐私政策。如有重大变更，我们将通过电子邮件通知您（如您有账户）或在网站上发布醒目公告。在修订后政策生效日期后继续使用CheapestGo，即表示您接受相关变更。"
+                },
+                "contact": {
+                    "title": "联系我们",
+                    "intro": "有关隐私方面的咨询、请求或投诉：",
+                    "email": "📧 support@cheapestgo.com",
+                    "address": "🏢 JTP Partners · 美国纽约州纽约市华尔街30号8楼 10005"
+                }
+            },
+            "refund": {
+                "overview": {
+                    "title": "概述",
+                    "body": "CheapestGo作为您与旅行供应商（酒店、航空公司和套餐提供商）之间的中介机构。取消和退款权利主要受各供应商政策的约束，其因房产类型、价格类型和预订日期而异。本政策说明我们如何代表您处理取消和退款事宜。"
+                },
+                "cancellationTypes": {
+                    "title": "酒店取消类型",
+                    "intro": "通过CheapestGo预订酒店时，您将看到以下价格类型之一：",
+                    "free": {
+                        "heading": "免费取消",
+                        "body": "在预订时指定的截止日期前取消，无需支付任何费用。确切截止日期（例如，“入住前48小时前可免费取消”）将显示在预订页面和确认邮件中。"
+                    },
+                    "partial": {
+                        "heading": "部分退款",
+                        "body": "根据取消时间相对于入住日期的不同，适用部分退款。罚款金额和截止日期在您确认付款前显示。"
+                    },
+                    "nonRefundable": {
+                        "heading": "不可退款",
+                        "body": "取消后不提供退款。这些价格通常较低，且在结账前明确标注为“不可退款”。"
+                    }
+                },
+                "howToCancel": {
+                    "title": "如何取消预订",
+                    "intro": "取消预订步骤：",
+                    "steps": [
+                        "登录您的CheapestGo账户，前往我的预订。",
+                        "选择您要取消的预订，点击取消预订。",
+                        "查看屏幕上显示的取消政策和适用费用。",
+                        "确认取消。您将收到取消确认邮件。"
+                    ],
+                    "emailBefore": "或者，携带您的预订参考号联系我们：",
+                    "emailAfter": "我们将在1个工作日内处理取消请求。"
+                },
+                "processing": {
+                    "title": "退款处理",
+                    "items": [
+                        { "label": "符合条件的退款", "text": "将退回至结账时通过Stripe使用的原始付款方式（信用卡/借记卡或GrabPay）。" },
+                        { "label": "处理时间", "text": "启动退款后，通常需要5至10个工作日才能在您的账单上显示，具体取决于您的银行或发卡机构。" },
+                        { "label": "CheapestGo服务费", "text": "除非取消是由于供应商错误或CheapestGo系统故障，否则适用的平台服务费不予退款。" },
+                        { "label": "Stripe处理费", "text": "Stripe收取的支付处理费按照Stripe的标准政策，CheapestGo不予退款。" },
+                        { "label": "货币", "text": "退款以原始付款时使用的同种货币退还。我们不对退款时的汇率差异承担责任。" }
+                    ]
+                },
+                "noShows": {
+                    "title": "未到场",
+                    "body": "如您未事先取消且在预定入住日期未能办理入住，预订将被视为未到场。未到场政策因酒店而异——大多数酒店将收取全额预订费用。CheapestGo无法覆盖酒店的未到场政策。如您的计划有变，我们强烈建议提前取消。"
+                },
+                "amendments": {
+                    "title": "预订修改",
+                    "intro": "日期变更、房型变更和客人姓名更正须视酒店可用性和供应商政策而定。如需申请修改：",
+                    "steps": [
+                        "携带您的预订参考号发邮件至support@cheapestgo.com",
+                        "说明您需要的变更内容及原因",
+                        "我们将与供应商确认可用性，并告知您修改是否可行"
+                    ],
+                    "noteLabel": "注意：",
+                    "noteText": "修改可能导致价格差异（额外收费或信用额度），且有时可能需要取消并重新预订。我们无法保证修改请求一定能得到满足。"
+                },
+                "supplierCancellations": {
+                    "title": "供应商取消与不可抗力",
+                    "intro": "在极少数情况下，酒店或旅行供应商可能因超额预订、关闭、自然灾害或不可抗力事件取消您的预订。如发生此情况：",
+                    "items": [
+                        "CheapestGo将在得到供应商通知后立即告知您",
+                        "我们将退还您支付给CheapestGo的全额款项，包括服务费",
+                        "我们将尽力协助您寻找替代住宿，但无法保证能提供替代方案"
+                    ],
+                    "note": "CheapestGo不对因供应商取消而产生的损失承担责任，包括交通费用、在其他地方额外预订的酒店费用或间接损失。我们建议购买旅行保险以应对此类情况。"
+                },
+                "disputes": {
+                    "title": "争议与信用卡退款",
+                    "body": "如您对某项收费有疑问，请在向银行申请信用卡退款前先联系support@cheapestgo.com。大多数问题可以迅速解决。未事先联系CheapestGo即发起的信用卡退款可能导致账户暂停。CheapestGo保留对恶意提出或不符合我们取消政策的信用卡退款提出异议的权利。"
+                },
+                "flightPackages": {
+                    "title": "航班套餐",
+                    "body": "对于航班+酒店一价全包套餐，取消条款取决于酒店和航空公司两个部分。机票通常不可退款或需支付较高的取消费用。您套餐的具体条款将在结账时和确认邮件中显示。如需取消套餐，请立即联系support@cheapestgo.com寻求指导。"
+                },
+                "contact": {
+                    "title": "退款咨询联系方式",
+                    "intro": "所有退款和取消查询，请准备好您的预订参考号后联系我们：",
+                    "email": "📧 support@cheapestgo.com",
+                    "address": "🏢 JTP Partners · 美国纽约州纽约市华尔街30号8楼 10005",
+                    "outro": "我们力争在1至2个工作日内回复所有退款申请。"
+                }
+            },
+            "cookie": {
+                "whatAreCookies": {
+                    "title": "什么是Cookie？",
+                    "body": "Cookie是访问网站时存储在您设备上的小型文本文件。它们被广泛用于使网站高效运作、记住您的偏好，以及向网站运营者提供信息。类似技术包括网络信标、像素、本地存储和会话存储，本政策中统称为“Cookie”。"
+                },
+                "whyWeUse": {
+                    "title": "我们为何使用Cookie",
+                    "intro": "CheapestGo使用Cookie的目的：",
+                    "items": [
+                        "保持您的登录状态并安全维护会话",
+                        "记住您的偏好设置（货币、语言、深色/浅色模式）",
+                        "保存您最近的搜索记录和浏览过的房源",
+                        "防止欺诈并保护您账户的安全",
+                        "衡量性能并了解访客如何使用我们的平台",
+                        "个性化内容并展示相关优惠和推荐"
+                    ]
+                },
+                "types": {
+                    "title": "我们使用的Cookie类型",
+                    "categories": [
+                        {
+                            "heading": "必要Cookie",
+                            "body": "这些Cookie对平台运行至关重要。它们启用认证、会话管理、安全令牌和支付处理等核心功能。由于服务运行所必需，您无法选择不使用这些Cookie。",
+                            "items": [
+                                "supabase-auth-token — 认证会话",
+                                "__stripe_mid / __stripe_sid — Stripe欺诈防控"
+                            ]
+                        },
+                        {
+                            "heading": "功能性Cookie",
+                            "body": "这些Cookie记住您的选择并个性化您的体验。禁用它们可能会降低功能性。",
+                            "items": [
+                                "货币偏好（如人民币、美元、菲律宾比索）",
+                                "主题偏好（深色或浅色模式）",
+                                "最近查看的酒店和搜索历史"
+                            ]
+                        },
+                        {
+                            "heading": "分析Cookie",
+                            "body": "这些Cookie帮助我们了解访客如何与平台互动——哪些页面访问最多、用户在哪里流失以及如何改善体验。数据尽可能以汇总和匿名方式处理。",
+                            "items": [
+                                "页面浏览追踪和会话时长",
+                                "优惠和搜索结果的点击率",
+                                "错误日志和性能监控"
+                            ]
+                        },
+                        {
+                            "heading": "营销Cookie",
+                            "body": "我们可能使用这些Cookie在平台上向您展示相关旅行优惠。我们目前不投放第三方广告。如有变更，我们将更新本政策并征求您的同意。"
+                        }
+                    ]
+                },
+                "thirdParty": {
+                    "title": "第三方Cookie",
+                    "intro": "部分Cookie由我们页面上的第三方服务设置：",
+                    "stripeBefore": "设置用于欺诈检测和支付会话管理的Cookie。参见：",
+                    "stripeLinkText": "Stripe隐私政策",
+                    "supabaseText": "设置认证Cookie，以管理您在我们数据库基础设施上的登录会话。",
+                    "outro": "我们无法控制第三方Cookie。请查阅相关服务提供商的隐私政策以获取更多信息。"
+                },
+                "duration": {
+                    "title": "Cookie有效期",
+                    "intro": "CheapestGo的Cookie分为以下两类：",
+                    "items": [
+                        { "label": "会话Cookie", "text": "关闭浏览器时自动删除。用于登录会话和临时状态。" },
+                        { "label": "持久Cookie", "text": "在您的设备上保留一定时间（通常为30天至1年）。用于偏好设置和分析。" }
+                    ]
+                },
+                "managing": {
+                    "title": "管理您的Cookie偏好",
+                    "intro": "您可以通过以下几种方式控制Cookie：",
+                    "items": [
+                        { "label": "浏览器设置", "text": "大多数浏览器允许您通过设置（通常在隐私或安全选项下）拒绝或删除Cookie。请注意，禁用必要Cookie将导致登录和结账等核心功能无法使用。" },
+                        { "label": "Cookie横幅", "text": "首次访问CheapestGo时，系统可能会显示Cookie同意横幅，供您选择接受或拒绝非必要Cookie。" },
+                        { "label": "退出工具", "text": "对于分析Cookie，您可以在适用情况下使用Google Analytics退出浏览器插件等浏览器扩展程序。" }
+                    ],
+                    "note": "调整Cookie设置可能会影响平台的功能。必要Cookie无法禁用，否则将影响您使用CheapestGo的能力。"
+                },
+                "doNotTrack": {
+                    "title": "请勿追踪（Do Not Track）",
+                    "body": "部分浏览器会发送“请勿追踪”（DNT）信号。由于目前没有关于网站应如何响应DNT信号的通用标准，CheapestGo目前不响应DNT信号。我们将随着标准的发展持续评估这一领域。"
+                },
+                "changes": {
+                    "title": "Cookie政策变更",
+                    "body": "我们可能会不时更新本Cookie政策，以反映技术、法规或Cookie使用方式的变化。如有重大变更，我们将更新本页面顶部的“最后更新”日期。变更发布后继续使用平台，即表示您接受修订后的政策。"
+                },
+                "contact": {
+                    "title": "联系方式",
+                    "intro": "有关我们使用Cookie的问题：",
+                    "email": "📧 support@cheapestgo.com",
+                    "address": "🏢 JTP Partners · 美国纽约州纽约市华尔街30号8楼 10005"
+                }
+            }
+        }
+    },
+    "nav": {
+        "account": "账户",
+        "accountSettings": "账户设置",
+        "accountWorks": "您的账户可在{brand}及所有合作站点使用",
+        "createAccount": "创建账户",
+        "home": "首页",
+        "membersSave": "会员可省夐10%或更多",
+        "membersSaveSubtitle": "登录后可享选定住宿折扣",
+        "myTrips": "我的行程",
+        "openApp": "打开应用",
+        "profile": "个人资料",
+        "signIn": "登录",
+        "signOut": "退出登录",
+        "support": "客服支持",
+        "trips": "行程"
+    },
+    "popularDestinations": {
+        "subtitle": "探索亚太地区热门景点 — 秒速搜索航班和酒店。",
+        "title": "热门目的地"
+    },
+    "propertyGallery": {
+        "alt": {
+            "galleryView": "画廊图片 {number}",
+            "mainPropertyView": "房源主图",
+            "propertyView": "房源图片",
+            "propertyViewNumbered": "房源图片 {number}",
+            "thumbnail": "缩略图 {number}",
+            "view": "图片 {number}"
+        },
+        "moreInfo": "更多信息",
+        "morePhotos": "+{count} 张照片",
+        "noImages": "暂无图片",
+        "showAllPhotos": "查看所有照片",
+        "viewPhoto": "查看照片"
+    },
+    "propertyNav": {
+        "amenities": "设施",
+        "location": "位置",
+        "overview": "概览",
+        "policies": "政策",
+        "reviews": "评论",
+        "rooms": "客房"
+    },
+    "propertyOverview": {
+        "aboutProperty": "关于此住宿",
+        "cleaningSafety": {
+            "description": "该住宿采取了全面的卫生措施，包括无接触入住和加强的清洁流程。",
+            "title": "清洁与安全措施"
+        },
+        "popularAmenities": "热门设施",
+        "readMore": "阅读更多",
+        "seeAllAmenities": "查看全部 {count} 项设施",
+        "showLess": "收起",
+        "showLessAmenities": "收起设施",
+        "verifiedReview": "{count} 条已验证评论",
+        "verifiedReviews": "{count} 条已验证评论"
+    },
+    "pwa": {
+        "installPrompt": {
+            "body": "添加到主屏幕，访问更快捷。",
+            "dismiss": "暂不",
+            "install": "安装",
+            "title": "获取 {brand} 应用"
+        }
+    },
+    "search": {
+        "validation": {
+            "allHotelFieldsRequired": "搜索酒店需要填写所有字段",
+            "fieldList": "{fields}和{last}",
+            "fields": {
+                "checkInDate": "入住日期",
+                "checkOutDate": "退房日期",
+                "destination": "目的地"
+            },
+            "listSeparator": "、",
+            "selectField": "请选择{field}"
+        }
+    },
+    "seo": {
+        "faq": {
+            "a1": "{brand} 搜索多家航空公司和全球分销系统，实时找出最低票价，让您在一个地方比较和预订。",
+            "a2": "可以。{brand} 支持预订机票、酒店、公寓和特色住宿，全部在一个平台完成。",
+            "a3": "是的，在 {brand} 上搜索和比较价格完全免费，只有在预订时才需要付款。",
+            "a4": "{brand} 支持多种货币，并根据您的偏好自动换算价格，让您随时以本地货币查看费用。",
+            "q1": "{brand} 如何找到便宜机票？",
+            "q2": "我可以在 {brand} 上同时预订机票和酒店吗？",
+            "q3": "{brand} 免费使用吗？",
+            "q4": "{brand} 支持哪些货币？"
+        },
+        "orgDescription": "{brand} 是一个现代旅行预订平台，帮助旅行者在全球范围内找到最便宜的机票和酒店。",
+        "siteDescription": "在全球范围内发现最优惠的旅行套餐。与 {brand} 一起轻松规划航班和酒店，节省开支，开启环球之旅。",
+        "siteTagline": "发现并预订您的环球之旅"
+    },
+    "theme": {
+        "contextError": "useTheme 必须在 ThemeProvider 内使用",
+        "switchToDark": "切换深色模式",
+        "switchToLight": "切换浅色模式"
+    },
+    "topCities": {
+        "exploreHotels": "探索酒店",
+        "headerHighlight": "全球首选",
+        "headerMain": "热门城市",
+        "subtitle": "最受欢迎的目的地 · 立即查找酒店"
+    },
+    "topDestinations": {
+        "findHotels": "查找酒店",
+        "headerHighlight": "全球首选",
+        "headerMain": "热门目的地",
+        "subtitle": "来自世界每个角落的标志性体验"
+    },
+    "property": {
+        "addressNotAvailable": "地址不可用",
+        "bookingWidget": {
+            "amenities": "设施",
+            "bookThisRoom": "预订此房间",
+            "description": "描述",
+            "guests": "{count}位住客",
+            "roomDetails": "房间详情",
+            "selectedRoom": "已选房间"
+        },
+        "breadcrumbHome": "首页",
+        "breadcrumbStaysIn": "{city}的住宿",
+        "bundleActive": "套餐折扣生效中",
+        "bundleApplied": "套餐折扣已应用 — 节省{percent}%",
+        "faq": {
+            "checkInAnswer": "入住时间为{time}",
+            "checkInQuestion": "该住宿的入住时间是什么时候？",
+            "checkOutAnswer": "退房时间为{time}",
+            "checkOutQuestion": "退房时间是什么时候？",
+            "fallbackCancellationAnswer": "取消政策因房价而异。预订前请查看上方的房间选项了解具体取消条款。",
+            "fallbackCancellationQuestion": "{name}的取消政策是什么？",
+            "fallbackModificationAnswer": "您可以通过预订后收到的确认邮件来管理预订。如需紧急更改，请直接联系住宿方。",
+            "fallbackModificationQuestion": "如何修改或取消预订？",
+            "fallbackPaymentAnswer": "大多数主要信用卡和借记卡均可接受。请直接联系住宿方确认接受的付款方式。",
+            "fallbackPaymentQuestion": "{name}接受信用卡吗？",
+            "importantQuestion": "预订前有什么重要注意事项吗？",
+            "parkingAnswer": "是的，该住宿提供{facility}。",
+            "parkingQuestion": "{name}有停车场吗？",
+            "poolAnswer": "是的，该住宿有{facility}。",
+            "poolQuestion": "{name}有游泳池吗？",
+            "restaurantAnswer": "是的，该住宿设有餐厅。",
+            "restaurantQuestion": "{name}有餐厅吗？",
+            "title": "常见问题",
+            "wifiAnswer": "是的，该住宿提供WiFi服务。",
+            "wifiQuestion": "{name}提供WiFi吗？"
+        },
+        "locationLabel": "位置",
+        "locationTitle": "位置信息",
+        "mobileCta": {
+            "checkRoomRates": "查看房价",
+            "from": "起价",
+            "perNight": "/晚",
+            "viewRooms": "查看房间"
+        },
+        "propertyNotFound": "未找到房源（ID：{id}）",
+        "rooms": {
+            "availableRooms": "可用房间（{count}）",
+            "choose": "选择",
+            "chooseRoom": "选择房间",
+            "filterAll": "全部",
+            "filterNonRefundable": "不可退款",
+            "filterRefundable": "可退款",
+            "freeCancellation": "免费取消",
+            "freeCancellationTick": "✓ 免费取消",
+            "includesTaxes": "（1晚1间，含税）",
+            "noMeals": "不含餐食",
+            "noNonRefundableRooms": "没有不可退款的房间。",
+            "noRefundableRooms": "没有可退款的房间。",
+            "changeDates": "更改日期",
+            "noRooms": "所选日期暂无可用房间。",
+            "nonRefundable": "不可退款",
+            "nonRefundablePill": "不可退款",
+            "pageOf": "第{current}/{total}页",
+            "perNight": "/晚",
+            "rateOptions": "{count}种房价选项",
+            "reserve": "预订",
+            "roomOnly": "仅住宿",
+            "showingRooms": "显示第{start}–{end}间，共{total}间",
+            "sleeps": "最多{count}人",
+            "standardRoom": "标准间",
+            "total": "合计",
+            "viewHotelPhotos": "查看酒店照片",
+            "viewRoomPhotos": "查看房间照片"
+        },
+        "savePercent": "节省{percent}%",
+        "weather": {
+            "feelsLike": "体感温度",
+            "forecast": "天气预报",
+            "humidity": "湿度",
+            "nextHours": "未来数小时",
+            "poweredBy": "由 Google Weather 提供",
+            "today": "今天",
+            "tomorrow": "明天",
+            "uv": {
+                "extreme": "极强",
+                "high": "强",
+                "low": "低",
+                "moderate": "适中",
+                "veryHigh": "非常强"
+            },
+            "wind": "风速"
+        }
+    },
+    "reviewsSection": {
+        "aggregatedNote": "住客评分基于综合评分。",
+        "aggregatedScore": "综合住客评分",
+        "anonymous": "匿名",
+        "basedOnReview": "基于{count}条评论",
+        "basedOnReviews": "基于{count}条评论",
+        "guestReviews": "住客评论",
+        "loadMore": "加载更多评论",
+        "noReviews": "暂无单条评论。",
+        "noReviewsAvailable": "暂无评论",
+        "showAllReviews": "查看全部{count}条评论",
+        "showLess": "收起",
+        "showMore": "展开",
+        "showingCount": "显示{shown}条，共{total}条",
+        "sort": {
+            "highestRated": "评分最高",
+            "lowestRated": "评分最低",
+            "newestFirst": "最新优先"
+        },
+        "travelerTypes": {
+            "business": "商务",
+            "couple": "情侣",
+            "family": "家庭",
+            "friendsGroup": "朋友/团队",
+            "solo": "独行"
+        },
+        "verifiedReviewCount": "{count, plural, other {{count}条已验证评论}}",
+        "whoStaysHere": "入住人群"
+    }
+}

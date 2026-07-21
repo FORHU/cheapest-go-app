@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useCallback } from 'react';
+import { useTranslations } from 'next-intl';
 import { useSearchStore, Destination } from '@/stores/searchStore';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { toast } from 'sonner';
@@ -53,6 +54,7 @@ export interface UseSearchModuleReturn {
  * - Provides memoized actions for performance
  */
 export const useSearchModule = (): UseSearchModuleReturn => {
+    const t = useTranslations('search.validation');
     const router = useRouter();
     const searchParams = useSearchParams();
 
@@ -174,18 +176,21 @@ export const useSearchModule = (): UseSearchModuleReturn => {
 
         // Collect missing fields
         const missingFields: string[] = [];
-        if (!hasDestination) missingFields.push('destination');
-        if (!hasCheckIn) missingFields.push('check-in date');
-        if (!hasCheckOut) missingFields.push('check-out date');
+        if (!hasDestination) missingFields.push(t('fields.destination'));
+        if (!hasCheckIn) missingFields.push(t('fields.checkInDate'));
+        if (!hasCheckOut) missingFields.push(t('fields.checkOutDate'));
 
         // If any fields are missing, show error and focus the first missing field
         if (missingFields.length > 0) {
             const fieldText = missingFields.length === 1
                 ? missingFields[0]
-                : missingFields.slice(0, -1).join(', ') + ' and ' + missingFields[missingFields.length - 1];
+                : t('fieldList', {
+                    fields: missingFields.slice(0, -1).join(t('listSeparator')),
+                    last: missingFields[missingFields.length - 1],
+                });
 
-            toast.error(`Please select ${fieldText}`, {
-                description: 'All fields are required to search for hotels',
+            toast.error(t('selectField', { field: fieldText }), {
+                description: t('allHotelFieldsRequired'),
             });
 
             // Open the first missing dropdown
@@ -204,21 +209,34 @@ export const useSearchModule = (): UseSearchModuleReturn => {
 
         // Destination
         params.set('destination', destValue!);
-        // Include placeId and countryCode for accurate API results
         if (state.destination?.countryCode) {
             params.set('countryCode', state.destination.countryCode);
+        }
+        if (state.destination?.type === 'country') {
+            params.set('destinationType', 'country');
         }
         if (state.destination?.id) {
             params.set('placeId', state.destination.id);
         }
+        // TravelgateX destination code (from autocomplete)
+        if (state.destination?.code) {
+            params.set('destinationCode', state.destination.code);
+        }
 
         // Currency: based on user's locale (from store), not the destination
-        // A Filipino user searching Korea still sees PHP prices
-        params.set('currency', state.userCurrency || 'PHP');
+        // A Korean user searching abroad still sees KRW prices
+        params.set('currency', state.userCurrency || 'KRW');
 
         // Dates
-        params.set('checkIn', state.dates.checkIn!.toISOString());
-        params.set('checkOut', state.dates.checkOut!.toISOString());
+        // Dates - Use YYYY-MM-DD local string to avoid UTC shift
+        params.set('checkIn', (() => {
+            const d = state.dates.checkIn!;
+            return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+        })());
+        params.set('checkOut', (() => {
+            const d = state.dates.checkOut!;
+            return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+        })());
 
         // Travelers
         params.set('adults', state.travelers.adults.toString());
@@ -235,7 +253,7 @@ export const useSearchModule = (): UseSearchModuleReturn => {
         }
 
         router.push(`/search?${params.toString()}`);
-    }, [router, setIsSearching, setActiveDropdown]);
+    }, [router, setIsSearching, setActiveDropdown, t]);
 
     // Clear specific recent search
     const clearRecentSearch = useCallback((title: string) => {

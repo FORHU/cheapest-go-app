@@ -1,63 +1,74 @@
-"use client";
+import * as React from "react"
+import { cva, type VariantProps } from "class-variance-authority"
+import { Loader2 } from "lucide-react"
 
-import React from 'react';
-import { Loader2 } from 'lucide-react';
+import { cn } from "@/lib/utils"
 
-interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
-    variant?: 'primary' | 'secondary' | 'outline' | 'ghost' | 'link';
-    size?: 'sm' | 'md' | 'lg';
-    isLoading?: boolean;
-    leftIcon?: React.ReactNode;
-    rightIcon?: React.ReactNode;
-    fullWidth?: boolean;
+const buttonVariants = cva(
+  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-xl text-sm font-bold transition-all disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg:not([class*='size-'])]:size-4 shrink-0 [&_svg]:shrink-0 outline-none focus-visible:ring-2 focus-visible:ring-blue-500/20 active:scale-[0.98]",
+  {
+    variants: {
+      variant: {
+        default: "bg-blue-600 text-white shadow-lg shadow-blue-600/20 hover:bg-blue-700",
+        destructive:
+          "bg-rose-600 text-white shadow-lg shadow-rose-600/20 hover:bg-rose-700",
+        outline:
+          "border border-slate-200 bg-white hover:bg-slate-50 text-slate-900 dark:border-white/10 dark:bg-white/5 dark:text-white dark:hover:bg-white/10",
+        secondary:
+          "bg-slate-100 text-slate-900 hover:bg-slate-200 dark:bg-white/10 dark:text-white dark:hover:bg-white/20",
+        ghost: "hover:bg-slate-100 hover:text-slate-900 dark:hover:bg-white/10 dark:hover:text-white",
+        link: "text-blue-600 underline-offset-4 hover:underline dark:text-blue-400",
+      },
+      size: {
+        default: "h-11 px-6",
+        sm: "h-9 rounded-lg px-3 text-xs",
+        lg: "h-12 rounded-xl px-10 text-base",
+        icon: "size-11",
+      },
+      fullWidth: {
+        true: "w-full",
+      },
+    },
+    defaultVariants: {
+      variant: "default",
+      size: "default",
+    },
+  }
+)
+
+export interface ButtonProps
+  extends React.ButtonHTMLAttributes<HTMLButtonElement>,
+  VariantProps<typeof buttonVariants> {
+  asChild?: boolean
+  isLoading?: boolean
+  leftIcon?: React.ReactNode
+  rightIcon?: React.ReactNode
 }
 
-const variantClasses = {
-    primary: 'bg-blue-600 hover:bg-blue-700 text-white border-transparent',
-    secondary: 'bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-900 dark:text-white border-transparent',
-    outline: 'bg-transparent border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800',
-    ghost: 'bg-transparent hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 border-transparent',
-    link: 'bg-transparent text-blue-600 dark:text-blue-400 hover:underline border-transparent p-0 h-auto',
-};
+const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
+  ({ className, variant, size, fullWidth, asChild = false, isLoading, leftIcon, rightIcon, children, disabled, ...props }, ref) => {
+    if (asChild && React.isValidElement(children)) {
+      return React.cloneElement(children, {
+        className: cn(buttonVariants({ variant, size, fullWidth }), className, (children.props as any).className),
+        ...props
+      } as any)
+    }
 
-const sizeClasses = {
-    sm: 'px-3 py-1.5 text-xs',
-    md: 'px-4 py-2.5 text-sm',
-    lg: 'px-6 py-3 text-base',
-};
-
-export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(({
-    children,
-    variant = 'primary',
-    size = 'md',
-    isLoading = false,
-    leftIcon,
-    rightIcon,
-    fullWidth = false,
-    className = '',
-    disabled,
-    ...props
-}, ref) => {
     return (
-        <button
-            ref={ref}
-            disabled={isLoading || disabled}
-            className={`
-                inline-flex items-center justify-center gap-2 font-medium rounded-full transition-colors 
-                disabled:opacity-50 disabled:cursor-not-allowed
-                ${variantClasses[variant]}
-                ${variant !== 'link' ? sizeClasses[size] : ''}
-                ${fullWidth ? 'w-full' : ''}
-                ${className}
-            `}
-            {...props}
-        >
-            {isLoading && <Loader2 className="h-4 w-4 animate-spin" />}
-            {!isLoading && leftIcon}
-            {children}
-            {!isLoading && rightIcon}
-        </button>
-    );
-});
+      <button
+        className={cn(buttonVariants({ variant, size, fullWidth, className }))}
+        ref={ref}
+        disabled={isLoading || disabled}
+        {...props}
+      >
+        {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+        {!isLoading && leftIcon && <span className="mr-2">{leftIcon}</span>}
+        {children}
+        {!isLoading && rightIcon && <span className="ml-2">{rightIcon}</span>}
+      </button>
+    )
+  }
+)
+Button.displayName = "Button"
 
-Button.displayName = 'Button';
+export { Button, buttonVariants }

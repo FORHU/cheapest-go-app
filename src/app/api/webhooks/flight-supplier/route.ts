@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { createAdminClient } from '@/utils/postgres/admin';
+import { createNotification } from '@/lib/server/admin/notify';
+import { sendFlightBookingConfirmationEmail, sendFlightRefundEmail } from '@/lib/server/email';
+import { env } from '@/utils/env';
 
 /**
  * Generic Webhook Receiver for Async Flight Supplier Events
@@ -11,19 +14,68 @@ import { createClient } from '@supabase/supabase-js';
  */
 export async function POST(req: NextRequest) {
     try {
-        const payload = await req.json();
+        const rawBody = await req.text();
+        const payload = JSON.parse(rawBody);
 
-        // SECURITY: In production, verify supplier cryptographic signatures here
-        // (e.g. Duffel webhook secret, or Mystifly token)
+        // ── Webhook Signature Verification ──────────────────────────────
+        const duffelSignature = req.headers.get('duffel-signature');
+        const mystiflyToken = req.headers.get('x-mystifly-webhook-token');
 
-        const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-        const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+        // Duffel webhook verification
+        if (payload.type && payload.type.startsWith('order.')) {
+            const DUFFEL_WEBHOOK_SECRET = process.env.DUFFEL_WEBHOOK_SECRET;
+            const isProduction = process.env.NODE_ENV === 'production';
 
-        if (!supabaseUrl || !serviceRoleKey) {
-            return NextResponse.json({ error: 'Server misconfiguration' }, { status: 500 });
+            if (!DUFFEL_WEBHOOK_SECRET) {
+                if (isProduction) {
+                    // In production, a missing secret is a misconfiguration — reject to prevent unauthenticated processing
+                    console.error('[Flight Webhook] DUFFEL_WEBHOOK_SECRET not set in production — rejecting event');
+                    return NextResponse.json({ error: 'Webhook secret not configured' }, { status: 500 });
+                }
+                console.warn('[Flight Webhook] DUFFEL_WEBHOOK_SECRET not configured - skipping signature verification (dev only)');
+            } else if (!duffelSignature) {
+                console.error('[Flight Webhook] Missing Duffel-Signature header');
+                return NextResponse.json({ error: 'Unauthorized - Missing signature' }, { status: 401 });
+            } else {
+                // Verify HMAC-SHA256 signature using timing-safe comparison to prevent timing attacks
+                const crypto = await import('crypto');
+                const expectedSignature = crypto
+                    .createHmac('sha256', DUFFEL_WEBHOOK_SECRET)
+                    .update(rawBody)
+                    .digest('hex');
+
+                const sigValid = (() => {
+                    try {
+                        const a = Buffer.from(duffelSignature, 'hex');
+                        const b = Buffer.from(expectedSignature, 'hex');
+                        return a.length === b.length && crypto.timingSafeEqual(a, b);
+                    } catch {
+                        return false;
+                    }
+                })();
+
+                if (!sigValid) {
+                    console.error('[Flight Webhook] Invalid Duffel signature');
+                    return NextResponse.json({ error: 'Unauthorized - Invalid signature' }, { status: 401 });
+                }
+            }
+        }
+        // Mystifly webhook verification
+        else if (payload.event_type && (payload.pnr || payload.order_id)) {
+            const MYSTIFLY_WEBHOOK_SECRET = process.env.MYSTIFLY_WEBHOOK_SECRET;
+
+            if (!MYSTIFLY_WEBHOOK_SECRET) {
+                console.warn('[Flight Webhook] MYSTIFLY_WEBHOOK_SECRET not configured - skipping token verification');
+            } else if (!mystiflyToken) {
+                console.error('[Flight Webhook] Missing X-Mystifly-Webhook-Token header');
+                return NextResponse.json({ error: 'Unauthorized - Missing token' }, { status: 401 });
+            } else if (mystiflyToken !== MYSTIFLY_WEBHOOK_SECRET) {
+                console.error('[Flight Webhook] Invalid Mystifly webhook token');
+                return NextResponse.json({ error: 'Unauthorized - Invalid token' }, { status: 401 });
+            }
         }
 
-        const supabase = createClient(supabaseUrl, serviceRoleKey);
+        const supabase = createAdminClient();
 
         // ─── 1. Provider Parsing & Event Mapping ─────────────────────
         let provider = 'unknown';
@@ -53,7 +105,7 @@ export async function POST(req: NextRequest) {
         }
         // Mystifly Webhook Strategy (Hypothetical PNR event payload)
         else if (payload.event_type && (payload.pnr || payload.order_id)) {
-            provider = 'mystifly';
+            provider = 'mystifly_v2';
             referenceId = payload.pnr || payload.order_id;
 
             if (payload.event_type === 'ticket_issued') {
@@ -80,7 +132,7 @@ export async function POST(req: NextRequest) {
         // ─── 2. Locate Active Booking ─────────────────────────────────
         const { data: booking } = await supabase
             .from('flight_bookings')
-            .select('id, status, provider, pnr')
+            .select('id, status, provider, pnr, passenger_email, passenger_name, segments, total_price, currency')
             .or(`provider_order_id.eq.${referenceId},pnr.eq.${referenceId}`)
             .single();
 
@@ -113,8 +165,59 @@ export async function POST(req: NextRequest) {
 
             if (!updateErr) {
                 console.log(`[Flight Webhook] Updated booking ${booking.id} to ${newStatus}`);
+                createNotification(
+                    `Flight ${eventType === 'ticketed' ? 'Ticketed' : eventType === 'refunded' ? 'Refunded' : 'Updated'}`,
+                    `Booking ${booking.pnr || booking.id} status updated to ${newStatus} by ${provider}.`,
+                    'booking'
+                );
 
-                // ─── 4. Financial Ledger Logging ────────────────────────
+                // ─── 4. Email Notification to Passenger ──────────────────
+                const passengerEmail = booking.passenger_email;
+                const passengerName = booking.passenger_name || 'Valued Customer';
+                const segments = Array.isArray(booking.segments) ? booking.segments : [];
+
+                if (passengerEmail) {
+                    if (newStatus === 'ticketed') {
+                        sendFlightBookingConfirmationEmail({
+                            bookingId: String(booking.id),
+                            pnr: booking.pnr || '',
+                            email: passengerEmail,
+                            passengerName,
+                            provider: booking.provider || provider,
+                            segments: segments.map((s: any) => ({
+                                airline: s.airline || s.carrier || '',
+                                airlineName: s.airlineName || s.carrier_name || '',
+                                flightNumber: s.flightNumber || s.flight_number || '',
+                                origin: s.origin || s.departure_iata || '',
+                                destination: s.destination || s.arrival_iata || '',
+                                departureTime: s.departureTime || s.departing_at || '',
+                                arrivalTime: s.arrivalTime || s.arriving_at || '',
+                            })),
+                            totalPrice: booking.total_price || 0,
+                            currency: booking.currency || 'USD',
+                        }).catch(e => console.error('[Flight Webhook] Ticketed email error:', e));
+                    } else if (newStatus === 'refunded' && refundAmount > 0) {
+                        sendFlightRefundEmail({
+                            bookingId: String(booking.id),
+                            pnr: booking.pnr || '',
+                            email: passengerEmail,
+                            passengerName,
+                            segments: segments.map((s: any) => ({
+                                airline: s.airline || s.carrier || '',
+                                airlineName: s.airlineName || s.carrier_name || '',
+                                flightNumber: s.flightNumber || s.flight_number || '',
+                                origin: s.origin || s.departure_iata || '',
+                                destination: s.destination || s.arrival_iata || '',
+                                departureTime: s.departureTime || s.departing_at || '',
+                                arrivalTime: s.arrivalTime || s.arriving_at || '',
+                            })),
+                            totalPrice: refundAmount,
+                            currency: currency,
+                        }).catch(e => console.error('[Flight Webhook] Refund email error:', e));
+                    }
+                }
+
+                // ─── 5. Financial Ledger Logging ────────────────────────
                 if (newStatus === 'refunded' && refundAmount > 0) {
                     await supabase
                         .from('booking_financial_events')

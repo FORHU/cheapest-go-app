@@ -4,6 +4,7 @@ export type {
   BookingParams,
   Guest,
   PrebookResponse,
+  TgxSurcharge,
   BookingResponse,
   CancellationPolicy,
   AmendBookingParams,

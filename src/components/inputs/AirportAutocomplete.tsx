@@ -4,6 +4,7 @@ import React, { useRef, useEffect, useState, useCallback, useId } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Plane, Loader2, MapPin } from 'lucide-react';
 import type { Airport } from '@/lib/airports';
+import { useTranslations } from 'next-intl';
 
 // ─── Props ───────────────────────────────────────────────────────────
 
@@ -39,6 +40,7 @@ export const AirportAutocomplete: React.FC<AirportAutocompleteProps> = ({
     onToggle,
     excludeIata,
 }) => {
+    const t = useTranslations('landing.search');
     const uid = useId();
     const listboxId = `airport-listbox-${uid}`;
     const containerRef = useRef<HTMLDivElement>(null);
@@ -48,21 +50,32 @@ export const AirportAutocomplete: React.FC<AirportAutocompleteProps> = ({
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [activeIndex, setActiveIndex] = useState(-1);
+    const isSelectingRef = useRef(false);
 
     // ── Reset when opened/closed ─────────────────────────────────
     useEffect(() => {
         if (isOpen) {
-            setQuery('');
+            setQuery(value ? value.city : '');
             setResults([]);
             setError(null);
             setActiveIndex(-1);
-            requestAnimationFrame(() => inputRef.current?.focus());
+            requestAnimationFrame(() => {
+                inputRef.current?.focus();
+                inputRef.current?.select();
+            });
+        } else if (value) {
+            setQuery(value.city);
         }
-    }, [isOpen]);
+    }, [isOpen, value]);
 
     // ── Click outside to close ───────────────────────────────────
     useEffect(() => {
         const handleClickOutside = (e: MouseEvent) => {
+            // Skip if a selection is in progress (mousedown fired on a result)
+            if (isSelectingRef.current) {
+                isSelectingRef.current = false;
+                return;
+            }
             if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
                 onToggle(false);
             }
@@ -138,8 +151,9 @@ export const AirportAutocomplete: React.FC<AirportAutocompleteProps> = ({
                 break;
             case 'Enter':
                 e.preventDefault();
-                if (activeIndex >= 0 && activeIndex < results.length) {
-                    handleSelect(results[activeIndex]);
+                if (results.length > 0) {
+                    const index = activeIndex >= 0 ? activeIndex : 0;
+                    handleSelect(results[index]);
                 }
                 break;
             case 'Escape':
@@ -150,6 +164,8 @@ export const AirportAutocomplete: React.FC<AirportAutocompleteProps> = ({
     }, [activeIndex, results, onToggle]);
 
     const handleSelect = (airport: Airport) => {
+        isSelectingRef.current = true;
+        setQuery(airport.city);
         onChange(airport);
         onToggle(false);
     };
@@ -159,21 +175,24 @@ export const AirportAutocomplete: React.FC<AirportAutocompleteProps> = ({
     const displaySubtext = value ? value.name : null;
 
     return (
-        <div
-            className={`flex-1 min-w-0 relative flex items-center px-4 h-16 group cursor-pointer hover:bg-slate-50 dark:hover:bg-white/5 transition-colors ${isOpen ? 'z-50' : 'z-auto'}`}
-            onClick={() => onToggle(!isOpen)}
-        >
-            <Plane className="text-slate-400 group-hover:text-blue-500 transition-colors shrink-0" size={20} />
-            <div className="ml-3 flex flex-col justify-center w-full text-left min-w-0">
-                <label className="text-[9px] uppercase font-mono text-slate-500 font-medium tracking-wider">
-                    {label}
-                </label>
-                <div className="text-xs font-bold text-slate-900 dark:text-white truncate">
-                    {displayText || <span className="text-slate-400 font-normal">{placeholder}</span>}
+        <div className={`flex-1 min-w-0 relative group ${isOpen ? 'z-50' : 'z-auto h-16'}`}>
+            {/* ─── Trigger (Hidden on mobile when open to show input instead) ─── */}
+            <div
+                className={`flex-1 min-w-0 relative flex items-center px-4 h-16 group cursor-pointer hover:bg-slate-50 dark:hover:bg-white/5 transition-colors ${isOpen ? 'hidden sm:flex' : 'flex'}`}
+                onClick={() => onToggle(!isOpen)}
+            >
+                <Plane className="text-slate-400 group-hover:text-blue-500 transition-colors shrink-0" size={20} />
+                <div className="ml-3 flex flex-col justify-center w-full text-left min-w-0">
+                    <label className="text-ui-label">
+                        {label}
+                    </label>
+                    <div className="text-ui-value truncate">
+                        {displayText || <span className="text-slate-400 font-normal">{placeholder}</span>}
+                    </div>
+                    {displaySubtext && (
+                        <div className="text-fluid-3xs text-slate-400 truncate font-medium">{displaySubtext}</div>
+                    )}
                 </div>
-                {displaySubtext && (
-                    <div className="text-[9px] text-slate-400 truncate">{displaySubtext}</div>
-                )}
             </div>
 
             {/* ─── Dropdown ──────────────────────────────────────── */}
@@ -181,11 +200,11 @@ export const AirportAutocomplete: React.FC<AirportAutocompleteProps> = ({
                 {isOpen && (
                     <motion.div
                         ref={containerRef}
-                        initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                        animate={{ opacity: 1, y: 0, scale: 1 }}
-                        exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: 'auto' }}
+                        exit={{ opacity: 0, height: 0 }}
                         transition={{ duration: 0.2 }}
-                        className="absolute top-full left-1/2 -translate-x-1/2 sm:translate-x-0 sm:left-0 mt-4 w-[calc(100vw-32px)] sm:w-[500px] sm:min-w-[500px] sm:max-w-[500px] bg-white dark:bg-[#0f172a] shadow-xl rounded-2xl border border-slate-200 dark:border-white/10 overflow-hidden z-[100]"
+                        className="sm:absolute sm:top-full left-0 sm:left-1/2 sm:-translate-x-1/2 sm:mt-4 w-full sm:w-[500px] bg-white dark:bg-[#0f172a] shadow-xl rounded-2xl border border-slate-200 dark:border-white/10 z-[100]"
                         onClick={(e) => e.stopPropagation()}
                         role="dialog"
                         aria-label={`Search ${label} airport`}
@@ -203,7 +222,7 @@ export const AirportAutocomplete: React.FC<AirportAutocompleteProps> = ({
                                         setActiveIndex(-1);
                                     }}
                                     onKeyDown={handleKeyDown}
-                                    placeholder="Type city name or airport code..."
+                                    placeholder={t('typeToSearch')}
                                     className="bg-transparent border-none p-0 text-xs font-medium focus:ring-0 outline-none w-full text-slate-900 dark:text-white placeholder-slate-400"
                                     role="combobox"
                                     aria-expanded={results.length > 0}
@@ -232,7 +251,10 @@ export const AirportAutocomplete: React.FC<AirportAutocompleteProps> = ({
                                         id={`${listboxId}-option-${i}`}
                                         role="option"
                                         aria-selected={i === activeIndex}
-                                        onClick={() => handleSelect(airport)}
+                                        onMouseDown={(e) => {
+                                            e.preventDefault();
+                                            handleSelect(airport);
+                                        }}
                                         className={`px-4 py-2.5 flex items-center gap-3 cursor-pointer transition-colors ${i === activeIndex
                                             ? 'bg-blue-50 dark:bg-blue-500/10'
                                             : 'hover:bg-slate-50 dark:hover:bg-white/5'
@@ -246,7 +268,7 @@ export const AirportAutocomplete: React.FC<AirportAutocompleteProps> = ({
                                         </div>
 
                                         {/* Airport Info */}
-                                        <div className="flex-1 min-w-0">
+                                        <div className="flex-1 min-w-0 text-left">
                                             <div className="text-xs font-bold text-slate-900 dark:text-white truncate">
                                                 {airport.city}
                                                 {airport.country && (
@@ -264,12 +286,12 @@ export const AirportAutocomplete: React.FC<AirportAutocompleteProps> = ({
                                 ))
                             ) : query.length > 0 && !loading ? (
                                 <div className="px-6 py-6 text-center text-slate-400 text-xs">
-                                    No airports found for &ldquo;{query}&rdquo;
+                                    {t('noAirportsFound', { query })}
                                 </div>
                             ) : (
                                 <div className="px-6 py-6 text-center text-slate-400 text-xs">
                                     <Plane className="mx-auto mb-2 text-slate-300 dark:text-slate-600" size={24} />
-                                    Type a city or airport code to search
+                                    {t('typeToSearchPrompt')}
                                 </div>
                             )}
                         </div>

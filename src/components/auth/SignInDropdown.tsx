@@ -6,7 +6,15 @@ import { LogOut, Briefcase, Settings, Star, ChevronDown } from 'lucide-react';
 import { useAuthStore } from '@/stores/authStore';
 import Link from 'next/link';
 import { usePathname, useSearchParams } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 
+
+function getInitials(firstName?: string | null, lastName?: string | null, email?: string | null): string {
+    const first = firstName?.[0] ?? '';
+    const last = lastName?.[0] ?? '';
+    if (first || last) return (first + last).toUpperCase();
+    return (email?.[0] ?? '?').toUpperCase();
+}
 
 interface SignInDropdownProps {
     /** 'dropdown' (default) = desktop popup; 'inline' = renders directly for mobile drawer */
@@ -19,17 +27,24 @@ interface SignInDropdownProps {
     onToggleOpen?: (open: boolean) => void;
 }
 
+const BRAND_NAME = process.env.NEXT_PUBLIC_BRAND_NAME ?? 'CheapestGo';
+
 const SignInDropdown: React.FC<SignInDropdownProps> = ({ variant = 'dropdown', collapsible = false, onNavigate, onToggleOpen }) => {
-    const { user, logout, openAuthModal } = useAuthStore();
+    const { user, logout } = useAuthStore();
+    const t = useTranslations('nav');
     const [isOpen, setIsOpen] = useState(false);
     const [isInlineOpen, setIsInlineOpen] = useState(false);
+    const [mounted, setMounted] = useState(false);
     const dropdownRef = useRef<HTMLDivElement>(null);
     const pathname = usePathname();
     const searchParams = useSearchParams();
 
+    useEffect(() => {
+        setMounted(true);
+    }, []);
+
     // Helper to build redirect URL
     const getRedirectLink = (base: string = '/login', mode?: string) => {
-        const fullPath = pathname + (searchParams?.toString() || '');
         const params = new URLSearchParams();
         if (mode) params.set('mode', mode);
         if (pathname !== '/' && pathname !== '/login') {
@@ -76,14 +91,19 @@ const SignInDropdown: React.FC<SignInDropdownProps> = ({ variant = 'dropdown', c
         onNavigate?.();
     };
 
+    // Helper for "Sign in" button to ensure consistency
+    const renderSignInButton = (className: string) => (
+        <button className={className}>{t('signIn')}</button>
+    );
+
     /* ─── INLINE VARIANT (for mobile drawer) ─── */
     if (variant === 'inline') {
-        const inlineContent = user ? (
+        const inlineContent = (mounted && user) ? (
             <>
                 {/* User Info */}
                 <div className="flex items-center gap-3">
-                    <div className="size-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-medium text-[clamp(0.75rem,1.5vw,0.875rem)]">
-                        {user.firstName[0]}{user.lastName[0]}
+                    <div className="size-8 shrink-0 rounded-full bg-linear-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-medium text-[clamp(0.65rem,1.5vw,0.75rem)]">
+                        {getInitials(user.firstName, user.lastName, user.email)}
                     </div>
                     <div className="min-w-0">
                         <p className="font-medium text-[clamp(0.8125rem,1.5vw,0.875rem)] text-slate-900 dark:text-white truncate">
@@ -93,61 +113,54 @@ const SignInDropdown: React.FC<SignInDropdownProps> = ({ variant = 'dropdown', c
                     </div>
                 </div>
 
-                {/* Rewards */}
-                <div className="flex items-center gap-2 px-3 py-2 bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 rounded-lg">
-                    <Star className="h-4 w-4 text-yellow-500 shrink-0" />
-                    <div>
-                        <p className="text-[clamp(0.6875rem,1.25vw,0.75rem)] font-medium text-slate-900 dark:text-white">Gold Member</p>
-                        <p className="text-[clamp(0.625rem,1.1vw,0.6875rem)] text-slate-500 dark:text-slate-400">2,450 points</p>
-                    </div>
-                </div>
-
                 {/* Links */}
                 <div className="space-y-0.5">
                     <Link
-                        href="/trips"
-                        onClick={handleNav}
-                        className="flex items-center gap-3 px-3 py-1.5 text-[clamp(0.75rem,2vw,0.8125rem)] text-slate-700 dark:text-slate-300 hover:bg-black/5 dark:hover:bg-white/5 rounded-lg transition-colors"
-                    >
-                        <Briefcase className="h-4 w-4 text-slate-400" />
-                        My Trips
-                    </Link>
-                    <Link
                         href="/account"
                         onClick={handleNav}
-                        className="flex items-center gap-3 px-3 py-1.5 text-[clamp(0.75rem,2vw,0.8125rem)] text-slate-700 dark:text-slate-300 hover:bg-black/5 dark:hover:bg-white/5 rounded-lg transition-colors"
+                        className="flex items-center gap-3 px-3 py-2 text-sm font-semibold text-slate-700 dark:text-slate-200 hover:bg-black/5 dark:hover:bg-white/5 rounded-lg transition-colors"
                     >
-                        <Settings className="h-4 w-4 text-slate-400" />
-                        Account Settings
+                        <Settings className="h-5 w-5 text-slate-400" />
+                        {t('accountSettings')}
                     </Link>
                 </div>
 
                 {/* Sign Out */}
                 <button
-                    onClick={() => { logout(); handleNav(); }}
-                    className="w-full flex items-center gap-3 px-3 py-1.5 text-[clamp(0.75rem,2vw,0.8125rem)] text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/10 rounded-lg transition-colors"
+                    onClick={async () => {
+                        try {
+                            await logout();
+                            const { useSearchStore } = await import('@/stores/searchStore');
+                            useSearchStore.getState().reset();
+                            handleNav();
+                        } catch (e) {
+                            console.error('Error during logout', e);
+                        } finally {
+                            window.location.href = '/';
+                        }
+                    }}
+                    className="w-full flex items-center gap-3 px-3 py-2 text-sm font-semibold text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/10 rounded-lg transition-colors"
                 >
-                    <LogOut className="h-4 w-4" />
-                    Sign out
+                    <LogOut className="h-5 w-5" />
+                    {t('signOut')}
                 </button>
             </>
         ) : (
-            <div className="space-y-2">
+            <div className="space-y-3">
                 <Link
                     href={getRedirectLink('/login')}
                     onClick={handleNav}
-                    className="block w-full py-2 px-4 bg-blue-600 hover:bg-blue-700 text-white text-[13px] font-medium rounded-full transition-colors text-center"
+                    className="block w-full py-3 px-4 bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold rounded-full transition-colors text-center shadow-lg shadow-blue-500/20"
                 >
-                    Sign in
+                    {t('signIn')}
                 </Link>
                 <Link
                     href={getRedirectLink('/login', 'signup')}
                     onClick={handleNav}
-                    className="block w-full py-2 px-4 border border-slate-200 dark:border-white/10 text-slate-700 dark:text-white text-[13px] font-medium rounded-full hover:bg-slate-50 dark:hover:bg-white/5 transition-colors text-center"
+                    className="block w-full py-3 px-4 border border-slate-200 dark:border-white/10 text-slate-700 dark:text-white text-sm font-semibold rounded-full hover:bg-slate-50 dark:hover:bg-white/5 transition-colors text-center"
                 >
-                    Create an account
+                    {t('createAccount')}
                 </Link>
-
             </div>
         );
 
@@ -157,10 +170,10 @@ const SignInDropdown: React.FC<SignInDropdownProps> = ({ variant = 'dropdown', c
                     <button
                         type="button"
                         onClick={() => setInlineOpen(!isInlineOpen)}
-                        className="flex items-center justify-between w-full min-h-[40px] px-3.5 rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-800/50 text-left text-[13px] font-medium text-slate-700 dark:text-slate-300 hover:bg-black/5 dark:hover:bg-white/5 transition-colors"
+                        className="flex items-center justify-between w-full min-h-[48px] px-4 rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 text-left text-sm font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-white/10 transition-all shadow-sm"
                     >
-                        <span>{user ? 'Account' : 'Sign in'}</span>
-                        <ChevronDown className={`w-4 h-4 text-slate-400 flex-shrink-0 transition-transform ${isInlineOpen ? 'rotate-180' : ''}`} />
+                        <span>{(mounted && user) ? t('account') : t('signIn')}</span>
+                        <ChevronDown className={`w-4 h-4 text-slate-400 shrink-0 transition-transform ${isInlineOpen ? 'rotate-180' : ''}`} />
                     </button>
                     <AnimatePresence>
                         {isInlineOpen && (
@@ -185,17 +198,15 @@ const SignInDropdown: React.FC<SignInDropdownProps> = ({ variant = 'dropdown', c
     }
 
     /* ─── DROPDOWN VARIANT (desktop) ─── */
-    if (user) {
-        // Logged in state
+    if (!mounted || !user) {
+        // Logged out or still hydrating - render consistent Sign in button
         return (
             <div ref={dropdownRef} className="relative">
                 <button
                     onClick={() => setIsOpen(!isOpen)}
-                    className="flex items-center gap-2 px-3 py-2 rounded-full hover:bg-black/5 dark:hover:bg-white/10 transition-colors"
+                    className="flex items-center gap-2 px-3 py-1.5 text-xs font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-full transition-colors shrink-0"
                 >
-                    <div className="size-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-medium text-[clamp(0.75rem,1.5vw,0.875rem)]">
-                        {user.firstName[0]}{user.lastName[0]}
-                    </div>
+                    {t('signIn')}
                 </button>
 
                 <AnimatePresence>
@@ -207,53 +218,39 @@ const SignInDropdown: React.FC<SignInDropdownProps> = ({ variant = 'dropdown', c
                             transition={{ duration: 0.15 }}
                             className="absolute right-0 top-full mt-2 w-full min-w-[280px] bg-white dark:bg-slate-900 rounded-xl shadow-xl border border-slate-200 dark:border-white/10 overflow-hidden z-50"
                         >
-                            {/* User Info */}
-                            <div className="p-4 border-b border-slate-100 dark:border-white/5">
-                                <div className="flex items-center gap-3">
-                                    <div className="size-12 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-medium text-[clamp(1rem,2vw,1.125rem)]">
-                                        {user.firstName[0]}{user.lastName[0]}
-                                    </div>
-                                    <div>
-                                        <p className="font-medium text-[clamp(0.875rem,2vw,1rem)] text-slate-900 dark:text-white">
-                                            {user.firstName} {user.lastName}
-                                        </p>
-                                        <p className="text-[clamp(0.8125rem,1.5vw,0.875rem)] text-slate-500 dark:text-slate-400">{user.email}</p>
-                                    </div>
-                                </div>
+                            {/* Promo Banner */}
+                            <div className="p-4 bg-linear-to-r from-blue-600 to-blue-700 text-white">
+                                <p className="font-medium text-[clamp(0.875rem,2vw,1rem)]">{t('membersSave')}</p>
+                                <p className="text-[clamp(0.8125rem,1.5vw,0.875rem)] text-blue-100 mt-1">
+                                    {t('membersSaveSubtitle')}
+                                </p>
                             </div>
 
-                            {/* Menu Items */}
-                            <div className="py-2">
+                            {/* Actions */}
+                            <div className="p-4 space-y-3">
                                 <Link
-                                    href="/trips"
-                                    className="flex items-center gap-3 px-4 py-2.5 text-[clamp(0.8125rem,1.5vw,0.875rem)] text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/5 transition-colors"
+                                    href={getRedirectLink('/login')}
                                     onClick={handleNav}
+                                    className="block w-full py-3 px-4 bg-blue-600 hover:bg-blue-700 text-white text-[clamp(0.8125rem,1.5vw,0.875rem)] font-medium rounded-full transition-colors text-center"
                                 >
-                                    <Briefcase className="h-5 w-5 text-slate-400" />
-                                    My Trips
+                                    {t('signIn')}
                                 </Link>
                                 <Link
-                                    href="/account"
-                                    className="flex items-center gap-3 px-4 py-2.5 text-[clamp(0.8125rem,1.5vw,0.875rem)] text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/5 transition-colors"
+                                    href={getRedirectLink('/login', 'signup')}
                                     onClick={handleNav}
+                                    className="block w-full py-3 px-4 border border-slate-200 dark:border-white/10 text-slate-700 dark:text-white text-[clamp(0.8125rem,1.5vw,0.875rem)] font-medium rounded-full hover:bg-slate-50 dark:hover:bg-white/5 transition-colors text-center"
                                 >
-                                    <Settings className="h-5 w-5 text-slate-400" />
-                                    Account Settings
+                                    {t('createAccount')}
                                 </Link>
                             </div>
 
-                            {/* Logout */}
-                            <div className="border-t border-slate-100 dark:border-white/5 p-2">
-                                <button
-                                    onClick={() => {
-                                        logout();
-                                        handleNav();
-                                    }}
-                                    className="w-full flex items-center gap-3 px-3 py-2.5 text-[clamp(0.8125rem,1.5vw,0.875rem)] text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/10 rounded-lg transition-colors"
-                                >
-                                    <LogOut className="h-5 w-5" />
-                                    Sign out
-                                </button>
+
+
+                            {/* Info */}
+                            <div className="border-t border-slate-100 dark:border-white/5 p-4">
+                                <p className="text-[clamp(0.6875rem,1.25vw,0.75rem)] text-slate-500 dark:text-slate-400 text-center">
+                                    {t('accountWorks', { brand: BRAND_NAME })}
+                                </p>
                             </div>
                         </motion.div>
                     )}
@@ -262,14 +259,16 @@ const SignInDropdown: React.FC<SignInDropdownProps> = ({ variant = 'dropdown', c
         );
     }
 
-    // Logged out state
+    // Logged in state (guaranteed mounted and user exists)
     return (
         <div ref={dropdownRef} className="relative">
             <button
                 onClick={() => setIsOpen(!isOpen)}
-                className="flex items-center gap-2 px-4 py-2 text-[clamp(0.8125rem,1.5vw,0.875rem)] font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-full transition-colors"
+                className="flex items-center gap-2 p-1 rounded-full hover:bg-black/5 dark:hover:bg-white/10 transition-colors shrink-0"
             >
-                Sign in
+                <div className="size-7 rounded-full bg-linear-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-medium text-[10px]">
+                    {getInitials(user.firstName, user.lastName, user.email)}
+                </div>
             </button>
 
             <AnimatePresence>
@@ -281,59 +280,45 @@ const SignInDropdown: React.FC<SignInDropdownProps> = ({ variant = 'dropdown', c
                         transition={{ duration: 0.15 }}
                         className="absolute right-0 top-full mt-2 w-full min-w-[280px] bg-white dark:bg-slate-900 rounded-xl shadow-xl border border-slate-200 dark:border-white/10 overflow-hidden z-50"
                     >
-                        {/* Promo Banner */}
-                        <div className="p-4 bg-gradient-to-r from-blue-600 to-blue-700 text-white">
-                            <p className="font-medium text-[clamp(0.875rem,2vw,1rem)]">Members save 10% or more</p>
-                            <p className="text-[clamp(0.8125rem,1.5vw,0.875rem)] text-blue-100 mt-1">
-                                on select stays when signed in
-                            </p>
+                        {/* User Info */}
+                        <div className="p-4 border-b border-slate-100 dark:border-white/5">
+                            <div className="flex items-center gap-3">
+                                <div className="size-10 shrink-0 rounded-full bg-linear-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-medium text-[clamp(0.875rem,2vw,1rem)]">
+                                    {getInitials(user.firstName, user.lastName, user.email)}
+                                </div>
+                                <div className="min-w-0">
+                                    <p className="font-medium text-sm text-slate-900 dark:text-white truncate">
+                                        {user.firstName} {user.lastName}
+                                    </p>
+                                    <p className="text-xs text-slate-500 dark:text-slate-400 truncate">{user.email}</p>
+                                </div>
+                            </div>
                         </div>
 
-                        {/* Actions */}
-                        <div className="p-4 space-y-3">
+                        {/* Menu Items */}
+                        <div className="py-2">
                             <Link
-                                href={getRedirectLink('/login')}
-                                onClick={handleNav}
-                                className="block w-full py-3 px-4 bg-blue-600 hover:bg-blue-700 text-white text-[clamp(0.8125rem,1.5vw,0.875rem)] font-medium rounded-full transition-colors text-center"
-                            >
-                                Sign in
-                            </Link>
-                            <Link
-                                href={getRedirectLink('/login', 'signup')}
-                                onClick={handleNav}
-                                className="block w-full py-3 px-4 border border-slate-200 dark:border-white/10 text-slate-700 dark:text-white text-[clamp(0.8125rem,1.5vw,0.875rem)] font-medium rounded-full hover:bg-slate-50 dark:hover:bg-white/5 transition-colors text-center"
-                            >
-                                Create an account
-                            </Link>
-                        </div>
-
-
-                        {/* Links */}
-                        <div className="border-t border-slate-100 dark:border-white/5 py-2">
-                            <Link
-                                href={getRedirectLink('/login', 'signin')}
+                                href="/account"
                                 className="flex items-center gap-3 px-4 py-2.5 text-[clamp(0.8125rem,1.5vw,0.875rem)] text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/5 transition-colors"
                                 onClick={handleNav}
                             >
-                                <Briefcase className="h-5 w-5 text-slate-400" />
-                                My Trips
-                            </Link>
-
-                            <Link
-                                href="#"
-                                className="flex items-center gap-3 px-4 py-2.5 text-[clamp(0.8125rem,1.5vw,0.875rem)] text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/5 transition-colors"
-                                onClick={handleNav}
-                            >
-                                <Star className="h-5 w-5 text-slate-400" />
-                                Rewards
+                                <Settings className="h-5 w-5 text-slate-400" />
+                                {t('accountSettings')}
                             </Link>
                         </div>
 
-                        {/* Info */}
-                        <div className="border-t border-slate-100 dark:border-white/5 p-4">
-                            <p className="text-[clamp(0.6875rem,1.25vw,0.75rem)] text-slate-500 dark:text-slate-400 text-center">
-                                Your account works across CheapestGo and all partner sites
-                            </p>
+                        {/* Logout */}
+                        <div className="border-t border-slate-100 dark:border-white/5 p-2">
+                            <button
+                                onClick={async () => {
+                                    await logout();
+                                    window.location.href = '/';
+                                }}
+                                className="w-full flex items-center gap-3 px-3 py-2.5 text-[clamp(0.8125rem,1.5vw,0.875rem)] text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/10 rounded-lg transition-colors"
+                            >
+                                <LogOut className="h-5 w-5" />
+                                {t('signOut')}
+                            </button>
                         </div>
                     </motion.div>
                 )}

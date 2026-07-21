@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useCallback, useEffect } from 'react';
+import { useTranslations } from 'next-intl';
 import { Sparkles, Clock, Loader2, Tag, Percent, BadgeDollarSign } from 'lucide-react';
 import { useVoucherState, useVoucherActions } from '@/stores/checkoutStore';
 import { apiFetch } from '@/lib/api/client';
@@ -24,13 +25,13 @@ function formatExpiry(dateStr: string): string {
     });
 }
 
-function getCategoryLabel(category: string): string {
+function getCategoryLabel(category: string, t: (key: string) => string): string {
     switch (category) {
-        case 'first_time': return 'New User';
-        case 'location_based': return 'Location';
-        case 'hotel_specific': return 'Hotel Deal';
-        case 'seasonal': return 'Seasonal';
-        default: return 'Promo';
+        case 'first_time': return t('promos.newUser');
+        case 'location_based': return t('promos.location');
+        case 'hotel_specific': return t('promos.hotelDeal');
+        case 'seasonal': return t('promos.seasonal');
+        default: return t('promos.promo');
     }
 }
 
@@ -51,6 +52,7 @@ export function AvailablePromos({
     locationCode,
     onVoucherApplied,
 }: AvailablePromosProps) {
+    const t = useTranslations('checkout');
     const {
         availablePromos,
         promosLoading,
@@ -144,7 +146,7 @@ export function AvailablePromos({
                 }
             }
         } catch {
-            setVoucherError('Failed to apply promo. Please try again.');
+            setVoucherError(t('promos.failedToApply'));
         } finally {
             setVoucherLoading(false);
         }
@@ -157,12 +159,12 @@ export function AvailablePromos({
                 <div className="flex items-center gap-2 mb-3">
                     <Sparkles size={16} className="text-amber-500" />
                     <h3 className="font-semibold text-slate-900 dark:text-white text-sm">
-                        Available promos
+                        {t('promos.availablePromos')}
                     </h3>
                 </div>
                 <div className="flex items-center justify-center py-4 text-slate-400">
                     <Loader2 size={20} className="animate-spin" />
-                    <span className="ml-2 text-sm">Loading available promos...</span>
+                    <span className="ml-2 text-sm">{t('promos.loadingPromos')}</span>
                 </div>
             </div>
         );
@@ -175,7 +177,7 @@ export function AvailablePromos({
             <div className="flex items-center gap-2 mb-4">
                 <Sparkles size={16} className="text-amber-500" />
                 <h3 className="font-semibold text-slate-900 dark:text-white text-sm">
-                    Available promos for this booking
+                    {t('promos.availableForBooking')}
                 </h3>
             </div>
 
@@ -209,7 +211,7 @@ export function AvailablePromos({
 
                                     {/* Category tag */}
                                     <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded ${getCategoryColor(promo.category)}`}>
-                                        {getCategoryLabel(promo.category)}
+                                        {getCategoryLabel(promo.category, t)}
                                     </span>
                                 </div>
 
@@ -221,29 +223,29 @@ export function AvailablePromos({
                                 <div className="flex items-center gap-3 mt-1.5 flex-wrap">
                                     {promo.discountType === 'percentage' ? (
                                         <span className="text-[11px] font-semibold text-blue-600 dark:text-blue-400">
-                                            {promo.discountValue}% off
+                                            {promo.discountValue}% {t('promos.off')}
                                         </span>
                                     ) : (
                                         <span className="text-[11px] font-semibold text-blue-600 dark:text-blue-400">
-                                            ₱{promo.discountValue.toLocaleString()} off
+                                            ₱{promo.discountValue.toLocaleString()} {t('promos.off')}
                                         </span>
                                     )}
 
                                     {promo.minBookingAmount && (
                                         <span className="text-[10px] text-slate-400 dark:text-slate-500">
-                                            Min. ₱{promo.minBookingAmount.toLocaleString()}
+                                            {t('promos.minAmount', { amount: `₱${promo.minBookingAmount.toLocaleString()}` })}
                                         </span>
                                     )}
 
                                     {promo.maxDiscountAmount && (
                                         <span className="text-[10px] text-slate-400 dark:text-slate-500">
-                                            Up to ₱{promo.maxDiscountAmount.toLocaleString()}
+                                            {t('promos.upTo', { amount: `₱${promo.maxDiscountAmount.toLocaleString()}` })}
                                         </span>
                                     )}
 
                                     <span className="flex items-center gap-0.5 text-[10px] text-slate-400 dark:text-slate-500">
                                         <Clock size={10} />
-                                        Until {formatExpiry(promo.validUntil)}
+                                        {t('promos.until', { date: formatExpiry(promo.validUntil) })}
                                     </span>
                                 </div>
                             </div>
@@ -253,7 +255,7 @@ export function AvailablePromos({
                                 {isApplied ? (
                                     <span className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-semibold text-emerald-700 dark:text-emerald-300 bg-emerald-100 dark:bg-emerald-900/30 rounded-lg">
                                         <Tag size={12} />
-                                        Applied
+                                        {t('promos.applied')}
                                     </span>
                                 ) : (
                                     <button
@@ -268,7 +270,7 @@ export function AvailablePromos({
                                         {voucherLoading ? (
                                             <Loader2 size={12} className="animate-spin" />
                                         ) : (
-                                            'Apply'
+                                            t('promos.apply')
                                         )}
                                     </button>
                                 )}

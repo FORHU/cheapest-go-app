@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useCallback } from 'react';
+import { useTranslations } from 'next-intl';
 import { Tag, X, Loader2, CheckCircle2, AlertCircle } from 'lucide-react';
 import { useVoucherState, useVoucherActions } from '@/stores/checkoutStore';
 import { apiFetch } from '@/lib/api/client';
@@ -25,6 +26,7 @@ export function VoucherInput({
     onVoucherApplied,
     onVoucherRemoved,
 }: VoucherInputProps) {
+    const t = useTranslations('checkout');
     const {
         voucherCode,
         appliedVoucher,
@@ -90,7 +92,7 @@ export function VoucherInput({
                 }
             }
         } catch {
-            setVoucherError('Failed to validate voucher. Please try again.');
+            setVoucherError(t('voucher.failedToValidate'));
         } finally {
             setVoucherLoading(false);
         }
@@ -110,7 +112,7 @@ export function VoucherInput({
                 <div className="flex items-center gap-1.5 sm:gap-2 mb-1.5 sm:mb-3">
                     <Tag size={14} className="text-blue-600 dark:text-blue-400 sm:w-4 sm:h-4" />
                     <h3 className="font-semibold text-slate-900 dark:text-white text-xs sm:text-sm">
-                        Promo code
+                        {t('voucher.promoCode')}
                     </h3>
                 </div>
 
@@ -125,8 +127,8 @@ export function VoucherInput({
                                 </span>
                                 <span className="text-xs bg-emerald-100 dark:bg-emerald-800 text-emerald-700 dark:text-emerald-300 px-1.5 py-0.5 rounded font-medium">
                                     {appliedVoucher.discountType === 'percentage'
-                                        ? `${appliedVoucher.discountValue}% OFF`
-                                        : `₱${appliedVoucher.discountValue.toLocaleString()} OFF`}
+                                        ? `${appliedVoucher.discountValue}% ${t('voucher.off')}`
+                                        : `₱${appliedVoucher.discountValue.toLocaleString()} ${t('voucher.off')}`}
                                 </span>
                             </div>
                             <p className="text-xs text-emerald-600 dark:text-emerald-400 mt-0.5">
@@ -140,7 +142,7 @@ export function VoucherInput({
                             onVoucherRemoved?.().catch(() => { });
                         }}
                         className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-full transition-colors"
-                        aria-label="Remove voucher"
+                        aria-label={t('voucher.removeVoucher')}
                     >
                         <X size={16} />
                     </button>
@@ -149,7 +151,7 @@ export function VoucherInput({
                 {/* Discount amount */}
                 <div className="mt-2 text-right">
                     <span className="text-sm font-bold text-emerald-600 dark:text-emerald-400">
-                        -₱{appliedVoucher.discountAmount.toLocaleString()} saved
+                        {t('voucher.saved', { amount: `-₱${appliedVoucher.discountAmount.toLocaleString()}` })}
                     </span>
                 </div>
             </div>
@@ -162,7 +164,7 @@ export function VoucherInput({
             <div className="flex items-center gap-1.5 sm:gap-2 mb-1.5 sm:mb-3">
                 <Tag size={14} className="text-blue-600 dark:text-blue-400 sm:w-4 sm:h-4" />
                 <h3 className="font-semibold text-slate-900 dark:text-white text-xs sm:text-sm">
-                    Have a promo code?
+                    {t('voucher.havePromoCode')}
                 </h3>
             </div>
 
@@ -173,7 +175,7 @@ export function VoucherInput({
                         value={voucherCode}
                         onChange={(e) => setVoucherCode(e.target.value.toUpperCase())}
                         onKeyDown={handleKeyDown}
-                        placeholder="ENTER PROMO CODE"
+                        placeholder={t('voucher.enterPromoCode')}
                         disabled={voucherLoading}
                         className={`w-full px-2 py-1.5 sm:px-3 sm:py-2.5 text-[11px] sm:text-sm font-mono tracking-wider uppercase rounded sm:rounded-lg border transition-colors
                             ${voucherError
@@ -198,7 +200,7 @@ export function VoucherInput({
                     {voucherLoading ? (
                         <Loader2 size={16} className="animate-spin" />
                     ) : (
-                        'Apply'
+                        t('voucher.apply')
                     )}
                 </button>
             </div>

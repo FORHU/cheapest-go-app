@@ -1,14 +1,129 @@
-import { createClient } from '@supabase/supabase-js';
+import { createAdminClient } from '@/utils/postgres/admin';
+import { env } from "@/utils/env";
+
+// ─── Sending addresses ────────────────────────────────────────────────
+// Verified domain: mail.cheapestgo.com (Resend, ap-northeast-1)
+// Change these two constants if the sending domain ever changes.
+const BRAND_NAME = process.env.NEXT_PUBLIC_BRAND_NAME ?? 'CheapestGo';
+const BRAND_EMAIL = process.env.NEXT_PUBLIC_BRAND_EMAIL ?? 'no-reply@mail.cheapestgo.com';
+
+export const FROM_NOREPLY = `${BRAND_NAME} <${BRAND_EMAIL}>`;
+export const FROM_ALERTS  = `${BRAND_NAME} Alerts <${BRAND_EMAIL}>`;
 
 // ─── HTML Escaping (prevent XSS in email templates) ─────────────────
 
-function escapeHtml(str: string): string {
-    return str
+function escapeHtml(str: string | null | undefined): string {
+    if (!str) return '';
+    return String(str)
         .replace(/&/g, '&amp;')
         .replace(/</g, '&lt;')
         .replace(/>/g, '&gt;')
         .replace(/"/g, '&quot;')
         .replace(/'/g, '&#39;');
+}
+
+// ─── Email Logging ────────────────────────────────────────────────────
+
+export type EmailLogStatus = 'queued' | 'sent' | 'failed';
+export type EmailType = 'confirmation' | 'ticketed' | 'refund' | 'cancellation' | 'awaiting_ticket' | 'price_alert';
+
+/**
+ * Returns true if an email of this type has already been sent (or queued)
+ * for this booking — used to suppress duplicates before calling Resend.
+ */
+async function isEmailAlreadySent(
+     
+    supabase: any,
+    bookingId: string,
+    emailType: EmailType,
+): Promise<boolean> {
+    const { data } = await supabase
+        .from('email_logs')
+        .select('id')
+        .eq('booking_id', bookingId)
+        .eq('email_type', emailType)
+        .in('status', ['sent', 'queued'])
+        .maybeSingle();
+    return data !== null;
+}
+
+/**
+ * Guard called at the top of every email send function.
+ * Returns a resolved { duplicate: true } result if the email was already sent,
+ * or null to signal that the caller should proceed with sending.
+ *
+ * Usage:
+ *   const dup = await checkEmailDuplicate(bookingId, 'confirmation');
+ *   if (dup) return dup;
+ */
+async function checkEmailDuplicate(
+    bookingId: string | undefined,
+    emailType: EmailType,
+): Promise<SendBookingEmailResult | null> {
+    if (!bookingId) return null;
+
+    const supabase = createAdminClient();
+    const alreadySent = await isEmailAlreadySent(supabase, bookingId, emailType);
+    if (alreadySent) {
+        console.warn(`[email] Duplicate suppressed before send: ${emailType} for booking ${bookingId}`);
+        return { success: true }; // treat as success — email was already delivered
+    }
+    return null;
+}
+
+async function logEmail(params: {
+    bookingId?: string;
+    recipient: string;
+    subject: string;
+    emailType: EmailType;
+    status: EmailLogStatus;
+    errorMessage?: string;
+    metadata?: Record<string, any>;
+    /** Store the rendered HTML so the retry-emails cron can re-send without regenerating. */
+    htmlBody?: string;
+}): Promise<{ duplicate: boolean }> {
+    const supabase = createAdminClient();
+
+    // Deduplication: suppress if a sent/queued record already exists for this booking + type.
+    // The unique index on email_logs (booking_id, email_type) WHERE status IN ('sent','queued')
+    // acts as a final safety net, but checking first gives a clean log message.
+    if (params.bookingId && params.status !== 'failed') {
+        const alreadySent = await isEmailAlreadySent(supabase, params.bookingId, params.emailType);
+        if (alreadySent) {
+            console.warn(`[logEmail] Duplicate suppressed: ${params.emailType} for booking ${params.bookingId}`);
+            return { duplicate: true };
+        }
+    }
+
+    // Merge htmlBody into metadata for failed/queued entries (retry needs it)
+    const metadata = {
+        ...(params.metadata || {}),
+        ...(params.htmlBody ? { htmlBody: params.htmlBody } : {}),
+    };
+
+    const { error } = await supabase
+        .from('email_logs')
+        .insert([{
+            booking_id: params.bookingId || null,
+            recipient: params.recipient,
+            subject: params.subject,
+            email_type: params.emailType,
+            status: params.status,
+            error_message: params.errorMessage ?? null,
+            metadata,
+            sent_at: params.status === 'sent' ? new Date().toISOString() : null
+        }]);
+
+    if (error) {
+        // Unique-constraint violation = concurrent duplicate (race was won by the other caller)
+        if (error.code === '23505') {
+            console.warn(`[logEmail] Unique constraint prevented duplicate: ${params.emailType} for booking ${params.bookingId}`);
+            return { duplicate: true };
+        }
+        console.error('[logEmail] Failed to insert log:', error);
+    }
+
+    return { duplicate: false };
 }
 
 // ═════════════════════════════════════════════════════════════════════
@@ -17,6 +132,7 @@ function escapeHtml(str: string): string {
 
 export interface SendBookingEmailParams {
     bookingId: string;
+    dbId?: string; // DB UUID — used for receipt link
     email: string;
     guestName: string;
     hotelName: string;
@@ -35,11 +151,17 @@ export interface SendBookingEmailResult {
 export async function sendBookingConfirmationEmail(
     params: SendBookingEmailParams
 ): Promise<SendBookingEmailResult> {
-    const { bookingId, email, guestName, hotelName, roomName, checkIn, checkOut, totalPrice, currency } = params;
+    const { bookingId, dbId, email, guestName, hotelName, roomName, checkIn, checkOut, totalPrice, currency } = params;
+    const siteUrl = env.SITE_URL;
+    const receiptUrl = dbId ? `${siteUrl}/trips/invoice/${dbId}?type=hotel` : null;
 
     if (!email || !bookingId) {
         return { success: false, error: 'Missing required fields' };
     }
+
+    // Dedup: bail out immediately if this confirmation was already sent/queued
+    const dup = await checkEmailDuplicate(bookingId, 'confirmation');
+    if (dup) return dup;
 
     try {
         // Format price
@@ -106,6 +228,13 @@ export async function sendBookingConfirmationEmail(
             </p>
         </div>
 
+        ${receiptUrl ? `
+        <div style="text-align: center; margin: 24px 0 8px 0;">
+            <a href="${receiptUrl}" style="display:inline-block;background:#4f46e5;color:#fff;text-decoration:none;font-weight:600;font-size:14px;padding:12px 28px;border-radius:8px;">
+                View / Download Receipt
+            </a>
+        </div>` : ''}
+
         <p style="margin: 20px 0 0 0; color: #6b7280; font-size: 14px;">
             If you have any questions, please don't hesitate to contact us.
         </p>
@@ -113,7 +242,7 @@ export async function sendBookingConfirmationEmail(
 
     <div style="background: #f9fafb; padding: 20px; border-radius: 0 0 12px 12px; border: 1px solid #e5e7eb; border-top: none; text-align: center;">
         <p style="margin: 0; color: #9ca3af; font-size: 12px;">
-            This email was sent by CheapestGo<br>
+            This email was sent by ${BRAND_NAME}<br>
             &copy; ${new Date().getFullYear()} All rights reserved
         </p>
     </div>
@@ -121,16 +250,10 @@ export async function sendBookingConfirmationEmail(
 </html>
     `;
 
-        const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-        const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-        // Create Supabase client if keys are available
-        const supabase = supabaseUrl && supabaseServiceKey
-            ? createClient(supabaseUrl, supabaseServiceKey)
-            : null;
+        const supabase = createAdminClient();
 
         // Store email record in database
-        if (supabase) {
+        {
             const { error: dbError } = await supabase
                 .from('booking_emails')
                 .insert([{
@@ -154,7 +277,8 @@ export async function sendBookingConfirmationEmail(
         }
 
         // Try to send via Resend if API key is available
-        const resendApiKey = process.env.RESEND_API_KEY;
+        const resendApiKey = env.RESEND_API_KEY;
+        const subject = `Booking Confirmed - ${hotelName}`;
 
         if (resendApiKey) {
             try {
@@ -165,36 +289,282 @@ export async function sendBookingConfirmationEmail(
                         'Content-Type': 'application/json',
                     },
                     body: JSON.stringify({
-                        from: 'CheapestGo <no-reply@mail.cheapestgo.com>',
+                        from: FROM_NOREPLY,
                         to: [email],
-                        subject: `Booking Confirmed - ${hotelName}`,
+                        subject: subject,
                         html: emailHtml,
                     }),
                 });
 
                 if (resendResponse.ok) {
-                    // Update email status to sent
-                    if (supabase) {
-                        await supabase
-                            .from('booking_emails')
-                            .update({ status: 'sent' })
-                            .eq('booking_id', bookingId);
-                    }
+                    await logEmail({
+                        bookingId,
+                        recipient: email,
+                        subject,
+                        emailType: 'confirmation',
+                        status: 'sent'
+                    });
                     return { success: true };
+                } else {
+                    const errorText = await resendResponse.text();
+                    await logEmail({
+                        bookingId,
+                        recipient: email,
+                        subject,
+                        emailType: 'confirmation',
+                        status: 'failed',
+                        errorMessage: errorText,
+                        htmlBody: emailHtml,
+                    });
                 }
             } catch (resendError) {
                 console.error('[sendBookingConfirmationEmail] Resend failed:', resendError);
+                await logEmail({
+                    bookingId,
+                    recipient: email,
+                    subject,
+                    emailType: 'confirmation',
+                    status: 'failed',
+                    errorMessage: resendError instanceof Error ? resendError.message : 'Unknown error',
+                    htmlBody: emailHtml,
+                });
             }
+        } else {
+            // Log as queued if no API key
+            await logEmail({
+                bookingId,
+                recipient: email,
+                subject,
+                emailType: 'confirmation',
+                status: 'queued',
+                htmlBody: emailHtml,
+            });
+            return { success: false, error: 'RESEND_API_KEY not configured' };
         }
 
-        // Return success even if email sending is queued
-        return { success: true };
+        // Resend was available but failed (didn't throw) — already logged above
+        return { success: false, error: 'Email sending failed' };
     } catch (error) {
         console.error('[sendBookingConfirmationEmail] Error:', error);
         return {
             success: false,
             error: error instanceof Error ? error.message : 'Failed to send email',
         };
+    }
+}
+
+// ═════════════════════════════════════════════════════════════════════
+//  HOTEL CANCELLATION EMAIL
+// ═════════════════════════════════════════════════════════════════════
+
+export interface SendHotelCancellationEmailParams {
+    bookingId: string;
+    email: string;
+    guestName: string;
+    hotelName: string;
+    roomName: string;
+    checkIn: string;
+    checkOut: string;
+    refundAmount?: number;
+    currency?: string;
+    refundStatus?: string; // 'processed' | 'pending' | 'non_refundable'
+}
+
+export async function sendHotelCancellationEmail(
+    params: SendHotelCancellationEmailParams
+): Promise<SendBookingEmailResult> {
+    const { bookingId, email, guestName, hotelName, roomName, checkIn, checkOut, refundAmount, currency = 'PHP', refundStatus } = params;
+
+    if (!email || !bookingId) {
+        return { success: false, error: 'Missing required fields' };
+    }
+
+    try {
+        const isRefundable = refundStatus !== 'non_refundable' && (refundAmount ?? 0) > 0;
+        const formattedRefund = isRefundable
+            ? new Intl.NumberFormat('en-PH', { style: 'currency', currency }).format(refundAmount!)
+            : null;
+
+        const refundBanner = isRefundable
+            ? `<div style="background:#f0fdf4;padding:15px;border-radius:8px;margin:20px 0;border-left:4px solid #22c55e;">
+                <p style="margin:0;color:#15803d;font-size:14px;">
+                  <strong>Refund of ${formattedRefund} is being processed.</strong><br>
+                  Please allow <strong>5–10 business days</strong> for the refund to appear on your statement.
+                </p>
+              </div>`
+            : `<div style="background:#fef2f2;padding:15px;border-radius:8px;margin:20px 0;border-left:4px solid #ef4444;">
+                <p style="margin:0;color:#991b1b;font-size:14px;">
+                  <strong>This booking is non-refundable.</strong><br>
+                  No refund will be issued per the property's cancellation policy.
+                </p>
+              </div>`;
+
+        const emailHtml = `<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>Booking Cancelled</title></head>
+<body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;line-height:1.6;color:#333;max-width:600px;margin:0 auto;padding:20px;">
+  <div style="background:linear-gradient(135deg,#64748b 0%,#475569 100%);padding:30px;border-radius:12px 12px 0 0;text-align:center;">
+    <h1 style="color:white;margin:0;font-size:28px;">Booking Cancelled</h1>
+    <p style="color:rgba(255,255,255,0.9);margin:10px 0 0 0;">${escapeHtml(hotelName)}</p>
+  </div>
+  <div style="background:#ffffff;padding:30px;border:1px solid #e5e7eb;border-top:none;">
+    <p style="margin:0 0 20px 0;">Dear <strong>${escapeHtml(guestName)}</strong>,</p>
+    <p style="margin:0 0 20px 0;">Your reservation at <strong>${escapeHtml(hotelName)}</strong> has been successfully cancelled.</p>
+
+    <div style="background:#f9fafb;padding:20px;border-radius:8px;margin:20px 0;">
+      <h2 style="margin:0 0 15px 0;font-size:18px;color:#374151;">Cancellation Details</h2>
+      <table style="width:100%;border-collapse:collapse;">
+        <tr><td style="padding:8px 0;color:#6b7280;">Booking ID:</td><td style="padding:8px 0;font-weight:600;font-family:monospace;">${escapeHtml(bookingId)}</td></tr>
+        <tr><td style="padding:8px 0;color:#6b7280;">Property:</td><td style="padding:8px 0;font-weight:600;">${escapeHtml(hotelName)}</td></tr>
+        <tr><td style="padding:8px 0;color:#6b7280;">Room:</td><td style="padding:8px 0;">${escapeHtml(roomName)}</td></tr>
+        <tr><td style="padding:8px 0;color:#6b7280;">Check-in:</td><td style="padding:8px 0;">${escapeHtml(checkIn)}</td></tr>
+        <tr><td style="padding:8px 0;color:#6b7280;">Check-out:</td><td style="padding:8px 0;">${escapeHtml(checkOut)}</td></tr>
+        ${isRefundable ? `<tr style="border-top:1px solid #e5e7eb;"><td style="padding:12px 0 8px 0;color:#6b7280;font-weight:600;">Refund:</td><td style="padding:12px 0 8px 0;font-weight:700;font-size:18px;color:#059669;">${formattedRefund}</td></tr>` : ''}
+      </table>
+    </div>
+
+    ${refundBanner}
+
+    <p style="margin:20px 0 0 0;color:#6b7280;font-size:14px;">If you have any questions, please contact our support team.</p>
+  </div>
+  <div style="background:#f9fafb;padding:20px;border-radius:0 0 12px 12px;border:1px solid #e5e7eb;border-top:none;text-align:center;">
+    <p style="margin:0;color:#9ca3af;font-size:12px;">This email was sent by ${BRAND_NAME}<br>&copy; ${new Date().getFullYear()} All rights reserved</p>
+  </div>
+</body>
+</html>`;
+
+        const resendApiKey = env.RESEND_API_KEY;
+        const subject = `Booking Cancelled - ${hotelName}`;
+
+        if (resendApiKey) {
+            try {
+                const resendResponse = await fetch('https://api.resend.com/emails', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${resendApiKey}`,
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        from: FROM_NOREPLY,
+                        to: [email],
+                        subject,
+                        html: emailHtml,
+                    }),
+                });
+
+                if (resendResponse.ok) {
+                    await logEmail({ bookingId, recipient: email, subject, emailType: 'cancellation', status: 'sent' });
+                    return { success: true };
+                }
+                const errorText = await resendResponse.text();
+                await logEmail({ bookingId, recipient: email, subject, emailType: 'cancellation', status: 'failed', errorMessage: errorText, htmlBody: emailHtml });
+                return { success: false, error: `Resend ${resendResponse.status}: ${errorText}` };
+            } catch (resendError) {
+                console.error('[sendHotelCancellationEmail] Resend failed:', resendError);
+                await logEmail({ bookingId, recipient: email, subject, emailType: 'cancellation', status: 'failed', errorMessage: resendError instanceof Error ? resendError.message : 'Unknown error', htmlBody: emailHtml });
+                return { success: false, error: resendError instanceof Error ? resendError.message : 'Unknown error' };
+            }
+        }
+
+        await logEmail({ bookingId, recipient: email, subject, emailType: 'cancellation', status: 'queued', htmlBody: emailHtml });
+        return { success: false, error: 'RESEND_API_KEY not configured' };
+    } catch (error) {
+        console.error('[sendHotelCancellationEmail] Error:', error);
+        return { success: false, error: error instanceof Error ? error.message : 'Failed to send email' };
+    }
+}
+
+// ═════════════════════════════════════════════════════════════════════
+//  HOTEL AMENDMENT EMAIL
+// ═════════════════════════════════════════════════════════════════════
+
+export interface SendHotelAmendmentEmailParams {
+    bookingId: string;
+    email: string;
+    guestName: string;
+    hotelName: string;
+    changes: string; // e.g. "Guest name, special requests"
+}
+
+export async function sendHotelAmendmentEmail(
+    params: SendHotelAmendmentEmailParams
+): Promise<SendBookingEmailResult> {
+    const { bookingId, email, guestName, hotelName, changes } = params;
+
+    if (!email || !bookingId) {
+        return { success: false, error: 'Missing required fields' };
+    }
+
+    try {
+        const emailHtml = `<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>Booking Updated</title></head>
+<body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;line-height:1.6;color:#333;max-width:600px;margin:0 auto;padding:20px;">
+  <div style="background:linear-gradient(135deg,#2563eb 0%,#4f46e5 100%);padding:30px;border-radius:12px 12px 0 0;text-align:center;">
+    <h1 style="color:white;margin:0;font-size:28px;">Booking Updated</h1>
+    <p style="color:rgba(255,255,255,0.9);margin:10px 0 0 0;">${escapeHtml(hotelName)}</p>
+  </div>
+  <div style="background:#ffffff;padding:30px;border:1px solid #e5e7eb;border-top:none;">
+    <p style="margin:0 0 20px 0;">Dear <strong>${escapeHtml(guestName)}</strong>,</p>
+    <p style="margin:0 0 20px 0;">Your booking at <strong>${escapeHtml(hotelName)}</strong> has been updated successfully.</p>
+
+    <div style="background:#f9fafb;padding:20px;border-radius:8px;margin:20px 0;">
+      <table style="width:100%;border-collapse:collapse;">
+        <tr><td style="padding:8px 0;color:#6b7280;">Booking ID:</td><td style="padding:8px 0;font-weight:600;font-family:monospace;">${escapeHtml(bookingId)}</td></tr>
+        <tr><td style="padding:8px 0;color:#6b7280;">Updated fields:</td><td style="padding:8px 0;">${escapeHtml(changes)}</td></tr>
+      </table>
+    </div>
+
+    <div style="background:#eef2ff;padding:15px;border-radius:8px;margin:20px 0;border-left:4px solid #4f46e5;">
+      <p style="margin:0;color:#3730a3;font-size:14px;">
+        The property has been notified of the changes. If you need further modifications, please contact support.
+      </p>
+    </div>
+  </div>
+  <div style="background:#f9fafb;padding:20px;border-radius:0 0 12px 12px;border:1px solid #e5e7eb;border-top:none;text-align:center;">
+    <p style="margin:0;color:#9ca3af;font-size:12px;">This email was sent by ${BRAND_NAME}<br>&copy; ${new Date().getFullYear()} All rights reserved</p>
+  </div>
+</body>
+</html>`;
+
+        const resendApiKey = env.RESEND_API_KEY;
+        const subject = `Booking Updated - ${hotelName}`;
+
+        if (resendApiKey) {
+            try {
+                const resendResponse = await fetch('https://api.resend.com/emails', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${resendApiKey}`,
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        from: FROM_NOREPLY,
+                        to: [email],
+                        subject,
+                        html: emailHtml,
+                    }),
+                });
+
+                if (resendResponse.ok) {
+                    await logEmail({ bookingId, recipient: email, subject, emailType: 'confirmation', status: 'sent' });
+                    return { success: true };
+                }
+                const errorText = await resendResponse.text();
+                await logEmail({ bookingId, recipient: email, subject, emailType: 'confirmation', status: 'failed', errorMessage: errorText, htmlBody: emailHtml });
+                return { success: false, error: `Resend ${resendResponse.status}: ${errorText}` };
+            } catch (resendError) {
+                console.error('[sendHotelAmendmentEmail] Resend failed:', resendError);
+                await logEmail({ bookingId, recipient: email, subject, emailType: 'confirmation', status: 'failed', errorMessage: resendError instanceof Error ? resendError.message : 'Unknown error', htmlBody: emailHtml });
+                return { success: false, error: resendError instanceof Error ? resendError.message : 'Unknown error' };
+            }
+        }
+
+        await logEmail({ bookingId, recipient: email, subject, emailType: 'confirmation', status: 'queued', htmlBody: emailHtml });
+        return { success: false, error: 'RESEND_API_KEY not configured' };
+    } catch (error) {
+        console.error('[sendHotelAmendmentEmail] Error:', error);
+        return { success: false, error: error instanceof Error ? error.message : 'Failed to send email' };
     }
 }
 
@@ -233,10 +603,15 @@ export async function sendFlightBookingConfirmationEmail(
     params: SendFlightBookingEmailParams
 ): Promise<SendFlightBookingEmailResult> {
     const { bookingId, pnr, email, passengerName, provider, segments, tickets, totalPrice, currency } = params;
+    const flightReceiptUrl = `${env.SITE_URL}/trips/invoice/${bookingId}?type=flight`;
 
     if (!email || !bookingId) {
         return { success: false, error: 'Missing required fields' };
     }
+
+    // Dedup: bail out immediately if this confirmation was already sent/queued
+    const dup = await checkEmailDuplicate(bookingId, 'confirmation');
+    if (dup) return dup;
 
     try {
         const formattedPrice = new Intl.NumberFormat('en-US', {
@@ -340,6 +715,12 @@ export async function sendFlightBookingConfirmationEmail(
             </p>
         </div>
 
+        <div style="text-align: center; margin: 24px 0 8px 0;">
+            <a href="${flightReceiptUrl}" style="display:inline-block;background:#4f46e5;color:#fff;text-decoration:none;font-weight:600;font-size:14px;padding:12px 28px;border-radius:8px;">
+                View / Download Receipt
+            </a>
+        </div>
+
         <p style="margin: 20px 0 0 0; color: #6b7280; font-size: 14px;">
             If you have any questions, please don't hesitate to contact us.
         </p>
@@ -347,7 +728,7 @@ export async function sendFlightBookingConfirmationEmail(
 
     <div style="background: #f9fafb; padding: 20px; border-radius: 0 0 12px 12px; border: 1px solid #e5e7eb; border-top: none; text-align: center;">
         <p style="margin: 0; color: #9ca3af; font-size: 12px;">
-            This email was sent by CheapestGo<br>
+            This email was sent by ${BRAND_NAME}<br>
             &copy; ${new Date().getFullYear()} All rights reserved
         </p>
     </div>
@@ -355,20 +736,17 @@ export async function sendFlightBookingConfirmationEmail(
 </html>
         `;
 
-        // Try to send via Resend if API key is available
-        const resendApiKey = process.env.RESEND_API_KEY;
-
+        const resendApiKey = env.RESEND_API_KEY;
+        const subject = `Flight Booking Confirmed - PNR ${pnr} (${route})`;
         console.log('[sendFlightBookingConfirmationEmail] Sending to:', email, '| PNR:', pnr);
 
         if (resendApiKey) {
             const payload = {
-                from: 'CheapestGo <no-reply@mail.cheapestgo.com>',
+                from: FROM_NOREPLY,
                 to: [email],
-                subject: `Flight Booking Confirmed - PNR ${pnr} (${route})`,
+                subject: subject,
                 html: emailHtml,
             };
-
-            console.log('[sendFlightBookingConfirmationEmail] Resend payload (to):', payload.to, '| subject:', payload.subject);
 
             const resendResponse = await fetch('https://api.resend.com/emails', {
                 method: 'POST',
@@ -380,16 +758,38 @@ export async function sendFlightBookingConfirmationEmail(
             });
 
             const responseText = await resendResponse.text();
-            console.log('[sendFlightBookingConfirmationEmail] Resend response:', resendResponse.status, responseText);
 
             if (resendResponse.ok) {
+                await logEmail({
+                    bookingId,
+                    recipient: email,
+                    subject,
+                    emailType: 'confirmation',
+                    status: 'sent'
+                });
                 return { success: true };
             }
 
+            await logEmail({
+                bookingId,
+                recipient: email,
+                subject,
+                emailType: 'confirmation',
+                status: 'failed',
+                errorMessage: responseText,
+                htmlBody: emailHtml,
+            });
             return { success: false, error: `Resend ${resendResponse.status}: ${responseText}` };
         }
 
-        console.warn('[sendFlightBookingConfirmationEmail] RESEND_API_KEY not set — email not sent');
+        await logEmail({
+            bookingId,
+            recipient: email,
+            subject,
+            emailType: 'confirmation',
+            status: 'queued',
+            htmlBody: emailHtml,
+        });
         return { success: false, error: 'RESEND_API_KEY not configured' };
     } catch (error) {
         console.error('[sendFlightBookingConfirmationEmail] Error:', error);
@@ -473,12 +873,13 @@ export async function sendFlightAwaitingTicketEmail(
         </div>
     </div>
     <div style="background:#f9fafb;padding:20px;border-radius:0 0 12px 12px;border:1px solid #e5e7eb;border-top:none;text-align:center;">
-        <p style="margin:0;color:#9ca3af;font-size:12px;">This email was sent by CheapestGo<br>&copy; ${new Date().getFullYear()} All rights reserved</p>
+        <p style="margin:0;color:#9ca3af;font-size:12px;">This email was sent by ${BRAND_NAME}<br>&copy; ${new Date().getFullYear()} All rights reserved</p>
     </div>
 </body>
 </html>`;
 
-        const resendApiKey = process.env.RESEND_API_KEY;
+        const resendApiKey = env.RESEND_API_KEY;
+        const subject = `Booking Received – PNR ${pnr} (${route}) — E-Ticket Pending`;
         console.log('[sendFlightAwaitingTicketEmail] Sending to:', email, '| PNR:', pnr);
 
         if (resendApiKey) {
@@ -486,19 +887,43 @@ export async function sendFlightAwaitingTicketEmail(
                 method: 'POST',
                 headers: { 'Authorization': `Bearer ${resendApiKey}`, 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    from: 'CheapestGo <no-reply@mail.cheapestgo.com>',
+                    from: FROM_NOREPLY,
                     to: [email],
-                    subject: `Booking Received – PNR ${pnr} (${route}) — E-Ticket Pending`,
+                    subject,
                     html: emailHtml,
                 }),
             });
             const text = await res.text();
-            console.log('[sendFlightAwaitingTicketEmail] Resend response:', res.status, text);
-            if (res.ok) return { success: true };
+            if (res.ok) {
+                await logEmail({
+                    bookingId,
+                    recipient: email,
+                    subject,
+                    emailType: 'awaiting_ticket',
+                    status: 'sent'
+                });
+                return { success: true };
+            }
+            await logEmail({
+                bookingId,
+                recipient: email,
+                subject,
+                emailType: 'awaiting_ticket',
+                status: 'failed',
+                errorMessage: text,
+                htmlBody: emailHtml,
+            });
             return { success: false, error: `Resend ${res.status}: ${text}` };
         }
 
-        console.warn('[sendFlightAwaitingTicketEmail] RESEND_API_KEY not set');
+        await logEmail({
+            bookingId,
+            recipient: email,
+            subject,
+            emailType: 'awaiting_ticket',
+            status: 'queued',
+            htmlBody: emailHtml,
+        });
         return { success: false, error: 'RESEND_API_KEY not configured' };
     } catch (error) {
         console.error('[sendFlightAwaitingTicketEmail] Error:', error);
@@ -567,12 +992,13 @@ export async function sendFlightRefundEmail(
         <p style="margin:20px 0 0 0;color:#6b7280;font-size:14px;">We apologize for the inconvenience. You're welcome to search for alternative flights at any time.</p>
     </div>
     <div style="background:#f9fafb;padding:20px;border-radius:0 0 12px 12px;border:1px solid #e5e7eb;border-top:none;text-align:center;">
-        <p style="margin:0;color:#9ca3af;font-size:12px;">This email was sent by CheapestGo<br>&copy; ${new Date().getFullYear()} All rights reserved</p>
+        <p style="margin:0;color:#9ca3af;font-size:12px;">This email was sent by ${BRAND_NAME}<br>&copy; ${new Date().getFullYear()} All rights reserved</p>
     </div>
 </body>
 </html>`;
 
-        const resendApiKey = process.env.RESEND_API_KEY;
+        const resendApiKey = env.RESEND_API_KEY;
+        const subject = `Refund Initiated – ${route} (PNR ${pnr})`;
         console.log('[sendFlightRefundEmail] Sending to:', email, '| PNR:', pnr);
 
         if (resendApiKey) {
@@ -580,19 +1006,43 @@ export async function sendFlightRefundEmail(
                 method: 'POST',
                 headers: { 'Authorization': `Bearer ${resendApiKey}`, 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    from: 'CheapestGo <no-reply@mail.cheapestgo.com>',
+                    from: FROM_NOREPLY,
                     to: [email],
-                    subject: `Refund Initiated – ${route} (PNR ${pnr})`,
+                    subject,
                     html: emailHtml,
                 }),
             });
             const text = await res.text();
-            console.log('[sendFlightRefundEmail] Resend response:', res.status, text);
-            if (res.ok) return { success: true };
+            if (res.ok) {
+                await logEmail({
+                    bookingId,
+                    recipient: email,
+                    subject,
+                    emailType: 'refund',
+                    status: 'sent'
+                });
+                return { success: true };
+            }
+            await logEmail({
+                bookingId,
+                recipient: email,
+                subject,
+                emailType: 'refund',
+                status: 'failed',
+                errorMessage: text,
+                htmlBody: emailHtml,
+            });
             return { success: false, error: `Resend ${res.status}: ${text}` };
         }
 
-        console.warn('[sendFlightRefundEmail] RESEND_API_KEY not set');
+        await logEmail({
+            bookingId,
+            recipient: email,
+            subject,
+            emailType: 'refund',
+            status: 'queued',
+            htmlBody: emailHtml,
+        });
         return { success: false, error: 'RESEND_API_KEY not configured' };
     } catch (error) {
         console.error('[sendFlightRefundEmail] Error:', error);
@@ -688,12 +1138,13 @@ export async function sendFlightCancellationEmail(
     <p style="margin:20px 0 0 0;color:#6b7280;font-size:14px;">If you have any questions about your cancellation or refund, please contact our support team.</p>
   </div>
   <div style="background:#f9fafb;padding:20px;border-radius:0 0 12px 12px;border:1px solid #e5e7eb;border-top:none;text-align:center;">
-    <p style="margin:0;color:#9ca3af;font-size:12px;">This email was sent by CheapestGo<br>&copy; ${new Date().getFullYear()} All rights reserved</p>
+    <p style="margin:0;color:#9ca3af;font-size:12px;">This email was sent by ${BRAND_NAME}<br>&copy; ${new Date().getFullYear()} All rights reserved</p>
   </div>
 </body>
 </html>`;
 
-        const resendApiKey = process.env.RESEND_API_KEY;
+        const resendApiKey = env.RESEND_API_KEY;
+        const subject = `Booking Cancelled – PNR ${pnr} (${route})`;
         console.log('[sendFlightCancellationEmail] Sending to:', email, '| PNR:', pnr);
 
         if (resendApiKey) {
@@ -701,19 +1152,43 @@ export async function sendFlightCancellationEmail(
                 method: 'POST',
                 headers: { 'Authorization': `Bearer ${resendApiKey}`, 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    from: 'CheapestGo <no-reply@mail.cheapestgo.com>',
+                    from: FROM_NOREPLY,
                     to: [email],
-                    subject: `Booking Cancelled – PNR ${pnr} (${route})`,
+                    subject,
                     html: emailHtml,
                 }),
             });
             const text = await res.text();
-            console.log('[sendFlightCancellationEmail] Resend response:', res.status, text);
-            if (res.ok) return { success: true };
+            if (res.ok) {
+                await logEmail({
+                    bookingId,
+                    recipient: email,
+                    subject,
+                    emailType: 'cancellation',
+                    status: 'sent'
+                });
+                return { success: true };
+            }
+            await logEmail({
+                bookingId,
+                recipient: email,
+                subject,
+                emailType: 'cancellation',
+                status: 'failed',
+                errorMessage: text,
+                htmlBody: emailHtml,
+            });
             return { success: false, error: `Resend ${res.status}: ${text}` };
         }
 
-        console.warn('[sendFlightCancellationEmail] RESEND_API_KEY not set');
+        await logEmail({
+            bookingId,
+            recipient: email,
+            subject,
+            emailType: 'cancellation',
+            status: 'queued',
+            htmlBody: emailHtml,
+        });
         return { success: false, error: 'RESEND_API_KEY not configured' };
     } catch (error) {
         console.error('[sendFlightCancellationEmail] Error:', error);
@@ -774,15 +1249,16 @@ export async function sendFlightCancellationRefundEmail(
       </p>
     </div>
 
-    <p style="margin:20px 0 0 0;color:#6b7280;font-size:14px;">Thank you for choosing CheapestGo. We hope to serve you again soon.</p>
+    <p style="margin:20px 0 0 0;color:#6b7280;font-size:14px;">Thank you for choosing ${BRAND_NAME}. We hope to serve you again soon.</p>
   </div>
   <div style="background:#f9fafb;padding:20px;border-radius:0 0 12px 12px;border:1px solid #e5e7eb;border-top:none;text-align:center;">
-    <p style="margin:0;color:#9ca3af;font-size:12px;">This email was sent by CheapestGo<br>&copy; ${new Date().getFullYear()} All rights reserved</p>
+    <p style="margin:0;color:#9ca3af;font-size:12px;">This email was sent by ${BRAND_NAME}<br>&copy; ${new Date().getFullYear()} All rights reserved</p>
   </div>
 </body>
 </html>`;
 
-        const resendApiKey = process.env.RESEND_API_KEY;
+        const resendApiKey = env.RESEND_API_KEY;
+        const subject = `Refund Confirmed – ${fmt(refundAmount)} for PNR ${pnr}`;
         console.log('[sendFlightCancellationRefundEmail] Sending to:', email, '| PNR:', pnr);
 
         if (resendApiKey) {
@@ -790,22 +1266,324 @@ export async function sendFlightCancellationRefundEmail(
                 method: 'POST',
                 headers: { 'Authorization': `Bearer ${resendApiKey}`, 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    from: 'CheapestGo <no-reply@mail.cheapestgo.com>',
+                    from: FROM_NOREPLY,
                     to: [email],
-                    subject: `Refund Confirmed – ${fmt(refundAmount)} for PNR ${pnr}`,
+                    subject,
                     html: emailHtml,
                 }),
             });
             const text = await res.text();
-            console.log('[sendFlightCancellationRefundEmail] Resend response:', res.status, text);
-            if (res.ok) return { success: true };
+            if (res.ok) {
+                await logEmail({
+                    bookingId,
+                    recipient: email,
+                    subject,
+                    emailType: 'refund',
+                    status: 'sent'
+                });
+                return { success: true };
+            }
+            await logEmail({
+                bookingId,
+                recipient: email,
+                subject,
+                emailType: 'refund',
+                status: 'failed',
+                errorMessage: text,
+                htmlBody: emailHtml,
+            });
             return { success: false, error: `Resend ${res.status}: ${text}` };
         }
 
-        console.warn('[sendFlightCancellationRefundEmail] RESEND_API_KEY not set');
+        await logEmail({
+            bookingId,
+            recipient: email,
+            subject,
+            emailType: 'refund',
+            status: 'queued',
+            htmlBody: emailHtml,
+        });
         return { success: false, error: 'RESEND_API_KEY not configured' };
     } catch (error) {
         console.error('[sendFlightCancellationRefundEmail] Error:', error);
         return { success: false, error: error instanceof Error ? error.message : 'Failed to send email' };
+    }
+}
+
+// ═════════════════════════════════════════════════════════════════════
+//  PRICE ALERT EMAIL
+// ═════════════════════════════════════════════════════════════════════
+
+export interface SendPriceAlertEmailParams {
+    email: string;
+    origin: string;
+    destination: string;
+    newPrice: number;
+    oldPrice: number | null;
+    currency: string;
+    cabin: string;
+    adults: number;
+    searchUrl: string;
+}
+
+// ═════════════════════════════════════════════════════════════════════
+//  HOTEL REFUND RECEIPT EMAIL
+// ═════════════════════════════════════════════════════════════════════
+
+export interface SendHotelRefundEmailParams {
+    bookingId: string;
+    email: string;
+    guestName: string;
+    hotelName: string;
+    roomName: string;
+    checkIn: string;
+    checkOut: string;
+    refundAmount: number;
+    currency: string;
+    stripeRefundId?: string;
+}
+
+export async function sendHotelRefundEmail(params: SendHotelRefundEmailParams): Promise<{ success: boolean; error?: string }> {
+    const { bookingId, email, guestName, hotelName, roomName, checkIn, checkOut, refundAmount, currency, stripeRefundId } = params;
+    if (!email || !bookingId) return { success: false, error: 'Missing required fields' };
+
+    const fmt = (n: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency }).format(n);
+
+    const emailHtml = `<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>Refund Confirmed</title></head>
+<body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;line-height:1.6;color:#333;max-width:600px;margin:0 auto;padding:20px;">
+  <div style="background:linear-gradient(135deg,#059669 0%,#047857 100%);padding:30px;border-radius:12px 12px 0 0;text-align:center;">
+    <h1 style="color:white;margin:0;font-size:28px;">✅ Refund Confirmed</h1>
+    <p style="color:rgba(255,255,255,0.9);margin:10px 0 0 0;">${escapeHtml(hotelName)}</p>
+  </div>
+  <div style="background:#ffffff;padding:30px;border:1px solid #e5e7eb;border-top:none;">
+    <p style="margin:0 0 20px 0;">Dear <strong>${escapeHtml(guestName)}</strong>,</p>
+    <p style="margin:0 0 20px 0;">Your refund of <strong>${fmt(refundAmount)}</strong> for your cancelled reservation at <strong>${escapeHtml(hotelName)}</strong> has been successfully processed and is on its way back to your original payment method.</p>
+
+    <div style="background:#f9fafb;padding:20px;border-radius:8px;margin:20px 0;">
+      <h2 style="margin:0 0 15px 0;font-size:18px;color:#374151;">Refund Details</h2>
+      <table style="width:100%;border-collapse:collapse;">
+        <tr><td style="padding:8px 0;color:#6b7280;">Booking ID:</td><td style="padding:8px 0;font-weight:600;font-family:monospace;">${escapeHtml(bookingId)}</td></tr>
+        <tr><td style="padding:8px 0;color:#6b7280;">Property:</td><td style="padding:8px 0;font-weight:600;">${escapeHtml(hotelName)}</td></tr>
+        <tr><td style="padding:8px 0;color:#6b7280;">Room:</td><td style="padding:8px 0;">${escapeHtml(roomName)}</td></tr>
+        <tr><td style="padding:8px 0;color:#6b7280;">Check-in:</td><td style="padding:8px 0;">${escapeHtml(checkIn)}</td></tr>
+        <tr><td style="padding:8px 0;color:#6b7280;">Check-out:</td><td style="padding:8px 0;">${escapeHtml(checkOut)}</td></tr>
+        ${stripeRefundId ? `<tr><td style="padding:8px 0;color:#6b7280;">Refund Reference:</td><td style="padding:8px 0;font-family:monospace;font-size:13px;">${escapeHtml(stripeRefundId)}</td></tr>` : ''}
+        <tr style="border-top:1px solid #e5e7eb;"><td style="padding:12px 0 8px 0;color:#6b7280;font-weight:600;">Refund Amount:</td><td style="padding:12px 0 8px 0;font-weight:700;font-size:20px;color:#059669;">${fmt(refundAmount)}</td></tr>
+      </table>
+    </div>
+
+    <div style="background:#f0fdf4;padding:15px;border-radius:8px;margin:20px 0;border-left:4px solid #22c55e;">
+      <p style="margin:0;color:#15803d;font-size:14px;">
+        <strong>When will I see it?</strong><br>
+        Refunds typically appear within <strong>3–5 business days</strong> for credit cards, or up to 10 business days for debit cards. If you haven't received it after 10 days, contact your bank with the Refund Reference above.
+      </p>
+    </div>
+
+    <p style="margin:20px 0 0 0;color:#6b7280;font-size:14px;">Thank you for choosing ${BRAND_NAME}. We hope to see you again soon.</p>
+  </div>
+  <div style="background:#f9fafb;padding:20px;border-radius:0 0 12px 12px;border:1px solid #e5e7eb;border-top:none;text-align:center;">
+    <p style="margin:0;color:#9ca3af;font-size:12px;">This email was sent by ${BRAND_NAME}<br>&copy; ${new Date().getFullYear()} All rights reserved</p>
+  </div>
+</body>
+</html>`;
+
+    const resendApiKey = env.RESEND_API_KEY;
+    const subject = `Refund Confirmed – ${fmt(refundAmount)} for ${hotelName}`;
+
+    try {
+        if (resendApiKey) {
+            const res = await fetch('https://api.resend.com/emails', {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${resendApiKey}`, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ from: FROM_NOREPLY, to: [email], subject, html: emailHtml }),
+            });
+            const text = await res.text();
+            if (res.ok) {
+                await logEmail({ bookingId, recipient: email, subject, emailType: 'refund', status: 'sent' });
+                return { success: true };
+            }
+            await logEmail({ bookingId, recipient: email, subject, emailType: 'refund', status: 'failed', errorMessage: text, htmlBody: emailHtml });
+            return { success: false, error: `Resend ${res.status}: ${text}` };
+        }
+        await logEmail({ bookingId, recipient: email, subject, emailType: 'refund', status: 'queued', htmlBody: emailHtml });
+        return { success: false, error: 'RESEND_API_KEY not configured' };
+    } catch (error) {
+        console.error('[sendHotelRefundEmail] Error:', error);
+        return { success: false, error: error instanceof Error ? error.message : 'Failed to send email' };
+    }
+}
+
+// ═════════════════════════════════════════════════════════════════════
+//  PRICE ALERT CONFIRMATION EMAIL
+// ═════════════════════════════════════════════════════════════════════
+
+export interface PriceAlertConfirmationParams {
+    email: string;
+    origin: string;
+    destination: string;
+    cabin: string;
+    adults: number;
+    alertId?: string;
+    targetPrice?: number | null;
+    currency?: string;
+}
+
+export async function sendPriceAlertConfirmationEmail(params: PriceAlertConfirmationParams): Promise<{ success: boolean; error?: string }> {
+    const { email, origin, destination, cabin, adults, alertId, targetPrice, currency = 'USD' } = params;
+    const resendApiKey = env.RESEND_API_KEY;
+    const cabinLabel = cabin.replace('_', ' ');
+
+    const formattedTarget = targetPrice
+        ? new Intl.NumberFormat('en-US', { style: 'currency', currency }).format(targetPrice)
+        : null;
+
+    const emailHtml = `<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;line-height:1.6;color:#333;max-width:600px;margin:0 auto;padding:20px;">
+<div style="background:linear-gradient(135deg,#6366f1,#4f46e5);padding:30px;border-radius:12px 12px 0 0;text-align:center;">
+  <h1 style="color:white;margin:0;font-size:24px;">Price Alert Active! ✈️</h1>
+  <p style="color:rgba(255,255,255,0.9);margin:8px 0 0">${escapeHtml(origin)} &rarr; ${escapeHtml(destination)}</p>
+</div>
+<div style="background:#fff;padding:30px;border:1px solid #e5e7eb;border-top:none;border-radius:0 0 12px 12px;">
+  <p style="margin:0 0 20px">We've started tracking prices for your trip. You'll be the first to know when fares drop!</p>
+  
+  <div style="background:#f8fafc;border-radius:8px;padding:20px;margin:0 0 20px;">
+    <h3 style="margin:0 0 12px;font-size:14px;color:#64748b;text-transform:uppercase;letter-spacing:0.05em;">Your Alert Settings</h3>
+    <table style="width:100%;border-collapse:collapse;font-size:14px;">
+      <tr><td style="padding:4px 0;color:#64748b;">Route:</td><td style="padding:4px 0;font-weight:600;">${escapeHtml(origin)} &rarr; ${escapeHtml(destination)}</td></tr>
+      <tr><td style="padding:4px 0;color:#64748b;">Cabin:</td><td style="padding:4px 0;text-transform:capitalize;">${escapeHtml(cabinLabel)}</td></tr>
+      <tr><td style="padding:4px 0;color:#64748b;">Passengers:</td><td style="padding:4px 0;">${adults} adult${adults > 1 ? 's' : ''}</td></tr>
+      ${formattedTarget ? `<tr><td style="padding:4px 0;color:#64748b;">Target Price:</td><td style="padding:4px 0;font-weight:600;color:#4f46e5;">${escapeHtml(formattedTarget)}</td></tr>` : ''}
+    </table>
+  </div>
+
+  <div style="border-top:1px solid #e2e8f0;padding-top:20px;">
+    <h4 style="margin:0 0 8px;font-size:15px;">What happens next?</h4>
+    <p style="margin:0;font-size:14px;color:#475569;">Our system checks live prices daily. If we find a lower fare for your route, we'll send you an alert with a direct link to book the deal.</p>
+  </div>
+</div>
+<div style="text-align:center;padding:20px;color:#94a3b8;font-size:12px;">
+  &copy; ${new Date().getFullYear()} ${BRAND_NAME}. All rights reserved.
+</div>
+</body></html>`;
+
+    if (!resendApiKey) return { success: false, error: 'RESEND_API_KEY not configured' };
+
+    const subject = `Watching prices: ${origin} \u2192 ${destination}`;
+
+    try {
+        const res = await fetch('https://api.resend.com/emails', {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${resendApiKey}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                from: FROM_NOREPLY,
+                to: [email],
+                subject,
+                html: emailHtml,
+            }),
+        });
+
+        if (res.ok) {
+            await logEmail({
+                recipient: email,
+                subject,
+                emailType: 'price_alert',
+                status: 'sent',
+                metadata: { alertId, type: 'confirmation' }
+            });
+            return { success: true };
+        }
+        
+        const err = await res.text();
+        await logEmail({
+            recipient: email,
+            subject,
+            emailType: 'price_alert',
+            status: 'failed',
+            errorMessage: err,
+            metadata: { alertId, type: 'confirmation' }
+        });
+        return { success: false, error: err };
+    } catch (error) {
+        console.error('[sendPriceAlertConfirmationEmail] Error:', error);
+        return { success: false, error: error instanceof Error ? error.message : 'Failed to send' };
+    }
+}
+
+// ═════════════════════════════════════════════════════════════════════
+//  PRICE DROP ALERT EMAIL
+// ═════════════════════════════════════════════════════════════════════
+
+export async function sendPriceAlertEmail(params: SendPriceAlertEmailParams): Promise<{ success: boolean; error?: string }> {
+    const { email, origin, destination, newPrice, oldPrice, currency, cabin, adults, searchUrl } = params;
+    const resendApiKey = env.RESEND_API_KEY;
+
+    const formattedNew = new Intl.NumberFormat('en-US', { style: 'currency', currency }).format(newPrice);
+    const formattedOld = oldPrice ? new Intl.NumberFormat('en-US', { style: 'currency', currency }).format(oldPrice) : null;
+    const drop = oldPrice ? Math.round(((oldPrice - newPrice) / oldPrice) * 100) : null;
+    const cabinLabel = cabin.replace('_', ' ');
+
+    const emailHtml = `<!DOCTYPE html>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;line-height:1.6;color:#333;max-width:600px;margin:0 auto;padding:20px;">
+<div style="background:linear-gradient(135deg,#10b981,#059669);padding:30px;border-radius:12px 12px 0 0;text-align:center;">
+  <h1 style="color:white;margin:0;font-size:24px;">Price Drop Alert! 📉</h1>
+  <p style="color:rgba(255,255,255,0.9);margin:8px 0 0">${escapeHtml(origin)} &rarr; ${escapeHtml(destination)}</p>
+</div>
+<div style="background:#fff;padding:30px;border:1px solid #e5e7eb;border-top:none;border-radius:0 0 12px 12px;">
+  <p style="margin:0 0 20px">Great news! The price for your tracked route has ${drop && drop > 0 ? `dropped by <strong>${drop}%</strong>` : 'changed'}.</p>
+  <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:20px;margin:0 0 20px;text-align:center;">
+    ${formattedOld ? `<p style="margin:0 0 4px;font-size:13px;color:#6b7280;text-decoration:line-through;">${escapeHtml(formattedOld)}</p>` : ''}
+    <p style="margin:0;font-size:32px;font-weight:800;color:#059669;">${escapeHtml(formattedNew)}</p>
+    <p style="margin:4px 0 0;font-size:12px;color:#6b7280;">${adults} adult${adults > 1 ? 's' : ''} &middot; ${escapeHtml(cabinLabel)}</p>
+  </div>
+  <a href="${escapeHtml(searchUrl)}" style="display:block;background:#059669;color:white;text-decoration:none;text-align:center;padding:14px 24px;border-radius:8px;font-weight:700;font-size:16px;margin:0 0 20px">Book Now</a>
+  <p style="font-size:12px;color:#9ca3af;text-align:center;margin:0">Prices change frequently. This fare may not be available when you search.</p>
+</div>
+</body></html>`;
+
+    if (!resendApiKey) return { success: false, error: 'RESEND_API_KEY not configured' };
+
+    const subject = `Price drop: ${origin} \u2192 ${destination} now ${formattedNew}`;
+
+    try {
+        const res = await fetch('https://api.resend.com/emails', {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${resendApiKey}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                from: FROM_ALERTS,
+                to: [email],
+                subject,
+                html: emailHtml,
+            }),
+        });
+
+        if (res.ok) {
+            await logEmail({
+                recipient: email,
+                subject,
+                emailType: 'price_alert',
+                status: 'sent',
+                metadata: { type: 'drop_alert' }
+            });
+            return { success: true };
+        }
+
+        const err = await res.text();
+        await logEmail({
+            recipient: email,
+            subject,
+            emailType: 'price_alert',
+            status: 'failed',
+            errorMessage: err,
+            metadata: { type: 'drop_alert' }
+        });
+        return { success: false, error: err };
+    } catch (error) {
+        console.error('[sendPriceAlertEmail] Error:', error);
+        return { success: false, error: error instanceof Error ? error.message : 'Failed to send' };
     }
 }

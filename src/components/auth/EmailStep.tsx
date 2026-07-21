@@ -1,8 +1,10 @@
 "use client";
 
 import React from 'react';
+import Link from 'next/link';
 import { Mail, ArrowRight, User, Lock } from 'lucide-react';
 import { toast } from 'sonner';
+import { useTranslations } from 'next-intl';
 import { useAuthStore } from '@/stores/authStore';
 import { useAuthFormStore } from '@/stores/authFormStore';
 import SocialLoginButtons from './SocialLoginButtons';
@@ -11,6 +13,7 @@ import { PasswordRequirements } from './PasswordRequirements';
 import { emailSchema, registerSchema } from '@/lib/schemas/auth';
 
 const EmailStep: React.FC = () => {
+    const t = useTranslations('auth');
     const { setEmail, setAuthStep, isLoading, register } = useAuthStore();
     const {
         localEmail, firstName, lastName, password, errors, showSignupForm,
@@ -24,7 +27,7 @@ const EmailStep: React.FC = () => {
         const result = emailSchema.safeParse({ email: localEmail });
 
         if (!result.success) {
-            setErrors({ email: result.error.flatten().fieldErrors.email?.[0] || 'Invalid email' });
+            setErrors({ email: result.error.flatten().fieldErrors.email?.[0] || t('messages.invalidEmail') });
             return;
         }
 
@@ -57,15 +60,15 @@ const EmailStep: React.FC = () => {
         try {
             setEmail(localEmail);
             await register({ email: localEmail, password, firstName, lastName });
-            toast.success("Account created successfully!");
+            toast.success(t('messages.accountCreated'));
         } catch (error: any) {
             if (error?.code === 'over_email_send_rate_limit' || error?.message?.includes('rate limit')) {
-                toast.warning("Please check your email. Verification link already sent.");
+                toast.warning(t('messages.verificationSent'));
                 setAuthStep('verify-email');
                 return;
             }
-            toast.error(error?.message || "Registration failed. Please try again.");
-            setErrors({ general: error?.message || 'Registration failed. Please try again.' });
+            toast.error(error?.message || t('messages.registrationFailed'));
+            setErrors({ general: error?.message || t('messages.registrationFailed') });
         }
     };
 
@@ -73,10 +76,10 @@ const EmailStep: React.FC = () => {
         <div className="space-y-4">
             <div className="text-center">
                 <h2 className="text-xl font-bold text-slate-900 dark:text-white">
-                    Sign in or create an account
+                    {t('emailStep.title')}
                 </h2>
                 <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
-                    One account for all your travel needs
+                    {t('emailStep.subtitle')}
                 </p>
             </div>
 
@@ -88,10 +91,10 @@ const EmailStep: React.FC = () => {
                         <Input
                             id="email"
                             type="email"
-                            label="Email"
+                            label={t('labels.email')}
                             value={localEmail}
                             onChange={(e) => setField('localEmail', e.target.value)}
-                            placeholder="Enter your email"
+                            placeholder={t('labels.emailPlaceholder')}
                             icon={Mail}
                             error={errors.email}
                             disabled={isLoading}
@@ -103,17 +106,17 @@ const EmailStep: React.FC = () => {
                             isLoading={isLoading}
                             rightIcon={<ArrowRight className="h-5 w-5" />}
                         >
-                            Continue
+                            {t('actions.continue')}
                         </Button>
                     </form>
 
                     <p className="text-center text-sm text-slate-500 dark:text-slate-400">
-                        Don&apos;t have an account?{' '}
+                        {t('emailStep.noAccount')}{' '}
                         <button
                             onClick={() => setShowSignupForm(true)}
                             className="text-blue-600 dark:text-blue-400 hover:underline font-medium"
                         >
-                            Create one with email
+                            {t('emailStep.createWithEmail')}
                         </button>
                     </p>
                 </>
@@ -123,10 +126,10 @@ const EmailStep: React.FC = () => {
                         <Input
                             id="signupEmail"
                             type="email"
-                            label="Email"
+                            label={t('labels.email')}
                             value={localEmail}
                             onChange={(e: React.ChangeEvent<HTMLInputElement>) => setField('localEmail', e.target.value)}
-                            placeholder="Enter your email"
+                            placeholder={t('labels.emailPlaceholder')}
                             icon={Mail}
                             error={errors.email}
                             disabled={isLoading}
@@ -135,20 +138,20 @@ const EmailStep: React.FC = () => {
                         <div className="grid grid-cols-2 gap-3">
                             <Input
                                 id="firstName"
-                                label="First name"
+                                label={t('labels.firstName')}
                                 value={firstName}
                                 onChange={(e: React.ChangeEvent<HTMLInputElement>) => setField('firstName', e.target.value)}
-                                placeholder="First"
+                                placeholder={t('labels.firstNamePlaceholder')}
                                 icon={User}
                                 error={errors.firstName}
                                 disabled={isLoading}
                             />
                             <Input
                                 id="lastName"
-                                label="Last name"
+                                label={t('labels.lastName')}
                                 value={lastName}
                                 onChange={(e: React.ChangeEvent<HTMLInputElement>) => setField('lastName', e.target.value)}
-                                placeholder="Last"
+                                placeholder={t('labels.lastNamePlaceholder')}
                                 error={errors.lastName}
                                 disabled={isLoading}
                             />
@@ -158,10 +161,10 @@ const EmailStep: React.FC = () => {
                             <Input
                                 id="signupPassword"
                                 type="password"
-                                label="Password"
+                                label={t('labels.password')}
                                 value={password}
                                 onChange={(e: React.ChangeEvent<HTMLInputElement>) => setField('password', e.target.value)}
-                                placeholder="Create a password"
+                                placeholder={t('labels.passwordPlaceholder')}
                                 icon={Lock}
                                 error={errors.password}
                                 disabled={isLoading}
@@ -170,32 +173,40 @@ const EmailStep: React.FC = () => {
                         </div>
 
                         <Button type="submit" fullWidth isLoading={isLoading}>
-                            Create account
+                            {t('actions.createAccount')}
                         </Button>
                     </form>
 
                     <p className="text-center text-sm text-slate-500 dark:text-slate-400">
-                        Already have an account?{' '}
+                        {t('emailStep.hasAccount')}{' '}
                         <button
                             onClick={() => setShowSignupForm(false)}
                             className="text-blue-600 dark:text-blue-400 hover:underline font-medium"
                         >
-                            Sign in
+                            {t('actions.signIn')}
                         </button>
                     </p>
                 </>
             )}
 
             <div className="pt-4 border-t border-slate-200 dark:border-white/10 text-center">
-                <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">Other ways to sign in</p>
+                <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">{t('emailStep.otherWays')}</p>
                 <SocialLoginButtons compact showLabels={false} />
             </div>
 
             <p className="text-xs text-center text-slate-500 dark:text-slate-400">
-                By signing in, you agree to our{' '}
-                <a href="#" className="text-blue-600 hover:underline">Terms & Conditions</a>
-                {' '}and{' '}
-                <a href="#" className="text-blue-600 hover:underline">Privacy Statement</a>
+                {t.rich('emailStep.terms', {
+                    terms: (chunks) => (
+                        <Link href="/terms-of-service" target="_blank" className="text-blue-600 hover:underline">
+                            {chunks}
+                        </Link>
+                    ),
+                    privacy: (chunks) => (
+                        <Link href="/privacy-policy" target="_blank" className="text-blue-600 hover:underline">
+                            {chunks}
+                        </Link>
+                    ),
+                })}
             </p>
         </div>
     );

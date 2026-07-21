@@ -1,4 +1,5 @@
-@import "tailwindcss";
+@import "tailwindcss" source(none);
+@source "..";
 
 @import "mapbox-gl/dist/mapbox-gl.css";
 
@@ -10,10 +11,35 @@
   --font-mono: 'JetBrains Mono',
     monospace;
 
+  /* Fluid Typography Scale (375px -> 1440px) */
+  /* Optimized for extreme compactness on mobile */
+  --font-size-3xs: clamp(0.5625rem, 0.5407rem + 0.0939vw, 0.625rem);   /* 9px -> 10px */
+  --font-size-2xs: clamp(0.625rem, 0.5811rem + 0.1878vw, 0.75rem);    /* 10px -> 12px */
+  --font-size-xs: clamp(0.6875rem, 0.6436rem + 0.1878vw, 0.8125rem);  /* 11px -> 13px */
+  --font-size-sm: clamp(0.75rem, 0.7061rem + 0.1878vw, 0.875rem);     /* 12px -> 14px */
+  --font-size-base: clamp(0.8125rem, 0.7686rem + 0.1878vw, 0.9375rem); /* 13px -> 15px */
+  --font-size-lg: clamp(0.9375rem, 0.8936rem + 0.1878vw, 1.0625rem);  /* 15px -> 17px */
+  --font-size-xl: clamp(1.0625rem, 1.0186rem + 0.1878vw, 1.1875rem);  /* 17px -> 19px */
+  --font-size-2xl: clamp(1.25rem, 1.1622rem + 0.3756vw, 1.5rem);     /* 20px -> 24px */
+  --font-size-3xl: clamp(1.5rem, 1.3683rem + 0.5634vw, 1.875rem);    /* 24px -> 30px */
+  --font-size-4xl: clamp(1.875rem, 1.7433rem + 0.5634vw, 2.25rem);   /* 30px -> 36px */
+  --font-size-5xl: clamp(2.25rem, 1.9866rem + 1.1268vw, 3rem);       /* 36px -> 48px */
+
   --color-obsidian: #020617;
   --color-obsidian-surface: rgba(255, 255, 255, 0.05);
   --color-obsidian-border: rgba(255, 255, 255, 0.1);
   --color-obsidian-accent: #22d3ee;
+
+  --color-blue-950: #1e3a8a;
+  --color-blue-600: #2563eb;
+  --color-blue-500: #3b82f6;
+  --color-blue-50: #eff6ff;
+  --color-blue-accent: #60a5fa;
+
+  --color-surface-gray: #F9FAFB;
+  --color-bg-gray: #F3F4F6;
+
+  --radius-dashboard: 2rem;
 
   --color-alabaster: #f8fafc;
   --color-alabaster-surface: rgba(0, 0, 0, 0.05);
@@ -24,13 +50,50 @@
   --transition-duration-800: 800ms;
 }
 
-/* Custom Utilities for Grid Backgrounds (simulating standard utility behavior) */
+/* ─── Fluid Micro Typography Utilities ──────────────────────────────────────── */
+/* For the common arbitrary pixel sizes (9px–11px) used across the codebase      */
+@utility text-fluid-3xs {
+  font-size: var(--font-size-3xs);
+}
+
+@utility text-fluid-2xs {
+  font-size: var(--font-size-2xs);
+}
+
+@utility text-fluid-xs {
+  font-size: var(--font-size-xs);
+}
+
+@utility text-fluid-sm {
+  font-size: var(--font-size-sm);
+}
+
+@utility text-fluid-base {
+  font-size: var(--font-size-base);
+}
+
+/* Consistency wrappers — matching Hotel Search hierarchy (Smaller Scale) */
+@utility text-ui-label {
+  @apply text-fluid-3xs font-normal uppercase tracking-widest text-slate-500 dark:text-slate-400;
+}
+
+@utility text-ui-value {
+  @apply text-fluid-xs font-normal text-blue-600 dark:text-blue-400;
+}
+
+/* Custom Utilities for Grid Backgrounds */
 @utility bg-grid-obsidian {
   background-image: linear-gradient(to right, rgba(255, 255, 255, 0.03) 1px, transparent 1px), linear-gradient(to bottom, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+  background-size: 40px 40px;
 }
 
 @utility bg-grid-alabaster {
   background-image: linear-gradient(to right, rgba(0, 0, 0, 0.03) 1px, transparent 1px), linear-gradient(to bottom, rgba(0, 0, 0, 0.03) 1px, transparent 1px);
+  background-size: 40px 40px;
+}
+
+@utility bg-size-40px_40px {
+  background-size: 40px 40px;
 }
 
 @utility thin-scrollbar {
@@ -61,6 +124,45 @@
   }
 }
 
+@utility bg-diagonal-stripe {
+  background-image: repeating-linear-gradient(45deg,
+      transparent,
+      transparent 10px,
+      rgba(255, 255, 255, 0.1) 10px,
+      rgba(255, 255, 255, 0.1) 20px);
+}
+
+@utility glass-card {
+  background-color: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 1rem;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.05);
+
+  :where(.dark, .dark *) & {
+    background-color: rgba(255, 255, 255, 0.04);
+    border-color: rgba(255, 255, 255, 0.08);
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.2);
+  }
+}
+
+/* Page transition — used by template.tsx, CSS-only to avoid hydration mismatches */
+@keyframes page-in {
+  from {
+    opacity: 0.5;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@utility animate-page-in {
+  animation: page-in 0.2s cubic-bezier(0.25, 0.1, 0.25, 1) both;
+}
+
 /* Enable class-based dark mode */
 @custom-variant dark (&:where(.dark, .dark *));
 
@@ -68,7 +170,6 @@
 @custom-variant landscape (@media (orientation: landscape) and (max-width: 1024px));
 
 /* Prevent horizontal scrolling on mobile */
-html,
 body {
   overflow-x: clip;
   max-width: 100vw;
@@ -109,6 +210,40 @@ body {
   overflow: hidden;
 }
 
+/* Position Mapbox zoom buttons above property cards on mobile with 5px gap */
+.mobile-search-map.map-cards-visible .mapboxgl-ctrl-bottom-right {
+  bottom: 168px !important;
+  transition: bottom 0.3s ease;
+}
+
+.mobile-search-map.map-cards-hidden .mapboxgl-ctrl-bottom-right {
+  bottom: 80px !important;
+  transition: bottom 0.3s ease;
+}
+
+/* Mapbox Controls Dark Mode */
+.dark .mapboxgl-ctrl-group {
+    background: #0f172a !important; /* obsidian/slate-900 */
+    border-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+.dark .mapboxgl-ctrl-group button {
+    border-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+.dark .mapboxgl-ctrl-group button span {
+    filter: invert(1);
+}
+
+.dark .mapboxgl-ctrl-attrib {
+    background: rgba(15, 23, 42, 0.8) !important;
+    color: #94a3b8 !important;
+}
+
+.dark .mapboxgl-ctrl-attrib a {
+    color: #3b82f6 !important;
+}
+
 .mapboxgl-popup-tip {
   display: none !important;
 }
@@ -133,6 +268,69 @@ body {
 /* Hide default close button on map property popup (we use a custom one) */
 .map-property-popup .mapboxgl-popup-close-button {
   display: none !important;
+}
+
+/* Hide Mapbox Standard Style built-in POI feature popups.
+   Our hotel popup (.map-property-popup), click POI (.map-poi-popup),
+   and hover tooltip (.map-poi-hover) are unaffected. */
+.mapboxgl-popup:not(.map-property-popup):not(.map-poi-popup):not(.map-poi-hover) {
+  display: none !important;
+}
+
+/* Strip the default white bubble styling from the hover tooltip */
+.map-poi-hover .mapboxgl-popup-content {
+  background: transparent !important;
+  padding: 0 !important;
+  box-shadow: none !important;
+}
+
+/* ── Map Cursor ── */
+
+/* Mapbox GL JS resets canvas.style.cursor many times per second during its own
+   internal mousemove handling, so any CSS rule that relies on the inline style
+   being absent (cursor:'') loses the race. The fix: use !important on the canvas
+   so CSS beats Mapbox's inline-style resets unconditionally.
+   Pointer state is controlled by the has-pointer-cursor class on the container
+   (specificity 0,3,0 beats the grab rule's 0,2,0).
+   Grabbing is last in source order so it wins over pointer at equal specificity. */
+.mapboxgl-map,
+.mapboxgl-canvas-container {
+  cursor: grab !important;
+}
+/* Target every canvas inside the map — Mapbox GL v3 Standard style can add
+   extra compositor canvases above .mapboxgl-canvas that have no class and
+   therefore no cursor, making the cursor invisible when those are on top. */
+.mapboxgl-map canvas {
+  cursor: grab !important;
+}
+.mapboxgl-canvas-container.has-pointer-cursor .mapboxgl-canvas {
+  cursor: pointer !important;
+}
+.mapboxgl-map:active,
+.mapboxgl-canvas-container:active,
+.mapboxgl-map:active canvas {
+  cursor: grabbing !important;
+}
+
+/* ── Map Performance Optimizations ── */
+
+/* Promote each marker to its own GPU compositor layer.
+   `contain: layout style` tells the browser that internal changes to a marker
+   never affect siblings, so it can skip full-tree layout during pan/zoom. */
+.mapboxgl-marker {
+  contain: layout style;
+  will-change: transform;
+  cursor: pointer !important;
+}
+
+/* Reduce compositing cost: disable backdrop-blur on overlays sitting on top
+   of the map canvas. backdrop-filter forces the GPU to re-read and blur the
+   underlying WebGL canvas every single frame during pan/zoom — this is the
+   main source of the "soft edge" / polygon rendering lag. */
+.mapboxgl-map .backdrop-blur-sm,
+.mapboxgl-map .backdrop-blur-md {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
 }
 
 /* Landscape mobile: larger images, smaller badges */
@@ -237,3 +435,172 @@ body {
     min-height: 0 !important;
   }
 }
+
+@theme inline {
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --radius-2xl: calc(var(--radius) + 8px);
+  --radius-3xl: calc(var(--radius) + 12px);
+  --radius-4xl: calc(var(--radius) + 16px);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+}
+
+:root {
+  --radius: 0.625rem;
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.145 0 0);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.145 0 0);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.145 0 0);
+  --primary: #2563eb;
+  /* Blue 600 */
+  --primary-foreground: oklch(1 0 0);
+  --secondary: #eff6ff;
+  /* Blue 50 */
+  --secondary-foreground: #1e3a8a;
+  /* Blue 900 */
+  --muted: oklch(0.97 0 0);
+  --muted-foreground: oklch(0.556 0 0);
+  --accent: #3b82f6;
+  /* Blue 500 */
+  --accent-foreground: oklch(1 0 0);
+  --destructive: oklch(0.577 0.245 27.325);
+  --border: oklch(0.922 0 0);
+  --input: oklch(0.922 0 0);
+  --ring: #60a5fa;
+  /* Blue 400 */
+  --chart-1: #2563eb;
+  --chart-2: #3b82f6;
+  --chart-3: #60a5fa;
+  --chart-4: #93c5fd;
+  --chart-5: #bfdbfe;
+  --sidebar: #f8fafc;
+  --sidebar-foreground: oklch(0.145 0 0);
+  --sidebar-primary: #2563eb;
+  --sidebar-primary-foreground: oklch(1 0 0);
+  --sidebar-accent: #eff6ff;
+  --sidebar-accent-foreground: #2563eb;
+  --sidebar-border: oklch(0.922 0 0);
+  --sidebar-ring: #3b82f6;
+
+  --image-radius: 1rem;
+}
+
+.dark {
+  --background: oklch(0.145 0 0);
+  --foreground: oklch(0.985 0 0);
+  --card: oklch(0.205 0 0);
+  --card-foreground: oklch(0.985 0 0);
+  --popover: oklch(0.205 0 0);
+  --popover-foreground: oklch(0.985 0 0);
+  --primary: #3b82f6;
+  /* Blue 500 */
+  --primary-foreground: oklch(0.205 0 0);
+  --secondary: oklch(0.269 0 0);
+  --secondary-foreground: oklch(0.985 0 0);
+  --muted: oklch(0.269 0 0);
+  --muted-foreground: oklch(0.708 0 0);
+  --accent: #60a5fa;
+  /* Blue 400 */
+  --accent-foreground: oklch(0.205 0 0);
+  --destructive: oklch(0.704 0.191 22.216);
+  --border: oklch(1 0 0 / 10%);
+  --input: oklch(1 0 0 / 15%);
+  --ring: #3b82f6;
+  --chart-1: #3b82f6;
+  --chart-2: #60a5fa;
+  --chart-3: #93c5fd;
+  --chart-4: #bfdbfe;
+  --chart-5: #dbeafe;
+  --sidebar: oklch(0.205 0 0);
+  --sidebar-foreground: oklch(0.985 0 0);
+  --sidebar-primary: #3b82f6;
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.269 0 0);
+  --sidebar-accent-foreground: #3b82f6;
+  --sidebar-border: oklch(1 0 0 / 10%);
+  --sidebar-ring: #3b82f6;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+  }
+
+  /* Dark mode select & option styling — prevents white flash in dropdowns */
+  .dark select {
+    color-scheme: dark;
+  }
+
+  .dark select option {
+    background-color: #0f172a; /* slate-950 */
+    color: #e2e8f0; /* slate-200 */
+  }
+
+  select option {
+    padding: 8px 12px;
+  }
+}
+/* Weather Widget Custom Scrollbar / Slider */
+.custom-weather-scrollbar::-webkit-scrollbar {
+  height: 4px;
+}
+
+.custom-weather-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.custom-weather-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(156, 163, 175, 0.2);
+  border-radius: 10px;
+}
+
+.dark .custom-weather-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.custom-weather-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(156, 163, 175, 0.4);
+}
+
+.dark .custom-weather-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+

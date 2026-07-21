@@ -6,7 +6,8 @@
 
 import React, { useState } from 'react';
 import { X, ThumbsUp, ThumbsDown, MapPin, ChevronDown } from 'lucide-react';
-import { HotelReview, formatReviewDate, getReviewerInitials, getRatingColor, getRatingLabel } from '@/lib/property/fetchReviews';
+import { useTranslations } from 'next-intl';
+import { HotelReview, formatReviewDate, getReviewerInitials, getRatingColor, getRatingLabel } from '@/lib/property/reviewsUtils';
 
 interface ReviewsModalProps {
     isOpen: boolean;
@@ -18,6 +19,7 @@ interface ReviewsModalProps {
 
 // Individual review card
 function ReviewCard({ review }: { review: HotelReview }) {
+    const t = useTranslations('reviewsSection');
     return (
         <div className="bg-slate-50 dark:bg-slate-700/50 rounded-xl p-4 border border-slate-200 dark:border-slate-600">
             <div className="flex items-start justify-between gap-3 mb-3">
@@ -27,7 +29,7 @@ function ReviewCard({ review }: { review: HotelReview }) {
                     </div>
                     <div>
                         <p className="font-medium text-slate-900 dark:text-white text-sm">
-                            {review.name || 'Anonymous'}
+                            {review.name || t('anonymous')}
                         </p>
                         <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
                             {review.country && (
@@ -73,6 +75,8 @@ function ReviewCard({ review }: { review: HotelReview }) {
 export default function ReviewsModal({ isOpen, onClose, reviews, averageRating, totalCount }: ReviewsModalProps) {
     const [showAll, setShowAll] = useState(false);
     const displayedReviews = showAll ? reviews : reviews.slice(0, 4);
+    const t = useTranslations('reviewsSection');
+    const tRatings = useTranslations('hotels.ratings');
 
     if (!isOpen) return null;
 
@@ -94,10 +98,10 @@ export default function ReviewsModal({ isOpen, onClose, reviews, averageRating, 
                         </div>
                         <div>
                             <p className="font-bold text-slate-900 dark:text-white">
-                                {getRatingLabel(averageRating)}
+                                {tRatings(getRatingLabel(averageRating))}
                             </p>
                             <p className="text-sm text-slate-500 dark:text-slate-400">
-                                {totalCount} verified review{totalCount !== 1 ? 's' : ''}
+                                {t('verifiedReviewCount', { count: totalCount })}
                             </p>
                         </div>
                     </div>
@@ -112,7 +116,7 @@ export default function ReviewsModal({ isOpen, onClose, reviews, averageRating, 
                 {/* Reviews list */}
                 <div className="p-5 overflow-y-auto max-h-[calc(80vh-120px)]">
                     {reviews.length === 0 ? (
-                        <p className="text-center text-slate-500 py-8">No reviews available</p>
+                        <p className="text-center text-slate-500 py-8">{t('noReviewsAvailable')}</p>
                     ) : (
                         <div className="space-y-3">
                             {displayedReviews.map((review, index) => (
@@ -128,7 +132,7 @@ export default function ReviewsModal({ isOpen, onClose, reviews, averageRating, 
                             className="w-full mt-4 py-2 text-sm font-medium text-blue-600 hover:text-blue-700 flex items-center justify-center gap-1"
                         >
                             <ChevronDown size={16} />
-                            Show all {reviews.length} reviews
+                            {t('showAllReviews', { count: reviews.length })}
                         </button>
                     )}
                 </div>

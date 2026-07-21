@@ -9,9 +9,9 @@ import {
     getRatingColor,
     calculateTravelerBreakdown,
     TravelerBreakdown
-} from '@/lib/property/fetchReviews';
+} from '@/lib/property/reviewsUtils';
 import { useReviewsStore } from '@/stores/reviewsStore';
-
+import { useTranslations } from 'next-intl';
 interface ReviewsSectionProps {
     reviews: HotelReview[];
     averageRating: number;
@@ -23,18 +23,25 @@ interface ReviewsSectionProps {
 /**
  * Rating Summary Card - Shows overall score and label
  */
-function RatingSummary({ rating, totalCount }: { rating: number; totalCount: number }) {
+function RatingSummary({ rating: rawRating, totalCount }: { rating: number; totalCount: number }) {
+    const t1 = useTranslations('reviewsSection');
+    const tRatings = useTranslations('hotels.ratings');
+    const rating = Number(rawRating) || 0;
     return (
-        <div className="flex items-center gap-2 lg:gap-3 mb-3 lg:mb-6">
+        <div className="flex items-center gap-2 lg:gap-3 lg:mb-6">
             <div className={`${getRatingColor(rating)} text-white w-9 h-9 lg:w-12 lg:h-12 rounded-lg flex items-center justify-center font-bold text-sm lg:text-xl`}>
-                {rating > 0 ? rating.toFixed(0) : '-'}
+                {rating > 0 ? rating.toFixed(1) : '-'}
             </div>
             <div>
                 <p className="font-semibold text-slate-900 dark:text-white text-xs lg:text-lg leading-tight">
-                    {getRatingLabel(rating)}
+                    {tRatings(getRatingLabel(rating))}
                 </p>
                 <p className="text-[10px] lg:text-sm text-slate-500 dark:text-slate-400">
-                    Based on {totalCount} review{totalCount !== 1 ? 's' : ''}
+                    {totalCount > 0
+                        ? (totalCount !== 1
+                            ? t1('basedOnReviews', { count: totalCount.toLocaleString() })
+                            : t1('basedOnReview', { count: totalCount.toLocaleString() }))
+                        : t1('aggregatedScore')}
                 </p>
             </div>
         </div>
@@ -45,19 +52,20 @@ function RatingSummary({ rating, totalCount }: { rating: number; totalCount: num
  * Who Stays Here Section - Shows traveler type breakdown
  */
 function WhoStaysHere({ breakdown }: { breakdown: TravelerBreakdown }) {
+    const t1 = useTranslations('reviewsSection');
     const types = [
-        { key: 'family', label: 'Family', icon: Users, value: breakdown.family },
-        { key: 'couple', label: 'Couple', icon: Heart, value: breakdown.couple },
-        { key: 'friendsGroup', label: 'Friends/Group', icon: Users2, value: breakdown.friendsGroup },
-        { key: 'solo', label: 'Solo', icon: UserCircle, value: breakdown.solo },
-        { key: 'business', label: 'Business', icon: Briefcase, value: breakdown.business },
+        { key: 'family', label: t1('travelerTypes.family'), icon: Users, value: breakdown.family },
+        { key: 'couple', label: t1('travelerTypes.couple'), icon: Heart, value: breakdown.couple },
+        { key: 'friendsGroup', label: t1('travelerTypes.friendsGroup'), icon: Users2, value: breakdown.friendsGroup },
+        { key: 'solo', label: t1('travelerTypes.solo'), icon: UserCircle, value: breakdown.solo },
+        { key: 'business', label: t1('travelerTypes.business'), icon: Briefcase, value: breakdown.business },
     ].filter(t => t.value > 0);
 
     if (types.length === 0) return null;
 
     return (
         <div className="mb-4 lg:mb-6">
-            <h3 className="text-[10px] lg:text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5 lg:mb-3">Who stays here</h3>
+            <h3 className="text-[10px] lg:text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5 lg:mb-3">{t1('whoStaysHere')}</h3>
             <div className="flex flex-wrap gap-2.5 lg:gap-4">
                 {types.map(({ key, label, icon: Icon, value }) => (
                     <div key={key} className="flex flex-col items-center text-center">
@@ -75,6 +83,7 @@ function WhoStaysHere({ breakdown }: { breakdown: TravelerBreakdown }) {
  * Single Review Item - Matches LiteAPI style
  */
 function ReviewItem({ review, index }: { review: HotelReview; index: number }) {
+    const t1 = useTranslations('reviewsSection');
     const { toggleExpanded, expandedReviewIds } = useReviewsStore();
     const reviewId = `${review.name}-${index}`;
     const isExpanded = expandedReviewIds.has(reviewId);
@@ -93,7 +102,7 @@ function ReviewItem({ review, index }: { review: HotelReview; index: number }) {
                 <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-1.5 lg:gap-2 mb-0.5">
                         <span className="font-semibold text-[11px] lg:text-sm text-slate-900 dark:text-white truncate">
-                            {review.name || 'Anonymous'}
+                            {review.name || t1('anonymous')}
                         </span>
                         {review.type && (
                             <span className="text-[9px] lg:text-xs text-slate-500 dark:text-slate-400 shrink-0">
@@ -130,7 +139,7 @@ function ReviewItem({ review, index }: { review: HotelReview; index: number }) {
                                     onClick={() => toggleExpanded(reviewId)}
                                     className="text-blue-600 hover:text-blue-700 text-[9px] lg:text-xs font-medium mt-1"
                                 >
-                                    {isExpanded ? 'Show Less' : 'Show More'}
+                                    {isExpanded ? t1('showLess') : t1('showMore')}
                                 </button>
                             )}
                         </div>
@@ -138,9 +147,9 @@ function ReviewItem({ review, index }: { review: HotelReview; index: number }) {
                 </div>
 
                 {/* Right: Score badge */}
-                {review.averageScore > 0 && (
-                    <div className={`${getRatingColor(review.averageScore)} text-white w-6 h-6 lg:w-9 lg:h-9 rounded-full flex items-center justify-center font-bold text-[10px] lg:text-sm flex-shrink-0`}>
-                        {review.averageScore.toFixed(0)}
+                {Number(review.averageScore) > 0 && (
+                    <div className={`${getRatingColor(Number(review.averageScore))} text-white w-6 h-6 lg:w-9 lg:h-9 rounded-full flex items-center justify-center font-bold text-[10px] lg:text-sm shrink-0`}>
+                        {Number(review.averageScore).toFixed(0)}
                     </div>
                 )}
             </div>
@@ -151,6 +160,7 @@ function ReviewItem({ review, index }: { review: HotelReview; index: number }) {
 // === Main Component ===
 
 export default function ReviewsSection({ reviews, averageRating, totalCount }: ReviewsSectionProps) {
+    const t1 = useTranslations('reviewsSection');
     const {
         displayCount,
         loadMore,
@@ -217,43 +227,35 @@ export default function ReviewsSection({ reviews, averageRating, totalCount }: R
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, [isSortOpen]);
 
-    if (totalCount === 0) {
-        return (
-            <section id="reviews-section" className="py-8">
-                <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-4">Guest reviews</h2>
-                <div className="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-8 text-center">
-                    <UserCircle className="w-12 h-12 text-slate-300 dark:text-slate-600 mx-auto mb-3" />
-                    <p className="text-slate-500 dark:text-slate-400">
-                        No reviews available yet for this property.
-                    </p>
-                </div>
-            </section>
-        );
+    if (totalCount === 0 && averageRating === 0) {
+        return null;
     }
 
     const sortOptions = [
-        { value: 'newest', label: 'Newest first' },
-        { value: 'highest', label: 'Highest rated' },
-        { value: 'lowest', label: 'Lowest rated' },
+        { value: 'newest', label: t1('sort.newestFirst') },
+        { value: 'highest', label: t1('sort.highestRated') },
+        { value: 'lowest', label: t1('sort.lowestRated') },
     ];
 
-    const currentSortLabel = sortOptions.find(opt => opt.value === sortBy)?.label || 'Newest first';
+    const currentSortLabel = sortOptions.find(opt => opt.value === sortBy)?.label || t1('sort.newestFirst');
 
     return (
         <section id="reviews-section" className="py-4 lg:py-8">
             <div className="flex flex-col lg:flex-row gap-4 lg:gap-8">
                 {/* Left Column - Summary */}
-                <div className="lg:w-64 flex-shrink-0">
+                <div className="lg:w-64 shrink-0">
                     <h2 className="text-[14px] lg:text-xl font-bold text-slate-900 dark:text-white mb-2 lg:mb-4">Guest reviews</h2>
 
-                    <RatingSummary rating={averageRating} totalCount={totalCount} />
-                    <WhoStaysHere breakdown={travelerBreakdown} />
+                    <div className="flex lg:flex-col gap-4 lg:gap-0">
+                        <RatingSummary rating={averageRating} totalCount={totalCount} />
+                        <WhoStaysHere breakdown={travelerBreakdown} />
+                    </div>
                 </div>
 
                 {/* Right Column - Reviews List */}
                 <div className="flex-1 w-full min-w-0">
-                    {/* Sort dropdown */}
-                    <div className="flex sm:justify-end mb-4 relative z-20" id="sort-dropdown">
+                    {/* Sort dropdown — only when there are reviews to sort */}
+                    <div className={`flex sm:justify-end mb-4 relative z-20 ${reviewsToDisplay.length === 0 ? 'hidden' : ''}`} id="sort-dropdown">
                         <div className="relative w-full sm:w-auto">
                             <button
                                 onClick={() => setIsSortOpen(!isSortOpen)}
@@ -291,24 +293,31 @@ export default function ReviewsSection({ reviews, averageRating, totalCount }: R
                         className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 max-h-[400px] md:max-h-[500px] overflow-y-auto shadow-sm relative z-10"
                     >
                         <div className="px-3 md:px-5">
-                            {displayedReviews.map((review, index) => (
-                                <ReviewItem key={`${review.name}-${index}`} review={review} index={index} />
-                            ))}
+                            {displayedReviews.length > 0 ? (
+                                displayedReviews.map((review, index) => (
+                                    <ReviewItem key={`${review.name}-${index}`} review={review} index={index} />
+                                ))
+                            ) : (
+                                <div className="py-8 text-center text-slate-400 dark:text-slate-500">
+                                    <p className="text-sm">{t1('noReviews')}</p>
+                                    <p className="text-xs mt-1">{t1('aggregatedNote')}</p>
+                                </div>
+                            )}
                         </div>
                     </div>
 
                     {/* Load more button & count */}
-                    <div className="mt-4 md:mt-5 flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-0">
+                    <div className={`mt-4 md:mt-5 flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-0 ${reviewsToDisplay.length === 0 ? 'hidden' : ''}`}>
                         {hasMore && (
                             <button
                                 onClick={handleLoadMore}
-                                className="w-full sm:w-auto px-5 py-2.5 border border-slate-300 dark:border-slate-600 rounded-xl text-[16px] sm:text-sm font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors shadow-sm active:scale-95"
+                                className="w-auto px-4 py-1.5 border border-slate-300 dark:border-slate-600 rounded-lg text-xs sm:text-sm font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors shadow-sm active:scale-95"
                             >
-                                Load more reviews
+                                {t1('loadMore')}
                             </button>
                         )}
                         <span className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 text-center w-full sm:w-auto mt-1 sm:mt-0">
-                            Showing {displayedReviews.length} of {reviewsToDisplay.length} reviews
+                            {t1('showingCount', { shown: displayedReviews.length, total: reviewsToDisplay.length })}
                         </span>
                     </div>
                 </div>

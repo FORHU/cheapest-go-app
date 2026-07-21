@@ -23,13 +23,8 @@ export function AuthFooter({ mode, onToggleMode }: AuthFooterProps) {
                 </button>
             </p>
 
-            {/* Terms */}
-            <p className="mt-4 text-xs text-center text-slate-500 dark:text-slate-400">
-                By continuing, you agree to our{' '}
-                <a href="#" className="text-blue-600 dark:text-blue-400 hover:underline">Terms & Conditions</a>
-                {' '}and{' '}
-                <a href="#" className="text-blue-600 dark:text-blue-400 hover:underline">Privacy Statement</a>
-            </p>
+            {/* Terms acceptance moved into the form as a required checkbox
+                (see TermsAcceptanceCheckbox in LoginContent). */}
 
             {/* Partner Logos */}
             <div className="mt-6 flex items-center justify-center gap-4 text-sm text-slate-400 dark:text-slate-500">
