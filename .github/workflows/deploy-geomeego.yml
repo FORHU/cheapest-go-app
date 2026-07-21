@@ -175,8 +175,10 @@ jobs:
           IMAGE="$REGISTRY/$REPOSITORY:latest"
 
           ssh -i ~/.ssh/id_rsa "$USER@$HOST" bash -s << EOF
+            set -e
             echo "$ECR_PASSWORD" | docker login --username AWS --password-stdin $REGISTRY
             docker pull $IMAGE
+            docker image inspect $IMAGE --format='Pulled image: {{.Id}}'
             docker stop geomeego 2>/dev/null || true
             docker rm   geomeego 2>/dev/null || true
             docker run -d \
