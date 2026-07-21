@@ -163,12 +163,15 @@
             "lastName": "Last name",
             "lastNamePlaceholder": "Last",
             "password": "Password",
-            "passwordPlaceholder": "Create a password"
+            "passwordPlaceholder": "Create a password",
+            "passwordPlaceholderSignIn": "Enter your password"
         },
         "messages": {
+            "acceptTerms": "Please accept the Terms & Conditions and Privacy Policy to continue.",
             "accountCreated": "Account created successfully!",
             "accountExists": "Account already exists. Attempting to sign in...",
             "accountExistsSignIn": "Account exists. Please sign in.",
+            "authFailed": "Authentication failed. Please try again.",
             "failedToReset": "Failed to reset password. Please try again.",
             "invalidCredentials": "Invalid email or password.",
             "invalidEmail": "Invalid email",

@@ -4,6 +4,7 @@ import { useState, useRef, useMemo, useEffect, useCallback } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useAuthStore } from '@/stores/authStore';
 import { usePasswordValidation } from '@/hooks/auth';
+import { readReturnTo } from '@/lib/auth/returnTo';
 import type { AuthStep } from '@/types/auth';
 
 export type AuthMode = 'signin' | 'signup';
@@ -50,6 +51,7 @@ interface UseLoginFormOptions {
 export function useLoginForm(options: UseLoginFormOptions = {}): UseLoginFormReturn {
     const { isAdminMode = false } = options;
     const { register, login, logout, isLoading, authStep, setAuthStep, user } = useAuthStore();
+    const storeRedirectTo = useAuthStore((s) => s.redirectTo);
     const searchParams = useSearchParams();
     const router = useRouter();
 
@@ -97,14 +99,16 @@ export function useLoginForm(options: UseLoginFormOptions = {}): UseLoginFormRet
                 return;
             }
 
-            // Standard redirect for non-admins navigating to login
+            // Standard redirect for non-admins navigating to login.
+            // The URL's `next` wins; otherwise fall back to a path stashed by
+            // openAuthModal (the in-page auth gate, e.g. flight booking).
             if (!prevUserRef.current) {
-                const redirectTo = searchParams?.get('redirect') || '/';
-                router.push(redirectTo);
+                const target = readReturnTo(searchParams, storeRedirectTo ?? '/');
+                router.push(target);
             }
         }
         prevUserRef.current = user;
-    }, [user, searchParams, router, setErrors, isAdminMode, logout]);
+    }, [user, searchParams, router, setErrors, isAdminMode, logout, storeRedirectTo]);
 
     // Sync mode with authStep changes
     useEffect(() => {

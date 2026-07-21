@@ -114,6 +114,104 @@
         "title": "앱으로 더 스마트하게 여행하세요"
     },
     "auth": {
+        "actions": {
+            "back": "뒤로",
+            "backToHome": "홈으로 돌아가기",
+            "backToLogin": "로그인으로 돌아가기",
+            "continue": "계속하기",
+            "createAccount": "계정 만들기",
+            "createOne": "계정 만들기",
+            "forgotPassword": "비밀번호를 잊으셨나요?",
+            "resendConfirmation": "확인 이메일 다시 보내기",
+            "resetPassword": "비밀번호 재설정",
+            "sendResetLink": "재설정 링크 보내기",
+            "signIn": "로그인",
+            "tryAgain": "다시 시도해 주세요"
+        },
+        "closeModal": "닫기",
+        "emailStep": {
+            "createWithEmail": "이메일로 계정 만들기",
+            "hasAccount": "이미 계정이 있으신가요?",
+            "noAccount": "계정이 없으신가요?",
+            "otherWays": "다른 로그인 방법",
+            "privacyLink": "개인정보처리방침",
+            "subtitle": "하나의 계정으로 모든 여행을",
+            "terms": "로그인 시 <terms>이용약관</terms> 및 <privacy>개인정보처리방침</privacy>에 동의하게 됩니다.",
+            "termsLink": "이용약관",
+            "title": "로그인 또는 계정 만들기"
+        },
+        "forgotPasswordStep": {
+            "checkInbox": "받은편지함을 확인하세요",
+            "emailPlaceholder": "your@email.com",
+            "notReceived": "이메일을 받지 못하셨나요? 스팸함을 확인하시거나",
+            "sentDescription": "{email}(으)로 비밀번호 재설정 링크를 보냈습니다. 이메일의 링크를 클릭하여 새 비밀번호를 설정하세요.",
+            "subtitle": "이메일 주소를 입력하시면 재설정 링크를 보내드립니다.",
+            "title": "비밀번호 재설정"
+        },
+        "labels": {
+            "confirmPassword": "비밀번호 확인",
+            "confirmPasswordPlaceholder": "비밀번호를 다시 입력하세요",
+            "email": "이메일",
+            "emailPlaceholder": "이메일을 입력하세요",
+            "firstName": "이름",
+            "firstNamePlaceholder": "이름",
+            "lastName": "성",
+            "lastNamePlaceholder": "성",
+            "password": "비밀번호",
+            "passwordPlaceholder": "비밀번호를 만드세요",
+            "passwordPlaceholderSignIn": "비밀번호를 입력하세요"
+        },
+        "messages": {
+            "acceptTerms": "계속하려면 이용약관 및 개인정보처리방침에 동의해 주세요.",
+            "accountCreated": "계정이 생성되었습니다!",
+            "accountExists": "이미 가입된 계정입니다. 로그인을 시도합니다...",
+            "accountExistsSignIn": "이미 가입된 계정입니다. 로그인해 주세요.",
+            "authFailed": "인증에 실패했습니다. 다시 시도해 주세요.",
+            "failedToReset": "비밀번호 재설정에 실패했습니다. 다시 시도해 주세요.",
+            "invalidCredentials": "이메일 또는 비밀번호가 올바르지 않습니다.",
+            "invalidEmail": "유효하지 않은 이메일입니다",
+            "invalidLink": "유효하지 않은 재설정 링크입니다. 새로 요청해 주세요.",
+            "passwordsDoNotMatch": "비밀번호가 일치하지 않습니다",
+            "registrationFailed": "회원가입에 실패했습니다. 다시 시도해 주세요.",
+            "requirementsNotMet": "비밀번호가 모든 조건을 충족하지 않습니다",
+            "resendFailed": "이메일 재전송에 실패했습니다. 다시 시도해 주세요.",
+            "resentSuccess": "확인 이메일을 다시 보냈습니다!",
+            "sendResetFailed": "재설정 이메일 전송에 실패했습니다. 다시 시도해 주세요.",
+            "verificationSent": "이메일을 확인해 주세요. 인증 링크가 이미 발송되었습니다.",
+            "welcomeBack": "다시 오신 것을 환영합니다!",
+            "wrongPassword": "비밀번호가 올바르지 않거나 Google로 만든 계정입니다. Google 로그인을 이용하거나 비밀번호를 재설정해 주세요."
+        },
+        "passwordRequirements": {
+            "lowercase": "소문자",
+            "minLength": "8자 이상",
+            "number": "숫자",
+            "uppercase": "대문자"
+        },
+        "passwordStep": {
+            "for": "계정:",
+            "keepSignedIn": "로그인 상태 유지",
+            "noAccount": "계정이 없으신가요?",
+            "title": "비밀번호를 입력하세요"
+        },
+        "registerStep": {
+            "for": "계정:",
+            "hasAccount": "이미 계정이 있으신가요?",
+            "keepSignedIn": "로그인 상태 유지",
+            "privacyLink": "개인정보처리방침",
+            "terms": "계정을 만들면 <terms>이용약관</terms> 및 <privacy>개인정보처리방침</privacy>에 동의하게 됩니다.",
+            "termsLink": "이용약관",
+            "title": "계정 만들기"
+        },
+        "resetPassword": {
+            "confirmPasswordLabel": "비밀번호 확인",
+            "confirmPasswordPlaceholder": "새 비밀번호를 다시 입력하세요",
+            "newPasswordLabel": "새 비밀번호",
+            "newPasswordPlaceholder": "새 비밀번호를 입력하세요",
+            "subtitle": "아래에 새 비밀번호를 입력하세요",
+            "successDescription": "비밀번호가 변경되었습니다. 이제 새 비밀번호로 로그인할 수 있습니다.",
+            "successTitle": "비밀번호 재설정 완료",
+            "title": "비밀번호 재설정"
+        },
         "signIn": {
             "continueWithApple": "Apple로 계속하기",
             "continueWithEmail": "이메일로 계속하기",
@@ -125,6 +223,16 @@
             "terms": "로그인 시 {terms} 및 {privacy}에 동의하게 됩니다.",
             "termsLink": "이용약관",
             "title": "{brand} 로그인"
+        },
+        "social": {
+            "appleAriaLabel": "Apple로 로그인",
+            "facebookAriaLabel": "Facebook으로 로그인",
+            "signInWithGoogle": "Google로 로그인"
+        },
+        "verifyEmailStep": {
+            "description": "확인 링크를 보낸 주소:",
+            "description2": "이메일의 링크를 클릭하여 로그인하세요.",
+            "title": "이메일을 확인하세요"
         }
     },
     "bookingDestination": {

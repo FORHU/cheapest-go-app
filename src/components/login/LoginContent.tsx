@@ -2,6 +2,7 @@
 
 import React, { useCallback, useState } from 'react';
 import { toast } from 'sonner';
+import { useTranslations } from 'next-intl';
 import { useLoginForm } from '@/hooks';
 import { loginSchema, registerSchema } from '@/lib/schemas/auth';
 import SocialLoginButtons from '@/components/auth/SocialLoginButtons';
@@ -23,6 +24,8 @@ interface LoginContentProps {
 }
 
 export function LoginContent({ isAdmin = false }: LoginContentProps) {
+    const t = useTranslations('auth');
+
     // All login state and logic from hook
     const {
         isLoading,
@@ -51,12 +54,12 @@ export function LoginContent({ isAdmin = false }: LoginContentProps) {
         e.preventDefault();
 
         if (mode === 'signup' && !agreedToTerms) {
-            setErrors({ terms: 'Please accept the Terms & Conditions and Privacy Policy to continue.' });
+            setErrors({ terms: t('messages.acceptTerms') });
             return;
         }
 
         if (mode === 'signup' && password !== confirmPassword) {
-            setErrors({ confirmPassword: 'Passwords do not match' });
+            setErrors({ confirmPassword: t('messages.passwordsDoNotMatch') });
             return;
         }
 
@@ -83,30 +86,31 @@ export function LoginContent({ isAdmin = false }: LoginContentProps) {
         try {
             if (mode === 'signup') {
                 await register({ email, password, firstName, lastName });
-                toast.success("Account created successfully!");
+                toast.success(t('messages.accountCreated'));
             } else {
                 await login(email, password);
-                toast.success(isAdmin ? "Identity verified. Accessing Command Center..." : "Welcome back!");
+                // Admin copy stays English — the Command Center is internal-only.
+                toast.success(isAdmin ? "Identity verified. Accessing Command Center..." : t('messages.welcomeBack'));
             }
         } catch (error: any) {
             if (error?.code === 'over_email_send_rate_limit' || error?.message?.includes('rate limit')) {
-                toast.warning("Please check your email. Verification link already sent.");
+                toast.warning(t('messages.verificationSent'));
                 setAuthStep('verify-email');
                 return;
             }
 
             if (mode === 'signup' && error?.message?.includes('already registered')) {
                 try {
-                    toast.info("Account already exists. Attempting to sign in...");
+                    toast.info(t('messages.accountExists'));
                     await login(email, password);
-                    toast.success("Welcome back!");
+                    toast.success(t('messages.welcomeBack'));
                     return;
                 } catch (loginError: any) {
                     if (loginError?.message?.toLowerCase().includes('email not confirmed')) {
                         setAuthStep('verify-email');
                         return;
                     }
-                    toast.error("Account exists. Please sign in.");
+                    toast.error(t('messages.accountExistsSignIn'));
                     setMode('signin');
                     setAuthStep('password');
                     return;
@@ -118,10 +122,12 @@ export function LoginContent({ isAdmin = false }: LoginContentProps) {
                 return;
             }
 
-            setErrors({ general: error?.message || 'Authentication failed. Please try again.' });
-            toast.error(error?.message || 'Authentication failed');
+            // Supabase error messages arrive in English from the API — only the
+            // generic fallback is translatable here.
+            setErrors({ general: error?.message || t('messages.authFailed') });
+            toast.error(error?.message || t('messages.authFailed'));
         }
-    }, [email, password, confirmPassword, agreedToTerms, firstName, lastName, mode, register, login, setErrors, setAuthStep, setMode, isAdmin]);
+    }, [email, password, confirmPassword, agreedToTerms, firstName, lastName, mode, register, login, setErrors, setAuthStep, setMode, isAdmin, t]);
 
     const handleToggleMode = useCallback(() => {
         setMode(mode === 'signin' ? 'signup' : 'signin');
@@ -141,8 +147,8 @@ export function LoginContent({ isAdmin = false }: LoginContentProps) {
                 <AuthHeader
                     title={isAdmin ? (
                         <>Sign In as <span className="text-blue-600">Admin</span></>
-                    ) as unknown as string : (mode === 'signin' ? 'Sign in' : 'Create an account')}
-                    subtitle={isAdmin ? "Authorized personnel only" : "One account for all your travel needs"}
+                    ) as unknown as string : (mode === 'signin' ? t('actions.signIn') : t('registerStep.title'))}
+                    subtitle={isAdmin ? "Authorized personnel only" : t('emailStep.subtitle')}
                     onBack={() => setAuthStep('email')}
                 />
 
@@ -194,7 +200,7 @@ export function LoginContent({ isAdmin = false }: LoginContentProps) {
                                     error={errors.password}
                                     onErrorClear={clearError('password')}
                                     disabled={isLoading}
-                                    placeholder={mode === 'signin' ? 'Enter your password' : 'Create a password'}
+                                    placeholder={mode === 'signin' ? t('labels.passwordPlaceholderSignIn') : t('labels.passwordPlaceholder')}
                                     showRequirements={mode === 'signup'}
                                 />
 
@@ -205,8 +211,8 @@ export function LoginContent({ isAdmin = false }: LoginContentProps) {
                                         error={errors.confirmPassword}
                                         onErrorClear={clearError('confirmPassword')}
                                         disabled={isLoading}
-                                        placeholder="Re-enter your password"
-                                        label="Confirm password"
+                                        placeholder={t('labels.confirmPasswordPlaceholder')}
+                                        label={t('labels.confirmPassword')}
                                         showRequirements={false}
                                     />
                                 )}
@@ -214,7 +220,7 @@ export function LoginContent({ isAdmin = false }: LoginContentProps) {
                                 {mode === 'signin' && (
                                     <div className="text-right">
                                         <button type="button" onClick={() => setAuthStep('forgot-password')} className="text-sm text-blue-600 dark:text-blue-400 hover:underline">
-                                            Forgot password?
+                                            {t('actions.forgotPassword')}
                                         </button>
                                     </div>
                                 )}
@@ -239,7 +245,7 @@ export function LoginContent({ isAdmin = false }: LoginContentProps) {
                                     {isLoading ? (
                                         <div className="h-5 w-5 mx-auto border-2 border-white/30 border-t-white rounded-full animate-spin" />
                                     ) : (
-                                        mode === 'signin' ? 'Sign in' : 'Create account'
+                                        mode === 'signin' ? t('actions.signIn') : t('actions.createAccount')
                                     )}
                                 </button>
                             </form>

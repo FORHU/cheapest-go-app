@@ -69,9 +69,20 @@ vi.mock('@/hooks', () => ({
     },
 }));
 
+import { NextIntlClientProvider } from 'next-intl';
 import { LoginContent } from '@/components/login/LoginContent';
+import messages from '@/locales/en.json';
 
 const PASSWORD = '2-9-12-12-25-Bb';
+
+/** The auth form reads its copy from next-intl; assertions below use the en strings. */
+function Wrapper({ children }: { children: React.ReactNode }) {
+    return (
+        <NextIntlClientProvider locale="en" messages={messages}>
+            {children}
+        </NextIntlClientProvider>
+    );
+}
 
 describe('LoginContent — signup password confirmation', () => {
     beforeEach(() => {
@@ -80,7 +91,7 @@ describe('LoginContent — signup password confirmation', () => {
     });
 
     it('accepts matching passwords typed in password-then-confirm order', async () => {
-        render(<LoginContent />);
+        render(<LoginContent />, { wrapper: Wrapper });
 
         const passwordBoxes = screen.getAllByPlaceholderText(/password/i);
         const passwordInput = screen.getByPlaceholderText('Create a password');
@@ -101,7 +112,7 @@ describe('LoginContent — signup password confirmation', () => {
     });
 
     it('still rejects genuinely mismatched passwords', async () => {
-        render(<LoginContent />);
+        render(<LoginContent />, { wrapper: Wrapper });
 
         fireEvent.change(screen.getByPlaceholderText('Create a password'), {
             target: { value: PASSWORD },
