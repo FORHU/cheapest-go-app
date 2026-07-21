@@ -16,8 +16,8 @@ import { NextRequest, NextResponse } from 'next/server';
 const ALLOWED_ORIGINS = (() => {
     const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://cheapestgo.com';
     const origins = new Set([siteUrl.replace(/\/$/, '')]);
-    // Allow geomeego.com as a second brand on the same backend
-    origins.add('https://geomeego.com');
+    // Allow geomego.com as a second brand on the same backend
+    origins.add('https://geomego.com');
     // Always allow localhost in development
     if (process.env.NODE_ENV !== 'production') {
         origins.add('http://localhost:3000');

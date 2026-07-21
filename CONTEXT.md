@@ -14,15 +14,15 @@ _Avoid_: setting `redirect_uri` to the frontend URL — Google would land on a p
 
 **Cutover** — the moment traffic switches from v1 to v2. Has not happened yet.
 
-**GeoMeego** — a white-label deployment of CheapestGo targeting Korean users, served at `geomeego.com`. It is the same codebase, same database, and same feature set as CheapestGo — not a separate product. It differs only in brand name, logo, favicon, email sender, and locale (locked to Korean, no language switcher). Runs as a second EC2 instance pointing at the same repo and the same `DATABASE_URL`. See [ADR-0005](docs/adr/0005-geomeego-white-label-deployment.md).
-_Avoid_: treating GeoMeego as a separate product or separate codebase — it shares all suppliers, inventory, users, and admin with CheapestGo. _Avoid_: adding Korean-specific features or business logic to the codebase without making them brand-configurable.
+**GeomeGo** — a white-label deployment of CheapestGo targeting Korean users, served at `geomego.com`. It is the same codebase, same database, and same feature set as CheapestGo — not a separate product. It differs only in brand name, logo, favicon, email sender, and locale (locked to Korean, no language switcher). Runs as a second EC2 instance pointing at the same repo and the same `DATABASE_URL`. See [ADR-0005](docs/adr/0005-geomego-white-label-deployment.md).
+_Avoid_: treating GeomeGo as a separate product or separate codebase — it shares all suppliers, inventory, users, and admin with CheapestGo. _Avoid_: adding Korean-specific features or business logic to the codebase without making them brand-configurable.
 
 **White-label Deployment** — a Coolify service running the same `cheapest-go-app` repo with a different set of brand env vars (`NEXT_PUBLIC_BRAND_NAME`, `NEXT_PUBLIC_BRAND_LOGO_URL`, `NEXT_PUBLIC_BRAND_FAVICON`, `NEXT_PUBLIC_BRAND_EMAIL`, `NEXT_PUBLIC_LOCALE`, `NEXT_PUBLIC_SITE_URL`). The brand env vars are the single source of truth for which site is being served. No runtime domain detection.
 _Avoid_: reading `req.headers.host` to decide which brand to render — all brand config comes from env vars baked in at build/start time.
 
 ## Deployment
 
-**AWS EC2** — the Next.js app runs as a persistent Node.js process on EC2. Not serverless. Connection pools are shared across requests within one process. Each brand deployment (CheapestGo, GeoMeego) is a separate EC2 instance with its own env vars pointing at the same RDS database.
+**AWS EC2** — the Next.js app runs as a persistent Node.js process on EC2. Not serverless. Connection pools are shared across requests within one process. Each brand deployment (CheapestGo, GeomeGo) is a separate EC2 instance with its own env vars pointing at the same RDS database.
 
 **Dev environment** — Docker Compose with PostgreSQL 17 + pgAdmin 4. Local only. pgAdmin available at `http://localhost:5050` (admin@cheapestgo.local / cheapestgo).
 
