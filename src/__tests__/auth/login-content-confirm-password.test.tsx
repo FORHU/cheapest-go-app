@@ -23,6 +23,15 @@ const login = vi.fn().mockResolvedValue(undefined);
 const setAuthStep = vi.fn();
 const setMode = vi.fn();
 
+vi.mock('next-intl', () => ({
+    useTranslations: () => {
+        const t: any = (k: string) => k;
+        t.raw = () => [];
+        return t;
+    },
+    useLocale: () => 'en',
+}));
+
 vi.mock('sonner', () => ({
     toast: { success: vi.fn(), error: vi.fn(), info: vi.fn(), warning: vi.fn() },
 }));

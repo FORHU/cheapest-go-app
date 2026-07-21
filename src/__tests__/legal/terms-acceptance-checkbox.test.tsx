@@ -2,6 +2,31 @@ import React, { useState } from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, within } from '@testing-library/react';
 
+vi.mock('next-intl', async () => {
+    // Import actual translations so content-based assertions work
+    // (e.g., getByText(/acceptance of terms/i) matches the real translation value)
+    const enJson = (await import('../../locales/en.json')).default;
+
+    const dig = (obj: any, path: string): any =>
+        path.split('.').reduce((acc: any, key: string) => acc?.[key], obj);
+
+    return {
+        useTranslations: (ns: string) => {
+            const section = dig(enJson, ns);
+            const t: any = (k: string): string => {
+                const val = dig(section, k);
+                return typeof val === 'string' ? val : k;
+            };
+            t.raw = (k: string): unknown => {
+                const val = dig(section, k);
+                return Array.isArray(val) ? val : [];
+            };
+            return t;
+        },
+        useLocale: () => 'en',
+    };
+});
+
 import { TermsAcceptanceCheckbox } from '@/components/legal/TermsAcceptanceCheckbox';
 
 /** Controlled wrapper so the checkbox reflects real toggle state. */
