@@ -1,64 +1,58 @@
 /**
  * ─── Markup & Pricing Strategy ────────────────────────────────────────────────
  *
- * CheapestGo earns revenue by charging customers a marked-up price while paying
- * providers (Duffel, Mystifly, future hotel providers) the raw fare.
- * The difference — minus Stripe processing fees — is our profit margin.
+ * CheapestGo's markup is set to break even on Stripe processing fees only.
+ * Goal: collect exactly enough to cover Stripe (2.9% + $0.30 per transaction)
+ * with a small buffer for refunds and disputes. No profit margin is intended.
  *
- * ## Why different rates for flights vs hotels?
+ * Stripe account: US-registered, USD default (confirmed 2026-07-21).
+ * Stripe fee formula: chargedPrice × 0.029 + $0.30
  *
- * FLIGHTS — 8% markup
- *   Flight prices are highly transparent. Google Flights, Kayak, and Skyscanner
- *   show the exact airline fare with zero markup. Any user can do a side-by-side
- *   comparison in seconds. A large markup would directly contradict the "cheapest"
- *   brand promise and push customers to book direct or via aggregators.
+ * ## Break-even math
  *
- *   Industry reference:
- *     - Google Flights / Kayak / Skyscanner: $0 markup (aggregators, redirect to airline)
- *     - Expedia / Booking.com flights: ~$15–25 flat fee (not percentage)
- *     - Traditional OTAs: 8–12% (Priceline, Orbitz)
+ *   Break-even markup = (0.029 × basePrice + 0.30) / (0.971 × basePrice)
+ *                     ≈ 3.0% for any ticket above ~$100
  *
- *   At 8%, net margin after Stripe fees (~2.9% + $0.30) is approximately:
- *     $500 flight → $540 charged → ~$23 net profit
- *     $800 flight → $864 charged → ~$39 net profit
+ *   We use 3.5% for flights and 5% for hotels to add a buffer for:
+ *     - Stripe refund fee (Stripe keeps the processing fee on refunds)
+ *     - Stripe dispute fee ($15 per chargeback)
+ *     - Stripe Radar fee ($0.05 per screened transaction if enabled)
  *
- * HOTELS — 15% markup
- *   Hotel prices are opaque. Rates differ by platform due to inventory contracts,
- *   dynamic pricing, loyalty tiers, and availability windows. Customers rarely
- *   know the "true" price, so a 15% margin is standard and invisible to the user.
+ * FLIGHTS — 4% markup
+ *   Raised from 3.5% because sub-$60 routes are common (Korean/SEA market) and
+ *   the Stripe $0.30 flat fee makes 3.5% go negative below ~$57.
+ *   At 4%, net after Stripe fees is approximately:
+ *     $50  flight → $52.00 charged → ~$0.19 buffer
+ *     $100 flight → $104.00 charged → ~$0.71 buffer
+ *     $300 flight → $312.00 charged → ~$2.75 buffer
+ *     $500 flight → $520.00 charged → ~$4.62 buffer
  *
- *   Industry reference:
- *     - Booking.com: 15–25% commission from hotels (passed as higher room rate)
- *     - Agoda: 15–20%
- *     - Expedia: 15–30%
- *     - Airbnb: 14–16% guest fee + 3% host fee
- *
- *   At 15%, net margin after Stripe fees is approximately:
- *     $300 hotel (3 nights) → $345 charged → ~$34 net profit
- *     $600 hotel (5 nights) → $690 charged → ~$72 net profit
+ * HOTELS — 5% markup
+ *   Higher buffer to absorb the greater refund risk on multi-night stays.
+ *   At 5%, net after Stripe fees is approximately:
+ *     $300 hotel → $315.00 charged → ~$5.57 buffer
+ *     $600 hotel → $630.00 charged → ~$11.43 buffer
  *
  * ## How it works technically
  *
- *   1. Provider prices the fare at e.g. $500 (original cost).
- *   2. We multiply by (1 + MARKUP_RATE) to get the customer price ($540).
- *   3. Stripe charges the customer $540.
- *   4. We pay the provider $500 from our Duffel balance / Mystifly account.
- *   5. We keep the $40 difference, minus Stripe's ~$16.96 fee = ~$23 profit.
+ *   1. Provider prices the fare at e.g. $300 (original cost).
+ *   2. We multiply by (1 + MARKUP_RATE) to get the customer price ($315).
+ *   3. Stripe charges the customer $315.
+ *   4. We pay the provider $300 from our Duffel balance / supplier account.
+ *   5. We keep the $15 difference, minus Stripe's ~$9.44 fee = ~$5.57 buffer.
  *
  *   Both the original price and the charged price are stored in the DB so
  *   finance reporting always has an accurate margin view.
  *
  * ## Future: Bundles (flight + hotel)
- *   When bundled booking is implemented, use a blended rate (~12%) applied to
- *   the total. This gives a slightly higher effective margin than flights alone
- *   while remaining competitive against package-deal OTAs.
+ *   Blended rate of 4% — between the flight and hotel rates.
  *
  * ─── Changing rates ───────────────────────────────────────────────────────────
  *
  *   Override via environment variables (no code change needed):
- *     FLIGHT_MARKUP_PERCENTAGE=0.08    # 8%
- *     HOTEL_MARKUP_PERCENTAGE=0.15     # 15%
- *     BUNDLE_MARKUP_PERCENTAGE=0.12    # 12% — not yet active
+ *     FLIGHT_MARKUP_PERCENTAGE=0.035   # 3.5%
+ *     HOTEL_MARKUP_PERCENTAGE=0.05     # 5%
+ *     BUNDLE_MARKUP_PERCENTAGE=0.04    # 4% — not yet active
  *
  *   Rates are clamped between 0 and 0.50 (50%) to prevent misconfiguration
  *   from charging customers absurd prices.
@@ -68,14 +62,14 @@
 
 // ── Default rates (overridable via env) ─────────────────────────────────────
 
-/** 0% — markup disabled; restore to 0.08 when client is ready to charge */
-export const FLIGHT_MARKUP = parseMarkupEnv('FLIGHT_MARKUP_PERCENTAGE', 0);
+/** 4% — covers Stripe fees (2.9% + $0.30) including sub-$60 routes (Korean market) */
+export const FLIGHT_MARKUP = parseMarkupEnv('FLIGHT_MARKUP_PERCENTAGE', 0.04);
 
-/** 0% — markup disabled; restore to 0.15 when client is ready to charge */
-export const HOTEL_MARKUP = parseMarkupEnv('HOTEL_MARKUP_PERCENTAGE', 0);
+/** 5% — covers Stripe fees with a larger buffer for multi-night refund risk */
+export const HOTEL_MARKUP = parseMarkupEnv('HOTEL_MARKUP_PERCENTAGE', 0.05);
 
-/** 0% — markup disabled; restore to 0.12 when client is ready to charge */
-export const BUNDLE_MARKUP = parseMarkupEnv('BUNDLE_MARKUP_PERCENTAGE', 0);
+/** 4% — blended rate for flight + hotel bundles; not yet active */
+export const BUNDLE_MARKUP = parseMarkupEnv('BUNDLE_MARKUP_PERCENTAGE', 0.04);
 
 // Log effective rates once at module load so they appear in Vercel/server startup logs.
 // Makes misconfiguration immediately visible without needing to trace a booking.
@@ -169,9 +163,9 @@ export function calculateStripeFee(chargedPrice: number): number {
  * Uses estimated formulas if data is missing from the database.
  * 
  * Formulas:
- * - Standard (Flight): totalPrice / 1.08 (8% markup)
- * - Standard (Hotel):  totalPrice / 1.15 (15% markup)
- * - Bundle:           totalPrice / 1.12 (12% markup)
+ * - Standard (Flight): totalPrice / 1.04  (4% markup)
+ * - Standard (Hotel):  totalPrice / 1.05  (5% markup)
+ * - Bundle:           totalPrice / 1.04   (4% markup)
  */
 export function enrichBookingFinances<T extends { 
     type: string; 
