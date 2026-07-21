@@ -161,7 +161,7 @@ jobs:
             "MYSTIFLY_PASSWORD=$V_MYSTIFLY_PASSWORD" \
             "MYSTIFLY_USERNAME=$V_MYSTIFLY_USERNAME" \
           | ssh -i ~/.ssh/id_rsa ${{ secrets.EC2_USER_GEOMEEGO }}@${{ secrets.EC2_HOST_GEOMEEGO }} \
-              "cat > ~/.env && chmod 600 ~/.env"
+              "cat > ~/.env.geomeego && chmod 600 ~/.env.geomeego"
 
       - name: Deploy to GeomeeGo EC2
         env:
@@ -182,8 +182,8 @@ jobs:
             docker run -d \
               --name geomeego \
               --restart=always \
-              -p 3000:3000 \
-              --env-file ~/.env \
+              -p 3001:3000 \
+              --env-file ~/.env.geomeego \
               $IMAGE
             docker image prune -f
           EOF
