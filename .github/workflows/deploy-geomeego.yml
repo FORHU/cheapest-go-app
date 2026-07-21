@@ -1,4 +1,4 @@
-name: Deploy GeomeGo
+name: Deploy GeomeeGo
 
 on:
   push:
@@ -20,7 +20,7 @@ jobs:
   deploy:
     needs: ci
     runs-on: ubuntu-latest
-    environment: geomego
+    environment: geomeego
 
     steps:
       - uses: actions/checkout@v4
@@ -36,18 +36,18 @@ jobs:
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
 
-      - name: Build and push GeomeGo image to ECR
+      - name: Build and push GeomeeGo image to ECR
         env:
           REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-          REPOSITORY: ${{ secrets.ECR_REPOSITORY_GEOMEGO }}
+          REPOSITORY: ${{ secrets.ECR_REPOSITORY_GEOMEEGO }}
           SHA: ${{ github.sha }}
         run: |
           docker build \
-            --build-arg NEXT_PUBLIC_BRAND_NAME="GeomeGo" \
+            --build-arg NEXT_PUBLIC_BRAND_NAME="GeomeeGo" \
             --build-arg NEXT_PUBLIC_LOCALE="ko" \
-            --build-arg NEXT_PUBLIC_SITE_URL="${{ secrets.NEXT_PUBLIC_SITE_URL_GEOMEGO }}" \
-            --build-arg NEXT_PUBLIC_BRAND_EMAIL="${{ secrets.NEXT_PUBLIC_BRAND_EMAIL_GEOMEGO }}" \
-            --build-arg NEXT_PUBLIC_BRAND_FAVICON="${{ secrets.NEXT_PUBLIC_BRAND_FAVICON_GEOMEGO }}" \
+            --build-arg NEXT_PUBLIC_SITE_URL="${{ secrets.NEXT_PUBLIC_SITE_URL_GEOMEEGO }}" \
+            --build-arg NEXT_PUBLIC_BRAND_EMAIL="${{ secrets.NEXT_PUBLIC_BRAND_EMAIL_GEOMEEGO }}" \
+            --build-arg NEXT_PUBLIC_BRAND_FAVICON="${{ secrets.NEXT_PUBLIC_BRAND_FAVICON_GEOMEEGO }}" \
             --build-arg NEXT_PUBLIC_MAPBOX_TOKEN="${{ secrets.NEXT_PUBLIC_MAPBOX_TOKEN }}" \
             --build-arg NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY="${{ secrets.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY }}" \
             -t $REGISTRY/$REPOSITORY:$SHA \
@@ -59,21 +59,21 @@ jobs:
       - name: Setup SSH
         run: |
           mkdir -p ~/.ssh
-          echo "${{ secrets.SSH_KEY_GEOMEGO }}" > ~/.ssh/id_rsa
+          echo "${{ secrets.SSH_KEY_GEOMEEGO }}" > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
-          ssh-keyscan -H "${{ secrets.EC2_HOST_GEOMEGO }}" >> ~/.ssh/known_hosts || true
+          ssh-keyscan -H "${{ secrets.EC2_HOST_GEOMEEGO }}" >> ~/.ssh/known_hosts || true
           echo "StrictHostKeyChecking no" >> ~/.ssh/config
 
-      - name: Write .env to GeomeGo EC2
+      - name: Write .env to GeomeeGo EC2
         env:
           V_DATABASE_URL: ${{ secrets.DATABASE_URL }}
           V_DATABASE_URL_UNPOOLED: ${{ secrets.DATABASE_URL_UNPOOLED }}
           V_DATABASE_SSL: ${{ secrets.DATABASE_SSL }}
-          V_NEXT_PUBLIC_SITE_URL: ${{ secrets.NEXT_PUBLIC_SITE_URL_GEOMEGO }}
+          V_NEXT_PUBLIC_SITE_URL: ${{ secrets.NEXT_PUBLIC_SITE_URL_GEOMEEGO }}
           V_DUFFEL_ACCESS_TOKEN: ${{ secrets.DUFFEL_ACCESS_TOKEN }}
           V_STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
           V_NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY }}
-          V_STRIPE_WEBHOOK_SECRET: ${{ secrets.STRIPE_WEBHOOK_SECRET_GEOMEGO }}
+          V_STRIPE_WEBHOOK_SECRET: ${{ secrets.STRIPE_WEBHOOK_SECRET_GEOMEEGO }}
           V_TRAVELGATEX_API_KEY: ${{ secrets.TRAVELGATEX_API_KEY }}
           V_TRAVELGATEX_CODE: ${{ secrets.TRAVELGATEX_CODE }}
           V_TRAVELGATEX_SUPPLIER: ${{ secrets.TRAVELGATEX_SUPPLIER }}
@@ -93,7 +93,7 @@ jobs:
           V_AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY }}
           V_AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           V_AWS_S3_BUCKET_NAME: ${{ secrets.AWS_S3_BUCKET_NAME }}
-          V_NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION: ${{ secrets.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION_GEOMEGO }}
+          V_NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION: ${{ secrets.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION_GEOMEEGO }}
           V_FOURSQUARE_SERVICE_API_KEY: ${{ secrets.FOURSQUARE_SERVICE_API_KEY }}
           V_FLIGHT_MARKUP_PERCENTAGE: ${{ secrets.FLIGHT_MARKUP_PERCENTAGE }}
           V_HOTEL_MARKUP_PERCENTAGE: ${{ secrets.HOTEL_MARKUP_PERCENTAGE }}
@@ -160,16 +160,16 @@ jobs:
             "MYSTIFLY_BASE_URL=$V_MYSTIFLY_BASE_URL" \
             "MYSTIFLY_PASSWORD=$V_MYSTIFLY_PASSWORD" \
             "MYSTIFLY_USERNAME=$V_MYSTIFLY_USERNAME" \
-          | ssh -i ~/.ssh/id_rsa ${{ secrets.EC2_USER_GEOMEGO }}@${{ secrets.EC2_HOST_GEOMEGO }} \
+          | ssh -i ~/.ssh/id_rsa ${{ secrets.EC2_USER_GEOMEEGO }}@${{ secrets.EC2_HOST_GEOMEEGO }} \
               "cat > ~/.env && chmod 600 ~/.env"
 
-      - name: Deploy to GeomeGo EC2
+      - name: Deploy to GeomeeGo EC2
         env:
           REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-          REPOSITORY: ${{ secrets.ECR_REPOSITORY_GEOMEGO }}
+          REPOSITORY: ${{ secrets.ECR_REPOSITORY_GEOMEEGO }}
           REGION: ${{ secrets.AWS_REGION }}
-          HOST: ${{ secrets.EC2_HOST_GEOMEGO }}
-          USER: ${{ secrets.EC2_USER_GEOMEGO }}
+          HOST: ${{ secrets.EC2_HOST_GEOMEEGO }}
+          USER: ${{ secrets.EC2_USER_GEOMEEGO }}
         run: |
           ECR_PASSWORD=$(aws ecr get-login-password --region "$REGION")
           IMAGE="$REGISTRY/$REPOSITORY:latest"
@@ -177,10 +177,10 @@ jobs:
           ssh -i ~/.ssh/id_rsa "$USER@$HOST" bash -s << EOF
             echo "$ECR_PASSWORD" | docker login --username AWS --password-stdin $REGISTRY
             docker pull $IMAGE
-            docker stop geomego 2>/dev/null || true
-            docker rm   geomego 2>/dev/null || true
+            docker stop geomeego 2>/dev/null || true
+            docker rm   geomeego 2>/dev/null || true
             docker run -d \
-              --name geomego \
+              --name geomeego \
               --restart=always \
               -p 3000:3000 \
               --env-file ~/.env \

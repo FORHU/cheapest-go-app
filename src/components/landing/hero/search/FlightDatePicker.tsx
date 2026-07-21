@@ -4,7 +4,7 @@ import React, { useRef, useEffect, useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, ChevronDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useTranslations } from 'next-intl';
+import { useTranslations, useLocale } from 'next-intl';
 
 interface FlightDatePickerProps {
     date: Date | null;
@@ -27,6 +27,7 @@ export const FlightDatePicker: React.FC<FlightDatePickerProps> = ({
     minDate
 }) => {
     const t = useTranslations('landing.search');
+    const locale = useLocale();
     const resolvedDescription = description ?? t('selectDate');
     const MONTHS = t.raw('months') as string[];
     const DAYS = t.raw('days') as string[];
@@ -89,7 +90,7 @@ export const FlightDatePicker: React.FC<FlightDatePickerProps> = ({
 
     const formatDate = (d: Date | null) => {
         if (!d) return <span className="text-slate-400 font-normal">{resolvedDescription}</span>;
-        return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+        return d.toLocaleDateString(locale, { weekday: 'short', month: 'short', day: 'numeric' });
     };
 
     const renderCalendar = () => {

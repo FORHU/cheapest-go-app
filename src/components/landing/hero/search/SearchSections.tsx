@@ -6,7 +6,7 @@ import { useSearchStore, useDestination, useDestinationQuery, useDates, useTrave
 import { DestinationPicker } from './DestinationPicker';
 import { DatePicker } from './DatePicker';
 import { TravelersPicker } from './TravelersPicker';
-import { useTranslations } from 'next-intl';
+import { useTranslations, useLocale } from 'next-intl';
 
 export const DestinationSection: React.FC = () => {
     const t = useTranslations('landing.search');
@@ -38,12 +38,13 @@ export const DestinationSection: React.FC = () => {
 
 export const CheckInSection: React.FC = () => {
     const t = useTranslations('landing.search');
+    const locale = useLocale();
     const { setActiveDropdown } = useSearchStore();
     const { checkIn } = useDates();
 
     const formatDate = (date: Date | null) => {
         if (!date) return t('selectDate');
-        return new Date(date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+        return new Date(date).toLocaleDateString(locale, { weekday: 'short', month: 'short', day: 'numeric' });
     };
 
     return (
@@ -70,12 +71,13 @@ export const CheckInSection: React.FC = () => {
 
 export const CheckOutSection: React.FC = () => {
     const t = useTranslations('landing.search');
+    const locale = useLocale();
     const { setActiveDropdown } = useSearchStore();
     const { checkOut } = useDates();
 
     const formatDate = (date: Date | null) => {
         if (!date) return t('selectDate');
-        return new Date(date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+        return new Date(date).toLocaleDateString(locale, { weekday: 'short', month: 'short', day: 'numeric' });
     };
 
     return (

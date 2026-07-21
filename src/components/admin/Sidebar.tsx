@@ -295,8 +295,8 @@ export function Sidebar({ onClose, isCollapsed, onToggleCollapse }: SidebarProps
                     <h1 className="text-xl font-black tracking-tighter text-slate-900 dark:text-white whitespace-nowrap">
                         {BRAND_NAME === 'CheapestGo'
                             ? <>Cheapest Go<span className="text-blue-600">.</span></>
-                            : BRAND_NAME === 'GeomeGo'
-                            ? <>Geo<span className="text-blue-600">Mego</span>.</>
+                            : BRAND_NAME === 'GeomeeGo'
+                            ? <>Geome<span className="text-blue-600">Go</span>.</>
                             : <>{BRAND_NAME}<span className="text-blue-600">.</span></>}
                     </h1>
                 )}
