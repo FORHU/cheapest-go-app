@@ -127,6 +127,19 @@ export function safeJsonParse<T>(json: string, fallback: T): T {
     }
 }
 
+const ROOM_UNAVAILABLE_RE = /no longer available|not available|unavailable|sold out|no availability|try a different hotel|currently unavailable for booking/i;
+
+/**
+ * Whether an error message indicates the room/offer is no longer bookable.
+ *
+ * This is an expected business outcome (not a bug), so callers should log it as
+ * a warning rather than console.error — the latter surfaces in the Next.js dev
+ * error overlay as a "Console Error" even though the condition is fully handled.
+ */
+export function isRoomUnavailableError(message?: string | null): boolean {
+    return !!message && ROOM_UNAVAILABLE_RE.test(message);
+}
+
 /**
  * Convert raw status strings (e.g., 'refund_pending') to human-readable format ('Refund Pending')
  */

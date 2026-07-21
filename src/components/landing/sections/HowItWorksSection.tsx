@@ -19,17 +19,21 @@ export function HowItWorksSection() {
                     {t('book')} {t('bookNext')}
                 </p>
 
-                <ol className="grid grid-cols-1 sm:grid-cols-3 gap-8">
+                {/* Three across at every breakpoint. Mobile columns are ~100px wide,
+                    so type scales down rather than the steps stacking. */}
+                <ol className="grid grid-cols-3 gap-3 sm:gap-8">
                     {STEPS.map((step) => (
-                        <li key={step.number} className="flex flex-col items-center text-center sm:items-start sm:text-left">
-                            <span className="text-4xl font-extrabold text-blue-500 dark:text-blue-400 mb-3 leading-none">
+                        <li
+                            key={step.number}
+                            className="flex flex-col items-center text-center sm:items-start sm:text-left"
+                        >
+                            <span className="text-2xl font-extrabold tabular-nums leading-none text-blue-500 dark:text-blue-400 mb-1.5 sm:text-4xl sm:mb-3">
                                 {step.number}
                             </span>
-                            <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">
+                            <h3 className="text-sm font-semibold text-slate-900 dark:text-white mb-1 sm:text-lg sm:mb-2">
                                 {t(`${step.key}.title`)}
-
                             </h3>
-                            <p className="text-slate-500 dark:text-slate-400 text-sm leading-relaxed">
+                            <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-snug break-keep sm:text-sm sm:leading-relaxed">
                                 {t(`${step.key}.description`)}
                             </p>
                         </li>

@@ -163,12 +163,15 @@
             "lastName": "Last name",
             "lastNamePlaceholder": "Last",
             "password": "Password",
-            "passwordPlaceholder": "Create a password"
+            "passwordPlaceholder": "Create a password",
+            "passwordPlaceholderSignIn": "Enter your password"
         },
         "messages": {
+            "acceptTerms": "Please accept the Terms & Conditions and Privacy Policy to continue.",
             "accountCreated": "Account created successfully!",
             "accountExists": "Account already exists. Attempting to sign in...",
             "accountExistsSignIn": "Account exists. Please sign in.",
+            "authFailed": "Authentication failed. Please try again.",
             "failedToReset": "Failed to reset password. Please try again.",
             "invalidCredentials": "Invalid email or password.",
             "invalidEmail": "Invalid email",
@@ -235,6 +238,30 @@
             "description": "We sent a confirmation link to",
             "description2": "Click the link in the email to sign in.",
             "title": "Check your email"
+        }
+    },
+    "bookingDestination": {
+        "confirmed": "Booking confirmed",
+        "emailed": "Confirmation sent to your email",
+        "myTrips": "My Trips",
+        "noBooking": "No active booking to explore. Taking you to your trips…",
+        "goToTrips": "Go to My Trips",
+        "clocks": {
+            "ariaTrigger": "Local time at your destination",
+            "title": "Local time",
+            "home": "Home",
+            "destination": "Destination",
+            "diffSame": "Same time as home",
+            "diffAhead": "{hours, plural, =1 {1 hour} other {# hours}} ahead of home",
+            "diffBehind": "{hours, plural, =1 {1 hour} other {# hours}} behind home"
+        },
+        "currency": {
+            "ariaLabel": "Currency converter",
+            "title": "Currency converter",
+            "swap": "Swap currencies",
+            "liveRates": "Live rates",
+            "updating": "Updating…",
+            "rate": "1 {from} = {rate} {to}"
         }
     },
     "checkout": {
@@ -378,7 +405,8 @@
             "searchFlightsAndBundle": "Search flights & bundle",
             "sent": "Sent",
             "stayDuration": "Stay Duration",
-            "viewMyTrips": "View My Trips"
+            "viewMyTrips": "View My Trips",
+            "openingDestination": "Opening your destination…"
         },
         "summary": {
             "adult": "Adult",

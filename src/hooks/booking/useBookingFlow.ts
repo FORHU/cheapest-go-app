@@ -9,6 +9,7 @@ import {
 import { useCheckoutStore } from '@/stores/checkoutStore';
 import type { BookingParams, PrebookResponse, CancellationPolicy, TgxSurcharge } from '@/services';
 import { apiFetch } from '@/lib/api/client';
+import { isRoomUnavailableError } from '@/lib/utils';
 import { toast } from 'sonner';
 
 /**
@@ -103,8 +104,15 @@ export function useBookingFlow(): UseBookingFlowReturn {
       }
     },
     onError: (err: any) => {
-      console.error('[useBookingFlow] Prebook Error:', err);
-      toast.error(err?.message || "Failed to update price for the selected currency.");
+      const message = err?.message || '';
+      // Expected outcomes (e.g. room unavailable) log as warnings so they don't
+      // trigger the Next.js dev error overlay; unexpected errors still log as errors.
+      if (isRoomUnavailableError(message)) {
+        console.warn('[useBookingFlow] Prebook unavailable:', message);
+      } else {
+        console.error('[useBookingFlow] Prebook Error:', err);
+      }
+      toast.error(message || "Failed to update price for the selected currency.");
     }
   });
 
