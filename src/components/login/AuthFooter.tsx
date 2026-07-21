@@ -1,7 +1,6 @@
 'use client';
 
 import React from 'react';
-import { PlaneTakeoff } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { AuthMode } from './types';
 
@@ -9,8 +8,6 @@ interface AuthFooterProps {
     mode: AuthMode;
     onToggleMode: () => void;
 }
-
-const BRAND_NAME = process.env.NEXT_PUBLIC_BRAND_NAME ?? 'CheapestGo';
 
 export function AuthFooter({ mode, onToggleMode }: AuthFooterProps) {
     const t = useTranslations('auth');
@@ -31,13 +28,6 @@ export function AuthFooter({ mode, onToggleMode }: AuthFooterProps) {
             {/* Terms acceptance moved into the form as a required checkbox
                 (see TermsAcceptanceCheckbox in LoginContent). */}
 
-            {/* Partner Logos */}
-            <div className="mt-6 flex items-center justify-center gap-4 text-sm text-slate-400 dark:text-slate-500">
-                <span className="flex items-center gap-1.5">
-                    <PlaneTakeoff className="h-4 w-4" />
-                    {BRAND_NAME}
-                </span>
-            </div>
         </>
     );
 }
