@@ -112,7 +112,7 @@ const MapPropertyCard = React.memo(function MapPropertyCard({
             {/* ── MOBILE layout: Agoda-style card (image left, details right) ── */}
             <div className="flex flex-row gap-2 md:hidden">
                 {/* Image with index badge overlay */}
-                <div className="relative w-[76px] h-[76px] shrink-0 rounded-xl overflow-hidden bg-slate-100 dark:bg-slate-800">
+                <div className="relative w-19 h-19 shrink-0 rounded-xl overflow-hidden bg-slate-100 dark:bg-slate-800">
                     {property.image ? (
                         <Image
                             src={property.image}

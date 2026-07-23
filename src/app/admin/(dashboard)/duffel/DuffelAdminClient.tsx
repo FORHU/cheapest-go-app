@@ -169,7 +169,7 @@ const AirlinesGrid = memo(({ airlines }: { airlines: DuffelAirline[] }) => {
                         </button>
                     ))}
                 </div>
-                <div className="relative flex-1 max-w-[360px] group">
+                <div className="relative flex-1 max-w-90 group">
                     <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-blue-500 transition-colors">
                         <Search size={16} />
                     </div>
@@ -186,7 +186,7 @@ const AirlinesGrid = memo(({ airlines }: { airlines: DuffelAirline[] }) => {
             {/* 3. Grid (Matching Screenshot) */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                 {filtered.map(a => (
-                    <div key={a.id} className="bg-white dark:bg-obsidian border border-slate-100 dark:border-white/10 rounded-3xl p-6 hover:shadow-xl hover:shadow-slate-200/20 dark:hover:shadow-none transition-all group flex flex-col h-[240px] relative overflow-hidden">
+                    <div key={a.id} className="bg-white dark:bg-obsidian border border-slate-100 dark:border-white/10 rounded-3xl p-6 hover:shadow-xl hover:shadow-slate-200/20 dark:hover:shadow-none transition-all group flex flex-col h-60 relative overflow-hidden">
                         {/* Background subtle flare */}
                         <div className="absolute -top-12 -right-12 w-24 h-24 bg-blue-500/5 rounded-full blur-2xl group-hover:bg-blue-500/10 transition-colors" />
 
