@@ -4,7 +4,7 @@ import React, { useRef, useEffect, useState, useCallback, useId } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Plane, Loader2, MapPin } from 'lucide-react';
 import type { Airport } from '@/lib/airports';
-import { useTranslations } from 'next-intl';
+import { useTranslations, useLocale } from 'next-intl';
 
 // ─── Props ───────────────────────────────────────────────────────────
 
@@ -41,8 +41,10 @@ export const AirportAutocomplete: React.FC<AirportAutocompleteProps> = ({
     excludeIata,
 }) => {
     const t = useTranslations('landing.search');
+    const locale = useLocale();
     const uid = useId();
     const listboxId = `airport-listbox-${uid}`;
+    const wrapperRef = useRef<HTMLDivElement>(null);
     const containerRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLInputElement>(null);
     const [query, setQuery] = useState('');
@@ -76,7 +78,9 @@ export const AirportAutocomplete: React.FC<AirportAutocompleteProps> = ({
                 isSelectingRef.current = false;
                 return;
             }
-            if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+            // Wrapper contains both the trigger cell (with the input) and the dropdown,
+            // so clicking either keeps the picker open.
+            if (wrapperRef.current && !wrapperRef.current.contains(e.target as Node)) {
                 onToggle(false);
             }
         };
@@ -101,7 +105,7 @@ export const AirportAutocomplete: React.FC<AirportAutocompleteProps> = ({
         const timer = setTimeout(async () => {
             try {
                 const res = await fetch(
-                    `/api/airports/search?q=${encodeURIComponent(query)}&limit=8`,
+                    `/api/airports/search?q=${encodeURIComponent(query)}&limit=8&lang=${encodeURIComponent(locale)}`,
                     { signal: controller.signal },
                 );
                 const json = await res.json();
@@ -129,7 +133,7 @@ export const AirportAutocomplete: React.FC<AirportAutocompleteProps> = ({
             clearTimeout(timer);
             controller.abort();
         };
-    }, [query, excludeIata]);
+    }, [query, excludeIata, locale]);
 
     // ── Scroll active item into view ─────────────────────────────
     useEffect(() => {
@@ -175,24 +179,52 @@ export const AirportAutocomplete: React.FC<AirportAutocompleteProps> = ({
     const displaySubtext = value ? value.name : null;
 
     return (
-        <div className={`flex-1 min-w-0 relative group ${isOpen ? 'z-50' : 'z-auto h-16'}`}>
-            {/* ─── Trigger (Hidden on mobile when open to show input instead) ─── */}
+        <div ref={wrapperRef} className={`flex-1 min-w-0 relative group ${isOpen ? 'z-50' : 'z-auto h-16'}`}>
+            {/* ─── Trigger cell — holds the inline input when open ─── */}
             <div
-                className={`flex-1 min-w-0 relative flex items-center px-4 h-16 group cursor-pointer hover:bg-slate-50 dark:hover:bg-white/5 transition-colors ${isOpen ? 'hidden sm:flex' : 'flex'}`}
-                onClick={() => onToggle(!isOpen)}
+                className="flex-1 min-w-0 relative flex items-center px-4 h-16 group cursor-pointer hover:bg-slate-50 dark:hover:bg-white/5 transition-colors"
+                onClick={() => onToggle(true)}
             >
                 <Plane className="text-slate-400 group-hover:text-blue-500 transition-colors shrink-0" size={20} />
                 <div className="ml-3 flex flex-col justify-center w-full text-left min-w-0">
                     <label className="text-ui-label">
                         {label}
                     </label>
-                    <div className="text-ui-value truncate">
-                        {displayText || <span className="text-slate-400 font-normal">{placeholder}</span>}
-                    </div>
-                    {displaySubtext && (
-                        <div className="text-fluid-3xs text-slate-400 truncate font-medium">{displaySubtext}</div>
+                    {isOpen ? (
+                        <input
+                            ref={inputRef}
+                            type="text"
+                            value={query}
+                            onChange={(e) => {
+                                setQuery(e.target.value);
+                                setActiveIndex(-1);
+                            }}
+                            onKeyDown={handleKeyDown}
+                            onClick={(e) => e.stopPropagation()}
+                            placeholder={t('typeToSearch')}
+                            className="text-ui-value bg-transparent border-none p-0 outline-none focus:ring-0 w-full text-slate-900 dark:text-white placeholder-slate-400"
+                            role="combobox"
+                            aria-expanded={results.length > 0}
+                            aria-controls={listboxId}
+                            aria-activedescendant={activeIndex >= 0 ? `${listboxId}-option-${activeIndex}` : undefined}
+                            aria-autocomplete="list"
+                            autoComplete="off"
+                            spellCheck={false}
+                        />
+                    ) : (
+                        <>
+                            <div className="text-ui-value truncate">
+                                {displayText || <span className="text-slate-400 font-normal">{placeholder}</span>}
+                            </div>
+                            {displaySubtext && (
+                                <div className="text-fluid-3xs text-slate-400 truncate font-medium">{displaySubtext}</div>
+                            )}
+                        </>
                     )}
                 </div>
+                {isOpen && loading && (
+                    <Loader2 className="animate-spin text-blue-500 shrink-0 ml-2" size={16} />
+                )}
             </div>
 
             {/* ─── Dropdown ──────────────────────────────────────── */}
@@ -209,36 +241,7 @@ export const AirportAutocomplete: React.FC<AirportAutocompleteProps> = ({
                         role="dialog"
                         aria-label={`Search ${label} airport`}
                     >
-                        {/* Search Input */}
-                        <div className="p-3 border-b border-slate-100 dark:border-white/5">
-                            <div className="flex items-center gap-2 bg-slate-100 dark:bg-white/5 rounded-lg px-3 py-2">
-                                <Plane className="text-slate-400 shrink-0" size={16} />
-                                <input
-                                    ref={inputRef}
-                                    type="text"
-                                    value={query}
-                                    onChange={(e) => {
-                                        setQuery(e.target.value);
-                                        setActiveIndex(-1);
-                                    }}
-                                    onKeyDown={handleKeyDown}
-                                    placeholder={t('typeToSearch')}
-                                    className="bg-transparent border-none p-0 text-xs font-medium focus:ring-0 outline-none w-full text-slate-900 dark:text-white placeholder-slate-400"
-                                    role="combobox"
-                                    aria-expanded={results.length > 0}
-                                    aria-controls={listboxId}
-                                    aria-activedescendant={activeIndex >= 0 ? `${listboxId}-option-${activeIndex}` : undefined}
-                                    aria-autocomplete="list"
-                                    autoComplete="off"
-                                    spellCheck={false}
-                                />
-                                {loading && (
-                                    <Loader2 className="animate-spin text-blue-500 shrink-0" size={16} />
-                                )}
-                            </div>
-                        </div>
-
-                        {/* Results */}
+                        {/* Results (input lives in the trigger cell above) */}
                         <div className="max-h-[320px] overflow-y-auto py-1" role="listbox" id={listboxId}>
                             {error ? (
                                 <div className="px-6 py-4 text-center text-red-400 text-xs">

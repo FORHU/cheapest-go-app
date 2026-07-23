@@ -13,16 +13,20 @@ import {
     useRecentSearches,
     useActiveDropdown,
 } from '@/stores/searchStore';
-import { useTranslations } from 'next-intl';
+import { useTranslations, useLocale } from 'next-intl';
 
 interface DestinationPickerProps {
     hideIcon?: boolean;
     forceOpen?: boolean;
     onSelect?: (destination: Destination) => void;
+    /** Inline mode: the text input lives in the trigger cell, so this dropdown
+     *  renders results only and lets the parent own click-outside. */
+    hideInput?: boolean;
 }
 
-export const DestinationPicker: React.FC<DestinationPickerProps> = ({ hideIcon, forceOpen, onSelect }) => {
+export const DestinationPicker: React.FC<DestinationPickerProps> = ({ hideIcon, forceOpen, onSelect, hideInput }) => {
     const t = useTranslations('landing.search');
+    const locale = useLocale();
     const ref = useRef<HTMLDivElement>(null);
 
     // Store
@@ -46,9 +50,10 @@ export const DestinationPicker: React.FC<DestinationPickerProps> = ({ hideIcon, 
     }, [query]);
 
     const { data: suggestions = [], isFetching: loading } = useQuery<Destination[]>({
-        queryKey: queryKeys.autocomplete.destinations(debouncedQuery),
+        // locale in the key so switching language refetches localized results
+        queryKey: [...queryKeys.autocomplete.destinations(debouncedQuery), locale],
         queryFn: async () => {
-            const result = await apiFetch('/api/autocomplete', { query: debouncedQuery });
+            const result = await apiFetch('/api/autocomplete', { query: debouncedQuery, locale });
             return result.success ? result.data : [];
         },
         enabled: debouncedQuery.length >= 2,
@@ -68,11 +73,13 @@ export const DestinationPicker: React.FC<DestinationPickerProps> = ({ hideIcon, 
                 onClose();
             }
         };
-        if (isOpen) {
+        // In inline mode the parent section owns click-outside (its wrapper contains
+        // both the cell input and this dropdown), so skip our own handler.
+        if (isOpen && !hideInput) {
             document.addEventListener('mousedown', handleClickOutside);
         }
         return () => document.removeEventListener('mousedown', handleClickOutside);
-    }, [isOpen]);
+    }, [isOpen, hideInput]);
 
     // Handlers
     const handleSelect = (destination: Destination) => {
@@ -82,9 +89,10 @@ export const DestinationPicker: React.FC<DestinationPickerProps> = ({ hideIcon, 
         if (onSelect) onSelect(destination);
         onClose();
 
-        // Resolve TGX destination code in background after selection (city type only).
-        // Updates the stored destination with the code so search can use it directly.
-        if (destination.type === 'city' && !destination.code) {
+        // Resolve TGX destination code in background after selection (City rung only).
+        // Province/district/landmark picks must NOT get an OTV destination code — they
+        // resolve via ETG (region or serp/geo), and a stale code would hijack routing.
+        if (destination.type === 'city' && (destination.rung ?? 'city') === 'city' && !destination.code) {
             apiFetch('/api/autocomplete/resolve', { cityName: destination.title })
                 .then((res: any) => {
                     if (res?.success && res.code) {
@@ -122,7 +130,8 @@ export const DestinationPicker: React.FC<DestinationPickerProps> = ({ hideIcon, 
                     }
                     onClick={(e) => e.stopPropagation()}
                 >
-                    {/* Search Header */}
+                    {/* Search Header — hidden in inline mode; the trigger cell owns the input */}
+                    {!hideInput && (
                     <div className={`${forceOpen ? 'p-3' : 'p-4 border-b border-slate-100 dark:border-white/5'}`}>
                         {!forceOpen && (
                             <span className="text-[9px] text-slate-500 font-mono font-medium uppercase tracking-wider block mb-1 text-left">
@@ -156,10 +165,26 @@ export const DestinationPicker: React.FC<DestinationPickerProps> = ({ hideIcon, 
                             )}
                         </div>
                     </div>
+                    )}
 
                     {/* Results List */}
                     <div className="max-h-[240px] overflow-y-auto py-2 thin-scrollbar">
                         <AnimatePresence mode="wait">
+                            {/* 0. Empty state — nothing typed yet and no history to show.
+                                 Keeps the panel from collapsing to a sliver now that the
+                                 input header lives in the trigger cell (inline mode). */}
+                            {!query && recentSearches.length === 0 && (
+                                <motion.div
+                                    key="empty-prompt"
+                                    initial={{ opacity: 0 }}
+                                    animate={{ opacity: 1 }}
+                                    className="px-6 py-8 text-center"
+                                >
+                                    <MapPin className="mx-auto mb-2 text-slate-300 dark:text-slate-600" size={24} />
+                                    <p className="text-[11px] text-slate-400">{t('searchDestinationsPlaceholder')}</p>
+                                </motion.div>
+                            )}
+
                             {/* 1. Recent Searches (only if no query) */}
                             {!query && recentSearches.length > 0 && (
                                 <motion.div

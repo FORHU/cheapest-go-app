@@ -28,27 +28,28 @@ const sql = postgres(databaseUrl, { max: 1 });
 
 async function promote() {
     try {
-        // Find the user by email
-        const [profile] = await sql`
-            SELECT id, email, role FROM profiles WHERE email = ${email} LIMIT 1
+        // users.role is authoritative — profiles.role was dropped in
+        // 20260619000001_drop_profiles_role.sql. See docs/adr/0003.
+        const [user] = await sql`
+            SELECT id, email, role FROM users WHERE email = ${email.toLowerCase()} LIMIT 1
         `;
 
-        if (!profile) {
+        if (!user) {
             console.error(`User not found with email: ${email}`);
             process.exit(1);
         }
 
-        if (profile.role === 'admin') {
+        if (user.role === 'admin') {
             console.log(`${email} is already an admin.`);
             process.exit(0);
         }
 
-        // Update profiles table
         await sql`
-            UPDATE profiles SET role = 'admin' WHERE id = ${profile.id}
+            UPDATE users SET role = 'admin', updated_at = NOW() WHERE id = ${user.id}
         `;
 
         console.log(`Done! ${email} is now an admin.`);
+        console.log('Sign out and back in — the session carries the old role until then.');
     } catch (err: any) {
         console.error('Error:', err.message);
         process.exit(1);

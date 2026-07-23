@@ -71,8 +71,12 @@ _Avoid_: calling ETG "Ratehawk" in code (the codebase name is `ETG`/`_etg`); tre
 
 **RTX** — used in this document (refresh-cadence note) as a supplier name but never appears in code. Denotes the same supplier as **ETG/RateHawk**. Prefer **ETG** everywhere; RTX is a flagged alias, not a distinct provider.
 
-**Destination granularity** — the two hotel channels resolve a searched place at different levels. **OTV/TravelGateX** resolves **City** or **Zone** only. **ETG** resolves a **City** *or* an area (**Province/Region/Multi-city**) via ETG's region endpoint. So a **Province/Region** query (e.g. "Palawan", offered by the autocomplete as a Mapbox `region`) is served by ETG across the whole province — matching Ratehawk — while OTV contributes nothing at province level.
-_Avoid_: assuming OTV can service a province; assuming a place the picker offers resolves identically on every channel.
+**Destination granularity** — a searched place resolves at one of five levels (the *granularity ladder*): **Country → Province/State → City → District → Specific** (a landmark/POI or address). The ladder has two resolution modes:
+- **Area rungs** (**Country**, **Province/State**, **City**) resolve to an **ETG region identifier** and are searched as a whole area. **City** *additionally* resolves on **OTV/TravelGateX** (destination or hotel codes); Country and Province do not.
+- **Point rungs** (**District**, **Specific**) have no area code — they resolve to a **coordinate + radius** and are searched as a circle around that point (a **point/geo search**). A District (e.g. "Gangnam") sizes its circle from the place's map bounding box; a landmark/address starts small and widens until hotels are found.
+
+So four of the five rungs — everything except **City** — are served by **ETG alone**: ETG is the geographic search engine, and OTV/TravelGateX contributes only at the City rung. See [ADR-0006](docs/adr/0006-granularity-ladder-is-etg-driven.md). A whole-**Country** search is a real ETG country-region search — it no longer silently collapses to a single default city.
+_Avoid_: assuming OTV can service anything below City (province, district, landmark) — it cannot. _Avoid_: assuming a place the picker offers resolves identically on every channel. _Avoid_: calling a District or landmark search a "city search" — it is a point/geo search with its own radius. _Avoid_: reviving an OTV+ETG union to cover the sub-city rungs — that dedup problem was rejected in [ADR-0004](docs/adr/0004-province-search-is-etg-only.md) and stays rejected.
 
 ## Landing Page
 
