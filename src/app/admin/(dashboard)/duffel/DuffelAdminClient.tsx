@@ -279,6 +279,10 @@ export function DuffelAdminClient({ data, airlines }: Props) {
                         Carriers
                     </button>
                 </div>
+                <a href="https://app.duffel.com/balance" target="_blank" rel="noopener noreferrer"
+                    className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-white dark:bg-white/5 hover:bg-slate-50 dark:hover:bg-white/10 text-slate-700 dark:text-white text-[10px] font-black uppercase tracking-widest transition-all border border-slate-200 dark:border-white/10">
+                    <ExternalLink size={14} /> Balance
+                </a>
                 <a href="https://app.duffel.com" target="_blank" rel="noopener noreferrer"
                     className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-[10px] font-black uppercase tracking-widest transition-all shadow-xl shadow-blue-500/20 border-0">
                     <ExternalLink size={14} /> Duffel Portal
