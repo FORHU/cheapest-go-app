@@ -155,8 +155,10 @@ function getEtgToken(): string {
     return Buffer.from(`${keyId}:${apiKey}`).toString('base64');
 }
 
-/** Resolve a city name to an ETG region_id via the multicomplete endpoint. */
-async function getEtgRegionId(cityName: string, countryCode?: string): Promise<number | null> {
+/** Resolve a place name to an ETG region_id via the multicomplete endpoint.
+ *  `rung` widens what region type is acceptable: 'country' allows a whole-country
+ *  region, 'province' prefers an area, everything else prefers a city. */
+async function getEtgRegionId(cityName: string, countryCode?: string, rung?: DestinationRung): Promise<number | null> {
     try {
         const token = getEtgToken();
         const query = cityName.split(',')[0].trim();
@@ -192,12 +194,30 @@ async function getEtgRegionId(cityName: string, countryCode?: string): Promise<n
         ]);
         const isCity = (r: any) => r?.type === 'City';
         const isArea = (r: any) => AREA_TYPES.has(r?.type);
+        const isCountry = (r: any) => r?.type === 'Country';
 
-        const pick =
-            regions.find((r: any) => isCity(r) && nameMatches(r) && inCountry(r)) ??
-            regions.find((r: any) => isCity(r) && nameMatches(r)) ??
-            regions.find((r: any) => isArea(r) && nameMatches(r) && inCountry(r)) ??
-            regions.find((r: any) => isArea(r) && nameMatches(r));
+        // Rung steers the preference. Country picks want the whole-country region;
+        // province picks want an area; city (and unspecified) picks want a city,
+        // falling back to an area so "Palawan"-style queries still resolve (ADR-0004).
+        let pick: any;
+        if (rung === 'country') {
+            pick =
+                regions.find((r: any) => isCountry(r) && nameMatches(r) && inCountry(r)) ??
+                regions.find((r: any) => isCountry(r) && nameMatches(r)) ??
+                regions.find((r: any) => isCountry(r));
+        } else if (rung === 'province') {
+            pick =
+                regions.find((r: any) => isArea(r) && nameMatches(r) && inCountry(r)) ??
+                regions.find((r: any) => isArea(r) && nameMatches(r)) ??
+                regions.find((r: any) => isCity(r) && nameMatches(r) && inCountry(r)) ??
+                regions.find((r: any) => isCity(r) && nameMatches(r));
+        } else {
+            pick =
+                regions.find((r: any) => isCity(r) && nameMatches(r) && inCountry(r)) ??
+                regions.find((r: any) => isCity(r) && nameMatches(r)) ??
+                regions.find((r: any) => isArea(r) && nameMatches(r) && inCountry(r)) ??
+                regions.find((r: any) => isArea(r) && nameMatches(r));
+        }
 
         if (!pick) {
             // No city or known area type matched. Surface the types ETG actually returned
@@ -249,6 +269,11 @@ async function seedEtgHotelContent(hotels: any[], cityName: string, countryCode?
                 .map((url: string) => (typeof url === 'string' ? url.replace('{size}', '640x400') : ''))
                 .filter(Boolean)
                 .slice(0, 10);
+            // Store the hotel's OWN city (from ETG), not the search label — a district
+            // or landmark search must not write "Gangnam"/"Gangnam Station" into the
+            // city-keyed catalog, or future city searches mis-key. See ADR-0006.
+            const realCity: string = info.region?.name ?? cityName;
+            const realCountry: string | null = info.region?.country_code ?? countryCode ?? null;
             try {
                 await sql`
                     INSERT INTO hotel_content
@@ -257,7 +282,7 @@ async function seedEtgHotelContent(hotels: any[], cityName: string, countryCode?
                     VALUES (
                         ${info.id}, ${info.name ?? null}, ${sql.array(images)},
                         ${info.latitude ?? 0}, ${info.longitude ?? 0},
-                        ${info.address ?? null}, ${cityName}, ${countryCode ?? null},
+                        ${info.address ?? null}, ${realCity}, ${realCountry},
                         ${null}, ${info.star_rating ?? 0}, ${'[]'}::jsonb,
                         'etg', now()
                     )
@@ -283,22 +308,116 @@ async function seedEtgHotelContent(hotels: any[], cityName: string, countryCode?
     console.log(`[tgx-search] ETG seeded ${saved}/${MAX} hotels for "${cityName}" into hotel_content`);
 }
 
-/** Search ETG B2B directly by city when OTV/TGX yields no results. */
+/** Turn a raw ETG SERP hotel list into our result shape (shared by region + geo search).
+ *  Handles cheapest-first sort, hotel_content enrichment, missing-name backfill, and
+ *  fire-and-forget seeding. `label` is the display city used on cards. */
+async function buildEtgResults(
+    hotels: any[],
+    label: string,
+    params: TgxSearchParams,
+): Promise<{ data: any[]; allMappable: any[]; totalCount: number }> {
+    const empty = { data: [], allMappable: [], totalCount: 0 };
+    if (!hotels.length) return empty;
+
+    // Sort cheapest-first
+    hotels.sort((a: any, b: any) => {
+        const pa = parseFloat(a.rates?.[0]?.payment_options?.payment_types?.[0]?.show_amount ?? '999999');
+        const pb = parseFloat(b.rates?.[0]?.payment_options?.payment_types?.[0]?.show_amount ?? '999999');
+        return pa - pb;
+    });
+
+    const allIds = hotels.map((h: any) => h.id as string);
+
+    // Use any pre-existing hotel_content data
+    const existingContent = await fetchHotelContent(allIds);
+    const needInfo = hotels.filter((h: any) => !existingContent.get(h.id)?.name);
+
+    // Parallel info fetch for hotels missing names (cap at 15 to stay within rate limit)
+    const toFetch = needInfo.slice(0, 15);
+    const infoResults = toFetch.length > 0
+        ? await Promise.allSettled(toFetch.map((h: any) => fetchEtgHotelInfo(h.id as string)))
+        : [];
+
+    const infoMap = new Map<string, any>();
+    for (let i = 0; i < toFetch.length; i++) {
+        const r = infoResults[i];
+        if (r.status === 'fulfilled' && r.value) infoMap.set(toFetch[i].id as string, r.value);
+    }
+
+    // Background-seed hotel_content for all results (Phase 1 catalog for future searches)
+    seedEtgHotelContent(hotels, label, params.countryCode).catch(() => {});
+
+    const results = hotels.map((h: any) => {
+        const rate = h.rates?.[0];
+        const pt   = rate?.payment_options?.payment_types?.[0];
+        const price    = parseFloat(pt?.show_amount    ?? '0');
+        const currency = (pt?.show_currency_code ?? 'USD') as string;
+
+        const dbContent = existingContent.get(h.id as string);
+        const etgInfo   = infoMap.get(h.id as string);
+        const src       = (dbContent?.name ? dbContent : null) ?? etgInfo;
+
+        const rawImages: string[] = src?.images ?? [];
+        const images = rawImages
+            .map((url: string) => (typeof url === 'string' ? url.replace('{size}', '640x400') : ''))
+            .filter(Boolean)
+            .slice(0, 10);
+
+        const lat = Number(src?.latitude ?? src?.lat ?? 0);
+        const lng = Number(src?.longitude ?? src?.lng ?? 0);
+
+        return {
+            hotelId:      h.id,
+            id:           h.id,
+            name:         dbContent?.name ?? etgInfo?.name ?? h.id,
+            price,
+            currency,
+            offerId:      `ETG:${h.id}:${rate?.match_hash ?? ''}`,
+            refundableTag: 'UNKNOWN',
+            starRating:   Number(src?.star_rating ?? 0),
+            images,
+            image:        images[0] ?? '',
+            lat,
+            lng,
+            coordinates:  { lat, lng },
+            address:      src?.address ?? '',
+            location:     src?.address ?? '',
+            city:         label,
+            country:      params.countryCode ?? '',
+            description:  '',
+            amenities:    [],
+            reviewRating: Number(dbContent?.review_rating ?? 0),
+            rating:       Number(dbContent?.review_rating ?? 0),
+            reviews:      Number(dbContent?.review_count ?? 0),
+            reviewCount:  Number(dbContent?.review_count ?? 0),
+            boardCode:    rate?.meal ?? 'RO',
+            roomTypes:    [],
+            provider:     'etg',
+        };
+    });
+
+    const allMappable = results.filter(h => h.lat && h.lng);
+    return { data: results, allMappable, totalCount: results.length };
+}
+
+/** Search ETG B2B by region (area rungs: country / province / city fallback).
+ *  `rung` widens which multicomplete region type is accepted. */
 async function searchEtgCity(
     cityName: string,
     params: TgxSearchParams,
+    rung?: DestinationRung,
 ): Promise<{ data: any[]; allMappable: any[]; totalCount: number }> {
     const empty = { data: [], allMappable: [], totalCount: 0 };
     try {
         if (!process.env.ETG_KEY_ID || !process.env.ETG_API_KEY) return empty;
         const token = getEtgToken();
 
-        const regionId = await getEtgRegionId(cityName, params.countryCode);
+        const regionId = await getEtgRegionId(cityName, params.countryCode, rung);
         if (!regionId) {
-            console.warn(`[tgx-search] ETG: no region_id for "${cityName}"`);
+            console.warn(`[tgx-search] ETG: no region_id for "${cityName}" (rung: ${rung ?? 'city'})`);
             return empty;
         }
-        console.log(`[tgx-search] ETG fallback: region ${regionId} for "${cityName}" (${params.checkin}→${params.checkout})`);
+        console.log(`[tgx-search] ETG ${rung ?? 'city'} search: region ${regionId} for "${cityName}" (${params.checkin}→${params.checkout})`);
 
         const serpAbort = new AbortController();
         const serpTimeout = setTimeout(() => serpAbort.abort(), 20_000);
@@ -323,89 +442,102 @@ async function searchEtgCity(
         const serpData = await serpRes.json();
         const hotels: any[] = serpData?.data?.hotels ?? [];
         console.log(`[tgx-search] ETG SERP: ${hotels.length} hotels for "${cityName}"`);
-        if (!hotels.length) return empty;
+        return await buildEtgResults(hotels, cityName, params);
+    } catch (e: any) {
+        console.warn('[tgx-search] ETG region search failed:', e.message);
+        return empty;
+    }
+}
 
-        // Sort cheapest-first
-        hotels.sort((a: any, b: any) => {
-            const pa = parseFloat(a.rates?.[0]?.payment_options?.payment_types?.[0]?.show_amount ?? '999999');
-            const pb = parseFloat(b.rates?.[0]?.payment_options?.payment_types?.[0]?.show_amount ?? '999999');
-            return pa - pb;
-        });
+// ─── ETG geo (point) search — district / landmark rungs ──────────────────────
 
-        const allIds = hotels.map((h: any) => h.id as string);
+/** Metres between two lat/lng points (haversine). */
+function haversineMeters(lat1: number, lng1: number, lat2: number, lng2: number): number {
+    const R = 6_371_000; // Earth radius, metres
+    const toRad = (d: number) => (d * Math.PI) / 180;
+    const dLat = toRad(lat2 - lat1);
+    const dLng = toRad(lng2 - lng1);
+    const a = Math.sin(dLat / 2) ** 2 +
+        Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) ** 2;
+    return 2 * R * Math.asin(Math.min(1, Math.sqrt(a)));
+}
 
-        // Use any pre-existing hotel_content data
-        const existingContent = await fetchHotelContent(allIds);
-        const needInfo = hotels.filter((h: any) => !existingContent.get(h.id)?.name);
+/**
+ * Radius ladder (metres) for a point search. Districts size the first circle from
+ * their Mapbox bbox (covers exactly the district); landmarks/addresses start tight
+ * and auto-widen so a pick never dead-ends, yet "near X" stays near X. See ADR-0006.
+ */
+function pointSearchRadii(params: TgxSearchParams): number[] {
+    const bbox = params.bbox;
+    if (params.rung === 'district' && bbox && bbox.length === 4) {
+        const [minLng, minLat, maxLng, maxLat] = bbox;
+        const centreLat = (minLat + maxLat) / 2;
+        const centreLng = (minLng + maxLng) / 2;
+        // Centre-to-corner distance covers the whole box; cap at 20km, one widen step.
+        const corner = Math.round(haversineMeters(centreLat, centreLng, maxLat, maxLng));
+        const start = Math.min(Math.max(corner, 2_000), 20_000);
+        const wide  = Math.min(Math.round(start * 1.5), 20_000);
+        return start === wide ? [start] : [start, wide];
+    }
+    // Landmark / address (poi): tight start, auto-widen, capped at 10km.
+    return [2_000, 5_000, 10_000];
+}
 
-        // Parallel info fetch for hotels missing names (cap at 15 to stay within rate limit)
-        const toFetch = needInfo.slice(0, 15);
-        const infoResults = toFetch.length > 0
-            ? await Promise.allSettled(toFetch.map((h: any) => fetchEtgHotelInfo(h.id as string)))
-            : [];
+/** Search ETG B2B by coordinate + radius (point rungs: district / landmark).
+ *  Auto-widens through the radius ladder until hotels are found or the cap is hit. */
+async function searchEtgGeo(
+    lat: number,
+    lng: number,
+    params: TgxSearchParams,
+): Promise<{ data: any[]; allMappable: any[]; totalCount: number }> {
+    const empty = { data: [], allMappable: [], totalCount: 0 };
+    try {
+        if (!process.env.ETG_KEY_ID || !process.env.ETG_API_KEY) return empty;
+        const token = getEtgToken();
+        const label = params.cityName ?? '';
 
-        const infoMap = new Map<string, any>();
-        for (let i = 0; i < toFetch.length; i++) {
-            const r = infoResults[i];
-            if (r.status === 'fulfilled' && r.value) infoMap.set(toFetch[i].id as string, r.value);
+        let hotels: any[] = [];
+        let usedRadius = 0;
+        for (const radius of pointSearchRadii(params)) {
+            const abort = new AbortController();
+            const t = setTimeout(() => abort.abort(), 20_000);
+            let serpRes: Response;
+            try {
+                serpRes = await fetch('https://api.worldota.net/api/b2b/v3/search/serp/geo/', {
+                    method: 'POST',
+                    headers: { 'Authorization': `Basic ${token}`, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        latitude:  lat,
+                        longitude: lng,
+                        radius,                       // metres
+                        checkin:   params.checkin,
+                        checkout:  params.checkout,
+                        guests:    [{ adults: Number(params.adults ?? 2) }],
+                        currency:  'USD',
+                        language:  'en',
+                        residency: 'us',
+                    }),
+                    signal: abort.signal,
+                });
+            } finally {
+                clearTimeout(t);
+            }
+            if (!serpRes.ok) { console.warn(`[tgx-search] ETG geo ${serpRes.status} @ ${radius}m`); continue; }
+            const serpData = await serpRes.json();
+            hotels = serpData?.data?.hotels ?? [];
+            usedRadius = radius;
+            if (hotels.length > 0) break;
+            console.log(`[tgx-search] ETG geo: 0 hotels @ ${radius}m near (${lat},${lng}) — widening`);
         }
 
-        // Background-seed hotel_content for all results (Phase 1 catalog for future searches)
-        seedEtgHotelContent(hotels, cityName, params.countryCode).catch(() => {});
-
-        const results = hotels.map((h: any) => {
-            const rate = h.rates?.[0];
-            const pt   = rate?.payment_options?.payment_types?.[0];
-            const price    = parseFloat(pt?.show_amount    ?? '0');
-            const currency = (pt?.show_currency_code ?? 'USD') as string;
-
-            const dbContent = existingContent.get(h.id as string);
-            const etgInfo   = infoMap.get(h.id as string);
-            const src       = (dbContent?.name ? dbContent : null) ?? etgInfo;
-
-            const rawImages: string[] = src?.images ?? [];
-            const images = rawImages
-                .map((url: string) => (typeof url === 'string' ? url.replace('{size}', '640x400') : ''))
-                .filter(Boolean)
-                .slice(0, 10);
-
-            const lat = Number(src?.latitude ?? src?.lat ?? 0);
-            const lng = Number(src?.longitude ?? src?.lng ?? 0);
-
-            return {
-                hotelId:      h.id,
-                id:           h.id,
-                name:         dbContent?.name ?? etgInfo?.name ?? h.id,
-                price,
-                currency,
-                offerId:      `ETG:${h.id}:${rate?.match_hash ?? ''}`,
-                refundableTag: 'UNKNOWN',
-                starRating:   Number(src?.star_rating ?? 0),
-                images,
-                image:        images[0] ?? '',
-                lat,
-                lng,
-                coordinates:  { lat, lng },
-                address:      src?.address ?? '',
-                location:     src?.address ?? '',
-                city:         cityName,
-                country:      params.countryCode ?? '',
-                description:  '',
-                amenities:    [],
-                reviewRating: Number(dbContent?.review_rating ?? 0),
-                rating:       Number(dbContent?.review_rating ?? 0),
-                reviews:      Number(dbContent?.review_count ?? 0),
-                reviewCount:  Number(dbContent?.review_count ?? 0),
-                boardCode:    rate?.meal ?? 'RO',
-                roomTypes:    [],
-                provider:     'etg',
-            };
-        });
-
-        const allMappable = results.filter(h => h.lat && h.lng);
-        return { data: results, allMappable, totalCount: results.length };
+        if (!hotels.length) {
+            console.warn(`[tgx-search] ETG geo: no hotels near (${lat},${lng}) for "${label}"`);
+            return empty;
+        }
+        console.log(`[tgx-search] ETG geo: ${hotels.length} hotels @ ${usedRadius}m near (${lat},${lng}) for "${label}"`);
+        return await buildEtgResults(hotels, label, params);
     } catch (e: any) {
-        console.warn('[tgx-search] ETG city search failed:', e.message);
+        console.warn('[tgx-search] ETG geo search failed:', e.message);
         return empty;
     }
 }
@@ -428,8 +560,16 @@ export function getEffectiveTtl(cityName?: string): number {
 }
 
 function buildHotelCacheKey(p: TgxSearchParams): string {
+    const isPoint = (p.rung === 'district' || p.rung === 'poi')
+        && Number.isFinite(p.lat) && Number.isFinite(p.lng);
     const location = p.hotelCode
         ? `hotel:${p.hotelCode}`
+        : isPoint
+        // Round coords (~110m) so near-identical picks share a cache entry; include the
+        // rung so a district and a landmark at the same centre (different radius) differ.
+        ? `geo:${p.rung}:${Number(p.lat).toFixed(3)},${Number(p.lng).toFixed(3)}`
+        : (p.rung === 'country' || p.rung === 'province')
+        ? `${p.rung}:${(p.cityName ?? '').toLowerCase().trim()}`
         : p.destinationCode
         ? `dest:${p.destinationCode}`
         : `city:${(p.cityName ?? '').toLowerCase().trim()}`;
@@ -566,6 +706,8 @@ async function fetchHotelCodesByCity(cityName: string, countryCode?: string): Pr
 
 // ─── Search params ────────────────────────────────────────────────────────────
 
+export type DestinationRung = 'country' | 'province' | 'city' | 'district' | 'poi';
+
 export interface TgxSearchParams {
     checkin: string;
     checkout: string;
@@ -579,6 +721,13 @@ export interface TgxSearchParams {
     countryCode?: string;
     hotelCode?: string;
     rooms?: number;
+    /** Granularity ladder rung — drives the resolution path. See ADR-0006. */
+    rung?: DestinationRung;
+    /** Place centre (point rungs are searched around this via ETG serp/geo). */
+    lat?: number;
+    lng?: number;
+    /** Mapbox bounding box [minLng, minLat, maxLng, maxLat] — sizes a district's circle. */
+    bbox?: [number, number, number, number];
 }
 
 // ─── Core search function ─────────────────────────────────────────────────────
@@ -1039,6 +1188,25 @@ async function _runTgxSearch(params: TgxSearchParams) {
 
     const settings = getTgxSettings();
     const occupancies = buildOccupancies(Number(adults), Number(children), childrenAges);
+
+    // ── Granularity ladder dispatch (ADR-0006) ───────────────────────────────
+    // Point rungs (district/landmark) and area rungs above city (country/province)
+    // are ETG-driven — OTV has no coordinate or sub-city search. Route them here,
+    // before the OTV destination/hotel-code paths below.
+    const rung = params.rung;
+    const geoLat = Number(params.lat);
+    const geoLng = Number(params.lng);
+    if (!hotelCode) {
+        if ((rung === 'district' || rung === 'poi') && Number.isFinite(geoLat) && Number.isFinite(geoLng)) {
+            return searchEtgGeo(geoLat, geoLng, params);
+        }
+        if ((rung === 'country' || rung === 'province') && cityName) {
+            const area = await searchEtgCity(cityName, params, rung);
+            // Don't hard-fail to empty on an ETG hiccup — fall through to the normal
+            // city path (which itself ends in an ETG city fallback).
+            if (area.data.length > 0) return area;
+        }
+    }
 
     let destinations: string[] | undefined;
     let hotels: string[] | undefined;

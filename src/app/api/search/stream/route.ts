@@ -163,6 +163,15 @@ export async function POST(req: NextRequest) {
 
     const city = rawCity || '(unknown)';
 
+    // Granularity ladder: URL params arrive as strings — coerce the geo fields so
+    // runTgxSearch can dispatch point rungs (district/landmark) to ETG serp/geo.
+    if (body.lat != null && body.lat !== '') body.lat = Number(body.lat);
+    if (body.lng != null && body.lng !== '') body.lng = Number(body.lng);
+    if (typeof body.bbox === 'string' && body.bbox.includes(',')) {
+        const parts = body.bbox.split(',').map(Number);
+        body.bbox = parts.length === 4 && parts.every((n: number) => Number.isFinite(n)) ? parts : undefined;
+    }
+
     // Default dates when not provided (e.g. landing card clicks).
     // Use next Friday → Sunday so results match the prewarm cache and OTV has inventory.
     // Same-day / next-day defaults have near-zero OTV coverage.

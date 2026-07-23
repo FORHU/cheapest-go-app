@@ -281,11 +281,11 @@
             "description": "How much will it cost to cancel the rooms?",
             "earlyDepartureFee": "Early Departure Fee: {amount} if you check out before your scheduled date.",
             "footer": "Cancellation costs are based on the total booking value. All dates and times are mentioned in GMT.",
-            "freeCancellation": "Free cancellation available â€” see deadlines below",
+            "freeCancellation": "Free cancellation available — see deadlines below",
             "freeCancellationLabel": "Free Cancellation",
             "fullRefund": "(Full refund)",
             "noShowPenalty": "No-Show Penalty: {amount} if you don’t check in without cancelling.",
-            "nonRefundable": "Non-refundable â€” this booking cannot be cancelled for a refund",
+            "nonRefundable": "Non-refundable — this booking cannot be cancelled for a refund",
             "refund": "{amount} Refund",
             "title": "Cancellation Policy"
         },
@@ -300,7 +300,7 @@
         "duplicateBookingDesc": "Cancel your existing booking first, or go back and keep it.",
         "duplicateBookingTitle": "You already have a booking at {hotel} for overlapping dates.",
         "finalizingDetails": "Finalizing booking details...",
-        "goBack": "â† Go back",
+        "goBack": "← Go back",
         "goBackBtn": "Go back",
         "keepExistingBooking": "Keep existing booking",
         "loadingPaymentForm": "Loading payment form...",
@@ -354,7 +354,7 @@
             "veryGood": "Very Good"
         },
         "retry": "Retry",
-        "searchAvailableRooms": "Search available rooms â†’",
+        "searchAvailableRooms": "Search available rooms →",
         "secureYourBooking": "Secure your booking",
         "securingReservation": "Securing your reservation...",
         "selectYourDates": "Select your dates",
@@ -380,9 +380,9 @@
             "hotelUnavailableDesc": "This hotel cannot be booked right now. Please go back and choose a different hotel.",
             "processingBooking": "Processing Your Booking...",
             "sessionExpired": "Room session expired",
-            "sessionExpiredDesc": "Your room hold has expired. Go back and reselect the room to get a fresh session â€” you can pick the same room again.",
+            "sessionExpiredDesc": "Your room hold has expired. Go back and reselect the room to get a fresh session — you can pick the same room again.",
             "signInToComplete": "Sign In to Complete Booking",
-            "verificationFailed": "Verification failed â€” see error above",
+            "verificationFailed": "Verification failed — see error above",
             "verifyingPrice": "Verifying Price...",
             "verifyingRoom": "Verifying Room...",
             "waitingMessage": "Please wait while we confirm your reservation with the hotel...",
@@ -424,7 +424,7 @@
             "priceDetails": "Price details",
             "promoCode": "Promo: {code}",
             "roomConfirmed": "Room Confirmed",
-            "roomNights": "1 room Ã— {nights} {count}",
+            "roomNights": "1 room × {nights} {count}",
             "taxesAndFees": "Taxes and fees",
             "total": "Total",
             "updateDates": "Update dates",
@@ -456,10 +456,10 @@
             "fixHighlighted": "Please fix the highlighted fields before continuing.",
             "invalidPrice": "Invalid booking price. Please retry.",
             "paymentSetupFailed": "Payment setup failed",
-            "priceVerifying": "Price is still being verified â€” please wait a moment and try again.",
+            "priceVerifying": "Price is still being verified — please wait a moment and try again.",
             "requiresAuth": "Authentication required",
             "sessionExpired": "Booking session expired. Please go back and select the room again.",
-            "sessionExpiredCharge": "Your session expired during payment. Your card was charged â€” please contact support with payment reference: {id}"
+            "sessionExpiredCharge": "Your session expired during payment. Your card was charged — please contact support with payment reference: {id}"
         },
         "verifyingPayment": "Verifying payment...",
         "viewExistingBooking": "View existing booking",
@@ -481,7 +481,7 @@
         "all": "All",
         "allDealsCount": "All {count} deals",
         "backButton": "Back to Home",
-        "collapse": "Collapse â†‘",
+        "collapse": "Collapse ↑",
         "headerDefault": "Exclusive Deals & Offers",
         "headerPersonalized": "Flight Deals from {city}",
         "noDealsDescription": "Check back soon for new exclusive travel offers.",
@@ -868,7 +868,7 @@
             "stops": "stops",
             "stopsCount": "{count} stops",
             "thisFare": "this",
-            "viewDeal": "View deal"
+            "viewDeal": "View"
         },
         "filtersPanel": {
             "airlines": "Airlines",
@@ -905,7 +905,7 @@
             "duration": "Duration",
             "empty": "No flights found for these dates.",
             "filters": "Filters",
-            "loading": "Finding the best faresâ€¦",
+            "loading": "Finding the best fares…",
             "noFlightsDefaultMessage": "No flights found. Try adjusting your filters or search for different dates.",
             "noFlightsTitle": "No flights found",
             "price": "Price",
@@ -956,8 +956,8 @@
         "contactMinimal": "Contact us",
         "cookies": "Cookies",
         "cookiesMinimal": "Cookie preferences",
-        "copyright": "Â© 2026 JTP Partners. All rights reserved.",
-        "copyrightMinimal": "CheapestGo Â© 2026",
+        "copyright": "© 2026 JTP Partners. All rights reserved.",
+        "copyrightMinimal": "CheapestGo © 2026",
         "enterprise": "Enterprise",
         "flights": "Flights",
         "flightsApi": "Flights API",
@@ -978,10 +978,10 @@
     },
     "guestFavorites": {
         "allFavoritesCount": "All {count} favorites",
-        "collapse": "Collapse â†‘",
+        "collapse": "Collapse ↑",
         "headerHighlight": "Favorites",
         "headerMain": "Guest",
-        "subtitle": "Top-rated hotels loved by travellers Â· updated daily"
+        "subtitle": "Top-rated hotels loved by travellers · updated daily"
     },
     "hotels": {
         "allHotelsCount": "All {count} hotels",
@@ -991,9 +991,9 @@
             "freeCancellation": "Free cancellation",
             "perNight": "/night",
             "reviews": "{count} reviews",
-            "viewDeal": "View Deal"
+            "viewDeal": "View"
         },
-        "collapse": "Collapse â†‘",
+        "collapse": "Collapse ↑",
         "filters": {
             "activeFilters": "Active Filters:",
             "amenities": "Amenities",
@@ -1084,7 +1084,7 @@
                 "transit": "Transit"
             },
             "nights": "nights",
-            "pricePerNight": "{min} â€“ {max} /night",
+            "pricePerNight": "{min} – {max} /night",
             "search": "Search",
             "searchFallback": "Search",
             "swipeToBrowse": "Swipe to browse"
@@ -1155,7 +1155,7 @@
             "allProperties": "All properties",
             "allResultsLoaded": "All {count} results loaded",
             "allResultsShown": "All {count} results shown",
-            "checkingAvailability": "Checking availabilityâ€¦",
+            "checkingAvailability": "Checking availability…",
             "discovery": {
                 "all": "All Discovery",
                 "attraction": "Attractions & Parks",
@@ -1169,7 +1169,7 @@
             "foundCount": "{count} found",
             "hotelsCount": "{count} hotels",
             "hotelsFound": "{count} hotels found",
-            "loadMoreShowing": "Load More Â· showing {shown} of {total}",
+            "loadMoreShowing": "Load More · showing {shown} of {total}",
             "loadingMore": "Loading more hotels",
             "map": "Map",
             "noHotelsAvailable": "No hotels available",
@@ -1183,7 +1183,7 @@
             "refreshPage": "Something went wrong. Try refreshing the page.",
             "searchFailed": "Search failed. Please try again.",
             "searchUnavailable": "Search unavailable",
-            "searching": "Searching hotelsâ€¦",
+            "searching": "Searching hotels…",
             "searchingInDestination": "Searching hotels in {destination}",
             "showMoreRemaining": "Show more ({count} remaining)",
             "sort": {
@@ -1199,7 +1199,7 @@
             "tryDifferentDates": "Try different dates or a nearby city."
         },
         "subtitleDefault": "Handpicked stays at unbeatable prices",
-        "subtitlePersonalized": "Top-rated stays in {country} Â· updated daily"
+        "subtitlePersonalized": "Top-rated stays in {country} · updated daily"
     },
     "invoice": {
         "amount": "Amount",
@@ -1303,7 +1303,7 @@
             "depart": "Depart",
             "done": "Done",
             "findDeals": "Find the best deals",
-            "findingFlights": "Finding flightsâ€¦",
+            "findingFlights": "Finding flights…",
             "flexOptions": [
                 "Exact dates",
                 "± 1 day",
@@ -1846,7 +1846,7 @@
         "trips": "Trips"
     },
     "popularDestinations": {
-        "subtitle": "Explore top spots across Asia-Pacific â€” search flights and hotels in seconds.",
+        "subtitle": "Explore top spots across Asia-Pacific — search flights and hotels in seconds.",
         "title": "Popular Destinations"
     },
     "property": {
@@ -2056,7 +2056,7 @@
     "seo": {
         "faq": {
             "a1": "CheapestGo searches across multiple airlines and global distribution systems to surface the lowest available fares in real time, letting you compare and book in one place.",
-            "a2": "Yes. CheapestGo supports booking flights, hotels, apartments, and unique stays â€” all from a single platform.",
+            "a2": "Yes. CheapestGo supports booking flights, hotels, apartments, and unique stays — all from a single platform.",
             "a3": "Yes, searching and comparing prices on CheapestGo is completely free. You only pay when you book.",
             "a4": "CheapestGo supports multiple currencies and automatically converts prices based on your preference so you can always see costs in your local currency.",
             "q1": "How does CheapestGo find cheap flights?",
@@ -2077,7 +2077,7 @@
         "exploreHotels": "Explore Hotels",
         "headerHighlight": "Worldwide",
         "headerMain": "Top Cities",
-        "subtitle": "Most visited destinations Â· find hotels instantly"
+        "subtitle": "Most visited destinations · find hotels instantly"
     },
     "topDestinations": {
         "findHotels": "Find Hotels",
