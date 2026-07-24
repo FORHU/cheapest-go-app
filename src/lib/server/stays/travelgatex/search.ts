@@ -1186,7 +1186,7 @@ async function _runTgxSearch(params: TgxSearchParams) {
     // OTV/RateHawk prices in USD — always search in USD regardless of display currency.
     const currency = 'USD';
 
-    const settings = getTgxSettings();
+    const settings = getTgxSettings(getTgxConfig(), 18000, true);
     const occupancies = buildOccupancies(Number(adults), Number(children), childrenAges);
 
     // ── Granularity ladder dispatch (ADR-0006) ───────────────────────────────

@@ -20,16 +20,28 @@ export function getTgxConfig() {
     };
 }
 
-export function getTgxSettings(cfg = getTgxConfig(), timeout = 18000) {
+export function getTgxSettings(cfg = getTgxConfig(), timeout = 18000, withSearchPlugin = false) {
     // Do NOT add explicit suppliers here — TGX routes via context automatically,
     // and pinning an accessId filters out results when it doesn't match the account config.
     // timeout: mandatory per TGX docs; max 25,000 ms for Search.
     // auditTransactions: false improves response time.
-    return {
+    const base = {
         context:           cfg.context,
         client:            cfg.client,
         timeout,
         auditTransactions: false,
+    };
+    if (!withSearchPlugin) return base;
+    return {
+        ...base,
+        plugins: [{
+            step: 'REQUEST',
+            pluginsType: {
+                type:       'PRE_STEP',
+                name:       'search_by_destination',
+                parameters: [{ key: 'accessID', value: cfg.accessCode }],
+            },
+        }],
     };
 }
 
