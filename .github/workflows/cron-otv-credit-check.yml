@@ -1,0 +1,24 @@
+name: OTV Credit Check
+
+on:
+  schedule:
+    - cron: '0 * * * *'   # every hour
+  workflow_dispatch:       # allow manual trigger from GitHub UI
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call credit check endpoint
+        env:
+          SITE_URL: ${{ secrets.NEXT_PUBLIC_SITE_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          STATUS=$(curl -s -o /tmp/body.json -w "%{http_code}" \
+            -H "Authorization: Bearer $CRON_SECRET" \
+            "$SITE_URL/api/cron/otv-credit-check")
+          cat /tmp/body.json
+          if [ "$STATUS" -ne 200 ]; then
+            echo "Credit check failed with HTTP $STATUS"
+            exit 1
+          fi
