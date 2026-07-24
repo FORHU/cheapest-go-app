@@ -101,6 +101,8 @@ interface MapDetailsPanelProps {
     showLabels: boolean;
     onLabelsToggle: () => void;
     isFullscreen?: boolean;
+    /** Map types to hide from the type picker (e.g. ['default-3d'] for flat-only maps). */
+    excludeMapTypes?: MapTypeId[];
 }
 
 export function MapDetailsPanel({
@@ -112,10 +114,15 @@ export function MapDetailsPanel({
     onDetailToggle,
     showLabels,
     onLabelsToggle,
+    excludeMapTypes,
 }: MapDetailsPanelProps) {
     const t = useTranslations('hotels.mapView.mapDetails');
 
     if (!isOpen) return null;
+
+    const mapTypeTiles = excludeMapTypes?.length
+        ? MAP_TYPE_TILES.filter((tile) => !excludeMapTypes.includes(tile.id))
+        : MAP_TYPE_TILES;
 
     return (
         <div className={`absolute z-[60] bg-white dark:bg-slate-900 rounded-md shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden transition-all duration-300
@@ -181,7 +188,7 @@ export function MapDetailsPanel({
                     {t('mapType')}
                 </p>
                 <div className={`grid grid-cols-3 gap-1 md:gap-2`}>
-                    {MAP_TYPE_TILES.map((tile) => (
+                    {mapTypeTiles.map((tile) => (
                         <button
                             key={tile.id}
                             onClick={() => onMapTypeChange(tile.id)}

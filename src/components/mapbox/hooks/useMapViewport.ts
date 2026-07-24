@@ -41,8 +41,8 @@ export const useMapViewport = ({
             map.flyTo({
                 center: [bounds.centerLng, bounds.centerLat],
                 zoom: 15,
-                pitch: 45,
-                bearing: -10,
+                pitch: 0,
+                bearing: 0,
                 duration: 1000,
             });
             return;
@@ -57,8 +57,8 @@ export const useMapViewport = ({
                 padding: { top: 60, bottom: 60, left: 60, right: 60 },
                 maxZoom: 16,
                 duration: 1000,
-                pitch: 45,
-                bearing: -10,
+                pitch: 0,
+                bearing: 0,
             }
         );
     }, [isMapLoaded, propertiesKey, mapRef, selectedId]);
@@ -75,8 +75,8 @@ export const useMapViewport = ({
             map.flyTo({
                 center: [selectedProperty.coordinates.lng, selectedProperty.coordinates.lat],
                 zoom: 16,
-                pitch: 45,
-                bearing: -20,
+                pitch: 0,
+                bearing: 0,
                 duration: 800,
                 essential: true
             });

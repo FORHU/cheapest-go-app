@@ -5,6 +5,7 @@ import { z } from 'zod';
 
 const autocompleteSchema = z.object({
     query: z.string().max(100),
+    locale: z.enum(['en', 'ko', 'cn', 'ja']).optional(),
 });
 
 export async function POST(req: Request) {
@@ -17,8 +18,9 @@ export async function POST(req: Request) {
         const body = await req.json();
         const parsed = autocompleteSchema.safeParse(body);
         const query = parsed.success ? parsed.data.query : '';
+        const locale = parsed.success ? parsed.data.locale : undefined;
 
-        const data = await autocompleteDestinations(query);
+        const data = await autocompleteDestinations(query, locale);
         return Response.json(data);
     } catch (err) {
         return Response.json(

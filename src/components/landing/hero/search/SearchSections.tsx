@@ -1,6 +1,6 @@
 "use client";
 
-import React from 'react';
+import React, { useRef, useEffect } from 'react';
 import { MapPin, Calendar, User, ChevronDown } from 'lucide-react';
 import { useSearchStore, useDestination, useDestinationQuery, useDates, useTravelers, useActiveDropdown } from '@/stores/searchStore';
 import { DestinationPicker } from './DestinationPicker';
@@ -10,12 +10,35 @@ import { useTranslations, useLocale } from 'next-intl';
 
 export const DestinationSection: React.FC = () => {
     const t = useTranslations('landing.search');
-    const { setActiveDropdown } = useSearchStore();
+    const { setActiveDropdown, setDestinationQuery } = useSearchStore();
     const destination = useDestination();
     const query = useDestinationQuery();
+    const activeDropdown = useActiveDropdown();
+    const isOpen = activeDropdown === 'destination';
+
+    const sectionRef = useRef<HTMLDivElement>(null);
+    const inputRef = useRef<HTMLInputElement>(null);
+
+    // Focus the inline input when the section opens.
+    useEffect(() => {
+        if (isOpen) inputRef.current?.focus();
+    }, [isOpen]);
+
+    // Close when clicking outside the whole section (cell input + suggestions dropdown).
+    // The section wrapper contains both, so DestinationPicker skips its own handler.
+    useEffect(() => {
+        if (!isOpen) return;
+        const onMouseDown = (e: MouseEvent) => {
+            if (sectionRef.current && !sectionRef.current.contains(e.target as Node)) {
+                setActiveDropdown(null);
+            }
+        };
+        document.addEventListener('mousedown', onMouseDown);
+        return () => document.removeEventListener('mousedown', onMouseDown);
+    }, [isOpen, setActiveDropdown]);
 
     return (
-        <div className="flex-1 min-w-0 relative h-16 group">
+        <div ref={sectionRef} className="flex-1 min-w-0 relative h-16 group">
             <div
                 className="w-full h-full flex items-center px-4 cursor-pointer hover:bg-slate-50 dark:hover:bg-white/5 transition-colors"
                 onClick={() => setActiveDropdown('destination')}
@@ -25,12 +48,27 @@ export const DestinationSection: React.FC = () => {
                     <label className="text-ui-label">
                         {t('whereTo')}
                     </label>
-                    <div className="text-ui-value truncate max-w-[150px]">
-                        {destination?.title || query || t('searchDestination')}
-                    </div>
+                    {isOpen ? (
+                        <input
+                            ref={inputRef}
+                            type="text"
+                            value={query}
+                            onChange={(e) => setDestinationQuery(e.target.value)}
+                            onFocus={(e) => e.target.select()}
+                            onClick={(e) => e.stopPropagation()}
+                            placeholder={t('searchDestinationsPlaceholder')}
+                            className="text-ui-value bg-transparent border-none p-0 outline-none focus:ring-0 w-full max-w-[150px] truncate text-slate-900 dark:text-white placeholder:font-normal placeholder-slate-400"
+                            autoComplete="off"
+                            spellCheck={false}
+                        />
+                    ) : (
+                        <div className="text-ui-value truncate max-w-[150px]">
+                            {destination?.title || query || t('searchDestination')}
+                        </div>
+                    )}
                 </div>
             </div>
-            <DestinationPicker />
+            <DestinationPicker hideInput />
         </div>
     );
 

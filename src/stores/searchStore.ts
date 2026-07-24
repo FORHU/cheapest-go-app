@@ -4,11 +4,18 @@ import { useShallow } from 'zustand/react/shallow';
 
 export interface Destination {
     type: 'city' | 'airport' | 'history' | 'country';
+    /** Granularity ladder rung (country/province/city/district/poi). See ADR-0006. */
+    rung?: 'country' | 'province' | 'city' | 'district' | 'poi';
     title: string;
     subtitle: string;
     code?: string;
     countryCode?: string;
     id?: string;
+    /** Place centre — point rungs (district/landmark) are searched around this. */
+    lat?: number;
+    lng?: number;
+    /** Mapbox bounding box [minLng, minLat, maxLng, maxLat] — sizes a district's circle. */
+    bbox?: [number, number, number, number];
     lowestPrice?: number;
     priceCurrency?: string;
 }
