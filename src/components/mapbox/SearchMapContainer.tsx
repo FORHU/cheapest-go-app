@@ -104,6 +104,53 @@ export const SearchMapContainer = React.memo(({
         );
     }, [properties]);
 
+    // ── Viewport marker culling ──────────────────────────────────────────────
+    // Rendering one HTML <Marker> per hotel (up to ~300) is the dominant source
+    // of pan/zoom lag: Mapbox re-transforms every marker DOM node each frame.
+    // Instead we render only the markers inside the current view (+ margin),
+    // recomputed when movement stops (onMoveEnd), and hard-capped so a zoomed-out
+    // "all results" view can never mount hundreds at once. Zoomed into a
+    // neighbourhood this is ~10-30 markers instead of 300.
+    const MAX_VISIBLE_MARKERS = 100;
+    const [viewBounds, setViewBounds] = React.useState<
+        { minLng: number; minLat: number; maxLng: number; maxLat: number } | null
+    >(null);
+
+    const updateViewBounds = useCallback(() => {
+        const map = mapRef.current?.getMap();
+        if (!map) return;
+        const b = map.getBounds();
+        if (!b) return;
+        // Pad by 50% so markers just off-screen are pre-rendered and pop in smoothly.
+        const padX = (b.getEast() - b.getWest()) * 0.5;
+        const padY = (b.getNorth() - b.getSouth()) * 0.5;
+        setViewBounds({
+            minLng: b.getWest() - padX,
+            maxLng: b.getEast() + padX,
+            minLat: b.getSouth() - padY,
+            maxLat: b.getNorth() + padY,
+        });
+    }, [mapRef]);
+
+    const visibleProperties = useMemo(() => {
+        let list = mappableProperties;
+        if (viewBounds) {
+            list = mappableProperties.filter((p) => {
+                const { lat, lng } = p.coordinates;
+                return lng >= viewBounds.minLng && lng <= viewBounds.maxLng
+                    && lat >= viewBounds.minLat && lat <= viewBounds.maxLat;
+            });
+        }
+        // Cheapest-first order is preserved (the incoming order), so when capped the
+        // most relevant hotels are the ones shown; zooming in reveals the rest.
+        return list.length > MAX_VISIBLE_MARKERS ? list.slice(0, MAX_VISIBLE_MARKERS) : list;
+    }, [mappableProperties, viewBounds]);
+
+    // Seed the visible set once the map is ready; onMoveEnd keeps it fresh after.
+    React.useEffect(() => {
+        if (isMapLoaded) updateViewBounds();
+    }, [isMapLoaded, updateViewBounds]);
+
     const markerPrices = useMemo(() => {
         const prices: Record<string, number> = {};
         for (const p of mappableProperties) {
@@ -300,7 +347,7 @@ export const SearchMapContainer = React.memo(({
             placeId: gem.properties?.place_id,
             vicinity: gem.properties?.vicinity,
         });
-        mapRef.current?.flyTo({ center: [lng, lat], zoom: 16, pitch: 30, duration: 600 });
+        mapRef.current?.flyTo({ center: [lng, lat], zoom: 16, pitch: 0, duration: 600 });
     }, [activeGemName]);
 
     // Clear gem state whenever the hotel selection is cleared
@@ -371,23 +418,16 @@ export const SearchMapContainer = React.memo(({
         setShowLabels,
         mapDetails,
         handleDetailToggle,
-        terrainEnabled,
         mapStyleUrl,
-        standardConfig,
-    } = useMapDetails('default-3d');
+    } = useMapDetails('default');
 
-    // Full 3D standard config for the search map.
-    // On mobile, 3D geometry is disabled to avoid GPU overload during tile loading after easeTo.
-    const searchStandardConfig = React.useMemo(() => ({
-        ...standardConfig,
-        show3dObjects: !isMobile,
-        show3dBuildings: !isMobile,
-        show3dFacades: !isMobile,
-        show3dTrees: !isMobile,
-        show3dLandmarks: !isMobile,
-        lightPreset: 'day' as const,
-    }), [standardConfig, isMobile]);
-
+    // Flat-only map: the 3D "Standard" map type is removed entirely, so there is no
+    // standardConfig, no terrain, and the camera stays pitch-locked (see MapContainer
+    // props below). Terrain is a 3D-only feature, so drop it from the details panel.
+    const flatMapDetails = useMemo(
+        () => mapDetails.filter((d) => d.id !== 'terrain'),
+        [mapDetails]
+    );
 
     // Reset loading state on style change to prevent "Style not done loading" errors
     React.useEffect(() => {
@@ -399,22 +439,22 @@ export const SearchMapContainer = React.memo(({
             <MapContainer
                 mapRef={mapRef}
                 mapStyle={mapStyleUrl}
-                standardConfig={mapType === 'default-3d' ? searchStandardConfig : undefined}
-                enable3DTerrain={terrainEnabled}
-                antialias={!isMobile}
-                maxPitch={85}
+                enable3DTerrain={false}
+                antialias={false}
+                maxPitch={0}
                 initialViewState={{
                     longitude: defaultCenter?.lng ?? 139.6917,
                     latitude: defaultCenter?.lat ?? 35.6895,
                     zoom: 12,
-                    pitch: 20,
-                    bearing: -10,
+                    pitch: 0,
+                    bearing: 0,
                 }}
                 onLoad={handleMapLoad}
                 onStyleReady={handleMapLoad}
                 onClick={handleMapClick}
                 onMouseMove={onMouseMove}
                 onDragStart={handleDragStart}
+                onMoveEnd={updateViewBounds}
                 hideLayersButton={true}
             >
 
@@ -424,7 +464,7 @@ export const SearchMapContainer = React.memo(({
                             The selected hotel's marker is skipped here; SelectedPropertyPopup re-renders
                             it with isSelected=true and attaches the popup card. Other markers stay visible
                             so the user can see all hotels while a selection is active. */}
-                        {mappableProperties.map((p) => (
+                        {visibleProperties.map((p) => (
                             selectedId === p.id && selectedProperty ? null :
                             <MapMarker
                                 key={`marker-${p.id}`}
@@ -558,7 +598,7 @@ export const SearchMapContainer = React.memo(({
                 className={searchOverlayClassName || "absolute top-4 left-1/2 -translate-x-1/2 z-20 w-[60%] sm:w-[320px] md:w-[400px]"}
                 onSelect={(r) => {
                     // 1. Move the map visually
-                    mapRef.current?.flyTo({ center: [r.lng, r.lat], zoom: 15, pitch: 45, bearing: -10, duration: 1200 });
+                    mapRef.current?.flyTo({ center: [r.lng, r.lat], zoom: 15, pitch: 0, bearing: 0, duration: 1200 });
 
                     // 2. Trigger a global search refresh by updating URL
                     const params = new URLSearchParams(window.location.search);
@@ -594,8 +634,10 @@ export const SearchMapContainer = React.memo(({
                 isOpen={showDetailsPanel}
                 onClose={() => setShowDetailsPanel(false)}
                 mapType={mapType}
-                onMapTypeChange={setMapType}
-                details={mapDetails}
+                // 3D removed: hide the Standard/3D tile and never switch to it.
+                onMapTypeChange={(type) => { if (type !== 'default-3d') setMapType(type); }}
+                excludeMapTypes={['default-3d']}
+                details={flatMapDetails}
                 onDetailToggle={handleDetailToggle}
                 showLabels={showLabels}
                 onLabelsToggle={() => setShowLabels((prev) => !prev)}

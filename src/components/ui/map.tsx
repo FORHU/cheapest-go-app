@@ -300,14 +300,26 @@ const Map = React.memo(
                     });
                 };
 
+                // The mousemove path fires on every pointer move; querySelectorAll +
+                // style writes each time is measurable on a busy map. Throttle to ~100ms
+                // (imperceptible for cursor restoration). mouseenter + initial run stay
+                // immediate so the cursor is correct the moment the pointer arrives.
+                let lastRestore = 0;
+                const restoreCursorThrottled = () => {
+                    const now = Date.now();
+                    if (now - lastRestore < 100) return;
+                    lastRestore = now;
+                    restoreCursor();
+                };
+
                 // Run once immediately so the cursor is set before the first move.
                 restoreCursor();
 
-                container.addEventListener('mousemove', restoreCursor);
+                container.addEventListener('mousemove', restoreCursorThrottled);
                 container.addEventListener('mouseenter', restoreCursor);
 
                 return () => {
-                    container.removeEventListener('mousemove', restoreCursor);
+                    container.removeEventListener('mousemove', restoreCursorThrottled);
                     container.removeEventListener('mouseenter', restoreCursor);
                     cursorPatchedRef.current = false;
                 };
