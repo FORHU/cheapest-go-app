@@ -223,6 +223,20 @@ export const useSearchModule = (): UseSearchModuleReturn => {
             params.set('destinationCode', state.destination.code);
         }
 
+        // Granularity ladder: carry the rung + coordinates so the resolver can pick
+        // the right path — area rungs (country/province) → ETG region, point rungs
+        // (district/landmark) → ETG serp/geo around these coords. See ADR-0006.
+        if (state.destination?.rung) {
+            params.set('rung', state.destination.rung);
+        }
+        if (typeof state.destination?.lat === 'number' && typeof state.destination?.lng === 'number') {
+            params.set('lat', String(state.destination.lat));
+            params.set('lng', String(state.destination.lng));
+        }
+        if (state.destination?.bbox && state.destination.bbox.length === 4) {
+            params.set('bbox', state.destination.bbox.join(','));
+        }
+
         // Currency: based on user's locale (from store), not the destination
         // A Korean user searching abroad still sees KRW prices
         params.set('currency', state.userCurrency || 'KRW');

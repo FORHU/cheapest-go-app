@@ -230,19 +230,13 @@ const PropertyMapView = React.memo(function PropertyMapView({
         showDetailsPanel, setShowDetailsPanel,
         showLabels, setShowLabels,
         mapDetails, handleDetailToggle,
-        mapStyleUrl, standardConfig,
+        mapStyleUrl,
     } = useMapDetails();
 
-    // This map renders flat — no 3D buildings, objects or terrain. The Standard
-    // style ships them on by default, so they're explicitly switched off here.
-    const flatStandardConfig = useMemo(() => ({
-        ...standardConfig,
-        show3dObjects: false,
-        show3dBuildings: false,
-        show3dFacades: false,
-        show3dTrees: false,
-        show3dLandmarks: false,
-    }), [standardConfig]);
+    // This map is flat-only. The 3D "Standard" map type is removed entirely: its
+    // tile is excluded from the details panel and setMapType rejects it below, so
+    // mapStyleUrl only ever resolves to a flat style (streets/satellite). The camera
+    // is also pitch-locked (maxPitch=0), so there is no 3D layer of any kind.
 
     // Terrain only has meaning on a tilted 3D map, so it isn't offered here.
     const flatMapDetails = useMemo(
@@ -455,7 +449,6 @@ const PropertyMapView = React.memo(function PropertyMapView({
             <Map
                 ref={mapRef}
                 mapStyle={mapStyleUrl}
-                standardConfig={mapType === 'default-3d' ? flatStandardConfig : undefined}
                 initialViewState={{
                     longitude: bounds.centerLng || 120.596,
                     latitude: bounds.centerLat || 16.402,
@@ -594,7 +587,9 @@ const PropertyMapView = React.memo(function PropertyMapView({
                 isOpen={showDetailsPanel}
                 onClose={() => setShowDetailsPanel(false)}
                 mapType={mapType}
-                onMapTypeChange={setMapType}
+                // 3D removed: hide the Standard/3D tile and never switch to it.
+                onMapTypeChange={(type) => { if (type !== 'default-3d') setMapType(type); }}
+                excludeMapTypes={['default-3d']}
                 details={flatMapDetails}
                 onDetailToggle={handleDetailToggle}
                 showLabels={showLabels}

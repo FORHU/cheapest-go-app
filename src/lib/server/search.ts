@@ -2,14 +2,42 @@ import { unstable_cache } from 'next/cache';
 import { extractCountryCode, COUNTRY_SEARCH_LIST } from '@/lib/constants/countries';
 import { getSqlAdmin } from '@/lib/db/postgres';
 
+/** Where a searched place sits on the granularity ladder. See CONTEXT.md
+ *  ("Destination granularity") and ADR-0006. Area rungs (country/province/city)
+ *  resolve to an ETG region; point rungs (district/poi) resolve to coord+radius. */
+export type DestinationRung = 'country' | 'province' | 'city' | 'district' | 'poi';
+
 export interface AutocompleteResult {
     type: 'city' | 'country';
+    /** Granularity ladder rung — drives which resolution path search uses. */
+    rung: DestinationRung;
     title: string;
     subtitle: string;
     countryCode: string;
     id?: string;
     /** TravelgateX destination code — embedded so the search page can pass it directly */
     code?: string;
+    /** Place centre from Mapbox (point rungs are searched around this). */
+    lat?: number;
+    lng?: number;
+    /** Mapbox bounding box [minLng, minLat, maxLng, maxLat] — sizes a district's search circle. */
+    bbox?: [number, number, number, number];
+}
+
+/** Map a Mapbox geocoder place_type to a ladder rung. */
+function mapboxTypeToRung(placeType: string): DestinationRung {
+    switch (placeType) {
+        case 'country':                            return 'country';
+        case 'region':                             return 'province';
+        case 'place':                              return 'city';
+        case 'district':
+        case 'locality':
+        case 'neighborhood':                       return 'district';
+        case 'poi':
+        case 'poi.landmark':
+        case 'address':                            return 'poi';
+        default:                                   return 'city';
+    }
 }
 
 function matchCountries(query: string): AutocompleteResult[] {
@@ -19,19 +47,38 @@ function matchCountries(query: string): AutocompleteResult[] {
         .slice(0, 4)
         .map(c => ({
             type: 'country' as const,
+            rung: 'country' as const,
             title: c.name,
             subtitle: 'Country · Browse all hotels',
             countryCode: c.code,
         }));
 }
 
-async function fetchCitiesFromMapbox(query: string): Promise<AutocompleteResult[]> {
+/** Map an app locale ('en'|'ko'|'cn'|'ja') to a Mapbox geocoder language code. */
+function mapboxLang(locale?: string): string {
+    switch (locale) {
+        case 'ko': return 'ko';
+        case 'ja': return 'ja';
+        case 'cn': return 'zh-Hans'; // app uses 'cn'; Mapbox expects a BCP-47 tag
+        default:   return 'en';
+    }
+}
+
+async function fetchCitiesFromMapbox(query: string, locale?: string): Promise<AutocompleteResult[]> {
     const token = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
     if (!token) return [];
 
     // proximity=Seoul biases results toward Asia/popular travel regions.
-    // language=en ensures consistent city name casing across locales.
-    const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json?types=place,locality,region&limit=8&language=en&proximity=126.9780,37.5665&access_token=${token}`;
+    // Request the user's language AND English so non-Latin queries (e.g. "도쿄",
+    // "東京") match, while we still get an English `text_en` to use as the
+    // resolution-safe canonical name. English-only locales just request `en`.
+    // types spans the whole granularity ladder: region (province) → place (city)
+    // → district/locality (district) → poi/address (landmark). Country comes from
+    // the local COUNTRY_SEARCH_LIST, so it is not requested here.
+    const lang = mapboxLang(locale);
+    const language = lang === 'en' ? 'en' : `${lang},en`;
+    const types = 'region,place,district,locality,neighborhood,poi,address';
+    const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json?types=${types}&limit=8&language=${language}&proximity=126.9780,37.5665&access_token=${token}`;
 
     try {
         const res = await fetch(url, { next: { revalidate: 300 } });
@@ -39,7 +86,12 @@ async function fetchCitiesFromMapbox(query: string): Promise<AutocompleteResult[
         const data = await res.json();
 
         return (data.features ?? []).map((feature: any) => {
-            const cityName = feature.text ?? '';
+            // `text_en` is the English name (present because we requested `en`);
+            // fall back to `text` for English-only requests. Downstream resolution
+            // (destination codes, region_id, cache keys, hotel_content.city) is all
+            // English-keyed, so `title` must stay English even when the user typed Korean.
+            const cityName = feature.text_en ?? feature.text ?? '';
+            // Localized full name for display (primary requested language).
             const placeName = feature.place_name ?? '';
             // Extract country short_code from context array
             const countryCtx = (feature.context ?? []).find((c: any) => c.id?.startsWith('country.'));
@@ -48,12 +100,24 @@ async function fetchCitiesFromMapbox(query: string): Promise<AutocompleteResult[
                 ? rawCode.toUpperCase().slice(0, 2)
                 : extractCountryCode(placeName, cityName);
 
+            // place_type is an array (most-specific first); its first entry drives the rung.
+            const placeType: string = (feature.place_type ?? [])[0] ?? 'place';
+            const rung = mapboxTypeToRung(placeType);
+            // Mapbox center is [lng, lat]; bbox is [minLng, minLat, maxLng, maxLat].
+            const center: [number, number] | undefined = Array.isArray(feature.center) ? feature.center : undefined;
+            const bbox: [number, number, number, number] | undefined =
+                Array.isArray(feature.bbox) && feature.bbox.length === 4 ? feature.bbox : undefined;
+
             return {
                 type: 'city' as const,
+                rung,
                 title: cityName,
                 subtitle: placeName,
                 countryCode,
                 id: feature.id ?? undefined,
+                lat: center ? center[1] : undefined,
+                lng: center ? center[0] : undefined,
+                bbox,
             };
         });
     } catch {
@@ -191,7 +255,7 @@ export async function resolveTgxDestinationCode(cityName: string, countryCode?: 
     }
 }
 
-async function fetchAutocomplete(query: string): Promise<AutocompleteResult[]> {
+async function fetchAutocomplete(query: string, locale?: string): Promise<AutocompleteResult[]> {
     const countryResults = matchCountries(query);
 
     const q = query.toLowerCase().trim();
@@ -203,7 +267,7 @@ async function fetchAutocomplete(query: string): Promise<AutocompleteResult[]> {
         return countryResults;
     }
 
-    const cityResults = await fetchCitiesFromMapbox(query);
+    const cityResults = await fetchCitiesFromMapbox(query, locale);
     if (!cityResults.length) return countryResults;
 
     // Only show cities that have hotels in our TGX inventory (hotel_content).
@@ -231,14 +295,16 @@ const getCachedAutocomplete = unstable_cache(
  * so the search page can pass `destinationCode` directly (no fallback needed).
  */
 export async function autocompleteDestinations(
-    query: string
+    query: string,
+    locale?: string,
 ): Promise<{ success: true; data: AutocompleteResult[] } | { success: false; error: string }> {
     if (!query || query.length < 2) {
         return { success: true, data: [] };
     }
 
     try {
-        const data = await getCachedAutocomplete(query);
+        // locale is part of the cache args, so each language caches independently.
+        const data = await getCachedAutocomplete(query, locale);
         return { success: true, data };
     } catch (error) {
         console.error('[autocompleteDestinations] Error:', error);
@@ -246,5 +312,29 @@ export async function autocompleteDestinations(
             success: false,
             error: error instanceof Error ? error.message : 'Autocomplete failed',
         };
+    }
+}
+
+/**
+ * Resolve a place name (in any language/script) to its English city name via
+ * Mapbox. Used by the flight airport search to normalise non-Latin queries
+ * ("도쿄" → "Tokyo") before matching the English-keyed airport dataset.
+ * Returns null when nothing resolves.
+ */
+export async function resolveEnglishPlaceName(query: string, locale?: string): Promise<string | null> {
+    const token = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
+    if (!token || !query.trim()) return null;
+    const lang = mapboxLang(locale);
+    const language = lang === 'en' ? 'en' : `${lang},en`;
+    const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json?types=place,locality,region&limit=1&language=${language}&access_token=${token}`;
+    try {
+        const res = await fetch(url, { next: { revalidate: 3600 } });
+        if (!res.ok) return null;
+        const data = await res.json();
+        const f = (data.features ?? [])[0];
+        if (!f) return null;
+        return (f.text_en ?? f.text ?? null) as string | null;
+    } catch {
+        return null;
     }
 }
