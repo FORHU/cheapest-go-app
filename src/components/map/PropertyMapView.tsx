@@ -449,7 +449,6 @@ const PropertyMapView = React.memo(function PropertyMapView({
             <Map
                 ref={mapRef}
                 mapStyle={mapStyleUrl}
-                standardConfig={mapType === 'default-3d' ? flatStandardConfig : undefined}
                 initialViewState={{
                     longitude: bounds.centerLng || 120.596,
                     latitude: bounds.centerLat || 16.402,
@@ -588,7 +587,9 @@ const PropertyMapView = React.memo(function PropertyMapView({
                 isOpen={showDetailsPanel}
                 onClose={() => setShowDetailsPanel(false)}
                 mapType={mapType}
-                onMapTypeChange={setMapType}
+                // 3D removed: hide the Standard/3D tile and never switch to it.
+                onMapTypeChange={(type) => { if (type !== 'default-3d') setMapType(type); }}
+                excludeMapTypes={['default-3d']}
                 details={flatMapDetails}
                 onDetailToggle={handleDetailToggle}
                 showLabels={showLabels}
