@@ -50,7 +50,7 @@ jobs:
             --build-arg NEXT_PUBLIC_SITE_URL="${{ secrets.NEXT_PUBLIC_SITE_URL_GEOMEEGO }}" \
             --build-arg NEXT_PUBLIC_BRAND_EMAIL="${{ secrets.NEXT_PUBLIC_BRAND_EMAIL_GEOMEEGO }}" \
             --build-arg NEXT_PUBLIC_BRAND_FAVICON="/Geomeego_Light.png" \
-            --build-arg NEXT_PUBLIC_BRAND_LOGO="/Geomeego_Light.png" \
+            --build-arg NEXT_PUBLIC_BRAND_LOGO="/Geomeego.png" \
             --build-arg NEXT_PUBLIC_MAPBOX_TOKEN="${{ secrets.NEXT_PUBLIC_MAPBOX_TOKEN }}" \
             --build-arg NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY="${{ secrets.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY }}" \
             -t $REGISTRY/$REPOSITORY:$SHA \
@@ -117,7 +117,7 @@ jobs:
           V_MYSTIFLY_USERNAME: ${{ secrets.MYSTIFLY_USERNAME }}
           V_NEXT_PUBLIC_BRAND_NAME: GeomeeGo
           V_NEXT_PUBLIC_BRAND_FAVICON: /Geomeego_Light.png
-          V_NEXT_PUBLIC_BRAND_LOGO: /Geomeego_Light.png
+          V_NEXT_PUBLIC_BRAND_LOGO: /Geomeego.png
           V_NEXT_PUBLIC_DEFAULT_CURRENCY: KRW
           V_NEXT_PUBLIC_DEFAULT_COUNTRY: KR
         run: |
