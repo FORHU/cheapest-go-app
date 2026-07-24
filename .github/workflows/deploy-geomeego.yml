@@ -50,6 +50,7 @@ jobs:
             --build-arg NEXT_PUBLIC_SITE_URL="${{ secrets.NEXT_PUBLIC_SITE_URL_GEOMEEGO }}" \
             --build-arg NEXT_PUBLIC_BRAND_EMAIL="${{ secrets.NEXT_PUBLIC_BRAND_EMAIL_GEOMEEGO }}" \
             --build-arg NEXT_PUBLIC_BRAND_FAVICON="/Geomeego_Light.png" \
+            --build-arg NEXT_PUBLIC_BRAND_LOGO="/Geomeego_Light.png" \
             --build-arg NEXT_PUBLIC_MAPBOX_TOKEN="${{ secrets.NEXT_PUBLIC_MAPBOX_TOKEN }}" \
             --build-arg NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY="${{ secrets.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY }}" \
             -t $REGISTRY/$REPOSITORY:$SHA \
@@ -116,6 +117,7 @@ jobs:
           V_MYSTIFLY_USERNAME: ${{ secrets.MYSTIFLY_USERNAME }}
           V_NEXT_PUBLIC_BRAND_NAME: GeomeeGo
           V_NEXT_PUBLIC_BRAND_FAVICON: /Geomeego_Light.png
+          V_NEXT_PUBLIC_BRAND_LOGO: /Geomeego_Light.png
           V_NEXT_PUBLIC_DEFAULT_CURRENCY: KRW
           V_NEXT_PUBLIC_DEFAULT_COUNTRY: KR
         run: |
@@ -168,6 +170,7 @@ jobs:
             "MYSTIFLY_USERNAME=$V_MYSTIFLY_USERNAME" \
             "NEXT_PUBLIC_BRAND_NAME=$V_NEXT_PUBLIC_BRAND_NAME" \
             "NEXT_PUBLIC_BRAND_FAVICON=$V_NEXT_PUBLIC_BRAND_FAVICON" \
+            "NEXT_PUBLIC_BRAND_LOGO=$V_NEXT_PUBLIC_BRAND_LOGO" \
             "NEXT_PUBLIC_DEFAULT_CURRENCY=$V_NEXT_PUBLIC_DEFAULT_CURRENCY" \
             "NEXT_PUBLIC_DEFAULT_COUNTRY=$V_NEXT_PUBLIC_DEFAULT_COUNTRY" \
           | ssh -i ~/.ssh/id_rsa ${{ secrets.EC2_USER_GEOMEEGO }}@${{ secrets.EC2_HOST_GEOMEEGO }} \
