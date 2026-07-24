@@ -1335,11 +1335,19 @@ async function buildCityResults(
         fetchHotelReviews(hotelCodes),
     ]);
 
+    // Filter out hotels whose lat/lng fall outside the expected country bounding box.
+    // OTV sometimes assigns a destination code to hotels in the wrong country (e.g. a
+    // Wewoka, Oklahoma hotel tagged with the Paris dest-code), so we drop them here.
+    const filteredCodes = filterByCountryBbox(hotelCodes, contentMap, countryCode);
+    if (filteredCodes.length < hotelCodes.length) {
+        console.warn(`[tgx-search] buildCityResults: filtered ${hotelCodes.length - filteredCodes.length} out-of-country hotels for "${cityName}" (${countryCode})`);
+    }
+
     // When OTV returns null hotelName (data quality gap for some regions),
     // fall back to ETG hotel/info which uses the same RateHawk data but reliably has names.
     // Wrapped in try/catch — enrichment must never prevent results from rendering.
-    if (hotelCodes.length > 0) {
-        const noNameCodes = hotelCodes.filter(c => !contentMap.get(c)?.name && !preloadedContent.get(c)?.name);
+    if (filteredCodes.length > 0) {
+        const noNameCodes = filteredCodes.filter(c => !contentMap.get(c)?.name && !preloadedContent.get(c)?.name);
         if (noNameCodes.length >= hotelCodes.length * 0.3) {
             try {
                 const etgNames = await fetchEtgHotelNames(noNameCodes);
@@ -1357,7 +1365,7 @@ async function buildCityResults(
         }
     }
 
-    const hotels_result = hotelCodes.map((code) => {
+    const hotels_result = filteredCodes.map((code) => {
         const opt     = byHotel.get(code)!;
         const content = contentMap.get(code) ?? preloadedContent.get(code);
         const reviews = reviewMap.get(code);

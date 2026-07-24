@@ -40,6 +40,14 @@ function toYMD(raw: string | Date | null | undefined): string | undefined {
     return isNaN(d.getTime()) ? undefined : d.toISOString().slice(0, 10);
 }
 
+/** Only OTV codes (e.g. "KR2094") and ETG numeric IDs are routable to TGX/OTV.
+ *  LiteAPI slug IDs (e.g. "city_residence_park_ivry") were never cleaned up after
+ *  the provider migration and will always return 0 rooms — exclude them. */
+function isValidHotelCode(code: string | null | undefined): boolean {
+    if (!code) return false;
+    return /^\d+$/.test(code) || /^[A-Z]{2}\d+$/.test(code);
+}
+
 /** Keep the first item for each key — drops content-identical duplicate rows. */
 function dedupeBy<T>(items: T[], key: (item: T) => string): T[] {
     const seen = new Set<string>();
@@ -158,38 +166,42 @@ export const getPopularDestinations = cache(async (): Promise<VacationPackage[]>
 export const getUniqueStays = cache(async () => {
     const { data, error } = await supabaseQuery("hotel_deals", 10);
     if (error) console.error("[Landing] hotel_deals error:", (error as any).message ?? error);
-    return data?.map((d: any) => ({
-        id: d.hotel_code ?? String(d.id),
-        name: d.name,
-        location: d.location,
-        rating: Number(d.rating || 0),
-        price: Number(d.price || 0),
-        image: d.image_url || `/api/hotel-photo?q=${encodeURIComponent(`${d.name} ${d.location}`)}`,
-        badge: d.discount_tag ?? d.badge ?? null,
-    })) ?? [];
+    return (data ?? [])
+        .filter((d: any) => isValidHotelCode(d.hotel_code))
+        .map((d: any) => ({
+            id: d.hotel_code,
+            name: d.name,
+            location: d.location,
+            rating: Number(d.rating || 0),
+            price: Number(d.price || 0),
+            image: d.image_url || `/api/hotel-photo?q=${encodeURIComponent(`${d.name} ${d.location}`)}`,
+            badge: d.discount_tag ?? d.badge ?? null,
+        }));
 });
 
 export const getHotelDeals = cache(async (): Promise<WeekendDeal[]> => {
     const { data, error } = await supabaseQuery("hotel_deals", 20);
     if (error) console.error("[Landing] hotel_deals error:", (error as any).message ?? error);
-    const mapped: WeekendDeal[] = data?.map((d: any) => ({
-        id: d.hotel_code ?? String(d.id),
-        name: d.name,
-        location: d.location,
-        rating: Number(d.rating || 0),
-        reviews: 0,
-        originalPrice: Number(d.baseline_price || d.price || 0),
-        salePrice: Number(d.price || 0),
-        currency: d.currency || 'USD',
-        image: d.image_url || `/api/hotel-photo?hotelCode=${encodeURIComponent(d.hotel_code || '')}`,
-        badge: d.discount_tag ?? null,
-        hotelCode: d.hotel_code ?? null,
-        checkIn: d.check_in ? String(d.check_in).slice(0, 10) : null,
-        checkOut: d.check_out ? String(d.check_out).slice(0, 10) : null,
-        guests: Number(d.guests || 0),
-        bedrooms: Number(d.bedrooms || 0),
-        bathrooms: Number(d.bathrooms || 0),
-    })) ?? [];
+    const mapped: WeekendDeal[] = (data ?? [])
+        .filter((d: any) => isValidHotelCode(d.hotel_code))
+        .map((d: any) => ({
+            id: d.hotel_code,
+            name: d.name,
+            location: d.location,
+            rating: Number(d.rating || 0),
+            reviews: 0,
+            originalPrice: Number(d.baseline_price || d.price || 0),
+            salePrice: Number(d.price || 0),
+            currency: d.currency || 'USD',
+            image: d.image_url || `/api/hotel-photo?hotelCode=${encodeURIComponent(d.hotel_code)}`,
+            badge: d.discount_tag ?? null,
+            hotelCode: d.hotel_code,
+            checkIn: d.check_in ? String(d.check_in).slice(0, 10) : null,
+            checkOut: d.check_out ? String(d.check_out).slice(0, 10) : null,
+            guests: Number(d.guests || 0),
+            bedrooms: Number(d.bedrooms || 0),
+            bathrooms: Number(d.bathrooms || 0),
+        }));
     return dedupeBy(mapped, d => `${d.name}|${d.location}`);
 });
 
@@ -213,21 +225,23 @@ export const getGuestFavorites = cache(async (): Promise<WeekendDeal[]> => {
         ),
     ]);
     if (error) console.error('[Landing] guest_favorites error:', (error as any).message ?? error);
-    const mapped: WeekendDeal[] = data?.map((d: any) => ({
-        id: d.hotel_code ?? String(d.id),
-        name: d.name,
-        location: d.location,
-        rating: Number(d.rating || 0),
-        reviews: Number(d.reviews || 0),
-        originalPrice: Number(d.baseline_price || d.price || 0),
-        salePrice: Number(d.price || 0),
-        currency: d.currency || 'USD',
-        image: d.image_url || `/api/hotel-photo?hotelCode=${encodeURIComponent(d.hotel_code || '')}`,
-        badge: d.discount_tag ?? null,
-        hotelCode: d.hotel_code ?? null,
-        checkIn: d.check_in ? String(d.check_in).slice(0, 10) : null,
-        checkOut: d.check_out ? String(d.check_out).slice(0, 10) : null,
-    })) ?? [];
+    const mapped: WeekendDeal[] = (data ?? [])
+        .filter((d: any) => isValidHotelCode(d.hotel_code))
+        .map((d: any) => ({
+            id: d.hotel_code,
+            name: d.name,
+            location: d.location,
+            rating: Number(d.rating || 0),
+            reviews: Number(d.reviews || 0),
+            originalPrice: Number(d.baseline_price || d.price || 0),
+            salePrice: Number(d.price || 0),
+            currency: d.currency || 'USD',
+            image: d.image_url || `/api/hotel-photo?hotelCode=${encodeURIComponent(d.hotel_code)}`,
+            badge: d.discount_tag ?? null,
+            hotelCode: d.hotel_code,
+            checkIn: d.check_in ? String(d.check_in).slice(0, 10) : null,
+            checkOut: d.check_out ? String(d.check_out).slice(0, 10) : null,
+        }));
     return dedupeBy(mapped, d => `${d.name}|${d.location}`);
 });
 
