@@ -21,9 +21,12 @@ function deepMerge<T extends Record<string, unknown>>(target: T, source: Partial
 
 export default getRequestConfig(async () => {
   const cookieStore = await cookies();
-  // Default to Korean when the visitor has no explicit locale cookie.
-  const locale = cookieStore.get('locale')?.value ?? 'ko';
-  const validLocale = locales.includes(locale) ? locale : 'ko';
+  // A brand can LOCK the locale via NEXT_PUBLIC_LOCALE (e.g. GeomeeGo = 'ko', see
+  // ADR-0005). A locked locale wins over the cookie, and its switcher is hidden.
+  // Otherwise use the visitor's cookie, defaulting to English.
+  const locked = process.env.NEXT_PUBLIC_LOCALE;
+  const locale = locked || cookieStore.get('locale')?.value || 'en';
+  const validLocale = locales.includes(locale) ? locale : 'en';
 
   const enMessages = (await import(`../locales/en.json`)).default;
 

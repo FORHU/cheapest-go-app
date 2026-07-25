@@ -64,8 +64,9 @@ const HeaderContent = () => {
   const router = useRouter();
   const pathname = usePathname();
   const [mounted, setMounted] = useState(false);
-  // Seed from the server-resolved locale (Korean by default, or the visitor's
-  // chosen language) so the selector matches the rendered content — no flash.
+  // Seed from the server-resolved locale (English by default, the visitor's
+  // chosen language, or a brand lock) so the selector matches the rendered
+  // content — no flash.
   const activeLocale = useLocale() as Locale;
   const [locale, setLocale] = useState<Locale>(activeLocale);
   const t = useTranslations('nav');
