@@ -1,4 +1,4 @@
-import { invokeEdgeFunction } from '@/utils/postgres/functions';
+import { runTgxSearch } from '@/lib/server/stays/travelgatex/search';
 import { safeError } from '@/lib/server/safe-error';
 import { prebookSchema } from '@/lib/schemas/booking';
 import { quoteTravelgateX } from '@/lib/server/travelgatex';
@@ -122,7 +122,8 @@ export async function POST(req: Request) {
             }
 
             console.log(`[prebook/tgx] Fresh search: hotel=${hotelCode} ${checkIn}→${checkOut} adults=${adults}`);
-            const freshResult = await invokeEdgeFunction('travelgatex-search', {
+            // In-process search (was an HTTP self-call to /api/fn/travelgatex-search).
+            const freshResult = await runTgxSearch({
                 hotelCode,
                 checkin:  checkIn,
                 checkout: checkOut,
