@@ -4,7 +4,8 @@
  */
 
 import { cache } from 'react';
-import { preBook, invokeEdgeFunction } from '@/utils/postgres/functions';
+import { preBook } from '@/utils/postgres/functions';
+import { runTgxSearch } from '@/lib/server/stays/travelgatex/search';
 import { otvCodeToLabel } from '@/lib/server/stays/travelgatex/amenityCodes';
 import { type Property } from '@/types';
 import { getSqlAdmin } from '@/lib/db/postgres';
@@ -288,38 +289,10 @@ function getEtgToken(): string {
     return Buffer.from(`${keyId}:${apiKey}`).toString('base64');
 }
 
-/** Resolve a city name to an ETG region_id (same logic as search.ts). */
-async function getEtgRegionIdForCity(city: string, country?: string): Promise<number | null> {
-    try {
-        const token = getEtgToken();
-        const query = city.split(',')[0].trim();
-        const abort = new AbortController();
-        const t = setTimeout(() => abort.abort(), 5_000);
-        const res = await fetch('https://api.worldota.net/api/b2b/v3/search/multicomplete/', {
-            method: 'POST',
-            headers: { 'Authorization': `Basic ${token}`, 'Content-Type': 'application/json' },
-            body: JSON.stringify({ query, language: 'en' }),
-            signal: abort.signal,
-        });
-        clearTimeout(t);
-        if (!res.ok) return null;
-        const data = await res.json();
-        const regions: any[] = data?.data?.regions ?? [];
-        const iso = country && /^[A-Za-z]{2}$/.test(country) ? country.toUpperCase() : null;
-        const q = query.toLowerCase();
-        const match =
-            regions.find((r: any) => r?.type === 'City' && typeof r.name === 'string' && r.name.toLowerCase().startsWith(q) && (!iso || r.country_code === iso)) ??
-            regions.find((r: any) => r?.type === 'City' && typeof r.name === 'string' && r.name.toLowerCase().startsWith(q));
-        return match?.id ?? null;
-    } catch {
-        return null;
-    }
-}
-
 /**
  * Fetch single-hotel availability from ETG B2B for hotels that came from the ETG
- * fallback path (content_source = 'etg'). ETG IDs are not recognized by TGX/OTV,
- * so we search ETG's serp/region/ endpoint for the hotel's city and filter by ID.
+ * path (content_source = 'etg'). ETG IDs are string slugs not recognized by
+ * TGX/OTV, so we hit ETG's own per-hotel availability endpoint (serp/hotels/).
  */
 async function fetchETGPropertyData(
     id: string,
@@ -334,7 +307,7 @@ async function fetchETGPropertyData(
         let checkOut = sanitizeDate(searchParams.checkOut as string) || defaults.checkOut;
         if (checkIn <= formatDateForApi(new Date())) { checkIn = defaults.checkIn; if (checkOut <= checkIn) checkOut = defaults.checkOut; }
 
-        // Pull static content from hotel_content (needed for city → region_id lookup)
+        // Pull static content from hotel_content (name/images/coords for display).
         const sql = getSqlAdmin();
         const rows = await sql`
             SELECT name, images, star_rating, lat, lng, address, city, country,
@@ -345,41 +318,42 @@ async function fetchETGPropertyData(
         const city    = (db?.city    as string) || '';
         const country = (db?.country as string) || '';
 
-        // Resolve city → ETG region_id, then run serp/region/ and filter to this hotel
+        // ETG per-hotel availability — direct slug lookup via serp/hotels/.
+        // ETG IDs are string slugs (e.g. "au_royal_mad") that TGX/OTV can't resolve,
+        // so these hotels MUST come from ETG. serp/hotels is reliable for a single
+        // hotel (no region-list capping, unlike the old serp/region approach).
         let etgRates: any[] = [];
-        if (city) {
-            const regionId = await getEtgRegionIdForCity(city, country);
-            if (regionId) {
-                const token = getEtgToken();
-                const abort = new AbortController();
-                const t = setTimeout(() => abort.abort(), 20_000);
-                const res = await fetch('https://api.worldota.net/api/b2b/v3/search/serp/region/', {
-                    method: 'POST',
-                    headers: { 'Authorization': `Basic ${token}`, 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        region_id: regionId,
-                        checkin:   checkIn,
-                        checkout:  checkOut,
-                        guests:    [{ adults: Number(searchParams.adults || 2) }],
-                        currency:  'USD',
-                        language:  'en',
-                        residency: 'us',
-                    }),
-                    signal: abort.signal,
-                });
-                clearTimeout(t);
-                if (res.ok) {
-                    const json = await res.json();
-                    const hotels: any[] = json?.data?.hotels ?? [];
-                    const target = hotels.find((h: any) => h.id === id);
-                    etgRates = target?.rates ?? [];
-                    console.log(`[fetchETGPropertyData] ETG region ${regionId} for "${city}" → ${hotels.length} hotels, target found: ${!!target}`);
-                } else {
-                    console.warn(`[fetchETGPropertyData] ETG serp/region ${res.status} for region ${regionId}`);
-                }
+        const token = getEtgToken();
+        const abort = new AbortController();
+        const t = setTimeout(() => abort.abort(), 20_000);
+        try {
+            const res = await fetch('https://api.worldota.net/api/b2b/v3/search/serp/hotels/', {
+                method: 'POST',
+                headers: { 'Authorization': `Basic ${token}`, 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    ids:       [id],
+                    checkin:   checkIn,
+                    checkout:  checkOut,
+                    guests:    [{ adults: Number(searchParams.adults || 2) }],
+                    currency:  'USD',
+                    language:  'en',
+                    residency: 'us',
+                }),
+                signal: abort.signal,
+            });
+            if (res.ok) {
+                const json = await res.json();
+                const hotels: any[] = json?.data?.hotels ?? [];
+                const target = hotels.find((h: any) => String(h.id) === id);
+                etgRates = target?.rates ?? [];
+                console.log(`[fetchETGPropertyData] serp/hotels "${id}" → found=${!!target}, rates=${etgRates.length}`);
             } else {
-                console.warn(`[fetchETGPropertyData] No ETG region_id for city "${city}"`);
+                console.warn(`[fetchETGPropertyData] ETG serp/hotels ${res.status} for "${id}"`);
             }
+        } catch (e: any) {
+            console.warn(`[fetchETGPropertyData] ETG serp/hotels failed for "${id}":`, e?.message);
+        } finally {
+            clearTimeout(t);
         }
 
         const images: string[] = Array.isArray(db?.images) ? db.images : [];
@@ -472,7 +446,10 @@ export async function fetchTGXPropertyData(
         let checkOut = sanitizeDate(searchParams.checkOut as string) || defaults.checkOut;
         if (checkIn <= formatDateForApi(new Date())) { checkIn = defaults.checkIn; if (checkOut <= checkIn) checkOut = defaults.checkOut; }
 
-        const result = await invokeEdgeFunction('travelgatex-search', {
+        // Call runTgxSearch in-process — the same function the search page uses.
+        // (Previously an HTTP self-call to /api/fn/travelgatex-search, which broke
+        //  silently when FUNCTIONS_BASE_URL/port didn't match the running server.)
+        const result = await runTgxSearch({
             hotelCode: id,
             checkin:   checkIn,
             checkout:  checkOut,
@@ -518,6 +495,22 @@ export async function fetchTGXPropertyData(
         console.error('[fetchTGXPropertyData]', err instanceof Error ? err.message : err);
         return { property: null, fetchedDetails: null, preBookResult: null };
     }
+}
+
+/**
+ * Route a single-hotel room-availability fetch to the correct provider by
+ * content_source. ETG hotels have string-slug IDs that OTV/TGX cannot resolve, so
+ * sending them to the TGX path always returns 0 rooms — they must go to ETG.
+ * Used by the property page's rooms section (RoomsAvailabilitySection).
+ */
+export async function fetchRoomAvailability(
+    id: string,
+    searchParams: SearchParamsInput
+): Promise<FetchPropertyResult> {
+    if (id.startsWith('acc_')) return fetchDuffelPropertyData(id, searchParams);
+    const source = await getHotelContentSource(id);
+    if (source === 'etg') return fetchETGPropertyData(id, searchParams);
+    return fetchTGXPropertyData(id, searchParams);
 }
 
 /**
