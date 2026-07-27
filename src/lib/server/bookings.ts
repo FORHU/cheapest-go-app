@@ -6,6 +6,7 @@ import {
   saveBookingSchema,
 } from '@/lib/schemas';
 import { bookTravelgateX, cancelTravelgateX } from './travelgatex';
+import { runTgxSearch } from '@/lib/server/stays/travelgatex/search';
 import { getSqlAdmin } from '@/lib/db/postgres';
 import { invokeEdgeFunction } from '@/utils/postgres/functions';
 
@@ -86,7 +87,8 @@ async function getFreshTgxToken(expiredToken: string, adults: number, children: 
     return null;
   }
   try {
-    const result = await invokeEdgeFunction('travelgatex-search', {
+    // In-process search (was an HTTP self-call to /api/fn/travelgatex-search).
+    const result = await runTgxSearch({
       hotelCode, checkin: checkIn, checkout: checkOut, adults, children, currency, guest_nationality: 'KR',
     });
     const rooms: any[] = result?.data?.roomTypes || [];

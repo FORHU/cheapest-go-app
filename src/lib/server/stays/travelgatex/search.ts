@@ -1163,9 +1163,14 @@ export async function runTgxSearch(params: TgxSearchParams) {
     const promise = _runTgxSearch(params)
         .then(result => {
             if (ttl > 0) {
-                // City search: result.data is an array; single-hotel: result.data is an object with roomTypes
+                // Only cache NON-EMPTY results. City search: result.data is an array;
+                // single-hotel: result.data is an object with roomTypes. Caching an empty
+                // roomTypes:[] would pin a hotel to "0 rooms" for the whole TTL even after
+                // the supplier recovers, so require at least one room/result.
                 const hasCityResults = Array.isArray(result?.data) && result.data.length > 0;
-                const hasHotelRooms  = !Array.isArray(result?.data) && Array.isArray(result?.data?.roomTypes);
+                const hasHotelRooms  = !Array.isArray(result?.data)
+                    && Array.isArray(result?.data?.roomTypes)
+                    && result.data.roomTypes.length > 0;
                 if (hasCityResults || hasHotelRooms) {
                     setHotelSearchCache(key, result, ttl).catch(() => {});
                 }
