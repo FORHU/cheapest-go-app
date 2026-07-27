@@ -1,5 +1,5 @@
 import React from 'react';
-import { fetchTGXPropertyData, type PropertyData, type SearchParamsInput } from '@/lib/property/fetchPropertyData';
+import { fetchPropertyData, type PropertyData, type SearchParamsInput } from '@/lib/property/fetchPropertyData';
 import RoomList from './RoomList';
 import PoliciesSection from './PoliciesSection';
 import FAQSection from './FAQSection';
@@ -11,7 +11,7 @@ interface Props {
 }
 
 export default async function RoomsAvailabilitySection({ hotelId, property, searchParams }: Props) {
-    const { fetchedDetails } = await fetchTGXPropertyData(hotelId, searchParams);
+    const { fetchedDetails } = await fetchPropertyData(hotelId, searchParams);
 
     return (
         <>
