@@ -13,18 +13,16 @@ import {
 // Public read-only client — no cookies needed for landing page data.
 // Using the cookie-based server client here would call cookies() which
 // breaks static/ISR prerendering in Next.js 15.
-let publicClient: any = null;
-function getPublicClient() {
-    if (!publicClient) {
-        publicClient = createAdminClient();
+let dbClient: any = null;
+function getDbClient() {
+    if (!dbClient) {
+        dbClient = createAdminClient();
     }
-    return publicClient;
+    return dbClient;
 }
 
 // ─── Shared helper ────────────────────────────────────────────────────────────
-// Cap at 8s — fast enough to stay within Next.js build limits and not stall
-// the landing page. On network errors (fetch failed) we do one retry.
-const QUERY_TIMEOUT_MS = 30000;
+const QUERY_TIMEOUT_MS = 8000;
 
 /** Normalise any date string to YYYY-MM-DD.
  *  Node.js rejects Date.toString() output like "Mon Jun 29 2026 08:00:00 GMT+0800 (Philippine Standard Time)"
@@ -59,32 +57,32 @@ function dedupeBy<T>(items: T[], key: (item: T) => string): T[] {
     });
 }
 
-async function supabaseQuery(table: string, limit: number) {
+async function dbQuery(table: string, limit: number) {
     try {
-        const supabase = getPublicClient();
+        const db = getDbClient();
         const makeTimeout = (label: string) =>
             new Promise<{ data: null; error: Error }>(resolve =>
                 setTimeout(() => resolve({ data: null, error: new Error(`Query timeout: ${label}`) }), QUERY_TIMEOUT_MS)
             );
 
-        // Only order flight_deals by updated_at. Other tables don't strictly need sorting 
-        // and removing it prevents timeouts on unindexed columns.
-        let query = supabase.from(table).select("*");
-        if (table === 'flight_deals' || table === 'hotel_deals') {
-            query = query.order('updated_at', { ascending: false });
-        }
+        const query = db.from(table).select("*");
 
         const result = await Promise.race([
             query.limit(limit ?? 20),
             makeTimeout(table),
         ]);
         // Only retry on network-level fetch failures, NOT on our own timeout
-        if (result.error?.message?.includes("fetch failed")) {
+        if (result.error?.message?.includes("fetch failed") || result.error?.message?.includes("ECONNRESET")) {
+            console.log(`[Landing] ECONNRESET on ${table}, resetting pool and retrying...`);
+            dbClient = null; // drop stale pool, force fresh connections on retry
             await new Promise(r => setTimeout(r, 200));
-            return Promise.race([
-                supabase.from(table).select("*").limit(limit),
+            const retryClient = getDbClient();
+            const retryResult = await Promise.race([
+                retryClient.from(table).select("*").limit(limit),
                 makeTimeout(`${table}-retry`),
             ]);
+            console.log(`[Landing] Retry ${table} result: error=${retryResult.error?.message ?? 'none'}, rows=${retryResult.data?.length ?? 0}`);
+            return retryResult;
         }
         return result;
     } catch (err) {
@@ -95,7 +93,7 @@ async function supabaseQuery(table: string, limit: number) {
 
 // ─── Per-section cached fetchers ─────────────────────────────────────────────
 export const getFlightDeals = cache(async (): Promise<Deal[]> => {
-    const { data, error } = await supabaseQuery("flight_deals", 20);
+    const { data, error } = await dbQuery("flight_deals", 20);
     if (error) console.error("[Landing] flight_deals error:", (error as any).message ?? error);
     const mapped: Deal[] = data?.map((d: any) => ({
         id: String(d.id),
@@ -121,7 +119,7 @@ export const getFlightDeals = cache(async (): Promise<Deal[]> => {
 });
 
 export const getWeekendDeals = cache(async (): Promise<WeekendDeal[]> => {
-    const { data, error } = await supabaseQuery("weekend_flight_deals", 10);
+    const { data, error } = await dbQuery("weekend_flight_deals", 10);
     if (error) console.error("[Landing] weekend_flight_deals error:", (error as any).message ?? error);
     const mapped: WeekendDeal[] = data?.map((d: any) => ({
         id: d.id,
@@ -143,7 +141,7 @@ export const getWeekendDeals = cache(async (): Promise<WeekendDeal[]> => {
 });
 
 export const getPopularDestinations = cache(async (): Promise<VacationPackage[]> => {
-    const { data, error } = await supabaseQuery("popular_destinations", 12);
+    const { data, error } = await dbQuery("popular_destinations", 12);
     if (error) console.error("[Landing] popular_destinations error:", (error as any).message ?? error);
     return data?.map((d: any) => ({
         id: d.id,
@@ -164,7 +162,7 @@ export const getPopularDestinations = cache(async (): Promise<VacationPackage[]>
 });
 
 export const getUniqueStays = cache(async () => {
-    const { data, error } = await supabaseQuery("hotel_deals", 10);
+    const { data, error } = await dbQuery("hotel_deals", 10);
     if (error) console.error("[Landing] hotel_deals error:", (error as any).message ?? error);
     return (data ?? [])
         .filter((d: any) => isValidHotelCode(d.hotel_code))
@@ -180,7 +178,7 @@ export const getUniqueStays = cache(async () => {
 });
 
 export const getHotelDeals = cache(async (): Promise<WeekendDeal[]> => {
-    const { data, error } = await supabaseQuery("hotel_deals", 20);
+    const { data, error } = await dbQuery("hotel_deals", 20);
     if (error) console.error("[Landing] hotel_deals error:", (error as any).message ?? error);
     const mapped: WeekendDeal[] = (data ?? [])
         .filter((d: any) => isValidHotelCode(d.hotel_code))
@@ -206,15 +204,15 @@ export const getHotelDeals = cache(async (): Promise<WeekendDeal[]> => {
 });
 
 export const getGuestFavorites = cache(async (): Promise<WeekendDeal[]> => {
-    let supabase: any;
+    let db: any;
     try {
-        supabase = getPublicClient();
+        db = getDbClient();
     } catch (err) {
         console.error('[Landing] guest_favorites error:', (err as Error).message ?? err);
         return [];
     }
     const { data, error } = await Promise.race([
-        supabase
+        db
             .from('hotel_deals')
             .select('*')
             .gt('rating', 7)
@@ -246,7 +244,7 @@ export const getGuestFavorites = cache(async (): Promise<WeekendDeal[]> => {
 });
 
 export const getTravelStyles = cache(async () => {
-    const { data, error } = await supabaseQuery("travel_styles", 10);
+    const { data, error } = await dbQuery("travel_styles", 10);
     if (error) console.error("[Landing] travel_styles error:", (error as any).message ?? error);
     return data?.map((d: any) => ({
         id: d.id,
@@ -266,9 +264,9 @@ const EMPTY_RESULT = {
 };
 
 export const getLandingData = cache(async () => {
-    let supabase: any;
+    let db: any;
     try {
-        supabase = getPublicClient();
+        db = getDbClient();
     } catch (err) {
         console.error('[Landing] getLandingData: DB unavailable:', (err as Error).message ?? err);
         return EMPTY_RESULT;
@@ -277,10 +275,12 @@ export const getLandingData = cache(async () => {
     // Helper: query with one retry on network errors (TypeError: fetch failed)
     async function query(table: string, limit: number): Promise<{ data: any[] | null; error: any }> {
         try {
-            const result = await supabase.from(table).select("*").limit(limit);
-            if (result.error?.message?.includes("fetch failed")) {
+            const result = await db.from(table).select("*").limit(limit);
+            if (result.error?.message?.includes("fetch failed") || result.error?.message?.includes("ECONNRESET")) {
+                dbClient = null; // drop stale pool
                 await new Promise(r => setTimeout(r, 100));
-                return supabase.from(table).select("*").limit(limit);
+                db = getDbClient();
+                return db.from(table).select("*").limit(limit);
             }
             return result;
         } catch (err) {
