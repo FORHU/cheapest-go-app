@@ -851,6 +851,10 @@ async function backfillHotelContent(contentMap: Map<string, any>): Promise<void>
     const sql = getSqlAdmin();
     let saved = 0;
     for (const r of contentMap.values()) {
+        // Only persist hotels with valid OTV ([A-Z]{2}\d+) or ETG (numeric) codes.
+        // LiteAPI legacy slugs (e.g. le_fontainebleau) would otherwise be re-seeded
+        // on every search and appear in Phase 1 catalog with no availability.
+        if (!/^\d+$/.test(r.hotel_id) && !/^[A-Z]{2}\d+$/.test(r.hotel_id)) continue;
         try {
             await sql`
                 INSERT INTO hotel_content
@@ -1325,8 +1329,11 @@ async function buildCityResults(
         }
     }
 
-    // Sort cheapest-first, cap at 300 to protect client memory and render budget
+    // Sort cheapest-first, cap at 300 to protect client memory and render budget.
+    // Also drop any non-standard codes (LiteAPI slugs etc.) that OTV occasionally
+    // returns — they have no availability in TGX and would always show 0 rooms.
     const hotelCodes = Array.from(byHotel.entries())
+        .filter(([code]) => /^\d+$/.test(code) || /^[A-Z]{2}\d+$/.test(code))
         .sort(([, a], [, b]) => (a.price.gross || a.price.net) - (b.price.gross || b.price.net))
         .slice(0, 300)
         .map(([code]) => code);

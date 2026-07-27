@@ -71,6 +71,7 @@ async function getInstantHotelCatalog(body: any): Promise<any[]> {
                 FROM hotel_content
                 WHERE city ILIKE ${pattern}
                   AND LOWER(country) = LOWER(${isoCode})
+                  AND (hotel_id ~ '^\d+$' OR hotel_id ~ '^[A-Z]{2}\d+$')
                   AND images IS NOT NULL AND array_length(images, 1) > 0
                 ORDER BY review_count DESC NULLS LAST
                 LIMIT 300
@@ -80,6 +81,7 @@ async function getInstantHotelCatalog(body: any): Promise<any[]> {
                        description, amenities, review_rating, review_count
                 FROM hotel_content
                 WHERE city ILIKE ${pattern}
+                  AND (hotel_id ~ '^\d+$' OR hotel_id ~ '^[A-Z]{2}\d+$')
                   AND images IS NOT NULL AND array_length(images, 1) > 0
                 ORDER BY review_count DESC NULLS LAST
                 LIMIT 300
