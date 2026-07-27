@@ -1,5 +1,5 @@
 import React from 'react';
-import { fetchTGXPropertyData, type PropertyData, type SearchParamsInput } from '@/lib/property/fetchPropertyData';
+import { fetchRoomAvailability, type PropertyData, type SearchParamsInput } from '@/lib/property/fetchPropertyData';
 import RoomList from './RoomList';
 import PoliciesSection from './PoliciesSection';
 import FAQSection from './FAQSection';
@@ -11,7 +11,8 @@ interface Props {
 }
 
 export default async function RoomsAvailabilitySection({ hotelId, property, searchParams }: Props) {
-    const { fetchedDetails } = await fetchTGXPropertyData(hotelId, searchParams);
+    // Route by provider (ETG hotels can't be served by OTV) instead of always TGX.
+    const { fetchedDetails } = await fetchRoomAvailability(hotelId, searchParams);
 
     return (
         <>
