@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { searchTravelgateX } from '@/lib/server/travelgatex';
 import { getSqlAdmin } from '@/lib/db/postgres';
 import { tgxGraphQL, getTgxConfig, getTgxSettings } from '@/lib/server/stays/travelgatex/client';
-import { resolveTgxDestinationCode } from '@/lib/server/search';
+import { resolveTgxDestinationCode, setDestCodeCache } from '@/lib/server/search';
 import { clearFailedDestCodesCache } from '@/lib/server/stays/travelgatex/search';
 
 export const dynamic = 'force-dynamic';
@@ -106,6 +106,7 @@ export async function GET(req: NextRequest) {
             VALUES (${key}, ${seedDestCode})
             ON CONFLICT (city_key) DO UPDATE SET destination_code = EXCLUDED.destination_code
         `;
+        setDestCodeCache(key, seedDestCode);
         return NextResponse.json({ ok: true, seeded: key, code: seedDestCode });
     }
 

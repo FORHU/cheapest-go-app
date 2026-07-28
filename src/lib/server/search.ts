@@ -173,6 +173,11 @@ async function filterCitiesWithHotels(
 // In-process cache — avoids repeat DB lookups within the same server process
 const _destCodeCache = new Map<string, string>();
 
+/** Overwrite an entry in the in-process dest code cache (e.g. after manually seeding the DB). */
+export function setDestCodeCache(cityKey: string, destCode: string): void {
+    _destCodeCache.set(cityKey.toLowerCase().trim(), destCode);
+}
+
 /**
  * Resolve a TravelgateX destination code for a given city.
  * Checks in-process cache → DB → TGX API (in that order).
