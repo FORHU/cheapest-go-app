@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { searchTravelgateX } from '@/lib/server/travelgatex';
+import { getSqlAdmin } from '@/lib/db/postgres';
 
 export const dynamic = 'force-dynamic';
 
@@ -22,6 +23,18 @@ export async function GET(req: NextRequest) {
     }
 
     const { searchParams } = new URL(req.url);
+
+    // Cache flush: DELETE FROM hotel_search_cache (optionally filtered by city prefix)
+    // Usage: GET /api/debug/tgx?flushCache=1  or  ?flushCache=singapore
+    const flushCache = searchParams.get('flushCache');
+    if (flushCache !== null) {
+        const sql = getSqlAdmin();
+        const city = flushCache && flushCache !== '1' ? flushCache.toLowerCase() : null;
+        const result = city
+            ? await sql`DELETE FROM hotel_search_cache WHERE cache_key LIKE ${'city:' + city + '%'}`
+            : await sql`DELETE FROM hotel_search_cache`;
+        return NextResponse.json({ ok: true, deleted: Number(result.count ?? 0), filter: city ?? 'all' });
+    }
 
     // Hotel name lookup — search ETG multicomplete to get the numeric OTV hotel ID
     const hotelName = searchParams.get('hotelName');
