@@ -250,7 +250,7 @@ export async function POST(req: Request) {
             });
         }
 
-        return Response.json({ success: false, error: 'Only TravelgateX offers are supported' }, { status: 400 });
+        return Response.json({ success: false, error: 'This hotel is not available for instant online booking. Please try a different hotel.' }, { status: 400 });
     } catch (err) {
         return Response.json(
             { success: false, error: safeError(err, 'prebook') },
