@@ -461,8 +461,8 @@ async function backfillHotelContent(contentMap: Map<string, any>): Promise<void>
                                   THEN EXCLUDED.name ELSE hotel_content.name END,
                     images      = CASE WHEN array_length(hotel_content.images, 1) > 0
                                   THEN hotel_content.images ELSE EXCLUDED.images END,
-                    lat         = CASE WHEN hotel_content.lat  != 0 THEN hotel_content.lat  ELSE EXCLUDED.lat  END,
-                    lng         = CASE WHEN hotel_content.lng  != 0 THEN hotel_content.lng  ELSE EXCLUDED.lng  END,
+                    lat         = CASE WHEN EXCLUDED.lat  != 0 THEN EXCLUDED.lat  ELSE hotel_content.lat  END,
+                    lng         = CASE WHEN EXCLUDED.lng  != 0 THEN EXCLUDED.lng  ELSE hotel_content.lng  END,
                     address     = COALESCE(hotel_content.address,     EXCLUDED.address),
                     city        = COALESCE(hotel_content.city,        EXCLUDED.city),
                     country     = COALESCE(hotel_content.country,     EXCLUDED.country),
