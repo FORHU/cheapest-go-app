@@ -95,6 +95,20 @@ export async function GET(req: NextRequest) {
         return NextResponse.json({ city: resolveCity, cc, withCC, withoutCC });
     }
 
+    // Manually seed a dest code: GET /api/debug/tgx?seedDest=bangkok&code=178236
+    const seedDestCity = searchParams.get('seedDest');
+    const seedDestCode = searchParams.get('code');
+    if (seedDestCity && seedDestCode) {
+        const sql = getSqlAdmin();
+        const key = seedDestCity.toLowerCase().trim();
+        await sql`
+            INSERT INTO tgx_destination_cache (city_key, destination_code)
+            VALUES (${key}, ${seedDestCode})
+            ON CONFLICT (city_key) DO UPDATE SET destination_code = EXCLUDED.destination_code
+        `;
+        return NextResponse.json({ ok: true, seeded: key, code: seedDestCode });
+    }
+
     // Show tgx_destination_cache entries matching a prefix
     // Usage: GET /api/debug/tgx?destCache=seoul
     const destCacheQuery = searchParams.get('destCache');
