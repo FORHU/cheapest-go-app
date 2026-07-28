@@ -742,8 +742,15 @@ export async function runTgxSearch(params: TgxSearchParams) {
                 _backgroundRefreshing.add(key);
                 _runTgxSearch(params)
                     .then(result => {
-                        if (Array.isArray(result?.data) && result.data.length > 0) {
+                        const hasCityResults = Array.isArray(result?.data) && result.data.length > 0;
+                        const hasHotelRooms  = !Array.isArray(result?.data)
+                            && Array.isArray(result?.data?.roomTypes)
+                            && result.data.roomTypes.length > 0;
+                        if (hasCityResults || hasHotelRooms) {
                             setHotelSearchCache(key, result, ttl).catch(() => {});
+                        } else if (Array.isArray(result?.data)) {
+                            // Cache empty city result briefly so it overwrites stale wrong-country data.
+                            setHotelSearchCache(key, result, 5).catch(() => {});
                         }
                     })
                     .catch((e: any) => console.error('[hotel-cache] Background refresh failed:', e.message))
@@ -774,6 +781,9 @@ export async function runTgxSearch(params: TgxSearchParams) {
                     && result.data.roomTypes.length > 0;
                 if (hasCityResults || hasHotelRooms) {
                     setHotelSearchCache(key, result, ttl).catch(() => {});
+                } else if (Array.isArray(result?.data)) {
+                    // Cache empty city result briefly so it overwrites stale wrong-country data.
+                    setHotelSearchCache(key, result, 5).catch(() => {});
                 }
             }
             return result;
