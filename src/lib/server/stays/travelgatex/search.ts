@@ -626,9 +626,20 @@ async function runCityFallback(
     if (otvCodes.length < MIN_PORTFOLIO_SIZE) {
         console.log(`[tgx-search] DB has ${otvCodes.length} hotels for "${cityName}" (< ${MIN_PORTFOLIO_SIZE}) — querying OTV portfolio`);
         const otv = await fetchOtvHotelCodesByCity(cityName, resolvedCode ?? undefined);
-        const filteredCodes = filterByCountryBbox(otv.codes, otv.contentMap, countryCode);
+        // Lenient pre-search filter: only exclude OTV hotels with confirmed wrong-country
+        // coordinates. Hotels with lat=0/lng=0 (OTV data gap) are kept — OTV returned them
+        // for this city so they're likely valid, and excluding them thins the search pool.
+        const otvBbox = countryCode ? COUNTRY_BBOX[countryCode.toUpperCase()] : null;
+        const filteredCodes = !otvBbox ? otv.codes : otv.codes.filter(code => {
+            const c = otv.contentMap.get(code);
+            if (!c) return true;
+            const lat = Number(c.lat ?? 0);
+            const lng = Number(c.lng ?? 0);
+            if (!lat && !lng) return true; // no coords from OTV — trust city assignment
+            return lat >= otvBbox.minLat && lat <= otvBbox.maxLat && lng >= otvBbox.minLng && lng <= otvBbox.maxLng;
+        });
         if (filteredCodes.length < otv.codes.length) {
-            console.warn(`[tgx-search] Filtered ${otv.codes.length - filteredCodes.length} out-of-country hotels for "${cityName}" (${countryCode}) — likely OTV dest-code mismatch`);
+            console.warn(`[tgx-search] Filtered ${otv.codes.length - filteredCodes.length} confirmed out-of-country OTV hotels for "${cityName}" (${countryCode})`);
         }
         // Merge: OTV portfolio as base, DB codes fill in any the portfolio missed
         const otvSet = new Set(filteredCodes);
@@ -939,11 +950,21 @@ async function buildCityResults(
     ]);
 
     // Filter out hotels whose lat/lng fall outside the expected country bounding box.
-    // OTV sometimes assigns a destination code to hotels in the wrong country (e.g. a
-    // Wewoka, Oklahoma hotel tagged with the Paris dest-code), so we drop them here.
-    const filteredCodes = filterByCountryBbox(hotelCodes, contentMap, countryCode);
+    // Lenient: only remove hotels with CONFIRMED wrong-country coordinates. Hotels with
+    // no DB/OTV entry, or with zero coordinates, are included — they may be valid hotels
+    // we haven't catalogued yet. Excluding them causes "No hotels found" for major cities
+    // on first search before hotel_content is seeded.
+    const bbox = countryCode ? COUNTRY_BBOX[countryCode.toUpperCase()] : null;
+    const filteredCodes = !bbox ? hotelCodes : hotelCodes.filter(code => {
+        const c = contentMap.get(code) ?? preloadedContent.get(code);
+        if (!c) return true; // not catalogued yet — include
+        const lat = Number(c.lat ?? c.latitude ?? 0);
+        const lng = Number(c.lng ?? c.longitude ?? 0);
+        if (!lat && !lng) return true; // no coordinates — include
+        return lat >= bbox.minLat && lat <= bbox.maxLat && lng >= bbox.minLng && lng <= bbox.maxLng;
+    });
     if (filteredCodes.length < hotelCodes.length) {
-        console.warn(`[tgx-search] buildCityResults: filtered ${hotelCodes.length - filteredCodes.length} out-of-country hotels for "${cityName}" (${countryCode})`);
+        console.warn(`[tgx-search] buildCityResults: filtered ${hotelCodes.length - filteredCodes.length} confirmed out-of-country hotels for "${cityName}" (${countryCode})`);
     }
 
     // When OTV returns null hotelName (data quality gap for some regions),
