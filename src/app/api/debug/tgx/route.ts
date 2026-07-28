@@ -216,7 +216,6 @@ export async function GET(req: NextRequest) {
     // Usage: GET /api/debug/tgx?rawPortfolio=1&city=Phuket
     if (searchParams.get('rawPortfolio')) {
         try {
-            const { resolveTgxDestinationCode } = await import('@/lib/server/search');
             const destCode = await resolveTgxDestinationCode(city, undefined).catch(() => null);
             const cfg = getTgxConfig();
             const criteria: Record<string, unknown> = { access: cfg.accessCode, maxSize: 200 };
@@ -232,7 +231,25 @@ export async function GET(req: NextRequest) {
                 lat: e?.node?.hotelData?.location?.coordinates?.latitude,
                 lng: e?.node?.hotelData?.location?.coordinates?.longitude,
             }));
-            return NextResponse.json({ city, destCode, total: hotels.length, sample: hotels.slice(0, 10) });
+            return NextResponse.json({ city, destCode, total: hotels.length, sample: hotels.slice(0, 10), rawEdges: edges.slice(0, 3) });
+        } catch (e: any) {
+            return NextResponse.json({ error: String(e?.message ?? e) }, { status: 500 });
+        }
+    }
+
+    // ?testDestCode=CODE — test an arbitrary TGX dest code for availability (no city cache lookup)
+    // Usage: GET /api/debug/tgx?testDestCode=178236&checkin=2026-08-10&checkout=2026-08-12
+    const testDestCode = searchParams.get('testDestCode');
+    if (testDestCode) {
+        try {
+            const cfg = getTgxConfig();
+            const criteria = { checkIn: checkin, checkOut: checkout, occupancies: [{ paxes: [{ age: 30 }, { age: 30 }] }], nationality: 'KR', currency: 'USD', destinations: [testDestCode] };
+            const result = await tgxGraphQL('query Search($criteria:HotelCriteriaSearchInput!,$settings:HotelSettingsInput){hotelX{search(criteria:$criteria,settings:$settings){options{hotelCode paymentType status price{gross net currency}}errors{code description}}}}', { criteria, settings: getTgxSettings(cfg, 18000, true) });
+            const options = result?.data?.hotelX?.search?.options ?? [];
+            const errors = result?.data?.hotelX?.search?.errors ?? [];
+            const byPayment: Record<string, number> = {};
+            for (const o of options) { byPayment[o.paymentType] = (byPayment[o.paymentType] || 0) + 1; }
+            return NextResponse.json({ testDestCode, totalOptions: options.length, byPaymentType: byPayment, sample: options.slice(0, 3), errors });
         } catch (e: any) {
             return NextResponse.json({ error: String(e?.message ?? e) }, { status: 500 });
         }
