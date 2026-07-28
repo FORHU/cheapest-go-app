@@ -83,6 +83,34 @@ export async function GET(req: NextRequest) {
         return NextResponse.json({ ok: true, reset: Number(result.count ?? 0), city: key });
     }
 
+    // Return ALL dest codes from TGX autocomplete for a city (not just the best-match)
+    // Usage: GET /api/debug/tgx?allDestCodes=Phuket
+    const allDestCodesCity = searchParams.get('allDestCodes');
+    if (allDestCodesCity) {
+        try {
+            const cfg = getTgxConfig();
+            const result = await tgxGraphQL(
+                `query TgxAllCodes($access: ID!, $text: String!, $maxSize: Int) {
+                   hotelX {
+                     destinationSearcher(criteria: { access: $access, text: $text, maxSize: $maxSize }) {
+                       ... on DestinationData { code type texts { text language } }
+                     }
+                   }
+                 }`,
+                { access: cfg.accessCode, text: allDestCodesCity, maxSize: 20 }
+            );
+            const items: any[] = result?.data?.hotelX?.destinationSearcher ?? [];
+            const codes = items.map((i: any) => ({
+                code: i.code,
+                type: i.type,
+                names: (i.texts ?? []).filter((t: any) => t.language === 'en').map((t: any) => t.text),
+            }));
+            return NextResponse.json({ city: allDestCodesCity, total: items.length, codes });
+        } catch (e: any) {
+            return NextResponse.json({ error: String(e?.message ?? e) }, { status: 500 });
+        }
+    }
+
     // Resolve dest code with AND without countryCode to compare
     // Usage: GET /api/debug/tgx?resolveCity=Seoul&cc=KR
     const resolveCity = searchParams.get('resolveCity');
