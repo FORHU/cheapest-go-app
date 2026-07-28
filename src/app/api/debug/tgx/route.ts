@@ -142,6 +142,32 @@ export async function GET(req: NextRequest) {
     const checkout = searchParams.get('checkout') || '2026-07-05';
     const adults = Number(searchParams.get('adults') || '2');
 
+    // ?rawPortfolio=1 — run OTV hotel portfolio query for a city and show codes before bbox filter
+    // Usage: GET /api/debug/tgx?rawPortfolio=1&city=Phuket
+    if (searchParams.get('rawPortfolio')) {
+        try {
+            const { resolveTgxDestinationCode } = await import('@/lib/server/search');
+            const destCode = await resolveTgxDestinationCode(city, undefined).catch(() => null);
+            const cfg = getTgxConfig();
+            const criteria: Record<string, unknown> = { access: cfg.accessCode, maxSize: 200 };
+            if (destCode) criteria.destinationCodes = [destCode];
+            const result = await tgxGraphQL(
+                `query OtvPortfolio($criteria: HotelXHotelListInput!) { hotelX { hotels(criteria: $criteria) { edges { node { hotelData { code hotelName location { coordinates { latitude longitude } } } } } } } }`,
+                { criteria }
+            );
+            const edges: any[] = result?.data?.hotelX?.hotels?.edges ?? [];
+            const hotels = edges.map((e: any) => ({
+                code: e?.node?.hotelData?.code,
+                name: e?.node?.hotelData?.hotelName,
+                lat: e?.node?.hotelData?.location?.coordinates?.latitude,
+                lng: e?.node?.hotelData?.location?.coordinates?.longitude,
+            }));
+            return NextResponse.json({ city, destCode, total: hotels.length, sample: hotels.slice(0, 10) });
+        } catch (e: any) {
+            return NextResponse.json({ error: String(e?.message ?? e) }, { status: 500 });
+        }
+    }
+
     // ?testHotel=hotelCode — search TGX with a single hotel code, show ALL options (any payment type)
     const testHotelCode = searchParams.get('testHotel');
     if (testHotelCode) {
