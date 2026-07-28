@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { searchTravelgateX } from '@/lib/server/travelgatex';
 import { getSqlAdmin } from '@/lib/db/postgres';
+import { tgxGraphQL, getTgxConfig, getTgxSettings } from '@/lib/server/stays/travelgatex/client';
+import { resolveTgxDestinationCode } from '@/lib/server/search';
 
 export const dynamic = 'force-dynamic';
 
@@ -102,18 +104,20 @@ export async function GET(req: NextRequest) {
 
     // ?rawDest=1 — run raw TGX dest-code search and show payment type breakdown
     if (searchParams.get('rawDest')) {
-        const { tgxGraphQL, getTgxConfig, getTgxSettings } = await import('@/lib/server/stays/travelgatex/client');
-        const { resolveTgxDestinationCode } = await import('@/lib/server/search');
-        const cfg = getTgxConfig();
-        const destCode = await resolveTgxDestinationCode(city, undefined).catch(() => null);
-        if (!destCode) return NextResponse.json({ error: 'Could not resolve dest code', city });
-        const criteria = { checkIn: checkin, checkOut: checkout, occupancies: [{ paxes: [{ age: 30 }, { age: 30 }] }], nationality: 'KR', currency: 'USD', destinations: [destCode] };
-        const result = await tgxGraphQL('query Search($criteria:HotelXSearchInput!,$settings:HotelSettingsInput){hotelX{search(criteria:$criteria,settings:$settings){options{hotelCode paymentType status price{gross net currency}}errors{code description}}}}', { criteria, settings: getTgxSettings(cfg, 18000, true) });
-        const options = result?.data?.hotelX?.search?.options ?? [];
-        const errors = result?.data?.hotelX?.search?.errors ?? [];
-        const byPayment: Record<string, number> = {};
-        for (const o of options) { byPayment[o.paymentType] = (byPayment[o.paymentType] || 0) + 1; }
-        return NextResponse.json({ city, destCode, totalOptions: options.length, byPaymentType: byPayment, errors: errors.slice(0, 3) });
+        try {
+            const cfg = getTgxConfig();
+            const destCode = await resolveTgxDestinationCode(city, undefined).catch(() => null);
+            if (!destCode) return NextResponse.json({ error: 'Could not resolve dest code', city });
+            const criteria = { checkIn: checkin, checkOut: checkout, occupancies: [{ paxes: [{ age: 30 }, { age: 30 }] }], nationality: 'KR', currency: 'USD', destinations: [destCode] };
+            const result = await tgxGraphQL('query Search($criteria:HotelXSearchInput!,$settings:HotelSettingsInput){hotelX{search(criteria:$criteria,settings:$settings){options{hotelCode paymentType status price{gross net currency}}errors{code description}}}}', { criteria, settings: getTgxSettings(cfg, 18000, true) });
+            const options = result?.data?.hotelX?.search?.options ?? [];
+            const errors = result?.data?.hotelX?.search?.errors ?? [];
+            const byPayment: Record<string, number> = {};
+            for (const o of options) { byPayment[o.paymentType] = (byPayment[o.paymentType] || 0) + 1; }
+            return NextResponse.json({ city, destCode, totalOptions: options.length, byPaymentType: byPayment, errors: errors.slice(0, 3) });
+        } catch (e: any) {
+            return NextResponse.json({ error: String(e?.message ?? e), city, stack: e?.stack?.split('\n').slice(0, 5) }, { status: 500 });
+        }
     }
 
     const payload = { checkin, checkout, adults, children: 0, rooms: 1, currency: 'USD', cityName: city, countryCode: '' };
