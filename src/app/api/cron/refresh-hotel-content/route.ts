@@ -16,7 +16,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getSqlAdmin } from '@/lib/db/postgres';
 
 export const dynamic = 'force-dynamic';
-export const maxDuration = 300;
 
 const ETG_BASE = 'https://api.worldota.net/api/b2b/v3';
 
@@ -71,7 +70,7 @@ export async function GET(req: NextRequest) {
         SELECT hotel_id FROM hotel_content
         WHERE city ILIKE ANY(${sql.array(cityKeys.map(c => `%${c}%`))})
           AND (fetched_at IS NULL OR fetched_at < now() - interval '20 hours')
-        LIMIT 500
+        LIMIT 50
     `;
 
     console.log(`[refresh-hotel-content] ${stale.length} stale hotels across ${cityKeys.length} cities`);
