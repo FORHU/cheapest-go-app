@@ -220,6 +220,22 @@ export async function POST(req: NextRequest) {
                     const mappable = catalogHotels.filter((h: any) => h.lat && h.lng);
                     console.log(`[stream] phase1 sending: ${catalogHotels.length} hotels (${mappable.length} mappable) at ${elapsed()}`);
                     send({ type: 'hotels', data: catalogHotels, allMappable: mappable, totalCount: catalogHotels.length, source: 'catalog' });
+
+                    // Infer countryCode from catalog when not provided by the client.
+                    // Searching "Phuket" (no country suffix) leaves body.countryCode empty,
+                    // which makes filterByCountryBbox a no-op and lets wrong-country hotels through.
+                    if (!body.countryCode) {
+                        const freq: Record<string, number> = {};
+                        for (const h of catalogHotels) {
+                            const c = (h.country as string | undefined)?.toUpperCase().slice(0, 2);
+                            if (c && c.length === 2) freq[c] = (freq[c] || 0) + 1;
+                        }
+                        const dominant = Object.entries(freq).sort(([, a], [, b]) => b - a)[0]?.[0];
+                        if (dominant) {
+                            body.countryCode = dominant;
+                            console.log(`[stream] inferred countryCode "${dominant}" for "${city}" from catalog`);
+                        }
+                    }
                 } else {
                     console.log(`[stream] phase1 empty — hotel_content has no hotels for "${city}" (countryCode: ${body.countryCode ?? 'none'})`);
                 }
@@ -313,12 +329,8 @@ export async function POST(req: NextRequest) {
                     console.warn(`[stream] phase2 TGX ${isTimeout ? 'timed out' : 'failed'} for "${city}": ${tgxErr.message}`);
                     tgxResult = { data: [], allMappable: [] };
                 }
-                // Filter out ETG-fallback hotels — they have no TGX booking path and
-                // will error at prebook with "Only TravelgateX offers are supported".
-                const tgxHotels: any[] = Array.isArray(tgxResult.data)
-                    ? tgxResult.data.filter((h: any) => h.provider !== 'etg')
-                    : [];
-                const tgxMappable: any[] = tgxHotels.filter((h: any) => h.lat && h.lng);
+                const tgxHotels: any[] = Array.isArray(tgxResult.data) ? tgxResult.data : [];
+                const tgxMappable: any[] = tgxResult.allMappable ?? [];
                 console.log(`[stream] phase2 TGX done: ${tgxHotels.length} hotels in ${Date.now() - p2Start}ms (total ${elapsed()})`);
 
                 if (catalogHotels.length > 0) {
