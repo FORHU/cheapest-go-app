@@ -83,6 +83,19 @@ export async function GET(req: NextRequest) {
         return NextResponse.json({ ok: true, reset: Number(result.count ?? 0), city: key });
     }
 
+    // Show tgx_destination_cache entries matching a prefix
+    // Usage: GET /api/debug/tgx?destCache=seoul
+    const destCacheQuery = searchParams.get('destCache');
+    if (destCacheQuery !== null) {
+        const sql = getSqlAdmin();
+        const rows = await sql<{ city_key: string; destination_code: string }[]>`
+            SELECT city_key, destination_code FROM tgx_destination_cache
+            WHERE city_key ILIKE ${'%' + destCacheQuery.toLowerCase() + '%'}
+            ORDER BY city_key LIMIT 20
+        `;
+        return NextResponse.json({ query: destCacheQuery, count: rows.length, rows });
+    }
+
     // Purge wrong-source hotels: delete content_source='tgx' rows with numeric IDs for a city.
     // These are wrong-country hotels backfilled from old bad TGX dest-code results.
     // Usage: GET /api/debug/tgx?purgeWrong=Phuket
