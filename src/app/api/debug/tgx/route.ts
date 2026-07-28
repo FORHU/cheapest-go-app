@@ -199,8 +199,14 @@ export async function GET(req: NextRequest) {
             const options = result?.data?.hotelX?.search?.options ?? [];
             const errors = result?.data?.hotelX?.search?.errors ?? [];
             const byPayment: Record<string, number> = {};
-            for (const o of options) { byPayment[o.paymentType] = (byPayment[o.paymentType] || 0) + 1; }
-            return NextResponse.json({ city, destCode, totalOptions: options.length, byPaymentType: byPayment, errors: errors.slice(0, 3) });
+            const codeFormats: Record<string, number> = {};
+            for (const o of options) {
+                byPayment[o.paymentType] = (byPayment[o.paymentType] || 0) + 1;
+                const fmt = /^\d+$/.test(o.hotelCode) ? 'numeric' : /^[A-Z]{2}\d+$/.test(o.hotelCode) ? 'XX000' : 'other';
+                codeFormats[fmt] = (codeFormats[fmt] || 0) + 1;
+            }
+            const sampleCodes = [...new Set(options.slice(0, 20).map((o: any) => o.hotelCode))];
+            return NextResponse.json({ city, destCode, totalOptions: options.length, byPaymentType: byPayment, codeFormats, sampleCodes, errors: errors.slice(0, 3) });
         } catch (e: any) {
             return NextResponse.json({ error: String(e?.message ?? e), city, stack: e?.stack?.split('\n').slice(0, 5) }, { status: 500 });
         }
