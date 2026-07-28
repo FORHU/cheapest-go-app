@@ -722,9 +722,6 @@ function SearchMapView({
 
     return (
         <div className="flex flex-col h-full w-full">
-            {/* ── Search refinement bar ── */}
-            <SearchRefinementBar rawSearchParams={rawSearchParams} />
-
             {/* ── Top bar ── */}
             <div className="shrink-0 bg-white dark:bg-slate-950 z-30 relative border-b border-slate-100 dark:border-slate-800/60 landscape-compact-topbar p-[10px]">
                 <div className="max-w-[1400px] mx-auto px-3 flex items-center gap-2">
@@ -818,8 +815,11 @@ function SearchMapView({
                 </div>
             </div>
 
-            {/* ── Filter panel (below top bar) ── */}
+            {/* ── Filter panel (below top bar, directly under its Filters button) ── */}
             {filterPanel}
+
+            {/* ── Search refinement bar ── */}
+            <SearchRefinementBar rawSearchParams={rawSearchParams} />
 
             {/* ── Desktop Split layout ── */}
             <div className="hidden lg:flex flex-1 min-h-0 relative gap-4 p-4">
@@ -890,7 +890,7 @@ function SearchMapView({
                         hoveredId={hoveredId}
                         onHoverId={setHoveredId}
                         onViewDetails={handleViewDetails}
-                        searchOverlayClassName="absolute top-4 left-20 z-20 w-[300px] md:w-[360px]"
+                        searchOverlayClassName="absolute top-4 left-1/2 -translate-x-1/2 z-20 w-[300px] md:w-[360px]"
                         defaultCenter={fallbackCoords ?? undefined}
                     />
                 </div>
