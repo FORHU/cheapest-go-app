@@ -3,6 +3,7 @@ import { searchTravelgateX } from '@/lib/server/travelgatex';
 import { getSqlAdmin } from '@/lib/db/postgres';
 import { tgxGraphQL, getTgxConfig, getTgxSettings } from '@/lib/server/stays/travelgatex/client';
 import { resolveTgxDestinationCode } from '@/lib/server/search';
+import { clearFailedDestCodesCache } from '@/lib/server/stays/travelgatex/search';
 
 export const dynamic = 'force-dynamic';
 
@@ -45,6 +46,7 @@ export async function GET(req: NextRequest) {
         const sql = getSqlAdmin();
         if (failedCodes === 'clear') {
             const result = await sql`DELETE FROM tgx_failed_dest_codes`;
+            clearFailedDestCodesCache(); // also wipe the in-memory set on this server instance
             return NextResponse.json({ ok: true, cleared: Number(result.count ?? 0) });
         }
         const rows = await sql<{ dest_code: string; city_key: string }[]>`SELECT dest_code, city_key FROM tgx_failed_dest_codes ORDER BY city_key`;

@@ -532,6 +532,12 @@ function loadFailedDestCodes(): Promise<void> {
     return _failedDestCodesPromise;
 }
 
+/** Clear the in-memory failed-dest-codes set (e.g. after clearing the DB table). */
+export function clearFailedDestCodesCache(): void {
+    _failedDestCodes.clear();
+    _failedDestCodesPromise = null; // force reload from DB on next request
+}
+
 function persistFailedDestCode(destCode: string, cityName = ''): void {
     _failedDestCodes.add(destCode);
     getSqlAdmin()`
