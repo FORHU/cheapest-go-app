@@ -111,7 +111,7 @@ export async function POST(req: NextRequest) {
             }
         }
 
-        // Apply platform markup — bundle rate (12%) when paired with a flight, standalone rate (15%) otherwise.
+        // Apply platform markup — bundle rate (4%) when paired with a flight, standalone rate (5%) otherwise.
         // See src/lib/pricing.ts for full strategy documentation.
         const markupRate = bundleFlightId ? BUNDLE_MARKUP : HOTEL_MARKUP;
         const pricing = applyMarkup(amount, markupRate);

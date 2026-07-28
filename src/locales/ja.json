@@ -313,6 +313,7 @@
             "roomConfirmed": "客室確定",
             "roomNights": "1室 × {nights}{count}",
             "taxesAndFees": "税金と手数料",
+            "serviceFee": "プラットフォームサービス料",
             "total": "合計",
             "updateDates": "日程を更新",
             "youSave": "このプロモで{amount}お得",

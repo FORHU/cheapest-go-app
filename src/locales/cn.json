@@ -313,6 +313,7 @@
             "roomConfirmed": "房间已确认",
             "roomNights": "1间客房 × {nights} {count}",
             "taxesAndFees": "税费",
+            "serviceFee": "平台服务费",
             "total": "总计",
             "updateDates": "更新日期",
             "youSave": "使用此优惠节省{amount}",
