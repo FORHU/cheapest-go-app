@@ -109,7 +109,7 @@ export async function GET(req: NextRequest) {
             const destCode = await resolveTgxDestinationCode(city, undefined).catch(() => null);
             if (!destCode) return NextResponse.json({ error: 'Could not resolve dest code', city });
             const criteria = { checkIn: checkin, checkOut: checkout, occupancies: [{ paxes: [{ age: 30 }, { age: 30 }] }], nationality: 'KR', currency: 'USD', destinations: [destCode] };
-            const result = await tgxGraphQL('query Search($criteria:HotelXSearchInput!,$settings:HotelSettingsInput){hotelX{search(criteria:$criteria,settings:$settings){options{hotelCode paymentType status price{gross net currency}}errors{code description}}}}', { criteria, settings: getTgxSettings(cfg, 18000, true) });
+            const result = await tgxGraphQL('query Search($criteria:HotelCriteriaSearchInput!,$settings:HotelSettingsInput){hotelX{search(criteria:$criteria,settings:$settings){options{hotelCode paymentType status price{gross net currency}}errors{code description}}}}', { criteria, settings: getTgxSettings(cfg, 18000, true) });
             const options = result?.data?.hotelX?.search?.options ?? [];
             const errors = result?.data?.hotelX?.search?.errors ?? [];
             const byPayment: Record<string, number> = {};
