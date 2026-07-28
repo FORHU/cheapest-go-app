@@ -863,7 +863,10 @@ async function _runTgxSearch(params: TgxSearchParams) {
 
         return runCityFallback(
             cityName, resolvedCountry, baseCriteria, settings,
-            resolveTgxDestinationCode(cityName, resolvedCountry).catch(() => undefined),
+            // Pass undefined so resolution always uses the CITY-keyed DB cache (e.g. "seoul" → 3124).
+            // Passing countryCode creates a different key ("seoul:kr") that misses cache, forces a
+            // live TGX destinationSearcher call, and often returns undefined on production.
+            resolveTgxDestinationCode(cityName, undefined).catch(() => undefined),
             fetchHotelCodesByCity(cityName, resolvedCountry).catch(() => []),
         );
     } else {
