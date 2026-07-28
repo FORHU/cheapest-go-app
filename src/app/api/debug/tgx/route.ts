@@ -36,6 +36,36 @@ export async function GET(req: NextRequest) {
         return NextResponse.json({ ok: true, deleted: Number(result.count ?? 0), filter: city ?? 'all' });
     }
 
+    // Reset wrong-country coordinates for a city so the next OTV backfill can fix them.
+    // Zeroes out lat/lng for hotels whose coordinates fall outside the city's country bbox.
+    // Usage: GET /api/debug/tgx?resetCoords=Singapore
+    const resetCoords = searchParams.get('resetCoords');
+    if (resetCoords) {
+        const sql = getSqlAdmin();
+        const BBOX: Record<string, [number, number, number, number]> = {
+            singapore: [1.1, 1.6, 103.6, 104.1],
+            phuket:    [7.0, 9.0, 97.5, 100.0],
+            bangkok:   [13.4, 14.0, 100.2, 100.9],
+            seoul:     [37.3, 37.8, 126.7, 127.3],
+            tokyo:     [35.5, 35.9, 139.4, 139.9],
+            bali:      [-9.0, -8.0, 114.5, 115.8],
+        };
+        const key = resetCoords.toLowerCase().trim();
+        const bbox = BBOX[key];
+        if (!bbox) {
+            return NextResponse.json({ error: `Unknown city "${resetCoords}". Known: ${Object.keys(BBOX).join(', ')}` }, { status: 400 });
+        }
+        const [minLat, maxLat, minLng, maxLng] = bbox;
+        const result = await sql`
+            UPDATE hotel_content
+            SET lat = 0, lng = 0
+            WHERE city ILIKE ${'%' + key + '%'}
+              AND lat != 0
+              AND NOT (lat BETWEEN ${minLat} AND ${maxLat} AND lng BETWEEN ${minLng} AND ${maxLng})
+        `;
+        return NextResponse.json({ ok: true, reset: Number(result.count ?? 0), city: key });
+    }
+
     // Hotel name lookup — search ETG multicomplete to get the numeric OTV hotel ID
     const hotelName = searchParams.get('hotelName');
     if (hotelName) {
