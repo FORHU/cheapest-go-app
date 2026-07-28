@@ -1031,14 +1031,21 @@ async function runCityFallback(
     let otvCodes = await prefetchHotelCodes;
     let otvContentMap = new Map<string, any>();
 
-    if (otvCodes.length === 0) {
-        console.log(`[tgx-search] DB empty for "${cityName}" — querying OTV portfolio`);
+    // Fetch the full OTV portfolio when the DB catalog is empty OR sparse (< 100 hotels).
+    // A sparse catalog means prior searches only seeded a handful of hotels, so we'd
+    // send TGX only those few codes and miss hundreds of available properties.
+    const MIN_PORTFOLIO_SIZE = 100;
+    if (otvCodes.length < MIN_PORTFOLIO_SIZE) {
+        console.log(`[tgx-search] DB has ${otvCodes.length} hotels for "${cityName}" (< ${MIN_PORTFOLIO_SIZE}) — querying OTV portfolio`);
         const otv = await fetchOtvHotelCodesByCity(cityName, resolvedCode ?? undefined);
         const filteredCodes = filterByCountryBbox(otv.codes, otv.contentMap, countryCode);
         if (filteredCodes.length < otv.codes.length) {
             console.warn(`[tgx-search] Filtered ${otv.codes.length - filteredCodes.length} out-of-country hotels for "${cityName}" (${countryCode}) — likely OTV dest-code mismatch`);
         }
-        otvCodes = filteredCodes;
+        // Merge: OTV portfolio as base, DB codes fill in any the portfolio missed
+        const otvSet = new Set(filteredCodes);
+        const merged = [...filteredCodes, ...otvCodes.filter(c => !otvSet.has(c))];
+        otvCodes = merged;
         otvContentMap = otv.contentMap;
     } else {
         // Codes exist in DB — sample up to 20 to detect null-name rows (OTV data quality gap).
