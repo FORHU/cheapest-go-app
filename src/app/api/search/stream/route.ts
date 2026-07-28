@@ -313,8 +313,12 @@ export async function POST(req: NextRequest) {
                     console.warn(`[stream] phase2 TGX ${isTimeout ? 'timed out' : 'failed'} for "${city}": ${tgxErr.message}`);
                     tgxResult = { data: [], allMappable: [] };
                 }
-                const tgxHotels: any[] = Array.isArray(tgxResult.data) ? tgxResult.data : [];
-                const tgxMappable: any[] = tgxResult.allMappable ?? [];
+                // Filter out ETG-fallback hotels — they have no TGX booking path and
+                // will error at prebook with "Only TravelgateX offers are supported".
+                const tgxHotels: any[] = Array.isArray(tgxResult.data)
+                    ? tgxResult.data.filter((h: any) => h.provider !== 'etg')
+                    : [];
+                const tgxMappable: any[] = tgxHotels.filter((h: any) => h.lat && h.lng);
                 console.log(`[stream] phase2 TGX done: ${tgxHotels.length} hotels in ${Date.now() - p2Start}ms (total ${elapsed()})`);
 
                 if (catalogHotels.length > 0) {
