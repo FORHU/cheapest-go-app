@@ -81,6 +81,24 @@ export async function GET(req: NextRequest) {
         return NextResponse.json({ ok: true, reset: Number(result.count ?? 0), city: key });
     }
 
+    // DB stats for a city: count hotel_content rows and sample a few hotel IDs
+    // Usage: GET /api/debug/tgx?dbStats=Phuket
+    const dbStatsCity = searchParams.get('dbStats');
+    if (dbStatsCity) {
+        const sql = getSqlAdmin();
+        const key = dbStatsCity.toLowerCase();
+        const rows = await sql<{ hotel_id: string; name: string; lat: number; lng: number; country: string }[]>`
+            SELECT hotel_id, name, lat, lng, country
+            FROM hotel_content
+            WHERE city ILIKE ${'%' + key + '%'}
+            LIMIT 200
+        `;
+        const sample = rows.slice(0, 5).map(r => ({ hotel_id: r.hotel_id, name: r.name, lat: r.lat, lng: r.lng, country: r.country }));
+        const countries: Record<string, number> = {};
+        for (const r of rows) { countries[r.country ?? 'null'] = (countries[r.country ?? 'null'] || 0) + 1; }
+        return NextResponse.json({ city: dbStatsCity, total: rows.length, byCountry: countries, sample });
+    }
+
     // Hotel name lookup — search ETG multicomplete to get the numeric OTV hotel ID
     const hotelName = searchParams.get('hotelName');
     if (hotelName) {
