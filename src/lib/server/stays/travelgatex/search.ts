@@ -366,6 +366,7 @@ function parseOtvEdges(edges: any[], cityName: string): Map<string, any> {
 async function fetchOtvHotelCodesByCity(
     cityName: string,
     destinationCode?: string,
+    countryCode?: string,
 ): Promise<{ codes: string[]; contentMap: Map<string, any> }> {
     try {
         const cfg = getTgxConfig();
@@ -404,7 +405,19 @@ async function fetchOtvHotelCodesByCity(
         console.log(`[tgx-search] OTV portfolio returned ${codes.length} hotel codes for "${cityName}"`);
 
         if (codes.length > 0) {
-            backfillHotelContent(contentMap).catch((err: any) =>
+            // Before persisting, drop hotels whose coordinates are confirmed outside the
+            // expected country — TGX destination codes sometimes return wrong-country hotels.
+            // Hotels with 0,0 coords (OTV data gap) are kept since we can't verify them.
+            const bbox = countryCode ? COUNTRY_BBOX[countryCode.toUpperCase()] : null;
+            const backfillMap = bbox
+                ? new Map([...contentMap].filter(([, c]) => {
+                    const lat = Number(c.lat ?? 0);
+                    const lng = Number(c.lng ?? 0);
+                    if (!lat && !lng) return true;
+                    return lat >= bbox.minLat && lat <= bbox.maxLat && lng >= bbox.minLng && lng <= bbox.maxLng;
+                }))
+                : contentMap;
+            backfillHotelContent(backfillMap).catch((err: any) =>
                 console.warn('[tgx-search] hotel_content backfill failed:', err.message)
             );
             // OTV often has null hotelName for European/global cities.
@@ -579,7 +592,7 @@ async function runCityFallback(
                 // Dest-code path never calls fetchOtvHotelCodesByCity, so hotel_content stays empty.
                 // Seed it now (background) so the instant catalog shows up on the next request.
                 if (cityName) {
-                    fetchOtvHotelCodesByCity(cityName, resolvedCode)
+                    fetchOtvHotelCodesByCity(cityName, resolvedCode, countryCode)
                         .then(otv => {
                             if (otv.codes.length > 0) {
                                 const nullNames = otv.codes.filter(c => !otv.contentMap.get(c)?.name);
@@ -625,7 +638,7 @@ async function runCityFallback(
     const MIN_PORTFOLIO_SIZE = 100;
     if (otvCodes.length < MIN_PORTFOLIO_SIZE) {
         console.log(`[tgx-search] DB has ${otvCodes.length} hotels for "${cityName}" (< ${MIN_PORTFOLIO_SIZE}) — querying OTV portfolio`);
-        const otv = await fetchOtvHotelCodesByCity(cityName, resolvedCode ?? undefined);
+        const otv = await fetchOtvHotelCodesByCity(cityName, resolvedCode ?? undefined, countryCode);
         // Lenient pre-search filter: only exclude OTV hotels with confirmed wrong-country
         // coordinates. Hotels with lat=0/lng=0 (OTV data gap) are kept — OTV returned them
         // for this city so they're likely valid, and excluding them thins the search pool.
@@ -655,7 +668,7 @@ async function runCityFallback(
         const missingNames = sample.filter(c => !sampleContent.get(c)?.name).length;
         if (missingNames > sample.length * 0.4) {
             console.log(`[tgx-search] ${missingNames}/${sample.length} sampled hotels have no name for "${cityName}" — refreshing OTV portfolio`);
-            const otv = await fetchOtvHotelCodesByCity(cityName, resolvedCode ?? undefined);
+            const otv = await fetchOtvHotelCodesByCity(cityName, resolvedCode ?? undefined, countryCode);
             otvContentMap = otv.contentMap;
             if (otv.codes.length > 0) {
                 otvCodes = filterByCountryBbox(otv.codes, otv.contentMap, countryCode);
