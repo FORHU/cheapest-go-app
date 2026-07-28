@@ -36,6 +36,10 @@ interface UsePricingCalculationReturn {
     roomPrice: number;
     taxes: number;
     totalPrice: number;
+    /** Platform service fee (5% of totalPrice) shown at checkout per §10(d) */
+    serviceFee: number;
+    /** Actual amount charged to the customer (totalPrice + serviceFee) */
+    chargedTotal: number;
     surcharges: ConvertedSurcharge[];
 }
 
@@ -83,13 +87,18 @@ export function usePricingCalculation({
             amount: Math.round(convertCurrency(s.price.gross, s.price.currency || sourceCurrency, selectedCurrency) * 100) / 100,
         }));
 
+        const roundedTotal = Math.round(totalPrice * 100) / 100;
+        const serviceFee   = Math.round(roundedTotal * 0.05 * 100) / 100;
+
         return {
             displayProperty,
             displayRoom,
             totalNights,
             roomPrice: Math.round(roomPrice * 100) / 100,
             taxes: Math.round(taxes * 100) / 100,
-            totalPrice: Math.round(totalPrice * 100) / 100,
+            totalPrice: roundedTotal,
+            serviceFee,
+            chargedTotal: Math.round((roundedTotal + serviceFee) * 100) / 100,
             surcharges,
         };
     }, [property, selectedRoom, checkIn, checkOut, priceData, selectedCurrency]);

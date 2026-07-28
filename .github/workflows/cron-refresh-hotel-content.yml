@@ -1,0 +1,24 @@
+name: Refresh Hotel Content
+
+on:
+  schedule:
+    - cron: '0 2 * * *'   # daily at 02:00 UTC (satisfies RateHawk §10c daily static update)
+  workflow_dispatch:       # allow manual trigger from GitHub UI
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call refresh-hotel-content endpoint
+        env:
+          SITE_URL: ${{ secrets.NEXT_PUBLIC_SITE_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          STATUS=$(curl -s -o /tmp/body.json -w "%{http_code}" \
+            -H "Authorization: Bearer $CRON_SECRET" \
+            "$SITE_URL/api/cron/refresh-hotel-content")
+          cat /tmp/body.json
+          if [ "$STATUS" -ne 200 ]; then
+            echo "Hotel content refresh failed with HTTP $STATUS"
+            exit 1
+          fi

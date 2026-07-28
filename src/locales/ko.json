@@ -421,6 +421,7 @@
             "roomConfirmed": "객실 확정됨",
             "roomNights": "1개 객실 × {nights}{count}",
             "taxesAndFees": "세금 및 수수료",
+            "serviceFee": "플랫폼 서비스 수수료",
             "total": "총계",
             "updateDates": "날짜 업데이트",
             "youSave": "이 프로모션으로 {amount} 절약",
