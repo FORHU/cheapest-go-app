@@ -142,6 +142,23 @@ export async function GET(req: NextRequest) {
     const checkout = searchParams.get('checkout') || '2026-07-05';
     const adults = Number(searchParams.get('adults') || '2');
 
+    // ?testHotel=hotelCode — search TGX with a single hotel code, show ALL options (any payment type)
+    const testHotelCode = searchParams.get('testHotel');
+    if (testHotelCode) {
+        try {
+            const cfg = getTgxConfig();
+            const criteria = { checkIn: checkin, checkOut: checkout, occupancies: [{ paxes: [{ age: 30 }, { age: 30 }] }], nationality: 'KR', currency: 'USD', hotels: [testHotelCode] };
+            const result = await tgxGraphQL('query Search($criteria:HotelCriteriaSearchInput!,$settings:HotelSettingsInput){hotelX{search(criteria:$criteria,settings:$settings){options{hotelCode paymentType status price{gross net currency}}errors{code description}}}}', { criteria, settings: getTgxSettings(cfg, 18000, true) });
+            const options = result?.data?.hotelX?.search?.options ?? [];
+            const errors = result?.data?.hotelX?.search?.errors ?? [];
+            const byPayment: Record<string, number> = {};
+            for (const o of options) { byPayment[o.paymentType] = (byPayment[o.paymentType] || 0) + 1; }
+            return NextResponse.json({ hotelCode: testHotelCode, totalOptions: options.length, byPaymentType: byPayment, sample: options.slice(0, 3), errors });
+        } catch (e: any) {
+            return NextResponse.json({ error: String(e?.message ?? e) }, { status: 500 });
+        }
+    }
+
     // ?rawDest=1 — run raw TGX dest-code search and show payment type breakdown
     if (searchParams.get('rawDest')) {
         try {
