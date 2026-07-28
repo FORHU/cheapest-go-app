@@ -81,22 +81,28 @@ export async function GET(req: NextRequest) {
         return NextResponse.json({ ok: true, reset: Number(result.count ?? 0), city: key });
     }
 
-    // DB stats for a city: count hotel_content rows and sample a few hotel IDs
+    // DB stats for a city: count hotel_content rows, breakdown by source/country
     // Usage: GET /api/debug/tgx?dbStats=Phuket
     const dbStatsCity = searchParams.get('dbStats');
     if (dbStatsCity) {
         const sql = getSqlAdmin();
         const key = dbStatsCity.toLowerCase();
-        const rows = await sql<{ hotel_id: string; name: string; lat: number; lng: number; country: string }[]>`
-            SELECT hotel_id, name, lat, lng, country
+        const rows = await sql<{ hotel_id: string; name: string; lat: number; lng: number; country: string; content_source: string }[]>`
+            SELECT hotel_id, name, lat, lng, country, content_source
             FROM hotel_content
             WHERE city ILIKE ${'%' + key + '%'}
-            LIMIT 200
+            LIMIT 500
         `;
-        const sample = rows.slice(0, 5).map(r => ({ hotel_id: r.hotel_id, name: r.name, lat: r.lat, lng: r.lng, country: r.country }));
-        const countries: Record<string, number> = {};
-        for (const r of rows) { countries[r.country ?? 'null'] = (countries[r.country ?? 'null'] || 0) + 1; }
-        return NextResponse.json({ city: dbStatsCity, total: rows.length, byCountry: countries, sample });
+        const bySource: Record<string, number> = {};
+        const byCountry: Record<string, number> = {};
+        let numericIds = 0;
+        for (const r of rows) {
+            bySource[r.content_source ?? 'null'] = (bySource[r.content_source ?? 'null'] || 0) + 1;
+            byCountry[r.country ?? 'null'] = (byCountry[r.country ?? 'null'] || 0) + 1;
+            if (/^\d+$/.test(r.hotel_id)) numericIds++;
+        }
+        const sample = rows.slice(0, 5).map(r => ({ hotel_id: r.hotel_id, name: r.name, lat: r.lat, lng: r.lng, country: r.country, source: r.content_source }));
+        return NextResponse.json({ city: dbStatsCity, total: rows.length, numericIds, bySource, byCountry, sample });
     }
 
     // Hotel name lookup — search ETG multicomplete to get the numeric OTV hotel ID
