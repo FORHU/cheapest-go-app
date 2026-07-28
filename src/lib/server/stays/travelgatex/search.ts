@@ -273,32 +273,49 @@ async function seedEtgHotelContent(hotels: any[], cityName: string, countryCode?
             // or landmark search must not write "Gangnam"/"Gangnam Station" into the
             // city-keyed catalog, or future city searches mis-key. See ADR-0006.
             const realCity: string = info.region?.name ?? cityName;
-            const realCountry: string | null = info.region?.country_code ?? countryCode ?? null;
+            // Use the hotel's OWN country from ETG — never fall back to the search countryCode.
+            // Falling back caused wrong-country hotels (e.g. Wewoka OK tagged with Paris dest-code)
+            // to be seeded with country='FR', bypassing the catalog country filter on future searches.
+            const realCountry: string | null = info.region?.country_code ?? null;
+            const metapolicyStruct     = info.metapolicy_struct     ?? null;
+            const metapolicyExtraInfo  = info.metapolicy_extra_info ?? null;
+            const checkInTime          = info.check_in_time         ?? null;
+            const checkOutTime         = info.check_out_time        ?? null;
+            const description          = info.description           ?? null;
             try {
                 await sql`
                     INSERT INTO hotel_content
                         (hotel_id, name, images, lat, lng, address, city, country,
-                         description, star_rating, amenities, content_source, fetched_at)
+                         description, star_rating, amenities, content_source, fetched_at,
+                         check_in_time, check_out_time, metapolicy_struct, metapolicy_extra_info)
                     VALUES (
                         ${info.id}, ${info.name ?? null}, ${sql.array(images)},
                         ${info.latitude ?? 0}, ${info.longitude ?? 0},
                         ${info.address ?? null}, ${realCity}, ${realCountry},
-                        ${null}, ${info.star_rating ?? 0}, ${'[]'}::jsonb,
-                        'etg', now()
+                        ${description}, ${info.star_rating ?? 0}, ${'[]'}::jsonb,
+                        'etg', now(),
+                        ${checkInTime}, ${checkOutTime},
+                        ${metapolicyStruct ? sql.json(metapolicyStruct) : null},
+                        ${metapolicyExtraInfo}
                     )
                     ON CONFLICT (hotel_id) DO UPDATE SET
-                        name        = CASE WHEN hotel_content.name IS NULL OR hotel_content.name = hotel_content.hotel_id
-                                          THEN EXCLUDED.name ELSE hotel_content.name END,
-                        images      = CASE WHEN array_length(hotel_content.images, 1) > 0
-                                     THEN hotel_content.images ELSE EXCLUDED.images END,
-                        lat         = CASE WHEN hotel_content.lat  != 0 THEN hotel_content.lat  ELSE EXCLUDED.lat  END,
-                        lng         = CASE WHEN hotel_content.lng  != 0 THEN hotel_content.lng  ELSE EXCLUDED.lng  END,
-                        address     = COALESCE(hotel_content.address, EXCLUDED.address),
-                        city        = COALESCE(hotel_content.city, EXCLUDED.city),
-                        star_rating = CASE WHEN hotel_content.star_rating != 0
-                                     THEN hotel_content.star_rating ELSE EXCLUDED.star_rating END,
-                        content_source = COALESCE(hotel_content.content_source, 'etg'),
-                        fetched_at  = now()
+                        name                 = CASE WHEN hotel_content.name IS NULL OR hotel_content.name = hotel_content.hotel_id
+                                                   THEN EXCLUDED.name ELSE hotel_content.name END,
+                        images               = CASE WHEN array_length(hotel_content.images, 1) > 0
+                                              THEN hotel_content.images ELSE EXCLUDED.images END,
+                        lat                  = CASE WHEN hotel_content.lat  != 0 THEN hotel_content.lat  ELSE EXCLUDED.lat  END,
+                        lng                  = CASE WHEN hotel_content.lng  != 0 THEN hotel_content.lng  ELSE EXCLUDED.lng  END,
+                        address              = COALESCE(hotel_content.address, EXCLUDED.address),
+                        city                 = COALESCE(hotel_content.city, EXCLUDED.city),
+                        description          = COALESCE(hotel_content.description, EXCLUDED.description),
+                        star_rating          = CASE WHEN hotel_content.star_rating != 0
+                                              THEN hotel_content.star_rating ELSE EXCLUDED.star_rating END,
+                        check_in_time        = COALESCE(hotel_content.check_in_time, EXCLUDED.check_in_time),
+                        check_out_time       = COALESCE(hotel_content.check_out_time, EXCLUDED.check_out_time),
+                        metapolicy_struct    = COALESCE(hotel_content.metapolicy_struct, EXCLUDED.metapolicy_struct),
+                        metapolicy_extra_info = COALESCE(hotel_content.metapolicy_extra_info, EXCLUDED.metapolicy_extra_info),
+                        content_source       = COALESCE(hotel_content.content_source, 'etg'),
+                        fetched_at           = now()
                 `;
                 saved++;
             } catch { /* skip */ }

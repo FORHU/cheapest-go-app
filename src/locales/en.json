@@ -426,6 +426,7 @@
             "roomConfirmed": "Room Confirmed",
             "roomNights": "1 room × {nights} {count}",
             "taxesAndFees": "Taxes and fees",
+            "serviceFee": "Platform service fee",
             "total": "Total",
             "updateDates": "Update dates",
             "youSave": "You save {amount} with this promo",

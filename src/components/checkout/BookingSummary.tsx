@@ -34,6 +34,10 @@ interface BookingSummaryProps {
     checkOut?: Date | null;
     prebookId: string | null | undefined;
     cancellationPolicies?: CancellationPolicy;
+    /** Platform service fee (5% markup) to display before payment */
+    serviceFee?: number;
+    /** Actual amount charged (totalPrice + serviceFee) */
+    chargedTotal?: number;
     /** Server-validated applied voucher (display only) */
     appliedVoucher?: AppliedVoucher | null;
     isLoading?: boolean;
@@ -83,6 +87,8 @@ export function BookingSummary({
     checkOut,
     prebookId,
     cancellationPolicies,
+    serviceFee,
+    chargedTotal,
     appliedVoucher,
     isLoading,
     onDatesChange,
@@ -328,6 +334,20 @@ export function BookingSummary({
                                 </div>
                             )}
 
+                            {/* Platform service fee — covers payment processing costs */}
+                            {serviceFee != null && serviceFee > 0 && (
+                                <div className="flex justify-between text-[11px] lg:text-sm">
+                                    <span className="text-slate-600 dark:text-slate-400">{t('serviceFee')}</span>
+                                    <span className="font-medium text-slate-900 dark:text-white">
+                                        {isLoading ? (
+                                            <span className="h-4 w-12 bg-slate-100 dark:bg-slate-800 rounded animate-pulse inline-block" />
+                                        ) : (
+                                            <>{symbol}{serviceFee.toLocaleString()}</>
+                                        )}
+                                    </span>
+                                </div>
+                            )}
+
                             {/* Voucher discount line (server-calculated amount) */}
                             {appliedVoucher && (
                                 <div className="flex justify-between text-sm items-center">
@@ -351,7 +371,7 @@ export function BookingSummary({
                                 ) : appliedVoucher ? (
                                     <>
                                         <span className="text-[12px] line-through text-slate-400 dark:text-slate-500 mr-2 font-normal">
-                                            {symbol}{(totalPrice || 0).toLocaleString()}
+                                            {symbol}{(chargedTotal ?? totalPrice ?? 0).toLocaleString()}
                                         </span>
                                         <span className="text-emerald-600 dark:text-emerald-400">
                                             {symbol}{appliedVoucher.finalPrice.toLocaleString()}
@@ -359,7 +379,7 @@ export function BookingSummary({
                                     </>
                                 ) : (
                                     <span className="text-slate-900 dark:text-white">
-                                        {symbol}{(totalPrice || 0).toLocaleString()}
+                                        {symbol}{(chargedTotal ?? totalPrice ?? 0).toLocaleString()}
                                     </span>
                                 )}
                             </div>
