@@ -36,6 +36,19 @@ export async function GET(req: NextRequest) {
         return NextResponse.json({ ok: true, deleted: Number(result.count ?? 0), filter: city ?? 'all' });
     }
 
+    // Show/clear tgx_failed_dest_codes
+    // Usage: GET /api/debug/tgx?failedCodes=list  or  ?failedCodes=clear
+    const failedCodes = searchParams.get('failedCodes');
+    if (failedCodes !== null) {
+        const sql = getSqlAdmin();
+        if (failedCodes === 'clear') {
+            const result = await sql`DELETE FROM tgx_failed_dest_codes`;
+            return NextResponse.json({ ok: true, cleared: Number(result.count ?? 0) });
+        }
+        const rows = await sql<{ dest_code: string; city_key: string }[]>`SELECT dest_code, city_key FROM tgx_failed_dest_codes ORDER BY city_key`;
+        return NextResponse.json({ count: rows.length, codes: rows });
+    }
+
     // Reset wrong-country coordinates for a city so the next OTV backfill can fix them.
     // Zeroes out lat/lng for hotels whose coordinates fall outside the city's country bbox.
     // Usage: GET /api/debug/tgx?resetCoords=Singapore
