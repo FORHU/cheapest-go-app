@@ -81,6 +81,22 @@ export async function GET(req: NextRequest) {
         return NextResponse.json({ ok: true, reset: Number(result.count ?? 0), city: key });
     }
 
+    // Purge wrong-source hotels: delete content_source='tgx' rows with numeric IDs for a city.
+    // These are wrong-country hotels backfilled from old bad TGX dest-code results.
+    // Usage: GET /api/debug/tgx?purgeWrong=Phuket
+    const purgeWrong = searchParams.get('purgeWrong');
+    if (purgeWrong) {
+        const sql = getSqlAdmin();
+        const key = purgeWrong.toLowerCase();
+        const result = await sql`
+            DELETE FROM hotel_content
+            WHERE city ILIKE ${'%' + key + '%'}
+              AND content_source = 'tgx'
+              AND hotel_id ~ '^[0-9]+$'
+        `;
+        return NextResponse.json({ ok: true, deleted: Number(result.count ?? 0), city: key });
+    }
+
     // DB stats for a city: count hotel_content rows, breakdown by source/country
     // Usage: GET /api/debug/tgx?dbStats=Phuket
     const dbStatsCity = searchParams.get('dbStats');
