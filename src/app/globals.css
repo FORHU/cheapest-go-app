@@ -186,10 +186,10 @@ body {
   transition: backdrop-filter 800ms ease;
 }
 
-/* Hide scrollbar for cleaner UI */
+/* Global page scrollbar — prominent for visibility */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 3px;
+  width: 10px;
+  height: 10px;
 }
 
 ::-webkit-scrollbar-track {
@@ -197,8 +197,17 @@ body {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(156, 163, 175, 0.3);
-  border-radius: 3px;
+  background: rgba(156, 163, 175, 0.9);
+  border-radius: 999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(107, 114, 128, 1);
+}
+
+/* Firefox */
+html {
+  scrollbar-color: rgba(156, 163, 175, 0.9) transparent;
 }
 
 /* Mapbox popup overrides for dark theme */
