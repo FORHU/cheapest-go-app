@@ -83,6 +83,18 @@ export async function GET(req: NextRequest) {
         return NextResponse.json({ ok: true, reset: Number(result.count ?? 0), city: key });
     }
 
+    // Resolve dest code with AND without countryCode to compare
+    // Usage: GET /api/debug/tgx?resolveCity=Seoul&cc=KR
+    const resolveCity = searchParams.get('resolveCity');
+    if (resolveCity) {
+        const cc = searchParams.get('cc') || undefined;
+        const [withCC, withoutCC] = await Promise.all([
+            cc ? resolveTgxDestinationCode(resolveCity, cc).catch(() => null) : Promise.resolve('(skipped)'),
+            resolveTgxDestinationCode(resolveCity, undefined).catch(() => null),
+        ]);
+        return NextResponse.json({ city: resolveCity, cc, withCC, withoutCC });
+    }
+
     // Show tgx_destination_cache entries matching a prefix
     // Usage: GET /api/debug/tgx?destCache=seoul
     const destCacheQuery = searchParams.get('destCache');
