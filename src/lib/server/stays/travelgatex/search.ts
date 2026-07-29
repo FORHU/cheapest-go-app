@@ -967,13 +967,13 @@ async function runCityFallback(
     let otvCodes = await prefetchHotelCodes;
     let otvContentMap = new Map<string, any>();
 
-    // Check seeds first — if a city has enough pre-confirmed codes, skip the slow OTV
-    // portfolio fetch entirely. Seeds survive DB resets and avoid cold-start timeouts.
+    // Fetch the full OTV portfolio when the DB catalog is empty OR sparse (< 100 hotels).
+    // A sparse catalog means prior searches only seeded a handful of hotels, so we'd
+    // send TGX only those few codes and miss hundreds of available properties.
     const MIN_PORTFOLIO_SIZE = 100;
     const seedCodes = getSeedCodesForCity(cityName, countryCode);
-    const seedsSufficient = seedCodes.length >= MIN_PORTFOLIO_SIZE;
 
-    if (otvCodes.length < MIN_PORTFOLIO_SIZE && !seedsSufficient) {
+    if (otvCodes.length < MIN_PORTFOLIO_SIZE) {
         console.log(`[tgx-search] DB has ${otvCodes.length} hotels for "${cityName}" (< ${MIN_PORTFOLIO_SIZE}) — querying OTV portfolio`);
         // Pass undefined (no dest code) so the portfolio query returns the full global
         // OTV catalog filtered only by bbox — dest codes that returned WRONG_FIELD/empty
@@ -1005,7 +1005,7 @@ async function runCityFallback(
         const merged = [...cityFilteredCodes, ...otvCodes.filter(c => !otvSet.has(c))];
         otvCodes = merged;
         otvContentMap = otv.contentMap;
-    } else if (otvCodes.length >= MIN_PORTFOLIO_SIZE) {
+    } else {
         // Codes exist in DB — sample up to 20 to detect null-name rows (OTV data quality gap).
         // If >40% are nameless, refresh from OTV portfolio so this response can show real names
         // and backfillHotelContent updates the DB for future requests.
