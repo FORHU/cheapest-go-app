@@ -122,7 +122,8 @@ export async function POST(req: Request) {
             }
 
             console.log(`[prebook/tgx] Fresh search: hotel=${hotelCode} ${checkIn}→${checkOut} adults=${adults}`);
-            // In-process search (was an HTTP self-call to /api/fn/travelgatex-search).
+            // bypassCache=true: skip the DB cache so we always get live OTV tokens.
+            // Cached tokens from a prior search expire quickly and fail TGX valuation.
             const freshResult = await runTgxSearch({
                 hotelCode,
                 checkin:  checkIn,
@@ -131,6 +132,7 @@ export async function POST(req: Request) {
                 children,
                 currency,
                 guest_nationality: 'KR',
+                bypassCache: true,
             });
 
             const freshRooms: any[] = freshResult?.data?.roomTypes || [];
