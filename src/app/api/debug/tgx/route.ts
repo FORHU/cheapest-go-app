@@ -231,6 +231,33 @@ export async function GET(req: NextRequest) {
     const checkout = searchParams.get('checkout') || '2026-07-05';
     const adults = Number(searchParams.get('adults') || '2');
 
+    // ?countryPortfolio=JP,TH,SG,KR — query OTV portfolio count per country code
+    // Usage: GET /api/debug/tgx?countryPortfolio=JP,TH,SG,KR,MY,VN,ID,PH,HK,TW,AE,AU
+    const countryPortfolioParam = searchParams.get('countryPortfolio');
+    if (countryPortfolioParam) {
+        const ccs = countryPortfolioParam.split(',').map(s => s.trim().toUpperCase()).filter(Boolean);
+        const cfg = getTgxConfig();
+        const PORTFOLIO_Q = `query OtvPf($criteria: HotelXHotelListInput!) { hotelX { hotels(criteria: $criteria) { edges { node { hotelData { code hotelName location { coordinates { latitude longitude } } } } } token } } }`;
+        const results: Record<string, any> = {};
+        for (const cc of ccs) {
+            try {
+                const r = await tgxGraphQL(PORTFOLIO_Q, { criteria: { access: cfg.accessCode, maxSize: 1000, countries: [cc] } });
+                const edges: any[] = r?.data?.hotelX?.hotels?.edges ?? [];
+                const hasMore = !!r?.data?.hotelX?.hotels?.token;
+                const sample = edges.slice(0, 3).map((e: any) => ({
+                    code: e?.node?.hotelData?.code,
+                    name: e?.node?.hotelData?.hotelName,
+                    lat: e?.node?.hotelData?.location?.coordinates?.latitude,
+                    lng: e?.node?.hotelData?.location?.coordinates?.longitude,
+                }));
+                results[cc] = { count: edges.length, hasMore, sample };
+            } catch (e: any) {
+                results[cc] = { error: String(e?.message ?? e) };
+            }
+        }
+        return NextResponse.json({ results });
+    }
+
     // ?rawPortfolio=1 — run OTV hotel portfolio query for a city and show codes before bbox filter
     // Add &noDestCode=1 to skip dest code and query the global OTV catalog directly
     // Usage: GET /api/debug/tgx?rawPortfolio=1&city=Phuket

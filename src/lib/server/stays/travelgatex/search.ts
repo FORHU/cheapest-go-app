@@ -12,41 +12,323 @@ import { getSeedCodesForCity } from './hotel-seeds';
 // ─── Country bounding boxes for geographic hotel filtering ───────────────────
 // Used to reject OTV portfolio hotels that are in the wrong country.
 // Bounding boxes are intentionally generous (±2° buffer) to avoid false negatives.
+// Hotels with lat=0/lng=0 (no OTV coordinates) are always kept regardless.
 const COUNTRY_BBOX: Record<string, { minLat: number; maxLat: number; minLng: number; maxLng: number }> = {
-    TH: { minLat: 3.6, maxLat: 22.5, minLng: 95.3, maxLng: 107.7 },
-    ID: { minLat: -13.0, maxLat: 7.9, minLng: 93.0, maxLng: 143.0 },
-    JP: { minLat: 22.0, maxLat: 47.5, minLng: 120.9, maxLng: 147.8 },
-    PH: { minLat: 4.6, maxLat: 21.1, minLng: 116.9, maxLng: 128.0 },
-    SG: { minLat: 1.1, maxLat: 1.6, minLng: 103.6, maxLng: 104.1 },
-    MY: { minLat: -0.2, maxLat: 8.5, minLng: 99.6, maxLng: 119.5 },
-    VN: { minLat: 8.2, maxLat: 23.4, minLng: 102.1, maxLng: 109.5 },
-    KH: { minLat: 9.4, maxLat: 14.7, minLng: 102.3, maxLng: 107.6 },
-    IN: { minLat: 6.7, maxLat: 37.1, minLng: 68.2, maxLng: 97.4 },
-    CN: { minLat: 18.2, maxLat: 53.6, minLng: 73.5, maxLng: 134.8 },
-    KR: { minLat: 33.1, maxLat: 38.6, minLng: 125.1, maxLng: 130.9 },
-    AU: { minLat: -43.7, maxLat: -10.7, minLng: 113.2, maxLng: 153.6 },
-    NZ: { minLat: -47.3, maxLat: -34.4, minLng: 166.4, maxLng: 178.6 },
-    MV: { minLat: -1.0, maxLat: 7.1, minLng: 72.7, maxLng: 73.8 },
-    LK: { minLat: 5.9, maxLat: 9.8, minLng: 79.7, maxLng: 81.9 },
-    AE: { minLat: 22.6, maxLat: 26.1, minLng: 51.6, maxLng: 56.4 },
-    TR: { minLat: 35.8, maxLat: 42.1, minLng: 25.7, maxLng: 44.8 },
-    GR: { minLat: 34.8, maxLat: 41.8, minLng: 19.4, maxLng: 29.6 },
-    IT: { minLat: 36.6, maxLat: 47.1, minLng: 6.7, maxLng: 18.5 },
-    ES: { minLat: 27.6, maxLat: 43.8, minLng: -18.2, maxLng: 4.3 },
-    FR: { minLat: 41.3, maxLat: 51.1, minLng: -5.2, maxLng: 9.6 },
-    DE: { minLat: 47.3, maxLat: 55.1, minLng: 5.9, maxLng: 15.0 },
-    PT: { minLat: 29.8, maxLat: 42.2, minLng: -31.3, maxLng: -6.2 },
-    GB: { minLat: 49.9, maxLat: 60.8, minLng: -8.6, maxLng: 1.8 },
-    US: { minLat: 18.9, maxLat: 71.4, minLng: -179.1, maxLng: -66.9 },
-    MX: { minLat: 14.5, maxLat: 32.7, minLng: -117.1, maxLng: -86.7 },
-    BR: { minLat: -33.8, maxLat: 5.3, minLng: -73.9, maxLng: -34.8 },
-    MA: { minLat: 27.7, maxLat: 35.9, minLng: -13.2, maxLng: -1.0 },
-    EG: { minLat: 22.0, maxLat: 31.7, minLng: 24.7, maxLng: 37.0 },
-    KE: { minLat: -4.7, maxLat: 4.6, minLng: 33.9, maxLng: 41.9 },
-    ZA: { minLat: -34.8, maxLat: -22.1, minLng: 16.5, maxLng: 32.9 },
-    IS: { minLat: 63.3, maxLat: 66.6, minLng: -24.5, maxLng: -13.5 },
-    HK: { minLat: 22.1, maxLat: 22.6, minLng: 113.8, maxLng: 114.5 },
+    // ── Asia-Pacific ──────────────────────────────────────────────────────────
+    TH: { minLat: 3.6,   maxLat: 22.5,  minLng: 95.3,   maxLng: 107.7  },
+    ID: { minLat: -13.0, maxLat: 7.9,   minLng: 93.0,   maxLng: 143.0  },
+    JP: { minLat: 22.0,  maxLat: 47.5,  minLng: 120.9,  maxLng: 147.8  },
+    PH: { minLat: 4.6,   maxLat: 21.1,  minLng: 116.9,  maxLng: 128.0  },
+    SG: { minLat: 1.1,   maxLat: 1.6,   minLng: 103.6,  maxLng: 104.1  },
+    MY: { minLat: -0.2,  maxLat: 8.5,   minLng: 99.6,   maxLng: 119.5  },
+    VN: { minLat: 8.2,   maxLat: 23.4,  minLng: 102.1,  maxLng: 109.5  },
+    KH: { minLat: 9.4,   maxLat: 14.7,  minLng: 102.3,  maxLng: 107.6  },
+    LA: { minLat: 13.9,  maxLat: 22.5,  minLng: 100.1,  maxLng: 107.7  },
+    MM: { minLat: 9.8,   maxLat: 28.5,  minLng: 92.2,   maxLng: 101.2  },
+    BN: { minLat: 4.0,   maxLat: 5.1,   minLng: 114.1,  maxLng: 115.4  },
+    TL: { minLat: -9.5,  maxLat: -8.1,  minLng: 124.0,  maxLng: 127.3  },
+    IN: { minLat: 6.7,   maxLat: 37.1,  minLng: 68.2,   maxLng: 97.4   },
+    PK: { minLat: 23.6,  maxLat: 37.1,  minLng: 60.9,   maxLng: 77.1   },
+    BD: { minLat: 20.7,  maxLat: 26.6,  minLng: 88.0,   maxLng: 92.7   },
+    LK: { minLat: 5.9,   maxLat: 9.8,   minLng: 79.7,   maxLng: 81.9   },
+    NP: { minLat: 26.3,  maxLat: 30.4,  minLng: 80.1,   maxLng: 88.2   },
+    BT: { minLat: 26.7,  maxLat: 28.3,  minLng: 88.8,   maxLng: 92.1   },
+    MV: { minLat: -1.0,  maxLat: 7.1,   minLng: 72.7,   maxLng: 73.8   },
+    AF: { minLat: 29.4,  maxLat: 38.5,  minLng: 60.5,   maxLng: 74.9   },
+    CN: { minLat: 18.2,  maxLat: 53.6,  minLng: 73.5,   maxLng: 134.8  },
+    HK: { minLat: 22.1,  maxLat: 22.6,  minLng: 113.8,  maxLng: 114.5  },
+    MO: { minLat: 22.1,  maxLat: 22.2,  minLng: 113.5,  maxLng: 113.6  },
+    TW: { minLat: 21.9,  maxLat: 25.3,  minLng: 119.9,  maxLng: 122.1  },
+    KR: { minLat: 33.1,  maxLat: 38.6,  minLng: 125.1,  maxLng: 130.9  },
+    KP: { minLat: 37.7,  maxLat: 42.5,  minLng: 124.3,  maxLng: 130.7  },
+    MN: { minLat: 41.6,  maxLat: 52.1,  minLng: 87.8,   maxLng: 119.9  },
+    AU: { minLat: -43.7, maxLat: -10.7, minLng: 113.2,  maxLng: 153.6  },
+    NZ: { minLat: -47.3, maxLat: -34.4, minLng: 166.4,  maxLng: 178.6  },
+    PG: { minLat: -11.7, maxLat: -1.3,  minLng: 141.0,  maxLng: 155.7  },
+    SB: { minLat: -11.9, maxLat: -5.0,  minLng: 155.5,  maxLng: 166.9  },
+    VU: { minLat: -20.3, maxLat: -13.1, minLng: 166.5,  maxLng: 170.2  },
+    FJ: { minLat: -20.7, maxLat: -12.5, minLng: 177.0,  maxLng: 180.0  },
+    WS: { minLat: -14.1, maxLat: -13.4, minLng: -172.8, maxLng: -171.4 },
+    TO: { minLat: -22.4, maxLat: -15.6, minLng: -175.4, maxLng: -173.7 },
+    FM: { minLat: 1.0,   maxLat: 10.1,  minLng: 138.0,  maxLng: 163.1  },
+    PW: { minLat: 2.8,   maxLat: 8.1,   minLng: 131.1,  maxLng: 134.7  },
+    MH: { minLat: 4.6,   maxLat: 14.7,  minLng: 160.8,  maxLng: 172.0  },
+    // ── Middle East ───────────────────────────────────────────────────────────
+    AE: { minLat: 22.6,  maxLat: 26.1,  minLng: 51.6,   maxLng: 56.4   },
+    SA: { minLat: 16.4,  maxLat: 32.2,  minLng: 36.5,   maxLng: 55.7   },
+    QA: { minLat: 24.5,  maxLat: 26.2,  minLng: 50.7,   maxLng: 51.7   },
+    BH: { minLat: 25.8,  maxLat: 26.4,  minLng: 50.3,   maxLng: 50.8   },
+    KW: { minLat: 28.5,  maxLat: 30.1,  minLng: 46.5,   maxLng: 48.4   },
+    OM: { minLat: 16.6,  maxLat: 26.4,  minLng: 51.9,   maxLng: 59.9   },
+    YE: { minLat: 12.1,  maxLat: 19.0,  minLng: 42.6,   maxLng: 54.7   },
+    JO: { minLat: 29.2,  maxLat: 33.4,  minLng: 34.9,   maxLng: 39.3   },
+    IL: { minLat: 29.5,  maxLat: 33.3,  minLng: 34.3,   maxLng: 35.9   },
+    PS: { minLat: 31.2,  maxLat: 32.6,  minLng: 34.2,   maxLng: 35.6   },
+    LB: { minLat: 33.1,  maxLat: 34.7,  minLng: 35.1,   maxLng: 36.6   },
+    SY: { minLat: 32.3,  maxLat: 37.3,  minLng: 35.7,   maxLng: 42.4   },
+    IQ: { minLat: 29.1,  maxLat: 37.4,  minLng: 38.8,   maxLng: 48.6   },
+    IR: { minLat: 25.1,  maxLat: 39.8,  minLng: 44.0,   maxLng: 63.3   },
+    // ── Central Asia ─────────────────────────────────────────────────────────
+    KZ: { minLat: 40.6,  maxLat: 55.4,  minLng: 50.3,   maxLng: 87.4   },
+    UZ: { minLat: 37.2,  maxLat: 45.6,  minLng: 56.0,   maxLng: 73.2   },
+    TM: { minLat: 35.1,  maxLat: 42.8,  minLng: 52.5,   maxLng: 66.7   },
+    TJ: { minLat: 36.7,  maxLat: 41.0,  minLng: 67.4,   maxLng: 75.2   },
+    KG: { minLat: 39.2,  maxLat: 43.2,  minLng: 69.3,   maxLng: 80.3   },
+    // ── Caucasus ─────────────────────────────────────────────────────────────
+    GE: { minLat: 41.0,  maxLat: 43.6,  minLng: 40.0,   maxLng: 46.7   },
+    AM: { minLat: 38.8,  maxLat: 41.3,  minLng: 43.4,   maxLng: 46.6   },
+    AZ: { minLat: 38.4,  maxLat: 41.9,  minLng: 44.8,   maxLng: 50.4   },
+    // ── Eastern Europe ────────────────────────────────────────────────────────
+    RU: { minLat: 41.2,  maxLat: 81.9,  minLng: 19.6,   maxLng: 180.0  },
+    UA: { minLat: 44.4,  maxLat: 52.4,  minLng: 22.1,   maxLng: 40.2   },
+    BY: { minLat: 51.3,  maxLat: 56.2,  minLng: 23.2,   maxLng: 32.8   },
+    MD: { minLat: 45.5,  maxLat: 48.5,  minLng: 26.6,   maxLng: 30.2   },
+    RO: { minLat: 43.6,  maxLat: 48.3,  minLng: 20.3,   maxLng: 29.7   },
+    BG: { minLat: 41.2,  maxLat: 44.2,  minLng: 22.4,   maxLng: 28.6   },
+    RS: { minLat: 42.2,  maxLat: 46.2,  minLng: 18.8,   maxLng: 23.0   },
+    XK: { minLat: 41.9,  maxLat: 43.3,  minLng: 20.0,   maxLng: 21.8   },
+    BA: { minLat: 42.6,  maxLat: 45.3,  minLng: 15.7,   maxLng: 19.6   },
+    ME: { minLat: 41.9,  maxLat: 43.6,  minLng: 18.5,   maxLng: 20.4   },
+    HR: { minLat: 42.4,  maxLat: 46.6,  minLng: 13.5,   maxLng: 19.4   },
+    SI: { minLat: 45.4,  maxLat: 46.9,  minLng: 13.4,   maxLng: 16.6   },
+    MK: { minLat: 40.9,  maxLat: 42.4,  minLng: 20.5,   maxLng: 23.0   },
+    AL: { minLat: 39.6,  maxLat: 42.7,  minLng: 19.3,   maxLng: 21.1   },
+    SK: { minLat: 47.7,  maxLat: 49.6,  minLng: 16.8,   maxLng: 22.6   },
+    PL: { minLat: 49.0,  maxLat: 54.8,  minLng: 14.1,   maxLng: 24.1   },
+    CZ: { minLat: 48.5,  maxLat: 51.1,  minLng: 12.1,   maxLng: 18.9   },
+    HU: { minLat: 45.7,  maxLat: 48.6,  minLng: 16.1,   maxLng: 22.9   },
+    EE: { minLat: 57.5,  maxLat: 59.7,  minLng: 21.8,   maxLng: 28.2   },
+    LV: { minLat: 55.7,  maxLat: 58.1,  minLng: 21.0,   maxLng: 28.2   },
+    LT: { minLat: 53.9,  maxLat: 56.5,  minLng: 20.9,   maxLng: 26.8   },
+    // ── Northern & Western Europe ─────────────────────────────────────────────
+    GB: { minLat: 49.9,  maxLat: 60.8,  minLng: -8.6,   maxLng: 1.8    },
+    IE: { minLat: 51.4,  maxLat: 55.4,  minLng: -10.5,  maxLng: -6.0   },
+    NO: { minLat: 57.9,  maxLat: 71.2,  minLng: 4.5,    maxLng: 31.1   },
+    SE: { minLat: 55.3,  maxLat: 69.1,  minLng: 10.6,   maxLng: 24.2   },
+    DK: { minLat: 54.6,  maxLat: 57.8,  minLng: 8.1,    maxLng: 15.2   },
+    FI: { minLat: 59.8,  maxLat: 70.1,  minLng: 19.1,   maxLng: 31.6   },
+    IS: { minLat: 63.3,  maxLat: 66.6,  minLng: -24.5,  maxLng: -13.5  },
+    DE: { minLat: 47.3,  maxLat: 55.1,  minLng: 5.9,    maxLng: 15.0   },
+    NL: { minLat: 50.7,  maxLat: 53.6,  minLng: 3.3,    maxLng: 7.3    },
+    BE: { minLat: 49.5,  maxLat: 51.5,  minLng: 2.5,    maxLng: 6.4    },
+    LU: { minLat: 49.4,  maxLat: 50.2,  minLng: 5.7,    maxLng: 6.5    },
+    FR: { minLat: 41.3,  maxLat: 51.1,  minLng: -5.2,   maxLng: 9.6    },
+    CH: { minLat: 45.8,  maxLat: 47.8,  minLng: 5.9,    maxLng: 10.5   },
+    AT: { minLat: 46.4,  maxLat: 49.0,  minLng: 9.5,    maxLng: 17.2   },
+    LI: { minLat: 47.0,  maxLat: 47.3,  minLng: 9.5,    maxLng: 9.6    },
+    // ── Southern Europe ───────────────────────────────────────────────────────
+    ES: { minLat: 27.6,  maxLat: 43.8,  minLng: -18.2,  maxLng: 4.3    },
+    PT: { minLat: 29.8,  maxLat: 42.2,  minLng: -31.3,  maxLng: -6.2   },
+    IT: { minLat: 36.6,  maxLat: 47.1,  minLng: 6.7,    maxLng: 18.5   },
+    MT: { minLat: 35.8,  maxLat: 36.1,  minLng: 14.2,   maxLng: 14.6   },
+    GR: { minLat: 34.8,  maxLat: 41.8,  minLng: 19.4,   maxLng: 29.6   },
+    CY: { minLat: 34.6,  maxLat: 35.7,  minLng: 32.3,   maxLng: 34.6   },
+    TR: { minLat: 35.8,  maxLat: 42.1,  minLng: 25.7,   maxLng: 44.8   },
+    AD: { minLat: 42.4,  maxLat: 42.7,  minLng: 1.4,    maxLng: 1.8    },
+    SM: { minLat: 43.9,  maxLat: 44.0,  minLng: 12.4,   maxLng: 12.5   },
+    // ── North Africa ──────────────────────────────────────────────────────────
+    MA: { minLat: 27.7,  maxLat: 35.9,  minLng: -13.2,  maxLng: -1.0   },
+    DZ: { minLat: 18.9,  maxLat: 37.1,  minLng: -8.7,   maxLng: 12.0   },
+    TN: { minLat: 30.2,  maxLat: 37.5,  minLng: 7.5,    maxLng: 11.6   },
+    LY: { minLat: 19.5,  maxLat: 33.2,  minLng: 9.4,    maxLng: 25.2   },
+    EG: { minLat: 22.0,  maxLat: 31.7,  minLng: 24.7,   maxLng: 37.0   },
+    SD: { minLat: 9.3,   maxLat: 22.2,  minLng: 21.9,   maxLng: 38.6   },
+    // ── West Africa ───────────────────────────────────────────────────────────
+    MR: { minLat: 14.7,  maxLat: 27.3,  minLng: -17.1,  maxLng: -4.8   },
+    ML: { minLat: 10.1,  maxLat: 25.0,  minLng: -12.2,  maxLng: 4.3    },
+    SN: { minLat: 12.3,  maxLat: 16.7,  minLng: -17.5,  maxLng: -11.4  },
+    GM: { minLat: 13.1,  maxLat: 13.8,  minLng: -16.8,  maxLng: -13.8  },
+    GW: { minLat: 11.0,  maxLat: 12.7,  minLng: -16.7,  maxLng: -13.6  },
+    GN: { minLat: 7.2,   maxLat: 12.7,  minLng: -15.1,  maxLng: -7.6   },
+    SL: { minLat: 6.9,   maxLat: 10.0,  minLng: -13.3,  maxLng: -10.3  },
+    LR: { minLat: 4.4,   maxLat: 8.6,   minLng: -11.5,  maxLng: -7.4   },
+    CI: { minLat: 4.3,   maxLat: 10.7,  minLng: -8.6,   maxLng: -2.5   },
+    GH: { minLat: 4.7,   maxLat: 11.2,  minLng: -3.3,   maxLng: 1.2    },
+    BF: { minLat: 9.4,   maxLat: 15.1,  minLng: -5.5,   maxLng: 2.4    },
+    TG: { minLat: 6.1,   maxLat: 11.1,  minLng: -0.1,   maxLng: 1.8    },
+    BJ: { minLat: 6.2,   maxLat: 12.4,  minLng: 0.8,    maxLng: 3.9    },
+    NE: { minLat: 11.7,  maxLat: 23.5,  minLng: 0.2,    maxLng: 16.0   },
+    NG: { minLat: 4.3,   maxLat: 13.9,  minLng: 2.7,    maxLng: 14.7   },
+    CV: { minLat: 14.8,  maxLat: 17.2,  minLng: -25.4,  maxLng: -22.7  },
+    // ── Central Africa ────────────────────────────────────────────────────────
+    CM: { minLat: 1.7,   maxLat: 13.1,  minLng: 8.5,    maxLng: 16.2   },
+    TD: { minLat: 7.4,   maxLat: 23.5,  minLng: 13.5,   maxLng: 24.0   },
+    CF: { minLat: 2.2,   maxLat: 11.0,  minLng: 14.4,   maxLng: 27.5   },
+    GQ: { minLat: -1.5,  maxLat: 3.8,   minLng: 5.6,    maxLng: 11.3   },
+    GA: { minLat: -3.9,  maxLat: 2.3,   minLng: 8.7,    maxLng: 14.5   },
+    CG: { minLat: -5.1,  maxLat: 3.7,   minLng: 11.2,   maxLng: 18.6   },
+    CD: { minLat: -13.5, maxLat: 5.3,   minLng: 12.2,   maxLng: 31.3   },
+    ST: { minLat: -0.1,  maxLat: 1.7,   minLng: 6.5,    maxLng: 7.5    },
+    // ── East Africa ───────────────────────────────────────────────────────────
+    ET: { minLat: 3.4,   maxLat: 15.0,  minLng: 33.0,   maxLng: 47.9   },
+    ER: { minLat: 12.4,  maxLat: 18.0,  minLng: 36.4,   maxLng: 43.1   },
+    DJ: { minLat: 10.9,  maxLat: 12.7,  minLng: 41.8,   maxLng: 43.4   },
+    SO: { minLat: -1.7,  maxLat: 12.0,  minLng: 40.9,   maxLng: 51.4   },
+    KE: { minLat: -4.7,  maxLat: 4.6,   minLng: 33.9,   maxLng: 41.9   },
+    UG: { minLat: -1.5,  maxLat: 4.2,   minLng: 29.6,   maxLng: 35.0   },
+    TZ: { minLat: -11.7, maxLat: -1.0,  minLng: 29.3,   maxLng: 40.4   },
+    RW: { minLat: -2.8,  maxLat: -1.1,  minLng: 29.0,   maxLng: 30.9   },
+    BI: { minLat: -4.5,  maxLat: -2.3,  minLng: 29.0,   maxLng: 30.9   },
+    SS: { minLat: 3.5,   maxLat: 12.2,  minLng: 24.1,   maxLng: 36.9   },
+    MG: { minLat: -25.6, maxLat: -11.9, minLng: 43.2,   maxLng: 50.5   },
+    MU: { minLat: -20.5, maxLat: -10.3, minLng: 56.5,   maxLng: 63.5   },
+    SC: { minLat: -9.8,  maxLat: -3.7,  minLng: 46.2,   maxLng: 56.3   },
+    // ── Southern Africa ───────────────────────────────────────────────────────
+    AO: { minLat: -18.0, maxLat: -4.4,  minLng: 11.7,   maxLng: 24.1   },
+    ZM: { minLat: -18.1, maxLat: -8.2,  minLng: 21.9,   maxLng: 33.7   },
+    ZW: { minLat: -22.4, maxLat: -15.6, minLng: 25.2,   maxLng: 33.1   },
+    MW: { minLat: -17.1, maxLat: -9.4,  minLng: 32.7,   maxLng: 35.9   },
+    MZ: { minLat: -26.9, maxLat: -10.5, minLng: 32.3,   maxLng: 40.8   },
+    NA: { minLat: -29.0, maxLat: -16.9, minLng: 11.7,   maxLng: 25.3   },
+    BW: { minLat: -26.9, maxLat: -17.8, minLng: 19.9,   maxLng: 29.4   },
+    ZA: { minLat: -34.8, maxLat: -22.1, minLng: 16.5,   maxLng: 32.9   },
+    LS: { minLat: -30.7, maxLat: -28.6, minLng: 27.0,   maxLng: 29.5   },
+    SZ: { minLat: -27.3, maxLat: -25.7, minLng: 30.8,   maxLng: 32.1   },
+    // ── North America ─────────────────────────────────────────────────────────
+    CA: { minLat: 41.7,  maxLat: 83.1,  minLng: -141.0, maxLng: -52.6  },
+    US: { minLat: 18.9,  maxLat: 71.4,  minLng: -179.1, maxLng: -66.9  },
+    MX: { minLat: 14.5,  maxLat: 32.7,  minLng: -117.1, maxLng: -86.7  },
+    GT: { minLat: 13.7,  maxLat: 17.8,  minLng: -92.2,  maxLng: -88.2  },
+    BZ: { minLat: 15.9,  maxLat: 18.5,  minLng: -89.2,  maxLng: -87.8  },
+    HN: { minLat: 13.0,  maxLat: 16.5,  minLng: -89.4,  maxLng: -83.2  },
+    SV: { minLat: 13.1,  maxLat: 14.5,  minLng: -90.1,  maxLng: -87.7  },
+    NI: { minLat: 10.7,  maxLat: 15.0,  minLng: -87.7,  maxLng: -82.6  },
+    CR: { minLat: 8.0,   maxLat: 11.2,  minLng: -85.9,  maxLng: -82.6  },
+    PA: { minLat: 7.2,   maxLat: 9.6,   minLng: -83.1,  maxLng: -77.2  },
+    CU: { minLat: 19.8,  maxLat: 23.3,  minLng: -84.9,  maxLng: -74.1  },
+    JM: { minLat: 17.7,  maxLat: 18.5,  minLng: -78.4,  maxLng: -76.2  },
+    HT: { minLat: 18.0,  maxLat: 20.1,  minLng: -74.5,  maxLng: -71.6  },
+    DO: { minLat: 17.5,  maxLat: 20.0,  minLng: -72.0,  maxLng: -68.3  },
+    BS: { minLat: 20.9,  maxLat: 27.3,  minLng: -80.5,  maxLng: -72.7  },
+    TT: { minLat: 10.0,  maxLat: 11.4,  minLng: -61.9,  maxLng: -60.5  },
+    BB: { minLat: 13.0,  maxLat: 13.3,  minLng: -59.7,  maxLng: -59.4  },
+    LC: { minLat: 13.7,  maxLat: 14.1,  minLng: -61.1,  maxLng: -60.9  },
+    VC: { minLat: 12.6,  maxLat: 13.4,  minLng: -61.5,  maxLng: -61.1  },
+    GD: { minLat: 12.0,  maxLat: 12.3,  minLng: -61.8,  maxLng: -61.6  },
+    DM: { minLat: 15.2,  maxLat: 15.6,  minLng: -61.5,  maxLng: -61.2  },
+    AG: { minLat: 16.9,  maxLat: 17.7,  minLng: -61.9,  maxLng: -61.7  },
+    KN: { minLat: 17.1,  maxLat: 17.4,  minLng: -62.9,  maxLng: -62.5  },
+    // ── South America ─────────────────────────────────────────────────────────
+    CO: { minLat: -4.2,  maxLat: 12.5,  minLng: -79.0,  maxLng: -66.8  },
+    VE: { minLat: 0.6,   maxLat: 12.5,  minLng: -73.4,  maxLng: -59.8  },
+    GY: { minLat: 1.2,   maxLat: 8.6,   minLng: -61.4,  maxLng: -56.5  },
+    SR: { minLat: 1.8,   maxLat: 6.0,   minLng: -58.1,  maxLng: -53.9  },
+    BR: { minLat: -33.8, maxLat: 5.3,   minLng: -73.9,  maxLng: -34.8  },
+    EC: { minLat: -5.0,  maxLat: 1.4,   minLng: -81.0,  maxLng: -75.2  },
+    PE: { minLat: -18.3, maxLat: -0.0,  minLng: -81.4,  maxLng: -68.7  },
+    BO: { minLat: -22.9, maxLat: -9.7,  minLng: -69.7,  maxLng: -57.5  },
+    CL: { minLat: -55.9, maxLat: -17.5, minLng: -75.7,  maxLng: -66.4  },
+    PY: { minLat: -27.6, maxLat: -19.3, minLng: -62.7,  maxLng: -54.3  },
+    AR: { minLat: -55.1, maxLat: -21.8, minLng: -73.6,  maxLng: -53.6  },
+    UY: { minLat: -34.9, maxLat: -30.1, minLng: -58.4,  maxLng: -53.1  },
 };
+
+// ── City-level bounding boxes ─────────────────────────────────────────────────
+// Used by the OTV portfolio city filter to exclude hotels from other cities in
+// the same country. Coordinate-based to avoid language issues (OTV may use local
+// city names like "서울" instead of "Seoul"). Hotels whose OTV coordinates fall
+// outside the city bbox are excluded; hotels with no coordinates are kept.
+// Keys are lowercase English city names matching the cityName search parameter.
+const CITY_BBOX: Record<string, { minLat: number; maxLat: number; minLng: number; maxLng: number }> = {
+    // ── Japan ─────────────────────────────────────────────────────────────────
+    tokyo:       { minLat: 35.4,  maxLat: 35.95, minLng: 138.9, maxLng: 140.0  }, // Greater Tokyo incl. Yokohama
+    osaka:       { minLat: 34.4,  maxLat: 34.85, minLng: 135.3, maxLng: 135.75 },
+    kyoto:       { minLat: 34.85, maxLat: 35.15, minLng: 135.55, maxLng: 135.95 },
+    sapporo:     { minLat: 42.9,  maxLat: 43.3,  minLng: 141.1, maxLng: 141.5  },
+    fukuoka:     { minLat: 33.4,  maxLat: 33.75, minLng: 130.2, maxLng: 130.6  },
+    nara:        { minLat: 34.55, maxLat: 34.8,  minLng: 135.7, maxLng: 136.0  },
+    hiroshima:   { minLat: 34.2,  maxLat: 34.55, minLng: 132.3, maxLng: 132.7  },
+    // ── South Korea ───────────────────────────────────────────────────────────
+    seoul:       { minLat: 37.3,  maxLat: 37.75, minLng: 126.7, maxLng: 127.3  },
+    busan:       { minLat: 34.9,  maxLat: 35.4,  minLng: 128.8, maxLng: 129.3  },
+    jeju:        { minLat: 33.2,  maxLat: 33.6,  minLng: 126.1, maxLng: 127.0  },
+    incheon:     { minLat: 37.3,  maxLat: 37.7,  minLng: 126.4, maxLng: 126.8  },
+    daejeon:     { minLat: 36.1,  maxLat: 36.5,  minLng: 127.2, maxLng: 127.6  },
+    daegu:       { minLat: 35.7,  maxLat: 36.0,  minLng: 128.4, maxLng: 128.7  },
+    // ── Thailand ──────────────────────────────────────────────────────────────
+    phuket:      { minLat: 7.6,   maxLat: 8.3,   minLng: 98.1,  maxLng: 98.65  }, // Phuket island
+    bangkok:     { minLat: 13.4,  maxLat: 14.05, minLng: 100.2, maxLng: 100.95 },
+    'chiang mai':{ minLat: 18.5,  maxLat: 19.1,  minLng: 98.7,  maxLng: 99.2   },
+    pattaya:     { minLat: 12.7,  maxLat: 13.3,  minLng: 100.8, maxLng: 101.2  },
+    'koh samui': { minLat: 9.3,   maxLat: 9.7,   minLng: 99.8,  maxLng: 100.1  },
+    krabi:       { minLat: 7.5,   maxLat: 8.5,   minLng: 98.5,  maxLng: 99.2   },
+    // ── Indonesia ─────────────────────────────────────────────────────────────
+    bali:        { minLat: -9.0,  maxLat: -8.0,  minLng: 114.4, maxLng: 115.8  },
+    jakarta:     { minLat: -6.5,  maxLat: -5.9,  minLng: 106.5, maxLng: 107.0  },
+    // ── Singapore ─────────────────────────────────────────────────────────────
+    singapore:   { minLat: 1.1,   maxLat: 1.65,  minLng: 103.55, maxLng: 104.1 },
+    // ── Malaysia ──────────────────────────────────────────────────────────────
+    'kuala lumpur': { minLat: 2.9, maxLat: 3.4,  minLng: 101.4, maxLng: 101.8  },
+    penang:      { minLat: 5.2,   maxLat: 5.6,   minLng: 100.1, maxLng: 100.6  },
+    langkawi:    { minLat: 6.2,   maxLat: 6.7,   minLng: 99.6,  maxLng: 100.0  },
+    // ── Vietnam ───────────────────────────────────────────────────────────────
+    'ho chi minh':{ minLat: 10.5, maxLat: 11.2,  minLng: 106.4, maxLng: 107.1  },
+    hanoi:       { minLat: 20.8,  maxLat: 21.3,  minLng: 105.6, maxLng: 106.1  },
+    'da nang':   { minLat: 15.9,  maxLat: 16.2,  minLng: 108.0, maxLng: 108.4  },
+    // ── Philippines ───────────────────────────────────────────────────────────
+    manila:      { minLat: 14.3,  maxLat: 14.8,  minLng: 120.8, maxLng: 121.2  },
+    cebu:        { minLat: 10.1,  maxLat: 10.5,  minLng: 123.7, maxLng: 124.1  },
+    boracay:     { minLat: 11.9,  maxLat: 12.0,  minLng: 121.9, maxLng: 122.0  },
+    // ── UAE / Middle East ─────────────────────────────────────────────────────
+    dubai:       { minLat: 24.8,  maxLat: 25.4,  minLng: 54.9,  maxLng: 55.6   },
+    'abu dhabi': { minLat: 24.2,  maxLat: 24.6,  minLng: 54.3,  maxLng: 54.7   },
+    doha:        { minLat: 25.1,  maxLat: 25.5,  minLng: 51.3,  maxLng: 51.7   },
+    // ── Europe ────────────────────────────────────────────────────────────────
+    london:      { minLat: 51.3,  maxLat: 51.7,  minLng: -0.5,  maxLng: 0.3    },
+    paris:       { minLat: 48.7,  maxLat: 49.1,  minLng: 2.1,   maxLng: 2.6    },
+    amsterdam:   { minLat: 52.2,  maxLat: 52.6,  minLng: 4.7,   maxLng: 5.1    },
+    barcelona:   { minLat: 41.2,  maxLat: 41.6,  minLng: 1.9,   maxLng: 2.4    },
+    madrid:      { minLat: 40.2,  maxLat: 40.6,  minLng: -3.9,  maxLng: -3.5   },
+    rome:        { minLat: 41.6,  maxLat: 42.1,  minLng: 12.3,  maxLng: 12.7   },
+    // ── Americas ──────────────────────────────────────────────────────────────
+    'new york':  { minLat: 40.4,  maxLat: 40.9,  minLng: -74.3, maxLng: -73.7  },
+    'los angeles':{ minLat: 33.7, maxLat: 34.3,  minLng: -118.7, maxLng: -118.1 },
+    miami:       { minLat: 25.5,  maxLat: 26.0,  minLng: -80.5, maxLng: -80.0  },
+    cancun:      { minLat: 21.0,  maxLat: 21.4,  minLng: -86.9, maxLng: -86.6  },
+    // ── Oceania ───────────────────────────────────────────────────────────────
+    sydney:      { minLat: -34.2, maxLat: -33.6, minLng: 150.5, maxLng: 151.4  },
+    melbourne:   { minLat: -38.1, maxLat: -37.6, minLng: 144.6, maxLng: 145.3  },
+};
+
+/** Filter OTV portfolio codes by city, language-agnostic (coordinate-first, city-name fallback).
+ *  Keeps hotels that: (1) have OTV coords within the city bbox, OR (2) OTV city name loosely
+ *  matches the queried city, OR (3) have no coord/city data (can't verify — keep). */
+function filterOtvByCity(
+    codes: string[],
+    contentMap: Map<string, any>,
+    cityName: string,
+): string[] {
+    if (!cityName) return codes;
+    const cityKey = cityName.toLowerCase().trim();
+    const cityBbox = CITY_BBOX[cityKey];
+
+    const normStr = (s: string) => s.toLowerCase().replace(/[\s\-_\.]/g, '');
+    const qNorm = normStr(cityName);
+
+    return codes.filter(code => {
+        const c = contentMap.get(code);
+        if (!c) return true;
+
+        const lat = Number(c.lat ?? 0);
+        const lng = Number(c.lng ?? 0);
+        const hasCoords = lat !== 0 || lng !== 0;
+
+        // Coordinate filter (most reliable — language-agnostic)
+        if (cityBbox && hasCoords) {
+            return lat >= cityBbox.minLat && lat <= cityBbox.maxLat &&
+                   lng >= cityBbox.minLng && lng <= cityBbox.maxLng;
+        }
+
+        // City-name fallback (when no bbox for this city or hotel has no coords)
+        if (c._otvCity) {
+            const otvNorm = normStr(c._otvCity);
+            return otvNorm.includes(qNorm) || qNorm.includes(otvNorm);
+        }
+
+        // No coords, no OTV city → can't verify, keep
+        return true;
+    });
+}
 
 function filterByCountryBbox(
     codes: string[],
@@ -318,12 +600,15 @@ export interface TgxSearchParams {
     lng?: number;
     /** Mapbox bounding box [minLng, minLat, maxLng, maxLat] — sizes a district's circle. */
     bbox?: [number, number, number, number];
+    /** Skip the DB cache read — always does a live TGX call. Used by prebook to get genuinely
+     *  fresh tokens; result is still written to cache to benefit subsequent requests. */
+    bypassCache?: boolean;
 }
 
 // ─── Core search function ─────────────────────────────────────────────────────
 
 /** Parse raw TGX portfolio edges into a content map keyed by hotel code. */
-function parseOtvEdges(edges: any[], cityName: string): Map<string, any> {
+function parseOtvEdges(edges: any[], cityName: string, countryCode?: string): Map<string, any> {
     const map = new Map<string, any>();
     for (const e of edges) {
         const d = e?.node?.hotelData;
@@ -345,6 +630,10 @@ function parseOtvEdges(edges: any[], cityName: string): Map<string, any> {
         const catCode: string = d.categoryCode ?? '';
         const starMatch = catCode.match(/(\d)/);
 
+        // Prefer OTV-provided city/country (accurate per-hotel data) over our
+        // search parameter (which is the *query* city, not the hotel's actual city).
+        const otvCity: string | null    = (d.location?.city as string | null) ?? null;
+        const otvCountry: string | null = (d.location?.country as string | null) ?? null;
         map.set(String(d.code), {
             hotel_id:    String(d.code),
             name:        (d.hotelName as string | null) ?? null,
@@ -352,11 +641,14 @@ function parseOtvEdges(edges: any[], cityName: string): Map<string, any> {
             lat:         Number(d.location?.coordinates?.latitude  ?? 0),
             lng:         Number(d.location?.coordinates?.longitude ?? 0),
             address:     (d.location?.address as string | null) ?? null,
-            city:        cityName,
-            country:     null,
+            city:        otvCity ?? cityName,
+            country:     otvCountry ?? countryCode ?? null,
             description,
             star_rating: starMatch ? parseInt(starMatch[1], 10) : 0,
             amenities:   (d.amenities ?? []).map((a: any) => otvCodeToLabel(a.code)).filter(Boolean),
+            // Raw OTV city (null when OTV didn't provide one). Used by backfill to know
+            // whether to trust this city over an existing DB value (see backfillHotelContent).
+            _otvCity:    otvCity,
         });
     }
     return map;
@@ -372,10 +664,9 @@ async function fetchOtvHotelCodesByCity(
     try {
         const cfg = getTgxConfig();
         const PAGE_SIZE = 1000;
-        // When no dest code, paginate the global OTV catalog (up to 3 pages = 3000 hotels)
-        // to increase the chance of finding in-country hotels via bbox filter.
-        // With a dest code, one page is sufficient — portfolio scoped results fit in 1000.
-        const MAX_PAGES = destinationCode ? 1 : 3;
+        // With a dest code or country filter, one page covers the scoped result.
+        // Without either, paginate the global catalog (up to 3 pages) as a last resort.
+        const MAX_PAGES = (destinationCode || countryCode) ? 1 : 3;
         const PORTFOLIO_QUERY = `query OtvHotelPortfolio($criteria: HotelXHotelListInput!) {
                hotelX {
                  hotels(criteria: $criteria) {
@@ -391,6 +682,8 @@ async function fetchOtvHotelCodesByCity(
                          location {
                            coordinates { latitude longitude }
                            address
+                           city
+                           country
                          }
                          amenities { code }
                        }
@@ -406,6 +699,7 @@ async function fetchOtvHotelCodesByCity(
         for (let page = 0; page < MAX_PAGES; page++) {
             const criteria: Record<string, unknown> = { access: cfg.accessCode, maxSize: PAGE_SIZE };
             if (destinationCode) criteria.destinationCodes = [destinationCode];
+            else if (countryCode) criteria.countries = [countryCode.toUpperCase()];
             if (pageToken) criteria.token = pageToken;
 
             const result = await tgxGraphQL(PORTFOLIO_QUERY, { criteria });
@@ -416,7 +710,7 @@ async function fetchOtvHotelCodesByCity(
             if (!pageToken || edges.length < PAGE_SIZE) break; // no more pages
         }
 
-        const contentMap = parseOtvEdges(allEdges, cityName);
+        const contentMap = parseOtvEdges(allEdges, cityName, countryCode);
         const codes = [...contentMap.keys()];
         console.log(`[tgx-search] OTV portfolio returned ${codes.length} hotel codes for "${cityName}"`);
 
@@ -473,6 +767,11 @@ async function backfillHotelContent(contentMap: Map<string, any>): Promise<void>
         // LiteAPI legacy slugs (e.g. le_fontainebleau) would otherwise be re-seeded
         // on every search and appear in Phase 1 catalog with no availability.
         if (!/^\d+$/.test(r.hotel_id) && !/^[A-Z]{2}\d+$/.test(r.hotel_id)) continue;
+        // When OTV actually provides a city name, overwrite any existing DB city —
+        // the existing value may be a stale "query city" fallback from a prior cross-city
+        // portfolio fetch (e.g. an Osaka hotel stored as city='Tokyo'). When OTV gives
+        // no city we keep the existing DB value via COALESCE.
+        const hasOtvCity = r._otvCity !== null && r._otvCity !== undefined;
         try {
             await sql`
                 INSERT INTO hotel_content
@@ -493,7 +792,9 @@ async function backfillHotelContent(contentMap: Map<string, any>): Promise<void>
                     lat         = CASE WHEN EXCLUDED.lat  != 0 THEN EXCLUDED.lat  ELSE hotel_content.lat  END,
                     lng         = CASE WHEN EXCLUDED.lng  != 0 THEN EXCLUDED.lng  ELSE hotel_content.lng  END,
                     address     = COALESCE(hotel_content.address,     EXCLUDED.address),
-                    city        = COALESCE(hotel_content.city,        EXCLUDED.city),
+                    city        = CASE WHEN ${hasOtvCity}
+                                  THEN EXCLUDED.city
+                                  ELSE COALESCE(hotel_content.city, EXCLUDED.city) END,
                     country     = COALESCE(hotel_content.country,     EXCLUDED.country),
                     description = COALESCE(hotel_content.description, EXCLUDED.description),
                     star_rating = CASE WHEN hotel_content.star_rating != 0
@@ -599,10 +900,21 @@ async function runCityFallback(
             console.log(`[tgx-search] Dest code "${resolvedCode}" is a known OTV miss — skipping dest-code search for "${cityName}"`);
         } else {
             const __t0 = Date.now();
-            const destResult = await tgxGraphQL(CITY_SEARCH_QUERY, {
-                criteria: { ...baseCriteria, destinations: [resolvedCode] },
-                settings,
-            });
+            let destResult: any;
+            try {
+                destResult = await tgxGraphQL(CITY_SEARCH_QUERY, {
+                    criteria: { ...baseCriteria, destinations: [resolvedCode] },
+                    settings,
+                });
+            } catch (destErr: any) {
+                // 513 = TGX handler timeout (dest code returns too many results) — fall through to hotel-code path
+                console.warn(`[tgx-search] Dest code "${resolvedCode}" search failed (${destErr.message?.slice(0, 80)}) — falling back to hotel-code search`);
+                destResult = null;
+            }
+            if (!destResult) {
+                console.log(`[tgx-search][TIMING] dest-code attempt for "${resolvedCode}" failed after ${Date.now() - __t0}ms`);
+                // Don't blacklist — failure is likely a transient TGX overload, not a permanent OTV gap.
+            } else {
             console.log(`[tgx-search][TIMING] dest-code round-trip for "${resolvedCode}" took ${Date.now() - __t0}ms`);
             const destOptions: TgxOption[] = destResult?.data?.hotelX?.search?.options || [];
             const destErrors: any[] = destResult?.data?.hotelX?.search?.errors || [];
@@ -646,6 +958,7 @@ async function runCityFallback(
                     console.warn(`[tgx-search] Dest code "${resolvedCode}" returned 0 options with no errors — recorded as OTV miss`);
                 }
             }
+            } // end else (destResult exists)
         }
     }
 
@@ -679,9 +992,15 @@ async function runCityFallback(
         if (filteredCodes.length < otv.codes.length) {
             console.warn(`[tgx-search] Filtered ${otv.codes.length - filteredCodes.length} confirmed out-of-country OTV hotels for "${cityName}" (${countryCode})`);
         }
-        // Merge: OTV portfolio as base, DB codes fill in any the portfolio missed
-        const otvSet = new Set(filteredCodes);
-        const merged = [...filteredCodes, ...otvCodes.filter(c => !otvSet.has(c))];
+        // City-level filter: coordinate-first, city-name fallback, language-agnostic.
+        // Seed codes are always added below regardless of this filter.
+        const cityFilteredCodes = filterOtvByCity(filteredCodes, otv.contentMap, cityName);
+        if (cityFilteredCodes.length < filteredCodes.length) {
+            console.warn(`[tgx-search] City filter: removed ${filteredCodes.length - cityFilteredCodes.length} out-of-city OTV hotels for "${cityName}" (kept ${cityFilteredCodes.length})`);
+        }
+        // Merge: city-filtered OTV portfolio as base, DB codes fill in any the portfolio missed
+        const otvSet = new Set(cityFilteredCodes);
+        const merged = [...cityFilteredCodes, ...otvCodes.filter(c => !otvSet.has(c))];
         otvCodes = merged;
         otvContentMap = otv.contentMap;
     } else {
@@ -696,20 +1015,23 @@ async function runCityFallback(
             const otv = await fetchOtvHotelCodesByCity(cityName, resolvedCode ?? undefined, countryCode);
             otvContentMap = otv.contentMap;
             if (otv.codes.length > 0) {
-                otvCodes = filterByCountryBbox(otv.codes, otv.contentMap, countryCode);
+                const bboxFiltered = filterByCountryBbox(otv.codes, otv.contentMap, countryCode);
+                otvCodes = filterOtvByCity(bboxFiltered, otv.contentMap, cityName);
             }
         }
     }
 
-    // Last resort: static seed codes for cities where TGX portfolio has a known mapping gap
-    // (e.g. Japan, Phuket). These codes are committed to hotel-seeds.ts and survive DB resets.
-    if (otvCodes.length === 0) {
-        const seedCodes = getSeedCodesForCity(cityName, countryCode);
-        if (seedCodes.length > 0) {
-            console.log(`[tgx-search] Using ${seedCodes.length} static seed codes for "${cityName}" (portfolio gap city)`);
-            otvCodes = seedCodes;
-            // Seed them to hotel_content so subsequent searches hit the DB path instead
-            const seedMap = new Map(seedCodes.map(c => [c, { hotel_id: c, name: null, images: [], lat: 0, lng: 0, address: null, city: cityName, country: countryCode ?? null, description: null, star_rating: 0, amenities: [] }]));
+    // Supplement with static seed codes for known gap cities (e.g. Tokyo, Phuket).
+    // Seeds are confirmed-available hotels from production and may not appear in the
+    // portfolio query — always merge them so the chunk search includes them.
+    const seedCodes = getSeedCodesForCity(cityName, countryCode);
+    if (seedCodes.length > 0) {
+        const existingSet = new Set(otvCodes);
+        const newSeeds = seedCodes.filter(c => !existingSet.has(c));
+        if (newSeeds.length > 0) {
+            console.log(`[tgx-search] Adding ${newSeeds.length} seed codes for "${cityName}" (gap city supplement)`);
+            otvCodes = [...otvCodes, ...newSeeds];
+            const seedMap = new Map(newSeeds.map(c => [c, { hotel_id: c, name: null, images: [], lat: 0, lng: 0, address: null, city: cityName, country: countryCode ?? null, description: null, star_rating: 0, amenities: [] }]));
             backfillHotelContent(seedMap).catch(() => {});
         }
     }
@@ -780,7 +1102,8 @@ export async function runTgxSearch(params: TgxSearchParams) {
     const ttl = getEffectiveTtl(params.cityName);
 
     // 1. DB cache hit (fresh or stale-within-grace)
-    if (ttl > 0) {
+    // Skipped when bypassCache=true so prebook always gets live tokens.
+    if (ttl > 0 && !params.bypassCache) {
         const cached = await getHotelSearchCache(key, ttl);
         if (cached !== null) {
             if (!cached.stale) {
@@ -811,11 +1134,14 @@ export async function runTgxSearch(params: TgxSearchParams) {
         }
     }
 
-    // 2. In-flight dedup: attach to existing search for the same key
-    const existing = _inflight.get(key);
-    if (existing) {
-        console.log(`[hotel-cache] INFLIGHT ${key} — waiting for in-progress search`);
-        return existing;
+    // 2. In-flight dedup: attach to existing search for the same key.
+    // Also skipped for bypassCache so each prebook gets its own fresh search.
+    if (!params.bypassCache) {
+        const existing = _inflight.get(key);
+        if (existing) {
+            console.log(`[hotel-cache] INFLIGHT ${key} — waiting for in-progress search`);
+            return existing;
+        }
     }
 
     // 3. Start new search, register in-flight promise
@@ -841,7 +1167,9 @@ export async function runTgxSearch(params: TgxSearchParams) {
         })
         .finally(() => { _inflight.delete(key); });
 
-    _inflight.set(key, promise);
+    if (!params.bypassCache) {
+        _inflight.set(key, promise);
+    }
     return promise;
 }
 
