@@ -154,14 +154,17 @@ export async function POST(req: NextRequest) {
     // Landing cards pass "Tokyo, Japan" but DB and TGX both expect just the city name.
     const rawCity: string = body.cityName ?? body.destination ?? '';
     const normalizedCity = rawCity.split(',')[0].trim();
-    if (normalizedCity && normalizedCity !== rawCity) {
+    // Always set cityName from the normalized city — not just when a suffix was stripped.
+    // Without this, a clean destination like "Phuket" leaves body.cityName undefined,
+    // which makes buildHotelCacheKey generate "city:" and runTgxSearch skip city filtering.
+    if (normalizedCity) {
         body.cityName = normalizedCity;
         if (body.destination) body.destination = normalizedCity;
-        // Resolve the country suffix to an ISO code so filterByCountryBbox can run.
-        // Without this, "Paris, France" strips to "Paris" with no countryCode, and
-        // OTV's wrong-country hotels (e.g. Wewoka OK tagged with the Paris dest-code)
-        // slip through the bbox filter undetected.
-        if (!body.countryCode) {
+        if (normalizedCity !== rawCity && !body.countryCode) {
+            // Resolve the country suffix to an ISO code so filterByCountryBbox can run.
+            // Without this, "Paris, France" strips to "Paris" with no countryCode, and
+            // OTV's wrong-country hotels (e.g. Wewoka OK tagged with the Paris dest-code)
+            // slip through the bbox filter undetected.
             const countrySuffix = rawCity.slice(normalizedCity.length).replace(/^,\s*/, '').trim();
             const resolved = resolveIsoCode(countrySuffix);
             if (resolved) body.countryCode = resolved;
