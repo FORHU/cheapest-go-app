@@ -7,6 +7,7 @@ import { tgxGraphQL, getTgxSettings, getTgxConfig, buildOccupancies, normalizeOp
 import { getSqlAdmin } from '@/lib/db/postgres';
 import { resolveTgxDestinationCode } from '@/lib/server/search';
 import { otvCodeToLabel } from './amenityCodes';
+import { getSeedCodesForCity } from './hotel-seeds';
 
 // ─── Country bounding boxes for geographic hotel filtering ───────────────────
 // Used to reject OTV portfolio hotels that are in the wrong country.
@@ -370,13 +371,15 @@ async function fetchOtvHotelCodesByCity(
 ): Promise<{ codes: string[]; contentMap: Map<string, any> }> {
     try {
         const cfg = getTgxConfig();
-        const criteria: Record<string, unknown> = { access: cfg.accessCode, maxSize: 200 };
-        if (destinationCode) criteria.destinationCodes = [destinationCode];
-
-        const result = await tgxGraphQL(
-            `query OtvHotelPortfolio($criteria: HotelXHotelListInput!) {
+        const PAGE_SIZE = 1000;
+        // When no dest code, paginate the global OTV catalog (up to 3 pages = 3000 hotels)
+        // to increase the chance of finding in-country hotels via bbox filter.
+        // With a dest code, one page is sufficient — portfolio scoped results fit in 1000.
+        const MAX_PAGES = destinationCode ? 1 : 3;
+        const PORTFOLIO_QUERY = `query OtvHotelPortfolio($criteria: HotelXHotelListInput!) {
                hotelX {
                  hotels(criteria: $criteria) {
+                   token
                    edges {
                      node {
                        hotelData {
@@ -395,12 +398,25 @@ async function fetchOtvHotelCodesByCity(
                    }
                  }
                }
-             }`,
-            { criteria }
-        );
+             }`;
 
-        const edges: any[] = result?.data?.hotelX?.hotels?.edges ?? [];
-        const contentMap = parseOtvEdges(edges, cityName);
+        const allEdges: any[] = [];
+        let pageToken: string | null = null;
+
+        for (let page = 0; page < MAX_PAGES; page++) {
+            const criteria: Record<string, unknown> = { access: cfg.accessCode, maxSize: PAGE_SIZE };
+            if (destinationCode) criteria.destinationCodes = [destinationCode];
+            if (pageToken) criteria.token = pageToken;
+
+            const result = await tgxGraphQL(PORTFOLIO_QUERY, { criteria });
+            const hotelList = result?.data?.hotelX?.hotels ?? {};
+            const edges: any[] = hotelList.edges ?? [];
+            allEdges.push(...edges);
+            pageToken = hotelList.token ?? null;
+            if (!pageToken || edges.length < PAGE_SIZE) break; // no more pages
+        }
+
+        const contentMap = parseOtvEdges(allEdges, cityName);
         const codes = [...contentMap.keys()];
         console.log(`[tgx-search] OTV portfolio returned ${codes.length} hotel codes for "${cityName}"`);
 
@@ -644,7 +660,10 @@ async function runCityFallback(
     const MIN_PORTFOLIO_SIZE = 100;
     if (otvCodes.length < MIN_PORTFOLIO_SIZE) {
         console.log(`[tgx-search] DB has ${otvCodes.length} hotels for "${cityName}" (< ${MIN_PORTFOLIO_SIZE}) — querying OTV portfolio`);
-        const otv = await fetchOtvHotelCodesByCity(cityName, resolvedCode ?? undefined, countryCode);
+        // Pass undefined (no dest code) so the portfolio query returns the full global
+        // OTV catalog filtered only by bbox — dest codes that returned WRONG_FIELD/empty
+        // also return empty portfolios, so passing them here would seed nothing.
+        const otv = await fetchOtvHotelCodesByCity(cityName, undefined, countryCode);
         // Lenient pre-search filter: only exclude OTV hotels with confirmed wrong-country
         // coordinates. Hotels with lat=0/lng=0 (OTV data gap) are kept — OTV returned them
         // for this city so they're likely valid, and excluding them thins the search pool.
@@ -679,6 +698,19 @@ async function runCityFallback(
             if (otv.codes.length > 0) {
                 otvCodes = filterByCountryBbox(otv.codes, otv.contentMap, countryCode);
             }
+        }
+    }
+
+    // Last resort: static seed codes for cities where TGX portfolio has a known mapping gap
+    // (e.g. Japan, Phuket). These codes are committed to hotel-seeds.ts and survive DB resets.
+    if (otvCodes.length === 0) {
+        const seedCodes = getSeedCodesForCity(cityName, countryCode);
+        if (seedCodes.length > 0) {
+            console.log(`[tgx-search] Using ${seedCodes.length} static seed codes for "${cityName}" (portfolio gap city)`);
+            otvCodes = seedCodes;
+            // Seed them to hotel_content so subsequent searches hit the DB path instead
+            const seedMap = new Map(seedCodes.map(c => [c, { hotel_id: c, name: null, images: [], lat: 0, lng: 0, address: null, city: cityName, country: countryCode ?? null, description: null, star_rating: 0, amenities: [] }]));
+            backfillHotelContent(seedMap).catch(() => {});
         }
     }
 
