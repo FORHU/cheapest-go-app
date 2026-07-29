@@ -155,6 +155,54 @@ function getEtgToken(): string {
     return Buffer.from(`${keyId}:${apiKey}`).toString('base64');
 }
 
+// A city and the area around it can share a name ("Cebu" the city vs Cebu the
+// province), so region picking is type-driven. Kept as an allow-list so airports,
+// continents and seas are never picked. Exact ETG multicomplete `type` strings
+// (verified against live responses — note the spaces/hyphens, e.g. Palawan comes
+// back as "Multi-City (Vicinity)").
+const AREA_TYPES = new Set([
+    'Province (State)',
+    'Region',
+    'Multi-City (Vicinity)',
+    'Multi-Region (within a country)',
+]);
+const isCity    = (r: any) => r?.type === 'City';
+const isArea    = (r: any) => AREA_TYPES.has(r?.type);
+const isCountry = (r: any) => r?.type === 'Country';
+
+/** Region types each rung accepts, most-preferred first.
+ *  - city resolves a city first so existing city searches never regress, then falls
+ *    back to an area so "Palawan"-style queries still resolve (ADR-0004).
+ *  - country falls back to an area because ETG types some sovereign states that way
+ *    (Cyprus → "Province (State)"); without that step the only country-typed region
+ *    on the island, "Northern Cyprus", would hijack the whole search.
+ *  district/poi never reach here (they resolve via serp/geo), but are mapped so the
+ *  table stays total over the ladder. */
+const TYPE_PRIORITY: Record<DestinationRung, Array<(r: any) => boolean>> = {
+    country:  [isCountry, isArea],
+    province: [isArea, isCity],
+    city:     [isCity, isArea],
+    district: [isCity, isArea],
+    poi:      [isCity, isArea],
+};
+
+/** First region matching an accepted type, preferring in-country hits. Types are tried
+ *  in priority order, so a name match on a better type always beats a worse one. */
+function findBestMatch(
+    regions: any[],
+    typeChecks: Array<(r: any) => boolean>,
+    nameMatches: (r: any) => boolean,
+    inCountry: (r: any) => boolean,
+): any {
+    for (const isType of typeChecks) {
+        const match =
+            regions.find((r: any) => isType(r) && nameMatches(r) && inCountry(r)) ??
+            regions.find((r: any) => isType(r) && nameMatches(r));
+        if (match) return match;
+    }
+    return undefined;
+}
+
 /** Resolve a place name to an ETG region_id via the multicomplete endpoint.
  *  `rung` widens what region type is acceptable: 'country' allows a whole-country
  *  region, 'province' prefers an area, everything else prefers a city. */
@@ -179,45 +227,7 @@ async function getEtgRegionId(cityName: string, countryCode?: string, rung?: Des
         const nameMatches = (r: any) => typeof r?.name === 'string' && r.name.toLowerCase().startsWith(q);
         const inCountry = (r: any) => !iso || r.country_code === iso;
 
-        // A city and the area around it can share a name ("Cebu" the city vs Cebu the
-        // province). Resolve a city first so existing city searches never regress, then
-        // fall back to area-level regions so province/region queries ("Palawan") resolve
-        // to the whole area — matching what Ratehawk's own site returns. Kept as an
-        // allow-list so airports, whole countries, continents and seas are never picked.
-        // Exact ETG multicomplete `type` strings (verified against live responses —
-        // note the spaces/hyphens, e.g. Palawan comes back as "Multi-City (Vicinity)").
-        const AREA_TYPES = new Set([
-            'Province (State)',
-            'Region',
-            'Multi-City (Vicinity)',
-            'Multi-Region (within a country)',
-        ]);
-        const isCity = (r: any) => r?.type === 'City';
-        const isArea = (r: any) => AREA_TYPES.has(r?.type);
-        const isCountry = (r: any) => r?.type === 'Country';
-
-        // Rung steers the preference. Country picks want the whole-country region;
-        // province picks want an area; city (and unspecified) picks want a city,
-        // falling back to an area so "Palawan"-style queries still resolve (ADR-0004).
-        let pick: any;
-        if (rung === 'country') {
-            pick =
-                regions.find((r: any) => isCountry(r) && nameMatches(r) && inCountry(r)) ??
-                regions.find((r: any) => isCountry(r) && nameMatches(r)) ??
-                regions.find((r: any) => isCountry(r));
-        } else if (rung === 'province') {
-            pick =
-                regions.find((r: any) => isArea(r) && nameMatches(r) && inCountry(r)) ??
-                regions.find((r: any) => isArea(r) && nameMatches(r)) ??
-                regions.find((r: any) => isCity(r) && nameMatches(r) && inCountry(r)) ??
-                regions.find((r: any) => isCity(r) && nameMatches(r));
-        } else {
-            pick =
-                regions.find((r: any) => isCity(r) && nameMatches(r) && inCountry(r)) ??
-                regions.find((r: any) => isCity(r) && nameMatches(r)) ??
-                regions.find((r: any) => isArea(r) && nameMatches(r) && inCountry(r)) ??
-                regions.find((r: any) => isArea(r) && nameMatches(r));
-        }
+        const pick = findBestMatch(regions, TYPE_PRIORITY[rung ?? 'city'], nameMatches, inCountry);
 
         if (!pick) {
             // No city or known area type matched. Surface the types ETG actually returned
