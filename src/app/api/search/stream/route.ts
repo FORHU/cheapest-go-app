@@ -62,8 +62,6 @@ async function getInstantHotelCatalog(body: any): Promise<any[]> {
         // Resolve full country name ("Indonesia") or ISO-2 ("ID") to a 2-letter code for DB filtering
         const isoCode = resolveIsoCode(countryCode);
 
-        // Require at least one image — hotels without images are either unseeded or wrong-location
-        // false positives (e.g. the village of Bali in Crete showing up in a Bali, Indonesia search).
         const rows = isoCode
             ? await sql`
                 SELECT hotel_id, name, images, star_rating, lat, lng, address, city, country,
@@ -72,7 +70,6 @@ async function getInstantHotelCatalog(body: any): Promise<any[]> {
                 WHERE city ILIKE ${pattern}
                   AND LOWER(country) = LOWER(${isoCode})
                   AND (hotel_id ~ '^\d+$' OR hotel_id ~ '^[A-Z]{2}\d+$')
-                  AND images IS NOT NULL AND array_length(images, 1) > 0
                 ORDER BY review_count DESC NULLS LAST
                 LIMIT 300
               `
@@ -82,7 +79,6 @@ async function getInstantHotelCatalog(body: any): Promise<any[]> {
                 FROM hotel_content
                 WHERE city ILIKE ${pattern}
                   AND (hotel_id ~ '^\d+$' OR hotel_id ~ '^[A-Z]{2}\d+$')
-                  AND images IS NOT NULL AND array_length(images, 1) > 0
                 ORDER BY review_count DESC NULLS LAST
                 LIMIT 300
               `;
