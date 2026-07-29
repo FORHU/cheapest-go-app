@@ -8,7 +8,6 @@ import { createAdminClient } from '@/utils/postgres/admin';
 import { type Property } from '@/types';
 import { searchTravelgateX } from '@/lib/server/travelgatex';
 import { COUNTRY_DEFAULT_CITY, COUNTRY_NAME_TO_CODE } from '@/lib/constants/countries';
-import { searchDuffelStays } from '@/lib/server/stays/providers/duffel';
 
 async function fetchHotelRatings(hotelIds: string[]): Promise<Map<string, { rating: number; reviews_count: number }>> {
     const map = new Map<string, { rating: number; reviews_count: number }>();
@@ -340,57 +339,35 @@ function transformHotelToProperty(hotel: any, cityName: string, requestedCurrenc
 }
 
 async function fetchSearchPropertiesInner(queryParams: SearchQueryParams): Promise<{ properties: Property[]; totalCount: number; allMappable: any[] }> {
-    // Run TGX and Duffel in parallel (LiteAPI dropped)
-    const [tgxSettled, duffelSettled] = await Promise.allSettled([
-        searchTravelgateX(queryParams as unknown as import('@/lib/server/stays/travelgatex/search').TgxSearchParams),
-        searchDuffelStays(queryParams),
-    ]);
+    const tgxSettled = await searchTravelgateX(queryParams as unknown as import('@/lib/server/stays/travelgatex/search').TgxSearchParams).catch((e: any) => {
+        console.error('[Search] TravelgateX failed:', e?.message);
+        return null;
+    });
 
-    const tgxResults: Property[] = [];
-    let tgxTotalCount = 0;
-    let tgxAllMappable: any[] = [];
-    if (tgxSettled.status === 'fulfilled') {
-        const data = tgxSettled.value as any;
-        tgxTotalCount = data?.totalCount ?? 0;
-        tgxAllMappable = data?.allMappable || [];
-        if (data?.data && Array.isArray(data.data)) {
-            tgxResults.push(
-                ...data.data
-                    .map((hotel: any) => {
-                        const prop = transformHotelToProperty(hotel, queryParams.cityName, queryParams.currency);
-                        if (hotel._tgx) {
-                            (prop as any).provider = 'travelgatex';
-                            (prop as any)._tgx = hotel._tgx;
-                        } else if (hotel._etg) {
-                            (prop as any).provider = 'etg';
-                            (prop as any)._etg = hotel._etg;
-                        }
-                        return prop;
-                    })
-                    .filter((p: Property) => p.name && p.price > 0)
-            );
-        }
-    } else {
-        console.error('[Search] TravelgateX failed:', tgxSettled.reason?.message);
-    }
+    const tgxData = tgxSettled as any;
+    const tgxTotalCount: number = tgxData?.totalCount ?? 0;
+    const tgxAllMappable: any[] = tgxData?.allMappable ?? [];
 
-    const duffelResults: Property[] = duffelSettled.status === 'fulfilled'
-        ? duffelSettled.value
-        : [];
+    const tgxResults: Property[] = (tgxData?.data ?? [])
+        .map((hotel: any) => {
+            const prop = transformHotelToProperty(hotel, queryParams.cityName, queryParams.currency);
+            if (hotel._tgx) {
+                (prop as any).provider = 'travelgatex';
+                (prop as any)._tgx = hotel._tgx;
+            } else if (hotel._etg) {
+                (prop as any).provider = 'etg';
+                (prop as any)._etg = hotel._etg;
+            }
+            return prop;
+        })
+        .filter((p: Property) => p.name && p.price > 0);
 
-    // Merge: TGX first, then Duffel (deduplicated by name)
-    const seenNames = new Set(tgxResults.map(p => p.name.toLowerCase().trim()));
-    const uniqueDuffel = duffelResults.filter(
-        p => !seenNames.has(p.name.toLowerCase().trim())
-    );
+    if (tgxResults.length === 0) throw new Error('NO_RESULTS');
 
-    const combined = [...tgxResults, ...uniqueDuffel];
-    if (combined.length === 0) throw new Error('NO_RESULTS');
-
-    const tgxIds = tgxResults.map(p => p.id).filter(Boolean);
+    const tgxIds = tgxResults.map((p: Property) => p.id).filter(Boolean);
     const ratingsMap = await fetchHotelRatings(tgxIds);
     if (ratingsMap.size > 0) {
-        for (const prop of combined) {
+        for (const prop of tgxResults) {
             const etg = ratingsMap.get(prop.id);
             if (etg && etg.rating > 0) {
                 prop.rating = etg.rating;
@@ -400,9 +377,9 @@ async function fetchSearchPropertiesInner(queryParams: SearchQueryParams): Promi
     }
 
     return {
-        properties: combined,
-        totalCount: tgxTotalCount || combined.length,
-        allMappable: tgxAllMappable.length > 0 ? tgxAllMappable : combined
+        properties: tgxResults,
+        totalCount: tgxTotalCount || tgxResults.length,
+        allMappable: tgxAllMappable.length > 0 ? tgxAllMappable : tgxResults,
     };
 }
 
