@@ -191,6 +191,25 @@ export async function GET(req: NextRequest) {
         return NextResponse.json({ city: dbStatsCity, total: rows.length, numericIds, bySource, byCountry, sample });
     }
 
+    // Export all numeric TGX hotel codes for a city (for seeding hotel-seeds.ts)
+    // Usage: GET /api/debug/tgx?exportCodes=Tokyo
+    const exportCodesCity = searchParams.get('exportCodes');
+    if (exportCodesCity) {
+        const sql = getSqlAdmin();
+        const key = exportCodesCity.toLowerCase();
+        const rows = await sql<{ hotel_id: string; name: string; lat: number; lng: number }[]>`
+            SELECT hotel_id, name, lat, lng
+            FROM hotel_content
+            WHERE city ILIKE ${'%' + key + '%'}
+              AND hotel_id ~ '^[0-9]+$'
+            ORDER BY hotel_id
+            LIMIT 500
+        `;
+        const codes = rows.map(r => r.hotel_id);
+        const sample = rows.slice(0, 5).map(r => ({ id: r.hotel_id, name: r.name, lat: r.lat, lng: r.lng }));
+        return NextResponse.json({ city: exportCodesCity, total: codes.length, codes, sample });
+    }
+
     // Hotel name lookup — search ETG multicomplete to get the numeric OTV hotel ID
     const hotelName = searchParams.get('hotelName');
     if (hotelName) {
@@ -213,12 +232,16 @@ export async function GET(req: NextRequest) {
     const adults = Number(searchParams.get('adults') || '2');
 
     // ?rawPortfolio=1 — run OTV hotel portfolio query for a city and show codes before bbox filter
+    // Add &noDestCode=1 to skip dest code and query the global OTV catalog directly
     // Usage: GET /api/debug/tgx?rawPortfolio=1&city=Phuket
+    // Usage: GET /api/debug/tgx?rawPortfolio=1&noDestCode=1
     if (searchParams.get('rawPortfolio')) {
         try {
-            const destCode = await resolveTgxDestinationCode(city, undefined).catch(() => null);
+            const skipDest = searchParams.get('noDestCode') === '1';
+            const destCode = skipDest ? null : await resolveTgxDestinationCode(city, undefined).catch(() => null);
             const cfg = getTgxConfig();
-            const criteria: Record<string, unknown> = { access: cfg.accessCode, maxSize: 200 };
+            const pageSize = Number(searchParams.get('pageSize') || '200');
+            const criteria: Record<string, unknown> = { access: cfg.accessCode, maxSize: pageSize };
             if (destCode) criteria.destinationCodes = [destCode];
             const result = await tgxGraphQL(
                 `query OtvPortfolio($criteria: HotelXHotelListInput!) { hotelX { hotels(criteria: $criteria) { edges { node { hotelData { code hotelName location { coordinates { latitude longitude } } } } } } } }`,
