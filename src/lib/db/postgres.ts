@@ -54,6 +54,44 @@ export function getSql(): postgres.Sql {
     return _sql;
 }
 
+// Run once per process — creates cache/stats tables that the deploy workflow
+// never provisions (no migration step in CI). Safe to re-run: all DDL uses
+// CREATE TABLE IF NOT EXISTS / CREATE INDEX IF NOT EXISTS.
+let _ensureTablesRan = false;
+function ensureTablesOnce(sql: postgres.Sql): void {
+    if (_ensureTablesRan) return;
+    _ensureTablesRan = true;
+    sql`
+        CREATE TABLE IF NOT EXISTS public.hotel_search_cache (
+            cache_key  text PRIMARY KEY,
+            result     jsonb NOT NULL,
+            created_at timestamptz NOT NULL DEFAULT now(),
+            expires_at timestamptz NOT NULL
+        )
+    `.then(() => sql`
+        CREATE INDEX IF NOT EXISTS idx_hotel_search_cache_expires
+            ON public.hotel_search_cache (expires_at)
+    `).then(() => sql`
+        CREATE TABLE IF NOT EXISTS public.tgx_destination_cache (
+            city_key         text PRIMARY KEY,
+            destination_code text NOT NULL,
+            created_at       timestamptz DEFAULT now()
+        )
+    `).then(() => sql`
+        CREATE TABLE IF NOT EXISTS public.hotel_search_stats (
+            city_key         text PRIMARY KEY,
+            country_code     text NOT NULL DEFAULT '',
+            search_count     int  NOT NULL DEFAULT 1,
+            last_searched_at timestamptz NOT NULL DEFAULT now()
+        )
+    `).then(() => {
+        console.log('[db] startup tables OK');
+    }).catch((e: any) => {
+        console.error('[db] ensureTables failed:', e.message);
+        _ensureTablesRan = false; // allow retry on next request
+    });
+}
+
 /** Admin connection — bypasses RLS for service-role operations */
 export function getSqlAdmin(): postgres.Sql {
     if (!_sqlAdmin) {
@@ -65,6 +103,7 @@ export function getSqlAdmin(): postgres.Sql {
             ...(ssl !== undefined ? { ssl } : {}),
             onnotice: () => {},
         });
+        ensureTablesOnce(_sqlAdmin);
     }
     return _sqlAdmin;
 }
