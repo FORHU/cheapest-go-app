@@ -84,6 +84,12 @@ function ensureTablesOnce(sql: postgres.Sql): void {
             search_count     int  NOT NULL DEFAULT 1,
             last_searched_at timestamptz NOT NULL DEFAULT now()
         )
+    `).then(() => sql`
+        CREATE TABLE IF NOT EXISTS public.tgx_failed_dest_codes (
+            dest_code  text PRIMARY KEY,
+            city_key   text NOT NULL DEFAULT '',
+            created_at timestamptz NOT NULL DEFAULT now()
+        )
     `).then(() => {
         console.log('[db] startup tables OK');
     }).catch((e: any) => {
