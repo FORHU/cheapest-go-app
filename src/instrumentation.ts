@@ -15,7 +15,11 @@ export async function register() {
 }
 
 async function ensureTables() {
-  const { getSqlAdmin } = await import('@/lib/db/postgres');
+  // Use a computed specifier so webpack's static import resolver doesn't try
+  // to bundle postgres (which needs Node.js native modules net/tls/crypto).
+  // At runtime this resolves correctly in the Node.js process.
+  const dbModule = '@/lib/db/postgres';
+  const { getSqlAdmin } = await import(/* webpackIgnore: true */ dbModule as any);
   const sql = getSqlAdmin();
   await sql`
     CREATE TABLE IF NOT EXISTS public.hotel_search_cache (
