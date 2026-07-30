@@ -2,10 +2,49 @@ export async function register() {
   if (process.env.NEXT_RUNTIME === 'nodejs') {
     await import('../sentry.server.config');
     checkEnv();
+    // Deploy workflow only runs docker run — no migration step. Ensure the
+    // cache/stats tables exist so cache writes don't fail silently with
+    // "relation does not exist" on fresh or reset databases.
+    ensureTables().catch((e) =>
+      console.error('[startup] ensureTables failed:', e.message)
+    );
   }
   if (process.env.NEXT_RUNTIME === 'edge') {
     await import('../sentry.edge.config');
   }
+}
+
+async function ensureTables() {
+  const { getSqlAdmin } = await import('@/lib/db/postgres');
+  const sql = getSqlAdmin();
+  await sql`
+    CREATE TABLE IF NOT EXISTS public.hotel_search_cache (
+      cache_key  text PRIMARY KEY,
+      result     jsonb NOT NULL,
+      created_at timestamptz NOT NULL DEFAULT now(),
+      expires_at timestamptz NOT NULL
+    )
+  `;
+  await sql`
+    CREATE INDEX IF NOT EXISTS idx_hotel_search_cache_expires
+      ON public.hotel_search_cache (expires_at)
+  `;
+  await sql`
+    CREATE TABLE IF NOT EXISTS public.tgx_destination_cache (
+      city_key         text PRIMARY KEY,
+      destination_code text NOT NULL,
+      created_at       timestamptz DEFAULT now()
+    )
+  `;
+  await sql`
+    CREATE TABLE IF NOT EXISTS public.hotel_search_stats (
+      city_key         text PRIMARY KEY,
+      country_code     text NOT NULL DEFAULT '',
+      search_count     int  NOT NULL DEFAULT 1,
+      last_searched_at timestamptz NOT NULL DEFAULT now()
+    )
+  `;
+  console.log('[startup] ensureTables: cache/stats tables OK');
 }
 
 function checkEnv() {

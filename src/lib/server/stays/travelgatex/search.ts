@@ -481,8 +481,9 @@ async function setHotelSearchCache(key: string, result: any, ttlMinutes: number)
             ON CONFLICT (cache_key) DO UPDATE
                 SET result = EXCLUDED.result, expires_at = EXCLUDED.expires_at, created_at = now()
         `;
+        console.log(`[hotel-cache] WRITE ${key} (ttl=${ttlMinutes}min)`);
     } catch (e: any) {
-        console.error('[hotel-cache] Write failed:', e.message);
+        console.error('[hotel-cache] Write failed (key:', key, '):', e.message);
     }
 }
 
@@ -1123,9 +1124,6 @@ export async function runTgxSearch(params: TgxSearchParams) {
                             && result.data.roomTypes.length > 0;
                         if (hasCityResults || hasHotelRooms) {
                             setHotelSearchCache(key, result, ttl).catch(() => {});
-                        } else if (Array.isArray(result?.data)) {
-                            // Cache empty city result briefly so it overwrites stale wrong-country data.
-                            setHotelSearchCache(key, result, 5).catch(() => {});
                         }
                     })
                     .catch((e: any) => console.error('[hotel-cache] Background refresh failed:', e.message))
@@ -1159,10 +1157,11 @@ export async function runTgxSearch(params: TgxSearchParams) {
                     && result.data.roomTypes.length > 0;
                 if (hasCityResults || hasHotelRooms) {
                     setHotelSearchCache(key, result, ttl).catch(() => {});
-                } else if (Array.isArray(result?.data)) {
-                    // Cache empty city result briefly so it overwrites stale wrong-country data.
-                    setHotelSearchCache(key, result, 5).catch(() => {});
                 }
+                // Empty results are NOT cached — a transient TGX error or OTV availability gap
+                // would otherwise pin 0 hotels for all users until the TTL expires. Cross-city
+                // contamination is prevented by filterOtvByCity/filterByCountryBbox, not by
+                // caching empty results.
             }
             return result;
         })

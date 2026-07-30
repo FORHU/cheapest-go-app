@@ -166,13 +166,16 @@ export function HotelResultsClient({ searchParams, onSwitchView }: HotelResultsC
                                     setTotalCount(accumulated.length);
                                     setStatus('done');
                                 }
-                                // Cache the fully-priced results for 10 minutes
-                                setSearchResults(cacheKey, {
-                                    properties: [...accumulated],
-                                    totalCount: accumulated.length,
-                                    allMappable: msg.allMappable ?? [],
-                                    queryParams: searchParams,
-                                });
+                                // Cache the fully-priced results for 10 minutes (skip empty results
+                                // so a transient TGX miss doesn't pin 0 hotels for the cache TTL)
+                                if (accumulated.length > 0) {
+                                    setSearchResults(cacheKey, {
+                                        properties: [...accumulated],
+                                        totalCount: accumulated.length,
+                                        allMappable: msg.allMappable ?? [],
+                                        queryParams: searchParams,
+                                    });
+                                }
                             } else if (msg.type === 'error') {
                                 console.error('[HotelResultsClient] stream error:', msg.message);
                                 if (!cancelled) {
