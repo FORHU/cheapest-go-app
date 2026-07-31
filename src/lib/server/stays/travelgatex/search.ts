@@ -501,6 +501,7 @@ query TgxCitySearch($criteria: HotelCriteriaSearchInput!, $settings: HotelSettin
         cancelPolicy { refundable }
       }
       errors { code type description }
+      warnings { code type description }
     }
   }
 }`;
@@ -529,12 +530,30 @@ query TgxHotelSearch($criteria: HotelCriteriaSearchInput!, $settings: HotelSetti
 async function fetchHotelContent(hotelCodes: string[]) {
     if (!hotelCodes.length) return new Map<string, any>();
     const sql = getSqlAdmin();
+    // LEFT JOIN tgx_hotel_static so static CSV data fills in slug names, missing
+    // coordinates, and star ratings that hotel_content doesn't have yet.
     const rows = await sql`
-        SELECT hotel_id, name, images, star_rating, lat, lng, address, city, country,
-               description, amenities, review_rating, review_count, check_in_time, check_out_time,
-               ratehawk_hid
-        FROM hotel_content
-        WHERE hotel_id = ANY(${hotelCodes})
+        SELECT
+            hc.hotel_id,
+            COALESCE(NULLIF(TRIM(hc.name), ''), hs.hotel_name, hc.hotel_id) AS name,
+            hc.images,
+            COALESCE(hc.star_rating, hs.category_code::int)                 AS star_rating,
+            COALESCE(NULLIF(hc.lat::text, '0')::numeric, hs.latitude)       AS lat,
+            COALESCE(NULLIF(hc.lng::text, '0')::numeric, hs.longitude)      AS lng,
+            COALESCE(NULLIF(TRIM(hc.address), ''), hs.address)              AS address,
+            COALESCE(NULLIF(TRIM(hc.city), ''), hs.city)                    AS city,
+            COALESCE(NULLIF(TRIM(hc.country), ''), hs.country_code)         AS country,
+            hc.description,
+            hc.amenities,
+            hc.review_rating,
+            hc.review_count,
+            hc.check_in_time,
+            hc.check_out_time,
+            hc.ratehawk_hid,
+            hs.fastx_code
+        FROM hotel_content hc
+        LEFT JOIN tgx_hotel_static hs ON hs.hotel_code = hc.hotel_id
+        WHERE hc.hotel_id = ANY(${hotelCodes})
     `;
     const map = new Map<string, any>();
     for (const row of rows) map.set(row.hotel_id, row);
@@ -567,12 +586,12 @@ async function fetchHotelCodesByCity(cityName: string, countryCode?: string): Pr
         ? await sql`
             SELECT hotel_id FROM hotel_content
             WHERE city ILIKE ${pattern} AND LOWER(country) = LOWER(${isoCode})
-            LIMIT 1000
+            LIMIT 300
           `
         : await sql`
             SELECT hotel_id FROM hotel_content
             WHERE city ILIKE ${pattern}
-            LIMIT 1000
+            LIMIT 300
           `;
     return rows.map((r: any) => r.hotel_id);
 }
@@ -664,13 +683,14 @@ async function fetchOtvHotelCodesByCity(
 ): Promise<{ codes: string[]; contentMap: Map<string, any> }> {
     try {
         const cfg = getTgxConfig();
-        const PAGE_SIZE = 1000;
+        const PAGE_SIZE = 500; // TGX Hotels Query max is 500 per page
         // With a dest code or country filter, one page covers the scoped result.
         // Without either, paginate the global catalog (up to 3 pages) as a last resort.
-        const MAX_PAGES = (destinationCode || countryCode) ? 1 : 3;
-        const PORTFOLIO_QUERY = `query OtvHotelPortfolio($criteria: HotelXHotelListInput!) {
+        const MAX_PAGES = (destinationCode || countryCode) ? 2 : 3;
+        // token is a top-level variable, NOT inside criteria (TGX Hotels Query API contract)
+        const PORTFOLIO_QUERY = `query OtvHotelPortfolio($criteria: HotelXHotelListInput!, $token: String) {
                hotelX {
-                 hotels(criteria: $criteria) {
+                 hotels(criteria: $criteria, token: $token) {
                    token
                    edges {
                      node {
@@ -701,10 +721,12 @@ async function fetchOtvHotelCodesByCity(
             const criteria: Record<string, unknown> = { access: cfg.accessCode, maxSize: PAGE_SIZE };
             if (destinationCode) criteria.destinationCodes = [destinationCode];
             else if (countryCode) criteria.countries = [countryCode.toUpperCase()];
-            if (pageToken) criteria.token = pageToken;
 
-            const result = await tgxGraphQL(PORTFOLIO_QUERY, { criteria });
-            const hotelList = result?.data?.hotelX?.hotels ?? {};
+            const result: any = await tgxGraphQL(PORTFOLIO_QUERY, {
+                criteria,
+                ...(pageToken ? { token: pageToken } : {}),
+            });
+            const hotelList: any = result?.data?.hotelX?.hotels ?? {};
             const edges: any[] = hotelList.edges ?? [];
             allEdges.push(...edges);
             pageToken = hotelList.token ?? null;
@@ -887,6 +909,11 @@ async function runCityFallback(
     prefetchDestCode: Promise<string | undefined>,
     prefetchHotelCodes: Promise<string[]>,
 ) {
+    // Hotel-code chunk searches must NOT use search_by_destination — the plugin is for
+    // converting destination codes to hotel codes, not for requests that already carry
+    // explicit hotel codes. Using it there expands scope unpredictably.
+    const settingsNoPlugin = getTgxSettings(getTgxConfig(), 12_000, false);
+
     // Ensure the DB-persisted failed codes are loaded before we check the set.
     await loadFailedDestCodes();
 
@@ -906,7 +933,7 @@ async function runCityFallback(
                 destResult = await tgxGraphQL(CITY_SEARCH_QUERY, {
                     criteria: { ...baseCriteria, destinations: [resolvedCode] },
                     settings,
-                });
+                }, 13_000);
             } catch (destErr: any) {
                 // 513 = TGX handler timeout (dest code returns too many results) — fall through to hotel-code path
                 console.warn(`[tgx-search] Dest code "${resolvedCode}" search failed (${destErr.message?.slice(0, 80)}) — falling back to hotel-code search`);
@@ -919,6 +946,8 @@ async function runCityFallback(
             console.log(`[tgx-search][TIMING] dest-code round-trip for "${resolvedCode}" took ${Date.now() - __t0}ms`);
             const destOptions: TgxOption[] = destResult?.data?.hotelX?.search?.options || [];
             const destErrors: any[] = destResult?.data?.hotelX?.search?.errors || [];
+            const destWarnings: any[] = destResult?.data?.hotelX?.search?.warnings || [];
+            if (destWarnings.length) console.warn(`[tgx-search] dest-code warnings for "${resolvedCode}":`, JSON.stringify(destWarnings).slice(0, 500));
             const destMerchant = destOptions.filter(
                 (o) => o.paymentType === 'MERCHANT' && (o.status === 'AVAILABLE' || o.status === 'OK')
             );
@@ -1041,7 +1070,7 @@ async function runCityFallback(
     if (otvCodes.length > 0) {
         console.log(`[tgx-search] Searching TGX with ${otvCodes.length} OTV hotel codes for "${cityName}"`);
 
-        const CHUNK = 100;
+        const CHUNK = 200;
         const CONCURRENCY = 4;
         const chunks: string[][] = [];
         for (let i = 0; i < otvCodes.length; i += CHUNK) chunks.push(otvCodes.slice(i, i + CHUNK));
@@ -1050,16 +1079,24 @@ async function runCityFallback(
             const results: { options: TgxOption[]; errors: any[] }[] = [];
             for (let i = 0; i < chunkList.length; i += CONCURRENCY) {
                 const batch = chunkList.slice(i, i + CONCURRENCY);
-                const batchResults = await Promise.all(batch.map(async (chunk) => {
+                // allSettled so one chunk's timeout/error doesn't discard other chunks' results
+                const settled = await Promise.allSettled(batch.map(async (chunk) => {
                     const r = await tgxGraphQL(CITY_SEARCH_QUERY, {
                         criteria: { ...baseCriteria, hotels: chunk },
-                        settings,
-                    });
+                        settings: settingsNoPlugin,
+                    }, 13_000);
+                    const warnings = r?.data?.hotelX?.search?.warnings;
+                    if (warnings?.length) console.warn('[tgx-search] warnings:', JSON.stringify(warnings).slice(0, 500));
                     return {
                         options: (r?.data?.hotelX?.search?.options || []) as TgxOption[],
                         errors:  (r?.data?.hotelX?.search?.errors  || []) as any[],
                     };
                 }));
+                const batchResults = settled.map(s =>
+                    s.status === 'fulfilled'
+                        ? s.value
+                        : { options: [] as TgxOption[], errors: [{ code: 'CHUNK_ERROR', description: (s.reason as any)?.message?.slice(0, 80) }] }
+                );
                 results.push(...batchResults);
             }
             return results;
@@ -1070,10 +1107,14 @@ async function runCityFallback(
         const fallbackErrors: any[]       = chunkResults.flatMap(r => r.errors);
 
         const allProcessesFailed = fallbackErrors.some((e) => e.code === 'ALL_PROCESSES_FAILED');
+        // CHUNK_ERROR = our 13s HTTP abort fired before TGX returned ALL_PROCESSES_FAILED —
+        // OTV is slower than expected; treat it the same as ALL_PROCESSES_FAILED for retry.
+        const allTimedOut = fallbackErrors.length > 0 && fallbackErrors.every((e) => e.code === 'CHUNK_ERROR');
 
-        if ((hasEmptyHotelsError(fallbackErrors) || allProcessesFailed) && fallbackOptions.length === 0) {
-            const waitMs = allProcessesFailed ? 3000 : 1000;
-            console.log(`[tgx-search] Hotel-code search failed (${allProcessesFailed ? 'ALL_PROCESSES_FAILED' : 'Empty hotels'}) — retrying in ${waitMs}ms`);
+        if ((hasEmptyHotelsError(fallbackErrors) || allProcessesFailed || allTimedOut) && fallbackOptions.length === 0) {
+            const waitMs = allProcessesFailed || allTimedOut ? 500 : 1000;
+            const reason = allProcessesFailed ? 'ALL_PROCESSES_FAILED' : allTimedOut ? 'all chunks timed out' : 'Empty hotels';
+            console.log(`[tgx-search] Hotel-code search failed (${reason}) — retrying in ${waitMs}ms`);
             await new Promise(r => setTimeout(r, waitMs));
             chunkResults = await runChunks(chunks);
             fallbackOptions = chunkResults.flatMap(r => r.options);
@@ -1185,7 +1226,7 @@ async function _runTgxSearch(params: TgxSearchParams) {
     // OTV/RateHawk prices in USD — always search in USD regardless of display currency.
     const currency = 'USD';
 
-    const settings = getTgxSettings(getTgxConfig(), 18000, true);
+    const settings = getTgxSettings(getTgxConfig(), 12_000, true);
     const occupancies = buildOccupancies(Number(adults), Number(children), childrenAges);
 
     let destinations: string[] | undefined;
@@ -1243,7 +1284,7 @@ async function _runTgxSearch(params: TgxSearchParams) {
     };
 
     const gqlQuery = hotelCode ? HOTEL_SEARCH_QUERY : CITY_SEARCH_QUERY;
-    const result = await tgxGraphQL(gqlQuery, { criteria, settings });
+    const result = await tgxGraphQL(gqlQuery, { criteria, settings }, 13_000);
 
     const options: TgxOption[] = result?.data?.hotelX?.search?.options || [];
     const gqlErrors = result?.data?.hotelX?.search?.errors || [];

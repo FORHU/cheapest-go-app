@@ -47,7 +47,11 @@ export function getTgxSettings(cfg = getTgxConfig(), timeout = 18000, withSearch
 
 // ─── GraphQL request ──────────────────────────────────────────────────────────
 
-export async function tgxGraphQL<T = any>(query: string, variables?: Record<string, any>): Promise<T> {
+export async function tgxGraphQL<T = any>(
+    query: string,
+    variables?: Record<string, any>,
+    httpTimeoutMs = 30_000,
+): Promise<T> {
     const cfg = getTgxConfig();
 
     if (!cfg.apiKey) throw new Error('TRAVELGATEX_API_KEY is not set');
@@ -67,7 +71,7 @@ export async function tgxGraphQL<T = any>(query: string, variables?: Record<stri
             'Accept-Encoding': 'gzip',
         },
         body: payload,
-        signal: AbortSignal.timeout(30_000),
+        signal: AbortSignal.timeout(httpTimeoutMs),
     });
 
     if (!res.ok) {

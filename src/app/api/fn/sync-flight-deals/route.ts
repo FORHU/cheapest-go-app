@@ -70,10 +70,14 @@ export async function POST(req: NextRequest) {
         departureDateObj.setDate(departureDateObj.getDate() + 14);
         const departureDate = departureDateObj.toISOString().split('T')[0];
 
-        for (const route of finalRoutes) {
+        for (let i = 0; i < finalRoutes.length; i++) {
+            const route = finalRoutes[i];
             const origin = route.origin.toUpperCase();
             const destination = route.destination.toUpperCase();
             const cabinClass = 'economy';
+
+            // Space out Duffel calls to avoid burst rate limiting (429)
+            if (i > 0) await new Promise(r => setTimeout(r, 4000));
 
             try {
                 const offers = await searchDuffel({

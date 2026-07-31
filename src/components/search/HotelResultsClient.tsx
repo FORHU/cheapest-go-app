@@ -117,32 +117,80 @@ export function HotelResultsClient({ searchParams, onSwitchView }: HotelResultsC
                             if (msg.type === 'hotels') {
                                 // Phase 1 (catalog, ~10ms) or new TGX hotels not in catalog.
                                 // Show immediately so the user sees real cards while prices load.
-                                accumulated.push(...(msg.data ?? []));
+                                const incoming = msg.data ?? [];
+                                const withImg = incoming.filter((h: any) => h.image).length;
+                                console.log(`[hotels] +${incoming.length} hotels, ${withImg} with image, source=${msg.source ?? 'tgx'}, acc=${accumulated.length + incoming.length}`);
+                                if (incoming.length > 0) console.log('[hotels] sample:', incoming[0]?.hotelId, 'image:', incoming[0]?.image?.slice(0, 60));
+                                accumulated.push(...incoming);
                                 if (!cancelled) {
                                     setProperties([...accumulated]);
                                     setTotalCount(msg.totalCount ?? accumulated.length);
                                     setStatus('streaming');
                                 }
                             } else if (msg.type === 'prices') {
-                                // Phase 2 price patch: update price fields in-place, clear priceLoading.
+                                // Phase 2 price patch: update price + images/names in-place, clear priceLoading.
+                                // Images and names are now embedded in the prices payload so they arrive
+                                // in the same message, avoiding the lost type:'content' race condition.
                                 const priceMap = new Map<string, any>(
                                     (msg.data ?? []).map((p: any) => [p.hotelId, p])
                                 );
                                 let patched = false;
+                                let matchedWithImg = 0, matchedNoImg = 0, noMatch = 0;
                                 for (let i = 0; i < accumulated.length; i++) {
                                     const h = accumulated[i] as any;
                                     const upd = priceMap.get(h.hotelId ?? h.id) ?? priceMap.get(h.id);
                                     if (upd) {
+                                        if (upd.images?.length) matchedWithImg++; else matchedNoImg++;
                                         accumulated[i] = {
                                             ...h,
-                                            price:        upd.price        ?? h.price,
-                                            currency:     upd.currency     ?? h.currency,
-                                            offerId:      upd.offerId      ?? h.offerId,
+                                            price:         upd.price        ?? h.price,
+                                            currency:      upd.currency     ?? h.currency,
+                                            offerId:       upd.offerId      ?? h.offerId,
                                             refundableTag: upd.refundableTag ?? h.refundableTag,
-                                            boardCode:    upd.boardCode    ?? h.boardCode,
-                                            _tgx:         upd._tgx        ?? h._tgx,
-                                            priceLoading: false,
+                                            boardCode:     upd.boardCode    ?? h.boardCode,
+                                            _tgx:          upd._tgx        ?? h._tgx,
+                                            priceLoading:  false,
+                                            // Apply image/name patches embedded in prices.
+                                            // Always use fresh TGX images when available — DB images
+                                            // may be stale or empty, so don't gate on !h.images?.length.
+                                            ...(upd.images?.length ? { images: upd.images, image: upd.images[0] } : {}),
+                                            ...(upd.name && (!h.name || h.name === (h.hotelId ?? h.id) || /^[a-z][a-z0-9_]+$/.test(h.name)) ? { name: upd.name } : {}),
                                         };
+                                        patched = true;
+                                    } else {
+                                        noMatch++;
+                                    }
+                                }
+                                console.log(`[prices] priceMap=${priceMap.size}, acc=${accumulated.length}, matchedWithImg=${matchedWithImg}, matchedNoImg=${matchedNoImg}, noMatch=${noMatch}`);
+                                if (matchedNoImg > 0) {
+                                    const sample = [...priceMap.values()].find((p: any) => !p.images?.length);
+                                    console.log('[prices] sample entry without images:', sample?.hotelId, 'keys:', sample ? Object.keys(sample) : []);
+                                }
+                                if (patched && !cancelled) setProperties([...accumulated]);
+                            } else if (msg.type === 'content') {
+                                // Content patch: arrives ~5s after Phase 1, well before prices.
+                                // Patches images (missing) and names (slug-like OTV artifacts).
+                                const patchMap = msg.data as Record<string, { images?: string[]; name?: string }>;
+                                const patchKeys = Object.keys(patchMap);
+                                const accIds = accumulated.map((h: any) => h.hotelId ?? h.id);
+                                const matched = patchKeys.filter(k => accIds.includes(k));
+                                console.log(`[content] keys=${patchKeys.length} acc=${accIds.length} matched=${matched.length} sample_url=${patchMap[matched[0]]?.images?.[0]?.slice(0,80)}`);
+                                let patched = false;
+                                for (let i = 0; i < accumulated.length; i++) {
+                                    const h = accumulated[i] as any;
+                                    const id = h.hotelId ?? h.id;
+                                    const patch = patchMap[id];
+                                    if (!patch) continue;
+                                    const updates: Partial<typeof h> = {};
+                                    if (patch.images?.length) {
+                                        updates.images = patch.images;
+                                        updates.image  = patch.images[0];
+                                    }
+                                    if (patch.name && (!h.name || h.name === id || /^[a-z][a-z0-9_]+$/.test(h.name))) {
+                                        updates.name = patch.name;
+                                    }
+                                    if (Object.keys(updates).length) {
+                                        accumulated[i] = { ...h, ...updates };
                                         patched = true;
                                     }
                                 }
@@ -155,20 +203,43 @@ export function HotelResultsClient({ searchParams, onSwitchView }: HotelResultsC
                                 ));
                                 if (accumulated.length !== before && !cancelled) setProperties([...accumulated]);
                             } else if (msg.type === 'done') {
-                                // Drop catalog hotels that never received a TGX price — they have
-                                // no real availability for these dates and would show "0 rooms" if clicked.
-                                const priced = accumulated.filter((h: any) => h.priceLoading !== true && h.price > 0);
-                                if (priced.length !== accumulated.length) {
-                                    accumulated.splice(0, accumulated.length, ...priced);
-                                    if (!cancelled) setProperties([...accumulated]);
+                                const tgxSucceeded = (msg.tgxCount ?? 0) > 0;
+                                const withImgBefore = accumulated.filter((h: any) => !!(h as any).image).length;
+                                console.log(`[done] tgxCount=${msg.tgxCount}, acc=${accumulated.length}, withImage=${withImgBefore}`);
+                                if (accumulated.length > 0) {
+                                    const s = accumulated[0] as any;
+                                    console.log('[done] first hotel:', s.hotelId, 'image:', s.image?.slice(0, 60), 'priceLoading:', s.priceLoading, 'price:', s.price);
+                                }
+                                if (tgxSucceeded) {
+                                    // Drop catalog hotels that never received a TGX price — they have
+                                    // no real availability for these dates and would show "0 rooms" if clicked.
+                                    const priced = accumulated.filter((h: any) => h.priceLoading !== true && h.price > 0);
+                                    if (priced.length !== accumulated.length) {
+                                        accumulated.splice(0, accumulated.length, ...priced);
+                                        if (!cancelled) setProperties([...accumulated]);
+                                    }
+                                    const withImgAfter = accumulated.filter((h: any) => !!(h as any).image).length;
+                                    console.log(`[done] after prune: acc=${accumulated.length}, withImage=${withImgAfter}`);
+                                } else {
+                                    // TGX timed out / ALL_PROCESSES_FAILED — keep catalog hotels but
+                                    // clear priceLoading so cards don't spin indefinitely.
+                                    let changed = false;
+                                    for (let i = 0; i < accumulated.length; i++) {
+                                        if ((accumulated[i] as any).priceLoading) {
+                                            accumulated[i] = { ...accumulated[i] as any, priceLoading: false };
+                                            changed = true;
+                                        }
+                                    }
+                                    if (changed && !cancelled) setProperties([...accumulated]);
                                 }
                                 if (!cancelled) {
                                     setTotalCount(accumulated.length);
                                     setStatus('done');
                                 }
-                                // Cache the fully-priced results for 10 minutes (skip empty results
-                                // so a transient TGX miss doesn't pin 0 hotels for the cache TTL)
-                                if (accumulated.length > 0) {
+                                // Cache only when TGX returned real prices AND at least some hotels
+                                // have images — caching zero-image results pins gray cards for the TTL.
+                                const withImg = accumulated.filter((h: any) => !!(h as any).image).length;
+                                if (tgxSucceeded && accumulated.length > 0 && withImg > 0) {
                                     setSearchResults(cacheKey, {
                                         properties: [...accumulated],
                                         totalCount: accumulated.length,

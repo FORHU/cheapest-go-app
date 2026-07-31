@@ -201,6 +201,7 @@ const VerticalCard: React.FC<PropertyCardProps> = ({
                             className="object-cover transition-transform duration-500 group-hover:scale-110"
                             priority={priority}
                             loading={priority ? undefined : 'lazy'}
+                            onError={() => console.warn('[img-error]', imgSrc?.slice(0, 80))}
                         />
                     )}
                     <div className="absolute inset-0 bg-linear-to-t from-black/60 via-transparent to-transparent" />
@@ -345,6 +346,7 @@ const HorizontalCard: React.FC<PropertyCardProps> = ({
                             sizes="240px"
                             className="object-cover object-center transition-transform duration-500 group-hover:scale-105"
                             loading="lazy"
+                            onError={() => console.warn('[img-error-h]', property.image?.slice(0, 80))}
                         />
                     ) : (
                         <div className="w-full h-full bg-linear-to-br from-slate-100 to-slate-200 dark:from-slate-700 dark:to-slate-800 flex items-center justify-center">

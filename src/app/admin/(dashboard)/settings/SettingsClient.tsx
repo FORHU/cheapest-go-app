@@ -13,6 +13,7 @@ import {
     CheckCircle2,
     AlertCircle,
     Loader2,
+    Trash2,
 } from 'lucide-react';
 import { Button, Input } from '@/components/ui';
 
@@ -51,6 +52,7 @@ export function SettingsClient({ initialSettings, integrationKeys }: SettingsCli
     const router = useRouter();
     const [activeTab, setActiveTab] = useState<TabId>('general');
     const [saving, setSaving] = useState(false);
+    const [clearing, setClearing] = useState(false);
     const [toast, setToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
     // Track the "saved" baseline so isDirty resets after successful save
@@ -116,6 +118,25 @@ export function SettingsClient({ initialSettings, integrationKeys }: SettingsCli
             setToast({ type: 'error', message: 'Network error' });
         } finally {
             setSaving(false);
+            setTimeout(() => setToast(null), 4000);
+        }
+    };
+
+    const handleClearCache = async () => {
+        setClearing(true);
+        setToast(null);
+        try {
+            const res = await fetch('/api/admin/cache/clear', { method: 'POST' });
+            const data = await res.json();
+            if (data.success) {
+                setToast({ type: 'success', message: 'All search caches cleared' });
+            } else {
+                setToast({ type: 'error', message: data.error || 'Failed to clear cache' });
+            }
+        } catch {
+            setToast({ type: 'error', message: 'Network error' });
+        } finally {
+            setClearing(false);
             setTimeout(() => setToast(null), 4000);
         }
     };
@@ -371,6 +392,35 @@ export function SettingsClient({ initialSettings, integrationKeys }: SettingsCli
                                     onChange={e => setCacheDuration(Number(e.target.value))}
                                     className="max-w-[120px] h-14 bg-slate-50 dark:bg-white/5 border-slate-100 dark:border-white/10 rounded-2xl px-6 font-bold"
                                 />
+                            </div>
+
+                            <div className="pt-8 border-t border-slate-100 dark:border-white/5 mt-8">
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-10 h-10 rounded-xl bg-rose-500/10 text-rose-500 flex items-center justify-center shrink-0">
+                                            <Trash2 size={18} />
+                                        </div>
+                                        <div>
+                                            <h4 className="font-black tracking-tight text-slate-900 dark:text-white">Clear All Search Caches</h4>
+                                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">
+                                                Hotel, flight, place, and destination caches
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <button
+                                        onClick={handleClearCache}
+                                        disabled={clearing}
+                                        className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest border border-rose-200 dark:border-rose-500/20 text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-500/10 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                                    >
+                                        {clearing
+                                            ? <><Loader2 size={13} className="animate-spin" /> Clearing…</>
+                                            : <><Trash2 size={13} /> Clear Now</>
+                                        }
+                                    </button>
+                                </div>
+                                <p className="text-[10px] text-slate-400 mt-3 ml-13">
+                                    Forces fresh data on the next search. Cached results in active browsers clear on their next page load.
+                                </p>
                             </div>
                         </motion.div>
                     )}

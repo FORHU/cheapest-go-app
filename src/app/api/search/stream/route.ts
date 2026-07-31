@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server';
 import { runTgxSearch } from '@/lib/server/stays/travelgatex/search';
-import { searchDuffelStays } from '@/lib/server/stays/providers/duffel';
 import { getSqlAdmin } from '@/lib/db/postgres';
+import { tgxGraphQL, getTgxConfig } from '@/lib/server/stays/travelgatex/client';
 
 const COUNTRY_NAME_TO_ISO: Record<string, string> = {
     'indonesia': 'ID', 'france': 'FR', 'italy': 'IT', 'spain': 'ES', 'germany': 'DE',
@@ -17,6 +17,75 @@ const COUNTRY_NAME_TO_ISO: Record<string, string> = {
     'nepal': 'NP', 'uae': 'AE', 'united arab emirates': 'AE', 'turkey': 'TR',
     'morocco': 'MA', 'jordan': 'JO', 'new zealand': 'NZ', 'canada': 'CA',
 };
+
+// ── Hotel image enrichment (TGX Hotels Query, runs in parallel with Phase 2) ──
+
+const HOTEL_CONTENT_QUERY = `
+query TgxHotelContent($criteria: HotelXHotelListInput!) {
+  hotelX {
+    hotels(criteria: $criteria) {
+      edges {
+        node {
+          hotelData {
+            code
+            hotelName
+            medias { url type }
+          }
+        }
+      }
+    }
+  }
+}`;
+
+function isSlugName(name: string | null | undefined): boolean {
+    if (!name) return false;
+    return /^[a-z][a-z0-9_]+$/.test(name) && name.includes('_');
+}
+
+interface HotelContentPatch { images?: string[]; name?: string }
+
+async function fetchHotelContentPatches(hotelIds: string[], timeoutMs = 30_000): Promise<Map<string, HotelContentPatch>> {
+    if (!hotelIds.length) return new Map();
+    try {
+        const cfg = getTgxConfig();
+        const result = await tgxGraphQL(HOTEL_CONTENT_QUERY, {
+            criteria: {
+                access: cfg.accessCode,
+                hotelCodes: hotelIds.slice(0, 500),
+                maxSize: Math.min(500, hotelIds.length),
+            },
+        }, timeoutMs);
+        const edges: any[] = result?.data?.hotelX?.hotels?.edges ?? [];
+        const patchMap = new Map<string, HotelContentPatch>();
+        if (edges.length > 0) {
+            const sample = edges.slice(0, 3).map((e: any) => {
+                const hd = e?.node?.hotelData;
+                return `code=${hd?.code} img0=${hd?.medias?.[0]?.url?.slice(0, 60)}`;
+            });
+            console.log(`[content-api] queried=${hotelIds.length} returned=${edges.length} samples: ${sample.join(' | ')}`);
+        }
+        for (const edge of edges) {
+            const hd = edge?.node?.hotelData;
+            if (!hd?.code) continue;
+            const patch: HotelContentPatch = {};
+            // Accept any media URL regardless of type — TGX uses various type values
+            // (photo, PHOTO, image, IMAGE, etc.) and null for untyped images.
+            const VIDEO_TYPES = new Set(['video', 'VIDEO', 'panoramic', 'PANORAMIC', 'virtual_tour']);
+            const images: string[] = (hd.medias ?? [])
+                .filter((m: any) => m.url && !VIDEO_TYPES.has(m.type))
+                .map((m: any) => m.url as string)
+                .slice(0, 5);
+            if (images.length) patch.images = images;
+            // Patch name only when TGX has a non-slug, non-empty name
+            if (hd.hotelName && !isSlugName(hd.hotelName)) patch.name = hd.hotelName;
+            if (patch.images || patch.name) patchMap.set(hd.code, patch);
+        }
+        return patchMap;
+    } catch (e: any) {
+        console.warn('[stream] hotel content fetch failed:', e.message?.slice(0, 100));
+        return new Map();
+    }
+}
 
 function resolveIsoCode(raw: string): string | null {
     if (!raw) return null;
@@ -69,7 +138,7 @@ async function getInstantHotelCatalog(body: any): Promise<any[]> {
                 FROM hotel_content
                 WHERE city ILIKE ${pattern}
                   AND LOWER(country) = LOWER(${isoCode})
-                  AND (hotel_id ~ '^\d+$' OR hotel_id ~ '^[A-Z]{2}\d+$')
+                  AND (hotel_id ~ '^[0-9]+$' OR hotel_id ~ '^[A-Z]{2}[0-9]+$')
                 ORDER BY review_count DESC NULLS LAST
                 LIMIT 300
               `
@@ -78,12 +147,16 @@ async function getInstantHotelCatalog(body: any): Promise<any[]> {
                        description, amenities, review_rating, review_count
                 FROM hotel_content
                 WHERE city ILIKE ${pattern}
-                  AND (hotel_id ~ '^\d+$' OR hotel_id ~ '^[A-Z]{2}\d+$')
+                  AND (hotel_id ~ '^[0-9]+$' OR hotel_id ~ '^[A-Z]{2}[0-9]+$')
                 ORDER BY review_count DESC NULLS LAST
                 LIMIT 300
               `;
 
-        return rows.map((r: any) => ({
+        return rows
+            // Exclude hotels with slug-like OTV names (e.g. vx_the_fifty) from the
+            // instant catalog — they'll be enriched via TGX Hotels Query in Phase 2.
+            .filter((r: any) => !isSlugName(r.name))
+            .map((r: any) => ({
             hotelId:      r.hotel_id,
             id:           r.hotel_id,
             name:         r.name || r.hotel_id,
@@ -317,23 +390,39 @@ export async function POST(req: NextRequest) {
                 // send({ type: 'done', totalCount, allMappable });
                 // ── END PARALLEL MODE ──────────────────────────────────────────
 
-                // ── Phase 2: TGX availability + pricing (18-22s) ─────────────
+                // ── Phase 2: TGX search + catalog content fetch (PARALLEL) ────
+                // We already know catalog hotel IDs from Phase 1, so fetch their content
+                // while TGX searches. After Phase 2 we immediately stream prices/hotels,
+                // then send a type:'content' patch once both content fetches complete.
+                const catalogIdSet = new Set(catalogHotels.map((h: any) => h.id as string));
+                const catalogIdList = [...catalogIdSet];
+
                 const p2Start = Date.now();
-                console.log(`[stream] phase2 TGX starting for "${city}" at ${elapsed()}`);
-                let tgxResult: any;
-                try {
-                    tgxResult = await runTgxSearch(body);
-                } catch (tgxErr: any) {
+                console.log(`[stream] phase2 TGX + catalog content starting at ${elapsed()}`);
+
+                // Catalog content: 50s budget, runs fully in parallel with Phase 2
+                const catalogContentPromise: Promise<Map<string, HotelContentPatch>> =
+                    catalogIdList.length > 0
+                        ? fetchHotelContentPatches(catalogIdList, 50_000)
+                        : Promise.resolve(new Map());
+
+                const tgxResult = await runTgxSearch(body).catch((tgxErr: any) => {
                     const isTimeout = tgxErr?.name === 'TimeoutError' || tgxErr?.message?.includes('timeout') || tgxErr?.message?.includes('aborted');
                     console.warn(`[stream] phase2 TGX ${isTimeout ? 'timed out' : 'failed'} for "${city}": ${tgxErr.message}`);
-                    tgxResult = { data: [], allMappable: [] };
-                }
+                    return { data: [] as any[], allMappable: [] as any[] };
+                });
+
                 const tgxHotels: any[] = Array.isArray(tgxResult.data) ? tgxResult.data : [];
                 const tgxMappable: any[] = tgxResult.allMappable ?? [];
                 console.log(`[stream] phase2 TGX done: ${tgxHotels.length} hotels in ${Date.now() - p2Start}ms (total ${elapsed()})`);
 
+                // ── Stream prices/remove/new-hotels IMMEDIATELY after Phase 2 ─────────────
+                // Users see prices + hotel list appear without waiting for the content API.
+                // Images arrive seconds later via the type:'content' message below.
+                const tgxHotelIdSet = new Set(tgxHotels.map((h: any) => h.hotelId || h.id));
+                const newTgxHotels = tgxHotels.filter((h: any) => !catalogIdSet.has(h.hotelId || h.id));
+
                 if (catalogHotels.length > 0) {
-                    // Catalog was already sent — patch prices onto existing cards.
                     const prices = tgxHotels.map((h: any) => ({
                         hotelId:       h.hotelId || h.id,
                         price:         h.price,
@@ -343,36 +432,79 @@ export async function POST(req: NextRequest) {
                         boardCode:     h.boardCode,
                         _tgx:          h._tgx,
                     }));
-
-                    const catalogIds = new Set(catalogHotels.map((h: any) => h.id));
-                    const tgxHotelIds = new Set(tgxHotels.map((h: any) => h.hotelId || h.id));
-                    const newHotels = tgxHotels.filter((h: any) => !catalogIds.has(h.hotelId || h.id));
-                    const matchedCount = prices.filter(p => catalogIds.has(p.hotelId)).length;
                     const unavailableIds = catalogHotels
-                        .filter((h: any) => !tgxHotelIds.has(h.id))
+                        .filter((h: any) => !tgxHotelIdSet.has(h.id))
                         .map((h: any) => h.id);
 
-                    console.log(`[stream] prices patch: ${matchedCount} matched catalog, ${newHotels.length} new from TGX, ${unavailableIds.length} catalog hotels unavailable (removing)`);
+                    const matchedCount = prices.filter((p: any) => catalogIdSet.has(p.hotelId)).length;
+                    console.log(`[stream] prices: ${matchedCount} matched catalog, ${newTgxHotels.length} new, ${unavailableIds.length} unavailable`);
 
-                    if (prices.length > 0) send({ type: 'prices', data: prices });
-                    // Remove catalog hotels TGX found no availability for — only when TGX
-                    // actually returned results so a TGX timeout doesn't wipe the catalog.
-                    if (tgxHotels.length > 0 && unavailableIds.length > 0) send({ type: 'remove', ids: unavailableIds });
-
-                    if (newHotels.length > 0) {
-                        const newMappable = newHotels.filter((h: any) => h.lat && h.lng);
-                        console.log(`[stream] sending ${newHotels.length} new TGX hotels not in catalog`);
-                        send({ type: 'hotels', data: newHotels, allMappable: newMappable, totalCount: newHotels.length });
+                    if (prices.length > 0)                                      send({ type: 'prices',  data: prices });
+                    if (tgxHotels.length > 0 && unavailableIds.length > 0)      send({ type: 'remove',  ids: unavailableIds });
+                    if (newTgxHotels.length > 0) {
+                        const newMappable = newTgxHotels.filter((h: any) => h.lat && h.lng);
+                        console.log(`[stream] sending ${newTgxHotels.length} new TGX hotels`);
+                        send({ type: 'hotels', data: newTgxHotels, allMappable: newMappable, totalCount: newTgxHotels.length });
                     }
                 } else {
-                    // No catalog — send full TGX response as normal.
-                    console.log(`[stream] no catalog, sending ${tgxHotels.length} TGX hotels directly`);
-                    send({ type: 'hotels', data: tgxHotels, allMappable: tgxMappable, totalCount: tgxHotels.length });
+                    // No catalog — send raw TGX hotels now; images patched via type:'content' below
+                    if (tgxHotels.length > 0) {
+                        console.log(`[stream] no catalog, sending ${tgxHotels.length} TGX hotels`);
+                        send({ type: 'hotels', data: tgxHotels, allMappable: tgxMappable, totalCount: tgxHotels.length });
+                    }
+                }
+
+                // ── Content patches: await catalog (may already be done) + new TGX hotels ──
+                const newTgxIds = newTgxHotels.map((h: any) => h.hotelId || h.id as string);
+                const remainingBudget = Math.max(8_000, 50_000 - (Date.now() - t0));
+                const newHotelContentPromise: Promise<Map<string, HotelContentPatch>> =
+                    newTgxIds.length > 0
+                        ? fetchHotelContentPatches(newTgxIds, remainingBudget)
+                        : Promise.resolve(new Map());
+
+                const [catalogPatches, newHotelPatches] = await Promise.all([
+                    catalogContentPromise,
+                    newHotelContentPromise,
+                ]);
+                const contentPatches = new Map<string, HotelContentPatch>([
+                    ...catalogPatches,
+                    ...newHotelPatches,
+                ]);
+                const imgCount = [...contentPatches.values()].filter(p => p.images?.length).length;
+                console.log(`[stream] content: catalog=${catalogPatches.size}, newTgx=${newHotelPatches.size}, ${imgCount} with images (total ${elapsed()})`);
+
+                // Send content patches — client applies images to already-visible cards
+                if (contentPatches.size > 0) {
+                    const contentData: Record<string, { images?: string[]; name?: string }> = {};
+                    for (const [id, patch] of contentPatches) {
+                        if (patch.images?.length || patch.name) contentData[id] = patch;
+                    }
+                    if (Object.keys(contentData).length > 0) {
+                        console.log(`[stream] sending ${Object.keys(contentData).length} content patches`);
+                        send({ type: 'content', data: contentData });
+                    }
+                }
+
+                // Background: persist fresh images to hotel_content for future searches
+                if (contentPatches.size > 0) {
+                    const sqlBg = getSqlAdmin();
+                    for (const [hotelId, patch] of contentPatches) {
+                        if (patch.images?.length) {
+                            sqlBg`UPDATE hotel_content SET images = ${sqlBg.array(patch.images)}, fetched_at = now()
+                                  WHERE hotel_id = ${hotelId} AND (images IS NULL OR cardinality(images) = 0)`
+                                .catch((e: any) => console.warn('[stream] img-update failed:', hotelId, e.message?.slice(0, 60)));
+                        }
+                        if (patch.name) {
+                            sqlBg`UPDATE hotel_content SET name = ${patch.name}, fetched_at = now()
+                                  WHERE hotel_id = ${hotelId} AND (name IS NULL OR name = hotel_id OR name ~ '^[a-z][a-z0-9_]+$')`
+                                .catch(() => {});
+                        }
+                    }
                 }
 
                 const finalCount = tgxHotels.length > 0 ? tgxHotels.length : catalogHotels.length;
                 console.log(`[stream] done — total ${finalCount} hotels, ${elapsed()} wall time`);
-                send({ type: 'done', totalCount: finalCount, allMappable: tgxMappable.length > 0 ? tgxMappable : catalogHotels.filter((h: any) => h.lat && h.lng) });
+                send({ type: 'done', totalCount: finalCount, tgxCount: tgxHotels.length, allMappable: tgxMappable.length > 0 ? tgxMappable : catalogHotels.filter((h: any) => h.lat && h.lng) });
                 // ── END two-phase mode ────────────────────────────────────────
 
             } catch (e: any) {
@@ -380,7 +512,7 @@ export async function POST(req: NextRequest) {
                 console.error(`[stream] ${isTimeout ? 'timeout' : 'fatal error'} for "${city}" at ${elapsed()}:`, e.message);
                 if (catalogHotels.length > 0) {
                     // Catalog already sent — just close cleanly; don't flash an error over real results
-                    send({ type: 'done', totalCount: catalogHotels.length, allMappable: catalogHotels.filter((h: any) => h.lat && h.lng) });
+                    send({ type: 'done', totalCount: catalogHotels.length, tgxCount: 0, allMappable: catalogHotels.filter((h: any) => h.lat && h.lng) });
                 } else if (!isTimeout) {
                     // Only surface non-timeout errors to the client
                     send({ type: 'error', message: e.message });
