@@ -9,6 +9,7 @@ interface CachedResult {
 }
 
 const TTL_MS = 10 * 60 * 1000; // 10 minutes
+const MAX_ENTRIES = 30;
 const cache = new Map<string, CachedResult>();
 
 const IGNORED_PARAMS = new Set(['view']);
@@ -33,5 +34,13 @@ export function getSearchResults(key: string): CachedResult | null {
 }
 
 export function setSearchResults(key: string, result: Omit<CachedResult, 'cachedAt'>): void {
+    // Evict the oldest entry when at capacity (insertion-order iteration)
+    if (cache.size >= MAX_ENTRIES && !cache.has(key)) {
+        cache.delete(cache.keys().next().value!);
+    }
     cache.set(key, { ...result, cachedAt: Date.now() });
+}
+
+export function clearAllSearchResults(): void {
+    cache.clear();
 }

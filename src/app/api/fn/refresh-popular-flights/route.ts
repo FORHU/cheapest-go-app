@@ -68,7 +68,12 @@ export async function POST(req: NextRequest) {
         departureDateObj.setDate(departureDateObj.getDate() + 14);
         const departureDate = departureDateObj.toISOString().split('T')[0];
 
-        for (const route of finalRoutes) {
+        for (let i = 0; i < finalRoutes.length; i++) {
+            const route = finalRoutes[i];
+
+            // Space out Duffel calls to avoid burst rate limiting (429)
+            if (i > 0) await new Promise(r => setTimeout(r, 4000));
+
             try {
                 console.log(`[refresh-popular-flights] Triggering refresh for: ${route.origin} -> ${route.destination} on ${departureDate}`);
                 const refreshRes = await fetch(`${baseUrl}/api/internal/refresh-flights`, {

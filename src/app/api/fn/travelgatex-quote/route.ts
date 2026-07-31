@@ -8,7 +8,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { tgxGraphQL, getTgxSettings } from '@/lib/server/stays/travelgatex/client';
 
 export const dynamic = 'force-dynamic';
-export const maxDuration = 30;
+export const maxDuration = 60;
 
 const QUERY = `
 query TgxQuote($criteria: HotelCriteriaQuoteInput!, $settings: HotelSettingsInput!) {
@@ -45,11 +45,11 @@ export async function POST(req: NextRequest) {
         const { token } = await req.json();
         if (!token) return NextResponse.json({ success: false, error: 'token is required' }, { status: 400 });
 
-        const settings = getTgxSettings();
+        const settings = getTgxSettings(undefined, 55_000);
         const result = await tgxGraphQL(QUERY, {
             criteria: { optionRefId: token },
             settings,
-        });
+        }, 57_000);
 
         const quote = result?.data?.hotelX?.quote?.optionQuote;
         const errors = result?.data?.hotelX?.quote?.errors || [];

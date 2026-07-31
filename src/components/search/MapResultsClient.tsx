@@ -38,16 +38,20 @@ export function MapResultsClient({ searchParams, destination, onSwitchView }: Ma
     const cacheKey = buildSearchCacheKey(searchParams);
     const cached = getSearchResults(cacheKey);
 
-    const [status, setStatus]         = useState<'loading' | 'prices-loading' | 'completing' | 'streaming' | 'done' | 'error'>(cached ? 'done' : 'loading');
-    const [properties, setProperties] = useState<Property[]>(cached?.properties ?? []);
-    const [totalCount, setTotalCount] = useState(cached?.totalCount ?? 0);
+    const [status, setStatus]           = useState<'loading' | 'prices-loading' | 'completing' | 'streaming' | 'done' | 'error'>(cached ? 'done' : 'loading');
+    const [properties, setProperties]   = useState<Property[]>(cached?.properties ?? []);
+    const [totalCount, setTotalCount]   = useState(cached?.totalCount ?? 0);
     const [allMappable, setAllMappable] = useState<any[]>(cached?.allMappable ?? []);
     const [queryParams, setQueryParams] = useState<Record<string, any>>(cached?.queryParams ?? searchParams);
+    // Only true when TGX returned real availability — guards the cache write below.
+    const [tgxSucceeded, setTgxSucceeded] = useState(!!cached);
 
     const searchKey = JSON.stringify(searchParams);
 
     useEffect(() => {
-        if (status === 'done' && properties.length > 0) {
+        if (status !== 'done' || !tgxSucceeded || properties.length === 0) return;
+        const withImg = properties.filter((h: any) => !!(h as any).image).length;
+        if (withImg > 0) {
             setSearchResults(cacheKey, { properties, totalCount, queryParams, allMappable });
         }
     }, [status]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -170,15 +174,26 @@ export function MapResultsClient({ searchParams, destination, onSwitchView }: Ma
                                 // Overwriting here would cause card IDs (catalog) to mismatch pin IDs (TGX).
                                 setAllMappable(prev => prev.length > 0 ? prev : chunk.allMappable);
                             }
-                            // Remove catalog hotels that TGX had no pricing for (unavailable dates).
-                            setProperties(prev => {
-                                const filtered = prev.filter((h: any) => !h.priceLoading);
-                                if (filtered.length > 0 && chunk.totalCount) setTotalCount(filtered.length);
-                                return filtered;
-                            });
-                            setAllMappable(prev => prev.filter((h: any) => !h.priceLoading));
+                            const didTgxSucceed = (chunk.tgxCount ?? 0) > 0;
+                            if (didTgxSucceed) {
+                                // TGX returned prices — remove catalog hotels that never got priced.
+                                setProperties(prev => {
+                                    const filtered = prev.filter((h: any) => !h.priceLoading);
+                                    if (filtered.length > 0 && chunk.totalCount) setTotalCount(filtered.length);
+                                    return filtered;
+                                });
+                                setAllMappable(prev => prev.filter((h: any) => !h.priceLoading));
+                            } else {
+                                // TGX timed out / ALL_PROCESSES_FAILED — keep catalog hotels on the map,
+                                // just clear priceLoading so pins don't spin indefinitely.
+                                setProperties(prev => prev.map(h => (h as any).priceLoading ? { ...h as any, priceLoading: false } : h));
+                                setAllMappable(prev => prev.map(h => (h as any).priceLoading ? { ...h as any, priceLoading: false } : h));
+                            }
                             gotDone = true;
-                            if (!cancelled) setStatus('done');
+                            if (!cancelled) {
+                                setTgxSucceeded(didTgxSucceed);
+                                setStatus('done');
+                            }
                         } else if (chunk.type === 'error') {
                             console.error('[Stream] error chunk:', chunk.message);
                             if (!gotFirstHotels && !cancelled) {

@@ -53,16 +53,17 @@ export async function getSession(): Promise<SessionResult> {
     }
 
     // In Lucia v3, user attributes are merged directly onto the User object
+    // user attributes are mapped to camelCase by getUserAttributes() in lucia.ts
     return {
         session,
         user: {
             id: user.id,
             email: (user as any).email,
-            firstName: (user as any).first_name,
-            lastName: (user as any).last_name,
-            avatarUrl: (user as any).avatar_url,
+            firstName: (user as any).firstName,
+            lastName: (user as any).lastName,
+            avatarUrl: (user as any).avatarUrl,
             role: ((user as any).role ?? 'user') as 'user' | 'admin',
-            bannedAt: (user as any).banned_at,
+            bannedAt: (user as any).bannedAt,
         },
     };
 }

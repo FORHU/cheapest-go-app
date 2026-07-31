@@ -11,7 +11,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { tgxGraphQL, getTgxSettings } from '@/lib/server/stays/travelgatex/client';
 
 export const dynamic = 'force-dynamic';
-export const maxDuration = 30;
+export const maxDuration = 300;
 
 const MUTATION = `
 mutation TgxBook($input: HotelBookInput!, $settings: HotelSettingsInput!) {
@@ -51,7 +51,7 @@ export async function POST(req: NextRequest) {
             }, { status: 400 });
         }
 
-        const settings = getTgxSettings();
+        const settings = getTgxSettings(undefined, 180_000);
 
         const input = {
             optionRefId:     quoteToken,
@@ -82,7 +82,7 @@ export async function POST(req: NextRequest) {
             console.log('[travelgatex-book] input:', JSON.stringify({ ...input, optionRefId: input.optionRefId.slice(0, 60) + '…' }, null, 2));
         }
 
-        const result = await tgxGraphQL(MUTATION, { input, settings });
+        const result = await tgxGraphQL(MUTATION, { input, settings }, 182_000);
 
         const booking = result?.data?.hotelX?.book?.booking;
         const errors  = result?.data?.hotelX?.book?.errors || [];

@@ -81,13 +81,12 @@ export async function searchDuffel(params: FlightSearchParams): Promise<FlightRe
                 const errorData = await response.json().catch(() => ({}));
                 lastErrMsg = `Duffel API Error: ${response.status} - ${JSON.stringify(errorData)}`;
 
-                // 429 — respect Retry-After header, then retry
-                if (response.status === 429 && attempt < MAX_RETRIES) {
-                    const retryAfter = parseInt(response.headers.get('Retry-After') ?? '5', 10);
-                    const waitMs = Math.min(retryAfter * 1000, 10_000); // cap at 10s
-                    console.warn(`[Duffel] Rate limited (429). Waiting ${waitMs}ms before retry ${attempt + 1}/${MAX_RETRIES}`);
-                    await new Promise(r => setTimeout(r, waitMs));
-                    continue;
+                // 429 — account-level rate limit; retrying immediately just generates more 429s.
+                // Log a warning (not an error) and bail — the caller should space out requests.
+                if (response.status === 429) {
+                    const retryAfter = response.headers.get('Retry-After') ?? 'unknown';
+                    console.warn(`[Duffel] Rate limited (429). Retry-After: ${retryAfter}s. Skipping search for ${params.origin}->${params.destination}.`);
+                    return [];
                 }
 
                 // 500 — transient server error, retry after brief backoff
