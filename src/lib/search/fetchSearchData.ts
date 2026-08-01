@@ -231,7 +231,7 @@ export function buildSearchQueryParams(params: SearchParams): SearchQueryParams 
         children: Number(params.children) || 0,
         childrenAges,
         rooms: Number(params.rooms) || 1,
-        guest_nationality: typeof params.nationality === 'string' && params.nationality ? params.nationality : "KR",
+        guest_nationality: typeof params.nationality === 'string' && params.nationality ? params.nationality : 'US',
         currency,
         cityName: resolvedCityName,
         // Send countryCode even if placeId exists. LiteAPI sometimes needs it for smaller cities

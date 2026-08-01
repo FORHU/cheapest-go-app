@@ -1,0 +1,25 @@
+name: Sync TGX Destination Cache
+
+on:
+  schedule:
+    - cron: '0 3 */3 * *'   # every 3 days at 03:00 UTC
+  workflow_dispatch:          # allow manual trigger from GitHub UI
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call sync-dest-cache endpoint
+        env:
+          SITE_URL: ${{ secrets.NEXT_PUBLIC_SITE_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          STATUS=$(curl -s -o /tmp/body.json -w "%{http_code}" \
+            --max-time 180 \
+            -H "Authorization: Bearer $CRON_SECRET" \
+            "$SITE_URL/api/cron/sync-dest-cache")
+          cat /tmp/body.json
+          if [ "$STATUS" -ne 200 ]; then
+            echo "Destination cache sync failed with HTTP $STATUS"
+            exit 1
+          fi

@@ -34,14 +34,30 @@ export function getTgxSettings(cfg = getTgxConfig(), timeout = 18000, withSearch
     if (!withSearchPlugin) return base;
     return {
         ...base,
-        plugins: [{
-            step: 'REQUEST',
-            pluginsType: {
-                type:       'PRE_STEP',
-                name:       'search_by_destination',
-                parameters: [{ key: 'accessID', value: cfg.accessCode }],
+        plugins: [
+            {
+                step: 'REQUEST',
+                pluginsType: [{
+                    type:       'PRE_STEP',
+                    name:       'search_by_destination',
+                    parameters: [{ key: 'accessID', value: cfg.accessCode }],
+                }],
             },
-        }],
+            // Reduces TGX→us response from ~16MB to ~20KB by returning 1 cheapest option
+            // per hotel code. Without this, large destinations (Phuket ~84k options) exceed
+            // the 25s HTTP abort before the full response can transfer.
+            {
+                step: 'RESPONSE',
+                pluginsType: [{
+                    type:       'PRE_STEP',
+                    name:       'cheapest_price',
+                    parameters: [
+                        { key: 'primaryKey',   value: 'hotel' },
+                        { key: 'optionsPerKey', value: '1' },
+                    ],
+                }],
+            },
+        ],
     };
 }
 

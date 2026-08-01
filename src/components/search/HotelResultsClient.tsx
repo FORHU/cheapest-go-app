@@ -213,7 +213,7 @@ export function HotelResultsClient({ searchParams, onSwitchView }: HotelResultsC
                                 if (tgxSucceeded) {
                                     // Drop catalog hotels that never received a TGX price — they have
                                     // no real availability for these dates and would show "0 rooms" if clicked.
-                                    const priced = accumulated.filter((h: any) => h.priceLoading !== true && h.price > 0);
+                                    const priced = accumulated.filter((h: any) => h.priceLoading !== true && h.price > 0 && !!(h as any).image);
                                     if (priced.length !== accumulated.length) {
                                         accumulated.splice(0, accumulated.length, ...priced);
                                         if (!cancelled) setProperties([...accumulated]);

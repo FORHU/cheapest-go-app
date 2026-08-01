@@ -29,6 +29,9 @@ query TgxHotelContent($criteria: HotelXHotelListInput!) {
           hotelData {
             code
             hotelName
+            location {
+              coordinates { latitude longitude }
+            }
             medias { url type }
           }
         }
@@ -42,7 +45,7 @@ function isSlugName(name: string | null | undefined): boolean {
     return /^[a-z][a-z0-9_]+$/.test(name) && name.includes('_');
 }
 
-interface HotelContentPatch { images?: string[]; name?: string }
+interface HotelContentPatch { images?: string[]; name?: string; lat?: number; lng?: number }
 
 async function fetchHotelContentPatches(hotelIds: string[], timeoutMs = 30_000): Promise<Map<string, HotelContentPatch>> {
     if (!hotelIds.length) return new Map();
@@ -78,7 +81,10 @@ async function fetchHotelContentPatches(hotelIds: string[], timeoutMs = 30_000):
             if (images.length) patch.images = images;
             // Patch name only when TGX has a non-slug, non-empty name
             if (hd.hotelName && !isSlugName(hd.hotelName)) patch.name = hd.hotelName;
-            if (patch.images || patch.name) patchMap.set(hd.code, patch);
+            const lat = Number(hd.location?.coordinates?.latitude ?? 0);
+            const lng = Number(hd.location?.coordinates?.longitude ?? 0);
+            if (lat && lng) { patch.lat = lat; patch.lng = lng; }
+            if (patch.images || patch.name || patch.lat) patchMap.set(hd.code, patch);
         }
         return patchMap;
     } catch (e: any) {
@@ -273,7 +279,7 @@ export async function POST(req: NextRequest) {
 
     const stream = new ReadableStream({
         async start(controller) {
-            const send = (obj: unknown) => controller.enqueue(ndjsonLine(obj));
+            const send = (obj: unknown) => { try { controller.enqueue(ndjsonLine(obj)); } catch { /* client disconnected */ } };
             const t0 = Date.now();
             const elapsed = () => `${Date.now() - t0}ms`;
 
@@ -473,6 +479,28 @@ export async function POST(req: NextRequest) {
                 const imgCount = [...contentPatches.values()].filter(p => p.images?.length).length;
                 console.log(`[stream] content: catalog=${catalogPatches.size}, newTgx=${newHotelPatches.size}, ${imgCount} with images (total ${elapsed()})`);
 
+                // Enhance allMappable: hotels priced by TGX that had lat=0 in DB but have
+                // coordinates in the TGX Content API response. Shows them as map pins immediately
+                // rather than waiting for the next search after the DB backfill runs.
+                const enhancedTgxMappable = tgxMappable.length > 0 ? [...tgxMappable] : [];
+                if (contentPatches.size > 0) {
+                    const mappedIds = new Set(enhancedTgxMappable.map((h: any) => h.hotelId || h.id));
+                    for (const h of tgxHotels) {
+                        const id = h.hotelId || h.id;
+                        if (mappedIds.has(id)) continue;
+                        const patch = contentPatches.get(id);
+                        if (patch?.lat && patch?.lng) {
+                            const enhanced: any = { ...h, lat: patch.lat, lng: patch.lng, coordinates: { lat: patch.lat, lng: patch.lng } };
+                            if (patch.images?.length && !h.image) { enhanced.images = patch.images; enhanced.image = patch.images[0]; }
+                            enhancedTgxMappable.push(enhanced);
+                            mappedIds.add(id);
+                        }
+                    }
+                    if (enhancedTgxMappable.length > tgxMappable.length) {
+                        console.log(`[stream] allMappable enhanced: ${tgxMappable.length} → ${enhancedTgxMappable.length} hotels gained coordinates from content-api`);
+                    }
+                }
+
                 // Send content patches — client applies images to already-visible cards
                 if (contentPatches.size > 0) {
                     const contentData: Record<string, { images?: string[]; name?: string }> = {};
@@ -499,12 +527,17 @@ export async function POST(req: NextRequest) {
                                   WHERE hotel_id = ${hotelId} AND (name IS NULL OR name = hotel_id OR name ~ '^[a-z][a-z0-9_]+$')`
                                 .catch(() => {});
                         }
+                        if (patch.lat && patch.lng) {
+                            sqlBg`UPDATE hotel_content SET lat = ${patch.lat}, lng = ${patch.lng}, fetched_at = now()
+                                  WHERE hotel_id = ${hotelId} AND (lat IS NULL OR lat = 0) AND (lng IS NULL OR lng = 0)`
+                                .catch(() => {});
+                        }
                     }
                 }
 
                 const finalCount = tgxHotels.length > 0 ? tgxHotels.length : catalogHotels.length;
                 console.log(`[stream] done — total ${finalCount} hotels, ${elapsed()} wall time`);
-                send({ type: 'done', totalCount: finalCount, tgxCount: tgxHotels.length, allMappable: tgxMappable.length > 0 ? tgxMappable : catalogHotels.filter((h: any) => h.lat && h.lng) });
+                send({ type: 'done', totalCount: finalCount, tgxCount: tgxHotels.length, allMappable: enhancedTgxMappable.length > 0 ? enhancedTgxMappable : catalogHotels.filter((h: any) => h.lat && h.lng) });
                 // ── END two-phase mode ────────────────────────────────────────
 
             } catch (e: any) {

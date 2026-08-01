@@ -153,7 +153,7 @@ const VerticalCard: React.FC<PropertyCardProps> = ({
 
     // Skip conversion until mounted — EXCHANGE_RATES may differ between server (static)
     // and client (live rates from a previous page visit), causing hydration mismatches.
-    const sourceCurrency = property?.currency || 'KRW';
+    const sourceCurrency = property?.currency || 'PHP';
     const rawPrice = property?.price || price || 0;
     const rawOriginalPrice = property?.originalPrice || originalPrice;
 

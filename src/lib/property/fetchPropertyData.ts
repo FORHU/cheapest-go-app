@@ -5,7 +5,7 @@
 
 import { cache } from 'react';
 import { preBook } from '@/utils/postgres/functions';
-import { runTgxSearch } from '@/lib/server/stays/travelgatex/search';
+import { runTgxSearch, fetchEtgHotelContent, updateEtgContentInDb } from '@/lib/server/stays/travelgatex/search';
 import { otvCodeToLabel } from '@/lib/server/stays/travelgatex/amenityCodes';
 import { type Property } from '@/types';
 import { getSqlAdmin } from '@/lib/db/postgres';
@@ -40,18 +40,36 @@ export async function fetchHotelStatic(id: string): Promise<StaticHotelResult | 
         const amenities: string[] = rawAmenities.flatMap((a: any) =>
             typeof a === 'string' ? [a] : a?.code ? [otvCodeToLabel(a.code)] : []
         ).filter(Boolean);
+        let description = (r.description as string) || '';
+        let finalAmenities = amenities;
+
+        // If OTV has no description or amenities, try ETG (same RateHawk data but richer).
+        if ((!description || !finalAmenities.length) && /^\d+$|^[A-Z]{2}\d+$/.test(id)) {
+            try {
+                const etgMap = await fetchEtgHotelContent([id]);
+                const etg = etgMap.get(id);
+                if (etg) {
+                    if (!description && etg.description) description = etg.description;
+                    if (!finalAmenities.length && etg.amenities?.length) finalAmenities = etg.amenities;
+                    if (etg.description || etg.amenities?.length) {
+                        updateEtgContentInDb(etgMap).catch(() => {});
+                    }
+                }
+            } catch { /* enrichment must never block the page */ }
+        }
+
         const property: PropertyData = {
             id: r.hotel_id,
             name: r.name || id,
             location: [address, city, country].filter(Boolean).join(', '),
-            description: r.description || '',
+            description,
             rating: Number(r.review_rating ?? 0),
             reviews: Number(r.review_count ?? 0),
             price: 0,
             currency: 'USD',
             image: images[0] || '',
             images,
-            amenities,
+            amenities: finalAmenities,
             badges: [],
             type: 'hotel',
             coordinates: { lat: Number(r.lat ?? 0), lng: Number(r.lng ?? 0) },
@@ -457,7 +475,7 @@ export async function fetchTGXPropertyData(
             children:  Number(searchParams.children || 0),
             rooms:     Number(searchParams.rooms   || 1),
             currency:  searchParams.currency || 'KRW',
-            guest_nationality: searchParams.nationality || 'KR',
+            guest_nationality: searchParams.nationality || 'US',
         });
 
         const hotel = result?.data;

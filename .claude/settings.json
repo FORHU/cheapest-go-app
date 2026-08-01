@@ -2,7 +2,10 @@
   "mcpServers": {
     "travelgate-docs": {
       "type": "http",
-      "url": "https://travelgate.mcp.kapa.ai"
+      "url": "https://travelgate.mcp.kapa.ai",
+      "headers": {
+        "Authorization": "Bearer 6c69e65e-3afb-40a5-95c7-c374df837eea"
+      }
     }
   }
 }
