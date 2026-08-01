@@ -147,7 +147,13 @@ export function MapResultsClient({ searchParams, destination, onSwitchView }: Ma
                                     .map(h => {
                                         const p = priceMap.get((h as any).id ?? (h as any).hotelId);
                                         if (!p) return h;
-                                        return { ...h, price: p.price, currency: p.currency, offerId: p.offerId, refundableTag: p.refundableTag, boardCode: p.boardCode, _tgx: p._tgx, priceLoading: false } as any;
+                                        return {
+                                            ...h,
+                                            price: p.price, currency: p.currency, offerId: p.offerId,
+                                            refundableTag: p.refundableTag, boardCode: p.boardCode, _tgx: p._tgx,
+                                            priceLoading: false,
+                                            ...(p.images?.length ? { images: p.images, image: p.images[0] } : {}),
+                                        } as any;
                                     })
                                     .filter((h: any) => !h.priceLoading)
                                 );
@@ -155,12 +161,37 @@ export function MapResultsClient({ searchParams, destination, onSwitchView }: Ma
                                     .map(h => {
                                         const p = priceMap.get((h as any).id ?? (h as any).hotelId);
                                         if (!p) return h;
-                                        // priceLoading: false so the hotel survives the filter below
-                                        return { ...h, price: p.price, currency: p.currency, priceLoading: false };
+                                        return {
+                                            ...h, price: p.price, currency: p.currency, priceLoading: false,
+                                            ...(p.images?.length ? { image: p.images[0] } : {}),
+                                        };
                                     })
                                     .filter((h: any) => !h.priceLoading)
                                 );
                             }
+                        } else if (chunk.type === 'content') {
+                            // Content patches: images and names from the content-api, arrive ~5s after Phase 1.
+                            // Apply them so hotels gain images before the done filter runs.
+                            const patchMap = chunk.data as Record<string, { images?: string[]; name?: string }>;
+                            setProperties(prev => {
+                                let changed = false;
+                                const next = prev.map(h => {
+                                    const id = (h as any).hotelId ?? (h as any).id;
+                                    const patch = patchMap[id];
+                                    if (!patch) return h;
+                                    const updates: any = {};
+                                    if (patch.images?.length && !(h as any).image) {
+                                        updates.images = patch.images;
+                                        updates.image  = patch.images[0];
+                                    }
+                                    if (patch.name && (!(h as any).name || (h as any).name === id)) {
+                                        updates.name = patch.name;
+                                    }
+                                    if (Object.keys(updates).length) { changed = true; return { ...h, ...updates }; }
+                                    return h;
+                                });
+                                return changed ? next : prev;
+                            });
                         } else if (chunk.type === 'done') {
                             if (Array.isArray(chunk.data) && chunk.data.length > 0) {
                                 setProperties(chunk.data.map(normalize));
@@ -169,20 +200,25 @@ export function MapResultsClient({ searchParams, destination, onSwitchView }: Ma
                                 setTotalCount(chunk.totalCount);
                             }
                             if (Array.isArray(chunk.allMappable) && chunk.allMappable.length > 0) {
-                                // Only use done.allMappable (TGX IDs) as a fallback when the prices
-                                // event didn't populate allMappable with catalog-ID hotels.
-                                // Overwriting here would cause card IDs (catalog) to mismatch pin IDs (TGX).
-                                setAllMappable(prev => prev.length > 0 ? prev : chunk.allMappable);
+                                setAllMappable(prev => {
+                                    if (prev.length === 0) return chunk.allMappable;
+                                    // Merge: done.allMappable includes hotels that gained coordinates from
+                                    // the content API during this search (had lat=0 in DB). Add any that
+                                    // aren't already in the prices-filtered allMappable.
+                                    const prevIds = new Set(prev.map((h: any) => (h as any).id ?? (h as any).hotelId));
+                                    const toAdd = (chunk.allMappable as any[]).filter((h: any) => !prevIds.has(h.id ?? h.hotelId));
+                                    return toAdd.length > 0 ? [...prev, ...toAdd] : prev;
+                                });
                             }
                             const didTgxSucceed = (chunk.tgxCount ?? 0) > 0;
                             if (didTgxSucceed) {
                                 // TGX returned prices — remove catalog hotels that never got priced.
                                 setProperties(prev => {
-                                    const filtered = prev.filter((h: any) => !h.priceLoading);
+                                    const filtered = prev.filter((h: any) => !h.priceLoading && !!(h as any).image);
                                     if (filtered.length > 0 && chunk.totalCount) setTotalCount(filtered.length);
                                     return filtered;
                                 });
-                                setAllMappable(prev => prev.filter((h: any) => !h.priceLoading));
+                                setAllMappable(prev => prev.filter((h: any) => !h.priceLoading && !!(h as any).image));
                             } else {
                                 // TGX timed out / ALL_PROCESSES_FAILED — keep catalog hotels on the map,
                                 // just clear priceLoading so pins don't spin indefinitely.

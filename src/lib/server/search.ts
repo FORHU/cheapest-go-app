@@ -213,20 +213,26 @@ export async function resolveTgxDestinationCode(cityName: string, countryCode?: 
         const timeout = new Promise<never>((_, reject) =>
             setTimeout(() => reject(new Error('resolve timeout')), 18000)
         );
-        const result = await Promise.race([
-            tgxGraphQL(
-                `query TgxResolveCity($access: ID!, $text: String!, $maxSize: Int) {
+        // TGX destinationSearcher returns a union type — other union members come back
+        // as empty {} objects, crowding out real DestinationData entries when maxSize is
+        // small. Retry with 4× the size if the first pass yields no usable codes.
+        const DEST_QUERY = `query TgxResolveCity($access: ID!, $text: String!, $maxSize: Int) {
                    hotelX {
                      destinationSearcher(criteria: { access: $access, text: $text, maxSize: $maxSize }) {
                        ... on DestinationData { code type texts { text language } }
                      }
                    }
-                 }`,
-                { access: cfg.accessCode, text: cityName, maxSize: 20 }
-            ),
-            timeout,
-        ]);
-        const items: any[] = result?.data?.hotelX?.destinationSearcher ?? [];
+                 }`;
+        const fetchItems = async (maxSize: number) => {
+            const res = await tgxGraphQL(DEST_QUERY, { access: cfg.accessCode, text: cityName, maxSize });
+            return (res?.data?.hotelX?.destinationSearcher ?? []) as any[];
+        };
+        let items: any[] = await Promise.race([fetchItems(50), timeout]);
+        const hasCode = (arr: any[]) => arr.some((i: any) => i.code);
+        if (!hasCode(items)) {
+            // First pass returned only empty union members — retry with 4× the window.
+            items = await Promise.race([fetchItems(200), timeout]);
+        }
         const exactName = cityName.toLowerCase();
         const matchesName = (i: any) =>
             (i.texts ?? []).some((t: any) => t.language === 'en' && t.text.toLowerCase() === exactName);
@@ -258,6 +264,69 @@ export async function resolveTgxDestinationCode(cityName: string, countryCode?: 
     } catch {
         return undefined;
     }
+}
+
+// Cities whose background resolution is already in flight — prevents duplicate calls.
+const _bgResolving = new Set<string>();
+
+/**
+ * Fire-and-forget: call destinationSearcher with a long timeout, cache the result.
+ * Called when the synchronous resolution in resolveTgxDestinationCode times out.
+ * On next search the code is in DB cache and resolution is instant.
+ */
+export function backgroundResolveDestCode(cityName: string, countryCode?: string): void {
+    const key = countryCode
+        ? `${cityName.toLowerCase().trim()}:${countryCode.toLowerCase()}`
+        : cityName.toLowerCase().trim();
+    if (_bgResolving.has(key) || _destCodeCache.has(key)) return;
+    _bgResolving.add(key);
+    (async () => {
+        try {
+            const { getTgxConfig } = await import('@/lib/server/stays/travelgatex/client');
+            const cfg = getTgxConfig();
+            if (!cfg.apiKey) return;
+            const DEST_QUERY = `query TgxResolveCity($access: ID!, $text: String!, $maxSize: Int) {
+                   hotelX {
+                     destinationSearcher(criteria: { access: $access, text: $text, maxSize: $maxSize }) {
+                       ... on DestinationData { code type texts { text language } }
+                     }
+                   }
+                 }`;
+            // Use raw fetch with NO AbortSignal — Next.js aborts signals tied to the
+            // request context when the stream closes, killing any tgxGraphQL call.
+            // Without a signal the fetch runs until TGX responds (can take 30-60s).
+            const res = await fetch(cfg.endpoint, {
+                method:  'POST',
+                headers: { 'Authorization': `Apikey ${cfg.apiKey}`, 'Content-Type': 'application/json', 'Accept-Encoding': 'gzip' },
+                body:    JSON.stringify({ query: DEST_QUERY, variables: { access: cfg.accessCode, text: cityName, maxSize: 50 } }),
+            });
+            if (!res.ok) { console.warn(`[dest-resolve] HTTP ${res.status} for "${cityName}"`); return; }
+            const result = await res.json();
+            const items: any[] = result?.data?.hotelX?.destinationSearcher ?? [];
+            const exactName = cityName.toLowerCase();
+            const matchesName = (i: any) =>
+                (i.texts ?? []).some((t: any) => t.language === 'en' && t.text.toLowerCase() === exactName);
+            const cityItem = items.find((i: any) => i.type === 'CITY' && matchesName(i)) ?? items.find((i: any) => i.type === 'CITY');
+            const zoneItem = items.find((i: any) => i.type === 'ZONE' && matchesName(i)) ?? items.find((i: any) => i.type === 'ZONE');
+            // Always prefer CITY — this resolver is called with countryCode=undefined to
+            // match the same cache key as resolveTgxDestinationCode(cityName, undefined).
+            const code = cityItem?.code ?? zoneItem?.code ?? undefined;
+            if (code) {
+                _destCodeCache.set(key, code);
+                const sql = getSqlAdmin();
+                await sql`INSERT INTO tgx_destination_cache (city_key, destination_code)
+                    VALUES (${key}, ${code})
+                    ON CONFLICT (city_key) DO UPDATE SET destination_code = EXCLUDED.destination_code`;
+                console.log(`[dest-resolve] Background resolved "${cityName}" → ${code} (cached for next search)`);
+            } else {
+                console.warn(`[dest-resolve] Background resolution for "${cityName}" returned no code`);
+            }
+        } catch (e: any) {
+            console.warn(`[dest-resolve] Background resolution for "${cityName}" failed:`, e.message?.slice(0, 100));
+        } finally {
+            _bgResolving.delete(key);
+        }
+    })();
 }
 
 async function fetchAutocomplete(query: string, locale?: string): Promise<AutocompleteResult[]> {

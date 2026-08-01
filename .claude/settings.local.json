@@ -57,7 +57,8 @@
       "Bash(supabase db *)",
       "WebFetch(domain:github.com)",
       "Bash(node -e \"const p=require\\('c:/Users/USER/Documents/GitHub/cheapestgo-app-v2/package.json'\\); const d={...p.dependencies,...p.devDependencies}; ['tailwindcss','@tailwindcss/postcss','autoprefixer','postcss'].forEach\\(k=>console.log\\(k, d[k]||'NOT FOUND'\\)\\)\")",
-      "Bash(node -e \"const p=require\\('c:/Users/USER/Documents/GitHub/cheapest-go-app/package.json'\\); const d={...p.dependencies,...p.devDependencies}; ['tailwindcss','@tailwindcss/postcss','autoprefixer','postcss'].forEach\\(k=>console.log\\(k, d[k]||'NOT FOUND'\\)\\)\")"
+      "Bash(node -e \"const p=require\\('c:/Users/USER/Documents/GitHub/cheapest-go-app/package.json'\\); const d={...p.dependencies,...p.devDependencies}; ['tailwindcss','@tailwindcss/postcss','autoprefixer','postcss'].forEach\\(k=>console.log\\(k, d[k]||'NOT FOUND'\\)\\)\")",
+      "WebFetch(domain:api.travelgate.com)"
     ]
   }
 }
