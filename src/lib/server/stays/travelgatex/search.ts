@@ -633,26 +633,23 @@ async function fetchHotelContent(hotelCodes: string[]) {
     // coordinates, and star ratings that hotel_content doesn't have yet.
     const rows = await sql`
         SELECT
-            hc.hotel_id,
-            COALESCE(NULLIF(TRIM(hc.name), ''), hs.hotel_name, hc.hotel_id) AS name,
-            hc.images,
-            COALESCE(hc.star_rating, hs.category_code::int)                 AS star_rating,
-            COALESCE(NULLIF(hc.lat::text, '0')::numeric, hs.latitude)       AS lat,
-            COALESCE(NULLIF(hc.lng::text, '0')::numeric, hs.longitude)      AS lng,
-            COALESCE(NULLIF(TRIM(hc.address), ''), hs.address)              AS address,
-            COALESCE(NULLIF(TRIM(hc.city), ''), hs.city)                    AS city,
-            COALESCE(NULLIF(TRIM(hc.country), ''), hs.country_code)         AS country,
-            hc.description,
-            hc.amenities,
-            hc.review_rating,
-            hc.review_count,
-            hc.check_in_time,
-            hc.check_out_time,
-            hc.ratehawk_hid,
-            hs.fastx_code
-        FROM hotel_content hc
-        LEFT JOIN tgx_hotel_static hs ON hs.hotel_code = hc.hotel_id
-        WHERE hc.hotel_id = ANY(${hotelCodes})
+            hotel_id,
+            COALESCE(NULLIF(TRIM(name), ''), hotel_id) AS name,
+            images,
+            star_rating,
+            lat,
+            lng,
+            address,
+            city,
+            country,
+            description,
+            amenities,
+            review_rating,
+            review_count,
+            check_in_time,
+            check_out_time
+        FROM hotel_content
+        WHERE hotel_id = ANY(${hotelCodes})
     `;
     const map = new Map<string, any>();
     for (const row of rows) map.set(row.hotel_id, row);
