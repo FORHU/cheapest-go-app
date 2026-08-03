@@ -22,10 +22,12 @@ vi.mock('@/lib/server/stays/travelgatex/client', () => ({
 
 vi.mock('@/lib/server/search', () => ({
     resolveTgxDestinationCode: vi.fn().mockResolvedValue(undefined),
+    backgroundResolveDestCode: vi.fn(),
 }));
 
 import { runTgxSearch } from '@/lib/server/stays/travelgatex/search';
 import { tgxGraphQL } from '@/lib/server/stays/travelgatex/client';
+import { resolveTgxDestinationCode } from '@/lib/server/search';
 
 // Minimal cached result shape that the client code expects
 const CACHED_RESULT = {
@@ -79,6 +81,7 @@ describe('runTgxSearch – stale cache hit (SWR)', () => {
     });
 
     it('fires a background TGX refresh after returning stale result', async () => {
+        vi.mocked(resolveTgxDestinationCode).mockResolvedValue('850');
         vi.mocked(tgxGraphQL).mockResolvedValue({
             data: { hotelX: { search: { options: [], errors: [] } } },
         });
@@ -108,6 +111,7 @@ describe('runTgxSearch – stale cache hit (SWR)', () => {
 
 describe('runTgxSearch – cache miss', () => {
     it('calls TGX and returns live result when cache is empty', async () => {
+        vi.mocked(resolveTgxDestinationCode).mockResolvedValue('999');
         vi.mocked(tgxGraphQL).mockResolvedValue({
             data: { hotelX: { search: { options: [], errors: [] } } },
         });
