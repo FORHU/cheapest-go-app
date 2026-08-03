@@ -63,9 +63,11 @@ const PropertyOverview: React.FC<PropertyOverviewProps> = ({ property, reviewsDa
                 <div className="flex flex-wrap items-center gap-1.5 lg:gap-4 text-[10px] lg:text-sm mb-1.5 lg:mb-4">
                     <div className="flex items-center gap-0.5">
                         {[1, 2, 3, 4, 5].map((s) => {
-                            // Convert rating (out of 10) to stars (out of 5)
-                            const starRating = rating / 2;
-                            const isFilled = s <= Math.round(starRating);
+                            // Review rating (0–10) → stars; fall back to hotel category stars
+                            const filledCount = rating > 0
+                                ? Math.round(rating / 2)
+                                : (property.starRating ?? 0);
+                            const isFilled = s <= filledCount;
                             return (
                                 <Star
                                     key={s}
