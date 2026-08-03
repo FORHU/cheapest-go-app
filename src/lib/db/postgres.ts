@@ -90,6 +90,10 @@ function ensureTablesOnce(sql: postgres.Sql): void {
             city_key   text NOT NULL DEFAULT '',
             created_at timestamptz NOT NULL DEFAULT now()
         )
+    `).then(() => sql`
+        ALTER TABLE hotel_content ADD COLUMN IF NOT EXISTS contact_info jsonb;
+        ALTER TABLE hotel_content ADD COLUMN IF NOT EXISTS chain_code   text;
+        ALTER TABLE hotel_content ADD COLUMN IF NOT EXISTS giata_id     text;
     `).then(() => {
         console.log('[db] startup tables OK');
     }).catch((e: any) => {

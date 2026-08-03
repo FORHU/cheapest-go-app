@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from 'react';
-import { Star, Wifi, Car, Utensils, Coffee, Check } from 'lucide-react';
+import { Star, Wifi, Car, Utensils, Coffee, Check, Clock, Phone, Globe, Mail, Info } from 'lucide-react';
 import { type Property } from '@/types';
 import { useTranslations } from 'next-intl';
 
@@ -145,6 +145,72 @@ const PropertyOverview: React.FC<PropertyOverviewProps> = ({ property, reviewsDa
                     </div>
                 )}
             </div>
+
+            {/* Check-in / Check-out times */}
+            {(property.checkIn || property.checkOut) && (
+                <div className="border border-slate-100 dark:border-white/10 rounded-xl overflow-hidden">
+                    <div className="flex divide-x divide-slate-100 dark:divide-white/10">
+                        {property.checkIn && (
+                            <div className="flex-1 p-2 lg:p-4">
+                                <div className="flex items-center gap-1.5 text-slate-500 dark:text-slate-400 text-[9px] lg:text-xs mb-0.5 lg:mb-1">
+                                    <Clock size={10} />
+                                    <span>{t('checkIn')}</span>
+                                </div>
+                                <div className="text-[11px] lg:text-sm font-bold text-slate-900 dark:text-white">{property.checkIn}</div>
+                            </div>
+                        )}
+                        {property.checkOut && (
+                            <div className="flex-1 p-2 lg:p-4">
+                                <div className="flex items-center gap-1.5 text-slate-500 dark:text-slate-400 text-[9px] lg:text-xs mb-0.5 lg:mb-1">
+                                    <Clock size={10} />
+                                    <span>{t('checkOut')}</span>
+                                </div>
+                                <div className="text-[11px] lg:text-sm font-bold text-slate-900 dark:text-white">{property.checkOut}</div>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            )}
+
+            {/* Contact info */}
+            {(property.contactPhone || property.contactEmail || property.contactWeb) && (
+                <div className="space-y-1.5 lg:space-y-2">
+                    <h3 className="text-[11px] lg:text-sm font-bold text-slate-900 dark:text-white">{t('contactInfo')}</h3>
+                    <div className="flex flex-col gap-1 lg:gap-2 text-[10px] lg:text-sm text-slate-700 dark:text-slate-300">
+                        {property.contactPhone && (
+                            <a href={`tel:${property.contactPhone}`} className="flex items-center gap-1.5 hover:text-blue-600">
+                                <Phone size={11} className="shrink-0" />
+                                {property.contactPhone}
+                            </a>
+                        )}
+                        {property.contactEmail && (
+                            <a href={`mailto:${property.contactEmail}`} className="flex items-center gap-1.5 hover:text-blue-600">
+                                <Mail size={11} className="shrink-0" />
+                                {property.contactEmail}
+                            </a>
+                        )}
+                        {property.contactWeb && (
+                            <a href={property.contactWeb} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 hover:text-blue-600 truncate">
+                                <Globe size={11} className="shrink-0" />
+                                {property.contactWeb.replace(/^https?:\/\//, '')}
+                            </a>
+                        )}
+                    </div>
+                </div>
+            )}
+
+            {/* Important information */}
+            {property.importantInformation && (
+                <div className="bg-amber-50 dark:bg-amber-900/10 p-2 lg:p-4 rounded-xl flex gap-1.5 lg:gap-3 text-[10px] lg:text-sm">
+                    <Info size={14} className="text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+                    <div>
+                        <span className="font-bold text-amber-900 dark:text-amber-200">{t('importantInfo')}</span>
+                        <p className="text-amber-800 dark:text-amber-300 mt-0.5 lg:mt-1 whitespace-pre-line">
+                            {stripHtml(property.importantInformation)}
+                        </p>
+                    </div>
+                </div>
+            )}
 
             {/* Cleaning & Safety - Condensed */}
             <div className="bg-emerald-50 dark:bg-emerald-900/10 p-2 lg:p-4 rounded-xl flex gap-1.5 lg:gap-3 text-[10px] lg:text-sm">

@@ -67,6 +67,22 @@ export interface Property {
         boardCode?: string;
         rateRules?: string[];
     };
+    /** Hotel check-in time (e.g. "15:00") */
+    checkIn?: string;
+    /** Hotel check-out time (e.g. "12:00") */
+    checkOut?: string;
+    /** Important information / special instructions for guests */
+    importantInformation?: string;
+    /** Contact details from TGX static content */
+    contactEmail?: string;
+    contactPhone?: string;
+    contactWeb?: string;
+    /** Structured amenity groups from TGX allAmenities */
+    amenityGroups?: Array<{ amenityCode: string; type?: string; texts?: Array<{ language: string; text: string }> }>;
+    /** GIATA global hotel ID */
+    giataId?: string;
+    /** Hotel chain code */
+    chainCode?: string;
 }
 
 export const uniqueTabs = ['Tents', 'Boats', 'Tree House', 'Resorts'];

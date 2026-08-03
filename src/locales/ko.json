@@ -1827,6 +1827,10 @@
     },
     "propertyOverview": {
         "aboutProperty": "숙소 소개",
+        "checkIn": "체크인",
+        "checkOut": "체크아웃",
+        "contactInfo": "연락처",
+        "importantInfo": "중요 안내",
         "cleaningSafety": {
             "description": "이 숙소는 비대면 체크인과 강화된 청소 절차 등 철저한 위생 관리를 시행하고 있습니다.",
             "title": "청결 및 안전 수칙"

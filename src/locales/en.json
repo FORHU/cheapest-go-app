@@ -1974,10 +1974,14 @@
     },
     "propertyOverview": {
         "aboutProperty": "About this property",
+        "checkIn": "Check-in",
+        "checkOut": "Check-out",
         "cleaningSafety": {
             "description": "This property has extensive hygiene measures in place, including contactless check-in and enhanced cleaning protocols.",
             "title": "Cleaning and safety practices"
         },
+        "contactInfo": "Contact",
+        "importantInfo": "Important information",
         "noReviewsYet": "No reviews yet",
         "popularAmenities": "Popular amenities",
         "readMore": "Read more",

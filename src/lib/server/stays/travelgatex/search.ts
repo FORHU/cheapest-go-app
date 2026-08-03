@@ -225,6 +225,181 @@ const COUNTRY_BBOX: Record<string, { minLat: number; maxLat: number; minLng: num
 
 
 
+// ─── TGX hotel content (on-demand per-hotel lookup) ─────────────────────────
+
+/** Full hotel content shape returned by parseTgxHotelData */
+export interface TgxHotelContent {
+    hotel_id:              string;
+    name:                  string | null;
+    images:                string[];
+    lat:                   number;
+    lng:                   number;
+    address:               string | null;
+    city:                  string | null;
+    country:               string | null;
+    description:           string | null;
+    star_rating:           number;
+    amenities:             string[];
+    amenity_groups:        any[] | null;
+    check_in_time:         string | null;
+    check_out_time:        string | null;
+    important_information: string | null;
+    contact_info:          { email?: string; phone?: string; fax?: string; web?: string } | null;
+    chain_code:            string | null;
+    giata_id:              string | null;
+    _otvCity:              string | null;
+}
+
+/** GraphQL fragment shared by both the portfolio query and the on-demand content query. */
+const HOTEL_DATA_FIELDS = `
+    code
+    hotelName
+    categoryCode
+    chainCode
+    descriptions { type texts { language text } }
+    medias { url type order }
+    location {
+        coordinates { latitude longitude }
+        address
+        city
+        country
+        zipCode
+    }
+    contact { email telephone fax web }
+    allAmenities { edges { node { amenityData { amenityCode type } } } }
+    checkIn { schedule { startTime endTime } minAge instructions { language text } specialInstructions { language text } }
+    checkOut { schedule { startTime endTime } minAge instructions { language text } specialInstructions { language text } }
+    giataData { id }
+`;
+
+/** On-demand query — fetch content for specific hotel codes. */
+const TGX_HOTEL_CONTENT_QUERY = `
+query TgxHotelContent($criteria: HotelXHotelListInput!, $token: String) {
+  hotelX {
+    hotels(criteria: $criteria, token: $token) {
+      token
+      edges { node { hotelData { ${HOTEL_DATA_FIELDS} } } }
+    }
+  }
+}`;
+
+/** Parse a single `hotelData` node into a TgxHotelContent record. */
+function parseTgxHotelData(d: any, cityName?: string, countryCode?: string): TgxHotelContent {
+    const images: string[] = (d.medias ?? [])
+        .sort((a: any, b: any) => (a.order ?? 99) - (b.order ?? 99))
+        .map((m: any) => m.url as string)
+        .filter(Boolean)
+        .slice(0, 10);
+
+    // Descriptions — collect GENERAL as primary, rest as important_information
+    let description: string | null = null;
+    const extraDescs: string[] = [];
+    for (const desc of (d.descriptions ?? [])) {
+        const en = (desc.texts ?? []).find((t: any) => t.language?.toLowerCase().startsWith('en'));
+        const text = en?.text ?? desc.texts?.[0]?.text ?? null;
+        if (!text) continue;
+        if (desc.type === 'GENERAL' && !description) description = text;
+        else if (text && desc.type !== 'GENERAL') extraDescs.push(text);
+    }
+    if (!description && extraDescs.length) { description = extraDescs.shift() ?? null; }
+
+    const catCode: string = d.categoryCode ?? '';
+    const starMatch = catCode.match(/(\d)/);
+
+    const rawCountry = d.location?.country;
+    const otvCountry: string | null = typeof rawCountry === 'string' ? rawCountry
+        : (rawCountry?.code ?? null);
+    const otvCity: string | null = (d.location?.city as string | null) ?? null;
+
+    // Amenities from allAmenities connection (edges → node → amenityData)
+    const amenityEdges: any[] = d.allAmenities?.edges ?? [];
+    const amenities = amenityEdges
+        .map((e: any) => otvCodeToLabel(e?.node?.amenityData?.amenityCode ?? ''))
+        .filter(Boolean);
+
+    // Rich amenity groups
+    const amenity_groups: any[] | null = amenityEdges.length > 0
+        ? amenityEdges.map((e: any) => ({
+            code: e?.node?.amenityData?.amenityCode,
+            type: e?.node?.amenityData?.type,
+        })).filter((g: any) => g.code)
+        : null;
+
+    // Check-in time: schedule.startTime (earliest check-in), fallback to instructions text
+    const checkInInstruction = (d.checkIn?.instructions ?? []).find((t: any) => t.language?.toLowerCase().startsWith('en'))?.text
+        ?? d.checkIn?.instructions?.[0]?.text ?? null;
+    const check_in_time: string | null =
+        d.checkIn?.schedule?.startTime ?? checkInInstruction ?? null;
+
+    // Check-out time: schedule.startTime (endTime is always null from TGX)
+    const checkOutInstruction = (d.checkOut?.instructions ?? []).find((t: any) => t.language?.toLowerCase().startsWith('en'))?.text
+        ?? d.checkOut?.instructions?.[0]?.text ?? null;
+    const check_out_time: string | null =
+        d.checkOut?.schedule?.startTime ?? checkOutInstruction ?? null;
+
+    // Special instructions — merge with description-derived important_information
+    const specialIn = (d.checkIn?.specialInstructions ?? []).find((t: any) => t.language?.toLowerCase().startsWith('en'))?.text
+        ?? d.checkIn?.specialInstructions?.[0]?.text ?? null;
+    if (specialIn && !extraDescs.includes(specialIn)) extraDescs.push(specialIn);
+    const important_information = extraDescs.length ? extraDescs.join('\n\n') : null;
+
+    // Contact info
+    const c = d.contact;
+    const contact_info = c && (c.email || c.telephone || c.fax || c.web) ? {
+        email: c.email   ?? undefined,
+        phone: c.telephone ?? undefined,
+        fax:   c.fax     ?? undefined,
+        web:   c.web     ?? undefined,
+    } : null;
+
+    return {
+        hotel_id:    String(d.code),
+        name:        (d.hotelName as string | null) ?? null,
+        images,
+        lat:         Number(d.location?.coordinates?.latitude  ?? 0),
+        lng:         Number(d.location?.coordinates?.longitude ?? 0),
+        address:     (d.location?.address as string | null) ?? null,
+        city:        otvCity ?? cityName ?? null,
+        country:     otvCountry ?? countryCode ?? null,
+        description,
+        star_rating: starMatch ? parseInt(starMatch[1], 10) : 0,
+        amenities,
+        amenity_groups,
+        check_in_time,
+        check_out_time,
+        important_information,
+        contact_info,
+        chain_code:  (d.chainCode as string | null) ?? null,
+        giata_id:    (d.giataData?.id as string | null) ?? null,
+        _otvCity:    otvCity,
+    };
+}
+
+/** Fetch full TGX hotel content for specific hotel codes (on-demand, for property page). */
+export async function fetchTgxHotelContent(hotelIds: string[]): Promise<Map<string, TgxHotelContent>> {
+    const contentMap = new Map<string, TgxHotelContent>();
+    if (!hotelIds.length) return contentMap;
+    const cfg = getTgxConfig();
+    const BATCH = 50;
+    for (let i = 0; i < hotelIds.length; i += BATCH) {
+        const batch = hotelIds.slice(i, i + BATCH);
+        try {
+            const result = await tgxGraphQL(TGX_HOTEL_CONTENT_QUERY, {
+                criteria: { access: cfg.accessCode, hotelCodes: batch },
+            }, 15_000);
+            const edges: any[] = result?.data?.hotelX?.hotels?.edges ?? [];
+            for (const edge of edges) {
+                const d = edge?.node?.hotelData;
+                if (!d?.code) continue;
+                contentMap.set(String(d.code), parseTgxHotelData(d));
+            }
+        } catch (e: any) {
+            console.warn('[tgx-content] fetchTgxHotelContent failed:', e.message?.slice(0, 100));
+        }
+    }
+    return contentMap;
+}
+
 // ─── ETG (RateHawk/WorldOTA) hotel content lookup ────────────────────────────
 
 interface EtgHotelContent { name?: string; description?: string; amenities?: string[] }
@@ -325,8 +500,8 @@ export async function updateEtgContentInDb(etgMap: Map<string, EtgHotelContent>)
                     description = CASE WHEN (hotel_content.description IS NULL OR hotel_content.description = '')
                                        AND EXCLUDED.description IS NOT NULL
                                   THEN EXCLUDED.description ELSE hotel_content.description END,
-                    amenities   = CASE WHEN jsonb_array_length(hotel_content.amenities) = 0
-                                       AND jsonb_array_length(EXCLUDED.amenities) > 0
+                    amenities   = CASE WHEN (hotel_content.amenities IS NULL OR jsonb_typeof(hotel_content.amenities) != 'array' OR jsonb_array_length(hotel_content.amenities) = 0)
+                                       AND (EXCLUDED.amenities IS NOT NULL AND jsonb_typeof(EXCLUDED.amenities) = 'array' AND jsonb_array_length(EXCLUDED.amenities) > 0)
                                   THEN EXCLUDED.amenities ELSE hotel_content.amenities END,
                     fetched_at  = now()
             `;
@@ -535,43 +710,10 @@ function parseOtvEdges(edges: any[], cityName: string, countryCode?: string): Ma
     for (const e of edges) {
         const d = e?.node?.hotelData;
         if (!d?.code) continue;
-
-        // OTV uses type "GENERAL" for all photos — accept any URL regardless of type
-        const images: string[] = (d.medias ?? [])
-            .map((m: any) => m.url as string)
-            .filter(Boolean)
-            .slice(0, 10);
-
-        let description: string | null = null;
-        for (const desc of (d.descriptions ?? [])) {
-            const en = (desc.texts ?? []).find((t: any) => t.language?.toLowerCase().startsWith('en'));
-            if (en?.text) { description = en.text; break; }
-        }
-        if (!description) description = d.descriptions?.[0]?.texts?.[0]?.text ?? null;
-
-        const catCode: string = d.categoryCode ?? '';
-        const starMatch = catCode.match(/(\d)/);
-
-        // Prefer OTV-provided city/country (accurate per-hotel data) over our
-        // search parameter (which is the *query* city, not the hotel's actual city).
-        const otvCity: string | null    = (d.location?.city as string | null) ?? null;
-        const otvCountry: string | null = (d.location?.country as string | null) ?? null;
-        map.set(String(d.code), {
-            hotel_id:    String(d.code),
-            name:        (d.hotelName as string | null) ?? null,
-            images,
-            lat:         Number(d.location?.coordinates?.latitude  ?? 0),
-            lng:         Number(d.location?.coordinates?.longitude ?? 0),
-            address:     (d.location?.address as string | null) ?? null,
-            city:        otvCity ?? cityName,
-            country:     otvCountry ?? countryCode ?? null,
-            description,
-            star_rating: starMatch ? parseInt(starMatch[1], 10) : 0,
-            amenities:   (d.amenities ?? []).map((a: any) => otvCodeToLabel(a.code)).filter(Boolean),
-            // Raw OTV city (null when OTV didn't provide one). Used by backfill to know
-            // whether to trust this city over an existing DB value (see backfillHotelContent).
-            _otvCity:    otvCity,
-        });
+        const parsed = parseTgxHotelData(d, cityName, countryCode);
+        // Ensure city falls back to cityName when OTV doesn't provide one
+        if (!parsed._otvCity) parsed.city = cityName;
+        map.set(parsed.hotel_id, parsed);
     }
     return map;
 }
@@ -594,24 +736,7 @@ async function fetchOtvHotelCodesByCity(
                hotelX {
                  hotels(criteria: $criteria, token: $token) {
                    token
-                   edges {
-                     node {
-                       hotelData {
-                         code
-                         hotelName
-                         categoryCode
-                         descriptions { type texts { language text } }
-                         medias { url type }
-                         location {
-                           coordinates { latitude longitude }
-                           address
-                           city
-                           country
-                         }
-                         amenities { code }
-                       }
-                     }
-                   }
+                   edges { node { hotelData { ${HOTEL_DATA_FIELDS} } } }
                  }
                }
              }`;
@@ -704,11 +829,20 @@ async function backfillHotelContent(contentMap: Map<string, any>): Promise<void>
             await sql`
                 INSERT INTO hotel_content
                     (hotel_id, name, images, lat, lng, address, city, country,
-                     description, star_rating, amenities, content_source, fetched_at)
+                     description, star_rating, amenities, amenity_groups,
+                     check_in_time, check_out_time, important_information,
+                     contact_info, chain_code, giata_id,
+                     content_source, fetched_at)
                 VALUES (
                     ${r.hotel_id}, ${r.name}, ${sql.array(r.images)},
                     ${r.lat}, ${r.lng}, ${r.address}, ${r.city}, ${r.country},
-                    ${r.description}, ${r.star_rating}, ${JSON.stringify(r.amenities)}::jsonb,
+                    ${r.description}, ${r.star_rating},
+                    ${JSON.stringify(r.amenities ?? [])}::jsonb,
+                    ${r.amenity_groups ? JSON.stringify(r.amenity_groups) : null}::jsonb,
+                    ${r.check_in_time ?? null}, ${r.check_out_time ?? null},
+                    ${r.important_information ?? null},
+                    ${r.contact_info ? JSON.stringify(r.contact_info) : null}::jsonb,
+                    ${r.chain_code ?? null}, ${r.giata_id ?? null},
                     'tgx', now()
                 )
                 ON CONFLICT (hotel_id) DO UPDATE SET
@@ -727,8 +861,15 @@ async function backfillHotelContent(contentMap: Map<string, any>): Promise<void>
                     description = COALESCE(hotel_content.description, EXCLUDED.description),
                     star_rating = CASE WHEN hotel_content.star_rating != 0
                                   THEN hotel_content.star_rating ELSE EXCLUDED.star_rating END,
-                    amenities   = CASE WHEN jsonb_array_length(hotel_content.amenities) > 0
+                    amenities   = CASE WHEN (hotel_content.amenities IS NOT NULL AND jsonb_typeof(hotel_content.amenities) = 'array' AND jsonb_array_length(hotel_content.amenities) > 0)
                                   THEN hotel_content.amenities ELSE EXCLUDED.amenities END,
+                    amenity_groups        = COALESCE(hotel_content.amenity_groups,        EXCLUDED.amenity_groups),
+                    check_in_time         = COALESCE(hotel_content.check_in_time,         EXCLUDED.check_in_time),
+                    check_out_time        = COALESCE(hotel_content.check_out_time,        EXCLUDED.check_out_time),
+                    important_information = COALESCE(hotel_content.important_information, EXCLUDED.important_information),
+                    contact_info          = COALESCE(hotel_content.contact_info,          EXCLUDED.contact_info),
+                    chain_code            = COALESCE(hotel_content.chain_code,            EXCLUDED.chain_code),
+                    giata_id              = COALESCE(hotel_content.giata_id,              EXCLUDED.giata_id),
                     content_source = COALESCE(hotel_content.content_source, 'tgx'),
                     fetched_at  = now()
             `;
