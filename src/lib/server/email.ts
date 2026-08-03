@@ -6,9 +6,43 @@ import { env } from "@/utils/env";
 // Change these two constants if the sending domain ever changes.
 const BRAND_NAME = process.env.NEXT_PUBLIC_BRAND_NAME ?? 'CheapestGo';
 const BRAND_EMAIL = process.env.NEXT_PUBLIC_BRAND_EMAIL ?? 'no-reply@mail.cheapestgo.com';
+const BRAND_LOGO = process.env.NEXT_PUBLIC_BRAND_LOGO ?? '/Web_Logo_Transparent.png';
+const BRAND_LOGO_URL = `${process.env.NEXT_PUBLIC_SITE_URL ?? 'https://cheapestgo.com'}${BRAND_LOGO}`;
 
 export const FROM_NOREPLY = `${BRAND_NAME} <${BRAND_EMAIL}>`;
 export const FROM_ALERTS  = `${BRAND_NAME} Alerts <${BRAND_EMAIL}>`;
+
+// ─── Shared email layout helpers ─────────────────────────────────────
+function emailOpen(gradient: string, title: string, subtitle: string): string {
+    return `<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#f1f5f9;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;">
+<table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f1f5f9;padding:32px 16px;">
+  <tr><td align="center">
+  <table width="560" cellpadding="0" cellspacing="0" border="0" style="max-width:560px;width:100%;">
+    <tr><td style="background:#ffffff;padding:28px 32px;border-radius:16px 16px 0 0;border:1px solid #e2e8f0;border-bottom:none;text-align:center;">
+      <img src="${BRAND_LOGO_URL}" alt="${BRAND_NAME}" height="64" style="display:inline-block;height:64px;width:auto;" />
+    </td></tr>
+    <tr><td style="background:${gradient};padding:28px 32px;text-align:center;border-left:1px solid #e2e8f0;border-right:1px solid #e2e8f0;">
+      <h1 style="color:white;margin:0;font-size:26px;font-weight:700;">${title}</h1>
+      ${subtitle ? `<p style="color:rgba(255,255,255,0.85);margin:8px 0 0;font-size:14px;">${subtitle}</p>` : ''}
+    </td></tr>
+    <tr><td style="background:#ffffff;padding:32px;border:1px solid #e2e8f0;border-top:none;">`;
+}
+
+function emailClose(footerNote?: string): string {
+    return `    </td></tr>
+    <tr><td style="background:#f8fafc;padding:20px 32px;border:1px solid #e2e8f0;border-top:none;border-radius:0 0 16px 16px;text-align:center;">
+      <img src="${BRAND_LOGO_URL}" alt="${BRAND_NAME}" height="40" style="display:inline-block;height:40px;width:auto;opacity:0.5;margin-bottom:10px;" />
+      <p style="margin:0;color:#94a3b8;font-size:11px;line-height:1.6;">${footerNote ?? `This email was sent by ${BRAND_NAME}<br>&copy; ${new Date().getFullYear()} All rights reserved`}</p>
+    </td></tr>
+  </table>
+  </td></tr>
+</table>
+</body>
+</html>`;
+}
 
 // ─── HTML Escaping (prevent XSS in email templates) ─────────────────
 
@@ -171,21 +205,7 @@ export async function sendBookingConfirmationEmail(
         }).format(totalPrice);
 
         // Build email HTML content
-        const emailHtml = `
-<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Booking Confirmation</title>
-</head>
-<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
-    <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px; border-radius: 12px 12px 0 0; text-align: center;">
-        <h1 style="color: white; margin: 0; font-size: 28px;">Booking Confirmed!</h1>
-        <p style="color: rgba(255,255,255,0.9); margin: 10px 0 0 0;">Your reservation is all set</p>
-    </div>
-
-    <div style="background: #ffffff; padding: 30px; border: 1px solid #e5e7eb; border-top: none;">
+        const emailHtml = `${emailOpen('linear-gradient(135deg,#667eea 0%,#764ba2 100%)', 'Booking Confirmed!', 'Your reservation is all set')}
         <p style="margin: 0 0 20px 0;">Dear <strong>${escapeHtml(guestName)}</strong>,</p>
 
         <p style="margin: 0 0 20px 0;">Thank you for your booking! Your reservation has been confirmed.</p>
@@ -240,15 +260,8 @@ export async function sendBookingConfirmationEmail(
         </p>
     </div>
 
-    <div style="background: #f9fafb; padding: 20px; border-radius: 0 0 12px 12px; border: 1px solid #e5e7eb; border-top: none; text-align: center;">
-        <p style="margin: 0; color: #9ca3af; font-size: 12px;">
-            This email was sent by ${BRAND_NAME}<br>
-            &copy; ${new Date().getFullYear()} All rights reserved
-        </p>
-    </div>
-</body>
-</html>
-    `;
+${emailClose()}`;
+
 
         const supabase = createAdminClient();
 
@@ -399,15 +412,7 @@ export async function sendHotelCancellationEmail(
                 </p>
               </div>`;
 
-        const emailHtml = `<!DOCTYPE html>
-<html>
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>Booking Cancelled</title></head>
-<body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;line-height:1.6;color:#333;max-width:600px;margin:0 auto;padding:20px;">
-  <div style="background:linear-gradient(135deg,#64748b 0%,#475569 100%);padding:30px;border-radius:12px 12px 0 0;text-align:center;">
-    <h1 style="color:white;margin:0;font-size:28px;">Booking Cancelled</h1>
-    <p style="color:rgba(255,255,255,0.9);margin:10px 0 0 0;">${escapeHtml(hotelName)}</p>
-  </div>
-  <div style="background:#ffffff;padding:30px;border:1px solid #e5e7eb;border-top:none;">
+        const emailHtml = `${emailOpen('linear-gradient(135deg,#64748b 0%,#475569 100%)', 'Booking Cancelled', escapeHtml(hotelName))}
     <p style="margin:0 0 20px 0;">Dear <strong>${escapeHtml(guestName)}</strong>,</p>
     <p style="margin:0 0 20px 0;">Your reservation at <strong>${escapeHtml(hotelName)}</strong> has been successfully cancelled.</p>
 
@@ -426,12 +431,7 @@ export async function sendHotelCancellationEmail(
     ${refundBanner}
 
     <p style="margin:20px 0 0 0;color:#6b7280;font-size:14px;">If you have any questions, please contact our support team.</p>
-  </div>
-  <div style="background:#f9fafb;padding:20px;border-radius:0 0 12px 12px;border:1px solid #e5e7eb;border-top:none;text-align:center;">
-    <p style="margin:0;color:#9ca3af;font-size:12px;">This email was sent by ${BRAND_NAME}<br>&copy; ${new Date().getFullYear()} All rights reserved</p>
-  </div>
-</body>
-</html>`;
+${emailClose()}`;
 
         const resendApiKey = env.RESEND_API_KEY;
         const subject = `Booking Cancelled - ${hotelName}`;
@@ -496,15 +496,7 @@ export async function sendHotelAmendmentEmail(
     }
 
     try {
-        const emailHtml = `<!DOCTYPE html>
-<html>
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>Booking Updated</title></head>
-<body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;line-height:1.6;color:#333;max-width:600px;margin:0 auto;padding:20px;">
-  <div style="background:linear-gradient(135deg,#2563eb 0%,#4f46e5 100%);padding:30px;border-radius:12px 12px 0 0;text-align:center;">
-    <h1 style="color:white;margin:0;font-size:28px;">Booking Updated</h1>
-    <p style="color:rgba(255,255,255,0.9);margin:10px 0 0 0;">${escapeHtml(hotelName)}</p>
-  </div>
-  <div style="background:#ffffff;padding:30px;border:1px solid #e5e7eb;border-top:none;">
+        const emailHtml = `${emailOpen('linear-gradient(135deg,#2563eb 0%,#4f46e5 100%)', 'Booking Updated', escapeHtml(hotelName))}
     <p style="margin:0 0 20px 0;">Dear <strong>${escapeHtml(guestName)}</strong>,</p>
     <p style="margin:0 0 20px 0;">Your booking at <strong>${escapeHtml(hotelName)}</strong> has been updated successfully.</p>
 
@@ -520,12 +512,7 @@ export async function sendHotelAmendmentEmail(
         The property has been notified of the changes. If you need further modifications, please contact support.
       </p>
     </div>
-  </div>
-  <div style="background:#f9fafb;padding:20px;border-radius:0 0 12px 12px;border:1px solid #e5e7eb;border-top:none;text-align:center;">
-    <p style="margin:0;color:#9ca3af;font-size:12px;">This email was sent by ${BRAND_NAME}<br>&copy; ${new Date().getFullYear()} All rights reserved</p>
-  </div>
-</body>
-</html>`;
+${emailClose()}`;
 
         const resendApiKey = env.RESEND_API_KEY;
         const subject = `Booking Updated - ${hotelName}`;
@@ -650,21 +637,7 @@ export async function sendFlightBookingConfirmationEmail(
                 </tr>`;
         }).join('');
 
-        const emailHtml = `
-<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Flight Booking Confirmation</title>
-</head>
-<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
-    <div style="background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%); padding: 30px; border-radius: 12px 12px 0 0; text-align: center;">
-        <h1 style="color: white; margin: 0; font-size: 28px;">Flight Booking Confirmed!</h1>
-        <p style="color: rgba(255,255,255,0.9); margin: 10px 0 0 0;">${escapeHtml(route)}</p>
-    </div>
-
-    <div style="background: #ffffff; padding: 30px; border: 1px solid #e5e7eb; border-top: none;">
+        const emailHtml = `${emailOpen('linear-gradient(135deg,#4f46e5 0%,#7c3aed 100%)', 'Flight Booking Confirmed!', escapeHtml(route))}
         <p style="margin: 0 0 20px 0;">Dear <strong>${escapeHtml(passengerName)}</strong>,</p>
 
         <p style="margin: 0 0 20px 0;">Your flight has been booked successfully. Here are your booking details:</p>
@@ -724,17 +697,7 @@ export async function sendFlightBookingConfirmationEmail(
         <p style="margin: 20px 0 0 0; color: #6b7280; font-size: 14px;">
             If you have any questions, please don't hesitate to contact us.
         </p>
-    </div>
-
-    <div style="background: #f9fafb; padding: 20px; border-radius: 0 0 12px 12px; border: 1px solid #e5e7eb; border-top: none; text-align: center;">
-        <p style="margin: 0; color: #9ca3af; font-size: 12px;">
-            This email was sent by ${BRAND_NAME}<br>
-            &copy; ${new Date().getFullYear()} All rights reserved
-        </p>
-    </div>
-</body>
-</html>
-        `;
+${emailClose()}`;
 
         const resendApiKey = env.RESEND_API_KEY;
         const subject = `Flight Booking Confirmed - PNR ${pnr} (${route})`;
@@ -838,15 +801,7 @@ export async function sendFlightAwaitingTicketEmail(
             </tr>`;
         }).join('');
 
-        const emailHtml = `<!DOCTYPE html>
-<html>
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>Booking Received</title></head>
-<body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;line-height:1.6;color:#333;max-width:600px;margin:0 auto;padding:20px;">
-    <div style="background:linear-gradient(135deg,#d97706 0%,#b45309 100%);padding:30px;border-radius:12px 12px 0 0;text-align:center;">
-        <h1 style="color:white;margin:0;font-size:28px;">✈️ Booking Confirmed</h1>
-        <p style="color:rgba(255,255,255,0.9);margin:10px 0 0 0;">E-Ticket Pending — ${escapeHtml(route)}</p>
-    </div>
-    <div style="background:#ffffff;padding:30px;border:1px solid #e5e7eb;border-top:none;">
+        const emailHtml = `${emailOpen('linear-gradient(135deg,#d97706 0%,#b45309 100%)', 'Booking Confirmed', `E-Ticket Pending — ${escapeHtml(route)}`)}
         <p style="margin:0 0 20px 0;">Dear <strong>${escapeHtml(passengerName)}</strong>,</p>
         <p style="margin:0 0 20px 0;">Your seat is reserved and your payment of <strong>${formattedPrice}</strong> has been captured. The airline is currently processing your e-ticket — this usually takes a few minutes to a few hours.</p>
         <p style="margin:0 0 20px 0;">We'll send you another email as soon as your e-ticket number is issued. No action is needed from you.</p>
@@ -871,12 +826,7 @@ export async function sendFlightAwaitingTicketEmail(
                 Your PNR (<strong>${escapeHtml(pnr)}</strong>) is your booking reference. The airline is finalizing ticketing. You'll receive a second email with your e-ticket number once it's issued. If ticketing fails for any reason, you will be fully refunded automatically.
             </p>
         </div>
-    </div>
-    <div style="background:#f9fafb;padding:20px;border-radius:0 0 12px 12px;border:1px solid #e5e7eb;border-top:none;text-align:center;">
-        <p style="margin:0;color:#9ca3af;font-size:12px;">This email was sent by ${BRAND_NAME}<br>&copy; ${new Date().getFullYear()} All rights reserved</p>
-    </div>
-</body>
-</html>`;
+${emailClose()}`;
 
         const resendApiKey = env.RESEND_API_KEY;
         const subject = `Booking Received – PNR ${pnr} (${route}) — E-Ticket Pending`;
@@ -959,15 +909,7 @@ export async function sendFlightRefundEmail(
         const lastSeg = segments[segments.length - 1];
         const route = firstSeg && lastSeg ? `${firstSeg.origin} → ${lastSeg.destination}` : 'N/A';
 
-        const emailHtml = `<!DOCTYPE html>
-<html>
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>Refund Initiated</title></head>
-<body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;line-height:1.6;color:#333;max-width:600px;margin:0 auto;padding:20px;">
-    <div style="background:linear-gradient(135deg,#475569 0%,#334155 100%);padding:30px;border-radius:12px 12px 0 0;text-align:center;">
-        <h1 style="color:white;margin:0;font-size:28px;">Booking Update</h1>
-        <p style="color:rgba(255,255,255,0.85);margin:10px 0 0 0;">Refund Initiated — ${escapeHtml(route)}</p>
-    </div>
-    <div style="background:#ffffff;padding:30px;border:1px solid #e5e7eb;border-top:none;">
+        const emailHtml = `${emailOpen('linear-gradient(135deg,#475569 0%,#334155 100%)', 'Booking Update', `Refund Initiated — ${escapeHtml(route)}`)}
         <p style="margin:0 0 20px 0;">Dear <strong>${escapeHtml(passengerName)}</strong>,</p>
         <p style="margin:0 0 20px 0;">We're sorry to inform you that the airline was unable to confirm the e-ticket for your booking <strong>${escapeHtml(pnr)}</strong> (${escapeHtml(route)}). This can happen occasionally due to seat availability changes after reservation.</p>
         <p style="margin:0 0 20px 0;">A <strong>full refund of ${formattedPrice}</strong> has been initiated to your original payment method.</p>
@@ -990,12 +932,7 @@ export async function sendFlightRefundEmail(
         </div>
 
         <p style="margin:20px 0 0 0;color:#6b7280;font-size:14px;">We apologize for the inconvenience. You're welcome to search for alternative flights at any time.</p>
-    </div>
-    <div style="background:#f9fafb;padding:20px;border-radius:0 0 12px 12px;border:1px solid #e5e7eb;border-top:none;text-align:center;">
-        <p style="margin:0;color:#9ca3af;font-size:12px;">This email was sent by ${BRAND_NAME}<br>&copy; ${new Date().getFullYear()} All rights reserved</p>
-    </div>
-</body>
-</html>`;
+${emailClose()}`;
 
         const resendApiKey = env.RESEND_API_KEY;
         const subject = `Refund Initiated – ${route} (PNR ${pnr})`;
@@ -1105,15 +1042,7 @@ export async function sendFlightCancellationEmail(
             </tr>`;
         }).join('');
 
-        const emailHtml = `<!DOCTYPE html>
-<html>
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>Booking Cancelled</title></head>
-<body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;line-height:1.6;color:#333;max-width:600px;margin:0 auto;padding:20px;">
-  <div style="background:linear-gradient(135deg,#64748b 0%,#475569 100%);padding:30px;border-radius:12px 12px 0 0;text-align:center;">
-    <h1 style="color:white;margin:0;font-size:28px;">Booking Cancelled</h1>
-    <p style="color:rgba(255,255,255,0.9);margin:10px 0 0 0;">${escapeHtml(route)}</p>
-  </div>
-  <div style="background:#ffffff;padding:30px;border:1px solid #e5e7eb;border-top:none;">
+        const emailHtml = `${emailOpen('linear-gradient(135deg,#64748b 0%,#475569 100%)', 'Booking Cancelled', escapeHtml(route))}
     <p style="margin:0 0 20px 0;">Dear <strong>${escapeHtml(passengerName)}</strong>,</p>
     <p style="margin:0 0 20px 0;">Your booking for <strong>${escapeHtml(route)}</strong> (PNR: <strong style="font-family:monospace;">${escapeHtml(pnr)}</strong>) has been successfully cancelled.</p>
 
@@ -1136,12 +1065,7 @@ export async function sendFlightCancellationEmail(
     ${refundBanner}
 
     <p style="margin:20px 0 0 0;color:#6b7280;font-size:14px;">If you have any questions about your cancellation or refund, please contact our support team.</p>
-  </div>
-  <div style="background:#f9fafb;padding:20px;border-radius:0 0 12px 12px;border:1px solid #e5e7eb;border-top:none;text-align:center;">
-    <p style="margin:0;color:#9ca3af;font-size:12px;">This email was sent by ${BRAND_NAME}<br>&copy; ${new Date().getFullYear()} All rights reserved</p>
-  </div>
-</body>
-</html>`;
+${emailClose()}`;
 
         const resendApiKey = env.RESEND_API_KEY;
         const subject = `Booking Cancelled – PNR ${pnr} (${route})`;
@@ -1220,15 +1144,7 @@ export async function sendFlightCancellationRefundEmail(
     try {
         const fmt = (n: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: currency || 'USD' }).format(n);
 
-        const emailHtml = `<!DOCTYPE html>
-<html>
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>Refund Confirmed</title></head>
-<body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;line-height:1.6;color:#333;max-width:600px;margin:0 auto;padding:20px;">
-  <div style="background:linear-gradient(135deg,#059669 0%,#047857 100%);padding:30px;border-radius:12px 12px 0 0;text-align:center;">
-    <h1 style="color:white;margin:0;font-size:28px;">✅ Refund Confirmed</h1>
-    <p style="color:rgba(255,255,255,0.9);margin:10px 0 0 0;">${escapeHtml(route)}</p>
-  </div>
-  <div style="background:#ffffff;padding:30px;border:1px solid #e5e7eb;border-top:none;">
+        const emailHtml = `${emailOpen('linear-gradient(135deg,#059669 0%,#047857 100%)', 'Refund Confirmed', escapeHtml(route))}
     <p style="margin:0 0 20px 0;">Dear <strong>${escapeHtml(passengerName)}</strong>,</p>
     <p style="margin:0 0 20px 0;">Great news — your refund of <strong>${fmt(refundAmount)}</strong> for booking <strong style="font-family:monospace;">${escapeHtml(pnr)}</strong> has been successfully processed and is on its way back to your original payment method.</p>
 
@@ -1250,12 +1166,7 @@ export async function sendFlightCancellationRefundEmail(
     </div>
 
     <p style="margin:20px 0 0 0;color:#6b7280;font-size:14px;">Thank you for choosing ${BRAND_NAME}. We hope to serve you again soon.</p>
-  </div>
-  <div style="background:#f9fafb;padding:20px;border-radius:0 0 12px 12px;border:1px solid #e5e7eb;border-top:none;text-align:center;">
-    <p style="margin:0;color:#9ca3af;font-size:12px;">This email was sent by ${BRAND_NAME}<br>&copy; ${new Date().getFullYear()} All rights reserved</p>
-  </div>
-</body>
-</html>`;
+${emailClose()}`;
 
         const resendApiKey = env.RESEND_API_KEY;
         const subject = `Refund Confirmed – ${fmt(refundAmount)} for PNR ${pnr}`;
@@ -1349,15 +1260,7 @@ export async function sendHotelRefundEmail(params: SendHotelRefundEmailParams): 
 
     const fmt = (n: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency }).format(n);
 
-    const emailHtml = `<!DOCTYPE html>
-<html>
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>Refund Confirmed</title></head>
-<body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;line-height:1.6;color:#333;max-width:600px;margin:0 auto;padding:20px;">
-  <div style="background:linear-gradient(135deg,#059669 0%,#047857 100%);padding:30px;border-radius:12px 12px 0 0;text-align:center;">
-    <h1 style="color:white;margin:0;font-size:28px;">✅ Refund Confirmed</h1>
-    <p style="color:rgba(255,255,255,0.9);margin:10px 0 0 0;">${escapeHtml(hotelName)}</p>
-  </div>
-  <div style="background:#ffffff;padding:30px;border:1px solid #e5e7eb;border-top:none;">
+    const emailHtml = `${emailOpen('linear-gradient(135deg,#059669 0%,#047857 100%)', 'Refund Confirmed', escapeHtml(hotelName))}
     <p style="margin:0 0 20px 0;">Dear <strong>${escapeHtml(guestName)}</strong>,</p>
     <p style="margin:0 0 20px 0;">Your refund of <strong>${fmt(refundAmount)}</strong> for your cancelled reservation at <strong>${escapeHtml(hotelName)}</strong> has been successfully processed and is on its way back to your original payment method.</p>
 
@@ -1382,12 +1285,7 @@ export async function sendHotelRefundEmail(params: SendHotelRefundEmailParams): 
     </div>
 
     <p style="margin:20px 0 0 0;color:#6b7280;font-size:14px;">Thank you for choosing ${BRAND_NAME}. We hope to see you again soon.</p>
-  </div>
-  <div style="background:#f9fafb;padding:20px;border-radius:0 0 12px 12px;border:1px solid #e5e7eb;border-top:none;text-align:center;">
-    <p style="margin:0;color:#9ca3af;font-size:12px;">This email was sent by ${BRAND_NAME}<br>&copy; ${new Date().getFullYear()} All rights reserved</p>
-  </div>
-</body>
-</html>`;
+${emailClose()}`;
 
     const resendApiKey = env.RESEND_API_KEY;
     const subject = `Refund Confirmed – ${fmt(refundAmount)} for ${hotelName}`;
@@ -1439,15 +1337,7 @@ export async function sendPriceAlertConfirmationEmail(params: PriceAlertConfirma
         ? new Intl.NumberFormat('en-US', { style: 'currency', currency }).format(targetPrice)
         : null;
 
-    const emailHtml = `<!DOCTYPE html>
-<html>
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
-<body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;line-height:1.6;color:#333;max-width:600px;margin:0 auto;padding:20px;">
-<div style="background:linear-gradient(135deg,#6366f1,#4f46e5);padding:30px;border-radius:12px 12px 0 0;text-align:center;">
-  <h1 style="color:white;margin:0;font-size:24px;">Price Alert Active! ✈️</h1>
-  <p style="color:rgba(255,255,255,0.9);margin:8px 0 0">${escapeHtml(origin)} &rarr; ${escapeHtml(destination)}</p>
-</div>
-<div style="background:#fff;padding:30px;border:1px solid #e5e7eb;border-top:none;border-radius:0 0 12px 12px;">
+    const emailHtml = `${emailOpen('linear-gradient(135deg,#6366f1,#4f46e5)', 'Price Alert Active!', `${escapeHtml(origin)} → ${escapeHtml(destination)}`)}
   <p style="margin:0 0 20px">We've started tracking prices for your trip. You'll be the first to know when fares drop!</p>
   
   <div style="background:#f8fafc;border-radius:8px;padding:20px;margin:0 0 20px;">
@@ -1464,11 +1354,7 @@ export async function sendPriceAlertConfirmationEmail(params: PriceAlertConfirma
     <h4 style="margin:0 0 8px;font-size:15px;">What happens next?</h4>
     <p style="margin:0;font-size:14px;color:#475569;">Our system checks live prices daily. If we find a lower fare for your route, we'll send you an alert with a direct link to book the deal.</p>
   </div>
-</div>
-<div style="text-align:center;padding:20px;color:#94a3b8;font-size:12px;">
-  &copy; ${new Date().getFullYear()} ${BRAND_NAME}. All rights reserved.
-</div>
-</body></html>`;
+${emailClose(`You&apos;re receiving this because you set a price alert on ${BRAND_NAME}.<br>&copy; ${new Date().getFullYear()} ${BRAND_NAME}. All rights reserved.`)}`;
 
     if (!resendApiKey) return { success: false, error: 'RESEND_API_KEY not configured' };
 
@@ -1526,14 +1412,7 @@ export async function sendPriceAlertEmail(params: SendPriceAlertEmailParams): Pr
     const drop = oldPrice ? Math.round(((oldPrice - newPrice) / oldPrice) * 100) : null;
     const cabinLabel = cabin.replace('_', ' ');
 
-    const emailHtml = `<!DOCTYPE html>
-<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
-<body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;line-height:1.6;color:#333;max-width:600px;margin:0 auto;padding:20px;">
-<div style="background:linear-gradient(135deg,#10b981,#059669);padding:30px;border-radius:12px 12px 0 0;text-align:center;">
-  <h1 style="color:white;margin:0;font-size:24px;">Price Drop Alert! 📉</h1>
-  <p style="color:rgba(255,255,255,0.9);margin:8px 0 0">${escapeHtml(origin)} &rarr; ${escapeHtml(destination)}</p>
-</div>
-<div style="background:#fff;padding:30px;border:1px solid #e5e7eb;border-top:none;border-radius:0 0 12px 12px;">
+    const emailHtml = `${emailOpen('linear-gradient(135deg,#10b981,#059669)', 'Price Drop Alert!', `${escapeHtml(origin)} → ${escapeHtml(destination)}`)}
   <p style="margin:0 0 20px">Great news! The price for your tracked route has ${drop && drop > 0 ? `dropped by <strong>${drop}%</strong>` : 'changed'}.</p>
   <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:20px;margin:0 0 20px;text-align:center;">
     ${formattedOld ? `<p style="margin:0 0 4px;font-size:13px;color:#6b7280;text-decoration:line-through;">${escapeHtml(formattedOld)}</p>` : ''}
@@ -1542,8 +1421,7 @@ export async function sendPriceAlertEmail(params: SendPriceAlertEmailParams): Pr
   </div>
   <a href="${escapeHtml(searchUrl)}" style="display:block;background:#059669;color:white;text-decoration:none;text-align:center;padding:14px 24px;border-radius:8px;font-weight:700;font-size:16px;margin:0 0 20px">Book Now</a>
   <p style="font-size:12px;color:#9ca3af;text-align:center;margin:0">Prices change frequently. This fare may not be available when you search.</p>
-</div>
-</body></html>`;
+${emailClose(`You&apos;re receiving this because you set a price alert on ${BRAND_NAME}.<br>&copy; ${new Date().getFullYear()} ${BRAND_NAME}. All rights reserved.`)}`;
 
     if (!resendApiKey) return { success: false, error: 'RESEND_API_KEY not configured' };
 
