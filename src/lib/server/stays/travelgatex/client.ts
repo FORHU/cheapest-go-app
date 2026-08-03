@@ -20,9 +20,7 @@ export function getTgxConfig() {
     };
 }
 
-export function getTgxSettings(cfg = getTgxConfig(), timeout = 18000, withSearchPlugin = false) {
-    // Do NOT add explicit suppliers here — TGX routes via context automatically,
-    // and pinning an accessId filters out results when it doesn't match the account config.
+export function getTgxSettings(cfg = getTgxConfig(), timeout = 18000, withDestPlugins = false) {
     // timeout: mandatory per TGX docs; max 25,000 ms for Search.
     // auditTransactions: false improves response time.
     const base = {
@@ -31,33 +29,39 @@ export function getTgxSettings(cfg = getTgxConfig(), timeout = 18000, withSearch
         timeout,
         auditTransactions: false,
     };
-    if (!withSearchPlugin) return base;
+    if (!withDestPlugins) return base;
+    // Destination-search plugins (both required for TGX dest-code searches):
+    //   search_by_destination: translates TGX destination codes → OTV hotel codes.
+    //     Without this, TGX returns WRONG_FIELD/Empty hotels for any destination code.
+    //   cheapest_price: reduces response from ~16MB to ~20KB (Phuket = ~84k options).
+    //     Without this, large destination responses exceed the 25s HTTP abort timeout.
     return {
         ...base,
         plugins: [
             {
-                step: 'REQUEST',
                 pluginsType: [{
-                    type:       'PRE_STEP',
                     name:       'search_by_destination',
                     parameters: [{ key: 'accessID', value: cfg.accessCode }],
                 }],
             },
-            // Reduces TGX→us response from ~16MB to ~20KB by returning 1 cheapest option
-            // per hotel code. Without this, large destinations (Phuket ~84k options) exceed
-            // the 25s HTTP abort before the full response can transfer.
             {
-                step: 'RESPONSE',
                 pluginsType: [{
-                    type:       'PRE_STEP',
                     name:       'cheapest_price',
                     parameters: [
-                        { key: 'primaryKey',   value: 'hotel' },
+                        { key: 'primaryKey',    value: 'hotel' },
                         { key: 'optionsPerKey', value: '1' },
                     ],
                 }],
             },
         ],
+    };
+}
+
+// filterSearch tells TGX which access code to route the request to.
+// Complements search_by_destination (dest code translation) rather than replacing it.
+export function getTgxFilterSearch(cfg = getTgxConfig()) {
+    return {
+        access: { includes: [cfg.accessCode] },
     };
 }
 
@@ -150,9 +154,11 @@ export interface TgxOption {
 }
 
 export function normalizeOption(opt: TgxOption) {
-    const tokenId = opt.token || opt.id;
+    // TGX docs: id is the canonical option identifier that must be passed to Quote.
+    // token is the supplier-native token; keep it in _tgx for parsing (hotel code/dates).
+    const quoteId = opt.id || opt.token;
     return {
-        offerId: `TGX:${tokenId}`,
+        offerId: `TGX:${quoteId}`,
         roomName: opt.rooms?.[0]?.description || opt.boardCode || 'Room',
         roomCode: opt.rooms?.[0]?.code,
         boardCode: opt.boardCode,

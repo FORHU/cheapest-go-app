@@ -71,21 +71,23 @@ export async function verifyBookingOwnership(
 // TravelgateX: Confirm booking + save
 // ============================================================================
 
-function parseTgxToken(token: string): { hotelCode: string | null; checkIn: string | null; checkOut: string | null } {
+function parseTgxToken(token: string): { hotelCode: string | null; checkIn: string | null; checkOut: string | null; nationality: string } {
   const segs: Record<string, string> = {};
-  for (const seg of token.split('!~|')) {
+  // Search tokens use '!~|' as separator; Quote tokens use '['.
+  const separator = token.includes('!~|') ? '!~|' : '[';
+  for (const seg of token.split(separator)) {
     if (seg.length > 1) segs[seg[0]] = seg.slice(1);
   }
   const parseYYMMDD = (v: string | undefined): string | null => {
     if (!v || v.length !== 6) return null;
     return `20${v.slice(0, 2)}-${v.slice(2, 4)}-${v.slice(4, 6)}`;
   };
-  return { hotelCode: segs['d'] || null, checkIn: parseYYMMDD(segs['b']), checkOut: parseYYMMDD(segs['c']) };
+  return { hotelCode: segs['d'] || null, checkIn: parseYYMMDD(segs['b']), checkOut: parseYYMMDD(segs['c']), nationality: segs['h'] || 'US' };
 }
 
 async function getFreshTgxToken(expiredToken: string, adults: number, children: number, currency: string): Promise<string | null> {
-  const { hotelCode, checkIn, checkOut } = parseTgxToken(expiredToken);
-  console.log('[getFreshTgxToken] Parsed token → hotel:', hotelCode, 'in:', checkIn, 'out:', checkOut);
+  const { hotelCode, checkIn, checkOut, nationality } = parseTgxToken(expiredToken);
+  console.log('[getFreshTgxToken] Parsed token → hotel:', hotelCode, 'in:', checkIn, 'out:', checkOut, 'nationality:', nationality);
   if (!hotelCode || !checkIn || !checkOut) {
     console.error('[getFreshTgxToken] Could not parse hotel/dates from token:', expiredToken.substring(0, 80));
     return null;
@@ -93,7 +95,7 @@ async function getFreshTgxToken(expiredToken: string, adults: number, children: 
   try {
     // In-process search (was an HTTP self-call to /api/fn/travelgatex-search).
     const result = await runTgxSearch({
-      hotelCode, checkin: checkIn, checkout: checkOut, adults, children, currency, guest_nationality: 'KR',
+      hotelCode, checkin: checkIn, checkout: checkOut, adults, children, currency, guest_nationality: nationality,
     });
     const rooms: any[] = result?.data?.roomTypes || [];
     console.log('[getFreshTgxToken] Fresh search → rooms found:', rooms.length);

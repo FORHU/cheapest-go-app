@@ -3,7 +3,7 @@
  * Called directly by server routes to avoid HTTP self-call overhead.
  */
 
-import { tgxGraphQL, getTgxSettings, getTgxConfig, buildOccupancies, normalizeOption, type TgxOption } from './client';
+import { tgxGraphQL, getTgxSettings, getTgxConfig, getTgxFilterSearch, buildOccupancies, normalizeOption, type TgxOption } from './client';
 import { getSqlAdmin } from '@/lib/db/postgres';
 import { resolveTgxDestinationCode, backgroundResolveDestCode } from '@/lib/server/search';
 import { otvCodeToLabel } from './amenityCodes';
@@ -589,9 +589,9 @@ async function setHotelSearchCache(key: string, result: any, ttlMinutes: number)
 // ─── GraphQL queries ──────────────────────────────────────────────────────────
 
 const CITY_SEARCH_QUERY = `
-query TgxCitySearch($criteria: HotelCriteriaSearchInput!, $settings: HotelSettingsInput!) {
+query TgxCitySearch($criteria: HotelCriteriaSearchInput!, $settings: HotelSettingsInput!, $filterSearch: HotelXFilterSearchInput) {
   hotelX {
-    search(criteria: $criteria, settings: $settings) {
+    search(criteria: $criteria, settings: $settings, filterSearch: $filterSearch) {
       options {
         id hotelCode boardCode paymentType status
         price { currency net gross }
@@ -606,9 +606,9 @@ query TgxCitySearch($criteria: HotelCriteriaSearchInput!, $settings: HotelSettin
 }`;
 
 const HOTEL_SEARCH_QUERY = `
-query TgxHotelSearch($criteria: HotelCriteriaSearchInput!, $settings: HotelSettingsInput!) {
+query TgxHotelSearch($criteria: HotelCriteriaSearchInput!, $settings: HotelSettingsInput!, $filterSearch: HotelXFilterSearchInput) {
   hotelX {
-    search(criteria: $criteria, settings: $settings) {
+    search(criteria: $criteria, settings: $settings, filterSearch: $filterSearch) {
       options {
         id hotelCode boardCode paymentType status
         price { currency net gross }
@@ -970,11 +970,14 @@ async function runCityFallback(
             // TGX docs: max Search timeout = 25,000ms; HUB timeout ≥ supplier + 300ms.
             // Supplier timeout=15,000ms + HTTP abort=25,000ms (10s buffer). See the direct
             // destinationCode path above for full rationale — same constraints apply here.
-            const settingsDestCode = getTgxSettings(getTgxConfig(), 15_000, true);
+            const _cfg = getTgxConfig();
+            const settingsDestCode = getTgxSettings(_cfg, 15_000, true);
+            const filterSearchDest = getTgxFilterSearch(_cfg);
             try {
                 destResult = await tgxGraphQL(CITY_SEARCH_QUERY, {
                     criteria: { ...baseCriteria, destinations: [resolvedCode] },
                     settings: settingsDestCode,
+                    filterSearch: filterSearchDest,
                 }, 25_000);
             } catch (destErr: any) {
                 // 513 = TGX handler timeout (dest code returns too many results) — fall through to hotel-code path
@@ -1135,7 +1138,6 @@ async function _runTgxSearch(params: TgxSearchParams) {
     // OTV returns PHP (Philippines account default) regardless of what currency we request.
     const currency = 'USD';
 
-    const settings = getTgxSettings(getTgxConfig(), 12_000, true);
     const occupancies = buildOccupancies(Number(adults), Number(children), childrenAges);
 
     let destinations: string[] | undefined;
@@ -1192,19 +1194,20 @@ async function _runTgxSearch(params: TgxSearchParams) {
     };
 
     const gqlQuery = hotelCode ? HOTEL_SEARCH_QUERY : CITY_SEARCH_QUERY;
-    // Destination searches use the search_by_destination plugin — TGX expands the
-    // dest code to hotel codes internally before querying the supplier, which takes
-    // ~19s total for large destinations like Phuket (isolated test: 18.9s).
+    // Destination searches: cheapest_price plugin + filterSearch keeps response small.
+    // Hotel-code searches: no plugins — return ALL options so prebook has multiple tokens
+    // to try at TGX Quote (cheapest_price would leave only 1 token with no fallback).
     //
+    // filterSearch.access.includes routes the request to our OTV access code per TGX docs.
     // TGX docs: max Search timeout = 25,000ms (higher values are clamped).
-    // TGX docs: set HUB (HTTP) timeout ≥ supplier timeout + 300ms.
-    //
-    // We use supplier timeout=15,000ms + HTTP abort=25,000ms (10s buffer).
-    // DO NOT raise supplier timeout above 15s — higher values make TGX wait longer
-    // for slow suppliers, pushing its total response time toward the 25s HTTP cap.
-    const searchSettings = destinations ? getTgxSettings(getTgxConfig(), 15_000, true) : settings;
+    // Destination: supplier=15,000ms + HTTP abort=25,000ms.  Hotel: 12,000ms + 13,000ms.
+    const cfg = getTgxConfig();
+    const searchSettings = destinations
+        ? getTgxSettings(cfg, 15_000, true)
+        : getTgxSettings(cfg, 12_000, false);
+    const filterSearch = getTgxFilterSearch(cfg);
 
-    const result = await tgxGraphQL(gqlQuery, { criteria, settings: searchSettings }, destinations ? 25_000 : 13_000);
+    const result = await tgxGraphQL(gqlQuery, { criteria, settings: searchSettings, filterSearch }, destinations ? 25_000 : 13_000);
 
     const options: TgxOption[] = result?.data?.hotelX?.search?.options || [];
     const gqlErrors = result?.data?.hotelX?.search?.errors || [];

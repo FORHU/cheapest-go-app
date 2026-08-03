@@ -98,6 +98,7 @@ export function MapResultsClient({ searchParams, destination, onSwitchView }: Ma
             let buffer        = '';
             let gotFirstHotels = false;
             let gotDone        = false;
+            let completingTimer: ReturnType<typeof setTimeout> | null = null;
 
             while (true) {
                 const { done, value } = await reader.read();
@@ -126,7 +127,7 @@ export function MapResultsClient({ searchParams, destination, onSwitchView }: Ma
                                     } else {
                                         // Priced results (TGX direct or cache hit) — normal flow.
                                         setStatus('completing');
-                                        setTimeout(() => { if (!cancelled) setStatus('streaming'); }, 400);
+                                        completingTimer = setTimeout(() => { if (!cancelled) setStatus('streaming'); }, 400);
                                     }
                                     gotFirstHotels = true;
                                 } else {
@@ -210,15 +211,19 @@ export function MapResultsClient({ searchParams, destination, onSwitchView }: Ma
                                     return toAdd.length > 0 ? [...prev, ...toAdd] : prev;
                                 });
                             }
+                            if (completingTimer) { clearTimeout(completingTimer); completingTimer = null; }
                             const didTgxSucceed = (chunk.tgxCount ?? 0) > 0;
                             if (didTgxSucceed) {
                                 // TGX returned prices — remove catalog hotels that never got priced.
+                                // Do NOT require !!image: hotels priced but without DB images would be
+                                // filtered to [], causing SearchMapView's useEffect to return early and
+                                // leaving catalog hotels stuck as priceLoading:true skeleton forever.
                                 setProperties(prev => {
-                                    const filtered = prev.filter((h: any) => !h.priceLoading && !!(h as any).image);
+                                    const filtered = prev.filter((h: any) => !h.priceLoading);
                                     if (filtered.length > 0 && chunk.totalCount) setTotalCount(filtered.length);
                                     return filtered;
                                 });
-                                setAllMappable(prev => prev.filter((h: any) => !h.priceLoading && !!(h as any).image));
+                                setAllMappable(prev => prev.filter((h: any) => !h.priceLoading));
                             } else {
                                 // TGX timed out / ALL_PROCESSES_FAILED — keep catalog hotels on the map,
                                 // just clear priceLoading so pins don't spin indefinitely.

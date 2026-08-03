@@ -213,7 +213,10 @@ export function HotelResultsClient({ searchParams, onSwitchView }: HotelResultsC
                                 if (tgxSucceeded) {
                                     // Drop catalog hotels that never received a TGX price — they have
                                     // no real availability for these dates and would show "0 rooms" if clicked.
-                                    const priced = accumulated.filter((h: any) => h.priceLoading !== true && h.price > 0 && !!(h as any).image);
+                                    // Note: do NOT require !!image here — hotels priced by TGX but with no
+                                    // DB/content image would be filtered to [], making SearchMapView's useEffect
+                                    // return early and leaving 30 catalog hotels stuck as priceLoading:true skeletons.
+                                    const priced = accumulated.filter((h: any) => h.priceLoading !== true && h.price > 0);
                                     if (priced.length !== accumulated.length) {
                                         accumulated.splice(0, accumulated.length, ...priced);
                                         if (!cancelled) setProperties([...accumulated]);

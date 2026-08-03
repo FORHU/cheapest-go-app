@@ -412,7 +412,9 @@ export async function POST(req: NextRequest) {
                         ? fetchHotelContentPatches(catalogIdList, 50_000)
                         : Promise.resolve(new Map());
 
+                let tgxFailed = false;
                 const tgxResult = await runTgxSearch(body).catch((tgxErr: any) => {
+                    tgxFailed = true;
                     const isTimeout = tgxErr?.name === 'TimeoutError' || tgxErr?.message?.includes('timeout') || tgxErr?.message?.includes('aborted');
                     console.warn(`[stream] phase2 TGX ${isTimeout ? 'timed out' : 'failed'} for "${city}": ${tgxErr.message}`);
                     return { data: [] as any[], allMappable: [] as any[] };
@@ -445,8 +447,12 @@ export async function POST(req: NextRequest) {
                     const matchedCount = prices.filter((p: any) => catalogIdSet.has(p.hotelId)).length;
                     console.log(`[stream] prices: ${matchedCount} matched catalog, ${newTgxHotels.length} new, ${unavailableIds.length} unavailable`);
 
-                    if (prices.length > 0)                                      send({ type: 'prices',  data: prices });
-                    if (tgxHotels.length > 0 && unavailableIds.length > 0)      send({ type: 'remove',  ids: unavailableIds });
+                    if (prices.length > 0) send({ type: 'prices', data: prices });
+                    // Remove unavailable catalog hotels so priceLoading:true clears.
+                    // When TGX errors/times out (tgxFailed), keep catalog visible — better than
+                    // an empty page from a transient failure. When TGX returns legitimately 0
+                    // options, remove the skeletons so the page doesn't load forever.
+                    if (!tgxFailed && unavailableIds.length > 0) send({ type: 'remove', ids: unavailableIds });
                     if (newTgxHotels.length > 0) {
                         const newMappable = newTgxHotels.filter((h: any) => h.lat && h.lng);
                         console.log(`[stream] sending ${newTgxHotels.length} new TGX hotels`);
@@ -460,63 +466,54 @@ export async function POST(req: NextRequest) {
                     }
                 }
 
-                // ── Content patches: await catalog (may already be done) + new TGX hotels ──
+                // ── Content patches (two-phase to unblock the client quickly) ────────────
+                // Phase A: catalog content — was started in parallel with TGX, likely done.
+                //          Send immediately so catalog hotel images appear, then send done.
+                // Phase B: new TGX content — fetched AFTER done so the client doesn't wait.
+                //          Images arrive via a second type:'content' message; client keeps
+                //          reading until the stream closes (reader.read() done:true).
                 const newTgxIds = newTgxHotels.map((h: any) => h.hotelId || h.id as string);
+
+                const catalogPatches = await catalogContentPromise;
+                if (catalogPatches.size > 0) {
+                    const catalogContentData: Record<string, { images?: string[]; name?: string }> = {};
+                    for (const [id, patch] of catalogPatches) {
+                        if (patch.images?.length || patch.name) catalogContentData[id] = patch;
+                    }
+                    if (Object.keys(catalogContentData).length > 0) {
+                        console.log(`[stream] content: catalog=${Object.keys(catalogContentData).length} patches at ${elapsed()}`);
+                        send({ type: 'content', data: catalogContentData });
+                    }
+                }
+
+                // Send done — client can render immediately without waiting for TGX images.
+                const finalCount = tgxHotels.length > 0 ? tgxHotels.length : catalogHotels.length;
+                console.log(`[stream] done — total ${finalCount} hotels, ${elapsed()} wall time`);
+                send({ type: 'done', totalCount: finalCount, tgxCount: tgxHotels.length, allMappable: tgxMappable.length > 0 ? tgxMappable : catalogHotels.filter((h: any) => h.lat && h.lng) });
+
+                // Phase B: fetch images for new TGX hotels (not in catalog) — post-done.
+                // Client processes this type:'content' message to add images to visible cards.
                 const remainingBudget = Math.max(8_000, 50_000 - (Date.now() - t0));
-                const newHotelContentPromise: Promise<Map<string, HotelContentPatch>> =
-                    newTgxIds.length > 0
-                        ? fetchHotelContentPatches(newTgxIds, remainingBudget)
-                        : Promise.resolve(new Map());
+                const newHotelPatches: Map<string, HotelContentPatch> = newTgxIds.length > 0
+                    ? await fetchHotelContentPatches(newTgxIds, remainingBudget)
+                    : new Map();
 
-                const [catalogPatches, newHotelPatches] = await Promise.all([
-                    catalogContentPromise,
-                    newHotelContentPromise,
-                ]);
-                const contentPatches = new Map<string, HotelContentPatch>([
-                    ...catalogPatches,
-                    ...newHotelPatches,
-                ]);
-                const imgCount = [...contentPatches.values()].filter(p => p.images?.length).length;
-                console.log(`[stream] content: catalog=${catalogPatches.size}, newTgx=${newHotelPatches.size}, ${imgCount} with images (total ${elapsed()})`);
-
-                // Enhance allMappable: hotels priced by TGX that had lat=0 in DB but have
-                // coordinates in the TGX Content API response. Shows them as map pins immediately
-                // rather than waiting for the next search after the DB backfill runs.
-                const enhancedTgxMappable = tgxMappable.length > 0 ? [...tgxMappable] : [];
-                if (contentPatches.size > 0) {
-                    const mappedIds = new Set(enhancedTgxMappable.map((h: any) => h.hotelId || h.id));
-                    for (const h of tgxHotels) {
-                        const id = h.hotelId || h.id;
-                        if (mappedIds.has(id)) continue;
-                        const patch = contentPatches.get(id);
-                        if (patch?.lat && patch?.lng) {
-                            const enhanced: any = { ...h, lat: patch.lat, lng: patch.lng, coordinates: { lat: patch.lat, lng: patch.lng } };
-                            if (patch.images?.length && !h.image) { enhanced.images = patch.images; enhanced.image = patch.images[0]; }
-                            enhancedTgxMappable.push(enhanced);
-                            mappedIds.add(id);
-                        }
+                if (newHotelPatches.size > 0) {
+                    const newContentData: Record<string, { images?: string[]; name?: string }> = {};
+                    for (const [id, patch] of newHotelPatches) {
+                        if (patch.images?.length || patch.name) newContentData[id] = patch;
                     }
-                    if (enhancedTgxMappable.length > tgxMappable.length) {
-                        console.log(`[stream] allMappable enhanced: ${tgxMappable.length} → ${enhancedTgxMappable.length} hotels gained coordinates from content-api`);
+                    if (Object.keys(newContentData).length > 0) {
+                        console.log(`[stream] content: newTgx=${Object.keys(newContentData).length} patches (post-done, total ${elapsed()})`);
+                        send({ type: 'content', data: newContentData });
                     }
                 }
 
-                // Send content patches — client applies images to already-visible cards
-                if (contentPatches.size > 0) {
-                    const contentData: Record<string, { images?: string[]; name?: string }> = {};
-                    for (const [id, patch] of contentPatches) {
-                        if (patch.images?.length || patch.name) contentData[id] = patch;
-                    }
-                    if (Object.keys(contentData).length > 0) {
-                        console.log(`[stream] sending ${Object.keys(contentData).length} content patches`);
-                        send({ type: 'content', data: contentData });
-                    }
-                }
-
-                // Background: persist fresh images to hotel_content for future searches
-                if (contentPatches.size > 0) {
+                // Background: persist fresh images/coords to hotel_content for future searches
+                const allPatches = new Map<string, HotelContentPatch>([...catalogPatches, ...newHotelPatches]);
+                if (allPatches.size > 0) {
                     const sqlBg = getSqlAdmin();
-                    for (const [hotelId, patch] of contentPatches) {
+                    for (const [hotelId, patch] of allPatches) {
                         if (patch.images?.length) {
                             sqlBg`UPDATE hotel_content SET images = ${sqlBg.array(patch.images)}, fetched_at = now()
                                   WHERE hotel_id = ${hotelId} AND (images IS NULL OR cardinality(images) = 0)`
@@ -534,10 +531,6 @@ export async function POST(req: NextRequest) {
                         }
                     }
                 }
-
-                const finalCount = tgxHotels.length > 0 ? tgxHotels.length : catalogHotels.length;
-                console.log(`[stream] done — total ${finalCount} hotels, ${elapsed()} wall time`);
-                send({ type: 'done', totalCount: finalCount, tgxCount: tgxHotels.length, allMappable: enhancedTgxMappable.length > 0 ? enhancedTgxMappable : catalogHotels.filter((h: any) => h.lat && h.lng) });
                 // ── END two-phase mode ────────────────────────────────────────
 
             } catch (e: any) {

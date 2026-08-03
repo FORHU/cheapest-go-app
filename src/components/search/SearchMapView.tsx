@@ -403,13 +403,16 @@ function SearchMapView({
                 const wantsImage = !p.image && incoming.image;
                 // Sync price when catalog sent price:0 and TGX prices have now arrived
                 const wantsPrice = (p.price === 0 || p.priceLoading) && (incoming as any).price > 0;
-                if (!wantsLocation && !wantsImage && !wantsPrice) return p;
+                // Sync priceLoading when TGX done/fail clears it (even if price stays 0)
+                const wantsPriceLoading = !!(p as any).priceLoading !== !!(incoming as any).priceLoading;
+                if (!wantsLocation && !wantsImage && !wantsPrice && !wantsPriceLoading) return p;
                 changed = true;
                 return {
                     ...p,
                     location: incoming.location || p.location,
                     image: incoming.image || p.image,
                     images: incoming.images?.length ? incoming.images : p.images,
+                    ...(wantsPriceLoading && { priceLoading: !!(incoming as any).priceLoading }),
                     ...(wantsPrice && {
                         price: (incoming as any).price,
                         currency: (incoming as any).currency ?? p.currency,
@@ -465,8 +468,10 @@ function SearchMapView({
         const isRawCode = (name: string) => /^[a-z0-9_]+$/.test(name) && name.includes('_');
         // Exclude hotels without real coordinates — they can't be placed on the
         // map, so they shouldn't appear in the results list either.
+        // Include priceLoading:true hotels so catalog cards appear immediately
+        // while TGX loads, instead of showing PriceLoadingSidebar skeleton.
         let list = allProperties.filter((p: any) =>
-            p.name && !isRawCode(p.name) && p.price > 0 && !(p as any).priceLoading && hasValidCoords(p)
+            p.name && !isRawCode(p.name) && ((p as any).priceLoading || p.price > 0) && hasValidCoords(p)
         );
 
         if (propertyTypes.length > 0) {
@@ -495,6 +500,8 @@ function SearchMapView({
         // Always push hotels with no image to the bottom regardless of sort order
         const hasImg = (p: any) => (p.image || (p.images && p.images.length > 0)) ? 0 : 1;
         list.sort((a: any, b: any) => hasImg(a) - hasImg(b));
+        // Always push priceLoading hotels to the bottom (unconfirmed availability)
+        list.sort((a: any, b: any) => (+!!(a as any).priceLoading) - (+!!(b as any).priceLoading));
 
         return list;
     }, [allProperties, sortBy, propertyTypes, boardTypes, refundable]);
@@ -863,7 +870,7 @@ function SearchMapView({
                                 )}
                             </div>
                         </>
-                    ) : allProperties.some((p: any) => (p as any).priceLoading) ? (
+                    ) : allProperties.some((p: any) => (p as any).priceLoading) && properties.some((p: any) => (p as any).priceLoading) ? (
                         <PriceLoadingSidebar destination={destination ?? ''} />
                     ) : (
                         <div className="flex flex-col items-center justify-center h-full px-6 text-center">
