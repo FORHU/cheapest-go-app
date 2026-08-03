@@ -462,6 +462,14 @@
             "sessionExpired": "Booking session expired. Please go back and select the room again.",
             "sessionExpiredCharge": "Your session expired during payment. Your card was charged — please contact support with payment reference: {id}"
         },
+        "priceChanged": {
+            "title": "Price has changed",
+            "description": "The price for this room changed between when you selected it and when we tried to confirm your booking.",
+            "originalPrice": "Original price",
+            "newPrice": "New price",
+            "refundNotice": "Your payment of {amount} has been automatically refunded. It may take 3–5 business days to appear on your statement.",
+            "backToSearch": "Back to search"
+        },
         "verifyingPayment": "Verifying payment...",
         "viewExistingBooking": "View existing booking",
         "voucher": {

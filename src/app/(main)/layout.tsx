@@ -1,5 +1,6 @@
 import { Header, Footer } from '@/components/landing';
 import { VoiceAssistant } from '@/components/voice/VoiceAssistant';
+import { SearchNavigationOverlay } from '@/components/search/SearchNavigationOverlay';
 
 export default function MainLayout({
   children,
@@ -14,6 +15,7 @@ export default function MainLayout({
       </main>
       <Footer />
       <VoiceAssistant />
+      <SearchNavigationOverlay />
     </>
   );
 }

@@ -46,6 +46,8 @@ export const bookingConfirmSchema = z.object({
     transactionId: z.string().optional(),
   }),
   cancellationPolicies: z.any().optional(),
+  /** Price the user was quoted at prebook time (in the booking currency, before service fee) */
+  quotedPrice: z.number().positive().optional(),
 });
 
 export type BookingConfirmInput = z.infer<typeof bookingConfirmSchema>;

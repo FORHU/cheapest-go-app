@@ -349,6 +349,14 @@
             "sessionExpired": "预订会话已过期。请返回并重新选择房间。",
             "sessionExpiredCharge": "支付过程中会话已过期。您的银行卡已被扣款——请联系客服并提供付款参考：{id}"
         },
+        "priceChanged": {
+            "title": "价格已变更",
+            "description": "您选择此房间到我们尝试确认预订之间，房间价格发生了变化。",
+            "originalPrice": "原价",
+            "newPrice": "新价格",
+            "refundNotice": "您支付的 {amount} 已自动退款。退款可能需要 3–5 个工作日才能显示在您的账单上。",
+            "backToSearch": "返回搜索"
+        },
         "verifyingPayment": "正在验证支付...",
         "viewExistingBooking": "查看现有预订",
         "voucher": {

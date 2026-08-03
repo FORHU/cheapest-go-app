@@ -22,7 +22,11 @@ export function useBooking(options?: UseBookingOptions) {
       const result = await apiFetch('/api/booking/confirm', params as unknown as Record<string, unknown>);
 
       if (!result.success) {
-        throw new Error(result.error || 'Booking failed');
+        const err = new Error(result.error || 'Booking failed') as Error & { errorCode?: string; oldPrice?: number; newPrice?: number };
+        if (result.errorCode) err.errorCode = String(result.errorCode);
+        if (result.oldPrice != null) err.oldPrice = Number(result.oldPrice);
+        if (result.newPrice != null) err.newPrice = Number(result.newPrice);
+        throw err;
       }
 
       return result.data;

@@ -57,6 +57,7 @@ export interface BookingParams {
   voucherCode?: string;
   discountAmount?: number;
   cancellationPolicies?: CancellationPolicy;
+  quotedPrice?: number;
 }
 
 /**
