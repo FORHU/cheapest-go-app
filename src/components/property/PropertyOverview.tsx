@@ -83,27 +83,29 @@ const PropertyOverview: React.FC<PropertyOverviewProps> = ({ property, reviewsDa
                     </div>
                 </div>
 
-                {rating > 0 && reviewCount > 0 ? (
-                    <div className="flex items-center gap-2 lg:gap-4 p-2 lg:p-4 bg-slate-50 dark:bg-white/5 rounded-xl border border-slate-100 dark:border-white/10">
-                        <div className={`flex items-center justify-center w-7 h-7 lg:w-10 lg:h-10 rounded-lg text-[10px] lg:text-sm font-bold text-white shrink-0 ${getRatingBgColor(rating)}`}>
-                            {rating.toFixed(1)}
-                        </div>
-                        <div>
-                            <div className="font-extra-bold text-[11px] lg:text-base text-slate-900 dark:text-white">
-                                {tRatings(getRatingLabel(rating))}
+                <div className="flex items-center gap-2 lg:gap-4 p-2 lg:p-4 bg-slate-50 dark:bg-white/5 rounded-xl border border-slate-100 dark:border-white/10">
+                    {rating > 0 && reviewCount > 0 ? (
+                        <>
+                            <div className={`flex items-center justify-center w-7 h-7 lg:w-10 lg:h-10 rounded-lg text-[10px] lg:text-sm font-bold text-white shrink-0 ${getRatingBgColor(rating)}`}>
+                                {rating.toFixed(1)}
                             </div>
-                            <div className="text-[9px] lg:text-sm text-slate-600 dark:text-slate-300">
-                                {reviewCount !== 1
-                                    ? t('verifiedReviews', { count: reviewCount.toLocaleString() })
-                                    : t('verifiedReview', { count: reviewCount.toLocaleString() })}
+                            <div>
+                                <div className="font-extra-bold text-[11px] lg:text-base text-slate-900 dark:text-white">
+                                    {tRatings(getRatingLabel(rating))}
+                                </div>
+                                <div className="text-[9px] lg:text-sm text-slate-600 dark:text-slate-300">
+                                    {reviewCount !== 1
+                                        ? t('verifiedReviews', { count: reviewCount.toLocaleString() })
+                                        : t('verifiedReview', { count: reviewCount.toLocaleString() })}
+                                </div>
                             </div>
+                        </>
+                    ) : (
+                        <div className="text-[10px] lg:text-sm text-slate-500 dark:text-slate-400">
+                            {t('noReviewsYet')}
                         </div>
-                    </div>
-                ) : (
-                    <div className="flex items-center gap-2 p-2 lg:p-4 bg-slate-50 dark:bg-white/5 rounded-xl border border-slate-100 dark:border-white/10 text-[10px] lg:text-sm text-slate-500 dark:text-slate-400">
-                        {t('noReviewsYet')}
-                    </div>
-                )}
+                    )}
+                </div>
             </div>
 
             <div className="flex flex-col gap-4 md:gap-8">
