@@ -1712,6 +1712,10 @@
     },
     "propertyOverview": {
         "aboutProperty": "この宿泊施設について",
+        "checkIn": "チェックイン",
+        "checkOut": "チェックアウト",
+        "contactInfo": "連絡先",
+        "importantInfo": "重要なお知らせ",
         "cleaningSafety": {
             "description": "この宿泊施設では、非接触チェックインや強化された清掃プロトコルなど、徹底した衛生対策を実施しています。",
             "title": "衛生・安全対策"

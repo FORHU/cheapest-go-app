@@ -1715,6 +1715,10 @@
     },
     "propertyOverview": {
         "aboutProperty": "关于此住宿",
+        "checkIn": "入住",
+        "checkOut": "退房",
+        "contactInfo": "联系方式",
+        "importantInfo": "重要信息",
         "cleaningSafety": {
             "description": "该住宿采取了全面的卫生措施，包括无接触入住和加强的清洁流程。",
             "title": "清洁与安全措施"
