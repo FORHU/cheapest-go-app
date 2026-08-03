@@ -14,6 +14,7 @@ import { useUserCurrency, useSearchStore, useSearchFilters, useDates, useActiveD
 import { DatePicker } from '@/components/landing/hero/search/DatePicker';
 import CurrencySelector from '@/components/common/CurrencySelector';
 import { useTranslations, useLocale } from 'next-intl';
+import { HotelCardSkeleton, SKELETON_NAME_WIDTHS } from '@/components/shared/Skeleton';
 import { hasValidCoords, dedupeByProximity } from './mappableUtils';
 
 const SearchMapContainer = dynamic(
@@ -119,42 +120,40 @@ interface SearchMapViewProps {
     onSwitchToList?: () => void;
 }
 
-const LOADING_TIPS = [
-    'comparingRates',
-    'checkingAvailabilityDates',
-    'findingBestDeals',
-    'almostThere',
-    'securingLivePrices',
-] as const;
+// How many cards the sidebar shows per page. The loading state renders the same
+// number so the list doesn't jump when real results replace the placeholders.
+const LIST_PAGE_SIZE = 15;
+
+// Only ~1.5 cards are visible in the mobile swiper — a full page of placeholders
+// would be off-screen work.
+const SWIPER_SKELETON_COUNT = 3;
 
 function PriceLoadingSidebar({ destination }: { destination: string }) {
     const t = useTranslations('hotels.mapView');
-    const [tipIdx, setTipIdx] = useState(0);
-    useEffect(() => {
-        const id = setInterval(() => setTipIdx(i => (i + 1) % LOADING_TIPS.length), 3000);
-        return () => clearInterval(id);
-    }, []);
     return (
-        <div className="flex flex-col gap-3 p-3 overflow-y-auto">
-            <div className="px-1 py-3 text-center select-none">
-                <p className="text-xs font-semibold text-slate-700 dark:text-slate-200 mb-1">
+        <>
+            <div className="shrink-0 px-1 py-3 text-center select-none">
+                <p className="text-xs font-semibold text-slate-700 dark:text-slate-200">
                     {destination ? t('findingHotelsIn', { destination }) : t('findingHotels')}
                 </p>
-                <p className="text-[11px] text-blue-500 dark:text-blue-400 transition-all duration-500 min-h-[16px]">
-                    {t(LOADING_TIPS[tipIdx])}
-                </p>
             </div>
-            {[1, 2, 3, 4].map(n => (
-                <div key={n} className="rounded-xl border border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-800 p-3 flex gap-3 animate-pulse">
-                    <div className="w-16 h-16 rounded-lg bg-slate-200 dark:bg-slate-700 shrink-0" />
-                    <div className="flex-1 flex flex-col gap-2 py-1">
-                        <div className="h-3 bg-slate-200 dark:bg-slate-700 rounded w-3/4" />
-                        <div className="h-2.5 bg-slate-200 dark:bg-slate-700 rounded w-1/2" />
-                        <div className="h-3 bg-slate-200 dark:bg-slate-700 rounded w-1/3 mt-auto" />
-                    </div>
-                </div>
-            ))}
-        </div>
+
+            {/* Same scroll container as the loaded list so the sidebar keeps its
+                shape while results stream in. */}
+            <div
+                aria-hidden
+                className="flex-1 overflow-y-auto overscroll-contain [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] scrollbar-none animate-pulse"
+            >
+                {Array.from({ length: LIST_PAGE_SIZE }).map((_, i) => (
+                    <HotelCardSkeleton key={i} nameWidth={SKELETON_NAME_WIDTHS[i % SKELETON_NAME_WIDTHS.length]} />
+                ))}
+            </div>
+
+            {/* Stands in for the Load More footer so it doesn't pop in later */}
+            <div className="shrink-0 py-3 px-3">
+                <div className="w-full h-8 rounded-full bg-slate-200 dark:bg-slate-700 animate-pulse" />
+            </div>
+        </>
     );
 }
 
@@ -335,7 +334,7 @@ function SearchMapView({
     totalCount: _totalCount = 0,
     allMappable = [],
     rawSearchParams = {},
-    isStreaming: _isStreaming = false,
+    isStreaming = false,
     onSwitchToList,
 }: SearchMapViewProps) {
     const router = useRouter();
@@ -433,7 +432,6 @@ function SearchMapView({
     }, [properties]);
 
     // ── Client-side display pagination ───────────────────────────
-    const LIST_PAGE_SIZE = 15;
     const [displayCount, setDisplayCount] = useState(LIST_PAGE_SIZE);
     const searchKey = JSON.stringify(rawSearchParams);
     React.useEffect(() => { setDisplayCount(LIST_PAGE_SIZE); }, [searchKey]);
@@ -863,7 +861,7 @@ function SearchMapView({
                                 )}
                             </div>
                         </>
-                    ) : allProperties.some((p: any) => (p as any).priceLoading) ? (
+                    ) : isStreaming || allProperties.some((p: any) => (p as any).priceLoading) ? (
                         <PriceLoadingSidebar destination={destination ?? ''} />
                     ) : (
                         <div className="flex flex-col items-center justify-center h-full px-6 text-center">
@@ -946,6 +944,39 @@ function SearchMapView({
                                             onHover={handleHover}
                                             onViewDetails={handleViewDetails}
                                             index={idx + 1}
+                                        />
+                                    </div>
+                                ))}
+                            </div>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
+
+                {/* Loading swiper — the sidebar skeleton is desktop-only, so mobile
+                    gets the same treatment here rather than a bare map. */}
+                <AnimatePresence>
+                    {showMobileMap && sortedProperties.length === 0 && isStreaming && (
+                        <motion.div
+                            initial={{ y: 100, opacity: 0 }}
+                            animate={{ y: 0, opacity: 1 }}
+                            exit={{ y: 100, opacity: 0 }}
+                            transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+                            className="absolute bottom-[58px] left-0 right-0 w-full z-20"
+                        >
+                            <div className="px-4 pb-1.5">
+                                <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">
+                                    {destination ? t('findingHotelsIn', { destination }) : t('findingHotels')}
+                                </span>
+                            </div>
+                            <div aria-hidden className="w-full overflow-hidden pb-2 px-3 flex gap-3 animate-pulse">
+                                {Array.from({ length: SWIPER_SKELETON_COUNT }).map((_, i) => (
+                                    <div
+                                        key={i}
+                                        className="shrink-0 w-[72vw] sm:w-[280px] landscape:w-[240px] shadow-lg rounded-xl bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800"
+                                    >
+                                        <HotelCardSkeleton
+                                            variant="compact"
+                                            nameWidth={SKELETON_NAME_WIDTHS[i % SKELETON_NAME_WIDTHS.length]}
                                         />
                                     </div>
                                 ))}

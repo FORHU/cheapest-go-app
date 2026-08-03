@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { useTranslations } from 'next-intl';
 import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, ChevronDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -17,6 +17,14 @@ interface FormDatePickerProps {
     minDate?: Date;
     maxDate?: Date;
     customTrigger?: React.ReactNode;
+    /**
+     * Month the calendar opens on when nothing is selected yet. Purely the view —
+     * it never sets a value, so the field stays empty until the user picks a day.
+     *
+     * Use it for fields whose plausible answer is far from today: a date of birth
+     * opens 30-odd years back instead of making an adult page through decades.
+     */
+    defaultViewDate?: Date;
 }
 
 /**
@@ -54,7 +62,8 @@ export const FormDatePicker: React.FC<FormDatePickerProps> = ({
     className,
     minDate,
     maxDate,
-    customTrigger
+    customTrigger,
+    defaultViewDate,
 }) => {
     const t = useTranslations('flightBook.datePicker');
     const monthsList = t.raw('months') as string[];
@@ -62,9 +71,13 @@ export const FormDatePicker: React.FC<FormDatePickerProps> = ({
     const defaultPlaceholder = placeholder || t('selectDate');
 
     const [currentMonth, setCurrentMonth] = useState(() => {
+        // An existing selection always wins — open where the user last left off.
         if (value) {
             const d = new Date(value);
             if (!isNaN(d.getTime())) return new Date(d.getFullYear(), d.getMonth(), 1);
+        }
+        if (defaultViewDate && !isNaN(defaultViewDate.getTime())) {
+            return new Date(defaultViewDate.getFullYear(), defaultViewDate.getMonth(), 1);
         }
         return new Date(new Date().getFullYear(), new Date().getMonth(), 1);
     });
@@ -75,6 +88,23 @@ export const FormDatePicker: React.FC<FormDatePickerProps> = ({
     useEffect(() => {
         setYearInput(currentMonth.getFullYear().toString());
     }, [currentMonth]);
+
+    const yearListRef = useRef<HTMLDivElement | null>(null);
+    const activeYearRef = useRef<HTMLButtonElement | null>(null);
+
+    // Bring the active year into view when the year grid opens. The list runs from
+    // the newest year downwards, so without this a 1996 date of birth sits ~30 rows
+    // below the fold and the default view year is never actually seen.
+    //
+    // Scrolls the container directly rather than calling scrollIntoView, which also
+    // scrolls ancestors and would drag the page behind the popover.
+    useEffect(() => {
+        if (view !== 'year') return;
+        const container = yearListRef.current;
+        const active = activeYearRef.current;
+        if (!container || !active) return;
+        container.scrollTop = active.offsetTop - (container.clientHeight / 2) + (active.clientHeight / 2);
+    }, [view]);
 
     const selectedDate = useMemo(() => {
         if (!value) return null;
@@ -292,12 +322,13 @@ export const FormDatePicker: React.FC<FormDatePickerProps> = ({
 
                         {/* Year Picker Overlay */}
                         {view === 'year' && (
-                            <div className="absolute inset-0 bg-white dark:bg-obsidian z-20 overflow-y-auto custom-scrollbar pr-1 animate-in fade-in zoom-in-95 duration-200">
+                            <div ref={yearListRef} className="absolute inset-0 bg-white dark:bg-obsidian z-20 overflow-y-auto custom-scrollbar pr-1 animate-in fade-in zoom-in-95 duration-200">
                                 <div className="text-[10px] font-normal text-slate-400 uppercase tracking-widest mb-3 sticky top-0 bg-white dark:bg-obsidian py-1">{t('year')}</div>
                                 <div className="grid grid-cols-3 gap-2">
                                     {years.map((y) => (
                                         <button
                                             key={y}
+                                            ref={currentMonth.getFullYear() === y ? activeYearRef : undefined}
                                             type="button"
                                             onClick={() => {
                                                 goToMonthYear(y, currentMonth.getMonth());

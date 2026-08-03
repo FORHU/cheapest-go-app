@@ -18,6 +18,7 @@ import {
 import { TermsAcceptanceCheckbox } from '@/components/legal/TermsAcceptanceCheckbox';
 
 import { GlobalSparkle } from '@/components/ui/GlobalSparkle';
+import { earliestPlausibleBirthDate, latestBirthDateForAge } from '@/lib/age';
 
 interface LoginContentProps {
     isAdmin?: boolean;
@@ -49,6 +50,8 @@ export function LoginContent({ isAdmin = false }: LoginContentProps) {
 
     const [confirmPassword, setConfirmPassword] = useState('');
     const [agreedToTerms, setAgreedToTerms] = useState(false);
+    // Third path that can create an account — same 18+ requirement as the modal.
+    const [birthDate, setBirthDate] = useState('');
 
     const handleSubmit = useCallback(async (e: React.FormEvent) => {
         e.preventDefault();
@@ -66,7 +69,7 @@ export function LoginContent({ isAdmin = false }: LoginContentProps) {
         // Validate with Zod schema
         const schema = mode === 'signup' ? registerSchema : loginSchema;
         const data = mode === 'signup'
-            ? { email, password, firstName, lastName }
+            ? { email, password, firstName, lastName, birthDate }
             : { email, password };
 
         const result = schema.safeParse(data);
@@ -85,7 +88,7 @@ export function LoginContent({ isAdmin = false }: LoginContentProps) {
 
         try {
             if (mode === 'signup') {
-                await register({ email, password, firstName, lastName });
+                await register({ email, password, firstName, lastName, birthDate });
                 toast.success(t('messages.accountCreated'));
             } else {
                 await login(email, password);
@@ -127,7 +130,7 @@ export function LoginContent({ isAdmin = false }: LoginContentProps) {
             setErrors({ general: error?.message || t('messages.authFailed') });
             toast.error(error?.message || t('messages.authFailed'));
         }
-    }, [email, password, confirmPassword, agreedToTerms, firstName, lastName, mode, register, login, setErrors, setAuthStep, setMode, isAdmin, t]);
+    }, [email, password, confirmPassword, agreedToTerms, firstName, lastName, birthDate, mode, register, login, setErrors, setAuthStep, setMode, isAdmin, t]);
 
     const handleToggleMode = useCallback(() => {
         setMode(mode === 'signin' ? 'signup' : 'signin');
@@ -181,17 +184,39 @@ export function LoginContent({ isAdmin = false }: LoginContentProps) {
                                 />
 
                                 {mode === 'signup' && (
-                                    <NameFields
-                                        firstName={firstName}
-                                        lastName={lastName}
-                                        onFirstNameChange={setFirstName}
-                                        onLastNameChange={setLastName}
-                                        firstNameError={errors.firstName}
-                                        lastNameError={errors.lastName}
-                                        onFirstNameErrorClear={clearError('firstName')}
-                                        onLastNameErrorClear={clearError('lastName')}
-                                        disabled={isLoading}
-                                    />
+                                    <>
+                                        <NameFields
+                                            firstName={firstName}
+                                            lastName={lastName}
+                                            onFirstNameChange={setFirstName}
+                                            onLastNameChange={setLastName}
+                                            firstNameError={errors.firstName}
+                                            lastNameError={errors.lastName}
+                                            onFirstNameErrorClear={clearError('firstName')}
+                                            onLastNameErrorClear={clearError('lastName')}
+                                            disabled={isLoading}
+                                        />
+                                        <div>
+                                            <label htmlFor="loginBirthDate" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                                                {t('labels.birthDate')}
+                                            </label>
+                                            <input
+                                                id="loginBirthDate"
+                                                type="date"
+                                                value={birthDate}
+                                                onChange={(e) => setBirthDate(e.target.value)}
+                                                min={earliestPlausibleBirthDate()}
+                                                max={latestBirthDateForAge()}
+                                                disabled={isLoading}
+                                                className="w-full px-4 py-2.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-60"
+                                            />
+                                            {errors.birthDate ? (
+                                                <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errors.birthDate}</p>
+                                            ) : (
+                                                <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{t('labels.birthDateHint')}</p>
+                                            )}
+                                        </div>
+                                    </>
                                 )}
 
                                 <PasswordField

@@ -82,6 +82,51 @@ if (typeof process !== 'undefined') {
     );
 }
 
+// ── Flight price-change tolerance ────────────────────────────────────────────
+
+/**
+ * How far a fare may drift before we stop and ask the traveller to confirm.
+ *
+ * This MUST be a single value shared by every gate that can raise a
+ * `price_changed` prompt — currently /api/internal/revalidate-flight (checked
+ * when the booking starts) and /api/flights/book (checked again at order time).
+ * When the two gates disagreed, a fare that drifted between the looser and the
+ * stricter threshold sailed past the first check and was rejected by the
+ * second, so the traveller was asked about a change the app had just decided
+ * was immaterial. That is what made prices look like they changed constantly.
+ *
+ * Kept tight in production on purpose: markup is set to break even on Stripe
+ * fees only (see the header of this file), so an increase absorbed silently is
+ * a direct loss rather than a smaller margin.
+ */
+export const FLIGHT_PRICE_TOLERANCE_LIVE = 0.50;
+
+/**
+ * Duffel's test environment returns noisy, rapidly-moving prices that do not
+ * reflect real fare behaviour, so a tight threshold there produces a confirm
+ * prompt on nearly every attempt.
+ */
+export const FLIGHT_PRICE_TOLERANCE_SANDBOX = 10.00;
+
+/**
+ * Effective tolerance for the current environment.
+ *
+ * Compare **base fares** with this, never a total that includes seats or bags:
+ * the revalidation gate can only see the bare fare, so a total-vs-base
+ * comparison would read the ancillary cost as a price increase and reject a
+ * price the traveller had already confirmed.
+ */
+export function getFlightPriceTolerance(): number {
+    // The env var is DUFFEL_ACCESS_TOKEN; `env.DUFFEL_TOKEN` is an alias for it.
+    // Read the real name (and the alias, in case a deployment sets that instead)
+    // rather than importing @/utils/env, which would make this module depend on
+    // env validation it does not otherwise need.
+    const token = process.env.DUFFEL_ACCESS_TOKEN ?? process.env.DUFFEL_TOKEN ?? '';
+    return token.startsWith('duffel_test_')
+        ? FLIGHT_PRICE_TOLERANCE_SANDBOX
+        : FLIGHT_PRICE_TOLERANCE_LIVE;
+}
+
 // ── Stripe fee constants ─────────────────────────────────────────────────────
 
 /** Stripe percentage fee per transaction (2.9%) */
@@ -116,6 +161,33 @@ export function applyMarkup(basePrice: number, markupRate: number): {
         markupAmount: round2(chargedPrice - basePrice),
         markupRate,
     };
+}
+
+/**
+ * The saving a traveller actually receives by bundling a hotel with a flight,
+ * as a percentage of the standalone price.
+ *
+ * There is no discount line anywhere in the payment flow — bundling simply
+ * swaps HOTEL_MARKUP for BUNDLE_MARKUP in create-payment, so the "discount" is
+ * the gap between the two multipliers and nothing else:
+ *
+ *   saving = 1 − (1 + BUNDLE_MARKUP) / (1 + HOTEL_MARKUP)
+ *
+ * Derive it rather than hardcoding a figure in the UI. The banner previously
+ * advertised a fixed 3% while the rates gave ~1%, and the claim silently
+ * drifts every time the markup env vars are retuned.
+ *
+ * Server-only: the markup rates come from non-public env vars, so a client
+ * component reading this would silently fall back to the defaults. Compute it
+ * in a server component and pass the number down.
+ *
+ * @returns Percentage points (e.g. 0.9 for a 0.9% saving), floored to one
+ *          decimal — rounding up would advertise a saving we don't give.
+ */
+export function bundleSavingPercent(): number {
+    const saving = (1 - (1 + BUNDLE_MARKUP) / (1 + HOTEL_MARKUP)) * 100;
+    if (!Number.isFinite(saving) || saving <= 0) return 0;
+    return Math.floor(saving * 10) / 10;
 }
 
 /**

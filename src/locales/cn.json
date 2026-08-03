@@ -500,6 +500,23 @@
         "error": {
             "bookingFailed": "预订失败",
             "bookingFailedDefault": "预订失败。请重试。",
+            "codes": {
+                "balance_insufficient": "航班预订暂时不可用，请稍后重试。您的银行卡未被扣款。",
+                "booking_failed": "未能完成此预订，请重试。",
+                "booking_failed_refunded": "预订未能完成，您的付款已退回。",
+                "booking_pending": "航空公司尚未确认此预订。出票后我们会立即通过电子邮件通知您。",
+                "booking_timeout": "航空公司响应超时，请稍后重试。",
+                "duplicate_booking": "您在该出发日期已有一个有效的航班预订。请先取消该预订，或选择其他日期。",
+                "flight_unavailable": "该航班已无法预订，请重新搜索。",
+                "offer_expired": "该票价已过期，请重新搜索当前价格。",
+                "offer_replaced_seats_cleared": "票价已刷新，您的座位和行李选择已清除，请重新选择。",
+                "pending": "航空公司尚未确认此预订。出票后我们会立即通过电子邮件通知您。",
+                "phone_number_invalid": "航空公司拒绝了该联系电话。请确认已包含国家代码后重试。",
+                "seats_unavailable": "您选择的座位或行李已不可用。请重新确认附加服务后再试。",
+                "supplier_outage": "航空公司预订系统暂无响应，请几分钟后重试。",
+                "server_error": "我们这边出现了问题。您的银行卡未被扣款，请重试。",
+                "unauthenticated": "请登录以完成预订。"
+            },
             "defaultMessage": "无法完成您的预订。",
             "flightUnavailable": "航班不可用",
             "goBack": "返回",

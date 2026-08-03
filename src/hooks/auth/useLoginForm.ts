@@ -15,7 +15,7 @@ interface UseLoginFormReturn {
     authStep: AuthStep;
     setAuthStep: (step: AuthStep) => void;
     user: any;
-    register: (data: { email: string; password: string; firstName: string; lastName: string }) => Promise<void>;
+    register: (data: { email: string; password: string; firstName: string; lastName: string; birthDate: string }) => Promise<void>;
     login: (email: string, password: string) => Promise<void>;
 
     // Form state

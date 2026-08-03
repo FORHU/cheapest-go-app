@@ -122,6 +122,8 @@ export async function createUser(params: {
     firstName?: string;
     lastName?: string;
     avatarUrl?: string;
+    /** ISO `YYYY-MM-DD`. The 18+ check lives in the signup route; stored here for audit. */
+    birthDate?: string;
 }): Promise<{ id: string }> {
     const sql = getSqlAdmin();
     const passwordHash = await hash(params.password, {
@@ -132,14 +134,15 @@ export async function createUser(params: {
     });
 
     const rows = await sql`
-        INSERT INTO users (email, password_hash, role, first_name, last_name, avatar_url)
+        INSERT INTO users (email, password_hash, role, first_name, last_name, avatar_url, birth_date)
         VALUES (
             ${params.email.toLowerCase()},
             ${passwordHash},
             'user',
             ${params.firstName ?? null},
             ${params.lastName ?? null},
-            ${params.avatarUrl ?? null}
+            ${params.avatarUrl ?? null},
+            ${params.birthDate ?? null}
         )
         RETURNING id
     `;
