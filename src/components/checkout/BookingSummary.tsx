@@ -144,7 +144,7 @@ export function BookingSummary({
                     )}
                     <div className="flex-1 min-w-0">
                         {/* Star rating */}
-                        {starRating && starRating > 0 && (
+                        {!!starRating && starRating > 0 && (
                             <div className="flex items-center gap-0.5 mb-1">
                                 {Array.from({ length: Math.round(starRating) }).map((_, i) => (
                                     <Star key={i} size={12} className="fill-amber-400 text-amber-400" />
@@ -161,7 +161,7 @@ export function BookingSummary({
                             </p>
                         )}
                         {/* Review badge */}
-                        {reviewScore && reviewScore > 0 && (
+                        {!!reviewScore && reviewScore > 0 && (
                             <div className="flex items-center gap-1.5 mt-1.5">
                                 <span className="bg-blue-600 text-white text-[10px] font-bold px-1.5 py-0.5 rounded">
                                     {reviewScore.toFixed(1)}

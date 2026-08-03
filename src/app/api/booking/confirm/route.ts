@@ -114,6 +114,7 @@ export async function POST(req: NextRequest) {
             voucherCode: body.voucherCode,
             discountAmount: body.discountAmount,
             cancellationPolicies: body.cancellationPolicies,
+            quotedPrice: body.quotedPrice,
         }, user);
 
         if (result.success) {
@@ -135,6 +136,23 @@ export async function POST(req: NextRequest) {
                 currency: result.data?.currency || body.currency || 'USD',
             }).catch(e => console.error('[confirm] Email failed:', e));
             return Response.json(result);
+        }
+
+        // Price increased beyond threshold — refund then tell the client
+        if (!result.success && result.errorCode === 'price_changed' && body.paymentIntentId) {
+            try {
+                const refund = await stripe.refunds.create({ payment_intent: body.paymentIntentId });
+                console.log(`[confirm] Price-change refund ${refund.id} issued`);
+            } catch (refundErr: any) {
+                console.error('[confirm] Price-change refund failed:', refundErr.message);
+            }
+            return Response.json({
+                success: false,
+                errorCode: 'price_changed',
+                oldPrice: result.oldPrice,
+                newPrice: result.newPrice,
+                error: 'The price for this room increased after you were quoted. Your payment has been automatically refunded.',
+            });
         }
 
         // Booking failed — refund Stripe payment if captured

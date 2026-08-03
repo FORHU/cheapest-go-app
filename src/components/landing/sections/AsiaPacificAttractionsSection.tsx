@@ -8,6 +8,7 @@ import { Sparkles } from 'lucide-react';
 import { useDragScroll } from '@/hooks/useDragScroll';
 import { attractionImagePath } from '@/lib/destination-images';
 import { useTranslations } from 'next-intl';
+import { useSearchStore } from '@/stores/searchStore';
 
 interface Attraction {
   name: string;
@@ -49,6 +50,7 @@ interface AttractionCardProps {
 const AttractionCard: React.FC<AttractionCardProps> = ({ attraction, index }) => {
   const router = useRouter();
   const t = useTranslations('topDestinations');
+  const setIsSearching = useSearchStore((s) => s.setIsSearching);
 
   function navigate() {
     const p = new URLSearchParams({
@@ -56,6 +58,7 @@ const AttractionCard: React.FC<AttractionCardProps> = ({ attraction, index }) =>
       destinationType: 'city',
       country: attraction.country,
     });
+    setIsSearching(true);
     router.push(`/search?${p.toString()}`);
   }
 

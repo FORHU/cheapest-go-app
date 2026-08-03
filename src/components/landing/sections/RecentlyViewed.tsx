@@ -28,6 +28,7 @@ const RecentCard: React.FC<RecentCardProps> = ({ item, destination, index }) => 
   const router = useRouter();
   const setDestination = useSearchStore((s) => s.setDestination);
   const setDestinationQuery = useSearchStore((s) => s.setDestinationQuery);
+  const setIsSearching = useSearchStore((s) => s.setIsSearching);
 
   const displayPrice = React.useMemo(() => {
     if (!destination.lowestPrice || destination.lowestPrice <= 0) return null;
@@ -47,6 +48,7 @@ const RecentCard: React.FC<RecentCardProps> = ({ item, destination, index }) => 
       if (destination.countryCode) params.set('countryCode', destination.countryCode);
       if (destination.id) params.set('placeId', destination.id);
       if (destination.code) params.set('destinationCode', destination.code);
+      setIsSearching(true);
       router.push(`/search?${params.toString()}`);
     }
   };

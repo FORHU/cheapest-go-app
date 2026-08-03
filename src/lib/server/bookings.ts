@@ -34,6 +34,10 @@ export interface ConfirmAndSaveResult {
     currency?: string;
   };
   error?: string;
+  errorCode?: string;
+  /** Set when errorCode === 'price_changed' */
+  oldPrice?: number;
+  newPrice?: number;
 }
 
 
@@ -144,6 +148,8 @@ export interface TgxConfirmInput {
   voucherCode?: string;
   discountAmount?: number;
   cancellationPolicies?: any;
+  /** Price shown to the user at prebook/quote time (booking currency, before service fee). Used to detect price increases at book time. */
+  quotedPrice?: number;
 }
 
 export async function confirmAndSaveTgxBooking(
@@ -231,6 +237,16 @@ export async function confirmAndSaveTgxBooking(
 
   const price = booking.price?.gross || booking.price?.net || 0;
   const currency = booking.price?.currency || params.currency || 'USD';
+
+  // Price change guard: if TGX books at a price more than 5% above what the user
+  // was quoted, reject before any DB write. The caller refunds Stripe.
+  if (params.quotedPrice && params.quotedPrice > 0 && price > 0) {
+    const threshold = params.quotedPrice * 1.05;
+    if (price > threshold) {
+      console.warn(`[confirmAndSaveTgxBooking] Price increased beyond threshold: quoted=${params.quotedPrice} booked=${price} currency=${currency}`);
+      return { success: false, errorCode: 'price_changed', oldPrice: params.quotedPrice, newPrice: price };
+    }
+  }
 
   let totalPrice = price;
   if (params.paymentIntentId) {
