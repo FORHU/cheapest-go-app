@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { isPlausibleBirthDate } from '@/lib/age';
 
 // ─── Primitives ───────────────────────────────────────────────────────────────
 
@@ -17,10 +18,11 @@ export const flightPassengerSchema = z.object({
     firstName: z.string().min(1, 'First name is required').max(100),
     lastName: z.string().min(1, 'Last name is required').max(100),
     gender: z.enum(['M', 'F'], { message: 'Gender is required' }),
-    birthDate: dateSchema.refine(
-        v => new Date(v) < new Date(),
-        'Date of birth must be in the past',
-    ),
+    // Bounded at both ends: "in the past" alone accepted 1850-01-01, which reaches
+    // the airline as a valid-looking passenger and is rejected at check-in.
+    birthDate: dateSchema
+        .refine(v => new Date(v) < new Date(), 'Date of birth must be in the past')
+        .refine(isPlausibleBirthDate, 'Please enter a valid date of birth'),
     nationality: z
         .string()
         .length(2, 'Must be a 2-letter country code (e.g. PH)'),
@@ -52,7 +54,19 @@ export const flightContactSchema = z.object({
 export const flightBookingSchema = z.object({
     passengers: z.array(flightPassengerSchema).min(1, 'At least one passenger is required'),
     contact: flightContactSchema,
-});
+})
+    // The search form already requires an adult, but the booking API is what actually
+    // enforces rules — without these it accepted a party of children with no adult,
+    // which airlines only reject at check-in, after the fare is ticketed and paid.
+    .refine(
+        b => b.passengers.some(p => p.type === 'ADT'),
+        { message: 'At least one adult passenger is required', path: ['passengers'] },
+    )
+    .refine(
+        b => b.passengers.filter(p => p.type === 'INF').length
+            <= b.passengers.filter(p => p.type === 'ADT').length,
+        { message: 'Each infant must be accompanied by an adult', path: ['passengers'] },
+    );
 
 // ─── Search ───────────────────────────────────────────────────────────────────
 

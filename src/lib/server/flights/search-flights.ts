@@ -1,9 +1,8 @@
-import { FlightResultCache, FlightSearchParams, FlightSearch, FlightOffer, FlightResult } from "@/types/flights";
+import { FlightSearchParams, FlightSearch, FlightOffer, FlightResult } from "@/types/flights";
 import { searchDuffel } from "./providers/duffel";
 // import { searchMystiflyV2 } from "./providers/mystifly"; // sandbox only — re-enable with live key
 import { createClient } from "@/utils/postgres/server";
 import { normalizedToFlightOffer } from "@/utils/flight-utils";
-import { logApiCall } from "@/lib/server/api-logger";
 
 /**
  * Helper to wrap a promise with a timeout.
@@ -17,56 +16,33 @@ async function withTimeout<T>(promise: Promise<T>, ms: number, providerName: str
 
 /**
  * Main orchestrator for flight searches.
- * Implements caching logic and provider aggregation.
+ *
+ * Always live: every search goes straight to the providers. Offers are never
+ * served from the database.
+ *
+ * A stored result carries the provider's offer id, and those ids are quotes with
+ * an expiry — a Duffel offer dies roughly 20-30 minutes after it is issued.
+ * Replaying a stored row therefore hands the traveller a price whose offer no
+ * longer exists at the supplier: the booking gets as far as order placement,
+ * fails with `offer_no_longer_available`, and the auto-refresh has to re-quote
+ * from scratch, landing on a different price. A cache hit here bought a faster
+ * search at the cost of an unbookable one.
+ *
+ * `flight_results_cache` is still written below — the price calendar reads it as
+ * price history — it just never answers a search.
  */
 export async function searchFlights(params: FlightSearchParams): Promise<FlightOffer[]> {
     const TIMEOUT_MS = 12000; // 12 seconds
-    // Cache TTL: configurable via env var. Defaults to 10 min in production, 0 (disabled) otherwise.
-    // Set FLIGHT_CACHE_TTL_MINUTES=0 in .env.local to disable during development.
-    const TTL_MINUTES = parseInt(process.env.FLIGHT_CACHE_TTL_MINUTES ?? (process.env.NODE_ENV === 'production' ? '10' : '0'), 10);
 
-    // 1. PERFORMANCE: Check for valid cached results first
-    // NOTE: saveSearch must NOT be called before this — a freshly-created empty
-    // record would be found as the "most recent" and always cause a cache miss.
-    const cacheStart = Date.now();
-    const cachedResults = await getExistingCachedResults(params, TTL_MINUTES);
-    if (cachedResults && cachedResults.length > 0) {
-        // Strip all Mystifly results — Mystifly is not active at launch (Duffel-only).
-        // Any cached mystifly/mystifly_v2 offers would reach the /flights/book endpoint
-        // and get rejected with 503, creating a broken checkout experience.
-        const bookableResults = cachedResults.filter(r =>
-            r.provider !== 'mystifly' && r.provider !== 'mystifly_v2'
-        );
-        console.log(`[Cache] Found valid hit for ${params.origin}->${params.destination} (TTL: ${TTL_MINUTES}m, total: ${cachedResults.length}, bookable: ${bookableResults.length})`);
-        logApiCall({
-            provider: 'cache', endpoint: 'flight_results_cache', durationMs: Date.now() - cacheStart,
-            requestParams: { origin: params.origin, destination: params.destination, departureDate: params.departureDate, returnDate: params.returnDate },
-            responseStatus: 200,
-            responseSummary: { cacheHit: true, resultCount: bookableResults.length },
-            searchId: params.searchId,
-        });
-        if (bookableResults.length > 0) {
-            return bookableResults.map(r => normalizedToFlightOffer(r, params.returnDate ? 'round-trip' : 'one-way'));
-        }
-        // All cached results were from inactive providers — fall through to live search
-    }
-    logApiCall({
-        provider: 'cache', endpoint: 'flight_results_cache', durationMs: Date.now() - cacheStart,
-        requestParams: { origin: params.origin, destination: params.destination, departureDate: params.departureDate, returnDate: params.returnDate },
-        responseStatus: 200,
-        responseSummary: { cacheHit: false },
-        searchId: params.searchId,
-    });
-
-    // 2. Cache miss — create the search record NOW (after the cache check)
-    // so the next request finds this record with results already populated.
+    // Create the search record up front so the results written at the end have
+    // something to hang off.
     let searchId = params.searchId;
     if (!searchId) {
         const saved = await saveSearch(params).catch(() => ({ id: undefined }));
         searchId = (saved as any).id;
     }
 
-    // 3. Fetch from providers in parallel with resilience (allSettled)
+    // Fetch from providers in parallel with resilience (allSettled)
     const providers = [
         { name: "Duffel", call: searchDuffel(params) },
         // { name: "MystiflyV2", call: searchMystiflyV2(params) }, // sandbox only — re-enable with live key
@@ -89,71 +65,23 @@ export async function searchFlights(params: FlightSearchParams): Promise<FlightO
         }
     });
 
-    // 4. Update cache with new results — fire-and-forget so it never blocks search response
+    // Persist results — fire-and-forget so it never blocks the search response.
+    // This feeds the price calendar's history; it is never read back as a search result.
     if (allResults.length > 0 && searchId) {
         cacheResults(searchId, allResults).catch(err =>
-            console.error("[Cache] Background cache write failed:", err.message)
+            console.error("[Cache] Background result write failed:", err.message)
         );
 
-        // 5. Log Analytics — fire and forget
         logSearchAnalytics(params, allResults).catch(err =>
             console.error("[Analytics] Logging failed:", err.message)
         );
     }
 
-    // 6. Return aggregated and unified results
+    // Return aggregated and unified results
     return allResults.map(r => normalizedToFlightOffer(r, params.returnDate ? 'round-trip' : 'one-way'));
 }
 
 
-
-/**
- * Checks for recently cached results (Deduplication).
- */
-async function getExistingCachedResults(params: FlightSearchParams, ttlMinutes: number): Promise<FlightResultCache[] | null> {
-    const supabase = await createClient();
-    
-    // Find a recent identical search record
-    let query = supabase
-        .from('flight_searches')
-        .select('id, created_at')
-        .eq('origin', params.origin)
-        .eq('destination', params.destination)
-        .eq('departure_date', params.departureDate)
-        .eq('cabin_class', params.cabinClass)
-        .eq('adults', params.adults)
-        .eq('children', params.children)
-        .eq('infants', params.infants);
-
-    if (params.returnDate) {
-        query = query.eq('return_date', params.returnDate);
-    } else {
-        query = query.is('return_date', null);
-    }
-
-    const { data: recentSearches, error: searchError } = await query
-        .order('created_at', { ascending: false })
-        .limit(1);
-
-    if (searchError || !recentSearches || recentSearches.length === 0) return null;
-
-    const lastSearch = recentSearches[0];
-    const createdTime = new Date(lastSearch.created_at).getTime();
-    const now = new Date().getTime();
-    const diffMinutes = (now - createdTime) / (1000 * 60);
-
-    if (diffMinutes > ttlMinutes) return null;
-
-    // Fetch the cached results for this search ID
-    const { data: results, error: resultsError } = await supabase
-        .from('flight_results_cache')
-        .select('*')
-        .eq('search_id', lastSearch.id);
-
-    if (resultsError || !results) return null;
-
-    return results as FlightResultCache[];
-}
 
 /**
  * Logs search demand and computed price trends to stats table.

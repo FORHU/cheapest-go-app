@@ -1,4 +1,5 @@
 import { createAdminClient } from '@/utils/postgres/admin';
+import { getSqlAdmin } from '@/lib/db/postgres';
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthenticatedUser } from '@/lib/server/auth';
 import { stripe } from '@/lib/stripe/server';
@@ -8,7 +9,8 @@ import { logApiCall } from '@/lib/server/api-logger';
 import { rateLimit } from '@/lib/server/rate-limit';
 import { checkCsrf } from '@/lib/server/csrf';
 import { flightBookingSchema } from '@/lib/schemas/flight';
-import { applyMarkup, toStripeAmount, FLIGHT_MARKUP } from '@/lib/pricing';
+import { applyMarkup, toStripeAmount, FLIGHT_MARKUP, getFlightPriceTolerance } from '@/lib/pricing';
+import { passengerTypeForBirthDate } from '@/lib/age';
 import { convertCurrency } from '@/lib/currency';
 
 export const maxDuration = 120;
@@ -21,10 +23,35 @@ export async function POST(req: NextRequest) {
     const csrfError = checkCsrf(req);
     if (csrfError) return csrfError;
 
-    // Auth first so rate limit keys on user ID instead of IP (IP is spoofable)
-    const { user, error: authError } = await getAuthenticatedUser();
+    // Auth first so rate limit keys on user ID instead of IP (IP is spoofable).
+    //
+    // Guarded separately because this runs BEFORE the try/catch that wraps the rest
+    // of the handler, and resolving a session is a database read. With the database
+    // unreachable, Lucia threw straight out of the route, Next.js answered with its
+    // HTML error page, and the client's res.json() died on "<!DOCTYPE" — an
+    // infrastructure outage surfacing as an unparseable booking response.
+    let auth: Awaited<ReturnType<typeof getAuthenticatedUser>>;
+    try {
+        auth = await getAuthenticatedUser();
+    } catch (err: any) {
+        console.error('[/book] Session lookup failed (database unreachable?):', err?.message ?? err);
+        return NextResponse.json({
+            success: false,
+            errorCode: 'server_error',
+            error: 'Booking is temporarily unavailable. Please try again shortly.',
+        }, { status: 503 });
+    }
+
+    const { user, error: authError } = auth;
     if (authError || !user) {
-        return NextResponse.json({ success: false, error: 'Authentication required' }, { status: 401 });
+        // Machine-readable code, not just the sentence: the client keys the sign-in
+        // prompt off this, and a bare `error` string would be read as an unknown
+        // error code and rendered as a generic failure instead.
+        return NextResponse.json({
+            success: false,
+            errorCode: 'unauthenticated',
+            error: 'Authentication required',
+        }, { status: 401 });
     }
 
     // 5 booking attempts per minute per user
@@ -80,6 +107,33 @@ export async function POST(req: NextRequest) {
             );
         }
 
+        // ── Passenger type vs date of birth ──
+        // `type` arrives from the client and was never checked against `birthDate`, so a
+        // toddler could be sent as ADT (or an adult as INF) and book fine. Airlines band
+        // by age on the travel date and only catch it at check-in — after ticketing, when
+        // the correction costs a reissue. Verify against the actual departure date.
+        {
+            const firstSegForAge = (flight as any).slices?.[0]?.segments?.[0] ?? (flight as any).segments?.[0];
+            const departureForAge: string =
+                firstSegForAge?.departing_at ?? firstSegForAge?.departureTime ?? firstSegForAge?.departure ?? '';
+
+            if (departureForAge) {
+                for (const pax of passengers) {
+                    const expected = passengerTypeForBirthDate(pax.birthDate, departureForAge);
+                    // null = unparseable date; the schema already rejects those.
+                    if (expected && expected !== String(pax.type ?? '').toUpperCase()) {
+                        const name = [pax.firstName, pax.lastName].filter(Boolean).join(' ') || 'Passenger';
+                        console.warn(`[/book] Passenger type mismatch: ${name} declared ${pax.type}, born ${pax.birthDate}, is ${expected} on ${departureForAge.slice(0, 10)}`);
+                        return NextResponse.json({
+                            success: false,
+                            errorCode: 'passenger_type_mismatch',
+                            error: `${name}'s date of birth does not match the selected passenger type for this travel date. Please correct it and search again.`,
+                        }, { status: 400 });
+                    }
+                }
+            }
+        }
+
         const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
         // Headers for ported internal routes (FUNCTIONS_SECRET)
         const edgeFnHeaders = {
@@ -106,11 +160,22 @@ export async function POST(req: NextRequest) {
             }, { status: 400 });
         }
 
-        // ── Duplicate flight booking guard ──
-        // Duffel segments use iata_code; Mystifly uses iataCode or plain string — handle all.
-        {
-            const svc = createAdminClient();
+        // One client for the whole request — the three separate instantiations shared a
+        // pool anyway, so they bought nothing but three objects and three names for the
+        // same thing.
+        const db = createAdminClient();
 
+        // ── Duplicate flight booking guard ──
+        //
+        // One departure per traveller per calendar day. Route is deliberately NOT part
+        // of the match: nobody can be on two aircraft at once, so a second departure
+        // that day is a conflict wherever it happens to be going.
+        //
+        // Provider-agnostic — it matches on the itinerary, not on who sold it, because
+        // `flight_bookings` is filtered only by user and status.
+        //
+        // Duffel segments carry iata_code objects; other providers send plain strings.
+        {
             const rawFlight = flight as any;
             // Duffel: slices[0].segments[0]; Mystifly: segments[0]
             const firstSeg = rawFlight.slices?.[0]?.segments?.[0] ?? rawFlight.segments?.[0];
@@ -120,62 +185,79 @@ export async function POST(req: NextRequest) {
                 return loc.iata_code ?? loc.iataCode ?? loc.code ?? '';
             };
             const origin = extractIata(firstSeg?.origin);
+            const destination = extractIata(firstSeg?.destination);
             // Duffel departure field is departing_at; Mystifly uses departureTime / departure
-            const departureDate = (firstSeg?.departing_at ?? firstSeg?.departureTime ?? firstSeg?.departure ?? '').slice(0, 10);
+            const departureRaw: string = firstSeg?.departing_at ?? firstSeg?.departureTime ?? firstSeg?.departure ?? '';
+            const departureDate = departureRaw.slice(0, 10);
 
-            if (origin && departureDate) {
-                // Step 1: get all active booking IDs for this user
-                const { data: activeBookings } = await svc
-                    .from('flight_bookings')
-                    .select('id')
-                    .eq('user_id', userId)
-                    .not('status', 'in', '(cancelled,cancelled_provider_missing,refunded,cancel_failed,cancel_requested)');
+            if (departureDate) {
+                // `flight_segments.departure` is timestamptz — an instant in UTC — while
+                // `departureDate` is the LOCAL calendar day at the origin. Rather than
+                // converting each stored row back to a local date (which would need that
+                // row's own timezone), the traveller's local day is converted ONCE into the
+                // UTC interval it occupies and the query asks for departures inside it.
+                // Exact, and correct across origins in different zones.
+                const dayMs = 24 * 60 * 60 * 1000;
+                const instantMs = Date.parse(departureRaw);
+                const wallClockMs = Date.parse(`${departureRaw.slice(0, 19)}Z`);
+                // 0 when the string carries no offset — then local day == UTC day.
+                const offsetMs = Number.isFinite(instantMs) && Number.isFinite(wallClockMs)
+                    ? wallClockMs - instantMs
+                    : 0;
 
-                if (activeBookings?.length) {
-                    const activeIds = activeBookings.map((b: any) => b.id);
+                // Local midnight at the origin, expressed in UTC.
+                const localMidnightUtc = new Date(`${departureDate}T00:00:00Z`).getTime() - offsetMs;
+                const windowStart = new Date(localMidnightUtc).toISOString();
+                const windowEnd = new Date(localMidnightUtc + dayMs).toISOString();
 
-                    // Step 2: check if any of those bookings has a segment departing from the same
-                    // origin on the same day — covers connecting flights too
-                    const { data: existingSeg } = await svc
-                        .from('flight_segments')
-                        .select('booking_id')
-                        .in('booking_id', activeIds)
-                        .eq('origin', origin)
-                        .gte('departure', `${departureDate}T00:00:00`)
-                        .lt('departure', `${departureDate}T23:59:59`)
-                        .limit(1)
-                        .maybeSingle();
-
-                    if (existingSeg) {
-                        return NextResponse.json({
-                            success: false,
-                            code: 'DUPLICATE_BOOKING',
-                            existingBookingId: existingSeg.booking_id,
-                            route: origin,
-                            departureDate,
-                            error: `You already have an active flight booking departing ${origin} on ${departureDate}.`,
-                        }, { status: 409 });
-                    }
+                // One round trip, not two. Previously this fetched every active booking id
+                // and then queried segments by that id list; the join does both at once and
+                // stops at the first conflict.
+                //
+                // Only statuses where the ticket is genuinely gone count as released.
+                // `cancel_failed` and `cancel_requested` do not release anything — a failed
+                // cancellation means the airline still holds the booking — so excluding them
+                // let a traveller rebook a flight they were still holding, and pay twice.
+                const sql = getSqlAdmin();
+                let clash: { booking_id: string; origin: string; destination: string } | null = null;
+                try {
+                    const rows = await sql`
+                        SELECT fs.booking_id, fs.origin, fs.destination
+                        FROM flight_segments fs
+                        JOIN flight_bookings fb ON fb.id = fs.booking_id
+                        WHERE fb.user_id = ${userId}
+                          AND fb.status NOT IN ('cancelled', 'cancelled_provider_missing', 'refunded')
+                          AND fs.departure >= ${windowStart}
+                          AND fs.departure <  ${windowEnd}
+                        LIMIT 1
+                    `;
+                    clash = (rows[0] as any) ?? null;
+                } catch (guardErr: any) {
+                    // Never fail silently: without this lookup the guard cannot do its job
+                    // and the traveller risks paying twice. A swallowed error here is exactly
+                    // how this guard went unnoticed for its entire existence.
+                    console.error('[/book] duplicate guard lookup FAILED — duplicates cannot be detected:', guardErr?.message ?? guardErr);
                 }
-            }
-        }
 
-        // ── Mystifly V2 UUID FareSource guard — before creating any session or PaymentIntent ──
-        // V2 UUID FareSources require SearchIdentifier on all Mystifly endpoints (revalidate + book).
-        // Mystifly does not return SearchIdentifier in search responses, so these fares are unbookable.
-        // Fail here immediately rather than authorizing a charge we can't complete.
-         
-        if ((provider as string) === 'mystifly_v2') {
-            const traceId: string = (flight as any).traceId ?? '';
-            const fareCode = traceId.split('|')[0];
-            const searchIdentifier = traceId.split('|')[3]; // tunneled format: FSC|convId||SearchId
-            const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(fareCode);
-            if (isUUID && !searchIdentifier) {
-                console.warn(`[/book] Rejecting unbookable V2 UUID fare (no SearchIdentifier): ${fareCode.slice(0, 18)}…`);
-                return NextResponse.json({
-                    success: false,
-                    error: 'This flight offer is not available for booking. Please go back and select a different flight.',
-                }, { status: 422 });
+                console.log(
+                    `[/book] duplicate guard: ${origin}->${destination} departing ${departureDate} ` +
+                    `(offset ${offsetMs / 3_600_000}h, UTC window ${windowStart}..${windowEnd}) — ` +
+                    `verdict=${clash ? 'BLOCK' : 'allow'}`,
+                );
+
+                if (clash) {
+                    return NextResponse.json({
+                        success: false,
+                        code: 'DUPLICATE_BOOKING',
+                        existingBookingId: clash.booking_id,
+                        // The route of the booking that CLASHES, not the one being attempted
+                        // — the traveller needs to recognise what they already hold, and it
+                        // may well go somewhere else entirely.
+                        route: `${clash.origin} → ${clash.destination}`,
+                        departureDate,
+                        error: `You already have an active flight departing on ${departureDate} (${clash.origin} → ${clash.destination}). Only one departure per day can be booked.`,
+                    }, { status: 409 });
+                }
             }
         }
 
@@ -215,23 +297,14 @@ export async function POST(req: NextRequest) {
         });
 
         if (!revalData.success || !revalData.seatsAvailable) {
-            // Mystifly: SearchIdentifier is frequently missing from search responses.
-            // Soft-pass these errors and let the booking API validate the fare instead.
-             
-            const isMystiflyProvider = (provider as string) === 'mystifly_v2';
-            const isSearchIdError = /searchIdentifier.*empty|cannot revalidate/i.test(revalData.error || '');
-            if (isMystiflyProvider && isSearchIdError) {
-                console.warn('[/book] SearchIdentifier revalidation error — soft-passing for Mystifly, proceeding to booking');
-            } else {
-                return NextResponse.json({
-                    success: false,
-                    error: revalData.error || 'This flight is no longer available from the supplier. Please return to search.'
-                }, { status: 409 });
-            }
+            return NextResponse.json({
+                success: false,
+                error: revalData.error || 'This flight is no longer available from the supplier. Please return to search.'
+            }, { status: 409 });
         }
 
-        // Trust the edge function's priceChanged flag — it handles currency
-        // normalization and uses a $5 tolerance to avoid false positives.
+        // The revalidation gate applies getFlightPriceTolerance() — the same threshold
+        // used at order time below — and only flags increases.
         // Guard: newPrice=0 means price extraction failed, not a real $0 fare.
         if (revalData.priceChanged && revalData.newPrice > 0) {
             return NextResponse.json({
@@ -247,18 +320,22 @@ export async function POST(req: NextRequest) {
             console.warn(`[/book] Revalidation reported priceChanged but newPrice=0 — likely a parse failure. Proceeding with original price: ${flightTotal}`);
         }
 
-        const serverFarePolicy = revalData.farePolicy || farePolicy;
-        const sanitizedFlight = { ...flight };
-         
-        if ((provider as string) === 'mystifly_v2') {
-            delete (sanitizedFlight as any).rawOffer;
-            delete (sanitizedFlight as any)._rawOffer;
+        // A fare that dropped never reaches the check above — there is nothing for the
+        // traveller to approve. It must still be adopted, or we would charge the price
+        // they were quoted while the supplier bills us the lower one, pocketing the
+        // difference. Duffel is charged from the real order total further down, so this
+        // only matters for providers whose Stripe amount is derived from flightTotal.
+        let effectiveFlightTotal = flightTotal;
+        if (revalData.newPrice > 0 && revalData.newPrice < flightTotal) {
+            console.log(`[/book] Fare dropped ${flightTotal} → ${revalData.newPrice} — adopting the lower price without prompting`);
+            effectiveFlightTotal = revalData.newPrice;
         }
 
-        // ── Step 1: Create Booking Session ──
+        const serverFarePolicy = revalData.farePolicy || farePolicy;
+        const sanitizedFlight = { ...flight };
+
         // ── Step 1: Create Booking Session (direct DB insert) ──
         const sessionStart = Date.now();
-        const db = createAdminClient();
         const expiresAt = new Date(Date.now() + 30 * 60 * 1000).toISOString();
 
         const { data: sessionRow, error: sessionError } = await db
@@ -319,7 +396,11 @@ export async function POST(req: NextRequest) {
             if (!duffelToken) throw new Error('Duffel not configured.');
 
             const isSandbox = duffelToken.startsWith('duffel_test_');
-            const priceTolerance = isSandbox ? 10.00 : 0.50;
+            // Same threshold the revalidation gate used a moment ago — see
+            // getFlightPriceTolerance(). Keep these in lockstep or a fare that
+            // drifts between the two values gets waved through one gate and
+            // stopped by the other.
+            const priceTolerance = getFlightPriceTolerance();
 
             // Pre-booking balance guard — catch insufficient balance before Duffel deducts.
             // Skip in sandbox mode (test balances are virtual).
@@ -445,7 +526,11 @@ export async function POST(req: NextRequest) {
             let activePassengers = orderPassengers;
             let activeTotal = orderTotal;
 
-            const tryPlaceOrder = async (offerId: string, paxList: any[], total: string, currency: string, includeServices: boolean, key: string): Promise<{
+            // `baseAmount` is the bare fare behind `total` (which also carries seats/bags).
+            // Both are needed: the customer-facing delta is measured on the total, but the
+            // price the traveller confirmed is always a bare fare — the revalidation gate
+            // never sees ancillaries and so can only ever quote one.
+            const tryPlaceOrder = async (offerId: string, paxList: any[], total: string, baseAmount: number, currency: string, includeServices: boolean, key: string): Promise<{
                 isPriceChangedError: boolean;
                 isOfferUnavailable: boolean;
                 oldPrice?: number;
@@ -457,6 +542,7 @@ export async function POST(req: NextRequest) {
                 finalCurrency?: string;
             }> => {
                 let currentTotal = total;
+                let currentBase = baseAmount;
                 let currentCurrency = currency;
                 const activeHeaders = getDuffelHeaders(key);
 
@@ -546,19 +632,28 @@ export async function POST(req: NextRequest) {
                         const newTotalNum = freshBase + newSeatExtra + newBagExtra;
                         const newTotalStr = newTotalNum.toFixed(2);
                         const oldTotalNum = parseFloat(currentTotal);
-                        const priceDelta = Math.abs(newTotalNum - oldTotalNum);
+                        // Signed, not absolute: only an increase is worth interrupting for.
+                        // A cheaper fare is adopted below via `currentTotal = newTotalStr`.
+                        const priceDelta = newTotalNum - oldTotalNum;
 
-                        const priceAlreadyConfirmed = confirmedPrice !== undefined && (newTotalNum <= (confirmedPrice + priceTolerance));
+                        // Bare fare against bare fare. Comparing the confirmed price against
+                        // `newTotalNum` read the cost of any selected seats and bags as a fare
+                        // increase, so a traveller with ancillaries was re-asked to confirm the
+                        // very price they had just accepted — every time, without converging.
+                        const priceAlreadyConfirmed = confirmedPrice !== undefined && (freshBase <= (confirmedPrice + priceTolerance));
 
                         currentCurrency = pricedOffer.total_currency ?? currentCurrency;
 
-                        // If price delta is large and not confirmed (or above confirmed+buffer), return 409 to user
+                        // If price delta is large and not confirmed (or above confirmed+buffer), return 409 to user.
+                        // Report bare fares so the value the client echoes back as `confirmedPrice`
+                        // stays in the same units this check expects.
                         if (priceDelta > priceTolerance && !priceAlreadyConfirmed) {
-                            return { isPriceChangedError: true, isOfferUnavailable: false, oldPrice: oldTotalNum, newPrice: newTotalNum, newCurrency: currentCurrency };
+                            return { isPriceChangedError: true, isOfferUnavailable: false, oldPrice: currentBase, newPrice: freshBase, newCurrency: currentCurrency };
                         }
 
                         console.warn(`[/book] Retrying order with new total ${newTotalStr} and ${pricedId === currentId ? 'same' : 'NEW priced'} ID: ${pricedId}`);
                         currentTotal = newTotalStr;
+                        currentBase = freshBase;
 
                         // Per Duffel: retry after 4xx requires a fresh idempotency key
                         const retryKey = crypto.randomUUID();
@@ -595,7 +690,7 @@ export async function POST(req: NextRequest) {
             let duffelOrderData: any;
 
             // ── Attempt 1: Place order with current offer (handle price_changed internally) ──
-            const attempt1 = await tryPlaceOrder(activeOffer.id, activePassengers, activeTotal, activeOffer.total_currency, true, currentIdempotencyKey);
+            const attempt1 = await tryPlaceOrder(activeOffer.id, activePassengers, activeTotal, offerTotal, activeOffer.total_currency, true, currentIdempotencyKey);
             if (attempt1.isPriceChangedError) {
                 return NextResponse.json({
                     success: false,
@@ -717,10 +812,11 @@ export async function POST(req: NextRequest) {
                         const freshBaseTotal = parseFloat(freshOffer.total_amount ?? '0');
                         const freshTotalStr = freshBaseTotal.toFixed(2);
                         const oldPriceNum = parseFloat(rawOffer.total_amount ?? '0');
-                        const priceDelta = Math.abs(freshBaseTotal - oldPriceNum);
+                        // Signed — a refreshed offer that is cheaper needs no confirmation.
+                        const priceDelta = freshBaseTotal - oldPriceNum;
 
-                        const priceAlreadyConfirmed = confirmedPrice !== undefined && (freshBaseTotal <= (confirmedPrice + 0.50));
-                        if (priceDelta > 0.50 && !priceAlreadyConfirmed) {
+                        const priceAlreadyConfirmed = confirmedPrice !== undefined && (freshBaseTotal <= (confirmedPrice + priceTolerance));
+                        if (priceDelta > priceTolerance && !priceAlreadyConfirmed) {
                             return NextResponse.json({
                                 success: false,
                                 error: 'price_changed',
@@ -744,17 +840,17 @@ export async function POST(req: NextRequest) {
                         }
 
                         // Try place order with NEW idempotency key for this retry
-                        const attempt2 = await tryPlaceOrder(freshOffer.id, refreshedPassengers, freshTotalStr, freshOffer.total_currency, false, crypto.randomUUID());
+                        const attempt2 = await tryPlaceOrder(freshOffer.id, refreshedPassengers, freshTotalStr, freshBaseTotal, freshOffer.total_currency, false, crypto.randomUUID());
 
                         if (attempt2.res?.status && attempt2.res.status >= 500) {
-                            console.error();
+                            console.error(`[/book] refresh offer ${freshOffer.id} failed with ${attempt2.res.status} — supplier error, stopping retries`);
                             duffelOrderRes = attempt2.res;
                             duffelOrderData = attempt2.data;
                             break;
                         }
 
                         if (attempt2.isOfferUnavailable) {
-                            console.warn();
+                            console.warn(`[/book] refresh offer ${freshOffer.id} no longer available — trying next in pool`);
                             continue;
                         }
 
@@ -804,7 +900,23 @@ export async function POST(req: NextRequest) {
                 const isBalanceErr = code === 'insufficient_balance' || /insufficient.*balance|balance.*insufficient/i.test(rawErrMsg);
                 // isBalanceErr must be checked before isExpiredErr — both produce 422, but the cause and
                 // user-facing message are different. A balance error is a platform issue, not a fare issue.
-                const isExpiredErr = !isBalanceErr && (status === 422 || /expired|no longer available|select another offer/i.test(rawErrMsg));
+
+                // Match on Duffel's error code, not on the bare 422 status. Duffel answers 422
+                // for every rejected order — an expired offer, but equally a malformed passport
+                // number or an unaccepted title — so treating the status alone as "expired"
+                // reported a stale fare for problems that had nothing to do with the fare, and
+                // hid the real message from both the traveller and the logs. Anything not
+                // recognised here now falls through with Duffel's own wording.
+                const EXPIRED_CODES = new Set([
+                    'offer_no_longer_available',
+                    'offer_expired',
+                    'offer_request_not_found',
+                    'not_found',
+                ]);
+                const isExpiredErr = !isBalanceErr && (
+                    EXPIRED_CODES.has(code) ||
+                    /expired|no longer available|select another offer/i.test(rawErrMsg)
+                );
                 const isSeatErr = /seat|service.*unavailable|no longer.*available.*service/i.test(rawErrMsg) && !isExpiredErr && !isBalanceErr;
                 const isSupplierOutage = status >= 500;
 
@@ -826,6 +938,10 @@ export async function POST(req: NextRequest) {
                     error: isBalanceErr
                         ? 'Flight booking is temporarily unavailable. Please try again shortly.'
                         : errorCode ? undefined : (rawErrMsg || 'Flight booking failed. Please try again.'),
+                    // Duffel's own code, echoed for diagnosis. `errorCode` is our bucket and
+                    // several Duffel codes collapse into each one, so without this the response
+                    // alone can't tell you which supplier condition actually fired.
+                    duffelCode: code || undefined,
                     requestId,
                 }, { status: httpStatus });
             }
@@ -851,21 +967,16 @@ export async function POST(req: NextRequest) {
 
         // ── Step 2: Create Stripe PaymentIntent ──
         const stripeStart = Date.now();
-         
-        const isMystifly = (provider as string) === 'mystifly_v2' || (provider as string) === 'mystifly';
 
         // Apply platform markup before charging the customer.
-        // For Duffel: use the order's actual locked total (already validated by Duffel, includes services).
-        //   This prevents a tampered client flightTotal from reducing the Stripe charge below what
-        //   Duffel charges our balance. The Duffel order creation above rejects mismatched amounts,
-        //   so duffelPreOrder.orderTotal is authoritative.
-        // For Mystifly: use revalidated client price + server-clamped extras (no order to reference).
-        // See src/lib/pricing.ts for the full strategy rationale.
-        const stripeBase = (provider === 'duffel' && duffelPreOrder)
+        // Prefer the Duffel order's locked total: it is what Duffel actually charged our
+        // balance, and Duffel rejects mismatched amounts, so it cannot be understated by a
+        // tampered client payload. The fallback covers a provider with no order to
+        // reference. See src/lib/pricing.ts for the full strategy rationale.
+        const stripeBase = duffelPreOrder
             ? parseFloat(duffelPreOrder.orderTotal)
-            : flightTotal + Math.max(0, seatTotal ?? 0) + Math.max(0, bagTotal ?? 0);
-        const totalWithSeats = stripeBase;
-        const pricing = applyMarkup(totalWithSeats, FLIGHT_MARKUP);
+            : effectiveFlightTotal + Math.max(0, seatTotal ?? 0) + Math.max(0, bagTotal ?? 0);
+        const pricing = applyMarkup(stripeBase, FLIGHT_MARKUP);
 
         // Charge the customer in their selected display currency, not Duffel's USD.
         // This ensures the refund amount exactly matches what they paid — no FX drift.
@@ -883,7 +994,9 @@ export async function POST(req: NextRequest) {
         const paymentIntent = await stripe.paymentIntents.create({
             amount: flightStripeAmount,
             currency: chargeInCurrency,
-            capture_method: isMystifly ? 'manual' : 'automatic',
+            // Duffel is the only reachable provider and its orders are placed before the
+            // charge, so there is nothing to hold funds for — capture immediately.
+            capture_method: 'automatic',
             metadata: {
                 bookingSessionId: sessionId,
                 provider: provider,
@@ -907,26 +1020,39 @@ export async function POST(req: NextRequest) {
         }, { idempotencyKey: piIdempotencyKey });
         logApiCall({
             provider: 'stripe', endpoint: 'paymentIntents.create', durationMs: Date.now() - stripeStart,
-            requestParams: { amount: flightStripeAmount, currency: flightCurrency, captureMethod: isMystifly ? 'manual' : 'automatic', markupRate: pricing.markupRate },
+            requestParams: { amount: flightStripeAmount, currency: flightCurrency, captureMethod: 'automatic', markupRate: pricing.markupRate },
             responseStatus: 200, userId,
             responseSummary: { paymentIntentId: paymentIntent.id, sessionId, chargedPrice: pricing.chargedPrice },
         });
 
         // ── Step 3: Store PaymentIntent ID + Duffel pre-order in booking session ──
-        // Storing the pre-order data in the session means create-booking can use it
-        // directly without a Stripe API round-trip (avoids STRIPE_SECRET_KEY dependency
-        // in the edge function and eliminates any race/auth issues).
-        const supabase = createAdminClient();
-
-        // Step 3a: Critical — PI id + status + Duffel order ID. Must not fail.
-        // Including duffel_pre_order_id here (not just Step 3b) ensures the cleanup cron
-        // can find and cancel the order even if Step 3b never runs due to an early return.
-        const { error: sessionUpdateError } = await supabase
+        //
+        // One UPDATE, not three. This used to be split — critical fields, then audit
+        // fields, then pre-order details — because `payment_currency` did not exist and
+        // Postgres rejects the whole statement over one unknown column. The split meant
+        // the audit write failed in its entirety on every booking, silently dropping
+        // currency, original_price, charged_price and markup_pct along with it. The column
+        // now exists (migration 20260803000002), so all of it lands in a single round trip
+        // on the critical path between charging and confirming.
+        //
+        // Storing the pre-order data here means create-booking can use it directly without
+        // a Stripe API round-trip.
+        const { error: sessionUpdateError } = await db
             .from('booking_sessions')
             .update({
                 payment_intent_id: paymentIntent.id,
                 status: 'payment_initiated',
-                ...(duffelPreOrder ? { duffel_pre_order_id: duffelPreOrder.orderId } : {}),
+                currency: flightCurrency,
+                original_price: pricing.originalPrice,
+                charged_price: chargePrice,
+                markup_pct: pricing.markupRate,
+                payment_currency: chargeInCurrency.toUpperCase(),
+                ...(duffelPreOrder ? {
+                    duffel_pre_order_id: duffelPreOrder.orderId,
+                    duffel_pre_order_pnr: duffelPreOrder.pnr,
+                    duffel_pre_order_tickets: duffelPreOrder.tickets,
+                    duffel_pre_order_ticketed: duffelPreOrder.isTicketed,
+                } : {}),
             })
             .eq('id', sessionId);
 
@@ -989,38 +1115,8 @@ export async function POST(req: NextRequest) {
             }, { status: 500 });
         }
 
-        // Step 3a-ii: Audit fields (non-critical — columns may not exist yet).
-        await supabase
-            .from('booking_sessions')
-            .update({
-                currency: flightCurrency,
-                original_price: pricing.originalPrice,
-                charged_price: chargePrice,
-                markup_pct: pricing.markupRate,
-                payment_currency: chargeInCurrency.toUpperCase(),
-            })
-            .eq('id', sessionId)
-            .then(({ error }) => {
-                if (error) console.warn('[/book] Audit fields not saved (run migration):', error.message);
-            });
-
-        // Step 3b: Store Duffel pre-order data (separate update to isolate schema issues).
         if (duffelPreOrder) {
-            const { error: preOrderUpdateError } = await supabase
-                .from('booking_sessions')
-                .update({
-                    duffel_pre_order_id: duffelPreOrder.orderId,
-                    duffel_pre_order_pnr: duffelPreOrder.pnr,
-                    duffel_pre_order_tickets: duffelPreOrder.tickets,
-                    duffel_pre_order_ticketed: duffelPreOrder.isTicketed,
-                })
-                .eq('id', sessionId);
-
-            if (preOrderUpdateError) {
-                console.error('[/book] Failed to store Duffel pre-order in session:', preOrderUpdateError.message, '— create-booking will attempt live booking (offer may have expired)');
-            } else {
-                console.log(`[/book] Duffel pre-order stored in session ${sessionId}: orderId=${duffelPreOrder.orderId} pnr=${duffelPreOrder.pnr}`);
-            }
+            console.log(`[/book] Duffel pre-order stored in session ${sessionId}: orderId=${duffelPreOrder.orderId} pnr=${duffelPreOrder.pnr}`);
         }
 
         return NextResponse.json({

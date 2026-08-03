@@ -30,6 +30,97 @@ import {
 import { FormDatePicker } from '@/components/common/FormDatePicker';
 import { } from 'zod';
 
+// ─── Inline field validation ─────────────────────────────────────────
+
+/** Shared input styling, so the error variant only has to override the border. */
+const FIELD_BASE =
+    'w-full px-2.5 lg:px-3 py-2 lg:py-2.5 rounded-md border bg-white dark:bg-slate-800 ' +
+    'text-slate-900 dark:text-white text-[10px] lg:text-[13px] placeholder:text-slate-400 ' +
+    'focus:outline-none focus:ring-2';
+
+/** Border + focus ring for an input, red when that field failed validation. */
+function fieldClass(hasError: boolean, extra = ''): string {
+    return cn(
+        FIELD_BASE,
+        hasError
+            ? 'border-red-400 dark:border-red-500 focus:ring-red-500/50 focus:border-red-500'
+            : 'border-slate-200 dark:border-slate-700 focus:ring-indigo-500/50 focus:border-indigo-500',
+        extra,
+    );
+}
+
+/**
+ * One field's complaint, rendered directly beneath its input.
+ *
+ * `role="alert"` so screen readers announce it when it appears — the message arrives
+ * after submit, long after the input was read.
+ */
+function FieldError({ message }: { message?: string }) {
+    if (!message) return null;
+    return (
+        <p role="alert" className="mt-1 text-[10px] lg:text-[11px] text-red-600 dark:text-red-400">
+            {message}
+        </p>
+    );
+}
+
+// ─── Date-of-birth picker default ────────────────────────────────────
+
+/**
+ * Typical age of an adult passenger. Opening the birthdate calendar on today
+ * means paging back three decades before reaching a plausible year.
+ */
+const TYPICAL_ADULT_AGE = 30;
+
+/**
+ * Month the birthdate calendar opens on. Relative rather than a fixed year, so
+ * it stays sensible as time passes — a hardcoded 1996 would quietly become a
+ * worse guess every year. Today that resolves to 1996.
+ */
+function defaultBirthdateView(): Date {
+    const now = new Date();
+    return new Date(now.getFullYear() - TYPICAL_ADULT_AGE, 0, 1);
+}
+
+// ─── Error codes ─────────────────────────────────────────────────────
+
+/**
+ * Error codes we have traveller-facing copy for, under `flightBook.error.codes`.
+ *
+ * Codes arrive as `CODE:<code>` in errorMsg — some from the API's `errorCode`
+ * field, some from thrown Errors — so the incoming set is open-ended and a
+ * lookup on an unknown code would render next-intl's fallback (the key path
+ * itself) straight into the UI.
+ */
+const TRANSLATED_ERROR_CODES = new Set([
+    'balance_insufficient',
+    'booking_failed',
+    'booking_failed_refunded',
+    'booking_pending',
+    'booking_timeout',
+    // Normally handled by the duplicate panel on the form step; this covers a
+    // DUPLICATE_BOOKING response that arrives without the booking payload.
+    'duplicate_booking',
+    'flight_unavailable',
+    'offer_expired',
+    'offer_replaced_seats_cleared',
+    'pending',
+    'phone_number_invalid',
+    'seats_unavailable',
+    'server_error',
+    'supplier_outage',
+    'unauthenticated',
+]);
+
+type FlightBookTranslator = ReturnType<typeof useTranslations<'flightBook'>>;
+
+/** Copy for an error code, or the generic line when the code is unrecognised. */
+function messageForCode(t: FlightBookTranslator, code: string, fallbackKey = 'error.defaultMessage'): string {
+    return TRANSLATED_ERROR_CODES.has(code)
+        ? t(`error.codes.${code}` as Parameters<FlightBookTranslator>[0])
+        : t(fallbackKey as Parameters<FlightBookTranslator>[0]);
+}
+
 // ─── Fare Policy Panel ───────────────────────────────────────────────
 
 interface FarePolicyPanelProps {
@@ -216,6 +307,8 @@ function BookingContent() {
         offerExpiresAt,
         step,
         errorMsg,
+        fieldErrors,
+        clearFieldError,
         bookingResult,
         passengers,
         contact,
@@ -415,8 +508,12 @@ function BookingContent() {
         const isPending = ['pending', 'booking_pending'].includes(errorCode ?? '');
         const isRefunded = errorCode === 'booking_failed_refunded';
         const isExpired = errorCode === 'flight_unavailable' || errorCode === 'offer_expired';
+        // Codes come from the API and from thrown Errors, so the set is open-ended.
+        // Only render a code we have copy for — anything else (including a raw
+        // exception message that reached this far) falls back to the generic line
+        // rather than leaking an internal string into the failure screen.
         const displayMsg = errorCode
-            ? (t(`error.${errorCode}`) === `error.${errorCode}` ? errorMsg : t(`error.${errorCode}`))
+            ? messageForCode(t, errorCode)
             : (errorMsg || t('error.defaultMessage'));
         return (
             <main className="min-h-screen flex items-center justify-center bg-linier-to-br from-red-50/60 via-white/40 to-orange-50/60 dark:from-slate-950/60 dark:via-slate-900/40 dark:to-red-950/60 px-4">
@@ -448,7 +545,7 @@ function BookingContent() {
                     {!isRefunded && !isExpired && (
                         <button
                             onClick={() => setStep('form')}
-                            className="w-full py-2.5 rounded-md bg-indigo-600 hover:bg-indigo-500 text-white font-normal text-[11px] transition-colors"
+                            className="w-full mb-2 py-2.5 rounded-md bg-indigo-600 hover:bg-indigo-500 text-white font-normal text-[11px] transition-colors"
                         >
                             {t('error.tryAgain')}
                         </button>
@@ -968,18 +1065,28 @@ function BookingContent() {
                                 </div>
 
                                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-2.5 lg:gap-3">
-                                    <input
-                                        type="text" placeholder={t('passenger.firstName')} required
-                                        value={pax.firstName}
-                                        onChange={(e) => updatePassenger(idx, 'firstName', e.target.value)}
-                                        className="w-full px-2.5 lg:px-3 py-2 lg:py-2.5 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-[10px] lg:text-[13px] placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500"
-                                    />
-                                    <input
-                                        type="text" placeholder={t('passenger.lastName')} required
-                                        value={pax.lastName}
-                                        onChange={(e) => updatePassenger(idx, 'lastName', e.target.value)}
-                                        className="w-full px-2.5 lg:px-3 py-2 lg:py-2.5 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-[10px] lg:text-[13px] placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500"
-                                    />
+                                    <div>
+                                        <input
+                                            type="text" placeholder={t('passenger.firstName')} required
+                                            data-field={`passengers.${idx}.firstName`}
+                                            aria-invalid={!!fieldErrors[`passengers.${idx}.firstName`]}
+                                            value={pax.firstName}
+                                            onChange={(e) => updatePassenger(idx, 'firstName', e.target.value)}
+                                            className={fieldClass(!!fieldErrors[`passengers.${idx}.firstName`])}
+                                        />
+                                        <FieldError message={fieldErrors[`passengers.${idx}.firstName`]} />
+                                    </div>
+                                    <div>
+                                        <input
+                                            type="text" placeholder={t('passenger.lastName')} required
+                                            data-field={`passengers.${idx}.lastName`}
+                                            aria-invalid={!!fieldErrors[`passengers.${idx}.lastName`]}
+                                            value={pax.lastName}
+                                            onChange={(e) => updatePassenger(idx, 'lastName', e.target.value)}
+                                            className={fieldClass(!!fieldErrors[`passengers.${idx}.lastName`])}
+                                        />
+                                        <FieldError message={fieldErrors[`passengers.${idx}.lastName`]} />
+                                    </div>
                                     <DropdownMenu>
                                         <DropdownMenuTrigger asChild>
                                             <button
@@ -1009,13 +1116,17 @@ function BookingContent() {
                                             ))}
                                         </DropdownMenuContent>
                                     </DropdownMenu>
-                                    <FormDatePicker
-                                        placeholder={t('passenger.birthdate')}
-                                        value={pax.birthDate}
-                                        onChange={(val) => updatePassenger(idx, 'birthDate', val)}
-                                        maxDate={new Date()}
-                                        required
-                                    />
+                                    <div data-field={`passengers.${idx}.birthDate`}>
+                                        <FormDatePicker
+                                            placeholder={t('passenger.birthdate')}
+                                            value={pax.birthDate}
+                                            onChange={(val) => updatePassenger(idx, 'birthDate', val)}
+                                            maxDate={new Date()}
+                                            defaultViewDate={defaultBirthdateView()}
+                                            required
+                                        />
+                                        <FieldError message={fieldErrors[`passengers.${idx}.birthDate`]} />
+                                    </div>
                                     <DropdownMenu>
                                         <DropdownMenuTrigger asChild>
                                             <button
@@ -1046,20 +1157,27 @@ function BookingContent() {
                                             ))}
                                         </DropdownMenuContent>
                                     </DropdownMenu>
-                                    <input
-                                        type="text" placeholder={t('passenger.passport')} required
-                                        value={pax.passport}
-                                        onChange={(e) => updatePassenger(idx, 'passport', e.target.value)}
-                                        className="w-full px-2.5 lg:px-3 py-2 lg:py-2.5 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-[10px] lg:text-[13px] placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500"
-                                    />
-                                    <FormDatePicker
-                                        value={pax.passportExpiry}
-                                        onChange={(val) => updatePassenger(idx, 'passportExpiry', val)}
-                                        minDate={new Date()}
-                                        required
-                                        placeholder={t('passenger.passportExpiry')}
-                                        className="lg:col-span-2"
-                                    />
+                                    <div>
+                                        <input
+                                            type="text" placeholder={t('passenger.passport')} required
+                                            data-field={`passengers.${idx}.passport`}
+                                            aria-invalid={!!fieldErrors[`passengers.${idx}.passport`]}
+                                            value={pax.passport}
+                                            onChange={(e) => updatePassenger(idx, 'passport', e.target.value)}
+                                            className={fieldClass(!!fieldErrors[`passengers.${idx}.passport`])}
+                                        />
+                                        <FieldError message={fieldErrors[`passengers.${idx}.passport`]} />
+                                    </div>
+                                    <div className="lg:col-span-2" data-field={`passengers.${idx}.passportExpiry`}>
+                                        <FormDatePicker
+                                            value={pax.passportExpiry}
+                                            onChange={(val) => updatePassenger(idx, 'passportExpiry', val)}
+                                            minDate={new Date()}
+                                            required
+                                            placeholder={t('passenger.passportExpiry')}
+                                        />
+                                        <FieldError message={fieldErrors[`passengers.${idx}.passportExpiry`]} />
+                                    </div>
                                 </div>
                             </div>
                         ))}
@@ -1080,12 +1198,18 @@ function BookingContent() {
                                 {t('contact.title')}
                             </h2>
                             <div className="grid grid-cols-1 lg:grid-cols-2 gap-2.5 lg:gap-3">
+                                <div>
                                 <input
                                     type="email" placeholder={t('contact.email')} required
+                                    data-field="contact.email"
+                                    aria-invalid={!!fieldErrors['contact.email']}
                                     value={contact.email}
-                                    onChange={(e) => setContact(prev => ({ ...prev, email: e.target.value }))}
-                                    className="w-full px-2.5 lg:px-3 py-2 lg:py-2.5 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-[10px] lg:text-[13px] placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500"
+                                    onChange={(e) => { setContact(prev => ({ ...prev, email: e.target.value })); clearFieldError('contact.email'); }}
+                                    className={fieldClass(!!fieldErrors['contact.email'])}
                                 />
+                                <FieldError message={fieldErrors['contact.email']} />
+                                </div>
+                                <div>
                                 <div className="flex gap-1.5 lg:gap-2">
                                     <DropdownMenu>
                                         <DropdownMenuTrigger asChild>
@@ -1116,10 +1240,14 @@ function BookingContent() {
                                     </DropdownMenu>
                                     <input
                                         type="tel" placeholder={t('contact.phone')} required
+                                        data-field="contact.phone"
+                                        aria-invalid={!!fieldErrors['contact.phone']}
                                         value={contact.phone}
-                                        onChange={(e) => setContact(prev => ({ ...prev, phone: e.target.value }))}
-                                        className="flex-1 px-2.5 lg:px-3 py-2 lg:py-2.5 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-[10px] lg:text-[13px] placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500"
+                                        onChange={(e) => { setContact(prev => ({ ...prev, phone: e.target.value })); clearFieldError('contact.phone'); }}
+                                        className={fieldClass(!!fieldErrors['contact.phone'], 'flex-1')}
                                     />
+                                </div>
+                                <FieldError message={fieldErrors['contact.phone']} />
                                 </div>
                             </div>
                         </div>
@@ -1354,6 +1482,11 @@ function BookingContent() {
                         {/* Status/Error Message */}
                         {errorMsg && (() => {
                             const isPending = errorMsg?.toLowerCase().includes('pending');
+                            // Same `CODE:` convention as the failure screen — resolve it to
+                            // copy here too, or the banner shows the raw code.
+                            const bannerMsg = errorMsg.startsWith('CODE:')
+                                ? messageForCode(t, errorMsg.slice(5), 'error.bookingFailedDefault')
+                                : errorMsg;
                             return (
                                 <div className={`flex items-center gap-1.5 lg:gap-2 p-2.5 lg:p-4 rounded-md lg:rounded-md border ${isPending
                                     ? 'bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-400'
@@ -1365,7 +1498,7 @@ function BookingContent() {
                                         <AlertTriangle className="w-3.5 h-3.5 lg:w-4 lg:h-4 shrink-0" />
                                     )}
                                     <span className="pr-6">
-                                        {errorMsg || t('error.bookingFailedDefault')}
+                                        {bannerMsg || t('error.bookingFailedDefault')}
                                     </span>
                                     <button
                                         type="button"

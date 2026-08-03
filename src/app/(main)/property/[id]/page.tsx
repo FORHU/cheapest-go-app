@@ -15,6 +15,7 @@ import MobileBookingCTA from '@/components/property/MobileBookingCTA';
 import BackButton from '@/components/common/BackButton';
 import { FadeInUp, FadeIn } from '@/components/property/AnimatedContent';
 import { fetchHotelStatic, fetchPropertyData } from '@/lib/property';
+import { bundleSavingPercent } from '@/lib/pricing';
 import { fetchHotelReviews } from '@/lib/property/fetchReviews';
 import LocationSection from '@/components/property/LocationSectionDynamic';
 import RoomsAvailabilitySection from '@/components/property/RoomsAvailabilitySection';
@@ -139,6 +140,9 @@ export default async function PropertyPage({
 
     const currency = (searchParamsResult.currency as string) || 'KRW';
     const bundleFlightId = (searchParamsResult.bundleFlightId as string) || null;
+    // Derived from the live markup rates, not a fixed figure — see bundleSavingPercent().
+    // Reads server-only env, which is fine here: this is a server component.
+    const bundleSaving = bundleSavingPercent();
 
     const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://cheapestgo.com';
     const propertySlug = buildPropertySlug(property.name, id);
@@ -222,15 +226,17 @@ export default async function PropertyPage({
                     </FadeInUp>
                 </div>
 
-                {bundleFlightId && (
+                {/* Hidden when the rates leave no gap between the standalone and bundle
+                    markup — there is no saving to advertise in that case. */}
+                {bundleFlightId && bundleSaving > 0 && (
                     <div className="mt-3 mx-0">
                         <div className="flex items-center gap-3 px-4 py-3 bg-linear-to-r from-violet-600 to-indigo-600 rounded-xl text-white shadow-md shadow-violet-500/20">
                             <div className="flex items-center justify-center w-8 h-8 rounded-full bg-white/20 shrink-0 text-base">✦</div>
                             <div className="flex-1 min-w-0">
                                 <p className="text-xs font-bold leading-tight">{t('bundleActive')}</p>
-                                <p className="text-[11px] text-violet-200 leading-tight mt-0.5 truncate">{t('bundleApplied', { percent: 3 })}</p>
+                                <p className="text-[11px] text-violet-200 leading-tight mt-0.5 truncate">{t('bundleApplied', { percent: bundleSaving })}</p>
                             </div>
-                            <span className="shrink-0 px-2 py-0.5 rounded-full bg-amber-400 text-amber-900 text-[10px] font-bold">{t('savePercent', { percent: 3 })}</span>
+                            <span className="shrink-0 px-2 py-0.5 rounded-full bg-amber-400 text-amber-900 text-[10px] font-bold">{t('savePercent', { percent: bundleSaving })}</span>
                         </div>
                     </div>
                 )}

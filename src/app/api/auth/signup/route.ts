@@ -6,6 +6,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createUser, createUserSession, getUserByEmail } from '@/lib/auth/session';
 import { rateLimit } from '@/lib/server/rate-limit';
+import { MINIMUM_ACCOUNT_AGE, isAtLeastAge, isPlausibleBirthDate } from '@/lib/age';
 
 export const dynamic = 'force-dynamic';
 
@@ -16,13 +17,30 @@ export async function POST(req: NextRequest) {
     }
 
     try {
-        const { email, password, firstName, lastName } = await req.json();
+        const { email, password, firstName, lastName, birthDate } = await req.json();
 
         if (!email || !password) {
             return NextResponse.json({ error: 'Email and password are required.' }, { status: 400 });
         }
         if (password.length < 8) {
             return NextResponse.json({ error: 'Password must be at least 8 characters.' }, { status: 400 });
+        }
+
+        // ── Age gate ──
+        // Enforced server-side, not only in the form: booking creates a payment
+        // contract, and a minor can disaffirm one. Checked here so an account can
+        // never exist without having passed it.
+        if (!birthDate) {
+            return NextResponse.json({ error: 'Date of birth is required.' }, { status: 400 });
+        }
+        if (!isPlausibleBirthDate(birthDate)) {
+            return NextResponse.json({ error: 'Please enter a valid date of birth.' }, { status: 400 });
+        }
+        if (!isAtLeastAge(birthDate)) {
+            return NextResponse.json(
+                { error: `You must be at least ${MINIMUM_ACCOUNT_AGE} years old to create an account.` },
+                { status: 403 },
+            );
         }
 
         const existing = await getUserByEmail(email.trim().toLowerCase());
@@ -35,6 +53,7 @@ export async function POST(req: NextRequest) {
             password,
             firstName,
             lastName,
+            birthDate: String(birthDate).slice(0, 10),
         });
 
         await createUserSession(id);

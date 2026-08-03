@@ -9,8 +9,12 @@ import { DestinationPicker } from '@/components/landing/hero/search/DestinationP
 import { DatePicker } from '@/components/landing/hero/search/DatePicker';
 import { TravelersPicker } from '@/components/landing/hero/search/TravelersPicker';
 import { useSearchModule } from '@/hooks';
+import { HotelCardSkeleton, SKELETON_NAME_WIDTHS } from '@/components/shared/Skeleton';
 
 type AccordionSection = 'where' | 'check-in' | 'check-out' | 'who' | null;
+
+// Enough to fill a phone screen below the heading; the rest would be clipped.
+const SEARCHING_SKELETON_COUNT = 5;
 
 interface MobileSearchAccordionProps {
     onClose?: () => void;
@@ -78,18 +82,29 @@ export const MobileSearchAccordion: React.FC<MobileSearchAccordionProps> = ({ on
         <div className="flex flex-col h-full relative bg-slate-50 dark:bg-slate-950">
             {/* ─── Loading overlay ─── */}
             {isSearching && (
-                <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-white/95 dark:bg-slate-900/95 backdrop-blur-sm rounded-xl gap-4">
-                    <div className="relative w-14 h-14 shrink-0">
-                        <div className="absolute inset-0 border-4 border-blue-100 dark:border-blue-900/30 rounded-full" />
-                        <div className="absolute inset-0 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
-                    </div>
-                    <div className="text-center">
+                <div className="absolute inset-0 z-50 flex flex-col bg-white/95 dark:bg-slate-900/95 backdrop-blur-sm rounded-xl">
+                    <div className="shrink-0 text-center px-6 pt-8 pb-4">
                         <p className="text-base font-bold text-slate-900 dark:text-white">Finding hotels…</p>
                         {(destination?.title || query) && (
                             <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
                                 {destination?.title || query}
                             </p>
                         )}
+                    </div>
+                    {/* Same placeholders the results page opens with, so the handoff
+                        from search form to results reads as one continuous load. */}
+                    <div aria-hidden className="flex-1 overflow-hidden px-3 animate-pulse">
+                        {Array.from({ length: SEARCHING_SKELETON_COUNT }).map((_, i) => (
+                            <div
+                                key={i}
+                                className="mb-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800"
+                            >
+                                <HotelCardSkeleton
+                                    variant="compact"
+                                    nameWidth={SKELETON_NAME_WIDTHS[i % SKELETON_NAME_WIDTHS.length]}
+                                />
+                            </div>
+                        ))}
                     </div>
                 </div>
             )}

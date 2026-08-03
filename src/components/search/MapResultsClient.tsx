@@ -202,18 +202,6 @@ export function MapResultsClient({ searchParams, destination, onSwitchView }: Ma
         return () => { cancelled = true; controller.abort(); };
     }, [searchKey]);
 
-    // Show a skeleton while the first hotels haven't arrived yet
-    if (status === 'loading' || status === 'completing') {
-        return (
-            <div className="flex h-full w-full items-center justify-center">
-                <div className="flex flex-col items-center gap-3 select-none">
-                    <span className="w-8 h-8 rounded-full border-2 border-blue-500 border-t-transparent animate-spin" />
-                    <p className="text-xs text-slate-400 dark:text-slate-500">{t('searching')}</p>
-                </div>
-            </div>
-        );
-    }
-
     if (status === 'done' && properties.length === 0) {
         return (
             <div className="flex flex-col h-full w-full items-center justify-center gap-2 select-none">
@@ -235,6 +223,11 @@ export function MapResultsClient({ searchParams, destination, onSwitchView }: Ma
     // Catalog hotels shown, TGX prices still loading — show map with pricing banner
     const isPricingLoading = status === 'streaming' && properties.some((h: any) => h.priceLoading);
 
+    // 'loading' and 'completing' fall through to the map view rather than taking an
+    // early return, so the map paints on the destination straight away and the
+    // sidebar carries the wait with skeleton cards.
+    const isAwaitingResults = status === 'loading' || status === 'completing' || status === 'streaming';
+
     return (
         <div className="relative h-full w-full">
             {isPricingLoading && <StreamingBanner count={totalCount} pricingMode />}
@@ -245,7 +238,7 @@ export function MapResultsClient({ searchParams, destination, onSwitchView }: Ma
                 allMappable={allMappable}
                 rawSearchParams={queryParams}
                 destination={destination}
-                isStreaming={status === 'streaming'}
+                isStreaming={isAwaitingResults}
                 onSwitchToList={onSwitchView ? () => onSwitchView('list') : undefined}
             />
         </div>

@@ -21,13 +21,32 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { mystiflyRequest } from '@/lib/server/flights/mystifly-client';
 import { env } from '@/utils/env';
+import { getFlightPriceTolerance } from '@/lib/pricing';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 30;
 
-// Price tolerance — differences below this are treated as the same price
-// to absorb minor rounding or dynamic-pricing micro-fluctuations.
-const PRICE_TOLERANCE = 5.00;
+// Price tolerance — differences below this are treated as the same price to
+// absorb rounding and dynamic-pricing micro-fluctuations. Shared with the
+// order-time gate in /api/flights/book: if the two disagree, a fare between the
+// thresholds passes here and is rejected there.
+const PRICE_TOLERANCE = getFlightPriceTolerance();
+
+/**
+ * Should the traveller be interrupted to confirm this price?
+ *
+ * Only an INCREASE beyond the tolerance warrants a prompt. The comparison used
+ * to be `Math.abs(new - old) > tolerance`, which stopped the booking to ask
+ * someone to approve a fare that had got *cheaper* — a confirmation with no
+ * decision in it, and roughly half of all observed drift.
+ *
+ * A drop is adopted instead of confirmed: callers take `newPrice` as the price
+ * to charge, so the traveller pays the lower fare rather than the one they saw.
+ */
+function needsPriceConfirmation(oldPrice: number, newPrice: number): boolean {
+    if (oldPrice <= 0 || newPrice <= 0) return false;
+    return newPrice - oldPrice > PRICE_TOLERANCE;
+}
 
 // ── Auth helper ──────────────────────────────────────────────────────────────
 
@@ -129,7 +148,7 @@ async function revalidateMystifly(flight: any): Promise<NextResponse> {
     const newPriceRaw = revalData?.Data?.TotalFare ?? revalData?.TotalFare;
     const newPrice: number = newPriceRaw ? parseFloat(String(newPriceRaw)) : 0;
 
-    const priceChanged = oldPrice > 0 && newPrice > 0 && Math.abs(newPrice - oldPrice) > PRICE_TOLERANCE;
+    const priceChanged = needsPriceConfirmation(oldPrice, newPrice);
 
     // Extract fare policy if present
     const farePolicy = extractMystiflyFarePolicy(revalData);
@@ -140,7 +159,9 @@ async function revalidateMystifly(flight: any): Promise<NextResponse> {
         success: true,
         seatsAvailable: true,
         priceChanged,
-        ...(priceChanged ? { newPrice } : {}),
+        // Always reported, not just on a confirmable change: a drop still has to
+        // reach the caller so it can charge the lower fare.
+        ...(newPrice > 0 ? { newPrice } : {}),
         farePolicy,
     });
 }
@@ -220,7 +241,7 @@ async function revalidateDuffel(flight: any): Promise<NextResponse> {
 
     const oldPrice: number = parseFloat(String(flight.oldPrice ?? flight.price ?? '0')) || 0;
     const newPrice: number = parseFloat(pricedOffer.total_amount ?? '0');
-    const priceChanged = oldPrice > 0 && newPrice > 0 && Math.abs(newPrice - oldPrice) > PRICE_TOLERANCE;
+    const priceChanged = needsPriceConfirmation(oldPrice, newPrice);
 
     // Extract fare policy from the refreshed offer
     const refundCond = pricedOffer.conditions?.refund_before_departure;
@@ -242,7 +263,8 @@ async function revalidateDuffel(flight: any): Promise<NextResponse> {
         success: true,
         seatsAvailable: true,
         priceChanged,
-        ...(priceChanged ? { newPrice } : {}),
+        // Always reported — see the Mystifly branch above.
+        ...(newPrice > 0 ? { newPrice } : {}),
         farePolicy,
     });
 }

@@ -13,6 +13,55 @@ import { clientFetch } from '@/lib/api/client';
 
 export type BookingStep = 'form' | 'submitting' | 'payment' | 'success' | 'error';
 
+/**
+ * Scroll to and focus the first field that failed validation.
+ *
+ * Fields are located by `data-field="<zod path>"` — the same dotted path the schema
+ * reports (`passengers.0.birthDate`, `contact.email`), so the form and the schema
+ * cannot drift apart the way an ad-hoc mapping would.
+ *
+ * Returns false when no key matches an element on screen, which happens for
+ * form-level issues such as "at least one adult passenger is required". The caller
+ * falls back to the banner for those, otherwise they would be invisible.
+ */
+function focusFirstInvalidField(keys: string[]): boolean {
+    if (typeof document === 'undefined') return false;
+    for (const key of keys) {
+        const el = document.querySelector<HTMLElement>(`[data-field="${CSS.escape(key)}"]`);
+        if (!el) continue;
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        // preventScroll: the smooth scroll above owns the movement — letting focus
+        // scroll too makes the view jump past the field and then snap back.
+        el.focus?.({ preventScroll: true });
+        return true;
+    }
+    return false;
+}
+
+/**
+ * Parse a JSON API response without assuming the body is JSON.
+ *
+ * /api/flights/book does not always answer with JSON: an unhandled throw makes
+ * Next.js render an HTML error page, and a function timeout makes the platform
+ * serve an HTML gateway page. Calling res.json() on those raises a SyntaxError
+ * ("Unexpected token '<', \"<!DOCTYPE \"...") which then travels down the same
+ * path as a real booking error and surfaces to the traveller as the failure
+ * reason. Convert those into stable codes instead, and log the real body so the
+ * underlying 5xx is still diagnosable.
+ */
+async function parseJsonResponse(res: Response, label: string): Promise<any> {
+    const body = await res.text();
+    try {
+        return JSON.parse(body);
+    } catch {
+        console.error(
+            `[useFlightBooking] ${label} returned non-JSON (HTTP ${res.status}):`,
+            body.slice(0, 500),
+        );
+        throw new Error(res.status === 504 || res.status === 408 ? 'booking_timeout' : 'server_error');
+    }
+}
+
 export interface PriceChangedData {
     oldPrice: number;
     newPrice: number;
@@ -25,6 +74,8 @@ export function useFlightBooking() {
     const [offerExpiresAt, setOfferExpiresAt] = useState<Date | null>(null);
     const [step, setStep] = useState<BookingStep>('form');
     const [errorMsg, setErrorMsg] = useState('');
+    // Keyed by the schema's own dotted path — `passengers.0.birthDate`, `contact.email`.
+    const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
     const [priceChangedData, setPriceChangedData] = useState<PriceChangedData | null>(null);
     const [duplicateBookingData, setDuplicateBookingData] = useState<{ existingBookingId: string; route: string; departureDate: string } | null>(null);
     const [bookingResult, setBookingResult] = useState<{
@@ -65,6 +116,15 @@ export function useFlightBooking() {
 
     const [selectedSeats, setSelectedSeats] = useState<SelectedSeat[]>([]);
     const [selectedBags, setSelectedBags] = useState<SelectedBag[]>([]);
+
+    const clearFieldError = useCallback((key: string) => {
+        setFieldErrors(prev => {
+            if (!prev[key]) return prev;
+            const next = { ...prev };
+            delete next[key];
+            return next;
+        });
+    }, []);
 
     const [passengers, setPassengers] = useState<FlightPassengerForm[]>(() => {
         if (typeof window !== 'undefined') {
@@ -250,11 +310,28 @@ export function useFlightBooking() {
                     console.warn('[useFlightBooking] SearchIdentifier revalidation error — soft-passing, proceeding with original offer');
                 }
 
+                // When to move the number the traveller is looking at.
+                //
+                // Revalidation reports the live fare on every load, so adopting it
+                // unconditionally repriced the page the instant it opened — including for
+                // the sub-tolerance jitter the app has already decided is immaterial, which
+                // is exactly the "price changed the moment I clicked" effect.
+                //
+                //   cheaper           → adopt, the traveller pays the lower fare
+                //   material increase → adopt, they will be charged it, so hiding it is worse
+                //                       (`policyChanged` below flags it in the fare panel)
+                //   minor increase    → keep the searched price; we absorb the difference
+                //                       rather than move the price under them
+                const liveTotal: number | undefined =
+                    typeof data.newPrice === 'number' && data.newPrice > 0 ? data.newPrice : undefined;
+                const shouldAdoptLiveTotal =
+                    liveTotal !== undefined && (liveTotal < parsedOffer.price.total || data.priceChanged);
+
                 const revalidatedOffer = {
                     ...parsedOffer,
                     price: {
                         ...parsedOffer.price,
-                        total: data.newPrice || parsedOffer.price.total,
+                        total: shouldAdoptLiveTotal ? liveTotal : parsedOffer.price.total,
                     },
                     farePolicy: data.farePolicy,
                     policyChanged: data.priceChanged || (JSON.stringify(parsedOffer.farePolicy) !== JSON.stringify(data.farePolicy)),
@@ -286,6 +363,9 @@ export function useFlightBooking() {
 
     const updatePassenger = (idx: number, field: keyof FlightPassengerForm, value: string) => {
         setPassengers(prev => prev.map((p, i) => i === idx ? { ...p, [field]: value } : p));
+        // Editing a field clears its complaint — leaving a stale error under an input the
+        // traveller has just corrected reads as though the fix did not register.
+        clearFieldError(`passengers.${idx}.${field}`);
     };
 
     const addPassenger = () => {
@@ -335,7 +415,12 @@ export function useFlightBooking() {
                     cabinClass: seg.cabinClass,
                     bookingClass: (seg as any).bookingClass,
                     fareBasis: (seg as any).fareBasis,
-                    itineraryIndex: (seg as any).itineraryIndex,
+                    // The normaliser names this `segmentIndex`; sending only the
+                    // `itineraryIndex` alias meant undefined reached create-booking,
+                    // which then stored every leg as segment_index 0 and lost the
+                    // outbound/return ordering.
+                    segmentIndex: (seg as any).segmentIndex,
+                    itineraryIndex: (seg as any).itineraryIndex ?? (seg as any).segmentIndex,
                 })),
                 // CRITICAL FIX: Only Duffel require the raw offer to complete booking
                 ...(offer.provider === 'duffel' ? {
@@ -362,8 +447,28 @@ export function useFlightBooking() {
                 }),
             });
 
-            const data = await res.json();
+            const data = await parseJsonResponse(res, 'POST /api/flights/book');
             if (!data.success) {
+                // Session rejected server-side. The `!user` guard above only catches the
+                // case where the client already knows it is signed out; a cookie that the
+                // client still trusts but the server no longer accepts — expired, revoked,
+                // or issued by a different database — lands here instead. Route it to the
+                // same 'unauthenticated' branch so it reopens the sign-in modal rather than
+                // presenting an unrecoverable "Booking Failed" screen.
+                if (res.status === 401 || data.errorCode === 'unauthenticated') {
+                    throw new Error('unauthenticated');
+                }
+                // The duplicate guard answers with `code`, not `errorCode`, and carries
+                // the clashing booking so the form can link straight to it.
+                if (data.code === 'DUPLICATE_BOOKING') {
+                    const err = new Error('duplicate_booking') as any;
+                    err.duplicateBookingData = {
+                        existingBookingId: data.existingBookingId,
+                        route: data.route,
+                        departureDate: data.departureDate,
+                    };
+                    throw err;
+                }
                 if (data.error === 'price_changed') {
                     const err = new Error('price_changed') as any;
                     err.priceChangedData = { oldPrice: data.oldPrice, newPrice: data.newPrice, currency: data.currency };
@@ -374,7 +479,9 @@ export function useFlightBooking() {
                     err.newOffer = data.newOffer;
                     throw err;
                 }
-                throw new Error(data.errorCode || data.error || 'booking_failed');
+                // Prefer a machine-readable code over `error`, which is often a full
+                // sentence and would be mistaken for a code by the failure screen.
+                throw new Error(data.errorCode || data.code || data.error || 'booking_failed');
             }
 
             return data.data ?? data;
@@ -382,6 +489,9 @@ export function useFlightBooking() {
         onMutate: () => {
             setStep('submitting');
             setErrorMsg('');
+            // Clear any panel from a previous attempt — the guard re-runs server-side
+            // on every submit, so a stale warning would outlive the conflict.
+            setDuplicateBookingData(null);
         },
         onSuccess: (data) => {
             // If Stripe PaymentIntent client_secret is returned, transition to embedded payment UI
@@ -434,6 +544,14 @@ export function useFlightBooking() {
                 setPriceChangedData(error.priceChangedData);
                 setStep('form');
                 idempotencyKeyRef.current = generateId();
+            } else if (error.message === 'duplicate_booking' && error.duplicateBookingData) {
+                // Return to the form — that's where the duplicate panel renders, with a
+                // link to the clashing booking. errorMsg stays empty so the generic red
+                // banner doesn't double up on the dedicated panel.
+                setDuplicateBookingData(error.duplicateBookingData);
+                setErrorMsg('');
+                setStep('form');
+                idempotencyKeyRef.current = generateId();
             } else if (error.message === 'offer_replaced' && error.newOffer) {
                 if (typeof window !== 'undefined') sessionStorage.setItem('selectedFlight', JSON.stringify(error.newOffer));
                 setOffer(error.newOffer);
@@ -446,7 +564,14 @@ export function useFlightBooking() {
                 setStep('form');
                 idempotencyKeyRef.current = generateId();
             } else {
-                setErrorMsg('CODE:' + (error.message || 'booking_failed'));
+                const code = error.message || 'booking_failed';
+                // A dead offer can never succeed on a retry. Drop it so navigating back
+                // to this page can't resurrect it from sessionStorage and fail again —
+                // the failure screen already routes these to "Search Again".
+                if ((code === 'flight_unavailable' || code === 'offer_expired') && typeof window !== 'undefined') {
+                    sessionStorage.removeItem('selectedFlight');
+                }
+                setErrorMsg('CODE:' + code);
                 setStep('error');
                 idempotencyKeyRef.current = generateId();
             }
@@ -581,6 +706,15 @@ export function useFlightBooking() {
             price: { ...offer.price, total: priceChangedData.newPrice },
             _confirmedPrice: priceChangedData.newPrice,
         } as FlightOffer;
+        // Persist the acceptance. Without this the confirmed price lived only inside
+        // this one mutate() call: the page kept displaying the old fare, and any later
+        // submit (a retry, or "Try Again" from the failure screen) sent the stale price
+        // and tripped the very same price-change check again — the confirm prompt would
+        // reappear indefinitely instead of converging.
+        setOffer(confirmedOffer);
+        if (typeof window !== 'undefined') {
+            sessionStorage.setItem('selectedFlight', JSON.stringify(confirmedOffer));
+        }
         bookMutation.mutate({ offer: confirmedOffer, passengers, contact, seats: selectedSeats, bags: selectedBags });
     };
 
@@ -615,16 +749,30 @@ export function useFlightBooking() {
             }
         }
 
-        try {
-            flightBookingSchema.parse({ passengers, contact });
-            bookMutation.mutate({ offer, passengers, contact, seats: selectedSeats, bags: selectedBags });
-        } catch (error) {
-            if (error instanceof z.ZodError) {
-                setErrorMsg(error.issues[0].message);
-            } else if (error instanceof Error) {
-                setErrorMsg(error.message);
+        // safeParse, not parse: every issue is needed, not just the one that threw.
+        // Reporting only `issues[0].message` in a banner meant a traveller with three bad
+        // fields fixed one, resubmitted, and met the next — and a message like
+        // "Must be YYYY-MM-DD" never said WHICH date, or which passenger's.
+        const parsed = flightBookingSchema.safeParse({ passengers, contact });
+
+        if (!parsed.success) {
+            const nextErrors: Record<string, string> = {};
+            for (const issue of parsed.error.issues) {
+                const key = issue.path.join('.');
+                // First message per field — later ones are usually consequences of the first.
+                if (key && !nextErrors[key]) nextErrors[key] = issue.message;
             }
+            setFieldErrors(nextErrors);
+
+            const shown = focusFirstInvalidField(Object.keys(nextErrors));
+            // Keep the banner only for issues with no field to attach to.
+            setErrorMsg(shown ? '' : (parsed.error.issues[0]?.message ?? ''));
+            return;
         }
+
+        setFieldErrors({});
+        setErrorMsg('');
+        bookMutation.mutate({ offer, passengers, contact, seats: selectedSeats, bags: selectedBags });
     };
 
     // Clear "expired" error when user starts reselecting
@@ -642,6 +790,8 @@ export function useFlightBooking() {
         setStep,
         errorMsg,
         setErrorMsg,
+        fieldErrors,
+        clearFieldError,
         priceChangedData,
         duplicateBookingData,
         dismissDuplicateWarning: () => setDuplicateBookingData(null),

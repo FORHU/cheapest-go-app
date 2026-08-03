@@ -127,15 +127,31 @@ export async function POST(req: NextRequest) {
         }
 
         const quote = quoteData?.data ?? {};
-        const duffelRefundUsd = Number(quote.refund_amount) || 0;
-        const duffelSupplierPrice = Number(booking.total_price ?? 0);
+        const duffelRefund = Number(quote.refund_amount) || 0;
         const cancellationId: string = quote.id;
 
-        // Compute refund ratio from Duffel (refund / supplier price).
-        // Apply that ratio to the actual Stripe charge so the shown refund
-        // never exceeds what the customer originally paid, regardless of FX drift.
-        const refundRatio = duffelSupplierPrice > 0
-            ? Math.min(1, duffelRefundUsd / duffelSupplierPrice)
+        // Both sides of this ratio MUST be in the same currency.
+        //
+        // It used to divide Duffel's refund by `booking.total_price`, which is stored in
+        // the customer's payment currency (PHP) while Duffel quotes in the order's
+        // currency (USD). Dividing ~966 USD by ~57,254 PHP produced a 1.7% "refund
+        // ratio" instead of ~98%, and applying it back to the peso charge coincidentally
+        // reproduced the USD figure — so a fully refundable ₱57,254 ticket was offered
+        // back as ₱966. The order fetched in Step 0 carries the right denominator.
+        const duffelOrderTotal = Number(orderData?.data?.total_amount) || 0;
+        const duffelOrderCurrency: string = orderData?.data?.total_currency ?? '';
+        const quoteCurrency: string = quote.refund_currency ?? duffelOrderCurrency;
+
+        if (duffelOrderCurrency && quoteCurrency && duffelOrderCurrency !== quoteCurrency) {
+            // Not expected — Duffel refunds in the order's currency. Log rather than
+            // silently compute a ratio across two currencies again.
+            console.warn(`[cancel-quote] currency mismatch: order ${duffelOrderCurrency} vs refund ${quoteCurrency} — ratio may be wrong`);
+        }
+
+        // Apply the ratio to the actual Stripe charge so the shown refund never exceeds
+        // what the customer paid, regardless of FX drift since booking.
+        const refundRatio = duffelOrderTotal > 0
+            ? Math.min(1, duffelRefund / duffelOrderTotal)
             : 1;
 
         // Prefer Stripe PI amount (exact cents in the payment currency)
@@ -153,7 +169,7 @@ export async function POST(req: NextRequest) {
             refundAmount = Math.round(Number(booking.charged_price ?? booking.total_price ?? 0) * refundRatio * 100) / 100;
         }
 
-        console.log(`[cancel-quote] bookingId=${bookingId} orderId=${orderId} duffelRefund=${duffelRefundUsd} ratio=${refundRatio.toFixed(4)} displayRefund=${refundAmount} ${refundCurrency} cancellationId=${cancellationId}`);
+        console.log(`[cancel-quote] bookingId=${bookingId} orderId=${orderId} duffelRefund=${duffelRefund} ${quoteCurrency} of orderTotal=${duffelOrderTotal} ${duffelOrderCurrency} ratio=${refundRatio.toFixed(4)} displayRefund=${refundAmount} ${refundCurrency} cancellationId=${cancellationId}`);
 
         return NextResponse.json({ success: true, refundAmount, refundCurrency, penaltyAmount: 0, cancellationId });
     } catch (err: any) {
