@@ -364,14 +364,21 @@ export default function FlightBookingCard({ booking, onCancelled }: FlightBookin
     const liveUserCurrency = useUserCurrency();
     const bookingCurrency = booking.currency || 'USD';
     const [frozenUserCurrency, setFrozenUserCurrency] = useState<string | null>(null);
-    useEffect(() => { setFrozenUserCurrency(liveUserCurrency); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+    // Re-freeze whenever the traveller picks a different currency. Depending on
+    // liveUserCurrency rather than [] keeps the original intent — a mid-session
+    // exchange-rate fetch must not move the figures on screen — while still
+    // honouring a deliberate change from the currency selector, which an empty
+    // dependency array ignored until a full page reload.
+    useEffect(() => { setFrozenUserCurrency(liveUserCurrency); }, [liveUserCurrency]);
     const userCurrency = frozenUserCurrency ?? bookingCurrency;
     const convertPrice = (amount: number, fromCurrency = bookingCurrency) =>
         mounted ? Math.round(convertCurrency(amount, fromCurrency, userCurrency)) : amount;
     const displayCurrency = mounted ? userCurrency : bookingCurrency;
 
-    // Freeze "Total paid" at mount — uses rates current at first render (before async ECB
-    // fetch updates EXCHANGE_RATES), so the amount never fluctuates between page loads.
+    // Freeze "Total paid" against rate churn — it uses the rates current when the
+    // currency was chosen, so an async ECB fetch can't make the figure drift while
+    // the traveller is looking at it. It is not frozen against the traveller:
+    // changing the selector recomputes it.
     const [frozenTotal, setFrozenTotal] = useState<{ amount: number; currency: string } | null>(null);
     useEffect(() => {
         const raw = booking.charged_price ?? booking.total_price;
@@ -379,7 +386,7 @@ export default function FlightBookingCard({ booking, onCancelled }: FlightBookin
             amount: Math.round(convertCurrency(raw, bookingCurrency, liveUserCurrency)),
             currency: liveUserCurrency,
         });
-    }, []); // eslint-disable-line react-hooks/exhaustive-deps
+    }, [liveUserCurrency]); // eslint-disable-line react-hooks/exhaustive-deps
 
     const segments = booking.flight_segments || [];
     const firstSegment = segments[0];
