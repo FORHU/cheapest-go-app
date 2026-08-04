@@ -39,7 +39,10 @@ export async function POST(req: Request) {
             .from('booking_sessions')
             .select('id, provider, payment_intent_id, status, created_at, contact')
             .not('payment_intent_id', 'is', null)
-            .not('status', 'in', '("booked","expired")')
+            // Array, not a "(a,b)" string — the builder maps over this to build
+            // placeholders, and a string throws inside it, leaving the query with
+            // { data: null, error } and this recovery sweep finding nothing at all.
+            .not('status', 'in', ['booked', 'expired'])
             .lt('created_at', cutoffRecent)
             .gte('created_at', cutoffOld)
             .order('created_at', { ascending: true })

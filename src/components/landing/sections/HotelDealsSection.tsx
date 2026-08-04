@@ -280,7 +280,10 @@ const HotelDealsSection: React.FC<HotelDealsSectionProps> = ({ deals }) => {
             if (!showAll) setTimeout(() => gridRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
           }}
           title={isPersonalized
-            ? t.rich('hotels.headerPersonalized', { country: () => <span className="text-blue-600 dark:text-blue-400">{userCountry}</span> })
+            ? t.rich('hotels.headerPersonalized', {
+                country: userCountry!,
+                highlight: (chunks) => <span className="text-blue-600 dark:text-blue-400">{chunks}</span>,
+              })
             : t('hotels.headerDefault')}
           subtitle={isPersonalized
             ? t('hotels.subtitlePersonalized', { country: userCountry })

@@ -131,6 +131,7 @@ export const useAuthStore = create<AuthState>((set, get) => {
                     password: data.password,
                     firstName: data.firstName,
                     lastName: data.lastName,
+                    birthDate: data.birthDate,
                 });
                 set({
                     user: {

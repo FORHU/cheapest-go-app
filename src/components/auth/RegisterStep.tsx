@@ -10,6 +10,7 @@ import { useAuthFormStore } from '@/stores/authFormStore';
 import { Input, Button } from '@/components/ui';
 import { PasswordRequirements } from './PasswordRequirements';
 import { registerSchema } from '@/lib/schemas/auth';
+import { earliestPlausibleBirthDate, latestBirthDateForAge } from '@/lib/age';
 
 const RegisterStep: React.FC = () => {
     const t = useTranslations('auth');
@@ -19,6 +20,9 @@ const RegisterStep: React.FC = () => {
         setField, setRememberMe, setErrors, clearErrors,
     } = useAuthFormStore();
     const [confirmPassword, setConfirmPassword] = useState('');
+    // Local rather than in the shared auth form store — it is only needed to create
+    // the account, and keeping it out of that store avoids it lingering across steps.
+    const [birthDate, setBirthDate] = useState('');
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -29,7 +33,7 @@ const RegisterStep: React.FC = () => {
             return;
         }
 
-        const formData = { email, firstName, lastName, password };
+        const formData = { email, firstName, lastName, password, birthDate };
         const result = registerSchema.safeParse(formData);
 
         if (!result.success) {
@@ -39,12 +43,13 @@ const RegisterStep: React.FC = () => {
                 firstName: fieldErrors.firstName?.[0] || '',
                 lastName: fieldErrors.lastName?.[0] || '',
                 password: fieldErrors.password?.[0] || '',
+                birthDate: fieldErrors.birthDate?.[0] || '',
             });
             return;
         }
 
         try {
-            await register({ email, password, firstName, lastName });
+            await register({ email, password, firstName, lastName, birthDate });
             toast.success(t('messages.accountCreated'));
         } catch (error: any) {
             if (error?.code === 'over_email_send_rate_limit' || error?.message?.includes('rate limit')) {
@@ -122,6 +127,27 @@ const RegisterStep: React.FC = () => {
                         error={errors.lastName}
                         disabled={isLoading}
                     />
+                </div>
+
+                <div>
+                    <Input
+                        id="birthDate"
+                        type="date"
+                        label={t('labels.birthDate')}
+                        value={birthDate}
+                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setBirthDate(e.target.value)}
+                        // Bounds the picker to ages that can actually hold an account, so
+                        // an under-18 date cannot be selected in the first place. The
+                        // schema and the API still enforce it — this only avoids offering
+                        // a choice that would be rejected.
+                        min={earliestPlausibleBirthDate()}
+                        max={latestBirthDateForAge()}
+                        error={errors.birthDate}
+                        disabled={isLoading}
+                    />
+                    <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                        {t('labels.birthDateHint')}
+                    </p>
                 </div>
 
                 <div>
