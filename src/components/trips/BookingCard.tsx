@@ -48,10 +48,14 @@ export default function BookingCard({ booking, onBookingUpdated, index = 0 }: Bo
     const bookingCurrency = booking.currency || 'USD';
     const [displayPrice, setDisplayPrice] = useState(booking.total_price);
     const [displayCurrency, setDisplayCurrency] = useState(bookingCurrency);
+    // Depends on liveUserCurrency so the currency selector actually takes effect;
+    // with [] the price stayed in whatever currency was active at mount until a
+    // full page reload. Still does not re-run on a bare exchange-rate refresh, so
+    // the figure doesn't drift on its own.
     useEffect(() => {
         setDisplayPrice(Math.round(convertCurrency(booking.total_price, bookingCurrency, liveUserCurrency)));
         setDisplayCurrency(liveUserCurrency);
-    }, []); // eslint-disable-line react-hooks/exhaustive-deps
+    }, [liveUserCurrency]); // eslint-disable-line react-hooks/exhaustive-deps
 
     const checkInDate = new Date(booking.check_in);
     const checkOutDate = new Date(booking.check_out);
