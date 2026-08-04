@@ -249,14 +249,19 @@ export async function confirmAndSaveTgxBooking(
     }
   }
 
-  let totalPrice = price;
+  // Prefer the Stripe PI amount (what the customer actually paid) over TGX's raw
+  // booking response price, which is the supplier net and does not include markup.
+  // Fall back to the quoted price shown at checkout, then TGX price as last resort.
+  let totalPrice: number;
   if (params.paymentIntentId) {
     try {
       const pi = await stripe.paymentIntents.retrieve(params.paymentIntentId);
       totalPrice = pi.amount / 100;
     } catch {
-      totalPrice = price;
+      totalPrice = params.quotedPrice ?? price;
     }
+  } else {
+    totalPrice = params.quotedPrice ?? price;
   }
 
   // Prefer the prebook cancel policy (quote-time, shown to user at checkout) over the
