@@ -564,8 +564,18 @@ export async function POST(req: NextRequest) {
             const priceTolerance = getFlightPriceTolerance();
 
             // Pre-booking balance guard — catch insufficient balance before Duffel deducts.
-            // Skip in sandbox mode (test balances are virtual).
-            if (!isSandbox) {
+            //
+            // Off by default, and not because of sandbox: the endpoint it calls
+            // (/air/payments/balances) does not exist. Every documented variant
+            // 404s against a live token and Duffel's API reference has no
+            // balances resource at all, so this guard has never once run to
+            // completion — it throws, gets swallowed below, and costs a wasted
+            // round trip on every live booking while sandbox skips it entirely.
+            // That asymmetry is exactly what makes a local booking a poor
+            // rehearsal for a live one.
+            //
+            // Set DUFFEL_BALANCE_CHECK=on if Duffel ever provides the endpoint.
+            if (process.env.DUFFEL_BALANCE_CHECK === 'on') {
                 try {
                     const { getDuffelBalances, getAvailableBalance } = await import('@/lib/server/flights/duffel-balance');
                     // Use rawOffer for currency/amount — these are in Duffel's native currency (USD/GBP).
@@ -592,7 +602,11 @@ export async function POST(req: NextRequest) {
                     console.warn('[/book] Duffel balance check failed (non-fatal):', balErr.message);
                 }
             }
-            const refreshPoolSize = isSandbox ? 3 : 2;
+            // Same pool in both modes. This used to give sandbox 3 alternates and
+            // live only 2, so live had *less* resilience to
+            // `offer_no_longer_available` than the environment it was rehearsed
+            // in — the opposite of what you want from a dry run.
+            const refreshPoolSize = 3;
             console.log(`[/book] Duffel ${isSandbox ? 'SANDBOX' : 'LIVE'} mode: tolerance=${priceTolerance}, pool=${refreshPoolSize}`);
 
             // Build Duffel passenger objects using the offer's passenger IDs
