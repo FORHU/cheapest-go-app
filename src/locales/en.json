@@ -485,7 +485,7 @@
         "backButton": "Back to Home",
         "collapse": "Collapse ↑",
         "headerDefault": "Exclusive Deals & Offers",
-        "headerPersonalized": "Flight Deals from {city}",
+        "headerPersonalized": "Flight Deals from <highlight>{city}</highlight>",
         "noDealsDescription": "Check back soon for new exclusive travel offers.",
         "noDealsTitle": "No active deals found",
         "oneWay": "One Way",
@@ -1051,7 +1051,7 @@
         "fromPrice": "From {price}",
         "guestFavorite": "Guest Favorite",
         "headerDefault": "Top Hotel Deals",
-        "headerPersonalized": "Hotel Deals in {country}",
+        "headerPersonalized": "Hotel Deals in <highlight>{country}</highlight>",
         "mapSearch": {
             "placeholder": "Search location on map..."
         },

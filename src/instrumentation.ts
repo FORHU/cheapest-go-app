@@ -29,7 +29,6 @@ function checkEnv() {
     ['ETG_KEY_ID',              'ETG/RateHawk — hotel review sync cron will fail'],
     ['ETG_API_KEY',             'ETG/RateHawk — hotel review sync cron will fail'],
     ['SENTRY_DSN',              'Sentry — errors not tracked in production'],
-    ['MYSTIFLY_USERNAME',       'Mystifly — flight provider onboarding incomplete'],
   ];
 
   const missing  = required.filter(([k]) => !process.env[k]);

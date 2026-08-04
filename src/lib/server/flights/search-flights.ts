@@ -1,6 +1,5 @@
 import { FlightSearchParams, FlightSearch, FlightOffer, FlightResult } from "@/types/flights";
 import { searchDuffel } from "./providers/duffel";
-// import { searchMystiflyV2 } from "./providers/mystifly"; // sandbox only — re-enable with live key
 import { createClient } from "@/utils/postgres/server";
 import { normalizedToFlightOffer } from "@/utils/flight-utils";
 
@@ -45,7 +44,6 @@ export async function searchFlights(params: FlightSearchParams): Promise<FlightO
     // Fetch from providers in parallel with resilience (allSettled)
     const providers = [
         { name: "Duffel", call: searchDuffel(params) },
-        // { name: "MystiflyV2", call: searchMystiflyV2(params) }, // sandbox only — re-enable with live key
     ];
 
     const settlement = await Promise.allSettled(

@@ -13,11 +13,129 @@ import { applyMarkup, toStripeAmount, FLIGHT_MARKUP, getFlightPriceTolerance } f
 import { passengerTypeForBirthDate } from '@/lib/age';
 import { convertCurrency } from '@/lib/currency';
 
-export const maxDuration = 120;
+// Must exceed ORDER_CREATE_TIMEOUT_MS (130s, Duffel's documented floor) plus one
+// price-change retry, or the platform kills the request while a real order is
+// still being created at the airline — the exact condition that orphans a PNR.
+export const maxDuration = 300;
 import { parseDuffelOffer } from '@/lib/server/flights/providers/duffel';
+import { cabinClassFromRawOffer } from '@/lib/server/flights/duffel-cabin';
+import { findOrderFromTimedOutAttempt } from '@/lib/server/flights/duffel-order-reconcile';
+import { findReusablePreOrder, REUSE_WINDOW_MS, type CandidateSession } from '@/lib/server/flights/preorder-reuse';
 import { normalizedToFlightOffer } from '@/utils/flight-utils';
 
 export const dynamic = 'force-dynamic';
+
+/**
+ * How long to wait on POST /air/orders before giving up.
+ *
+ * Duffel's response-handling guide is explicit: "You must set a HTTP client
+ * timeout of at least 130s to ensure you don't time out on your side." Order
+ * creation runs synchronously through to the airline, and aborting the request
+ * does **not** cancel anything — the booking proceeds regardless. A short
+ * timeout therefore does not save the traveller from a slow airline; it just
+ * hides a real, paid PNR from this app.
+ *
+ * This was 12s (search latency, not booking latency) and issued four live
+ * tickets that were never recorded. Do not lower it below Duffel's floor.
+ */
+const ORDER_CREATE_TIMEOUT_MS = 130_000;
+
+/**
+ * Retry after a price change. Same floor: a price_changed 422 means the first
+ * attempt created nothing, so this is a genuinely fresh order and needs the
+ * same allowance as the first.
+ */
+const ORDER_RETRY_TIMEOUT_MS = 130_000;
+
+/**
+ * Find a still-live, unpaid Duffel order a previous attempt bought for this same
+ * offer, so a re-submit reuses that ticket instead of buying a second one.
+ *
+ * Two gates, because adopting the wrong order would attach a traveller to
+ * someone else's trip: `findReusablePreOrder` matches on the Duffel offer id
+ * within the session window, and then Duffel itself is asked whether that order
+ * still exists and is uncancelled.
+ *
+ * Returns null on any doubt — including on its own failure. A booking must never
+ * be blocked because this check could not run.
+ */
+async function findLivePreOrderForOffer(args: {
+    db: any;
+    userId: string | null | undefined;
+    offerId: string;
+    excludeSessionId: string;
+    duffelToken: string;
+}): Promise<{
+    sessionId: string;
+    orderId: string;
+    pnr: string;
+    tickets: string[];
+    isTicketed: boolean;
+    orderTotal: string;
+    orderCurrency: string;
+    paymentIntentId: string | null;
+} | null> {
+    const { db, userId, offerId, excludeSessionId, duffelToken } = args;
+    if (!userId || !offerId) return null;
+
+    try {
+        const since = new Date(Date.now() - REUSE_WINDOW_MS).toISOString();
+        const { data, error } = await db
+            .from('booking_sessions')
+            .select('id, status, duffel_pre_order_id, duffel_pre_order_pnr, duffel_pre_order_tickets, duffel_pre_order_ticketed, payment_intent_id, flight, created_at')
+            .eq('user_id', userId)
+            .not('duffel_pre_order_id', 'is', null)
+            .gte('created_at', since)
+            .order('created_at', { ascending: false })
+            .limit(20);
+
+        if (error) {
+            console.warn('[/book] pre-order reuse lookup failed:', error.message);
+            return null;
+        }
+
+        const candidate = findReusablePreOrder((data ?? []) as CandidateSession[], {
+            offerId,
+            excludeSessionId,
+        });
+        if (!candidate?.duffel_pre_order_id) return null;
+
+        // Trust the supplier, not our own row: the order may have been cancelled
+        // by support or an orphan sweep since that session was written.
+        const res = await fetch(`https://api.duffel.com/air/orders/${candidate.duffel_pre_order_id}`, {
+            headers: { Authorization: `Bearer ${duffelToken}`, 'Duffel-Version': 'v2' },
+            signal: AbortSignal.timeout(15_000),
+        });
+        if (!res.ok) {
+            console.warn(`[/book] Stored pre-order ${candidate.duffel_pre_order_id} not retrievable (${res.status}) — booking fresh`);
+            return null;
+        }
+        const order = (await res.json())?.data;
+        if (!order?.id || order.cancelled_at) {
+            console.warn(`[/book] Stored pre-order ${candidate.duffel_pre_order_id} is gone or cancelled — booking fresh`);
+            return null;
+        }
+
+        const tickets: string[] = (order.documents ?? [])
+            .filter((d: any) => d.type === 'electronic_ticket')
+            .map((d: any) => d.unique_identifier as string);
+
+        return {
+            sessionId: candidate.id,
+            orderId: order.id,
+            pnr: order.booking_reference ?? order.id,
+            tickets,
+            isTicketed: tickets.length > 0,
+            orderTotal: order.total_amount ?? '',
+            orderCurrency: order.total_currency ?? '',
+            paymentIntentId: candidate.payment_intent_id ?? null,
+        };
+    } catch (err: any) {
+        console.warn('[/book] pre-order reuse check failed:', err?.message ?? err);
+        return null;
+    }
+}
+
 
 export async function POST(req: NextRequest) {
     const csrfError = checkCsrf(req);
@@ -388,7 +506,50 @@ export async function POST(req: NextRequest) {
             orderTotal: string; orderCurrency: string;
         } | null = null;
 
-        if (provider === 'duffel') {
+        // ── Step 1.4 (Duffel only): did a previous attempt already buy this? ──
+        //
+        // The payment screen's "Back to details" returns to the form, and
+        // re-submitting lands here again with the same offer. Step 1.5 below
+        // creates a real, paid order every time it runs, so without this the
+        // traveller pays twice for one trip — which is exactly how two EVA
+        // tickets were issued 61 seconds apart after a currency change.
+        //
+        // Leaving duffelPreOrder set here is what skips Step 1.5 entirely.
+        if (provider === 'duffel' && (flight as any)._rawOffer?.id && env.DUFFEL_TOKEN) {
+            const reused = await findLivePreOrderForOffer({
+                db,
+                userId,
+                offerId: (flight as any)._rawOffer.id,
+                excludeSessionId: sessionId,
+                duffelToken: env.DUFFEL_TOKEN,
+            });
+
+            if (reused) {
+                console.warn(`[/book] Reusing pre-order ${reused.orderId} (${reused.pnr}) from session ${reused.sessionId} — this offer is already ticketed, not buying again`);
+                duffelPreOrder = {
+                    orderId: reused.orderId,
+                    pnr: reused.pnr,
+                    tickets: reused.tickets,
+                    isTicketed: reused.isTicketed,
+                    orderTotal: reused.orderTotal,
+                    orderCurrency: reused.orderCurrency,
+                };
+
+                // The superseded attempt's PaymentIntent can never be paid now —
+                // this session issues a fresh one. Cancel it so it doesn't sit in
+                // the Stripe dashboard as an unexplained Incomplete.
+                if (reused.paymentIntentId) {
+                    try {
+                        await stripe.paymentIntents.cancel(reused.paymentIntentId);
+                        console.log(`[/book] Cancelled superseded PaymentIntent ${reused.paymentIntentId}`);
+                    } catch (piErr: any) {
+                        console.warn(`[/book] Could not cancel superseded PaymentIntent ${reused.paymentIntentId}: ${piErr?.message}`);
+                    }
+                }
+            }
+        }
+
+        if (provider === 'duffel' && !duffelPreOrder) {
             const rawOffer = (flight as any)._rawOffer;
             if (!rawOffer?.id) throw new Error('Duffel offer data missing — cannot book.');
 
@@ -546,10 +707,21 @@ export async function POST(req: NextRequest) {
                 let currentCurrency = currency;
                 const activeHeaders = getDuffelHeaders(key);
 
-                // 12-second timeout: Duffel sometimes hangs before returning a 500.
-                // AbortController lets us bail out instead of waiting 20+ seconds.
+                // Order creation is a synchronous call through to the airline's own
+                // booking system, so it is an order of magnitude slower than a search:
+                // 5-20s is normal on live NDC carriers and spikes past 30s happen.
+                //
+                // This bound was 12s, which is search latency, not booking latency —
+                // it aborted healthy bookings mid-flight and reported a supplier
+                // outage. Aborting does NOT cancel the order at Duffel (see
+                // ORDER_CREATE_TIMEOUT_MS docs), so every premature abort risked an
+                // orphaned PNR. Sized against this route's own maxDuration of 120s.
                 const orderAbort = new AbortController();
-                const orderTimeout = setTimeout(() => orderAbort.abort(), 12000);
+                const orderTimeout = setTimeout(() => orderAbort.abort(), ORDER_CREATE_TIMEOUT_MS);
+
+                // Stamped before the request so reconciliation can discard any
+                // pre-existing order for the same route and price.
+                const attemptStartedAt = new Date().toISOString();
 
                 let res: Response;
                 let data: any;
@@ -564,7 +736,34 @@ export async function POST(req: NextRequest) {
                 } catch (fetchErr: any) {
                     clearTimeout(orderTimeout);
                     if (fetchErr?.name === 'AbortError') {
-                        console.error(`[/book] Duffel order fetch timed out after 12s for offer ${offerId}`);
+                        console.error(`[/book] Duffel order fetch timed out after ${ORDER_CREATE_TIMEOUT_MS / 1000}s for offer ${offerId}`);
+
+                        // The abort cancelled our request, not the booking. Before
+                        // reporting a failure — which invites the traveller to retry
+                        // and pay for a second ticket — ask Duffel whether this
+                        // attempt actually landed.
+                        const recovered = await findOrderFromTimedOutAttempt(duffelToken, {
+                            sinceIso: attemptStartedAt,
+                            origin: flight.segments?.[0]?.origin,
+                            destination: flight.segments?.[flight.segments.length - 1]?.destination,
+                            totalAmount: currentTotal,
+                            currency: currentCurrency,
+                            familyName: paxList?.[0]?.family_name,
+                        });
+
+                        if (recovered) {
+                            console.warn(`[/book] Timed-out attempt had in fact succeeded — adopting order ${recovered.id} (${recovered.booking_reference}) instead of reporting a false failure`);
+                            return {
+                                isPriceChangedError: false,
+                                isOfferUnavailable: false,
+                                res: new Response(null, { status: 200 }),
+                                data: { data: recovered },
+                                finalTotal: currentTotal,
+                                finalCurrency: currentCurrency,
+                            };
+                        }
+
+                        console.error(`[/book] No matching order found at Duffel for the timed-out attempt on offer ${offerId} — treating as a genuine failure`);
                         // Return a synthetic 504 response so the caller can map it to a supplier outage
                         const syntheticRes = new Response(JSON.stringify({ errors: [{ code: 'timeout', message: 'Duffel order creation timed out' }] }), { status: 504 });
                         return { isPriceChangedError: false, isOfferUnavailable: false, res: syntheticRes, data: { errors: [{ code: 'timeout', message: 'Airline booking system timed out. Please try again.' }] }, finalTotal: currentTotal, finalCurrency: currentCurrency };
@@ -658,7 +857,7 @@ export async function POST(req: NextRequest) {
                         // Per Duffel: retry after 4xx requires a fresh idempotency key
                         const retryKey = crypto.randomUUID();
                         const retryAbort = new AbortController();
-                        const retryTimeout = setTimeout(() => retryAbort.abort(), 12000);
+                        const retryTimeout = setTimeout(() => retryAbort.abort(), ORDER_RETRY_TIMEOUT_MS);
                         try {
                             res = await fetch('https://api.duffel.com/air/orders', {
                                 method: 'POST',
@@ -744,9 +943,8 @@ export async function POST(req: NextRequest) {
 
                     if (slices.length === 0) throw new Error('Cannot rebuild offer_request: no valid slices found in rawOffer');
 
-                    const cabinClass: string = rawOffer.cabin_class
-                        ?? rawOffer.slices?.[0]?.segments?.[0]?.passengers?.[0]?.cabin_class_marketing_name?.toLowerCase()
-                        ?? 'economy';
+                    // Read the enum, never the marketing name (see cabinClassFromRawOffer).
+                    const cabinClass: string = cabinClassFromRawOffer(rawOffer);
 
                     console.warn(`[/book] Creating offer_request: slices=${JSON.stringify(slices)} pax=${JSON.stringify(paxTypes)} cabin=${cabinClass}`);
                     const orRes = await fetch('https://api.duffel.com/air/offer_requests?return_offers=true', {

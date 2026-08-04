@@ -369,7 +369,7 @@
         "allDealsCount": "共 {count} 个特惠",
         "collapse": "收起 ↑",
         "headerDefault": "独家特惠",
-        "headerPersonalized": "从 {city} 出发的航班特惠",
+        "headerPersonalized": "从 <highlight>{city}</highlight> 出发的航班特惠",
         "oneWay": "单程",
         "popularRoute": "热门路线",
         "roundTrip": "往返",
@@ -911,7 +911,7 @@
         "fromPrice": "{price} 起",
         "guestFavorite": "房客最爱",
         "headerDefault": "热门酒店特惠",
-        "headerPersonalized": "在 {country} 的酒店特惠",
+        "headerPersonalized": "在 <highlight>{country}</highlight> 的酒店特惠",
         "mapSearch": {
             "placeholder": "在地图上搜索位置..."
         },

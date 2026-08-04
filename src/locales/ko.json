@@ -479,7 +479,7 @@
         "allDealsCount": "전체 {count}개 특가",
         "collapse": "접기 ↑",
         "headerDefault": "독점 특가 및 혜택",
-        "headerPersonalized": "{city} 출발 항공권 특가",
+        "headerPersonalized": "<highlight>{city}</highlight> 출발 항공권 특가",
         "oneWay": "편도",
         "popularRoute": "인기 노선",
         "roundTrip": "왕복",
@@ -1019,7 +1019,7 @@
         "fromPrice": "{price}부터",
         "guestFavorite": "게스트 최애",
         "headerDefault": "인기 호텔 특가",
-        "headerPersonalized": "{country} 호텔 특가",
+        "headerPersonalized": "<highlight>{country}</highlight> 호텔 특가",
         "mapSearch": {
             "placeholder": "지도에서 위치 검색..."
         },
