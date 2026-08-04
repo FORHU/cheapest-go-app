@@ -252,11 +252,15 @@ export async function confirmAndSaveTgxBooking(
   // Prefer the Stripe PI amount (what the customer actually paid) over TGX's raw
   // booking response price, which is the supplier net and does not include markup.
   // Fall back to the quoted price shown at checkout, then TGX price as last resort.
+  // Also store the Stripe currency (always USD) so the trips page displays correctly —
+  // TGX may return a supplier currency (e.g. 'PHP') that doesn't match the billed amount.
   let totalPrice: number;
+  let storedCurrency = currency;
   if (params.paymentIntentId) {
     try {
       const pi = await stripe.paymentIntents.retrieve(params.paymentIntentId);
       totalPrice = pi.amount / 100;
+      storedCurrency = (pi.currency || 'usd').toUpperCase();
     } catch {
       totalPrice = params.quotedPrice ?? price;
     }
@@ -267,17 +271,21 @@ export async function confirmAndSaveTgxBooking(
   // Prefer the prebook cancel policy (quote-time, shown to user at checkout) over the
   // book response — TGX suppliers sometimes return refundable:false at book time even
   // when the quote showed a free-cancellation window.
+  // normalizeTgxCancelPolicy returns {} when cancelPolicy is absent — treat that as "no policy".
   const prebookPolicy = params.cancellationPolicies;
-  const isRefundable = prebookPolicy
-    ? prebookPolicy.refundableTag === 'RFN'
+  const hasPrebookPolicy = prebookPolicy != null &&
+    typeof prebookPolicy === 'object' &&
+    Object.keys(prebookPolicy).length > 0;
+  const isRefundable = hasPrebookPolicy
+    ? (prebookPolicy.refundableTag === 'RFN' || prebookPolicy.refundableTag === 'REFUNDABLE')
     : booking.cancelPolicy?.refundable === true;
   const policyType = isRefundable ? 'free_cancellation' : 'non_refundable';
-  const storedCancelPolicy = prebookPolicy ?? (booking.cancelPolicy ? {
+  const storedCancelPolicy = hasPrebookPolicy ? prebookPolicy : (booking.cancelPolicy ? {
     refundableTag: isRefundable ? 'RFN' : 'NRFN',
     cancelPolicyInfos: (booking.cancelPolicy.cancelPenalties || []).map((p: any) => ({
       cancelTime: p.deadline,
       amount: p.value ?? 0,
-      currency: p.currency || currency,
+      currency: p.currency || storedCurrency,
       type: p.penaltyType || 'AMOUNT',
     })),
   } : null);
@@ -321,7 +329,7 @@ export async function confirmAndSaveTgxBooking(
         ${bookingId}, ${user.id}, ${params.propertyName}, ${params.propertyImage ?? null}, ${params.roomName},
         ${params.checkIn}::date, ${params.checkOut}::date,
         ${params.adults}, ${params.children ?? 0},
-        ${totalPrice}, ${currency},
+        ${totalPrice}, ${storedCurrency},
         ${params.holder.firstName}, ${params.holder.lastName}, ${params.holder.email},
         ${bookingStatus}, ${params.specialRequests ?? null}, ${params.voucherCode ?? null}, ${params.discountAmount ?? 0},
         ${policyType}, ${storedCancelPolicy ? JSON.stringify(storedCancelPolicy) : null}::jsonb,
@@ -414,7 +422,7 @@ export async function confirmAndSaveTgxBooking(
           ${bookingId}, ${user.id}, ${params.propertyName}, ${params.propertyImage ?? null}, ${params.roomName},
           ${params.checkIn}::date, ${params.checkOut}::date,
           ${params.adults}, ${params.children ?? 0},
-          ${totalPrice}, ${currency},
+          ${totalPrice}, ${storedCurrency},
           ${params.holder.firstName}, ${params.holder.lastName}, ${params.holder.email},
           ${bookingStatus}, ${emergencyNote}, ${params.voucherCode ?? null}, ${params.discountAmount ?? 0},
           ${policyType}, ${storedCancelPolicy ? JSON.stringify(storedCancelPolicy) : null}::jsonb,
@@ -426,7 +434,7 @@ export async function confirmAndSaveTgxBooking(
       console.warn('[confirmAndSaveTgxBooking] Emergency INSERT succeeded for', bookingId);
       return {
         success: true,
-        data: { bookingId, status: bookingStatus, policyType, policySummary: isRefundable ? 'Refundable' : 'Non-refundable', totalPrice, currency },
+        data: { bookingId, status: bookingStatus, policyType, policySummary: isRefundable ? 'Refundable' : 'Non-refundable', totalPrice, currency: storedCurrency },
       };
     } catch (emergencyErr) {
       console.error('CRITICAL: Emergency INSERT also failed for', bookingId, ':', emergencyErr);
@@ -434,7 +442,7 @@ export async function confirmAndSaveTgxBooking(
     return {
       success: false,
       providerConfirmed: true,
-      data: { bookingId, status: bookingStatus, policyType, policySummary: isRefundable ? 'Refundable' : 'Non-refundable', totalPrice, currency },
+      data: { bookingId, status: bookingStatus, policyType, policySummary: isRefundable ? 'Refundable' : 'Non-refundable', totalPrice, currency: storedCurrency },
       error: 'Booking confirmed but failed to save. Contact support with booking ID: ' + bookingId,
     };
   }

@@ -145,6 +145,7 @@ export interface BookingRecord {
   holder_email: string;
   status: 'pending' | 'confirmed' | 'completed' | 'cancelled' | 'cancelled_refunded' | 'cancelled_refund_failed';
   special_requests?: string;
+  policy_type?: 'free_cancellation' | 'non_refundable' | 'partial_refund' | 'tiered';
   created_at: string;
   updated_at: string;
   cancellation_policy?: CancellationPolicy;
