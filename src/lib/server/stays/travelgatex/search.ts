@@ -512,6 +512,429 @@ export async function updateEtgContentInDb(etgMap: Map<string, EtgHotelContent>)
 }
 
 
+<<<<<<< HEAD
+=======
+const COUNTRY_NAME_TO_ISO: Record<string, string> = {
+    'indonesia': 'ID', 'france': 'FR', 'italy': 'IT', 'spain': 'ES', 'germany': 'DE',
+    'japan': 'JP', 'thailand': 'TH', 'greece': 'GR', 'united states': 'US', 'usa': 'US',
+    'australia': 'AU', 'philippines': 'PH', 'south korea': 'KR', 'korea': 'KR',
+    'vietnam': 'VN', 'cambodia': 'KH', 'singapore': 'SG', 'malaysia': 'MY',
+    'india': 'IN', 'china': 'CN', 'hong kong': 'HK', 'taiwan': 'TW',
+    'peru': 'PE', 'mexico': 'MX', 'brazil': 'BR', 'argentina': 'AR',
+    'egypt': 'EG', 'tanzania': 'TZ', 'south africa': 'ZA', 'kenya': 'KE',
+    'iceland': 'IS', 'maldives': 'MV', 'uae': 'AE', 'united arab emirates': 'AE',
+    'turkey': 'TR', 'morocco': 'MA', 'jordan': 'JO', 'new zealand': 'NZ', 'canada': 'CA',
+};
+
+function resolveIsoCodeEtg(raw?: string): string | null {
+    if (!raw) return null;
+    if (/^[A-Za-z]{2}$/.test(raw)) return raw.toUpperCase();
+    return COUNTRY_NAME_TO_ISO[raw.toLowerCase()] ?? null;
+}
+
+function getEtgToken(): string {
+    const keyId  = process.env.ETG_KEY_ID  ?? '';
+    const apiKey = process.env.ETG_API_KEY ?? '';
+    return Buffer.from(`${keyId}:${apiKey}`).toString('base64');
+}
+
+// A city and the area around it can share a name ("Cebu" the city vs Cebu the
+// province), so region picking is type-driven. Kept as an allow-list so airports,
+// continents and seas are never picked. Exact ETG multicomplete `type` strings
+// (verified against live responses — note the spaces/hyphens, e.g. Palawan comes
+// back as "Multi-City (Vicinity)").
+const AREA_TYPES = new Set([
+    'Province (State)',
+    'Region',
+    'Multi-City (Vicinity)',
+    'Multi-Region (within a country)',
+]);
+const isCity    = (r: any) => r?.type === 'City';
+const isArea    = (r: any) => AREA_TYPES.has(r?.type);
+const isCountry = (r: any) => r?.type === 'Country';
+
+/** Region types each rung accepts, most-preferred first.
+ *  - city resolves a city first so existing city searches never regress, then falls
+ *    back to an area so "Palawan"-style queries still resolve (ADR-0004).
+ *  - country falls back to an area because ETG types some sovereign states that way
+ *    (Cyprus → "Province (State)"); without that step the only country-typed region
+ *    on the island, "Northern Cyprus", would hijack the whole search.
+ *  district/poi never reach here (they resolve via serp/geo), but are mapped so the
+ *  table stays total over the ladder. */
+const TYPE_PRIORITY: Record<DestinationRung, Array<(r: any) => boolean>> = {
+    country:  [isCountry, isArea],
+    province: [isArea, isCity],
+    city:     [isCity, isArea],
+    district: [isCity, isArea],
+    poi:      [isCity, isArea],
+};
+
+/** First region matching an accepted type, preferring in-country hits. Types are tried
+ *  in priority order, so a name match on a better type always beats a worse one. */
+function findBestMatch(
+    regions: any[],
+    typeChecks: Array<(r: any) => boolean>,
+    nameMatches: (r: any) => boolean,
+    inCountry: (r: any) => boolean,
+): any {
+    for (const isType of typeChecks) {
+        const match =
+            regions.find((r: any) => isType(r) && nameMatches(r) && inCountry(r)) ??
+            regions.find((r: any) => isType(r) && nameMatches(r));
+        if (match) return match;
+    }
+    return undefined;
+}
+
+/** Resolve a place name to an ETG region_id via the multicomplete endpoint.
+ *  `rung` widens what region type is acceptable: 'country' allows a whole-country
+ *  region, 'province' prefers an area, everything else prefers a city. */
+async function getEtgRegionId(cityName: string, countryCode?: string, rung?: DestinationRung): Promise<number | null> {
+    try {
+        const token = getEtgToken();
+        const query = cityName.split(',')[0].trim();
+        const abort = new AbortController();
+        const t = setTimeout(() => abort.abort(), 5_000);
+        const res = await fetch('https://api.worldota.net/api/b2b/v3/search/multicomplete/', {
+            method: 'POST',
+            headers: { 'Authorization': `Basic ${token}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ query, language: 'en' }),
+            signal: abort.signal,
+        });
+        clearTimeout(t);
+        if (!res.ok) return null;
+        const data = await res.json();
+        const regions: any[] = data?.data?.regions ?? [];
+        const iso = resolveIsoCodeEtg(countryCode);
+        const q = query.toLowerCase();
+        const nameMatches = (r: any) => typeof r?.name === 'string' && r.name.toLowerCase().startsWith(q);
+        const inCountry = (r: any) => !iso || r.country_code === iso;
+
+        const pick = findBestMatch(regions, TYPE_PRIORITY[rung ?? 'city'], nameMatches, inCountry);
+
+        if (!pick) {
+            // No city or known area type matched. Surface the types ETG actually returned
+            // so an unmapped area label is a one-line allow-list fix, not a silent miss.
+            const seen = regions.filter(nameMatches).map((r: any) => r.type);
+            console.warn(`[tgx-search] ETG multicomplete: no city/area match for "${query}" — types seen: ${seen.join(', ') || '(none)'}`);
+        }
+        return pick?.id ?? null;
+    } catch {
+        return null;
+    }
+}
+
+/** Fetch full hotel details from ETG B2B for a single hotel id slug. */
+async function fetchEtgHotelInfo(id: string): Promise<any | null> {
+    try {
+        const token = getEtgToken();
+        const abort = new AbortController();
+        const t = setTimeout(() => abort.abort(), 4_000);
+        const res = await fetch('https://api.worldota.net/api/b2b/v3/hotel/info/', {
+            method: 'POST',
+            headers: { 'Authorization': `Basic ${token}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id, language: 'en' }),
+            signal: abort.signal,
+        });
+        clearTimeout(t);
+        if (!res.ok) return null;
+        const json = await res.json();
+        return json?.data ?? null;
+    } catch {
+        return null;
+    }
+}
+
+/** Background: seed hotel_content with ETG hotel data for a city (fire-and-forget). */
+async function seedEtgHotelContent(hotels: any[], cityName: string, countryCode?: string): Promise<void> {
+    const sql = getSqlAdmin();
+    const PARALLEL = 10;
+    const MAX = Math.min(150, hotels.length);
+    let saved = 0;
+    for (let i = 0; i < MAX; i += PARALLEL) {
+        const batch = hotels.slice(i, i + PARALLEL);
+        const infos = await Promise.allSettled(batch.map((h: any) => fetchEtgHotelInfo(h.id)));
+        for (let j = 0; j < batch.length; j++) {
+            const r = infos[j];
+            if (r.status !== 'fulfilled' || !r.value) continue;
+            const info = r.value;
+            const images: string[] = (info.images ?? [])
+                .map((url: string) => (typeof url === 'string' ? url.replace('{size}', '640x400') : ''))
+                .filter(Boolean)
+                .slice(0, 10);
+            // Store the hotel's OWN city (from ETG), not the search label — a district
+            // or landmark search must not write "Gangnam"/"Gangnam Station" into the
+            // city-keyed catalog, or future city searches mis-key. See ADR-0006.
+            const realCity: string = info.region?.name ?? cityName;
+            const realCountry: string | null = info.region?.country_code ?? countryCode ?? null;
+            try {
+                await sql`
+                    INSERT INTO hotel_content
+                        (hotel_id, name, images, lat, lng, address, city, country,
+                         description, star_rating, amenities, content_source, fetched_at)
+                    VALUES (
+                        ${info.id}, ${info.name ?? null}, ${sql.array(images)},
+                        ${info.latitude ?? 0}, ${info.longitude ?? 0},
+                        ${info.address ?? null}, ${realCity}, ${realCountry},
+                        ${null}, ${info.star_rating ?? 0}, ${'[]'}::jsonb,
+                        'etg', now()
+                    )
+                    ON CONFLICT (hotel_id) DO UPDATE SET
+                        name        = CASE WHEN hotel_content.name IS NULL OR hotel_content.name = hotel_content.hotel_id
+                                          THEN EXCLUDED.name ELSE hotel_content.name END,
+                        images      = CASE WHEN array_length(hotel_content.images, 1) > 0
+                                     THEN hotel_content.images ELSE EXCLUDED.images END,
+                        lat         = CASE WHEN hotel_content.lat  != 0 THEN hotel_content.lat  ELSE EXCLUDED.lat  END,
+                        lng         = CASE WHEN hotel_content.lng  != 0 THEN hotel_content.lng  ELSE EXCLUDED.lng  END,
+                        address     = COALESCE(hotel_content.address, EXCLUDED.address),
+                        city        = COALESCE(hotel_content.city, EXCLUDED.city),
+                        star_rating = CASE WHEN hotel_content.star_rating != 0
+                                     THEN hotel_content.star_rating ELSE EXCLUDED.star_rating END,
+                        content_source = COALESCE(hotel_content.content_source, 'etg'),
+                        fetched_at  = now()
+                `;
+                saved++;
+            } catch { /* skip */ }
+        }
+        if (i + PARALLEL < MAX) await new Promise(r => setTimeout(r, 3_000));
+    }
+    console.log(`[tgx-search] ETG seeded ${saved}/${MAX} hotels for "${cityName}" into hotel_content`);
+}
+
+/** Turn a raw ETG SERP hotel list into our result shape (shared by region + geo search).
+ *  Handles cheapest-first sort, hotel_content enrichment, missing-name backfill, and
+ *  fire-and-forget seeding. `label` is the display city used on cards. */
+async function buildEtgResults(
+    hotels: any[],
+    label: string,
+    params: TgxSearchParams,
+): Promise<{ data: any[]; allMappable: any[]; totalCount: number }> {
+    const empty = { data: [], allMappable: [], totalCount: 0 };
+    if (!hotels.length) return empty;
+
+    // Sort cheapest-first
+    hotels.sort((a: any, b: any) => {
+        const pa = parseFloat(a.rates?.[0]?.payment_options?.payment_types?.[0]?.show_amount ?? '999999');
+        const pb = parseFloat(b.rates?.[0]?.payment_options?.payment_types?.[0]?.show_amount ?? '999999');
+        return pa - pb;
+    });
+
+    const allIds = hotels.map((h: any) => h.id as string);
+
+    // Use any pre-existing hotel_content data
+    const existingContent = await fetchHotelContent(allIds);
+    const needInfo = hotels.filter((h: any) => !existingContent.get(h.id)?.name);
+
+    // Parallel info fetch for hotels missing names (cap at 15 to stay within rate limit)
+    const toFetch = needInfo.slice(0, 15);
+    const infoResults = toFetch.length > 0
+        ? await Promise.allSettled(toFetch.map((h: any) => fetchEtgHotelInfo(h.id as string)))
+        : [];
+
+    const infoMap = new Map<string, any>();
+    for (let i = 0; i < toFetch.length; i++) {
+        const r = infoResults[i];
+        if (r.status === 'fulfilled' && r.value) infoMap.set(toFetch[i].id as string, r.value);
+    }
+
+    // Background-seed hotel_content for all results (Phase 1 catalog for future searches)
+    seedEtgHotelContent(hotels, label, params.countryCode).catch(() => {});
+
+    const results = hotels.map((h: any) => {
+        const rate = h.rates?.[0];
+        const pt   = rate?.payment_options?.payment_types?.[0];
+        const price    = parseFloat(pt?.show_amount    ?? '0');
+        const currency = (pt?.show_currency_code ?? 'USD') as string;
+
+        const dbContent = existingContent.get(h.id as string);
+        const etgInfo   = infoMap.get(h.id as string);
+        const src       = (dbContent?.name ? dbContent : null) ?? etgInfo;
+
+        const rawImages: string[] = src?.images ?? [];
+        const images = rawImages
+            .map((url: string) => (typeof url === 'string' ? url.replace('{size}', '640x400') : ''))
+            .filter(Boolean)
+            .slice(0, 10);
+
+        const lat = Number(src?.latitude ?? src?.lat ?? 0);
+        const lng = Number(src?.longitude ?? src?.lng ?? 0);
+
+        return {
+            hotelId:      h.id,
+            id:           h.id,
+            name:         dbContent?.name ?? etgInfo?.name ?? h.id,
+            price,
+            currency,
+            offerId:      `ETG:${h.id}:${rate?.match_hash ?? ''}`,
+            refundableTag: 'UNKNOWN',
+            starRating:   Number(src?.star_rating ?? 0),
+            images,
+            image:        images[0] ?? '',
+            lat,
+            lng,
+            coordinates:  { lat, lng },
+            address:      src?.address ?? '',
+            location:     src?.address ?? '',
+            city:         label,
+            country:      params.countryCode ?? '',
+            description:  '',
+            amenities:    [],
+            reviewRating: Number(dbContent?.review_rating ?? 0),
+            rating:       Number(dbContent?.review_rating ?? 0),
+            reviews:      Number(dbContent?.review_count ?? 0),
+            reviewCount:  Number(dbContent?.review_count ?? 0),
+            boardCode:    rate?.meal ?? 'RO',
+            roomTypes:    [],
+            provider:     'etg',
+        };
+    });
+
+    const allMappable = results.filter(h => h.lat && h.lng);
+    return { data: results, allMappable, totalCount: results.length };
+}
+
+/** Search ETG B2B by region (area rungs: country / province / city fallback).
+ *  `rung` widens which multicomplete region type is accepted. */
+async function searchEtgCity(
+    cityName: string,
+    params: TgxSearchParams,
+    rung?: DestinationRung,
+): Promise<{ data: any[]; allMappable: any[]; totalCount: number }> {
+    const empty = { data: [], allMappable: [], totalCount: 0 };
+    try {
+        if (!process.env.ETG_KEY_ID || !process.env.ETG_API_KEY) return empty;
+        const token = getEtgToken();
+
+        const regionId = await getEtgRegionId(cityName, params.countryCode, rung);
+        if (!regionId) {
+            console.warn(`[tgx-search] ETG: no region_id for "${cityName}" (rung: ${rung ?? 'city'})`);
+            return empty;
+        }
+        console.log(`[tgx-search] ETG ${rung ?? 'city'} search: region ${regionId} for "${cityName}" (${params.checkin}→${params.checkout})`);
+
+        const serpAbort = new AbortController();
+        const serpTimeout = setTimeout(() => serpAbort.abort(), 20_000);
+        const serpRes = await fetch('https://api.worldota.net/api/b2b/v3/search/serp/region/', {
+            method: 'POST',
+            headers: { 'Authorization': `Basic ${token}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                region_id: regionId,
+                checkin:   params.checkin,
+                checkout:  params.checkout,
+                guests:    [{ adults: Number(params.adults ?? 2) }],
+                currency:  'USD',
+                language:  'en',
+                residency: 'us',
+            }),
+            signal: serpAbort.signal,
+        });
+        clearTimeout(serpTimeout);
+
+        if (!serpRes.ok) { console.warn(`[tgx-search] ETG SERP ${serpRes.status}`); return empty; }
+
+        const serpData = await serpRes.json();
+        const hotels: any[] = serpData?.data?.hotels ?? [];
+        console.log(`[tgx-search] ETG SERP: ${hotels.length} hotels for "${cityName}"`);
+        return await buildEtgResults(hotels, cityName, params);
+    } catch (e: any) {
+        console.warn('[tgx-search] ETG region search failed:', e.message);
+        return empty;
+    }
+}
+
+// ─── ETG geo (point) search — district / landmark rungs ──────────────────────
+
+/** Metres between two lat/lng points (haversine). */
+function haversineMeters(lat1: number, lng1: number, lat2: number, lng2: number): number {
+    const R = 6_371_000; // Earth radius, metres
+    const toRad = (d: number) => (d * Math.PI) / 180;
+    const dLat = toRad(lat2 - lat1);
+    const dLng = toRad(lng2 - lng1);
+    const a = Math.sin(dLat / 2) ** 2 +
+        Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) ** 2;
+    return 2 * R * Math.asin(Math.min(1, Math.sqrt(a)));
+}
+
+/**
+ * Radius ladder (metres) for a point search. Districts size the first circle from
+ * their Mapbox bbox (covers exactly the district); landmarks/addresses start tight
+ * and auto-widen so a pick never dead-ends, yet "near X" stays near X. See ADR-0006.
+ */
+function pointSearchRadii(params: TgxSearchParams): number[] {
+    const bbox = params.bbox;
+    if (params.rung === 'district' && bbox && bbox.length === 4) {
+        const [minLng, minLat, maxLng, maxLat] = bbox;
+        const centreLat = (minLat + maxLat) / 2;
+        const centreLng = (minLng + maxLng) / 2;
+        // Centre-to-corner distance covers the whole box; cap at 20km, one widen step.
+        const corner = Math.round(haversineMeters(centreLat, centreLng, maxLat, maxLng));
+        const start = Math.min(Math.max(corner, 2_000), 20_000);
+        const wide  = Math.min(Math.round(start * 1.5), 20_000);
+        return start === wide ? [start] : [start, wide];
+    }
+    // Landmark / address (poi): tight start, auto-widen, capped at 10km.
+    return [2_000, 5_000, 10_000];
+}
+
+/** Search ETG B2B by coordinate + radius (point rungs: district / landmark).
+ *  Auto-widens through the radius ladder until hotels are found or the cap is hit. */
+async function searchEtgGeo(
+    lat: number,
+    lng: number,
+    params: TgxSearchParams,
+): Promise<{ data: any[]; allMappable: any[]; totalCount: number }> {
+    const empty = { data: [], allMappable: [], totalCount: 0 };
+    try {
+        if (!process.env.ETG_KEY_ID || !process.env.ETG_API_KEY) return empty;
+        const token = getEtgToken();
+        const label = params.cityName ?? '';
+
+        let hotels: any[] = [];
+        let usedRadius = 0;
+        for (const radius of pointSearchRadii(params)) {
+            const abort = new AbortController();
+            const t = setTimeout(() => abort.abort(), 20_000);
+            let serpRes: Response;
+            try {
+                serpRes = await fetch('https://api.worldota.net/api/b2b/v3/search/serp/geo/', {
+                    method: 'POST',
+                    headers: { 'Authorization': `Basic ${token}`, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        latitude:  lat,
+                        longitude: lng,
+                        radius,                       // metres
+                        checkin:   params.checkin,
+                        checkout:  params.checkout,
+                        guests:    [{ adults: Number(params.adults ?? 2) }],
+                        currency:  'USD',
+                        language:  'en',
+                        residency: 'us',
+                    }),
+                    signal: abort.signal,
+                });
+            } finally {
+                clearTimeout(t);
+            }
+            if (!serpRes.ok) { console.warn(`[tgx-search] ETG geo ${serpRes.status} @ ${radius}m`); continue; }
+            const serpData = await serpRes.json();
+            hotels = serpData?.data?.hotels ?? [];
+            usedRadius = radius;
+            if (hotels.length > 0) break;
+            console.log(`[tgx-search] ETG geo: 0 hotels @ ${radius}m near (${lat},${lng}) — widening`);
+        }
+
+        if (!hotels.length) {
+            console.warn(`[tgx-search] ETG geo: no hotels near (${lat},${lng}) for "${label}"`);
+            return empty;
+        }
+        console.log(`[tgx-search] ETG geo: ${hotels.length} hotels @ ${usedRadius}m near (${lat},${lng}) for "${label}"`);
+        return await buildEtgResults(hotels, label, params);
+    } catch (e: any) {
+        console.warn('[tgx-search] ETG geo search failed:', e.message);
+        return empty;
+    }
+}
+>>>>>>> 750ae7f742816d9b81b37fa2f951d567362d403d
 
 // ─── Hotel search cache ───────────────────────────────────────────────────────
 

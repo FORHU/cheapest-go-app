@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { MINIMUM_ACCOUNT_AGE, isAtLeastAge, isPlausibleBirthDate } from '@/lib/age';
 
 export const emailSchema = z.object({
     email: z.string().min(1, 'Email is required').email('Please enter a valid email address'),
@@ -23,6 +24,16 @@ export const registerSchema = z.object({
     lastName: z.string().min(1, 'Last name is required'),
     email: z.string().email('Invalid email address'),
     password: passwordSchema.shape.password,
+    // Mirrors the server-side gate in /api/auth/signup so the form can report it
+    // inline. The API remains the authority — this only saves a round trip.
+    birthDate: z
+        .string()
+        .regex(/^\d{4}-\d{2}-\d{2}$/, 'Date of birth is required')
+        .refine(isPlausibleBirthDate, 'Please enter a valid date of birth')
+        .refine(
+            v => isAtLeastAge(v),
+            `You must be at least ${MINIMUM_ACCOUNT_AGE} years old to create an account`,
+        ),
 });
 
 export const profileSchema = z.object({

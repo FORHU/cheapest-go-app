@@ -84,37 +84,42 @@ const CurrencySelector: React.FC<CurrencySelectorProps> = ({
         );
     }
 
+    // NOTE: the trigger below is deliberately structured identically to the language
+    // selector in landing/layout/Header.tsx — same wrapper-less button, same fixed
+    // h-6 box, same leading-none — so the two sit on exactly the same baseline in
+    // the header. Keep them in sync if either changes.
     return (
-        <div className={cn("relative", className)}>
-            <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                    <button
-                        className="flex items-center gap-1 px-1 py-1 text-xs font-medium text-slate-700 dark:text-slate-300 hover:bg-black/5 dark:hover:bg-white/5 rounded-lg transition-colors group"
+        <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+                <button
+                    className={cn(
+                        "flex items-center gap-1 h-6 px-1 text-xs font-medium leading-none text-slate-700 dark:text-slate-300 hover:bg-black/5 dark:hover:bg-white/5 rounded-lg transition-colors group cursor-pointer",
+                        className
+                    )}
+                >
+                    <span className="text-[9px] leading-none text-slate-400 font-bold uppercase">{userCountry}</span>
+                    <span className="text-[11px] leading-none font-semibold">{userCurrency}</span>
+                    <ChevronDown className="w-3 h-3 shrink-0 text-slate-400 transition-transform group-data-[state=open]:rotate-180" />
+                </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align={align === 'right' ? 'end' : 'start'} className="rounded-xl min-w-[110px] z-[1001]">
+                {CURRENCIES.map((c) => (
+                    <DropdownMenuItem
+                        key={c.code}
+                        onClick={() => handleCurrencySelect(c.code, c.country)}
+                        className={cn(
+                            "flex items-center gap-2 px-3 py-1.5 text-[11px] font-bold transition-colors cursor-pointer",
+                            userCurrency === c.code
+                                ? 'bg-blue-50 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400'
+                                : 'text-slate-700 dark:text-slate-300'
+                        )}
                     >
-                        <span className="text-[9px] text-slate-400 font-bold uppercase">{userCountry}</span>
-                        <span className="text-[11px] font-semibold">{userCurrency}</span>
-                        <ChevronDown className="w-3 h-3 text-slate-400 transition-transform group-data-[state=open]:rotate-180" />
-                    </button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align={align === 'right' ? 'end' : 'start'} className="rounded-xl min-w-[110px] z-[1001]">
-                    {CURRENCIES.map((c) => (
-                        <DropdownMenuItem
-                            key={c.code}
-                            onClick={() => handleCurrencySelect(c.code, c.country)}
-                            className={cn(
-                                "flex items-center gap-2 px-3 py-1.5 text-[11px] font-bold transition-colors cursor-pointer",
-                                userCurrency === c.code
-                                    ? 'bg-blue-50 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400'
-                                    : 'text-slate-700 dark:text-slate-300'
-                            )}
-                        >
-                            <span className="text-[9px] text-slate-400 font-bold w-4">{c.country}</span>
-                            <span>{c.code}</span>
-                        </DropdownMenuItem>
-                    ))}
-                </DropdownMenuContent>
-            </DropdownMenu>
-        </div>
+                        <span className="text-[9px] text-slate-400 font-bold w-4">{c.country}</span>
+                        <span>{c.code}</span>
+                    </DropdownMenuItem>
+                ))}
+            </DropdownMenuContent>
+        </DropdownMenu>
     );
 };
 

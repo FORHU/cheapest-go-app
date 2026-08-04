@@ -327,7 +327,10 @@ const DealsSection: React.FC<DealsSectionProps> = ({ deals }) => {
             if (!showAll) setTimeout(() => gridRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
           }}
           title={isPersonalized
-            ? t.rich('deals.headerPersonalized', { city: () => <span className="text-blue-600 dark:text-blue-400">{userCity ?? userOrigin}</span> })
+            ? t.rich('deals.headerPersonalized', {
+                city: userCity ?? userOrigin!,
+                highlight: (chunks) => <span className="text-blue-600 dark:text-blue-400">{chunks}</span>,
+              })
             : t('deals.headerDefault')}
           subtitle={isPersonalized
             ? t('deals.subtitlePersonalized', { city: userCity ?? userOrigin })

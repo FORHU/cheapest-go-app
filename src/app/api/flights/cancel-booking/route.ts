@@ -676,14 +676,62 @@ async function cancelDuffel(booking: any, preQuotedCancellationId?: string): Pro
 
         // Step 2: Confirm the cancellation — this is what actually cancels the order.
         // Use the confirmed response values (not preview) as the authoritative refund data.
-        const confirmRes = await fetch(`https://api.duffel.com/air/order_cancellations/${cancellationId}/actions/confirm`, {
-            method: 'POST',
-            headers: DUFFEL_HEADERS,
-            signal: controller.signal,
-        });
+        const confirmCancellation = (id: string) => fetch(
+            `https://api.duffel.com/air/order_cancellations/${id}/actions/confirm`,
+            { method: 'POST', headers: DUFFEL_HEADERS, signal: controller.signal },
+        );
+
+        let confirmRes = await confirmCancellation(cancellationId);
+        let confirmData = await confirmRes.json();
+
+        // Creating an order_cancellation supersedes every earlier one for that
+        // order, so the id the modal is holding goes stale the moment anything
+        // re-quotes — a reopened dialog, a retry, or React StrictMode's double
+        // effect racing two creations. Duffel then rejects the confirm with
+        // "The order cancellation is not the latest for this order", which the
+        // traveller sees as an unexplained refusal to cancel.
+        //
+        // Re-quote and confirm the current one instead, but only if the refund
+        // still matches what they agreed to — never silently cancel for less.
+        if (!confirmRes.ok && /not the latest for this order/i.test(confirmData?.errors?.[0]?.message ?? '')) {
+            console.warn(`[cancel-booking] Cancellation ${cancellationId} superseded — re-quoting order ${orderId}`);
+
+            const quotedRefund = await fetch(`https://api.duffel.com/air/order_cancellations/${cancellationId}`, {
+                headers: DUFFEL_HEADERS, signal: controller.signal,
+            })
+                .then(r => r.ok ? r.json() : null)
+                .then(j => (j?.data?.refund_amount != null ? Number(j.data.refund_amount) : null))
+                .catch(() => null);
+
+            const freshRes = await fetch('https://api.duffel.com/air/order_cancellations', {
+                method: 'POST',
+                headers: DUFFEL_HEADERS,
+                body: JSON.stringify({ data: { order_id: orderId } }),
+                signal: controller.signal,
+            });
+            const freshData = await freshRes.json();
+            if (!freshRes.ok || !freshData?.data?.id) {
+                clearTimeout(timeoutId);
+                return { success: false, error: freshData?.errors?.[0]?.message ?? 'Could not refresh the cancellation quote' };
+            }
+
+            const freshRefund = Number(freshData.data.refund_amount) || 0;
+            if (quotedRefund != null && Math.abs(freshRefund - quotedRefund) > 0.005) {
+                clearTimeout(timeoutId);
+                console.warn(`[cancel-booking] Refund moved ${quotedRefund} → ${freshRefund} while re-quoting; not confirming`);
+                return {
+                    success: false,
+                    error: `The refund for this booking changed from ${quotedRefund} to ${freshRefund} ${freshData.data.refund_currency ?? ''}. Please reopen the cancellation to review the new amount.`.trim(),
+                };
+            }
+
+            cancellationId = freshData.data.id;
+            confirmRes = await confirmCancellation(cancellationId);
+            confirmData = await confirmRes.json();
+        }
+
         clearTimeout(timeoutId);
 
-        const confirmData = await confirmRes.json();
         if (!confirmRes.ok) {
             return { success: false, error: confirmData?.errors?.[0]?.message ?? 'Duffel cancellation confirm failed' };
         }

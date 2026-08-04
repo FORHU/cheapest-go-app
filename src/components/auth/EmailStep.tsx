@@ -11,6 +11,7 @@ import SocialLoginButtons from './SocialLoginButtons';
 import { Input, Button } from '@/components/ui';
 import { PasswordRequirements } from './PasswordRequirements';
 import { emailSchema, registerSchema } from '@/lib/schemas/auth';
+import { earliestPlausibleBirthDate, latestBirthDateForAge } from '@/lib/age';
 
 const EmailStep: React.FC = () => {
     const t = useTranslations('auth');
@@ -19,6 +20,9 @@ const EmailStep: React.FC = () => {
         localEmail, firstName, lastName, password, errors, showSignupForm,
         setField, setShowSignupForm, setErrors, clearErrors,
     } = useAuthFormStore();
+    // This inline signup path creates an account just like RegisterStep, so it
+    // carries the same 18+ requirement.
+    const [birthDate, setBirthDate] = React.useState('');
 
     const handleContinue = (e: React.FormEvent) => {
         e.preventDefault();
@@ -43,7 +47,7 @@ const EmailStep: React.FC = () => {
         e.preventDefault();
         clearErrors();
 
-        const formData = { email: localEmail, firstName, lastName, password };
+        const formData = { email: localEmail, firstName, lastName, password, birthDate };
         const result = registerSchema.safeParse(formData);
 
         if (!result.success) {
@@ -53,13 +57,14 @@ const EmailStep: React.FC = () => {
                 firstName: fieldErrors.firstName?.[0] || '',
                 lastName: fieldErrors.lastName?.[0] || '',
                 password: fieldErrors.password?.[0] || '',
+                birthDate: fieldErrors.birthDate?.[0] || '',
             });
             return;
         }
 
         try {
             setEmail(localEmail);
-            await register({ email: localEmail, password, firstName, lastName });
+            await register({ email: localEmail, password, firstName, lastName, birthDate });
             toast.success(t('messages.accountCreated'));
         } catch (error: any) {
             if (error?.code === 'over_email_send_rate_limit' || error?.message?.includes('rate limit')) {
@@ -155,6 +160,23 @@ const EmailStep: React.FC = () => {
                                 error={errors.lastName}
                                 disabled={isLoading}
                             />
+                        </div>
+
+                        <div>
+                            <Input
+                                id="signupBirthDate"
+                                type="date"
+                                label={t('labels.birthDate')}
+                                value={birthDate}
+                                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setBirthDate(e.target.value)}
+                                min={earliestPlausibleBirthDate()}
+                                max={latestBirthDateForAge()}
+                                error={errors.birthDate}
+                                disabled={isLoading}
+                            />
+                            <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                                {t('labels.birthDateHint')}
+                            </p>
                         </div>
 
                         <div>

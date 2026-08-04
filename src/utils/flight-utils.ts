@@ -105,12 +105,17 @@ export function normalizedToFlightOffer(nf: any, tripType?: FlightOffer['tripTyp
         departure: {
             airport: seg.origin ?? nf.origin ?? '',
             terminal: seg.terminal,
-            time: seg.departureTime ?? nf.departure_time ?? '',
+            // Nested shape first: parseDuffelOffer emits departure.time / arrival.time,
+            // while Mystifly and the synthetic fallback use the flat departureTime.
+            // Reading only the flat form left Duffel segments undefined, so every leg
+            // silently inherited nf.departure_time — the OFFER's overall departure — and
+            // a return leg ended up stamped with the outbound's times.
+            time: seg.departure?.time ?? seg.departureTime ?? nf.departure_time ?? '',
         },
         arrival: {
             airport: seg.destination ?? nf.destination ?? '',
             terminal: seg.arrivalTerminal,
-            time: seg.arrivalTime ?? nf.arrival_time ?? '',
+            time: seg.arrival?.time ?? seg.arrivalTime ?? nf.arrival_time ?? '',
         },
         duration: seg.duration ?? nf.duration ?? 0,
         stops: 0,

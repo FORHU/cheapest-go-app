@@ -9,8 +9,45 @@ import PriceCalendar from "@/components/flights/PriceCalendar";
 import PriceAlertButton from "@/components/flights/PriceAlertButton";
 import { Hotel, Sparkles } from "lucide-react";
 import type { CabinClass } from "@/types/flights";
+import { searchAirports } from "@/lib/airports";
 
 export const dynamic = 'force-dynamic';
+
+/**
+ * Resolve whatever arrived in the URL to an IATA code.
+ *
+ * Deep links, shared URLs and hand-typed searches carry city names ("Cebu")
+ * rather than codes. <SearchFetcher> refuses to call the API without a code, so
+ * an unresolved name shows "Refine your search" and never reaches a provider.
+ * Resolving here — a Server Component — lets us use the full airport dataset
+ * without shipping its ~23KB to the browser.
+ *
+ * Returns '' when nothing matches confidently, which the caller treats as a
+ * missing parameter.
+ */
+function resolveToIata(raw: string): string {
+    const input = raw.trim();
+    if (!input) return '';
+
+    // Already a code.
+    if (/^[A-Za-z]{3}$/.test(input)) return input.toUpperCase();
+
+    // The airport picker's own label format: "Cebu (CEB)".
+    const tagged = input.match(/\(([A-Za-z]{3})\)\s*$/);
+    if (tagged) return tagged[1].toUpperCase();
+
+    // "Manila, Philippines" → try the full string first, then the city part.
+    const candidates = [input.toLowerCase(), input.split(',')[0].trim().toLowerCase()];
+    for (const candidate of candidates) {
+        if (!candidate) continue;
+        const [best] = searchAirports(candidate, 1);
+        // searchAirports also matches airport names and countries, which is far
+        // too loose to resolve silently — require the city itself to match.
+        if (best && best.city.toLowerCase().startsWith(candidate)) return best.iata;
+    }
+
+    return '';
+}
 
 export async function generateMetadata({
     searchParams,
@@ -55,8 +92,13 @@ export default async function SearchPage({
     // Accept both URL formats:
     //   Simple form:   ?origin=BKK&destination=SIN&departure=2026-04-10
     //   Landing search: ?origin0=BKK&dest0=SIN&date0=2026-04-10T...
-    const origin = (sp.origin as string) || (sp.origin0 as string) || "";
-    const destination = (sp.destination as string) || (sp.dest0 as string) || "";
+    // Fall back to the raw value when nothing resolves: <SearchFetcher> then
+    // renders its "Refine your search" prompt naming what the user typed,
+    // rather than the blunt "Invalid Search Parameters" guard below.
+    const rawOrigin = (sp.origin as string) || (sp.origin0 as string) || "";
+    const rawDestination = (sp.destination as string) || (sp.dest0 as string) || "";
+    const origin = resolveToIata(rawOrigin) || rawOrigin;
+    const destination = resolveToIata(rawDestination) || rawDestination;
 
     const DATE_FORMAT = /^\d{4}-\d{2}-\d{2}$/;
 

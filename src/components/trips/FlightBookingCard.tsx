@@ -75,19 +75,27 @@ function CancelModal({ booking, onConfirm, onClose, isLoading, error, displayCur
         return () => { document.body.style.overflow = 'unset'; };
     }, []);
 
-    // Fetch live Duffel quote on mount
+    // Fetch live Duffel quote on mount.
+    //
+    // Every call to cancel-quote creates a new order_cancellation at Duffel, and
+    // Duffel accepts a confirm only for the most recent one. A discarded run that
+    // still completes its request therefore invalidates the id this modal is
+    // holding — the traveller then gets "The order cancellation is not the latest
+    // for this order" on confirm. StrictMode double-invokes this effect in dev, so
+    // the request has to be aborted, not merely ignored.
     useEffect(() => {
         if (booking.provider !== 'duffel') return;
-        let cancelled = false;
+        const abort = new AbortController();
         setQuoteLoading(true);
         fetch('/api/flights/cancel-quote', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ bookingId: booking.id }),
+            signal: abort.signal,
         })
             .then(r => r.json())
             .then(data => {
-                if (cancelled) return;
+                if (abort.signal.aborted) return;
                 if (data.success) {
                     setQuoteData({ refundAmount: data.refundAmount, refundCurrency: data.refundCurrency, penaltyAmount: data.penaltyAmount, cancellationId: data.cancellationId });
                 } else if (data.requiresManualCancellation) {
@@ -96,9 +104,9 @@ function CancelModal({ booking, onConfirm, onClose, isLoading, error, displayCur
                     setQuoteError(data.error ?? t('flightBookingCard.cancelModal.noQuote'));
                 }
             })
-            .catch(() => { if (!cancelled) setQuoteError(t('flightBookingCard.cancelModal.networkError')); })
-            .finally(() => { if (!cancelled) setQuoteLoading(false); });
-        return () => { cancelled = true; };
+            .catch((err) => { if (err?.name !== 'AbortError') setQuoteError(t('flightBookingCard.cancelModal.networkError')); })
+            .finally(() => { if (!abort.signal.aborted) setQuoteLoading(false); });
+        return () => { abort.abort(); };
     }, [booking.id, booking.provider]);
 
     const fmtAmount = (amount: number, fromCurrency: string) =>

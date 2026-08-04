@@ -377,7 +377,7 @@
         "allDealsCount": "すべてのオファー（{count}件）",
         "collapse": "折りたたむ ↑",
         "headerDefault": "特別セール＆オファー",
-        "headerPersonalized": "{city} 出発の格安航空券",
+        "headerPersonalized": "<highlight>{city}</highlight> 出発の格安航空券",
         "oneWay": "片道",
         "popularRoute": "人気路線",
         "roundTrip": "往復",
@@ -508,6 +508,23 @@
         "error": {
             "bookingFailed": "予約失敗",
             "bookingFailedDefault": "予約失敗。もう一度お試しください。",
+            "codes": {
+                "balance_insufficient": "航空券の予約が一時的にご利用いただけません。しばらくしてからお試しください。カードへの請求は行われていません。",
+                "booking_failed": "予約を完了できませんでした。もう一度お試しください。",
+                "booking_failed_refunded": "予約を完了できなかったため、お支払いは返金されました。",
+                "booking_pending": "航空会社からの予約確定がまだ届いていません。発券が完了次第メールでお知らせします。",
+                "booking_timeout": "航空会社からの応答に時間がかかっています。しばらくしてからお試しください。",
+                "duplicate_booking": "その出発日にはすでに有効な予約があります。既存の予約をキャンセルするか、別の日付をお選びください。",
+                "flight_unavailable": "この便はご利用いただけなくなりました。もう一度検索してください。",
+                "offer_expired": "この運賃は有効期限が切れました。もう一度検索してください。",
+                "offer_replaced_seats_cleared": "運賃が更新されたため、座席と手荷物の選択がリセットされました。再度お選びください。",
+                "pending": "航空会社からの予約確定がまだ届いていません。発券が完了次第メールでお知らせします。",
+                "phone_number_invalid": "航空会社が連絡先の電話番号を承認しませんでした。国番号が含まれているかご確認ください。",
+                "seats_unavailable": "選択された座席または手荷物はご利用いただけなくなりました。オプションをご確認のうえ、再度お試しください。",
+                "supplier_outage": "航空会社の予約システムが応答していません。数分後にもう一度お試しください。",
+                "server_error": "システムエラーが発生しました。カードへの請求は行われていません。もう一度お試しください。",
+                "unauthenticated": "予約を完了するにはログインしてください。"
+            },
             "defaultMessage": "予約を完了できませんでした。",
             "flightUnavailable": "航空券が利用できません",
             "goBack": "戻る",
@@ -900,7 +917,7 @@
         "fromPrice": "{price}〜",
         "guestFavorite": "ゲストのお気に入り",
         "headerDefault": "人気のホテルセール",
-        "headerPersonalized": "{country} のホテルセール",
+        "headerPersonalized": "<highlight>{country}</highlight> のホテルセール",
         "mapSearch": {
             "placeholder": "地図上の場所を検索..."
         },

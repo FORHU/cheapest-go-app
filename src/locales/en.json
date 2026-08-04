@@ -154,6 +154,8 @@
             "title": "Reset your password"
         },
         "labels": {
+            "birthDate": "Date of birth",
+            "birthDateHint": "You must be at least 18 to create an account.",
             "confirmPassword": "Confirm password",
             "confirmPasswordPlaceholder": "Re-enter your password",
             "email": "Email",
@@ -492,7 +494,7 @@
         "backButton": "Back to Home",
         "collapse": "Collapse ↑",
         "headerDefault": "Exclusive Deals & Offers",
-        "headerPersonalized": "Flight Deals from {city}",
+        "headerPersonalized": "Flight Deals from <highlight>{city}</highlight>",
         "noDealsDescription": "Check back soon for new exclusive travel offers.",
         "noDealsTitle": "No active deals found",
         "oneWay": "One Way",
@@ -641,6 +643,23 @@
         "error": {
             "bookingFailed": "Booking Failed",
             "bookingFailedDefault": "Booking failed. Please try again.",
+            "codes": {
+                "balance_insufficient": "Flight booking is temporarily unavailable while we top up with the airline. Please try again shortly — your card has not been charged.",
+                "booking_failed": "We could not complete this booking. Please try again.",
+                "booking_failed_refunded": "The booking could not be completed and your payment has been refunded.",
+                "booking_pending": "The airline has not confirmed this booking yet. We will email you as soon as it is ticketed.",
+                "booking_timeout": "The airline took too long to respond. Please try again in a moment.",
+                "duplicate_booking": "You already have an active flight booked for that departure date. Cancel it first, or choose a different date.",
+                "flight_unavailable": "This flight is no longer available. Please search again for current availability.",
+                "offer_expired": "This fare has expired. Please search again for current prices.",
+                "offer_replaced_seats_cleared": "The fare was refreshed, so your seat and bag selections were cleared. Please choose them again.",
+                "pending": "The airline has not confirmed this booking yet. We will email you as soon as it is ticketed.",
+                "phone_number_invalid": "The airline rejected the contact phone number. Please check it includes the country code and try again.",
+                "seats_unavailable": "The seats or bags you selected are no longer available. Please review your extras and try again.",
+                "supplier_outage": "The airline booking system is not responding right now. Please try again in a few minutes.",
+                "server_error": "Something went wrong on our side. Your card has not been charged — please try again.",
+                "unauthenticated": "Please sign in to complete your booking."
+            },
             "defaultMessage": "Your booking could not be completed.",
             "flightUnavailable": "Flight Unavailable",
             "goBack": "Go Back",
@@ -1041,7 +1060,7 @@
         "fromPrice": "From {price}",
         "guestFavorite": "Guest Favorite",
         "headerDefault": "Top Hotel Deals",
-        "headerPersonalized": "Hotel Deals in {country}",
+        "headerPersonalized": "Hotel Deals in <highlight>{country}</highlight>",
         "mapSearch": {
             "placeholder": "Search location on map..."
         },

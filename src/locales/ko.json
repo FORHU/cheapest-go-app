@@ -149,6 +149,8 @@
             "title": "비밀번호 재설정"
         },
         "labels": {
+            "birthDate": "생년월일",
+            "birthDateHint": "계정을 만들려면 만 18세 이상이어야 합니다.",
             "confirmPassword": "비밀번호 확인",
             "confirmPasswordPlaceholder": "비밀번호를 다시 입력하세요",
             "email": "이메일",
@@ -486,7 +488,7 @@
         "allDealsCount": "전체 {count}개 특가",
         "collapse": "접기 ↑",
         "headerDefault": "독점 특가 및 혜택",
-        "headerPersonalized": "{city} 출발 항공권 특가",
+        "headerPersonalized": "<highlight>{city}</highlight> 출발 항공권 특가",
         "oneWay": "편도",
         "popularRoute": "인기 노선",
         "roundTrip": "왕복",
@@ -617,6 +619,23 @@
         "error": {
             "bookingFailed": "예약 실패",
             "bookingFailedDefault": "예약이 실패했습니다. 다시 시도해 주세요.",
+            "codes": {
+                "balance_insufficient": "항공권 예약이 일시적으로 불가능합니다. 잠시 후 다시 시도해 주세요. 카드는 결제되지 않았습니다.",
+                "booking_failed": "예약을 완료하지 못했습니다. 다시 시도해 주세요.",
+                "booking_failed_refunded": "예약을 완료하지 못해 결제 금액이 환불되었습니다.",
+                "booking_pending": "항공사에서 아직 예약을 확정하지 않았습니다. 발권이 완료되면 이메일로 안내해 드립니다.",
+                "booking_timeout": "항공사 응답이 지연되고 있습니다. 잠시 후 다시 시도해 주세요.",
+                "duplicate_booking": "해당 출발일에 이미 예약된 항공편이 있습니다. 기존 예약을 취소하거나 다른 날짜를 선택해 주세요.",
+                "flight_unavailable": "해당 항공편은 더 이상 예약할 수 없습니다. 다시 검색해 주세요.",
+                "offer_expired": "해당 운임이 만료되었습니다. 다시 검색해 주세요.",
+                "offer_replaced_seats_cleared": "운임이 갱신되어 좌석과 수하물 선택이 초기화되었습니다. 다시 선택해 주세요.",
+                "pending": "항공사에서 아직 예약을 확정하지 않았습니다. 발권이 완료되면 이메일로 안내해 드립니다.",
+                "phone_number_invalid": "항공사에서 연락처 전화번호를 거부했습니다. 국가번호가 포함되어 있는지 확인 후 다시 시도해 주세요.",
+                "seats_unavailable": "선택하신 좌석 또는 수하물을 더 이상 이용할 수 없습니다. 부가 서비스를 다시 확인해 주세요.",
+                "supplier_outage": "항공사 예약 시스템이 응답하지 않습니다. 몇 분 후 다시 시도해 주세요.",
+                "server_error": "시스템 오류가 발생했습니다. 카드는 결제되지 않았으니 다시 시도해 주세요.",
+                "unauthenticated": "예약을 완료하려면 로그인해 주세요."
+            },
             "defaultMessage": "예약을 완료할 수 없습니다.",
             "flightUnavailable": "항곸을 사용할 수 없습니다",
             "goBack": "뒤로 가기",
@@ -1009,7 +1028,7 @@
         "fromPrice": "{price}부터",
         "guestFavorite": "게스트 최애",
         "headerDefault": "인기 호텔 특가",
-        "headerPersonalized": "{country} 호텔 특가",
+        "headerPersonalized": "<highlight>{country}</highlight> 호텔 특가",
         "mapSearch": {
             "placeholder": "지도에서 위치 검색..."
         },
