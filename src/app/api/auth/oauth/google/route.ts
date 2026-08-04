@@ -33,7 +33,9 @@ export async function GET(req: Request) {
     const cookieOpts = {
         httpOnly: true,
         secure:   isProduction,
-        sameSite: 'lax' as const,
+        // SameSite=None so cookies survive the cross-site redirect chain
+        // (Google → /auth/callback). Lax drops them on first visit in many browsers.
+        sameSite: (isProduction ? 'none' : 'lax') as 'none' | 'lax',
         maxAge:   600,
         path:     '/',
     };
