@@ -54,6 +54,11 @@ function buildWhere(filters: Filter[], _sql: Sql): { clause: string; values: unk
             const orParts = String(f.val).split(',').map((part) => {
                 const [col, op, ...rest] = part.trim().split('.');
                 const v = rest.join('.');
+                if (op === 'is') {
+                    // IS NULL / IS TRUE etc. — no parameter
+                    const keyword = v === 'null' ? 'NULL' : v.toUpperCase();
+                    return `"${col}" IS ${keyword}`;
+                }
                 values.push(castValue(v));
                 return `"${col}" ${opToSql(op as FilterOp)} $${idx++}`;
             });
