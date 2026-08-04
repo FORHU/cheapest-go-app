@@ -14,6 +14,23 @@ import { clientFetch } from '@/lib/api/client';
 export type BookingStep = 'form' | 'submitting' | 'payment' | 'success' | 'error';
 
 /**
+ * Failures where the supplier order may exist despite the error.
+ *
+ * A timeout or a 5xx tells us the request did not come back — not that it did
+ * not happen. Duffel completes the airline booking regardless of whether we are
+ * still listening, so these codes must keep the same idempotency key: a retry
+ * has to be recognisable as the same booking rather than a new one.
+ *
+ * Everything else (price_changed, offer_expired, validation errors) is a
+ * definitive rejection with no order created, and is safe to re-key.
+ */
+export const AMBIGUOUS_FAILURE_CODES = new Set([
+    'supplier_outage',
+    'timeout',
+    'booking_failed',
+]);
+
+/**
  * Scroll to and focus the first field that failed validation.
  *
  * Fields are located by `data-field="<zod path>"` — the same dotted path the schema
@@ -573,7 +590,19 @@ export function useFlightBooking() {
                 }
                 setErrorMsg('CODE:' + code);
                 setStep('error');
-                idempotencyKeyRef.current = generateId();
+
+                // Only mint a fresh idempotency key when the failed attempt provably
+                // created nothing at the supplier. `supplier_outage` covers timeouts
+                // and 5xx — cases where the order may well exist and simply could not
+                // be read back — so reusing the key is the only thing standing between
+                // a retry and a second live ticket for the same trip.
+                //
+                // This is how one failed CRK→NRT attempt became two paid EVA tickets
+                // 61 seconds apart: the retry arrived with a brand-new key and Duffel
+                // had no way to tell it was the same booking.
+                if (!AMBIGUOUS_FAILURE_CODES.has(code)) {
+                    idempotencyKeyRef.current = generateId();
+                }
             }
         }
     });

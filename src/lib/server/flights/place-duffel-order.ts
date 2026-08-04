@@ -20,6 +20,8 @@
  * booking paths can't drift.
  */
 
+import { cabinClassFromRawOffer } from './duffel-cabin';
+
 const DUFFEL_ORDERS_URL = 'https://api.duffel.com/air/orders';
 const DEFAULT_ORDER_TIMEOUT_MS = 45_000;
 const PRICE_ACTION_TIMEOUT_MS = 10_000;
@@ -258,9 +260,7 @@ export async function placeDuffelOrder(params: PlaceDuffelOrderParams): Promise<
         if (slices.length === 0) return { kind: 'error', status: 422, data: attempt1.data };
 
         const paxTypes: any[] = (rawOffer.passengers ?? []).map((p: any) => ({ type: p.type ?? 'adult' }));
-        const cabinClass: string = rawOffer.cabin_class
-            ?? rawOffer.slices?.[0]?.segments?.[0]?.passengers?.[0]?.cabin_class_marketing_name?.toLowerCase()
-            ?? 'economy';
+        const cabinClass: string = cabinClassFromRawOffer(rawOffer);
 
         const orRes = await fetch('https://api.duffel.com/air/offer_requests?return_offers=true', {
             method: 'POST',

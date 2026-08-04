@@ -368,7 +368,7 @@
         "allDealsCount": "すべてのオファー（{count}件）",
         "collapse": "折りたたむ ↑",
         "headerDefault": "特別セール＆オファー",
-        "headerPersonalized": "{city} 出発の格安航空券",
+        "headerPersonalized": "<highlight>{city}</highlight> 出発の格安航空券",
         "oneWay": "片道",
         "popularRoute": "人気路線",
         "roundTrip": "往復",
@@ -908,7 +908,7 @@
         "fromPrice": "{price}〜",
         "guestFavorite": "ゲストのお気に入り",
         "headerDefault": "人気のホテルセール",
-        "headerPersonalized": "{country} のホテルセール",
+        "headerPersonalized": "<highlight>{country}</highlight> のホテルセール",
         "mapSearch": {
             "placeholder": "地図上の場所を検索..."
         },
