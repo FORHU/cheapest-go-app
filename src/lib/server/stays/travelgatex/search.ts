@@ -512,8 +512,6 @@ export async function updateEtgContentInDb(etgMap: Map<string, EtgHotelContent>)
 }
 
 
-<<<<<<< HEAD
-=======
 const COUNTRY_NAME_TO_ISO: Record<string, string> = {
     'indonesia': 'ID', 'france': 'FR', 'italy': 'IT', 'spain': 'ES', 'germany': 'DE',
     'japan': 'JP', 'thailand': 'TH', 'greece': 'GR', 'united states': 'US', 'usa': 'US',
@@ -934,7 +932,6 @@ async function searchEtgGeo(
         return empty;
     }
 }
->>>>>>> 750ae7f742816d9b81b37fa2f951d567362d403d
 
 // ─── Hotel search cache ───────────────────────────────────────────────────────
 
