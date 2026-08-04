@@ -5,6 +5,7 @@ import { useTranslations } from 'next-intl';
 import type { Property } from '@/types';
 import LazySearchMapView from './LazySearchMapView';
 import { buildSearchCacheKey, getSearchResults, setSearchResults } from '@/lib/searchResultsCache';
+import { useSearchStore } from '@/stores/searchStore';
 
 interface MapResultsClientProps {
     searchParams: Record<string, string>;
@@ -33,6 +34,10 @@ function StreamingBanner({ count, pricingMode }: { count: number; pricingMode?: 
 
 export function MapResultsClient({ searchParams, destination, onSwitchView }: MapResultsClientProps) {
     const t = useTranslations('hotels.searchResults');
+    const setIsSearching = useSearchStore(s => s.setIsSearching);
+
+    // Dismiss the SearchNavigationOverlay skeleton — same reset useSearchModule does for list view.
+    useEffect(() => { setIsSearching(false); }, [setIsSearching]);
 
     // 'prices-loading' = catalog hotels shown, TGX prices still in flight
     const cacheKey = buildSearchCacheKey(searchParams);
