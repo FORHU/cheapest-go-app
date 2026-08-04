@@ -117,6 +117,21 @@ export const FLIGHT_PRICE_TOLERANCE_SANDBOX = 10.00;
  * price the traveller had already confirmed.
  */
 export function getFlightPriceTolerance(): number {
+    // Explicit override, so a sandbox run can rehearse live behaviour.
+    //
+    // The default sandbox threshold is 20× looser than production, which means a
+    // fare drifting by, say, $2 books cleanly in testing and is rejected with
+    // `price_changed` against real airlines. Set FLIGHT_PRICE_TOLERANCE=0.5 when
+    // you want a local booking to be a faithful rehearsal of a live one.
+    // Guard the empty string explicitly: Number('') is 0, so a declared-but-blank
+    // FLIGHT_PRICE_TOLERANCE= would otherwise set the tolerance to zero and
+    // reject every fare that moved by a cent.
+    const rawOverride = process.env.FLIGHT_PRICE_TOLERANCE?.trim();
+    if (rawOverride) {
+        const override = Number(rawOverride);
+        if (Number.isFinite(override) && override >= 0) return override;
+    }
+
     // The env var is DUFFEL_ACCESS_TOKEN; `env.DUFFEL_TOKEN` is an alias for it.
     // Read the real name (and the alias, in case a deployment sets that instead)
     // rather than importing @/utils/env, which would make this module depend on
