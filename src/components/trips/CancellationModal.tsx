@@ -11,12 +11,12 @@ import { convertCurrency } from '@/lib/currency';
 import { useUserCurrency } from '@/stores/searchStore';
 import { calculateCancellationFee, extractNoShowPenalty, extractEarlyDepartureFee } from '@/lib/cancellation';
 import {
-    derivePolicyType,
     getFreeCancelDeadline,
     getPolicyTitle,
     getPolicyBadgeColor,
     formatPolicyDescription,
 } from '@/lib/policy-formatter';
+import type { BookingPolicyType } from '@/types/booking-policy';
 import { useBookingDetails, useCancelBooking } from '@/hooks/trips';
 import { CancellationFeeCard } from './CancellationFeeCard';
 import { CancellationPolicies } from './CancellationPolicies';
@@ -73,11 +73,8 @@ export default function CancellationModal({ booking, isOpen, onClose, onCancelle
         };
     }, [cancellationPolicies, booking.total_price, booking.currency, userCurrency]);
 
-    // Derive policy type using the formatter bridge
-    const policyType = useMemo(
-        () => derivePolicyType(cancellationPolicies?.refundableTag, cancellationPolicies?.cancelPolicyInfos),
-        [cancellationPolicies]
-    );
+    // Use policy_type from DB directly — already correctly set at booking time.
+    const policyType = (booking.policy_type || 'non_refundable') as BookingPolicyType;
     const freeDeadline = useMemo(
         () => getFreeCancelDeadline(cancellationPolicies?.cancelPolicyInfos, cancellationPolicies?.refundableTag),
         [cancellationPolicies]
