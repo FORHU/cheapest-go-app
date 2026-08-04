@@ -7,11 +7,11 @@
  *   3. Fallback redirect for already-authenticated users
  */
 
+import { createHmac, timingSafeEqual } from 'crypto';
 import { NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
 import { getSqlAdmin } from '@/lib/db/postgres';
 import { createUserSession } from '@/lib/auth/session';
-import { RETURN_TO_COOKIE, safeReturnTo } from '@/lib/auth/returnTo';
+import { safeReturnTo } from '@/lib/auth/returnTo';
 
 function getOrigin(request: Request): string {
     // Cloudflare can send comma-separated values — take the first only
@@ -19,6 +19,40 @@ function getOrigin(request: Request): string {
     const fwdProto = (request.headers.get('x-forwarded-proto') || 'https').split(',')[0].trim();
     if (fwdHost) return `${fwdProto}://${fwdHost}`;
     return process.env.NEXT_PUBLIC_SITE_URL || new URL(request.url).origin;
+}
+
+// ─── HMAC-signed state verification ─────────────────────────────────────────
+
+interface StatePayload { n: string; r: string; t: number }
+
+function verifyOAuthState(state: string | null): { returnTo: string } | null {
+    if (!state) return null;
+    const secret = process.env.JWT_SECRET;
+    if (!secret) return null;
+
+    const dotIdx = state.lastIndexOf('.');
+    if (dotIdx === -1) return null;
+    const payloadB64 = state.slice(0, dotIdx);
+    const sig        = state.slice(dotIdx + 1);
+
+    const expectedSig = createHmac('sha256', secret).update(payloadB64).digest('base64url');
+    try {
+        if (!timingSafeEqual(Buffer.from(sig), Buffer.from(expectedSig))) return null;
+    } catch {
+        return null; // length mismatch
+    }
+
+    let payload: StatePayload;
+    try {
+        payload = JSON.parse(Buffer.from(payloadB64, 'base64url').toString()) as StatePayload;
+    } catch {
+        return null;
+    }
+
+    if (!payload.n || !payload.r || !payload.t) return null;
+    if (Date.now() - payload.t > 10 * 60 * 1000) return null; // 10-minute window
+
+    return { returnTo: safeReturnTo(payload.r) };
 }
 
 // ─── Google token exchange ────────────────────────────────────────────────────
@@ -114,33 +148,15 @@ export async function GET(request: Request) {
     const state    = searchParams.get('state');
     const oauthErr = searchParams.get('error');
 
-    const cookieStore = await cookies();
-    const storedState    = cookieStore.get('oauth_state')?.value;
-    const storedProvider = cookieStore.get('oauth_provider')?.value;
-
-    // If code is present but provider cookie is missing (lost in redirect), treat as OAuth start
-    if (code && !storedProvider) {
-        console.error('[OAuth] Provider cookie missing — cookie was dropped during redirect');
-        return NextResponse.redirect(`${origin}/login?error=oauth_state`);
-    }
-
-    // Where the user was before signing in — set by /api/auth/oauth/google.
-    // Read before the cookie is cleared below.
-    const returnTo = safeReturnTo(cookieStore.get(RETURN_TO_COOKIE)?.value);
-
-    if (code && storedProvider === 'google') {
-        // Clear state cookies
-        cookieStore.delete('oauth_state');
-        cookieStore.delete('oauth_provider');
-        cookieStore.delete(RETURN_TO_COOKIE);
-
+    if (code) {
         if (oauthErr) {
             console.error('[OAuth] Google error:', oauthErr);
             return NextResponse.redirect(`${origin}/login?error=oauth_denied`);
         }
 
-        if (!state || state !== storedState) {
-            console.error('[OAuth] State mismatch — possible CSRF');
+        const verified = verifyOAuthState(state);
+        if (!verified) {
+            console.error('[OAuth] State verification failed — invalid, expired, or tampered state');
             return NextResponse.redirect(`${origin}/login?error=oauth_state`);
         }
 
@@ -156,9 +172,7 @@ export async function GET(request: Request) {
             const userId = await findOrCreateGoogleUser(googleUser);
             await createUserSession(userId);
 
-            // Back to the page that triggered the sign-in (e.g. /flights/book),
-            // so a half-filled form is still there. `/` only when there was none.
-            return NextResponse.redirect(`${origin}${returnTo}`);
+            return NextResponse.redirect(`${origin}${verified.returnTo}`);
         } catch (err: unknown) {
             const msg = err instanceof Error ? err.message : String(err);
             console.error('[OAuth] Google callback error:', msg);
@@ -171,7 +185,8 @@ export async function GET(request: Request) {
         const { getSession } = await import('@/lib/auth/session');
         const { user } = await getSession();
         if (user) {
-            const target = user.role === 'admin' ? '/admin' : safeReturnTo(searchParams.get('next') || returnTo);
+            const returnTo = safeReturnTo(searchParams.get('next') ?? '/');
+            const target = user.role === 'admin' ? '/admin' : returnTo;
             return NextResponse.redirect(`${origin}${target}`);
         }
     } catch (err: unknown) {

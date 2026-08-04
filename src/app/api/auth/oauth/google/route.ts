@@ -1,10 +1,13 @@
 /**
  * GET /api/auth/oauth/google
- * Initiates Google OAuth flow — generates state, stores in cookie, redirects to Google.
+ * Initiates Google OAuth flow — builds a HMAC-signed state parameter,
+ * embeds returnTo inside it, and redirects to Google.
+ * No cookies are set; CSRF protection comes from the server-side signature.
  */
 
+import { createHmac } from 'crypto';
 import { NextResponse } from 'next/server';
-import { RETURN_TO_COOKIE, RETURN_TO_PARAM, safeReturnTo } from '@/lib/auth/returnTo';
+import { RETURN_TO_PARAM, safeReturnTo } from '@/lib/auth/returnTo';
 
 export const dynamic = 'force-dynamic';
 
@@ -14,7 +17,19 @@ export async function GET(req: Request) {
         return NextResponse.json({ error: 'GOOGLE_CLIENT_ID is not configured' }, { status: 500 });
     }
 
-    const state = crypto.randomUUID();
+    const secret = process.env.JWT_SECRET;
+    if (!secret) {
+        return NextResponse.json({ error: 'JWT_SECRET is not configured' }, { status: 500 });
+    }
+
+    const returnTo = safeReturnTo(new URL(req.url).searchParams.get(RETURN_TO_PARAM));
+
+    // Encode {nonce, returnTo, issuedAt} and sign with JWT_SECRET.
+    // The state is self-contained — no browser cookie is needed.
+    const payload = { n: crypto.randomUUID(), r: returnTo, t: Date.now() };
+    const payloadB64 = Buffer.from(JSON.stringify(payload)).toString('base64url');
+    const sig = createHmac('sha256', secret).update(payloadB64).digest('base64url');
+    const state = `${payloadB64}.${sig}`;
 
     const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
     const redirectUri = `${siteUrl}/auth/callback`;
@@ -29,33 +44,7 @@ export async function GET(req: Request) {
         prompt:        'select_account',
     });
 
-    const isProduction = process.env.NODE_ENV === 'production';
-    const cookieOpts = {
-        httpOnly: true,
-        secure:   isProduction,
-        // SameSite=None so cookies survive the cross-site redirect chain
-        // (Google → /auth/callback). Lax drops them on first visit in many browsers.
-        sameSite: (isProduction ? 'none' : 'lax') as 'none' | 'lax',
-        maxAge:   600,
-        path:     '/',
-    };
-
-    // Set all OAuth state cookies directly on the redirect response.
-    // Using response.cookies.set() (not cookies() from next/headers) ensures
-    // cookies are included in the 302 response — cookieStore.set() can be
-    // silently dropped when the handler returns a NextResponse.redirect().
-    const response = NextResponse.redirect(
+    return NextResponse.redirect(
         `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`
     );
-    response.cookies.set('oauth_state', state, cookieOpts);
-    response.cookies.set('oauth_provider', 'google', cookieOpts);
-
-    const returnTo = safeReturnTo(new URL(req.url).searchParams.get(RETURN_TO_PARAM));
-    if (returnTo !== '/') {
-        response.cookies.set(RETURN_TO_COOKIE, returnTo, cookieOpts);
-    } else {
-        response.cookies.delete(RETURN_TO_COOKIE);
-    }
-
-    return response;
 }
