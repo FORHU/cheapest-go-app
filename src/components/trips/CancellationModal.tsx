@@ -54,21 +54,28 @@ export default function CancellationModal({ booking, isOpen, onClose, onCancelle
     // React Query: cancel mutation
     const cancelMutation = useCancelBooking();
 
-    // Use cached cancellation policy from booking if available
-    const hasCachedPolicy = !!booking.cancellation_policy?.cancelPolicyInfos;
+    // Merge: prefer fresh data from API, fall back to cached.
+    // Guard against malformed storage (e.g. JSONB array instead of object) — if the
+    // merged value is an array it means the column was double-serialized; treat as null
+    // so the fee calculator falls back to booking.policy_type.
+    const rawPolicies = bookingDetails?.cancellationPolicies || booking.cancellation_policy;
+    const cancellationPolicies = Array.isArray(rawPolicies) ? null : rawPolicies;
+    const hasCachedPolicy = !!cancellationPolicies?.cancelPolicyInfos;
 
-    // Merge: prefer fresh data from API, fall back to cached
-    const cancellationPolicies = bookingDetails?.cancellationPolicies || booking.cancellation_policy;
-
-    // Calculate fee in stored currency, then convert to user's display currency
+    // Calculate fee in stored currency, then convert to user's display currency.
+    // If the JSON policy is unreadable but booking.policy_type says free cancellation,
+    // override to $0 fee so we don't show a misleading full-penalty card.
     const feeResult = useMemo(() => {
         const raw = calculateCancellationFee(cancellationPolicies, booking.total_price, booking.currency);
+        const effectiveRaw = (!raw.isFreeCancellation && booking.policy_type === 'free_cancellation' && !cancellationPolicies)
+            ? { fee: 0, refund: booking.total_price, currency: booking.currency, isFreeCancellation: true }
+            : raw;
         const displayCurrency = userCurrency || booking.currency;
-        if (displayCurrency === booking.currency) return raw;
+        if (displayCurrency === booking.currency) return effectiveRaw;
         return {
-            ...raw,
-            fee: convertCurrency(raw.fee, booking.currency, displayCurrency),
-            refund: convertCurrency(raw.refund, booking.currency, displayCurrency),
+            ...effectiveRaw,
+            fee: convertCurrency(effectiveRaw.fee, booking.currency, displayCurrency),
+            refund: convertCurrency(effectiveRaw.refund, booking.currency, displayCurrency),
             currency: displayCurrency,
         };
     }, [cancellationPolicies, booking.total_price, booking.currency, userCurrency]);
