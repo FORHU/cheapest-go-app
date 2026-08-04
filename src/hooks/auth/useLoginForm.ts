@@ -27,6 +27,8 @@ interface UseLoginFormReturn {
     setFirstName: (name: string) => void;
     lastName: string;
     setLastName: (name: string) => void;
+    birthDate: string;
+    setBirthDate: (date: string) => void;
     password: string;
     setPassword: (password: string) => void;
     errors: Record<string, string>;
@@ -67,6 +69,7 @@ export function useLoginForm(options: UseLoginFormOptions = {}): UseLoginFormRet
     const [email, setEmail] = useState('');
     const [firstName, setFirstName] = useState('');
     const [lastName, setLastName] = useState('');
+    const [birthDate, setBirthDate] = useState('');
     const [password, setPassword] = useState('');
     const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -161,6 +164,8 @@ export function useLoginForm(options: UseLoginFormOptions = {}): UseLoginFormRet
         setFirstName,
         lastName,
         setLastName,
+        birthDate,
+        setBirthDate,
         password,
         setPassword,
         errors,

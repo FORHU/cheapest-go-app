@@ -55,6 +55,8 @@ vi.mock('@/hooks', () => ({
             setFirstName,
             lastName,
             setLastName,
+            birthDate: '1990-06-15',
+            setBirthDate: vi.fn(),
             password,
             setPassword,
             errors,
