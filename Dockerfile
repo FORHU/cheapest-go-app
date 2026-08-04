@@ -16,7 +16,7 @@ FROM base AS builder
 # Declare brand-specific args BEFORE COPY so changing them busts the cache
 # and prevents layer reuse between CheapestGo and GeomeeGo builds.
 ARG NEXT_PUBLIC_BRAND_NAME=CheapestGo
-ARG NEXT_PUBLIC_BRAND_EMAIL=support@cheapestgo.com
+ARG NEXT_PUBLIC_BRAND_EMAIL=no-reply@mail.cheapestgo.com
 ARG NEXT_PUBLIC_BRAND_FAVICON=/Fav_Icon_Light.png
 ARG NEXT_PUBLIC_BRAND_LOGO=/Web_Logo_Light.png
 ARG NEXT_PUBLIC_LOCALE
