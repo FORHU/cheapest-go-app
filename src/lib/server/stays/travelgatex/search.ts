@@ -1363,12 +1363,34 @@ async function runCityFallback(
             } // end else (destResult exists)
         }
     } else {
-        // destinationSearcher timed out — kick off a background call so the code is
-        // cached in tgx_destination_cache for the next search (no manual seeding needed).
-        // Pass undefined to match the key used by resolveTgxDestinationCode("city", undefined)
-        // and to prefer CITY type over ZONE (countryCode flips that preference).
-        backgroundResolveDestCode(cityName, undefined);
-        console.warn(`[tgx-search] Dest code resolution timed out for "${cityName}" — background resolve started`);
+        // destinationSearcher timed out on the initial 18s window. The shared raw
+        // fetch is still running — wait up to 12s more for it to finish, then do a
+        // quick destination-code search so the FIRST search always yields results.
+        console.warn(`[tgx-search] Dest code resolution timed out for "${cityName}" — awaiting 12s more`);
+        const bgCode = await Promise.race([
+            backgroundResolveDestCode(cityName, undefined),
+            new Promise<undefined>(resolve => setTimeout(() => resolve(undefined), 12_000)),
+        ]);
+        if (bgCode && !_failedDestCodes.has(bgCode)) {
+            const _cfg = getTgxConfig();
+            try {
+                const extResult = await tgxGraphQL(CITY_SEARCH_QUERY, {
+                    criteria: { ...baseCriteria, destinations: [bgCode] },
+                    settings: getTgxSettings(_cfg, 12_000, true),
+                    filterSearch: getTgxFilterSearch(_cfg),
+                }, 20_000);
+                const extMerchant = ((extResult?.data?.hotelX?.search?.options) ?? []).filter(
+                    (o: any) => o.paymentType === 'MERCHANT' && (o.status === 'AVAILABLE' || o.status === 'OK')
+                );
+                if (extMerchant.length > 0) {
+                    console.log(`[tgx-search] Extended dest-code search returned ${extMerchant.length} options for "${cityName}"`);
+                    if (cityName) fetchOtvHotelCodesByCity(cityName, bgCode, countryCode).catch(() => {});
+                    return buildCityResults(extMerchant, cityName, countryCode);
+                }
+            } catch (e: any) {
+                console.warn(`[tgx-search] Extended dest-code search failed: ${e.message?.slice(0, 80)}`);
+            }
+        }
     }
 
     // Destination-code search returned no bookable results.

@@ -1,0 +1,36 @@
+name: Fill TGX Destination Cache Gaps
+
+on:
+  schedule:
+    - cron: '0 */2 * * *'   # every 2 hours
+  workflow_dispatch:          # allow manual trigger from GitHub UI
+    inputs:
+      limit:
+        description: 'Cities to process per run (default 100)'
+        required: false
+        default: '100'
+      min_hotels:
+        description: 'Minimum hotel count to be eligible (default 5)'
+        required: false
+        default: '5'
+
+jobs:
+  fill:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call fill-dest-cache endpoint
+        env:
+          SITE_URL: ${{ secrets.NEXT_PUBLIC_SITE_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          LIMIT: ${{ github.event.inputs.limit || '100' }}
+          MIN_HOTELS: ${{ github.event.inputs.min_hotels || '5' }}
+        run: |
+          STATUS=$(curl -s -o /tmp/body.json -w "%{http_code}" \
+            --max-time 300 \
+            -H "Authorization: Bearer $CRON_SECRET" \
+            "$SITE_URL/api/cron/fill-dest-cache?limit=$LIMIT&min_hotels=$MIN_HOTELS")
+          cat /tmp/body.json
+          if [ "$STATUS" -ne 200 ]; then
+            echo "Fill dest cache failed with HTTP $STATUS"
+            exit 1
+          fi
