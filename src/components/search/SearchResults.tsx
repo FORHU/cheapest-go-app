@@ -26,11 +26,11 @@ function matchesBoardType(hotelBoardTypes: string[], selected: string[]): boolea
     return hotelBoardTypes.some(bt => {
         const lower = bt.toLowerCase();
         return selected.some(code => {
-            if (code === 'RO') return lower === 'ro' || (lower.includes('room') && lower.includes('only'));
-            if (code === 'BB') return lower === 'bb' || lower.includes('breakfast');
-            if (code === 'HB') return lower === 'hb' || lower.includes('half');
-            if (code === 'FB') return lower === 'fb' || lower.includes('full board');
-            if (code === 'AI') return lower === 'ai' || lower.includes('all inclusive') || lower.includes('all-inclusive');
+            if (code === 'RO') return lower === 'ro' || lower === 'nomeal' || lower === 'room_only' || (lower.includes('room') && lower.includes('only'));
+            if (code === 'BB') return lower === 'bb' || lower === 'breakfast' || lower === 'breakfast_included' || lower.includes('breakfast');
+            if (code === 'HB') return lower === 'hb' || lower === 'halfboard' || lower === 'half_board' || lower.includes('half');
+            if (code === 'FB') return lower === 'fb' || lower === 'fullboard' || lower === 'full_board' || lower.includes('full board');
+            if (code === 'AI') return lower === 'ai' || lower === 'allinclusive' || lower === 'all_inclusive' || lower.includes('all inclusive') || lower.includes('all-inclusive');
             return lower === code.toLowerCase();
         });
     });

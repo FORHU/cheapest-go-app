@@ -184,6 +184,8 @@ async function getInstantHotelCatalog(body: any): Promise<any[]> {
             country:      r.country ?? '',
             description:  r.description ?? '',
             amenities:    r.amenities ?? [],
+            type:         'hotel',
+            boardTypes:   [],
             provider:     'travelgatex',
             priceLoading: true,
         }));
@@ -438,6 +440,7 @@ export async function POST(req: NextRequest) {
                         offerId:       h.offerId,
                         refundableTag: h.refundableTag,
                         boardCode:     h.boardCode,
+                        boardTypes:    h.boardCode ? [h.boardCode] : [],
                         _tgx:          h._tgx,
                     }));
                     const unavailableIds = catalogHotels
