@@ -28,9 +28,9 @@ services:
     env_file:
       - .env
     environment:
-      DATABASE_URL: postgresql://cheapestgo:cheapestgo@postgres:5432/cheapestgo?sslmode=disable
-      DATABASE_URL_UNPOOLED: postgresql://cheapestgo:cheapestgo@postgres:5432/cheapestgo?sslmode=disable
-      DATABASE_SSL: "false"
+      DATABASE_URL: postgresql://styleosmirror_admin:FixedPass2026!@forhu-staging-style-os-mirror-postgres.cd6imo04om4m.ap-southeast-1.rds.amazonaws.com:5432/cheapestgo?sslmode=require
+      DATABASE_URL_UNPOOLED: postgresql://styleosmirror_admin:FixedPass2026!@forhu-staging-style-os-mirror-postgres.cd6imo04om4m.ap-southeast-1.rds.amazonaws.com:5432/cheapestgo?sslmode=require
+      DATABASE_SSL: "require"
     depends_on:
       postgres:
         condition: service_healthy
