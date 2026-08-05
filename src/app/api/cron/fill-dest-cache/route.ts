@@ -22,7 +22,6 @@ import { getSqlAdmin } from '@/lib/db/postgres';
 import { backgroundResolveDestCode } from '@/lib/server/search';
 
 export const dynamic = 'force-dynamic';
-export const maxDuration = 300; // 5 minutes
 
 export async function GET(req: NextRequest) {
     const authHeader = req.headers.get('authorization');
@@ -56,44 +55,37 @@ export async function GET(req: NextRequest) {
         return NextResponse.json({ ok: true, processed: 0, resolved: 0, message: 'No uncached cities found — all caught up.' });
     }
 
-    console.log(`[fill-dest-cache] Processing ${rows.length} uncached cities (min_hotels=${minHotels})`);
+    console.log(`[fill-dest-cache] Processing ${rows.length} uncached cities (min_hotels=${minHotels}) in background`);
 
-    let resolved = 0;
-    let failed   = 0;
-
-    for (const row of rows) {
-        const cityName = row.city;
-        try {
-            // backgroundResolveDestCode writes to _destCodeCache + DB on success.
-            // 30s timeout per city — generous but bounded so the cron doesn't hang.
-            const code = await Promise.race([
-                backgroundResolveDestCode(cityName),
-                new Promise<undefined>(resolve => setTimeout(() => resolve(undefined), 30_000)),
-            ]);
-            if (code) {
-                resolved++;
-                console.log(`[fill-dest-cache] ✓ ${cityName} → ${code}`);
-            } else {
+    // Respond immediately — Cloudflare times out at 100s but resolving 100 cities
+    // at 1s apart takes ~100s minimum. EC2 keeps the process alive after response.
+    async function runFill() {
+        let resolved = 0;
+        let failed   = 0;
+        for (const row of rows) {
+            const cityName = row.city;
+            try {
+                const code = await Promise.race([
+                    backgroundResolveDestCode(cityName),
+                    new Promise<undefined>(r => setTimeout(() => r(undefined), 30_000)),
+                ]);
+                if (code) { resolved++; console.log(`[fill-dest-cache] ✓ ${cityName} → ${code}`); }
+                else       { failed++;   console.log(`[fill-dest-cache] ✗ ${cityName} — no code found`); }
+            } catch (e: any) {
                 failed++;
-                console.log(`[fill-dest-cache] ✗ ${cityName} — no code found`);
+                console.warn(`[fill-dest-cache] ✗ ${cityName} error: ${e.message?.slice(0, 80)}`);
             }
-        } catch (e: any) {
-            failed++;
-            console.warn(`[fill-dest-cache] ✗ ${cityName} error: ${e.message?.slice(0, 80)}`);
+            await new Promise(r => setTimeout(r, 1_000));
         }
-
-        // 1s pause between requests to avoid hammering TGX destinationSearcher.
-        await new Promise(resolve => setTimeout(resolve, 1_000));
+        const elapsed = Date.now() - t0;
+        console.log(`[fill-dest-cache] Done: ${resolved} resolved, ${failed} failed in ${elapsed}ms`);
     }
 
-    const elapsed = Date.now() - t0;
-    console.log(`[fill-dest-cache] Done: ${resolved} resolved, ${failed} failed in ${elapsed}ms`);
+    runFill().catch(e => console.error('[fill-dest-cache] Background run failed:', e.message));
 
     return NextResponse.json({
         ok: true,
-        processed: rows.length,
-        resolved,
-        failed,
-        elapsedMs: elapsed,
+        message: `Fill started for ${rows.length} cities`,
+        queued: rows.length,
     });
 }

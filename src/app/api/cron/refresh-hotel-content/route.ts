@@ -226,28 +226,22 @@ async function fetchAndUpsertCity(
     return totalSaved;
 }
 
-// ─── Route handler ─────────────────────────────────────────────────────────
+// ─── Background worker ─────────────────────────────────────────────────────
 
-export async function GET(req: NextRequest) {
-    const authHeader = req.headers.get('authorization');
-    const cronSecret = process.env.CRON_SECRET;
-    if (!cronSecret || authHeader !== `Bearer ${cronSecret}`) {
-        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
+async function runRefresh(limit: number) {
     const sql = getSqlAdmin();
     const cfg = getTgxConfig();
     const t0  = Date.now();
 
-    // Top 30 most-searched cities with their TGX destination codes
     const cities = await sql<{ city_key: string; country_code: string }[]>`
         SELECT city_key, country_code FROM hotel_search_stats
         ORDER BY search_count DESC
-        LIMIT 30
+        LIMIT ${limit}
     `;
 
     if (cities.length === 0) {
-        return NextResponse.json({ ok: true, message: 'No cities in hotel_search_stats yet', updated: 0 });
+        console.log('[refresh-hotel-content] No cities in hotel_search_stats — skipping');
+        return;
     }
 
     const cityKeys = cities.map(r => r.city_key);
@@ -257,24 +251,40 @@ export async function GET(req: NextRequest) {
     `;
     const destCodeMap = new Map(destRows.map(r => [r.city_key, r.destination_code]));
 
-    const results: Record<string, number> = {};
-
+    let totalUpdated = 0;
     for (const { city_key, country_code } of cities) {
         const destCode = destCodeMap.get(city_key) ?? null;
         console.log(`[refresh-hotel-content] Seeding "${city_key}" destCode=${destCode ?? 'none'}`);
         try {
             const saved = await fetchAndUpsertCity(sql, cfg, city_key, destCode, country_code);
-            results[city_key] = saved;
+            totalUpdated += saved;
         } catch (e: any) {
             console.warn(`[refresh-hotel-content] Failed for "${city_key}": ${e.message}`);
-            results[city_key] = 0;
         }
         await new Promise(r => setTimeout(r, 300));
     }
 
-    const totalUpdated = Object.values(results).reduce((a, b) => a + b, 0);
     const elapsed = Date.now() - t0;
-    console.log(`[refresh-hotel-content] Done: ${totalUpdated} hotels, ${cities.length} cities, ${elapsed}ms`);
+    console.log(`[refresh-hotel-content] Done: ${totalUpdated} hotels across ${cities.length} cities in ${elapsed}ms`);
+}
 
-    return NextResponse.json({ ok: true, updated: totalUpdated, cities: results, elapsedMs: elapsed });
+// ─── Route handler ─────────────────────────────────────────────────────────
+
+export async function GET(req: NextRequest) {
+    const authHeader = req.headers.get('authorization');
+    const cronSecret = process.env.CRON_SECRET;
+    if (!cronSecret || authHeader !== `Bearer ${cronSecret}`) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const url = new URL(req.url);
+    const limit = Math.min(parseInt(url.searchParams.get('limit') ?? '30', 10), 100);
+
+    // Respond immediately — Cloudflare times out at 100s but the actual work
+    // takes several minutes. EC2 (non-serverless) keeps the process alive.
+    runRefresh(limit).catch(e =>
+        console.error('[refresh-hotel-content] Background run failed:', e.message)
+    );
+
+    return NextResponse.json({ ok: true, message: `Hotel content refresh started (limit=${limit})` });
 }
