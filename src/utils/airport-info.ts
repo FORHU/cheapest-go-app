@@ -12,6 +12,17 @@
  */
 export const AIRPORT_INFO: Record<string, { city: string; cc: string }> = {
 
+    // ── Metropolitan (city-wide) codes ────────────────────────────────────────
+    // A flight search may carry a city code rather than an airport code; without
+    // these the code itself would be shown as the city name. See src/lib/airports.ts.
+    SEL: { city: 'Seoul', cc: 'KR' },
+    TYO: { city: 'Tokyo', cc: 'JP' },
+    OSA: { city: 'Osaka', cc: 'JP' },
+    BJS: { city: 'Beijing', cc: 'CN' },
+    NYC: { city: 'New York', cc: 'US' },
+    LON: { city: 'London', cc: 'GB' },
+    PAR: { city: 'Paris', cc: 'FR' },
+
     // ── Southeast Asia ────────────────────────────────────────────────────────
     // Thailand
     BKK: { city: 'Bangkok', cc: 'TH' },

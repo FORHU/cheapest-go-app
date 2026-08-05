@@ -913,6 +913,10 @@
         "search": {
             "adult": "성인 {count}명",
             "adult_plural": "성인 {count}명",
+            "altAirportsBody": "{city}에는 {alternatives}도 있습니다. 항공사마다 공항별 운항 노선이 크게 다르므로 모든 공항을 검색하면 더 많은 항공편을 찾을 수 있습니다.",
+            "altAirportsCta": "{city}의 모든 공항 검색",
+            "altAirportsCtaSingle": "{airport}(으)로 검색",
+            "altAirportsTitle": "이 노선의 항공편을 찾을 수 없습니다",
             "fetchingProviders": "공급사에서 검색 중...",
             "newSearch": "새 검색",
             "providersSlow": "항공사 공급사의 응답이 느립니다. 잠시만 기다려 주세요. 최적의 요금을 계속 찾고 있습니다.",

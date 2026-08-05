@@ -943,6 +943,10 @@
         "search": {
             "adult": "{count} adult",
             "adult_plural": "{count} adults",
+            "altAirportsBody": "{city} is also served by {alternatives}. Airlines sell very different schedules from each airport, so searching all of them usually finds more options.",
+            "altAirportsCta": "Search all {city} airports",
+            "altAirportsCtaSingle": "Try {airport}",
+            "altAirportsTitle": "No flights on this route",
             "fetchingProviders": "Fetching from providers...",
             "newSearch": "New Search",
             "providersSlow": "Flight providers are responding slowly. Hang tight, we're still looking for the best fares.",

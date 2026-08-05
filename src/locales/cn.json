@@ -804,6 +804,10 @@
         "search": {
             "adult": "{count} 位成人",
             "adult_plural": "{count} 位成人",
+            "altAirportsBody": "{city}还有{alternatives}。航空公司在各机场的航线安排差别很大，搜索全部机场通常能找到更多选择。",
+            "altAirportsCta": "搜索{city}所有机场",
+            "altAirportsCtaSingle": "改用{airport}搜索",
+            "altAirportsTitle": "未找到该航线的航班",
             "fetchingProviders": "正在从供应商获取数据...",
             "newSearch": "重新搜索",
             "providersSlow": "航班供应商响应较慢，请稍等，我们仍在寻找最优价格。",

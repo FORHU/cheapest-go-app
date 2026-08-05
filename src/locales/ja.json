@@ -802,6 +802,10 @@
         "search": {
             "adult": "{count} 名様",
             "adult_plural": "{count} 名様",
+            "altAirportsBody": "{city}には{alternatives}もあります。航空会社は空港ごとに異なる路線を販売しているため、すべての空港を検索するとより多くの便が見つかります。",
+            "altAirportsCta": "{city}のすべての空港を検索",
+            "altAirportsCtaSingle": "{airport}で検索",
+            "altAirportsTitle": "この区間の便が見つかりません",
             "fetchingProviders": "プロバイダーから取得中...",
             "newSearch": "新しい検索",
             "providersSlow": "航空会社の応答が遅くなっています。そのままお待ちください。最良の運賃を引き続き検索しています。",

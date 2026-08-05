@@ -9,6 +9,11 @@ export interface Airport {
     country: string;
     /** ISO 2-letter country code */
     countryCode: string;
+    /**
+     * True for IATA metropolitan codes (SEL, LON, …) — a city-wide code that
+     * stands for every airport serving that city rather than one airport.
+     */
+    isMetro?: boolean;
 }
 
 /**
@@ -16,6 +21,23 @@ export interface Airport {
  * Covers all global hubs, popular tourist destinations, and regional airports.
  */
 const AIRPORTS: Airport[] = [
+    // ── Metropolitan (city-wide) codes ──
+    // Providers expand these to every airport in the city, so a traveller who
+    // names a city gets all of it. Picking one airport instead silently drops
+    // the others: "Seoul" as ICN misses the Gimpo domestic network entirely,
+    // which is where Seoul→Jeju actually flies from.
+    //
+    // Only cities whose metro code differs from an airport code need an entry.
+    // Bangkok (BKK), Istanbul (IST) and Shanghai (SHA) reuse an airport's code
+    // as the city code, so their existing entries below already aggregate.
+    { iata: "SEL", name: "All airports", city: "Seoul", country: "South Korea", countryCode: "KR", isMetro: true },
+    { iata: "TYO", name: "All airports", city: "Tokyo", country: "Japan", countryCode: "JP", isMetro: true },
+    { iata: "OSA", name: "All airports", city: "Osaka", country: "Japan", countryCode: "JP", isMetro: true },
+    { iata: "BJS", name: "All airports", city: "Beijing", country: "China", countryCode: "CN", isMetro: true },
+    { iata: "NYC", name: "All airports", city: "New York", country: "United States", countryCode: "US", isMetro: true },
+    { iata: "LON", name: "All airports", city: "London", country: "United Kingdom", countryCode: "GB", isMetro: true },
+    { iata: "PAR", name: "All airports", city: "Paris", country: "France", countryCode: "FR", isMetro: true },
+
     // ── Philippines ──
     { iata: "MNL", name: "Ninoy Aquino International Airport", city: "Manila", country: "Philippines", countryCode: "PH" },
     { iata: "CEB", name: "Mactan-Cebu International Airport", city: "Cebu", country: "Philippines", countryCode: "PH" },
@@ -270,6 +292,13 @@ export function searchAirports(query: string, limit: number = 8): Airport[] {
             score = 20;
         }
 
+        // A city-wide code covers every airport in the city, so it outranks the
+        // individual airports whenever the user named the city. Deliberately not
+        // applied to the IATA tiers — typing "ICN" must still resolve to Incheon.
+        if (score > 0 && score <= 60 && a.isMetro) {
+            score += 5;
+        }
+
         if (score > 0) {
             scored.push({ airport: a, score });
         }
@@ -288,10 +317,46 @@ export function searchAirports(query: string, limit: number = 8): Airport[] {
         city: s.airport.city,
         country: s.airport.country,
         countryCode: s.airport.countryCode,
+        ...(s.airport.isMetro ? { isMetro: true } : {}),
     }));
 }
 
 export function getAirportByCode(iataCode: string): Airport | undefined {
     return AIRPORTS.find(a => a.iata === iataCode.toUpperCase());
+}
+
+/** The other airports serving the same city as `iataCode`. */
+export interface AirportAlternatives {
+    /** The airport that was searched. */
+    airport: Airport;
+    /** City-wide code covering every airport in the city, when one exists. */
+    metro?: Airport;
+    /** The other airports serving the same city — never empty. */
+    siblings: Airport[];
+}
+
+/**
+ * Finds the sibling airports of a city, for suggesting a retry when a search
+ * comes back empty.
+ *
+ * A provider's content varies per airport, not per city: Incheon has one
+ * twice-weekly Jeju service from a carrier we cannot sell, while Gimpo — the
+ * same city — has dozens of daily departures. An empty result on one airport
+ * therefore says nothing about its neighbours, and is worth re-running.
+ *
+ * Returns null when the code is unknown, is itself a city-wide code, or when
+ * the city has only the one airport (nothing to suggest).
+ */
+export function getAirportAlternatives(iataCode: string): AirportAlternatives | null {
+    const airport = getAirportByCode(iataCode);
+    if (!airport || airport.isMetro) return null;
+
+    const sameCity = AIRPORTS.filter(
+        a => a.iata !== airport.iata && a.city === airport.city && a.countryCode === airport.countryCode,
+    );
+    const siblings = sameCity.filter(a => !a.isMetro);
+    if (siblings.length === 0) return null;
+
+    return { airport, metro: sameCity.find(a => a.isMetro), siblings };
 }
 

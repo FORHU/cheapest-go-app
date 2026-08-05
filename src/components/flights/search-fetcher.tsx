@@ -6,6 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { FlightResults } from '@/components/flights/flightResultsList';
 import FlightFilters, { type FilterState } from '@/components/flights/filters';
 import type { FlightOffer, CabinClass } from '@/types/flights';
+import { getAirportAlternatives } from '@/lib/airports';
 import { ListFilter, ChevronDown, X } from 'lucide-react';
 import { ResponsiveFlightHeader } from './ResponsiveFlightHeader';
 import { useSearchActions, useSearchStore } from '@/stores/searchStore';
@@ -17,20 +18,25 @@ import PriceCalendar from './PriceCalendar';
 import { Suspense } from 'react';
 
 // ─── City name → IATA code lookup ─────────────────────────────────────────────
+//
+// Multi-airport cities map to their metropolitan code (SEL, TYO, LON, …) so the
+// provider searches every airport in the city. Naming a single airport hides the
+// rest: "Seoul" as ICN misses Gimpo, which is where the Jeju flights depart.
+// Bangkok, Istanbul and Shanghai already use a city-wide code below.
 const CITY_TO_IATA: Record<string, string> = {
-    'manila': 'MNL', 'tokyo': 'NRT', 'osaka': 'KIX', 'seoul': 'ICN', 'busan': 'PUS',
-    'beijing': 'PEK', 'shanghai': 'PVG', 'hong kong': 'HKG', 'hongkong': 'HKG',
+    'manila': 'MNL', 'tokyo': 'TYO', 'osaka': 'OSA', 'seoul': 'SEL', 'busan': 'PUS',
+    'jeju': 'CJU', 'beijing': 'BJS', 'shanghai': 'SHA', 'hong kong': 'HKG', 'hongkong': 'HKG',
     'taipei': 'TPE', 'singapore': 'SIN', 'bangkok': 'BKK', 'kuala lumpur': 'KUL',
     'kl': 'KUL', 'bali': 'DPS', 'denpasar': 'DPS', 'jakarta': 'CGK',
     'hanoi': 'HAN', 'ho chi minh': 'SGN', 'saigon': 'SGN', 'dubai': 'DXB',
     'abu dhabi': 'AUH', 'doha': 'DOH', 'istanbul': 'IST', 'delhi': 'DEL',
     'new delhi': 'DEL', 'mumbai': 'BOM', 'colombo': 'CMB', 'kathmandu': 'KTM',
-    'london': 'LHR', 'paris': 'CDG', 'amsterdam': 'AMS', 'frankfurt': 'FRA',
+    'london': 'LON', 'paris': 'PAR', 'amsterdam': 'AMS', 'frankfurt': 'FRA',
     'munich': 'MUC', 'berlin': 'BER', 'rome': 'FCO', 'milan': 'MXP',
     'madrid': 'MAD', 'barcelona': 'BCN', 'zurich': 'ZRH', 'vienna': 'VIE',
     'athens': 'ATH', 'lisbon': 'LIS', 'brussels': 'BRU', 'copenhagen': 'CPH',
     'stockholm': 'ARN', 'oslo': 'OSL', 'helsinki': 'HEL', 'prague': 'PRG',
-    'warsaw': 'WAW', 'budapest': 'BUD', 'new york': 'JFK', 'nyc': 'JFK',
+    'warsaw': 'WAW', 'budapest': 'BUD', 'new york': 'NYC', 'nyc': 'NYC',
     'los angeles': 'LAX', 'la': 'LAX', 'san francisco': 'SFO', 'sf': 'SFO',
     'chicago': 'ORD', 'miami': 'MIA', 'toronto': 'YYZ', 'vancouver': 'YVR',
     'cancun': 'CUN', 'mexico city': 'MEX', 'sydney': 'SYD', 'melbourne': 'MEL',
@@ -170,6 +176,39 @@ export function SearchFetcher({
     const searchParams = useSearchParams();
     const bundleHotelId = searchParams.get('bundleHotelId');
 
+    // 1. Resolve city names → IATA codes
+    const resolvedOrigin = useMemo(() => resolveIATA(origin), [origin]);
+    const resolvedDestination = useMemo(() => resolveIATA(destination), [destination]);
+
+    /**
+     * An empty result on one airport says nothing about the other airports in
+     * the same city, so offer them as a retry. Origin is checked first: a city's
+     * airports differ far more in what departs them than in what arrives.
+     */
+    const alternatives = useMemo(() => {
+        if (!resolvedOrigin || !resolvedDestination) return null;
+        const originAlt = getAirportAlternatives(resolvedOrigin);
+        if (originAlt) return { alt: originAlt, replaces: 'origin' as const };
+        const destAlt = getAirportAlternatives(resolvedDestination);
+        if (destAlt) return { alt: destAlt, replaces: 'destination' as const };
+        return null;
+    }, [resolvedOrigin, resolvedDestination]);
+
+    const buildSearchUrl = useCallback((nextOrigin: string, nextDestination: string) => {
+        const p = new URLSearchParams({
+            origin: nextOrigin,
+            destination: nextDestination,
+            departure: departureDate,
+            adults: String(adults),
+            cabin: cabinClass,
+        });
+        if (returnDate) p.set('return', returnDate);
+        if (children > 0) p.set('children', String(children));
+        if (infants > 0) p.set('infants', String(infants));
+        if (bundleHotelId) p.set('bundleHotelId', bundleHotelId);
+        return `/flights/search?${p.toString()}`;
+    }, [departureDate, returnDate, adults, children, infants, cabinClass, bundleHotelId]);
+
     const handleSelect = useCallback((offer: FlightOffer) => {
         sessionStorage.setItem('selectedFlight', JSON.stringify(offer));
         sessionStorage.setItem('flightSearchPassengers', JSON.stringify({ adults, children, infants }));
@@ -187,10 +226,6 @@ export function SearchFetcher({
         abortRef.current = controller;
 
         setState({ status: 'loading' });
-
-        // 1. Resolve city names → IATA codes
-        const resolvedOrigin = resolveIATA(origin);
-        const resolvedDestination = resolveIATA(destination);
 
         if (!resolvedOrigin || !resolvedDestination) {
             setState({ status: 'needs_input', originRaw: origin, destinationRaw: destination });
@@ -271,7 +306,7 @@ export function SearchFetcher({
             controller.abort();
         };
          
-    }, [origin, destination, departureDate, returnDate, adults, children, infants, cabinClass, retryKey]);
+    }, [origin, destination, resolvedOrigin, resolvedDestination, departureDate, returnDate, adults, children, infants, cabinClass, retryKey]);
 
     // ─── Derived data ─────────────────────────────────────────────────────────
     const rawOffers = state.status === 'success' ? state.offers : [];
@@ -357,6 +392,34 @@ export function SearchFetcher({
                         {t('newSearch')}
                     </a>
                 </div>
+            </div>
+        );
+    }
+
+    // Empty result, but the city has another airport worth trying.
+    if (state.status === 'empty' && alternatives && resolvedOrigin && resolvedDestination) {
+        const { alt, replaces } = alternatives;
+        // The city-wide code covers every airport at once; without one, fall
+        // back to naming the sibling directly.
+        const target = alt.metro?.iata ?? alt.siblings[0].iata;
+        const href = replaces === 'origin'
+            ? buildSearchUrl(target, resolvedDestination)
+            : buildSearchUrl(resolvedOrigin, target);
+        const siblingList = alt.siblings.map(s => `${s.name} (${s.iata})`).join(', ');
+
+        return (
+            <div className="bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-2xl p-10 text-center space-y-4">
+                <div className="text-5xl">🛫</div>
+                <h2 className="text-xl font-bold text-slate-800 dark:text-white">{t('altAirportsTitle')}</h2>
+                <p className="text-sm text-slate-500 dark:text-slate-400 max-w-md mx-auto">
+                    {t('altAirportsBody', { city: alt.airport.city, alternatives: siblingList })}
+                </p>
+                <a href={href}
+                    className="inline-block px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-full transition-colors">
+                    {alt.metro
+                        ? t('altAirportsCta', { city: alt.airport.city })
+                        : t('altAirportsCtaSingle', { airport: `${alt.siblings[0].name} (${alt.siblings[0].iata})` })}
+                </a>
             </div>
         );
     }
