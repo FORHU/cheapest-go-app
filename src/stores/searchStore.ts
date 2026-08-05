@@ -2,6 +2,10 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { useShallow } from 'zustand/react/shallow';
 
+/** How many recent searches persist. The landing carousel shows a subset and
+ *  gates its "View all" toggle on there being more than that. */
+export const MAX_RECENT_SEARCHES = 12;
+
 export interface Destination {
     type: 'city' | 'airport' | 'history' | 'country';
     /** Granularity ladder rung (country/province/city/district/poi). See ADR-0006. */
@@ -249,7 +253,7 @@ export const useSearchStore = create<SearchState>()(
                     (d) => d.title !== destination.title
                 );
                 return {
-                    recentSearches: [destination, ...filtered].slice(0, 5),
+                    recentSearches: [destination, ...filtered].slice(0, MAX_RECENT_SEARCHES),
                 };
             }),
 
