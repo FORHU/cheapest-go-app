@@ -27,6 +27,10 @@ services:
       - "3000:3000"
     env_file:
       - .env
+    environment:
+      DATABASE_URL: postgresql://cheapestgo:cheapestgo@postgres:5432/cheapestgo?sslmode=disable
+      DATABASE_URL_UNPOOLED: postgresql://cheapestgo:cheapestgo@postgres:5432/cheapestgo?sslmode=disable
+      DATABASE_SSL: "false"
     depends_on:
       postgres:
         condition: service_healthy
