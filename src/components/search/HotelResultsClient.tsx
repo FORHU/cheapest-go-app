@@ -305,6 +305,11 @@ export function HotelResultsClient({ searchParams, onSwitchView }: HotelResultsC
                 <ResponsiveSearchHeader />
             </Suspense>
             <CountryCityPicker searchParams={searchParams} />
+            {(searchParams.destinationType === 'district' || searchParams.destinationType === 'poi') && (
+                <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-800 dark:bg-amber-900/20 dark:text-amber-300">
+                    <strong>Neighborhood search</strong> — prices shown are for browsing only. To book a hotel, search by city name (e.g. Seoul, Bangkok).
+                </div>
+            )}
             {/* key={status} forces SearchResults to re-sync allProperties when price arrivals arrive
                 (streaming → done). The single remount is imperceptible after ~18s of price skeletons. */}
             <SearchResults

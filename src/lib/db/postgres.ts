@@ -91,6 +91,10 @@ function ensureTablesOnce(sql: postgres.Sql): void {
             created_at timestamptz NOT NULL DEFAULT now()
         )
     `).then(() => sql`
+        ALTER TABLE public.tgx_destination_cache ADD COLUMN IF NOT EXISTS dest_type text DEFAULT 'CITY'
+    `).then(() => sql`
+        ALTER TABLE public.tgx_destination_cache ADD COLUMN IF NOT EXISTS parent_code text
+    `).then(() => sql`
         ALTER TABLE hotel_content ADD COLUMN IF NOT EXISTS contact_info jsonb
     `).then(() => sql`
         ALTER TABLE hotel_content ADD COLUMN IF NOT EXISTS chain_code text
