@@ -60,6 +60,7 @@ export function HotelResultsClient({ searchParams, onSwitchView }: HotelResultsC
     const [properties, setProperties] = useState<Property[]>(cached?.properties ?? []);
     const [totalCount, setTotalCount] = useState(cached?.totalCount ?? 0);
     const [elapsed, setElapsed] = useState(0);
+    const [slowEmpty, setSlowEmpty] = useState(false);
 
     const destination = searchParams.destination || '';
     const searchKey = JSON.stringify(searchParams);
@@ -238,6 +239,9 @@ export function HotelResultsClient({ searchParams, onSwitchView }: HotelResultsC
                                 if (!cancelled) {
                                     setTotalCount(accumulated.length);
                                     setStatus('done');
+                                    // If done arrived with 0 hotels after a long wait, the dest
+                                    // code was just resolved in the background — prompt retry.
+                                    if (accumulated.length === 0 && elapsed > 15) setSlowEmpty(true);
                                 }
                                 // Cache only when TGX returned real prices AND at least some hotels
                                 // have images — caching zero-image results pins gray cards for the TTL.
@@ -318,6 +322,7 @@ export function HotelResultsClient({ searchParams, onSwitchView }: HotelResultsC
                 totalCount={totalCount}
                 rawSearchParams={searchParams}
                 onSwitchToMap={onSwitchView ? () => onSwitchView('map') : undefined}
+                slowSearch={slowEmpty}
             />
         </div>
     );
