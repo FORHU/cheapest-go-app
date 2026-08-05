@@ -255,7 +255,21 @@ function _fetchDestCodeRaw(cityName: string, countryCode?: string): Promise<stri
                 headers: { 'Authorization': `Apikey ${cfg.apiKey}`, 'Content-Type': 'application/json', 'Accept-Encoding': 'gzip' },
                 body:    JSON.stringify({ query: DEST_QUERY, variables: { access: cfg.accessCode, text: cityName, maxSize: 50 } }),
             });
-            if (!res.ok) { console.warn(`[dest-resolve] HTTP ${res.status} for "${cityName}"`); return undefined; }
+            if (!res.ok) {
+                console.warn(`[dest-resolve] HTTP ${res.status} for "${cityName}"`);
+                // 5xx from TGX (e.g. 580 = "not found in access") means their
+                // destinationSearcher has no coverage for this city. Cache NONE so
+                // future searches skip the 30s wait entirely.
+                if (res.status >= 500) {
+                    try {
+                        const sql = getSqlAdmin();
+                        await sql`INSERT INTO tgx_destination_cache (city_key, destination_code)
+                                  VALUES (${key}, 'NONE') ON CONFLICT (city_key) DO NOTHING`;
+                        console.log(`[dest-resolve] Marked "${cityName}" as NONE (HTTP ${res.status})`);
+                    } catch { /* non-fatal */ }
+                }
+                return undefined;
+            }
             const result = await res.json();
             const items: any[] = result?.data?.hotelX?.destinationSearcher ?? [];
             const exactName = cityName.toLowerCase();
