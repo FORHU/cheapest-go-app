@@ -153,6 +153,7 @@ export function HotelResultsClient({ searchParams, onSwitchView }: HotelResultsC
                                             offerId:       upd.offerId      ?? h.offerId,
                                             refundableTag: upd.refundableTag ?? h.refundableTag,
                                             boardCode:     upd.boardCode    ?? h.boardCode,
+                                            boardTypes:    upd.boardTypes?.length ? upd.boardTypes : (h as any).boardTypes ?? [],
                                             _tgx:          upd._tgx        ?? h._tgx,
                                             priceLoading:  false,
                                             // Apply image/name patches embedded in prices.

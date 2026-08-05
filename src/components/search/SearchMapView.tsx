@@ -42,11 +42,11 @@ function matchesBoardType(hotelBoardTypes: string[], selected: string[]): boolea
     return hotelBoardTypes.some(bt => {
         const lower = bt.toLowerCase();
         return selected.some(code => {
-            if (code === 'RO') return lower === 'ro' || (lower.includes('room') && lower.includes('only'));
-            if (code === 'BB') return lower === 'bb' || lower.includes('breakfast');
-            if (code === 'HB') return lower === 'hb' || lower.includes('half');
-            if (code === 'FB') return lower === 'fb' || lower.includes('full board');
-            if (code === 'AI') return lower === 'ai' || lower.includes('all inclusive') || lower.includes('all-inclusive');
+            if (code === 'RO') return lower === 'ro' || lower === 'nomeal' || lower === 'room_only' || (lower.includes('room') && lower.includes('only'));
+            if (code === 'BB') return lower === 'bb' || lower === 'breakfast' || lower === 'breakfast_included' || lower.includes('breakfast');
+            if (code === 'HB') return lower === 'hb' || lower === 'halfboard' || lower === 'half_board' || lower.includes('half');
+            if (code === 'FB') return lower === 'fb' || lower === 'fullboard' || lower === 'full_board' || lower.includes('full board');
+            if (code === 'AI') return lower === 'ai' || lower === 'allinclusive' || lower === 'all_inclusive' || lower.includes('all inclusive') || lower.includes('all-inclusive');
             return lower === code.toLowerCase();
         });
     });
@@ -91,6 +91,15 @@ const CITY_COORDS: Record<string, [number, number]> = {
     'los angeles': [-118.2437, 34.0522],
     sydney: [151.2093, -33.8688],
     manila: [120.9842, 14.5995],
+    makati: [121.0244, 14.5547],
+    'metro manila': [121.0244, 14.5547],
+    pasay: [120.9987, 14.5378],
+    taguig: [121.0503, 14.5243],
+    quezon: [121.0437, 14.6760],
+    'quezon city': [121.0437, 14.6760],
+    paranaque: [120.9872, 14.4793],
+    davao: [125.6128, 7.1907],
+    iloilo: [122.5621, 10.7202],
     baguio: [120.5960, 16.4023],
     cebu: [123.8854, 10.3157],
 };
@@ -404,7 +413,9 @@ function SearchMapView({
                 const wantsPrice = (p.price === 0 || p.priceLoading) && (incoming as any).price > 0;
                 // Sync priceLoading when TGX done/fail clears it (even if price stays 0)
                 const wantsPriceLoading = !!(p as any).priceLoading !== !!(incoming as any).priceLoading;
-                if (!wantsLocation && !wantsImage && !wantsPrice && !wantsPriceLoading) return p;
+                // Sync boardTypes when prices patch arrives (needed for meal plan filter)
+                const wantsBoardTypes = !(p as any).boardTypes?.length && !!(incoming as any).boardTypes?.length;
+                if (!wantsLocation && !wantsImage && !wantsPrice && !wantsPriceLoading && !wantsBoardTypes) return p;
                 changed = true;
                 return {
                     ...p,
@@ -412,6 +423,7 @@ function SearchMapView({
                     image: incoming.image || p.image,
                     images: incoming.images?.length ? incoming.images : p.images,
                     ...(wantsPriceLoading && { priceLoading: !!(incoming as any).priceLoading }),
+                    ...(wantsBoardTypes && { boardTypes: (incoming as any).boardTypes }),
                     ...(wantsPrice && {
                         price: (incoming as any).price,
                         currency: (incoming as any).currency ?? p.currency,
@@ -868,7 +880,7 @@ function SearchMapView({
                                 )}
                             </div>
                         </>
-                    ) : allProperties.some((p: any) => (p as any).priceLoading) && properties.some((p: any) => (p as any).priceLoading) ? (
+                    ) : isStreaming || (allProperties.some((p: any) => (p as any).priceLoading) && properties.some((p: any) => (p as any).priceLoading)) ? (
                         <PriceLoadingSidebar destination={destination ?? ''} />
                     ) : (
                         <div className="flex flex-col items-center justify-center h-full px-6 text-center">
