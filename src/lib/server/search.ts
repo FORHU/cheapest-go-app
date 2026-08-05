@@ -198,6 +198,7 @@ export async function resolveTgxDestinationCode(cityName: string, countryCode?: 
     if (_destCodeCache.has(key)) return _destCodeCache.get(key);
 
     // 2. DB cache (fast, survives server restarts)
+    const cityOnlyKey = cityName.toLowerCase().trim();
     try {
         const sql = getSqlAdmin();
         const rows = await sql`SELECT destination_code FROM tgx_destination_cache WHERE city_key = ${key} LIMIT 1`;
@@ -206,6 +207,18 @@ export async function resolveTgxDestinationCode(cityName: string, countryCode?: 
             if (code === 'NONE') return undefined; // sentinel — unresolvable city name
             _destCodeCache.set(key, code);
             return code;
+        }
+        // Fallback: sync-dest-cache stores codes without the ":countryCode" suffix.
+        // When the scoped key misses, check the city-only key so we don't re-hit TGX.
+        if (key !== cityOnlyKey) {
+            const cityRows = await sql`SELECT destination_code FROM tgx_destination_cache WHERE city_key = ${cityOnlyKey} LIMIT 1`;
+            if (cityRows.length > 0) {
+                const code = cityRows[0].destination_code as string;
+                if (code !== 'NONE') {
+                    _destCodeCache.set(key, code);
+                    return code;
+                }
+            }
         }
     } catch { /* non-fatal — fall through to TGX */ }
     // 3. TGX API — share the raw fetch with backgroundResolveDestCode so both
