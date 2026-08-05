@@ -1,7 +1,7 @@
 "use client";
 
 import React from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { History, Clock, Loader2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { SectionHeader, Badge } from '@/components/ui';
@@ -107,10 +107,18 @@ const RecentCard: React.FC<RecentCardProps> = ({ item, destination, index }) => 
   );
 };
 
+// At or below this count the carousel already shows everything, so the
+// "View all" toggle has nothing left to reveal and stays hidden.
+const VIEW_ALL_THRESHOLD = 5;
+
 const RecentlyViewed = () => {
   const t = useTranslations('landing.recentlyViewed');
   // Get recent searches from Zustand store
   const recentSearches = useRecentSearches();
+  const [showAll, setShowAll] = React.useState(false);
+  const gridRef = React.useRef<HTMLDivElement>(null);
+
+  const canShowAll = recentSearches.length > VIEW_ALL_THRESHOLD;
 
   if (recentSearches.length === 0) return null;
 
@@ -142,8 +150,11 @@ const RecentlyViewed = () => {
           title={t('title')}
           subtitle={t('subtitle')}
           icon={History}
-          actionLabel={t('viewAll')}
-          actionHref="/history"
+          actionLabel={canShowAll ? (showAll ? t('showLess') : t('viewAll')) : undefined}
+          onAction={canShowAll ? () => {
+            setShowAll(v => !v);
+            if (!showAll) setTimeout(() => gridRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
+          } : undefined}
         />
 
         {/* Scrollable Container */}
@@ -154,6 +165,35 @@ const RecentlyViewed = () => {
             </div>
           ))}
         </div>
+
+        {/* "View all" expanded grid */}
+        <AnimatePresence>
+          {showAll && canShowAll && (
+            <motion.div
+              ref={gridRef}
+              key="recent-searches-grid"
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 16 }}
+              transition={{ duration: 0.28, ease: 'easeOut' }}
+              className="mt-2"
+            >
+              <div className="flex items-center justify-end mb-3">
+                <button
+                  onClick={() => setShowAll(false)}
+                  className="text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors"
+                >
+                  {t('showLess')} ↑
+                </button>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                {displayItems.map(({ item, destination }, i) => (
+                  <RecentCard key={item.id} item={item} destination={destination} index={i} />
+                ))}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     </section>
   );
