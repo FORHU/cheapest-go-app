@@ -69,8 +69,21 @@ export async function GET(req: NextRequest) {
                     backgroundResolveDestCode(cityName),
                     new Promise<undefined>(r => setTimeout(() => r(undefined), 30_000)),
                 ]);
-                if (code) { resolved++; console.log(`[fill-dest-cache] ✓ ${cityName} → ${code}`); }
-                else       { failed++;   console.log(`[fill-dest-cache] ✗ ${cityName} — no code found`); }
+                if (code) {
+                    resolved++;
+                    console.log(`[fill-dest-cache] ✓ ${cityName} → ${code}`);
+                } else {
+                    failed++;
+                    console.log(`[fill-dest-cache] ✗ ${cityName} — no code found, marking as unresolvable`);
+                    // Insert sentinel so this city is skipped on future runs.
+                    // Many failures are non-English city names (e.g. German: "wien", "prag")
+                    // that TGX destinationSearcher will never match.
+                    await sql`
+                        INSERT INTO tgx_destination_cache (city_key, destination_code)
+                        VALUES (${cityName}, 'NONE')
+                        ON CONFLICT (city_key) DO NOTHING
+                    `.catch(() => {});
+                }
             } catch (e: any) {
                 failed++;
                 console.warn(`[fill-dest-cache] ✗ ${cityName} error: ${e.message?.slice(0, 80)}`);
@@ -78,7 +91,7 @@ export async function GET(req: NextRequest) {
             await new Promise(r => setTimeout(r, 1_000));
         }
         const elapsed = Date.now() - t0;
-        console.log(`[fill-dest-cache] Done: ${resolved} resolved, ${failed} failed in ${elapsed}ms`);
+        console.log(`[fill-dest-cache] Done: ${resolved} resolved, ${failed} marked unresolvable in ${elapsed}ms`);
     }
 
     runFill().catch(e => console.error('[fill-dest-cache] Background run failed:', e.message));

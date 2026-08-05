@@ -203,6 +203,7 @@ export async function resolveTgxDestinationCode(cityName: string, countryCode?: 
         const rows = await sql`SELECT destination_code FROM tgx_destination_cache WHERE city_key = ${key} LIMIT 1`;
         if (rows.length > 0) {
             const code = rows[0].destination_code as string;
+            if (code === 'NONE') return undefined; // sentinel — unresolvable city name
             _destCodeCache.set(key, code);
             return code;
         }
