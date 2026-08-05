@@ -155,6 +155,9 @@ export function parseDuffelOffer(offer: any, cabinClassFallback?: string) {
     offer.slices.forEach((slice: any, sliceIdx: number) => {
         slice.segments.forEach((seg: any) => {
             allSegments.push({
+                // Which leg this belongs to. Kept distinct from the flat position
+                // assigned during normalisation, which cannot express grouping.
+                sliceIndex: sliceIdx,
                 segmentIndex: sliceIdx,
                 airline: seg.operating_carrier?.iata_code || seg.marketing_carrier?.iata_code,
                 airlineName: seg.operating_carrier?.name || seg.marketing_carrier?.name,

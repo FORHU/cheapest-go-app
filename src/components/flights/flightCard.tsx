@@ -2,9 +2,9 @@
 
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plane, ArrowRight, Luggage, ChevronDown, ChevronUp, Shield, XCircle, BadgeDollarSign, Users } from 'lucide-react';
+import { Plane, ArrowRight, Luggage, ChevronDown, ChevronUp, Shield, XCircle, BadgeDollarSign, Users, Moon, Clock } from 'lucide-react';
 import type { FlightOffer, FlightSegmentDetail } from '@/types/flights';
-import { formatPrice } from '@/utils/flight-utils';
+import { formatPrice, groupSegmentsIntoLegs, refundabilityOf, layoverMinutes, LONG_LAYOVER_MINUTES, type FlightLeg } from '@/utils/flight-utils';
 import SaveButton from '@/components/common/SaveButton';
 import { useTranslations } from 'next-intl';
 
@@ -116,6 +116,63 @@ function SegmentRow({ segment, t }: { segment: FlightSegmentDetail; t: Translato
     );
 }
 
+// ─── Leg Summary Row ─────────────────────────────────────────────────
+
+/**
+ * One direction of the trip, collapsed to a single line.
+ *
+ * Duration and stop count are the leg's own — not the offer totals, which sum
+ * outbound and return and so describe no journey anyone actually takes.
+ */
+function LegRow({ leg, t, showLabel, label }: { leg: FlightLeg; t: Translator; showLabel: boolean; label: string }) {
+    const isLongLayover = leg.longestLayoverMinutes >= LONG_LAYOVER_MINUTES;
+
+    return (
+        <div className="flex items-center gap-1.5 lg:gap-3 min-w-0 w-full">
+            {showLabel && (
+                <span className="text-[8px] lg:text-[10px] uppercase tracking-wider text-slate-400 dark:text-slate-500 font-normal w-10 lg:w-14 shrink-0">
+                    {label}
+                </span>
+            )}
+
+            <div className="text-center">
+                <div className="text-xs lg:text-base font-normal text-slate-900 dark:text-white leading-tight">{formatTime(leg.departureTime)}</div>
+                <div className="text-[8px] lg:text-[10px] text-slate-500 dark:text-slate-400 font-normal">{leg.origin}</div>
+            </div>
+
+            <div className="flex-1 flex flex-col items-center gap-0 min-w-0">
+                <span className="text-[10px] lg:text-xs text-slate-400 dark:text-slate-500 font-normal">{formatDuration(leg.durationMinutes)}</span>
+                <div className="w-full flex items-center gap-0.5">
+                    <div className="h-[1.5px] lg:h-[2px] flex-1 bg-gradient-to-r from-indigo-400 to-purple-400 rounded-full" />
+                    <Plane className="w-2.5 h-2.5 lg:w-4 lg:h-4 text-indigo-500 rotate-90" />
+                </div>
+                <span className={`text-[10px] lg:text-xs font-normal ${leg.stops === 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'}`}>
+                    {stopsLabel(leg.stops, t)}
+                </span>
+            </div>
+
+            <div className="text-center">
+                <div className="text-xs lg:text-base font-normal text-slate-900 dark:text-white leading-tight">{formatTime(leg.arrivalTime)}</div>
+                <div className="text-[8px] lg:text-[10px] text-slate-500 dark:text-slate-400 font-normal">{leg.destination}</div>
+            </div>
+
+            {/* A 25-hour connection sorts to the top on price with nothing to
+                distinguish it from a 2-hour one. Say so on the collapsed card. */}
+            {(isLongLayover || leg.hasOvernightLayover) && (
+                <span
+                    className="inline-flex items-center gap-0.5 px-1 lg:px-1.5 py-px rounded-full text-[8px] lg:text-[10px] bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-400 shrink-0"
+                    title={t('longLayoverTitle', { duration: formatDuration(leg.longestLayoverMinutes) })}
+                >
+                    {leg.hasOvernightLayover
+                        ? <Moon className="w-2 h-2 lg:w-2.5 lg:h-2.5" />
+                        : <Clock className="w-2 h-2 lg:w-2.5 lg:h-2.5" />}
+                    {formatDuration(leg.longestLayoverMinutes)}
+                </span>
+            )}
+        </div>
+    );
+}
+
 // ─── FlightCard Props ────────────────────────────────────────────────
 
 export interface FlightCardProps {
@@ -132,16 +189,8 @@ export const FlightCard: React.FC<FlightCardProps> = ({ offer, index = 0, onSele
     const targetCurrency = useUserCurrency();
     const t = useTranslations('flights.card');
 
-    // Group segments by their logical segment index (each search leg)
-    const legGroups: { [key: number]: FlightSegmentDetail[] } = {};
-    offer.segments.forEach((seg, i) => {
-        // Fallback to array split if segmentIndex is mysteriously missing from older APIs
-        const groupIndex = seg.segmentIndex ?? (offer.segments.length > 1 && i >= Math.ceil(offer.segments.length / 2) ? 1 : 0);
-        if (!legGroups[groupIndex]) legGroups[groupIndex] = [];
-        legGroups[groupIndex].push(seg);
-    });
-
-    const routeIndices = Object.keys(legGroups).map(Number).sort((a, b) => a - b);
+    // One entry per direction: [outbound] or [outbound, return].
+    const legs = groupSegmentsIntoLegs(offer.segments);
 
     // Primary metrics for the collapsed card view
     const primary = offer.segments[0];
@@ -196,30 +245,19 @@ export const FlightCard: React.FC<FlightCardProps> = ({ offer, index = 0, onSele
                         </div>
                     </div>
 
-                    {/* Route timeline */}
-                    <div className="flex items-center gap-1.5 lg:gap-3 min-w-0 w-full">
-                        <div className="text-center">
-                            <div className="text-xs lg:text-base font-normal text-slate-900 dark:text-white leading-tight">{formatTime(primary.departure.time)}</div>
-                            <div className="text-[8px] lg:text-[10px] text-slate-500 dark:text-slate-400 font-normal">{primary.departure.airport}</div>
-                        </div>
-
-                        <div className="flex-1 flex flex-col items-center gap-0">
-                            <span className="text-[10px] lg:text-xs text-slate-400 dark:text-slate-500 font-normal">{formatDuration(offer.totalDuration)}</span>
-                            <div className="w-full flex items-center gap-0.5">
-                                <div className="h-[1.5px] lg:h-[2px] flex-1 bg-gradient-to-r from-indigo-400 to-purple-400 rounded-full" />
-                                <Plane className="w-2.5 h-2.5 lg:w-4 lg:h-4 text-indigo-500 rotate-90" />
-                            </div>
-                            <span className={`text-[10px] lg:text-xs font-normal ${offer.totalStops === 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'}`}>
-                                {stopsLabel(offer.totalStops, t)}
-                            </span>
-                        </div>
-
-                        <div className="text-center">
-                            <div className="text-xs lg:text-base font-normal text-slate-900 dark:text-white leading-tight">{formatTime(last.arrival.time)}</div>
-                            <div className="text-[8px] lg:text-[10px] text-slate-500 dark:text-slate-400 font-normal">
-                                {last.arrival.airport}
-                            </div>
-                        </div>
+                    {/* Route timeline — one row per direction. A round trip is two
+                        journeys and must never be collapsed into one: doing so read
+                        as "CRK → CRK" with both durations summed. */}
+                    <div className="flex flex-col gap-1 lg:gap-1.5 w-full">
+                        {legs.map((leg, i) => (
+                            <LegRow
+                                key={leg.sliceIndex}
+                                leg={leg}
+                                t={t}
+                                showLabel={legs.length > 1}
+                                label={i === 0 ? t('outbound') : t('return')}
+                            />
+                        ))}
                     </div>
 
                     {/* Tags */}
@@ -235,11 +273,13 @@ export const FlightCard: React.FC<FlightCardProps> = ({ offer, index = 0, onSele
                         {/* ─── Tristate refundability badge (always visible) ─── */}
                         {(() => {
                             const fp = offer.farePolicy;
-                            // Use farePolicy if available, fall back to legacy refundable bool
-                            const isRefundable = fp ? fp.isRefundable : offer.refundable;
                             const penalty = fp?.refundPenaltyAmount;
+                            // A penalty at or above the fare is not refundability — see
+                            // refundabilityOf(). This is what stopped a $499 ticket
+                            // advertising itself as "Refundable (est. fee: $500)".
+                            const refundability = refundabilityOf(fp, offer.refundable, offer.price.total);
 
-                            if (isRefundable && penalty === 0) {
+                            if (refundability === 'free') {
                                 // 🟢 Free cancellation
                                 return (
                                     <span className="inline-flex items-center gap-0.5 px-1 lg:px-2 py-px lg:py-0.5 rounded-full text-[8px] lg:text-xs bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-400">
@@ -247,8 +287,8 @@ export const FlightCard: React.FC<FlightCardProps> = ({ offer, index = 0, onSele
                                         {t('freeCancellation')}
                                     </span>
                                 );
-                            } else if (isRefundable) {
-                                // 🟡 Refundable with fee OR unknown penalty amount
+                            } else if (refundability === 'fee') {
+                                // 🟡 Refundable with a fee below the fare, OR unknown penalty
                                 const formattedFee = penalty != null && penalty > 0
                                     ? formatPrice(penalty, fp?.refundPenaltyCurrency ?? 'USD', targetCurrency)
                                     : '';
@@ -388,21 +428,39 @@ export const FlightCard: React.FC<FlightCardProps> = ({ offer, index = 0, onSele
 
                           {/* Flight Detail Segments */}
                           <div className="px-2.5 lg:px-5 pb-2 lg:pb-4 space-y-0.5 lg:space-y-1">
-                              {routeIndices.map((idx, routeIndex) => {
-                                  const legSegments = legGroups[idx];
-                                  if (!legSegments || legSegments.length === 0) return null;
-
-                                  let label = t('legLabel', { number: routeIndex + 1 });
-                                  if (routeIndices.length === 2) {
-                                      label = routeIndex === 0 ? t('outbound') : t('return');
-                                  }
+                              {legs.map((leg, routeIndex) => {
+                                  const label = legs.length === 2
+                                      ? (routeIndex === 0 ? t('outbound') : t('return'))
+                                      : t('legLabel', { number: routeIndex + 1 });
 
                                   return (
-                                      <div className="pt-3" key={idx}>
-                                          <div className="text-[11px] font-normal text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">
-                                              {label}
+                                      <div className="pt-3" key={leg.sliceIndex}>
+                                          <div className="flex items-center gap-2 mb-1">
+                                              <span className="text-[11px] font-normal text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                                                  {label}
+                                              </span>
+                                              <span className="text-[10px] text-slate-400 dark:text-slate-500">
+                                                  {formatDuration(leg.durationMinutes)} · {stopsLabel(leg.stops, t)}
+                                              </span>
                                           </div>
-                                          {legSegments.map((seg, i) => <SegmentRow key={`${idx}-${i}`} segment={seg} t={t} />)}
+                                          {leg.segments.map((seg, i) => (
+                                              <React.Fragment key={`${leg.sliceIndex}-${i}`}>
+                                                  <SegmentRow segment={seg} t={t} />
+                                                  {/* Name the wait between flights — the segment rows
+                                                      alone leave the traveller to subtract timestamps. */}
+                                                  {i < leg.segments.length - 1 && (() => {
+                                                      const gap = layoverMinutes(seg.arrival.time, leg.segments[i + 1].departure.time);
+                                                      if (gap <= 0) return null;
+                                                      const isLong = gap >= LONG_LAYOVER_MINUTES;
+                                                      return (
+                                                          <div className={`flex items-center gap-1.5 py-1 px-1 text-[10px] lg:text-xs ${isLong ? 'text-amber-600 dark:text-amber-400' : 'text-slate-400 dark:text-slate-500'}`}>
+                                                              <Clock className="w-2.5 h-2.5 lg:w-3 lg:h-3 shrink-0" />
+                                                              {t('layoverIn', { duration: formatDuration(gap), airport: seg.arrival.airport })}
+                                                          </div>
+                                                      );
+                                                  })()}
+                                              </React.Fragment>
+                                          ))}
                                       </div>
                                   );
                               })}

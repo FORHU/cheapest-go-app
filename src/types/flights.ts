@@ -129,7 +129,17 @@ export interface FlightPrice {
 }
 
 export interface FlightSegmentDetail {
+  /**
+   * Position in the offer's flat segment list. Ordering only — this is what the
+   * booking payload sends to `flight_segments.segment_index`.
+   */
   segmentIndex: number;
+  /**
+   * Which leg (Duffel slice) this segment belongs to: 0 = outbound, 1 = return.
+   * Distinct from `segmentIndex`, which cannot express grouping — a 2+2 round
+   * trip is segmentIndex 0,1,2,3 but sliceIndex 0,0,1,1.
+   */
+  sliceIndex?: number;
   airline: {
     code: string;
     name: string;

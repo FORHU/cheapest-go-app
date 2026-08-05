@@ -68,6 +68,177 @@ export function getAirlineName(code: string): string {
     return AIRLINES[code] || code;
 }
 
+// ─── Legs (slices) ───────────────────────────────────────────────────────────
+
+/** A single directional journey — the outbound, or the return. */
+export interface FlightLeg {
+    sliceIndex: number;
+    segments: FlightSegmentDetail[];
+    origin: string;
+    destination: string;
+    departureTime: string;
+    arrivalTime: string;
+    /** Flight time plus connection time for this leg alone. */
+    durationMinutes: number;
+    /** Connections within this leg — NOT the sum across outbound and return. */
+    stops: number;
+    longestLayoverMinutes: number;
+    /** A connection where the arrival and next departure fall on different calendar days. */
+    hasOvernightLayover: boolean;
+}
+
+/** Long enough that a traveller should be told before they sort by price. */
+export const LONG_LAYOVER_MINUTES = 4 * 60;
+
+/**
+ * Beyond this, a gap is a stay rather than a connection. Used only to split legs
+ * on offers that carry no slice information — see groupSegmentsIntoLegs.
+ */
+const MAX_CONNECTION_MINUTES = 24 * 60;
+
+/**
+ * Minutes between landing and the next departure.
+ *
+ * Both timestamps are local to the SAME airport, so naive arithmetic is exact
+ * here — which is the only reason this is safe to do on Duffel's offset-less
+ * timestamps. Never subtract a departure from an arrival across two different
+ * airports; that silently absorbs the timezone difference into the result.
+ */
+export function layoverMinutes(arrivalTime: string, nextDepartureTime: string): number {
+    const a = new Date(arrivalTime).getTime();
+    const b = new Date(nextDepartureTime).getTime();
+    if (!Number.isFinite(a) || !Number.isFinite(b)) return 0;
+    return Math.max(0, Math.round((b - a) / 60000));
+}
+
+/**
+ * Split an offer's flat segment list back into its legs.
+ *
+ * A round trip is two legs, and conflating them is how a card ends up claiming
+ * "CRK → CRK, 35h 35m, 2 stops" — the outbound's origin, the return's arrival,
+ * both durations added together and both connections counted as one journey's
+ * stops. Grouping is by `sliceIndex`, falling back to `segmentIndex` (which the
+ * Duffel parser sets to the slice index before normalisation flattens it) and
+ * finally to a single leg.
+ *
+ * Durations are summed as flight time + connection time rather than measured
+ * from first departure to last arrival: those two timestamps are local to
+ * different airports, so subtracting them would be wrong by the offset between
+ * them. Summing this way reproduces Duffel's own slice duration exactly.
+ */
+export function groupSegmentsIntoLegs(segments: FlightSegmentDetail[]): FlightLeg[] {
+    if (!segments || segments.length === 0) return [];
+
+    const groups = new Map<number, FlightSegmentDetail[]>();
+    const hasExplicitSlices = segments.every(s => (s as any).sliceIndex != null);
+
+    if (hasExplicitSlices) {
+        for (const seg of segments) {
+            const key = (seg as any).sliceIndex as number;
+            const bucket = groups.get(key);
+            if (bucket) bucket.push(seg);
+            else groups.set(key, [seg]);
+        }
+    } else {
+        // No slice information — offers cached or stored in sessionStorage before
+        // sliceIndex existed, where `segmentIndex` is the flat position and so
+        // would put every segment in its own leg.
+        //
+        // Two signals, because neither alone is sufficient:
+        //   - Geography catches multi-city, where one leg ends in a city the next
+        //     does not depart from.
+        //   - Time catches a round trip, which IS airport-continuous end to end
+        //     (the return departs where the outbound landed) and can only be split
+        //     on the stay in between.
+        //
+        // Approximate by nature: a genuine connection longer than a day would be
+        // read as a leg break. That is tolerable here because this path only ever
+        // sees offers issued before sliceIndex existed, and it self-heals on the
+        // next search.
+        let legIndex = 0;
+        segments.forEach((seg, i) => {
+            if (i > 0) {
+                const prev = segments[i - 1];
+                const prevArrival = prev.arrival.airport || prev.destination;
+                const thisDeparture = seg.departure.airport || seg.origin;
+                const discontinuous = !!prevArrival && !!thisDeparture && prevArrival !== thisDeparture;
+                const staysOvernight = layoverMinutes(prev.arrival.time, seg.departure.time) >= MAX_CONNECTION_MINUTES;
+                if (discontinuous || staysOvernight) legIndex++;
+            }
+            const bucket = groups.get(legIndex);
+            if (bucket) bucket.push(seg);
+            else groups.set(legIndex, [seg]);
+        });
+    }
+
+    return [...groups.entries()]
+        .sort((a, b) => a[0] - b[0])
+        .map(([sliceIndex, unordered]) => {
+            // Order within the leg explicitly rather than trusting input order —
+            // layover maths and the leg's origin/destination both depend on it.
+            const legSegments = [...unordered].sort((a, b) => {
+                const bySegment = (a.segmentIndex ?? 0) - (b.segmentIndex ?? 0);
+                if (bySegment !== 0) return bySegment;
+                return String(a.departure.time ?? '').localeCompare(String(b.departure.time ?? ''));
+            });
+            const first = legSegments[0];
+            const last = legSegments[legSegments.length - 1];
+
+            let flightMinutes = 0;
+            for (const s of legSegments) flightMinutes += s.duration ?? 0;
+
+            let connectionMinutes = 0;
+            let longestLayoverMinutes = 0;
+            let hasOvernightLayover = false;
+            for (let i = 0; i < legSegments.length - 1; i++) {
+                const gap = layoverMinutes(legSegments[i].arrival.time, legSegments[i + 1].departure.time);
+                connectionMinutes += gap;
+                if (gap > longestLayoverMinutes) longestLayoverMinutes = gap;
+                // Compared as date strings, not Date objects — both are local to the
+                // connecting airport, so the calendar day is what the traveller sees.
+                const landed = (legSegments[i].arrival.time ?? '').slice(0, 10);
+                const departs = (legSegments[i + 1].departure.time ?? '').slice(0, 10);
+                if (landed && departs && landed !== departs) hasOvernightLayover = true;
+            }
+
+            return {
+                sliceIndex,
+                segments: legSegments,
+                origin: first.departure.airport || first.origin || '',
+                destination: last.arrival.airport || last.destination || '',
+                departureTime: first.departure.time,
+                arrivalTime: last.arrival.time,
+                durationMinutes: flightMinutes + connectionMinutes,
+                stops: legSegments.length - 1,
+                longestLayoverMinutes,
+                hasOvernightLayover,
+            };
+        });
+}
+
+/**
+ * Is this fare refundable in any way the traveller would recognise as refundable?
+ *
+ * A penalty at or above the fare is not a refund — it is a non-refundable ticket
+ * with extra steps. Presenting it as "Refundable (est. fee: $500)" on a $499
+ * ticket is the kind of claim that turns into a chargeback, so it is classified
+ * as non-refundable here.
+ */
+export function refundabilityOf(
+    farePolicy: { isRefundable?: boolean; refundPenaltyAmount?: number | null } | undefined,
+    legacyRefundable: boolean | undefined,
+    fareTotal: number,
+): 'free' | 'fee' | 'none' {
+    const isRefundable = farePolicy ? farePolicy.isRefundable === true : legacyRefundable === true;
+    if (!isRefundable) return 'none';
+
+    const penalty = farePolicy?.refundPenaltyAmount;
+    if (penalty == null) return 'fee';       // refundable, amount unknown
+    if (penalty <= 0) return 'free';
+    if (fareTotal > 0 && penalty >= fareTotal) return 'none';
+    return 'fee';
+}
+
 /**
  * Transforms a raw flight result (as stored in cache/DB) back into a UI-ready FlightOffer.
  */
@@ -90,6 +261,11 @@ export function normalizedToFlightOffer(nf: any, tripType?: FlightOffer['tripTyp
 
     const segments: FlightSegmentDetail[] = (rawSegments ?? []).map((seg: any, idx: number) => ({
         segmentIndex: idx,
+        // Preserve the leg grouping the provider parser assigned. Overwriting this
+        // with `idx` is what made a 2+2 round trip look like four separate legs,
+        // so the card could only render it as one CRK→CRK journey. Duffel's parser
+        // puts the slice index in `segmentIndex` too, hence the second fallback.
+        sliceIndex: seg.sliceIndex ?? seg.segmentIndex ?? seg.itineraryIndex ?? 0,
         airline: {
             code: (() => {
                 const raw = typeof seg.airline === 'object' ? seg.airline?.code : seg.airline;
