@@ -94,12 +94,13 @@ const MapPropertyCard = React.memo(function MapPropertyCard({
             role="button"
             tabIndex={0}
             data-property-id={property.id}
-            onClick={() => onSelect(property.id)}
-            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onSelect(property.id); } }}
+            onClick={(property as any).priceLoading ? undefined : () => onSelect(property.id)}
+            onKeyDown={(property as any).priceLoading ? undefined : (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onSelect(property.id); } }}
             onMouseEnter={() => onHover(property.id)}
             onMouseLeave={() => onHover(null)}
             className={cn(
-                'w-full text-left transition-all duration-200 cursor-pointer overflow-hidden rounded-xl',
+                'w-full text-left transition-all duration-200 overflow-hidden rounded-xl',
+                (property as any).priceLoading ? 'cursor-wait opacity-75' : 'cursor-pointer',
                 // Mobile: card style with padding
                 'p-2.5',
                 // md+: flush row style
@@ -170,7 +171,13 @@ const MapPropertyCard = React.memo(function MapPropertyCard({
                     <div className="flex items-center justify-between mt-1 gap-1">
                         <div className="flex items-baseline gap-0.5 min-w-0">
                             {(property as any).priceLoading ? (
-                                <div className="h-4 w-16 bg-slate-200 dark:bg-slate-700 rounded animate-pulse" />
+                                <div className="flex items-center gap-1 text-slate-400 dark:text-slate-500">
+                                    <svg className="w-3 h-3 animate-spin shrink-0" viewBox="0 0 24 24" fill="none">
+                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"/>
+                                    </svg>
+                                    <span className="text-[9px] font-medium">Fetching…</span>
+                                </div>
                             ) : (
                                 <>
                                     <span className="text-[13px] font-bold text-blue-600 dark:text-blue-400 truncate">
@@ -180,7 +187,7 @@ const MapPropertyCard = React.memo(function MapPropertyCard({
                                 </>
                             )}
                         </div>
-                        {onViewDetails && (
+                        {onViewDetails && !((property as any).priceLoading) && (
                             <button
                                 type="button"
                                 onClick={(e) => { e.stopPropagation(); onViewDetails(property.id); }}

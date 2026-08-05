@@ -332,8 +332,8 @@ const HorizontalCard: React.FC<PropertyCardProps> = ({
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: index < 8 ? index * 0.04 : 0, duration: 0.35, ease: [0.25, 0.1, 0.25, 1] }}
-            className={`flex flex-col md:flex-row bg-white dark:bg-slate-900 rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-700 shadow-sm hover:shadow-lg hover:border-blue-300 dark:hover:border-blue-600 transition-all group cursor-pointer ${className}`}
-            onClick={onClick}
+            className={`flex flex-col md:flex-row bg-white dark:bg-slate-900 rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-700 shadow-sm transition-all group ${property.priceLoading ? 'cursor-wait opacity-80' : 'hover:shadow-lg hover:border-blue-300 dark:hover:border-blue-600 cursor-pointer'} ${className}`}
+            onClick={property.priceLoading ? undefined : onClick}
         >
             {/* Image Section */}
             <div className="md:w-[240px] relative h-[110px] md:h-auto shrink-0 p-1.5 md:p-3 md:pr-0">
@@ -456,9 +456,15 @@ const HorizontalCard: React.FC<PropertyCardProps> = ({
                     {/* Price Section */}
                     <div className="text-right">
                         {property.priceLoading ? (
-                            <div className="flex flex-col items-end gap-1.5">
-                                <div className="h-6 w-24 bg-slate-200 dark:bg-slate-700 rounded animate-pulse" />
-                                <div className="h-3 w-12 bg-slate-100 dark:bg-slate-800 rounded animate-pulse" />
+                            <div className="flex flex-col items-end gap-1">
+                                <div className="flex items-center gap-1.5 text-slate-400 dark:text-slate-500">
+                                    <svg className="w-3 h-3 lg:w-4 lg:h-4 animate-spin shrink-0" viewBox="0 0 24 24" fill="none">
+                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"/>
+                                    </svg>
+                                    <span className="text-[9px] lg:text-xs font-medium">Fetching prices…</span>
+                                </div>
+                                <div className="h-3 w-16 bg-slate-100 dark:bg-slate-800 rounded animate-pulse" />
                             </div>
                         ) : (
                             <>
