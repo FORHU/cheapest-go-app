@@ -30,6 +30,7 @@ query TgxListDestinations($criteria: HotelXDestinationListInput!, $token: String
             code
             type
             texts { text language }
+            parent
           }
         }
       }
@@ -48,9 +49,9 @@ export async function GET(req: NextRequest) {
     const cfg = getTgxConfig();
     const t0 = Date.now();
 
-    // city_key (lowercase english name) → {code, type}
+    // city_key (lowercase english name) → {code, type, parent_code}
     // Built in memory so we can apply CITY > ZONE preference before writing to DB.
-    const destMap = new Map<string, { code: string; type: string }>();
+    const destMap = new Map<string, { code: string; type: string; parent_code: string | null }>();
 
     let token: string | null = null;
     let page = 0;
@@ -92,7 +93,11 @@ export async function GET(req: NextRequest) {
             const existing = destMap.get(key);
             // CITY beats ZONE; first-seen wins on same type
             if (!existing || (existing.type !== 'CITY' && dest.type === 'CITY')) {
-                destMap.set(key, { code: dest.code as string, type: dest.type as string });
+                destMap.set(key, {
+                    code:        dest.code as string,
+                    type:        dest.type as string,
+                    parent_code: (dest.parent as string | null) ?? null,
+                });
             }
         }
 
@@ -116,15 +121,19 @@ export async function GET(req: NextRequest) {
     const BATCH = 500;
 
     for (let i = 0; i < entries.length; i += BATCH) {
-        const rows = entries.slice(i, i + BATCH).map(([city_key, { code }]) => ({
+        const rows = entries.slice(i, i + BATCH).map(([city_key, { code, type, parent_code }]) => ({
             city_key,
             destination_code: code,
+            dest_type:        type,
+            parent_code:      parent_code ?? null,
         }));
         try {
             await sql`
-                INSERT INTO tgx_destination_cache ${sql(rows, 'city_key', 'destination_code')}
+                INSERT INTO tgx_destination_cache ${sql(rows, 'city_key', 'destination_code', 'dest_type', 'parent_code')}
                 ON CONFLICT (city_key) DO UPDATE SET
-                    destination_code = EXCLUDED.destination_code
+                    destination_code = EXCLUDED.destination_code,
+                    dest_type        = EXCLUDED.dest_type,
+                    parent_code      = EXCLUDED.parent_code
             `;
             upserted += rows.length;
         } catch (e: any) {

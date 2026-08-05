@@ -247,16 +247,18 @@ export async function resolveTgxDestinationCode(cityName: string, countryCode?: 
         const zoneItem =
             items.find((i: any) => i.type === 'ZONE' && matchesName(i)) ??
             items.find((i: any) => i.type === 'ZONE');
-        const code = countryCode
-            ? (zoneItem?.code ?? cityItem?.code ?? undefined)
-            : (cityItem?.code ?? zoneItem?.code ?? undefined);
+        const selectedItem = countryCode
+            ? (zoneItem ?? cityItem)
+            : (cityItem ?? zoneItem);
+        const code      = selectedItem?.code as string | undefined;
+        const dest_type = selectedItem?.type as string | undefined;
         if (code) {
             _destCodeCache.set(key, code);
             // Write to DB (fire-and-forget — non-blocking)
             try {
                 const sql = getSqlAdmin();
-                sql`INSERT INTO tgx_destination_cache (city_key, destination_code)
-                    VALUES (${key}, ${code})
+                sql`INSERT INTO tgx_destination_cache (city_key, destination_code, dest_type)
+                    VALUES (${key}, ${code}, ${dest_type ?? 'CITY'})
                     ON CONFLICT (city_key) DO NOTHING`.catch(() => {});
             } catch { /* non-fatal */ }
         }
@@ -310,14 +312,18 @@ export function backgroundResolveDestCode(cityName: string, countryCode?: string
             const zoneItem = items.find((i: any) => i.type === 'ZONE' && matchesName(i)) ?? items.find((i: any) => i.type === 'ZONE');
             // Always prefer CITY — this resolver is called with countryCode=undefined to
             // match the same cache key as resolveTgxDestinationCode(cityName, undefined).
-            const code = cityItem?.code ?? zoneItem?.code ?? undefined;
+            const selectedItem = cityItem ?? zoneItem;
+            const code      = selectedItem?.code as string | undefined;
+            const dest_type = selectedItem?.type as string | undefined;
             if (code) {
                 _destCodeCache.set(key, code);
                 const sql = getSqlAdmin();
-                await sql`INSERT INTO tgx_destination_cache (city_key, destination_code)
-                    VALUES (${key}, ${code})
-                    ON CONFLICT (city_key) DO UPDATE SET destination_code = EXCLUDED.destination_code`;
-                console.log(`[dest-resolve] Background resolved "${cityName}" → ${code} (cached for next search)`);
+                await sql`INSERT INTO tgx_destination_cache (city_key, destination_code, dest_type)
+                    VALUES (${key}, ${code}, ${dest_type ?? 'CITY'})
+                    ON CONFLICT (city_key) DO UPDATE SET
+                        destination_code = EXCLUDED.destination_code,
+                        dest_type        = EXCLUDED.dest_type`;
+                console.log(`[dest-resolve] Background resolved "${cityName}" → ${code} (${dest_type ?? 'CITY'}) (cached for next search)`);
             } else {
                 console.warn(`[dest-resolve] Background resolution for "${cityName}" returned no code`);
             }

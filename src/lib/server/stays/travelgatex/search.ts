@@ -840,99 +840,6 @@ async function searchEtgCity(
     }
 }
 
-// ─── ETG geo (point) search — district / landmark rungs ──────────────────────
-
-/** Metres between two lat/lng points (haversine). */
-function haversineMeters(lat1: number, lng1: number, lat2: number, lng2: number): number {
-    const R = 6_371_000; // Earth radius, metres
-    const toRad = (d: number) => (d * Math.PI) / 180;
-    const dLat = toRad(lat2 - lat1);
-    const dLng = toRad(lng2 - lng1);
-    const a = Math.sin(dLat / 2) ** 2 +
-        Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) ** 2;
-    return 2 * R * Math.asin(Math.min(1, Math.sqrt(a)));
-}
-
-/**
- * Radius ladder (metres) for a point search. Districts size the first circle from
- * their Mapbox bbox (covers exactly the district); landmarks/addresses start tight
- * and auto-widen so a pick never dead-ends, yet "near X" stays near X. See ADR-0006.
- */
-function pointSearchRadii(params: TgxSearchParams): number[] {
-    const bbox = params.bbox;
-    if (params.rung === 'district' && bbox && bbox.length === 4) {
-        const [minLng, minLat, maxLng, maxLat] = bbox;
-        const centreLat = (minLat + maxLat) / 2;
-        const centreLng = (minLng + maxLng) / 2;
-        // Centre-to-corner distance covers the whole box; cap at 20km, one widen step.
-        const corner = Math.round(haversineMeters(centreLat, centreLng, maxLat, maxLng));
-        const start = Math.min(Math.max(corner, 2_000), 20_000);
-        const wide  = Math.min(Math.round(start * 1.5), 20_000);
-        return start === wide ? [start] : [start, wide];
-    }
-    // Landmark / address (poi): tight start, auto-widen, capped at 10km.
-    return [2_000, 5_000, 10_000];
-}
-
-/** Search ETG B2B by coordinate + radius (point rungs: district / landmark).
- *  Auto-widens through the radius ladder until hotels are found or the cap is hit. */
-async function searchEtgGeo(
-    lat: number,
-    lng: number,
-    params: TgxSearchParams,
-): Promise<{ data: any[]; allMappable: any[]; totalCount: number }> {
-    const empty = { data: [], allMappable: [], totalCount: 0 };
-    try {
-        if (!process.env.ETG_KEY_ID || !process.env.ETG_API_KEY) return empty;
-        const token = getEtgToken();
-        const label = params.cityName ?? '';
-
-        let hotels: any[] = [];
-        let usedRadius = 0;
-        for (const radius of pointSearchRadii(params)) {
-            const abort = new AbortController();
-            const t = setTimeout(() => abort.abort(), 20_000);
-            let serpRes: Response;
-            try {
-                serpRes = await fetch('https://api.worldota.net/api/b2b/v3/search/serp/geo/', {
-                    method: 'POST',
-                    headers: { 'Authorization': `Basic ${token}`, 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        latitude:  lat,
-                        longitude: lng,
-                        radius,                       // metres
-                        checkin:   params.checkin,
-                        checkout:  params.checkout,
-                        guests:    [{ adults: Number(params.adults ?? 2) }],
-                        currency:  'USD',
-                        language:  'en',
-                        residency: 'us',
-                    }),
-                    signal: abort.signal,
-                });
-            } finally {
-                clearTimeout(t);
-            }
-            if (!serpRes.ok) { console.warn(`[tgx-search] ETG geo ${serpRes.status} @ ${radius}m`); continue; }
-            const serpData = await serpRes.json();
-            hotels = serpData?.data?.hotels ?? [];
-            usedRadius = radius;
-            if (hotels.length > 0) break;
-            console.log(`[tgx-search] ETG geo: 0 hotels @ ${radius}m near (${lat},${lng}) — widening`);
-        }
-
-        if (!hotels.length) {
-            console.warn(`[tgx-search] ETG geo: no hotels near (${lat},${lng}) for "${label}"`);
-            return empty;
-        }
-        console.log(`[tgx-search] ETG geo: ${hotels.length} hotels @ ${usedRadius}m near (${lat},${lng}) for "${label}"`);
-        return await buildEtgResults(hotels, label, params);
-    } catch (e: any) {
-        console.warn('[tgx-search] ETG geo search failed:', e.message);
-        return empty;
-    }
-}
-
 // ─── Hotel search cache ───────────────────────────────────────────────────────
 
 export const POPULAR_CITIES = new Set([
@@ -951,14 +858,8 @@ export function getEffectiveTtl(cityName?: string): number {
 }
 
 function buildHotelCacheKey(p: TgxSearchParams): string {
-    const isPoint = (p.rung === 'district' || p.rung === 'poi')
-        && Number.isFinite(p.lat) && Number.isFinite(p.lng);
     const location = p.hotelCode
         ? `hotel:${p.hotelCode}`
-        : isPoint
-        // Round coords (~110m) so near-identical picks share a cache entry; include the
-        // rung so a district and a landmark at the same centre (different radius) differ.
-        ? `geo:${p.rung}:${Number(p.lat).toFixed(3)},${Number(p.lng).toFixed(3)}`
         : (p.rung === 'country' || p.rung === 'province')
         ? `${p.rung}:${(p.cityName ?? '').toLowerCase().trim()}`
         : p.destinationCode
@@ -1546,14 +1447,25 @@ export async function runTgxSearch(params: TgxSearchParams) {
     return promise;
 }
 
-async function _runTgxSearch(params: TgxSearchParams) {
+async function _runTgxSearch(params: TgxSearchParams): Promise<any> {
     const {
         checkin, checkout,
         adults = 2, children = 0, childrenAges,
         destinationCode, cityName, countryCode,
         hotelCode,
         guest_nationality = 'US',
+        rung,
     } = params;
+
+    // District/POI — no hotel search (city-only searches supported).
+    if (rung === 'district' || rung === 'poi') {
+        return { data: [], allMappable: [], totalCount: 0 };
+    }
+
+    // Area rungs above city (country / province) — ETG region search, no TGX.
+    if ((rung === 'country' || rung === 'province') && cityName) {
+        return searchEtgCity(cityName, params, rung);
+    }
 
     // OTV returns PHP (Philippines account default) regardless of what currency we request.
     const currency = 'USD';
