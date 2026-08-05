@@ -126,7 +126,11 @@ export function HotelResultsClient({ searchParams, onSwitchView }: HotelResultsC
                                 if (!cancelled) {
                                     setProperties([...accumulated]);
                                     setTotalCount(msg.totalCount ?? accumulated.length);
-                                    setStatus('streaming');
+                                    // Only leave the loading skeleton when there's something to show.
+                                    // An empty hotels message (phase 1 with 0 catalog hits) must not
+                                    // switch to 'streaming' — that would render the empty state while
+                                    // TGX is still running, then hotels would silently pop in.
+                                    if (accumulated.length > 0) setStatus('streaming');
                                 }
                             } else if (msg.type === 'prices') {
                                 // Phase 2 price patch: update price + images/names in-place, clear priceLoading.
