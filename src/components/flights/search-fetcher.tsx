@@ -176,16 +176,6 @@ export function SearchFetcher({
     const searchParams = useSearchParams();
     const bundleHotelId = searchParams.get('bundleHotelId');
 
-    // Hand off from the navigation overlay to this page's own loading state.
-    //
-    // The overlay covers the click → route-ready gap; from here on, the skeleton
-    // rendered by <FlightResults loading> is the accurate one. Clearing on mount
-    // (rather than on a timer in useFlightSearch) is what guarantees the two
-    // never both let go at once and expose the landing skeleton in between.
-    useEffect(() => {
-        useSearchStore.getState().setIsSearching(false);
-    }, []);
-
     // 1. Resolve city names → IATA codes
     const resolvedOrigin = useMemo(() => resolveIATA(origin), [origin]);
     const resolvedDestination = useMemo(() => resolveIATA(destination), [destination]);

@@ -186,18 +186,8 @@ export const useFlightSearch = (): UseFlightSearchReturn => {
         // ─── Navigate to results page ────────────────────────────
         router.push(`/flights/search?${params.toString()}`);
 
-        // `isSearching` is cleared by <SearchFetcher> when the results client
-        // mounts — NOT on a timer here.
-        //
-        // This used to be `setTimeout(…, 1500)`, which had no relationship to
-        // whether the page had loaded. A live Duffel search routinely takes
-        // longer than that, so the overlay lifted mid-navigation and revealed
-        // whatever Next was rendering underneath — `(main)/loading.tsx`, which is
-        // the LANDING PAGE skeleton. That is the "it goes back to the landing
-        // page and then to the results" flash.
-        //
-        // SearchNavigationOverlay keeps its own long safety timeout so a
-        // navigation that never completes cannot strand the overlay.
+        // Reset loading after short delay (page transition handles the rest)
+        setTimeout(() => setIsSearching(false), 1500);
 
     }, [router, setIsSearching, setActiveDropdown, t]);
 
