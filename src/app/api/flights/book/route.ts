@@ -231,9 +231,11 @@ export async function POST(req: NextRequest) {
         // by age on the travel date and only catch it at check-in — after ticketing, when
         // the correction costs a reissue. Verify against the actual departure date.
         {
-            const firstSegForAge = (flight as any).slices?.[0]?.segments?.[0] ?? (flight as any).segments?.[0];
-            const departureForAge: string =
-                firstSegForAge?.departing_at ?? firstSegForAge?.departureTime ?? firstSegForAge?.departure ?? '';
+            const firstSegForAge = (flight as any)._rawOffer?.slices?.[0]?.segments?.[0]
+                ?? (flight as any).slices?.[0]?.segments?.[0]
+                ?? (flight as any).segments?.[0];
+            const _depForAge = firstSegForAge?.departing_at ?? firstSegForAge?.departureTime ?? firstSegForAge?.departure;
+            const departureForAge: string = typeof _depForAge === 'string' ? _depForAge : (_depForAge?.time ?? '');
 
             if (departureForAge) {
                 for (const pax of passengers) {
@@ -295,8 +297,10 @@ export async function POST(req: NextRequest) {
         // Duffel segments carry iata_code objects; other providers send plain strings.
         {
             const rawFlight = flight as any;
-            // Duffel: slices[0].segments[0]; Mystifly: segments[0]
-            const firstSeg = rawFlight.slices?.[0]?.segments?.[0] ?? rawFlight.segments?.[0];
+            // Prefer raw Duffel slices (have departing_at); fall back to normalized segments
+            const firstSeg = rawFlight._rawOffer?.slices?.[0]?.segments?.[0]
+                ?? rawFlight.slices?.[0]?.segments?.[0]
+                ?? rawFlight.segments?.[0];
             const extractIata = (loc: any): string => {
                 if (!loc) return '';
                 if (typeof loc === 'string') return loc;
@@ -304,8 +308,9 @@ export async function POST(req: NextRequest) {
             };
             const origin = extractIata(firstSeg?.origin);
             const destination = extractIata(firstSeg?.destination);
-            // Duffel departure field is departing_at; Mystifly uses departureTime / departure
-            const departureRaw: string = firstSeg?.departing_at ?? firstSeg?.departureTime ?? firstSeg?.departure ?? '';
+            // Duffel raw: departing_at (string); normalized: departure.time or departure (string)
+            const departureVal = firstSeg?.departing_at ?? firstSeg?.departureTime ?? firstSeg?.departure;
+            const departureRaw: string = typeof departureVal === 'string' ? departureVal : (departureVal?.time ?? '');
             const departureDate = departureRaw.slice(0, 10);
 
             if (departureDate) {

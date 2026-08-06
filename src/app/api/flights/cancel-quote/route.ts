@@ -156,22 +156,26 @@ export async function POST(req: NextRequest) {
 
         // Prefer Stripe PI amount (exact cents in the payment currency)
         let refundAmount: number;
+        let chargedAmount: number = Number(booking.charged_price ?? booking.total_price ?? 0);
         let refundCurrency: string = booking.payment_currency ?? booking.currency ?? 'USD';
         try {
             if (booking.payment_intent_id) {
                 const pi = await stripe.paymentIntents.retrieve(booking.payment_intent_id);
-                refundAmount = Math.round((pi.amount / 100) * refundRatio * 100) / 100;
+                chargedAmount = pi.amount / 100;
+                refundAmount = Math.round(chargedAmount * refundRatio * 100) / 100;
                 refundCurrency = pi.currency.toUpperCase();
             } else {
-                refundAmount = Math.round(Number(booking.charged_price ?? booking.total_price ?? 0) * refundRatio * 100) / 100;
+                refundAmount = Math.round(chargedAmount * refundRatio * 100) / 100;
             }
         } catch {
-            refundAmount = Math.round(Number(booking.charged_price ?? booking.total_price ?? 0) * refundRatio * 100) / 100;
+            refundAmount = Math.round(chargedAmount * refundRatio * 100) / 100;
         }
 
-        console.log(`[cancel-quote] bookingId=${bookingId} orderId=${orderId} duffelRefund=${duffelRefund} ${quoteCurrency} of orderTotal=${duffelOrderTotal} ${duffelOrderCurrency} ratio=${refundRatio.toFixed(4)} displayRefund=${refundAmount} ${refundCurrency} cancellationId=${cancellationId}`);
+        const penaltyAmount = Math.max(0, Math.round((chargedAmount - refundAmount) * 100) / 100);
 
-        return NextResponse.json({ success: true, refundAmount, refundCurrency, penaltyAmount: 0, cancellationId });
+        console.log(`[cancel-quote] bookingId=${bookingId} orderId=${orderId} duffelRefund=${duffelRefund} ${quoteCurrency} of orderTotal=${duffelOrderTotal} ${duffelOrderCurrency} ratio=${refundRatio.toFixed(4)} displayRefund=${refundAmount} penalty=${penaltyAmount} ${refundCurrency} cancellationId=${cancellationId}`);
+
+        return NextResponse.json({ success: true, refundAmount, refundCurrency, penaltyAmount, cancellationId });
     } catch (err: any) {
         if (err.name === 'AbortError') {
             return NextResponse.json({ success: false, error: 'Airline system timed out. Try again.' }, { status: 504 });

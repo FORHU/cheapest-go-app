@@ -117,10 +117,10 @@ export async function saveSearch(params: FlightSearchParams): Promise<FlightSear
             origin: params.origin,
             destination: params.destination,
             departure_date: params.departureDate,
-            return_date: params.returnDate,
+            return_date: params.returnDate ?? null,
             adults: params.adults,
-            children: params.children,
-            infants: params.infants,
+            children: params.children ?? 0,
+            infants: params.infants ?? 0,
             cabin_class: params.cabinClass
         })
         .select()
