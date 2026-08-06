@@ -83,7 +83,7 @@ export function HotelResultsClient({ searchParams, onSwitchView }: HotelResultsC
         const streamParams: Record<string, string> = { ...searchParams };
         if (!streamParams.checkin  && streamParams.checkIn)  { streamParams.checkin  = streamParams.checkIn;  delete streamParams.checkIn; }
         if (!streamParams.checkout && streamParams.checkOut) { streamParams.checkout = streamParams.checkOut; delete streamParams.checkOut; }
-        if (!streamParams.cityName && streamParams.destination) { streamParams.cityName = streamParams.destination; }
+        if (!streamParams.cityName) { streamParams.cityName = streamParams.canonicalCity || streamParams.destination; }
         if (!streamParams.guest_nationality && streamParams.nationality) { streamParams.guest_nationality = streamParams.nationality; }
 
         fetch('/api/search/stream', {

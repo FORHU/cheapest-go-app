@@ -75,6 +75,14 @@ interface SearchMapContainerProps {
     searchOverlayClassName?: string;
     /** Override the initial map center when properties list is empty */
     defaultCenter?: { lng: number; lat: number };
+    /** Neighbourhood bbox [minLng, minLat, maxLng, maxLat] — map fits to this on load and draws an outline. */
+    districtBbox?: [number, number, number, number];
+    /** Human-readable district name shown in the zoom-out banner (e.g. "Gangnam"). */
+    districtName?: string;
+    /** Parent city name shown in the zoom-out banner (e.g. "Seoul"). */
+    cityName?: string;
+    /** Called whenever the map zoom changes, so the parent can expand the list. */
+    onZoomChange?: (zoom: number) => void;
 }
 
 export const SearchMapContainer = React.memo(({
@@ -86,6 +94,10 @@ export const SearchMapContainer = React.memo(({
     onViewDetails,
     searchOverlayClassName,
     defaultCenter,
+    districtBbox,
+    districtName,
+    cityName,
+    onZoomChange,
 }: SearchMapContainerProps) => {
     // 1. Map Instance
     const { mapRef, isMapLoaded, handleMapLoad, handleMapStyleChange } = useMapboxInstance();
@@ -112,6 +124,11 @@ export const SearchMapContainer = React.memo(({
     // "all results" view can never mount hundreds at once. Zoomed into a
     // neighbourhood this is ~10-30 markers instead of 300.
     const MAX_VISIBLE_MARKERS = 100;
+    // At this zoom level and above, only show markers inside the district bbox.
+    // Below it, show all-city markers so clusters reveal when the user zooms out.
+    // 11 chosen because fitBounds on the Gangnam bbox (~10km wide) in the split
+    // layout's ~380px map column yields zoom ≈ 11.6 — safely above 11, below 12.
+    const DISTRICT_MARKER_THRESHOLD = 11;
     const [viewBounds, setViewBounds] = React.useState<
         { minLng: number; minLat: number; maxLng: number; maxLat: number } | null
     >(null);
@@ -133,23 +150,75 @@ export const SearchMapContainer = React.memo(({
     }, [mapRef]);
 
     const visibleProperties = useMemo(() => {
-        let list = mappableProperties;
         if (viewBounds) {
-            list = mappableProperties.filter((p) => {
+            const filtered = mappableProperties.filter((p) => {
                 const { lat, lng } = p.coordinates;
                 return lng >= viewBounds.minLng && lng <= viewBounds.maxLng
                     && lat >= viewBounds.minLat && lat <= viewBounds.maxLat;
             });
+            return filtered.length > MAX_VISIBLE_MARKERS ? filtered.slice(0, MAX_VISIBLE_MARKERS) : filtered;
         }
         // Cheapest-first order is preserved (the incoming order), so when capped the
         // most relevant hotels are the ones shown; zooming in reveals the rest.
-        return list.length > MAX_VISIBLE_MARKERS ? list.slice(0, MAX_VISIBLE_MARKERS) : list;
+        return mappableProperties.length > MAX_VISIBLE_MARKERS ? mappableProperties.slice(0, MAX_VISIBLE_MARKERS) : mappableProperties;
     }, [mappableProperties, viewBounds]);
 
     // Seed the visible set once the map is ready; onMoveEnd keeps it fresh after.
     React.useEffect(() => {
         if (isMapLoaded) updateViewBounds();
     }, [isMapLoaded, updateViewBounds]);
+
+    // ── District bbox: fitBounds on load + zoom reporting ────────────────────
+    const districtFitDoneRef = React.useRef(false);
+    React.useEffect(() => {
+        if (!isMapLoaded || !districtBbox || districtFitDoneRef.current) return;
+        districtFitDoneRef.current = true;
+        const map = mapRef.current?.getMap();
+        if (!map) return;
+        const [minLng, minLat, maxLng, maxLat] = districtBbox;
+        map.fitBounds([[minLng, minLat], [maxLng, maxLat]], { padding: 60, duration: 800, maxZoom: 15 });
+    }, [isMapLoaded, districtBbox]);
+
+    const [currentZoom, setCurrentZoom] = React.useState(DISTRICT_MARKER_THRESHOLD);
+    const handleMoveEnd = useCallback(() => {
+        updateViewBounds();
+        const zoom = mapRef.current?.getZoom() ?? DISTRICT_MARKER_THRESHOLD;
+        setCurrentZoom(zoom);
+        onZoomChange?.(zoom);
+    }, [updateViewBounds, onZoomChange]);
+
+    // When zoomed in to a district (≥ threshold), only render markers inside the
+    // bbox. Zooming out reveals all-city hotels — the parent passes all-city hotels
+    // specifically so this works without a round-trip.
+    const markerProperties = useMemo(() => {
+        if (!districtBbox || currentZoom < DISTRICT_MARKER_THRESHOLD) return visibleProperties;
+        const [minLng, minLat, maxLng, maxLat] = districtBbox;
+        return visibleProperties.filter(p =>
+            p.coordinates.lng >= minLng && p.coordinates.lng <= maxLng &&
+            p.coordinates.lat >= minLat && p.coordinates.lat <= maxLat
+        );
+    }, [visibleProperties, districtBbox, currentZoom]);
+
+    // District outline GeoJSON — a rectangle matching the bbox.
+    const districtOutlineGeoJSON = React.useMemo(() => {
+        if (!districtBbox) return null;
+        const [minLng, minLat, maxLng, maxLat] = districtBbox;
+        return {
+            type: 'FeatureCollection' as const,
+            features: [{
+                type: 'Feature' as const,
+                geometry: {
+                    type: 'Polygon' as const,
+                    coordinates: [[
+                        [minLng, minLat], [maxLng, minLat],
+                        [maxLng, maxLat], [minLng, maxLat],
+                        [minLng, minLat],
+                    ]],
+                },
+                properties: {},
+            }],
+        };
+    }, [districtBbox]);
 
     const markerPrices = useMemo(() => {
         const prices: Record<string, number> = {};
@@ -195,13 +264,14 @@ export const SearchMapContainer = React.memo(({
         return cleanup;
     }, [isMapLoaded, attachMouseLeave]);
 
-    // 6. Viewport Management — no auto-zoom when a marker is clicked
+    // 6. Viewport Management — skip auto-fit when a district bbox will handle it
     useMapViewport({
         mapRef,
         isMapLoaded,
         properties: mappableProperties,
         selectedId,
         disableFlyToSelected: true,
+        disableInitialFit: !!districtBbox,
     });
 
     // Center and zoom to the selected property.
@@ -224,12 +294,12 @@ export const SearchMapContainer = React.memo(({
         });
     }, [selectedId]); // eslint-disable-line react-hooks/exhaustive-deps
 
-    // Index map: propertyId → 1-based position in mappableProperties (for marker number badges)
+    // Index map: position within the currently-visible district set (for marker number badges)
     const propertyIndexMap = useMemo(() => {
         const map: Record<string, number> = {};
-        mappableProperties.forEach((p, i) => { map[p.id] = i + 1; });
+        markerProperties.forEach((p, i) => { map[p.id] = i + 1; });
         return map;
-    }, [mappableProperties]);
+    }, [markerProperties]);
 
     // On pan: keep the hotel selection so POI markers stay visible on the map.
     // Only clear sub-selections (clicked POI popup and active gem highlight).
@@ -454,9 +524,33 @@ export const SearchMapContainer = React.memo(({
                 onClick={handleMapClick}
                 onMouseMove={onMouseMove}
                 onDragStart={handleDragStart}
-                onMoveEnd={updateViewBounds}
+                onMoveEnd={handleMoveEnd}
                 hideLayersButton={true}
             >
+
+                {/* District outline — dashed rectangle showing the searched neighbourhood */}
+                {isMapLoaded && districtOutlineGeoJSON && (
+                    <Source id="district-outline" type="geojson" data={districtOutlineGeoJSON}>
+                        <Layer
+                            id="district-outline-line"
+                            type="line"
+                            paint={{
+                                'line-color': '#3b82f6',
+                                'line-width': 2,
+                                'line-dasharray': [4, 3],
+                                'line-opacity': currentZoom >= 11 ? 0.7 : 0,
+                            }}
+                        />
+                        <Layer
+                            id="district-outline-fill"
+                            type="fill"
+                            paint={{
+                                'fill-color': '#3b82f6',
+                                'fill-opacity': currentZoom >= 11 ? 0.05 : 0,
+                            }}
+                        />
+                    </Source>
+                )}
 
                 {isMapLoaded && (
                     <>
@@ -464,7 +558,7 @@ export const SearchMapContainer = React.memo(({
                             The selected hotel's marker is skipped here; SelectedPropertyPopup re-renders
                             it with isSelected=true and attaches the popup card. Other markers stay visible
                             so the user can see all hotels while a selection is active. */}
-                        {visibleProperties.map((p) => (
+                        {markerProperties.map((p) => (
                             selectedId === p.id && selectedProperty ? null :
                             <MapMarker
                                 key={`marker-${p.id}`}
@@ -590,6 +684,15 @@ export const SearchMapContainer = React.memo(({
                         activeGemName={activeGemName}
                         onGemClick={handleGemClick}
                     />
+                </div>
+            )}
+
+            {/* ── District zoom-out banner ── */}
+            {districtName && cityName && currentZoom < DISTRICT_MARKER_THRESHOLD && (
+                <div className="absolute bottom-20 left-1/2 -translate-x-1/2 z-30 pointer-events-none">
+                    <div className="bg-white/95 dark:bg-slate-900/95 backdrop-blur-md rounded-full px-4 py-1.5 shadow-lg border border-slate-200 dark:border-slate-700 text-[11px] font-semibold text-slate-600 dark:text-slate-300 whitespace-nowrap">
+                        Showing all hotels in {cityName}
+                    </div>
                 </div>
             )}
 

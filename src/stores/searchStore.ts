@@ -20,6 +20,10 @@ export interface Destination {
     lng?: number;
     /** Mapbox bounding box [minLng, minLat, maxLng, maxLat] — sizes a district's circle. */
     bbox?: [number, number, number, number];
+    /** The district/neighbourhood name shown in the search bar (e.g. "Gangnam District"). */
+    districtName?: string;
+    /** The canonical city used for the TGX hotel search (e.g. "Seoul" when user searched "Gangnam"). */
+    canonicalCity?: string;
     lowestPrice?: number;
     priceCurrency?: string;
 }
