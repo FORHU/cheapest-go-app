@@ -199,26 +199,6 @@ export const SearchMapContainer = React.memo(({
         );
     }, [visibleProperties, districtBbox, currentZoom]);
 
-    // District outline GeoJSON — a rectangle matching the bbox.
-    const districtOutlineGeoJSON = React.useMemo(() => {
-        if (!districtBbox) return null;
-        const [minLng, minLat, maxLng, maxLat] = districtBbox;
-        return {
-            type: 'FeatureCollection' as const,
-            features: [{
-                type: 'Feature' as const,
-                geometry: {
-                    type: 'Polygon' as const,
-                    coordinates: [[
-                        [minLng, minLat], [maxLng, minLat],
-                        [maxLng, maxLat], [minLng, maxLat],
-                        [minLng, minLat],
-                    ]],
-                },
-                properties: {},
-            }],
-        };
-    }, [districtBbox]);
 
     const markerPrices = useMemo(() => {
         const prices: Record<string, number> = {};
@@ -528,29 +508,6 @@ export const SearchMapContainer = React.memo(({
                 hideLayersButton={true}
             >
 
-                {/* District outline — dashed rectangle showing the searched neighbourhood */}
-                {isMapLoaded && districtOutlineGeoJSON && (
-                    <Source id="district-outline" type="geojson" data={districtOutlineGeoJSON}>
-                        <Layer
-                            id="district-outline-line"
-                            type="line"
-                            paint={{
-                                'line-color': '#3b82f6',
-                                'line-width': 2,
-                                'line-dasharray': [4, 3],
-                                'line-opacity': currentZoom >= 11 ? 0.7 : 0,
-                            }}
-                        />
-                        <Layer
-                            id="district-outline-fill"
-                            type="fill"
-                            paint={{
-                                'fill-color': '#3b82f6',
-                                'fill-opacity': currentZoom >= 11 ? 0.05 : 0,
-                            }}
-                        />
-                    </Source>
-                )}
 
                 {isMapLoaded && (
                     <>
