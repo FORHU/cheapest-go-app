@@ -1,13 +1,34 @@
+import { cookies } from 'next/headers';
+
 export const ADMIN_BRAND = process.env.NEXT_PUBLIC_BRAND_NAME ?? 'CheapestGo';
 
+const VALID_BRANDS = ['CheapestGo', 'GeomeeGo', 'all'] as const;
+type AdminBrand = (typeof VALID_BRANDS)[number];
+
+export function getAdminBrand(): AdminBrand {
+    try {
+        const brand = cookies().get('admin_brand_view')?.value;
+        if (brand && (VALID_BRANDS as readonly string[]).includes(brand)) {
+            return brand as AdminBrand;
+        }
+    } catch {
+        // cookies() throws during build-time static generation
+    }
+    return ADMIN_BRAND as AdminBrand;
+}
+
 /**
- * Scopes any Supabase query to the current brand's rows.
- * CheapestGo also captures legacy rows where source_brand IS NULL
- * (created before the column existed).
+ * Scopes any Supabase query to the active brand's rows.
+ * 'all' returns unfiltered data. 'CheapestGo' also captures legacy rows
+ * where source_brand IS NULL (created before the column existed).
+ * Brand is resolved from the admin_brand_view cookie, falling back to
+ * the NEXT_PUBLIC_BRAND_NAME env var.
  */
 export function applyBrandFilter(query: any): any {
-    if (ADMIN_BRAND === 'CheapestGo') {
+    const brand = getAdminBrand();
+    if (brand === 'all') return query;
+    if (brand === 'CheapestGo') {
         return query.or('source_brand.eq.CheapestGo,source_brand.is.null');
     }
-    return query.eq('source_brand', ADMIN_BRAND);
+    return query.eq('source_brand', brand);
 }

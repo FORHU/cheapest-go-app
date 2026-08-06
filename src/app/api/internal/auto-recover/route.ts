@@ -84,7 +84,10 @@ export async function POST(req: Request) {
                 if (session.payment_intent_id) {
                     const pi = await stripe.paymentIntents.retrieve(session.payment_intent_id);
                     if (!shouldRecoverSession(session, pi.status)) {
-                        console.log(`[auto-recover] Skipping session ${session.id} (provider=${session.provider}, pi.status=${pi.status})`);
+                        // PI didn't succeed — user abandoned checkout. Expire the session
+                        // so it never appears in the cron again.
+                        console.log(`[auto-recover] Expiring abandoned session ${session.id} (provider=${session.provider}, pi.status=${pi.status})`);
+                        await supabase.from('booking_sessions').update({ status: 'expired' }).eq('id', session.id);
                         continue;
                     }
                 }
@@ -126,6 +129,11 @@ export async function POST(req: Request) {
                         triggeredBy: 'cron',
                         timestamp: new Date().toISOString(),
                     }));
+                    // Expire sessions that consistently fail recovery so they stop
+                    // generating noise on every cron tick. A permanently-failing session
+                    // means the offer expired or the provider rejected it — retrying
+                    // forever won't help.
+                    await supabase.from('booking_sessions').update({ status: 'expired' }).eq('id', session.id);
                 }
             } catch (err) {
                 failed++;
@@ -133,7 +141,7 @@ export async function POST(req: Request) {
             }
         }
 
-        // Fire a notification if any recoveries happened
+        // Only notify if something actually happened (skip pure-abandoned runs)
         if (recovered > 0 || failed > 0) {
             await supabase.from('notifications').insert({
                 title: 'Auto-Recovery Complete',
