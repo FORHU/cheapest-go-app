@@ -29,6 +29,7 @@ import { useTranslations } from 'next-intl';
 import BackButton from '@/components/common/BackButton';
 import AuthModal from '@/components/auth/AuthModal';
 import { validateCheckoutForm, buildGuestPayload, buildHolderPayload } from '@/lib/server/checkout';
+import { userDetailsSchema } from '@/lib/schemas/checkout';
 import { buildPropertySlug, isRoomUnavailableError } from '@/lib/utils';
 import {
     UserDetailsForm,
@@ -261,6 +262,30 @@ export function CheckoutContent() {
             console.error("Failed to send confirmation email:", err);
         }
     }, [setEmailSent]);
+
+    // Validate a single field on blur and merge the result into formErrors.
+    const handleFieldBlur = useCallback((field: string, value: string) => {
+        const shape = userDetailsSchema.shape as Record<string, any>;
+        const fieldSchema = shape[field];
+        if (!fieldSchema) return;
+        const result = fieldSchema.safeParse(value);
+        if (!result.success) {
+            const raw = result.error.issues[0]?.message ?? 'Invalid';
+            const translated: Record<string, string> = {
+                'Required': t('validation.fieldRequired'),
+                'First name is required': t('validation.firstNameRequired'),
+                'Last name is required': t('validation.lastNameRequired'),
+                'Name must only contain letters': t('validation.nameInvalid'),
+                'Phone number is required': t('validation.phoneRequired'),
+                'Phone number must contain digits only': t('validation.phoneDigitsOnly'),
+            };
+            setFormErrors({ ...formErrors, [field]: translated[raw] ?? raw });
+        } else {
+            const next = { ...formErrors };
+            delete next[field];
+            setFormErrors(next);
+        }
+    }, [formErrors, setFormErrors, t]);
 
     // Step 1: Validate form → create Stripe PaymentIntent → show payment UI
     const handleProceedToPayment = useCallback(async () => {
@@ -762,6 +787,7 @@ export function CheckoutContent() {
                                         isWorkTravel={isWorkTravel}
                                         onWorkTravelChange={setIsWorkTravel}
                                         errors={formErrors}
+                                        onBlurField={handleFieldBlur}
                                         adults={adults}
                                         children={children}
                                         onGuestChange={handleGuestChange}

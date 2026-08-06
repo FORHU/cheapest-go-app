@@ -341,9 +341,15 @@
         },
         "validation": {
             "bookingFailed": "预订确认失败：{message}。您的付款将自动退款。",
+            "fieldRequired": "此项为必填项",
+            "firstNameRequired": "请输入名字",
             "fixHighlighted": "请先修正标红的字段。",
             "invalidPrice": "无效的预订价格。请重试。",
+            "lastNameRequired": "请输入姓氏",
+            "nameInvalid": "姓名只能包含字母",
             "paymentSetupFailed": "支付设置失败",
+            "phoneDigitsOnly": "电话号码只能包含数字",
+            "phoneRequired": "请输入电话号码",
             "priceVerifying": "价格仍在验证中——请稍候重试。",
             "requiresAuth": "需要身份验证",
             "sessionExpired": "预订会话已过期。请返回并重新选择房间。",
@@ -719,7 +725,14 @@
             "viewMyTrips": "查看我的行程",
             "whatsNext": "下一步"
         },
-        "totalPrice": "总价"
+        "totalPrice": "总价",
+        "validation": {
+            "firstNameRequired": "请输入名字",
+            "lastNameRequired": "请输入姓氏",
+            "nameIcao": "请使用英文字母（例如：Jose，而非 José）",
+            "phoneDigitsOnly": "电话号码只能包含数字",
+            "phoneRequired": "请输入电话号码"
+        }
     },
     "flights": {
         "card": {

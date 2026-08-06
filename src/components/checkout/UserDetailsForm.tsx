@@ -13,6 +13,7 @@ interface UserDetailsFormProps {
     isWorkTravel: boolean;
     onWorkTravelChange: (value: boolean) => void;
     errors?: Record<string, string>;
+    onBlurField?: (field: string, value: string) => void;
     adults?: number;
     children?: number;
     onGuestChange?: (index: number, field: 'firstName' | 'lastName', value: string) => void;
@@ -20,7 +21,19 @@ interface UserDetailsFormProps {
 }
 
 const FieldError = ({ message }: { message?: string }) =>
-    message ? <p className="mt-1 text-xs text-red-500">{message}</p> : null;
+    message ? (
+        <p role="alert" className="mt-1 text-[10px] lg:text-[11px] text-red-600 dark:text-red-400">
+            {message}
+        </p>
+    ) : null;
+
+function fieldCls(hasError: boolean) {
+    return `w-full min-w-0 px-2 py-1.5 lg:p-3 text-[11px] lg:text-sm rounded lg:rounded-lg border bg-slate-50 dark:bg-white/5 outline-none transition-colors ${
+        hasError
+            ? 'border-red-400 dark:border-red-500 focus:border-red-500 focus:ring-1 focus:ring-red-500/30'
+            : 'border-slate-200 dark:border-white/10 focus:border-blue-500'
+    }`;
+}
 
 export function UserDetailsForm({
     formData,
@@ -30,6 +43,7 @@ export function UserDetailsForm({
     isWorkTravel,
     onWorkTravelChange,
     errors = {},
+    onBlurField,
     adults = 1,
     children = 0,
     onGuestChange,
@@ -57,8 +71,9 @@ export function UserDetailsForm({
                         name="firstName"
                         value={formData.firstName}
                         onChange={onInputChange}
+                        onBlur={(e) => onBlurField?.('firstName', e.target.value)}
                         type="text"
-                        className={`w-full min-w-0 px-2 py-1.5 lg:p-3 text-[11px] lg:text-sm rounded lg:rounded-lg border bg-slate-50 dark:bg-white/5 outline-none focus:border-blue-500 ${errors.firstName ? 'border-red-400' : 'border-slate-200 dark:border-white/10'}`}
+                        className={fieldCls(!!errors.firstName)}
                         placeholder={t('userDetails.firstNamePlaceholder')}
                     />
                     <FieldError message={errors.firstName} />
@@ -69,8 +84,9 @@ export function UserDetailsForm({
                         name="lastName"
                         value={formData.lastName}
                         onChange={onInputChange}
+                        onBlur={(e) => onBlurField?.('lastName', e.target.value)}
                         type="text"
-                        className={`w-full min-w-0 px-2 py-1.5 lg:p-3 text-[11px] lg:text-sm rounded lg:rounded-lg border bg-slate-50 dark:bg-white/5 outline-none focus:border-blue-500 ${errors.lastName ? 'border-red-400' : 'border-slate-200 dark:border-white/10'}`}
+                        className={fieldCls(!!errors.lastName)}
                         placeholder={t('userDetails.lastNamePlaceholder')}
                     />
                     <FieldError message={errors.lastName} />
@@ -81,8 +97,9 @@ export function UserDetailsForm({
                         name="email"
                         value={formData.email}
                         onChange={onInputChange}
+                        onBlur={(e) => onBlurField?.('email', e.target.value)}
                         type="email"
-                        className={`w-full min-w-0 px-2 py-1.5 lg:p-3 text-[11px] lg:text-sm rounded lg:rounded-lg border bg-slate-50 dark:bg-white/5 outline-none focus:border-blue-500 ${errors.email ? 'border-red-400' : 'border-slate-200 dark:border-white/10'}`}
+                        className={fieldCls(!!errors.email)}
                         placeholder={t('userDetails.emailPlaceholder')}
                     />
                     <FieldError message={errors.email} />
@@ -109,11 +126,13 @@ export function UserDetailsForm({
                             name="phone"
                             value={formData.phone}
                             onChange={onInputChange}
+                            onBlur={(e) => onBlurField?.('phone', e.target.value)}
                             type="tel"
-                            className="flex-1 min-w-0 px-2 py-1.5 lg:p-3 rounded lg:rounded-lg border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/5 outline-none focus:border-blue-500 text-[11px] lg:text-sm"
+                            className={`flex-1 min-w-0 ${fieldCls(!!errors.phone)}`}
                             placeholder={t('userDetails.phonePlaceholder')}
                         />
                     </div>
+                    <FieldError message={errors.phone} />
                 </div>
 
                 {/* Work Travel */}
@@ -155,7 +174,7 @@ export function UserDetailsForm({
                                     value={guest.firstName}
                                     onChange={e => onGuestChange?.(i, 'firstName', e.target.value)}
                                     type="text"
-                                    className={`w-full min-w-0 px-2 py-1.5 lg:p-3 text-[11px] lg:text-sm rounded lg:rounded-lg border bg-slate-50 dark:bg-white/5 outline-none focus:border-blue-500 ${errors[`guest_${i}_firstName`] ? 'border-red-400' : 'border-slate-200 dark:border-white/10'}`}
+                                    className={fieldCls(!!errors[`guest_${i}_firstName`])}
                                     placeholder={t('userDetails.firstNamePlaceholder')}
                                 />
                                 <FieldError message={errors[`guest_${i}_firstName`]} />
@@ -166,7 +185,7 @@ export function UserDetailsForm({
                                     value={guest.lastName}
                                     onChange={e => onGuestChange?.(i, 'lastName', e.target.value)}
                                     type="text"
-                                    className={`w-full min-w-0 px-2 py-1.5 lg:p-3 text-[11px] lg:text-sm rounded lg:rounded-lg border bg-slate-50 dark:bg-white/5 outline-none focus:border-blue-500 ${errors[`guest_${i}_lastName`] ? 'border-red-400' : 'border-slate-200 dark:border-white/10'}`}
+                                    className={fieldCls(!!errors[`guest_${i}_lastName`])}
                                     placeholder={t('userDetails.lastNamePlaceholder')}
                                 />
                                 <FieldError message={errors[`guest_${i}_lastName`]} />
@@ -189,7 +208,7 @@ export function UserDetailsForm({
                                     value={child.firstName}
                                     onChange={e => onChildChange?.(i, 'firstName', e.target.value)}
                                     type="text"
-                                    className={`w-full min-w-0 px-2 py-1.5 lg:p-3 text-[11px] lg:text-sm rounded lg:rounded-lg border bg-slate-50 dark:bg-white/5 outline-none focus:border-blue-500 ${errors[`child_${i}_firstName`] ? 'border-red-400' : 'border-slate-200 dark:border-white/10'}`}
+                                    className={fieldCls(!!errors[`child_${i}_firstName`])}
                                     placeholder={t('userDetails.firstNamePlaceholder')}
                                 />
                                 <FieldError message={errors[`child_${i}_firstName`]} />
@@ -200,7 +219,7 @@ export function UserDetailsForm({
                                     value={child.lastName}
                                     onChange={e => onChildChange?.(i, 'lastName', e.target.value)}
                                     type="text"
-                                    className={`w-full min-w-0 px-2 py-1.5 lg:p-3 text-[11px] lg:text-sm rounded lg:rounded-lg border bg-slate-50 dark:bg-white/5 outline-none focus:border-blue-500 ${errors[`child_${i}_lastName`] ? 'border-red-400' : 'border-slate-200 dark:border-white/10'}`}
+                                    className={fieldCls(!!errors[`child_${i}_lastName`])}
                                     placeholder={t('userDetails.lastNamePlaceholder')}
                                 />
                                 <FieldError message={errors[`child_${i}_lastName`]} />
@@ -213,7 +232,7 @@ export function UserDetailsForm({
                                     type="number"
                                     min="0"
                                     max="17"
-                                    className={`w-full min-w-0 px-2 py-1.5 lg:p-3 text-[11px] lg:text-sm rounded lg:rounded-lg border bg-slate-50 dark:bg-white/5 outline-none focus:border-blue-500 ${errors[`child_${i}_age`] ? 'border-red-400' : 'border-slate-200 dark:border-white/10'}`}
+                                    className={fieldCls(!!errors[`child_${i}_age`])}
                                     placeholder={t('userDetails.agePlaceholder')}
                                 />
                                 <FieldError message={errors[`child_${i}_age`]} />

@@ -1,10 +1,23 @@
 import { z } from 'zod';
 
+const nameSchema = z
+    .string()
+    .min(1, 'Required')
+    .max(100)
+    .regex(
+        /^[\p{L}\s'\-]+$/u,
+        "Name must only contain letters",
+    );
+
 export const userDetailsSchema = z.object({
-    firstName: z.string().min(1, 'First name is required').max(100, 'First name is too long'),
-    lastName: z.string().min(1, 'Last name is required').max(100, 'Last name is too long'),
+    firstName: nameSchema.refine(v => v.trim().length > 0, 'First name is required'),
+    lastName: nameSchema.refine(v => v.trim().length > 0, 'Last name is required'),
     email: z.string().min(1, 'Email is required').email('Please enter a valid email').max(254, 'Email is too long'),
-    phone: z.string().max(20, 'Phone number is too long').optional(),
+    phone: z
+        .string()
+        .min(5, 'Phone number is required')
+        .max(20, 'Phone number is too long')
+        .regex(/^\d+$/, 'Phone number must contain digits only'),
 });
 
 export const guestDetailsSchema = z.object({
