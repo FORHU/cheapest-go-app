@@ -31,25 +31,28 @@ export async function getAdminSettings(): Promise<Record<string, any>> {
 
 /**
  * Save admin settings (upsert key-value pairs).
+ *
+ * Uses raw SQL with an explicit ::jsonb cast because PostgREST's type inference
+ * maps JS booleans to SQL boolean — not jsonb — causing a type mismatch error
+ * when the column is defined as jsonb.
  */
 export async function saveAdminSettings(settings: Record<string, any>): Promise<{ success: boolean; error?: string }> {
-    const supabase = createAdminClient();
-
-    const rows = Object.entries(settings).map(([key, value]) => ({
-        key,
-        value: JSON.parse(JSON.stringify(value)),
-    }));
-
-    const { error } = await supabase
-        .from('admin_settings')
-        .upsert(rows, { onConflict: 'key' });
-
-    if (error) {
-        console.error('[saveAdminSettings] Error:', error.message);
-        return { success: false, error: error.message };
+    try {
+        const { getSqlAdmin } = await import('@/lib/db/postgres');
+        const sql = getSqlAdmin();
+        for (const [key, value] of Object.entries(settings)) {
+            const jsonValue = JSON.stringify(value);
+            await sql`
+                INSERT INTO admin_settings (key, value)
+                VALUES (${key}, ${jsonValue}::jsonb)
+                ON CONFLICT (key) DO UPDATE SET value = ${jsonValue}::jsonb
+            `;
+        }
+        return { success: true };
+    } catch (err: any) {
+        console.error('[saveAdminSettings] Error:', err.message);
+        return { success: false, error: err.message };
     }
-
-    return { success: true };
 }
 
 /**

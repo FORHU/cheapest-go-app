@@ -37,7 +37,14 @@ function httpStatusStyle(code: number | null) {
 
 // ─── OTV Status chip ─────────────────────────────────────────────────────────
 
-function OTVStatusChip({ status }: { status: TravelgateXProviderData['otvStatus'] }) {
+function OTVStatusChip({ status, checking }: { status: TravelgateXProviderData['otvStatus']; checking?: boolean }) {
+    if (checking) {
+        return (
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-black uppercase tracking-widest border bg-slate-100 text-slate-400 border-slate-200 dark:bg-white/5 dark:border-white/10 animate-pulse">
+                <Activity size={11} /> Checking…
+            </span>
+        );
+    }
     if (status === 'active') {
         return (
             <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-black uppercase tracking-widest border bg-emerald-500/10 text-emerald-600 border-emerald-500/20">
@@ -80,9 +87,21 @@ export function TravelgateXAdminClient({ data }: Props) {
     const router = useRouter();
     const [isPending, startTransition] = useTransition();
     const [activeTab, setActiveTab] = useState<'bookings' | 'logs'>('bookings');
+    const [otvStatusLive, setOtvStatusLive] = useState<TravelgateXProviderData['otvStatus']>('unknown');
+    const [healthChecked, setHealthChecked] = useState(false);
+
+    React.useEffect(() => {
+        if (!data.apiKeyConfigured) { setHealthChecked(true); return; }
+        fetch('/api/admin/tgx-health')
+            .then(r => r.json())
+            .then(d => { setOtvStatusLive(d.otvStatus ?? 'unknown'); setHealthChecked(true); })
+            .catch(() => { setOtvStatusLive('unknown'); setHealthChecked(true); });
+    }, [data.apiKeyConfigured]);
+
+    const otvStatus = healthChecked ? otvStatusLive : 'unknown';
 
     const {
-        otvStatus, apiKeyConfigured, accessCode, clientName, contextCode, supplierCode,
+        apiKeyConfigured, accessCode, clientName, contextCode, supplierCode,
         totalBookings, confirmedBookings, cancelledBookings, totalRevenue, revenueCurrency,
         recentBookings, recentApiLogs, status, errorMessage,
     } = data;
@@ -98,7 +117,7 @@ export function TravelgateXAdminClient({ data }: Props) {
                     <Hotel size={12} /> TravelgateX · OTV
                 </span>
 
-                <OTVStatusChip status={otvStatus} />
+                <OTVStatusChip status={otvStatus} checking={!healthChecked} />
 
                 {status === 'not_configured' && (
                     <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-black uppercase tracking-widest border bg-rose-500/10 text-rose-600 border-rose-500/20">
@@ -225,12 +244,12 @@ export function TravelgateXAdminClient({ data }: Props) {
                         <StatusRow
                             label="API Connectivity"
                             ok={otvStatus !== 'unknown'}
-                            text={otvStatus !== 'unknown' ? 'Reachable' : 'Health check timed out'}
+                            text={!healthChecked ? 'Checking…' : otvStatus !== 'unknown' ? 'Reachable' : 'Health check timed out'}
                         />
                         <StatusRow
                             label="Destination Catalog"
                             ok={otvStatus === 'active' || otvStatus === 'no_rates'}
-                            text={otvStatus === 'active' || otvStatus === 'no_rates' ? 'Loaded (worldwide)' : 'Unknown'}
+                            text={!healthChecked ? 'Checking…' : otvStatus === 'active' || otvStatus === 'no_rates' ? 'Loaded (worldwide)' : 'Unknown'}
                         />
                         <StatusRow
                             label="Rate Plans (Hotel-X)"
