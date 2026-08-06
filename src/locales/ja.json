@@ -313,6 +313,7 @@
             "roomConfirmed": "客室確定",
             "roomNights": "1室 × {nights}{count}",
             "taxesAndFees": "税金と手数料",
+            "serviceFee": "プラットフォームサービス料",
             "total": "合計",
             "updateDates": "日程を更新",
             "youSave": "このプロモで{amount}お得",
@@ -347,6 +348,14 @@
             "requiresAuth": "認証が必要です",
             "sessionExpired": "予約セッションの有効期限が切れました。戻って部屋を選び直してください。",
             "sessionExpiredCharge": "支払い中にセッションの有効期限が切れました。カードは請求されています — サポートまでお問い合わせください（支払い参照番号：{id}）"
+        },
+        "priceChanged": {
+            "title": "料金が変更されました",
+            "description": "お選びいただいた時点と予約を確定しようとした時点の間に、この客室の料金が変更されました。",
+            "originalPrice": "元の料金",
+            "newPrice": "新しい料金",
+            "refundNotice": "{amount}のお支払いは自動的に返金されました。明細書への反映には3〜5営業日かかる場合があります。",
+            "backToSearch": "検索に戻る"
         },
         "verifyingPayment": "支払いを確認中...",
         "viewExistingBooking": "既存の予約を確認",
@@ -1734,6 +1743,10 @@
     },
     "propertyOverview": {
         "aboutProperty": "この宿泊施設について",
+        "checkIn": "チェックイン",
+        "checkOut": "チェックアウト",
+        "contactInfo": "連絡先",
+        "importantInfo": "重要なお知らせ",
         "cleaningSafety": {
             "description": "この宿泊施設では、非接触チェックインや強化された清掃プロトコルなど、徹底した衛生対策を実施しています。",
             "title": "衛生・安全対策"

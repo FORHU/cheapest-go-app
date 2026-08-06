@@ -8,6 +8,7 @@ import { MapPin } from 'lucide-react';
 import { useDragScroll } from '@/hooks/useDragScroll';
 import { cityImagePath } from '@/lib/destination-images';
 import { useTranslations } from 'next-intl';
+import { useSearchStore } from '@/stores/searchStore';
 
 interface City {
   name: string;
@@ -46,6 +47,7 @@ interface CityCardProps {
 const CityCard: React.FC<CityCardProps> = ({ city, index }) => {
   const router = useRouter();
   const t = useTranslations('topCities');
+  const setIsSearching = useSearchStore((s) => s.setIsSearching);
 
   function navigate() {
     const p = new URLSearchParams({
@@ -53,6 +55,7 @@ const CityCard: React.FC<CityCardProps> = ({ city, index }) => {
       destinationType: 'city',
       country: city.country,
     });
+    setIsSearching(true);
     router.push(`/search?${p.toString()}`);
   }
 

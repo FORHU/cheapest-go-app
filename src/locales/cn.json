@@ -313,6 +313,7 @@
             "roomConfirmed": "房间已确认",
             "roomNights": "1间客房 × {nights} {count}",
             "taxesAndFees": "税费",
+            "serviceFee": "平台服务费",
             "total": "总计",
             "updateDates": "更新日期",
             "youSave": "使用此优惠节省{amount}",
@@ -347,6 +348,14 @@
             "requiresAuth": "需要身份验证",
             "sessionExpired": "预订会话已过期。请返回并重新选择房间。",
             "sessionExpiredCharge": "支付过程中会话已过期。您的银行卡已被扣款——请联系客服并提供付款参考：{id}"
+        },
+        "priceChanged": {
+            "title": "价格已变更",
+            "description": "您选择此房间到我们尝试确认预订之间，房间价格发生了变化。",
+            "originalPrice": "原价",
+            "newPrice": "新价格",
+            "refundNotice": "您支付的 {amount} 已自动退款。退款可能需要 3–5 个工作日才能显示在您的账单上。",
+            "backToSearch": "返回搜索"
         },
         "verifyingPayment": "正在验证支付...",
         "viewExistingBooking": "查看现有预订",
@@ -1737,6 +1746,10 @@
     },
     "propertyOverview": {
         "aboutProperty": "关于此住宿",
+        "checkIn": "入住",
+        "checkOut": "退房",
+        "contactInfo": "联系方式",
+        "importantInfo": "重要信息",
         "cleaningSafety": {
             "description": "该住宿采取了全面的卫生措施，包括无接触入住和加强的清洁流程。",
             "title": "清洁与安全措施"

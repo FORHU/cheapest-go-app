@@ -7,6 +7,60 @@
 import { tgxGraphQL, getTgxSettings, buildOccupancies, normalizeOption, type TgxOption } from '@/lib/server/stays/travelgatex/client';
 import { runTgxSearch, type TgxSearchParams } from '@/lib/server/stays/travelgatex/search';
 
+// ─── Direct TGX Quote (in-process, no HTTP self-call) ────────────────────────
+
+const TGX_QUOTE_QUERY = `
+query TgxQuote($criteria: HotelCriteriaQuoteInput!, $settings: HotelSettingsInput!) {
+  hotelX {
+    quote(criteria: $criteria, settings: $settings) {
+      optionQuote {
+        optionRefId hotelCode boardCode paymentType status
+        price { currency net gross }
+        surcharges { chargeType mandatory price { net gross currency } }
+        rooms { code description occupancyRefId }
+        cancelPolicy {
+          refundable
+          cancelPenalties { deadline hoursBefore penaltyType currency value }
+        }
+      }
+      errors { code type description }
+    }
+  }
+}`;
+
+async function callTgxQuoteDirect(token: string) {
+    const settings = getTgxSettings();
+    const result = await tgxGraphQL(TGX_QUOTE_QUERY, {
+        criteria: { optionRefId: token },
+        settings,
+    });
+    const quote = result?.data?.hotelX?.quote?.optionQuote;
+    const errors: any[] = result?.data?.hotelX?.quote?.errors || [];
+    if (errors.length) {
+        const msg = errors.map((e: any) => e.description || e.code).join('; ');
+        throw new Error(msg);
+    }
+    if (!quote) throw new Error('No quote returned from TravelgateX');
+    return {
+        success: true,
+        data: {
+            optionRefId:  quote.optionRefId || token,
+            hotelCode:    quote.hotelCode,
+            boardCode:    quote.boardCode,
+            paymentType:  quote.paymentType,
+            status:       quote.status,
+            price: {
+                net:      quote.price?.net   ?? 0,
+                gross:    quote.price?.gross ?? 0,
+                currency: quote.price?.currency ?? 'USD',
+            },
+            surcharges:   quote.surcharges ?? [],
+            rooms:        quote.rooms ?? [],
+            cancelPolicy: quote.cancelPolicy,
+        },
+    };
+}
+
 // ─── Re-export helpers for routes that call TGX directly ─────────────────────
 export { tgxGraphQL, getTgxSettings, buildOccupancies, normalizeOption };
 export type { TgxOption };
@@ -55,9 +109,7 @@ export async function searchTravelgateXDestinations(keyword: string) {
 // ─── Quote ────────────────────────────────────────────────────────────────────
 
 export async function quoteTravelgateX(params: { token: string }) {
-    const result = await callInternalRoute('/api/fn/travelgatex-quote', params);
-    if (!result.success) throw new Error(result.error || 'TGX quote failed');
-    return result;
+    return callTgxQuoteDirect(params.token);
 }
 
 // ─── Book ─────────────────────────────────────────────────────────────────────

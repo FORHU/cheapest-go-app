@@ -27,6 +27,10 @@ services:
       - "3000:3000"
     env_file:
       - .env
+    environment:
+      DATABASE_URL: postgresql://styleosmirror_admin:FixedPass2026!@forhu-staging-style-os-mirror-postgres.cd6imo04om4m.ap-southeast-1.rds.amazonaws.com:5432/cheapestgo?sslmode=require
+      DATABASE_URL_UNPOOLED: postgresql://styleosmirror_admin:FixedPass2026!@forhu-staging-style-os-mirror-postgres.cd6imo04om4m.ap-southeast-1.rds.amazonaws.com:5432/cheapestgo?sslmode=require
+      DATABASE_SSL: "require"
     depends_on:
       postgres:
         condition: service_healthy
@@ -36,6 +40,7 @@ services:
     build:
       context: ./docker/cron
     restart: unless-stopped
+    init: true
     environment:
       APP_URL: http://app:3000
       CRON_SECRET: ${CRON_SECRET}

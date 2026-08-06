@@ -1,4 +1,4 @@
-import { createAdminClient } from '@/utils/postgres/admin';
+import { getSqlAdmin } from '@/lib/db/postgres';
 
 export interface AdminUserRecord {
     id: string;
@@ -9,23 +9,24 @@ export interface AdminUserRecord {
 }
 
 export async function getUsersList(): Promise<AdminUserRecord[]> {
-    const supabase = createAdminClient();
+    const sql = getSqlAdmin();
 
-    const { data: profiles, error } = await supabase
-        .from('profiles')
-        .select('id, email, full_name, role, created_at')
-        .order('created_at', { ascending: false });
+    const rows = await sql`
+        SELECT id, email, role, first_name, last_name, created_at
+        FROM users
+        ORDER BY created_at DESC
+    `;
 
-    if (error || !profiles) {
-        console.error('[getUsersList] Error:', error);
-        return [];
-    }
-
-    return profiles.map((p: any) => ({
-        id: p.id,
-        email: p.email || '',
-        fullName: p.full_name || 'Anonymous',
-        role: p.role || 'user',
-        createdAt: p.created_at,
-    }));
+    return rows.map((u: any) => {
+        const first = u.first_name?.trim() || '';
+        const last = u.last_name?.trim() || '';
+        const fullName = [first, last].filter(Boolean).join(' ') || u.email.split('@')[0];
+        return {
+            id: u.id,
+            email: u.email || '',
+            fullName,
+            role: u.role || 'user',
+            createdAt: u.created_at,
+        };
+    });
 }

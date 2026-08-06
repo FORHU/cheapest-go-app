@@ -64,12 +64,44 @@ _Avoid_: assuming every enum-like column uses the same mechanism, or converting 
 
 **Flight Provider** — Duffel (primary, active) or Mystifly (onboarding). Mystifly bookings currently disabled in the booking endpoint.
 
-**Hotel Provider** — hotel availability is sourced from two channels, tried in priority order:
-- **OTV** — the active TravelGateX supplier (`TRAVELGATEX_SUPPLIER`/`TRAVELGATEX_CONTEXT`, default `OTV`), reached through the TravelGateX GraphQL hub. Primary path.
-- **ETG** — Emerging Travel Group's B2B API (`api.worldota.net`), whose partner brand is **RateHawk**. Used as a direct fallback when OTV returns no results, and for the nightly hotel-reviews sync. LiteAPI deprecated.
-_Avoid_: calling ETG "Ratehawk" in code (the codebase name is `ETG`/`_etg`); treating OTV and ETG as one supplier (OTV is via the TGX hub, ETG is direct worldota).
+**Hotel Provider** — hotel availability is sourced from RateHawk, reached through two API paths:
+- **OTV** — RateHawk's name within the TravelGateX marketplace. Accessed via TGX GraphQL hub (Access `38327`). Primary search path.
+- **ETG** — the same RateHawk inventory accessed directly via `api.worldota.net`. Used as a reliability fallback when OTV/TGX returns no results, and for the nightly hotel-reviews sync. LiteAPI deprecated.
+OTV and ETG are the **same underlying supplier** (RateHawk) through two different API doors — not two suppliers with different hotel sets. Running both simultaneously yields duplicate results, not broader coverage. The ETG fallback is a reliability hedge, not a coverage expansion.
+_Avoid_: assuming OTV and ETG cover different hotels; treating ETG as a separate supplier with distinct inventory; calling ETG "RateHawk" in code (codebase name is `ETG`/`_etg`).
 
-**RTX** — used in this document (refresh-cadence note) as a supplier name but never appears in code. Denotes the same supplier as **ETG/RateHawk**. Prefer **ETG** everywhere; RTX is a flagged alias, not a distinct provider.
+**TGX Static Data** — a bulk hotel registry downloaded from TravelGateX, stored in `tgx_hotel_static`. Contains each hotel's TGX code, name, address, coordinates, and FastX mapping. Downloaded as part of TGX onboarding. Cross-supplier dedup via FastX has no active use case today (OTV is the only TGX supplier); the table is dormant until a second TGX supplier with distinct inventory is added.
+_Avoid_: using `tgx_hotel_static` as a geo-to-code lookup or as the primary source of display content.
+
+**FastX Code** — TravelGateX's unified hotel identifier that maps the same physical hotel across multiple TGX suppliers. Returned in the `mappings` node of the TGX Hotels Content query alongside the supplier's native `hotelCode` and `hotelCodeSupplier`. The FastX code is the dedup key for cross-supplier merging within the TGX marketplace.
+_Avoid_: confusing FastX with a hotel's native supplier code; applying FastX dedup to ETG (direct worldota) — ETG does not go through the TGX hub and has no FastX mapping.
+
+**Hotel Content Cache** — the `hotel_content` DB table. A persistent, incrementally-built registry of hotel metadata (name, coordinates, images, address, stars) accumulated from prior TGX searches. Hotels in this table for a given city are served to the user **immediately** in Phase 1 of a search while the live TGX availability query runs in Phase 2. Hotels not yet in `hotel_content` only appear if TGX returns them in Phase 2. Content rows are populated (and images updated) by the TGX Hotels Content API after each search.
+_Avoid_: treating `hotel_content` as a canonical hotel master — it is a cache, not a source of truth. Rows grow over time as cities are searched.
+
+**TGX Hotels Content API** — the `hotelX.hotels` GraphQL query on TravelGateX. Returns static descriptive content for a list of hotel codes: names, coordinates, media (images), and the FastX `mappings` node. Distinct from the availability search (`hotelX.search`). Takes 20–50 s for batches of 200–300 hotels; results are persisted to `hotel_content` so subsequent searches read from the DB rather than calling the API again.
+_Avoid_: calling this the "search API" (it is a content/metadata API, not availability); expecting real-time response times.
+
+**TGX Access** — a credential set in the TGX hub that identifies a supplier connection. Access `38327` is the active OTV (RateHawk) connection. Standard timeouts enforced by TGX: search 12 s, prebook 55 s, book 180 s.
+
+**TGX Supplier Context** — a search context bound to a single supplier via its Access code. `hotelX.search` in Supplier Context supports the Search by Destination plugin. Distinct from FastX Context (multi-supplier aggregation), which requires a separate FastX Access and is not yet active.
+_Avoid_: assuming Search by Destination works in FastX or Buyer Context — it does not.
+
+**Search by Destination** — a TGX plugin that converts a destination code (e.g. Bangkok → `3124`) into OTV hotel codes internally before sending the request to the supplier. The conversion may yield a broader hotel set than what is in `hotel_content`, because TGX's internal mapping can include OTV hotels the app has never seen. Supplier Context only.
+_Avoid_: using Search by Destination on requests that already carry explicit hotel codes — TGX merges the two lists, which expands scope unpredictably.
+
+**Hotel-Code Fallback** — the secondary OTV search path used when Search by Destination returns empty or fails. Pulls OTV hotel codes from `hotel_content`, batches them in groups of ≤ 200, and sends parallel `hotelX.search` requests with explicit hotel codes (no destination plugin). Coverage is limited to what `hotel_content` already has for that city.
+_Avoid_: treating Hotel-Code Fallback as equivalent in coverage to Search by Destination — it is a bounded subset.
+
+**No-Availability Hotel** — TGX's term for a hotel in the Seller's portfolio for which `hotelX.search` returns zero options for the searched criteria (dates, occupancy, market). Distinct from a hotel not in the portfolio at all. Caused by date restrictions, occupancy constraints, or no inventory for that window. TGX's own tooling (Traffic Optimizer, Hotel Portfolio Report) suppresses these from search traffic. Our "prune unpriced hotels on done" logic implements the same rule: catalog hotels that reach `type:done` without receiving a TGX price are no-availability hotels for those dates and are removed from the displayed results.
+_Avoid_: showing no-availability hotels to users — TGX explicitly recommends against it. _Avoid_: permanently blacklisting a hotel solely on one no-availability response — it may have inventory on different dates.
+
+**ALL_PROCESSES_FAILED** — a TGX error returned when every request to the supplier's system failed to produce a response. Not inherently a permanent mapping gap — can be date-dependent (e.g. supplier minimum release days, no inventory for that window) or a transient overload. Accompanying `warnings` in the TGX response contain the root cause code. A `206` warning indicates a date restriction; a mapping or credentials warning indicates a permanent gap for those credentials.
+_Avoid_: blacklisting a destination code solely on ALL_PROCESSES_FAILED without inspecting the accompanying warnings — the same code may succeed on different date ranges.
+
+**RTX** — alias for ETG/RateHawk used in legacy notes. Never appears in code. Prefer **ETG** everywhere.
+
+**Planned Suppliers** — ONDA and Rakuten are the next hotel providers in the pipeline, added for **coverage expansion** (genuinely different hotel inventory from OTV/RateHawk, not price competition on the same hotels). Neither is active yet. When added, dedup against OTV results will be required.
 
 **Destination granularity** — a searched place resolves at one of five levels (the *granularity ladder*): **Country → Province/State → City → District → Specific** (a landmark/POI or address). The ladder has two resolution modes:
 - **Area rungs** (**Country**, **Province/State**, **City**) resolve to an **ETG region identifier** and are searched as a whole area. **City** *additionally* resolves on **OTV/TravelGateX** (destination or hotel codes); Country and Province do not.

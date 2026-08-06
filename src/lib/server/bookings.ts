@@ -1,6 +1,5 @@
 import type { DbClient } from '@/lib/db/query-builder';
 import type { User } from '@/types/auth';
-import { createAdminClient } from '@/utils/postgres/admin';
 import {
   amendBookingSchema,
   saveBookingSchema,
@@ -34,6 +33,10 @@ export interface ConfirmAndSaveResult {
     currency?: string;
   };
   error?: string;
+  errorCode?: string;
+  /** Set when errorCode === 'price_changed' */
+  oldPrice?: number;
+  newPrice?: number;
 }
 
 
@@ -67,21 +70,23 @@ export async function verifyBookingOwnership(
 // TravelgateX: Confirm booking + save
 // ============================================================================
 
-function parseTgxToken(token: string): { hotelCode: string | null; checkIn: string | null; checkOut: string | null } {
+function parseTgxToken(token: string): { hotelCode: string | null; checkIn: string | null; checkOut: string | null; nationality: string } {
   const segs: Record<string, string> = {};
-  for (const seg of token.split('!~|')) {
+  // Search tokens use '!~|' as separator; Quote tokens use '['.
+  const separator = token.includes('!~|') ? '!~|' : '[';
+  for (const seg of token.split(separator)) {
     if (seg.length > 1) segs[seg[0]] = seg.slice(1);
   }
   const parseYYMMDD = (v: string | undefined): string | null => {
     if (!v || v.length !== 6) return null;
     return `20${v.slice(0, 2)}-${v.slice(2, 4)}-${v.slice(4, 6)}`;
   };
-  return { hotelCode: segs['d'] || null, checkIn: parseYYMMDD(segs['b']), checkOut: parseYYMMDD(segs['c']) };
+  return { hotelCode: segs['d'] || null, checkIn: parseYYMMDD(segs['b']), checkOut: parseYYMMDD(segs['c']), nationality: segs['h'] || 'US' };
 }
 
 async function getFreshTgxToken(expiredToken: string, adults: number, children: number, currency: string): Promise<string | null> {
-  const { hotelCode, checkIn, checkOut } = parseTgxToken(expiredToken);
-  console.log('[getFreshTgxToken] Parsed token → hotel:', hotelCode, 'in:', checkIn, 'out:', checkOut);
+  const { hotelCode, checkIn, checkOut, nationality } = parseTgxToken(expiredToken);
+  console.log('[getFreshTgxToken] Parsed token → hotel:', hotelCode, 'in:', checkIn, 'out:', checkOut, 'nationality:', nationality);
   if (!hotelCode || !checkIn || !checkOut) {
     console.error('[getFreshTgxToken] Could not parse hotel/dates from token:', expiredToken.substring(0, 80));
     return null;
@@ -89,7 +94,7 @@ async function getFreshTgxToken(expiredToken: string, adults: number, children: 
   try {
     // In-process search (was an HTTP self-call to /api/fn/travelgatex-search).
     const result = await runTgxSearch({
-      hotelCode, checkin: checkIn, checkout: checkOut, adults, children, currency, guest_nationality: 'KR',
+      hotelCode, checkin: checkIn, checkout: checkOut, adults, children, currency, guest_nationality: nationality,
     });
     const rooms: any[] = result?.data?.roomTypes || [];
     console.log('[getFreshTgxToken] Fresh search → rooms found:', rooms.length);
@@ -144,6 +149,8 @@ export interface TgxConfirmInput {
   voucherCode?: string;
   discountAmount?: number;
   cancellationPolicies?: any;
+  /** Price shown to the user at prebook/quote time (booking currency, before service fee). Used to detect price increases at book time. */
+  quotedPrice?: number;
 }
 
 export async function confirmAndSaveTgxBooking(
@@ -232,30 +239,53 @@ export async function confirmAndSaveTgxBooking(
   const price = booking.price?.gross || booking.price?.net || 0;
   const currency = booking.price?.currency || params.currency || 'USD';
 
-  let totalPrice = price;
+  // Price change guard: if TGX books at a price more than 5% above what the user
+  // was quoted, reject before any DB write. The caller refunds Stripe.
+  if (params.quotedPrice && params.quotedPrice > 0 && price > 0) {
+    const threshold = params.quotedPrice * 1.05;
+    if (price > threshold) {
+      console.warn(`[confirmAndSaveTgxBooking] Price increased beyond threshold: quoted=${params.quotedPrice} booked=${price} currency=${currency}`);
+      return { success: false, errorCode: 'price_changed', oldPrice: params.quotedPrice, newPrice: price };
+    }
+  }
+
+  // Prefer the Stripe PI amount (what the customer actually paid) over TGX's raw
+  // booking response price, which is the supplier net and does not include markup.
+  // Fall back to the quoted price shown at checkout, then TGX price as last resort.
+  // Also store the Stripe currency (always USD) so the trips page displays correctly —
+  // TGX may return a supplier currency (e.g. 'PHP') that doesn't match the billed amount.
+  let totalPrice: number;
+  let storedCurrency = currency;
   if (params.paymentIntentId) {
     try {
       const pi = await stripe.paymentIntents.retrieve(params.paymentIntentId);
       totalPrice = pi.amount / 100;
+      storedCurrency = (pi.currency || 'usd').toUpperCase();
     } catch {
-      totalPrice = price;
+      totalPrice = params.quotedPrice ?? price;
     }
+  } else {
+    totalPrice = params.quotedPrice ?? price;
   }
 
   // Prefer the prebook cancel policy (quote-time, shown to user at checkout) over the
   // book response — TGX suppliers sometimes return refundable:false at book time even
   // when the quote showed a free-cancellation window.
+  // normalizeTgxCancelPolicy returns {} when cancelPolicy is absent — treat that as "no policy".
   const prebookPolicy = params.cancellationPolicies;
-  const isRefundable = prebookPolicy
-    ? prebookPolicy.refundableTag === 'RFN'
+  const hasPrebookPolicy = prebookPolicy != null &&
+    typeof prebookPolicy === 'object' &&
+    Object.keys(prebookPolicy).length > 0;
+  const isRefundable = hasPrebookPolicy
+    ? (prebookPolicy.refundableTag === 'RFN' || prebookPolicy.refundableTag === 'REFUNDABLE')
     : booking.cancelPolicy?.refundable === true;
   const policyType = isRefundable ? 'free_cancellation' : 'non_refundable';
-  const storedCancelPolicy = prebookPolicy ?? (booking.cancelPolicy ? {
+  const storedCancelPolicy = hasPrebookPolicy ? prebookPolicy : (booking.cancelPolicy ? {
     refundableTag: isRefundable ? 'RFN' : 'NRFN',
     cancelPolicyInfos: (booking.cancelPolicy.cancelPenalties || []).map((p: any) => ({
       cancelTime: p.deadline,
       amount: p.value ?? 0,
-      currency: p.currency || currency,
+      currency: p.currency || storedCurrency,
       type: p.penaltyType || 'AMOUNT',
     })),
   } : null);
@@ -275,134 +305,91 @@ export async function confirmAndSaveTgxBooking(
     } catch { /* non-fatal — map will fall back to geocoding */ }
   }
 
-  // Build outside try so the catch block can reference it for emergency recovery
-  const bookingPayload = {
-    booking_id: bookingId,
-    user_id: user.id,
-    property_name: params.propertyName,
-    property_image: params.propertyImage ?? null,
-    property_lat,
-    property_lng,
-    room_name: params.roomName,
-    check_in: params.checkIn,
-    check_out: params.checkOut,
-    guests_adults: params.adults,
-    guests_children: params.children ?? 0,
-    total_price: totalPrice,
-    currency,
-    holder_first_name: params.holder.firstName,
-    holder_last_name: params.holder.lastName,
-    holder_email: params.holder.email,
-    status: bookingStatus,
-    special_requests: params.specialRequests ?? null,
-    voucher_code: params.voucherCode ?? null,
-    discount_amount: params.discountAmount ?? 0,
-    policy_type: policyType,
-    source_brand: process.env.NEXT_PUBLIC_BRAND_NAME ?? 'CheapestGo',
-  };
-
   try {
-    const serviceClient = createAdminClient();
+    const sql = getSqlAdmin();
+    const freeCancelDeadline = booking.cancelPolicy?.cancelPenalties?.[0]?.deadline ?? null;
+    const cancelPenalties: any[] = booking.cancelPolicy?.cancelPenalties || [];
 
-    const snapshotPayload = {
-      policy_type: policyType,
-      summary: isRefundable ? 'Refundable rate' : 'Non-refundable rate',
-      refundable_tag: isRefundable ? 'RFN' : 'NRFN',
-      hotel_remarks: [],
-      no_show_penalty: 0,
-      early_departure_fee: 0,
-      free_cancel_deadline: booking.cancelPolicy?.cancelPenalties?.[0]?.deadline ?? null,
-      raw_liteapi_response: booking,
-    };
+    // Insert booking row directly — bypasses the RPC so postgres.js tagged-template
+    // literals handle all value binding, avoiding the JSON serialisation quirks of
+    // the RpcBuilder that caused booking_id to arrive as null on production.
+    // Columns are limited to those in the base schema; newer optional columns are
+    // patched afterwards so a missing migration on production can't block the booking.
+    await sql`
+      INSERT INTO bookings (
+        booking_id, user_id, property_name, property_image, room_name,
+        check_in, check_out, guests_adults, guests_children,
+        total_price, currency,
+        holder_first_name, holder_last_name, holder_email,
+        status, special_requests, voucher_code, discount_amount,
+        policy_type, cancellation_policy,
+        provider, provider_metadata, payment_intent_id,
+        supplier_cost, charged_price
+      ) VALUES (
+        ${bookingId}, ${user.id}, ${params.propertyName}, ${params.propertyImage ?? null}, ${params.roomName},
+        ${params.checkIn}::date, ${params.checkOut}::date,
+        ${params.adults}, ${params.children ?? 0},
+        ${totalPrice}, ${storedCurrency},
+        ${params.holder.firstName}, ${params.holder.lastName}, ${params.holder.email},
+        ${bookingStatus}, ${params.specialRequests ?? null}, ${params.voucherCode ?? null}, ${params.discountAmount ?? 0},
+        ${policyType}, ${storedCancelPolicy ? JSON.stringify(storedCancelPolicy) : null}::jsonb,
+        'travelgatex', ${JSON.stringify({ supplierRef, hotelRef, hotelCode, clientReference })}::jsonb,
+        ${params.paymentIntentId ?? null},
+        ${price}, ${totalPrice}
+      )
+    `;
 
-    const tiersPayload = (booking.cancelPolicy?.cancelPenalties || []).map((p: any) => ({
-      cancel_deadline: p.deadline,
-      penalty_amount: p.value,
-      penalty_type: p.penaltyType,
-      currency: p.currency || currency,
-    }));
-
-    const { error: rpcError } = await serviceClient.rpc('create_booking_with_policy', {
-      p_booking: bookingPayload,
-      p_snapshot: snapshotPayload,
-      p_tiers: tiersPayload,
-    });
-
-    if (rpcError) {
-      console.error('[confirmAndSaveTgxBooking] RPC failed after TGX confirmed — attempting fallback INSERT:', rpcError);
-
-      // Fallback: direct INSERT without policy tiers. The booking is saved with
-      // basic fields so cancellation/refund can still be processed. Cancel policy
-      // will be marked incomplete for manual ops review.
-      const { error: fallbackError } = await serviceClient
-        .from('bookings')
-        .insert({
-          ...bookingPayload,
-          // Tag as incomplete so ops can identify and patch cancel tiers
-          special_requests: [bookingPayload.special_requests, '[POLICY_TIERS_MISSING — see RPC error log]']
-            .filter(Boolean).join(' | '),
-        });
-
-      if (!fallbackError) {
-        // Patch provider/financial columns separately (same as the happy path below)
-        await serviceClient
-          .from('bookings')
-          .update({
-            provider: 'travelgatex',
-            provider_metadata: { supplierRef, hotelRef, hotelCode, clientReference },
-            payment_intent_id: params.paymentIntentId ?? null,
-            supplier_cost: price,
-            charged_price: totalPrice,
-            cancellation_policy: storedCancelPolicy ?? null,
-          })
-          .eq('booking_id', bookingId);
-
-        console.warn(
-          '[confirmAndSaveTgxBooking] Fallback INSERT succeeded for', bookingId,
-          '— cancel policy tiers missing, manual review required'
-        );
-        return {
-          success: true,
-          data: { bookingId, status: bookingStatus, policyType, policySummary: snapshotPayload.summary, totalPrice, currency },
-        };
-      }
-
-      // Both RPC and direct INSERT failed — truly orphaned booking
-      console.error(
-        'CRITICAL: TGX booking', bookingId,
-        'confirmed but ALL DB saves failed. Supplier ref:', supplierRef,
-        'PI:', params.paymentIntentId, '— Manual reconciliation required.',
-      );
-      return {
-        success: false,
-        providerConfirmed: true,
-        data: { bookingId, status: bookingStatus, policyType, policySummary: snapshotPayload.summary, totalPrice, currency },
-        error: `Booking confirmed but failed to save (DB: ${rpcError.message || rpcError.code}). Contact support with booking ID: ${bookingId}`,
-      };
+    // Patch columns added by later migrations — non-fatal so a missing migration on
+    // production doesn't roll back the booking we just confirmed with TGX.
+    try {
+      await sql`
+        UPDATE bookings
+        SET property_lat = ${property_lat}, property_lng = ${property_lng},
+            source_brand = ${process.env.NEXT_PUBLIC_BRAND_NAME ?? 'CheapestGo'}
+        WHERE booking_id = ${bookingId}
+      `;
+    } catch {
+      // Columns don't exist on this DB yet — booking already saved, non-fatal.
     }
 
-    // Update provider columns and financial audit fields (RPC INSERT uses defaults; patch here).
-    // Also set cancellation_policy to the normalized format — the RPC stores raw_liteapi_response
-    // in that column, but the trips page expects { refundableTag, cancelPolicyInfos }.
-    const { error: updateError } = await serviceClient
-      .from('bookings')
-      .update({
-        provider: 'travelgatex',
-        provider_metadata: { supplierRef, hotelRef, hotelCode, clientReference },
-        payment_intent_id: params.paymentIntentId ?? null,
-        supplier_cost: price,
-        charged_price: totalPrice,
-        cancellation_policy: storedCancelPolicy ?? null,
-      })
-      .eq('booking_id', bookingId);
+    // Insert policy snapshot
+    const snapshotRows = await sql`
+      INSERT INTO booking_policy_snapshots (
+        booking_id, policy_type, summary, refundable_tag, hotel_remarks,
+        no_show_penalty, early_departure_fee, free_cancel_deadline,
+        raw_liteapi_response, captured_at
+      ) VALUES (
+        ${bookingId},
+        ${policyType}::booking_policy_type,
+        ${isRefundable ? 'Refundable rate' : 'Non-refundable rate'},
+        ${isRefundable ? 'RFN' : 'NRFN'},
+        '{}',
+        0, 0,
+        ${freeCancelDeadline ? sql`${freeCancelDeadline}::timestamptz` : sql`NULL`},
+        ${JSON.stringify(booking)}::jsonb,
+        NOW()
+      )
+      RETURNING id
+    `;
+    const snapshotId = snapshotRows[0]?.id ?? null;
 
-    if (updateError) {
-      // Non-fatal: booking is confirmed and RPC-saved. Log for ops but don't fail the response.
-      console.error(
-        '[confirmAndSaveTgxBooking] Post-RPC update failed for', bookingId,
-        '— provider_metadata and cancellation_policy may be missing. Error:', updateError.message || updateError.code,
-        '| supplierRef:', supplierRef, '| PI:', params.paymentIntentId,
-      );
+    if (snapshotId) {
+      await sql`UPDATE bookings SET policy_snapshot_id = ${snapshotId} WHERE booking_id = ${bookingId}`;
+
+      for (let i = 0; i < cancelPenalties.length; i++) {
+        const p = cancelPenalties[i];
+        await sql`
+          INSERT INTO policy_tiers (snapshot_id, cancel_deadline, penalty_amount, penalty_type, currency, tier_order)
+          VALUES (
+            ${snapshotId},
+            ${p.deadline ? sql`${p.deadline}::timestamptz` : sql`NULL`},
+            ${p.value ?? 0},
+            ${p.penaltyType || 'fixed'},
+            ${p.currency || currency},
+            ${i}
+          )
+        `;
+      }
     }
 
     if (params.paymentIntentId) {
@@ -413,28 +400,41 @@ export async function confirmAndSaveTgxBooking(
 
     return {
       success: true,
-      data: { bookingId, status: bookingStatus, policyType, policySummary: snapshotPayload.summary, totalPrice, currency },
+      data: { bookingId, status: bookingStatus, policyType, policySummary: isRefundable ? 'Refundable rate' : 'Non-refundable rate', totalPrice, currency },
     };
   } catch (error) {
     console.error('[confirmAndSaveTgxBooking] DB error after TGX confirmed — attempting emergency INSERT:', error);
-    // Last-resort: insert a minimal record so the booking is at least traceable
+    // Last-resort: minimal direct INSERT so the booking is at least traceable
     try {
-      const serviceClient = createAdminClient();
-      await serviceClient.from('bookings').insert({
-        ...bookingPayload,
-        provider: 'travelgatex',
-        provider_metadata: { supplierRef, hotelRef, hotelCode, clientReference },
-        payment_intent_id: params.paymentIntentId ?? null,
-        supplier_cost: price,
-        charged_price: totalPrice,
-        cancellation_policy: storedCancelPolicy ?? null,
-        special_requests: [bookingPayload.special_requests, '[EMERGENCY_RECOVERY — exception during save]']
-          .filter(Boolean).join(' | '),
-      });
+      const sqlEmergency = getSqlAdmin();
+      const emergencyNote = [params.specialRequests, '[EMERGENCY_RECOVERY — exception during save]'].filter(Boolean).join(' | ');
+      await sqlEmergency`
+        INSERT INTO bookings (
+          booking_id, user_id, property_name, property_image, room_name,
+          check_in, check_out, guests_adults, guests_children,
+          total_price, currency,
+          holder_first_name, holder_last_name, holder_email,
+          status, special_requests, voucher_code, discount_amount,
+          policy_type, cancellation_policy,
+          provider, provider_metadata, payment_intent_id,
+          supplier_cost, charged_price
+        ) VALUES (
+          ${bookingId}, ${user.id}, ${params.propertyName}, ${params.propertyImage ?? null}, ${params.roomName},
+          ${params.checkIn}::date, ${params.checkOut}::date,
+          ${params.adults}, ${params.children ?? 0},
+          ${totalPrice}, ${storedCurrency},
+          ${params.holder.firstName}, ${params.holder.lastName}, ${params.holder.email},
+          ${bookingStatus}, ${emergencyNote}, ${params.voucherCode ?? null}, ${params.discountAmount ?? 0},
+          ${policyType}, ${storedCancelPolicy ? JSON.stringify(storedCancelPolicy) : null}::jsonb,
+          'travelgatex', ${JSON.stringify({ supplierRef, hotelRef, hotelCode, clientReference })}::jsonb,
+          ${params.paymentIntentId ?? null},
+          ${price}, ${totalPrice}
+        )
+      `;
       console.warn('[confirmAndSaveTgxBooking] Emergency INSERT succeeded for', bookingId);
       return {
         success: true,
-        data: { bookingId, status: bookingStatus, policyType, policySummary: isRefundable ? 'Refundable' : 'Non-refundable', totalPrice, currency },
+        data: { bookingId, status: bookingStatus, policyType, policySummary: isRefundable ? 'Refundable' : 'Non-refundable', totalPrice, currency: storedCurrency },
       };
     } catch (emergencyErr) {
       console.error('CRITICAL: Emergency INSERT also failed for', bookingId, ':', emergencyErr);
@@ -442,7 +442,7 @@ export async function confirmAndSaveTgxBooking(
     return {
       success: false,
       providerConfirmed: true,
-      data: { bookingId, status: bookingStatus, policyType, policySummary: isRefundable ? 'Refundable' : 'Non-refundable', totalPrice, currency },
+      data: { bookingId, status: bookingStatus, policyType, policySummary: isRefundable ? 'Refundable' : 'Non-refundable', totalPrice, currency: storedCurrency },
       error: 'Booking confirmed but failed to save. Contact support with booking ID: ' + bookingId,
     };
   }

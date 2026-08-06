@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo, useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import { motion } from 'framer-motion';
 import { useTranslations } from 'next-intl';
@@ -13,7 +13,7 @@ import CancellationModal from './CancellationModal';
 import ModificationModal from './ModificationModal';
 import { statusColors, statusLabels } from '@/lib/constants';
 import { formatDate, formatCurrency, calculateNights } from '@/lib/utils';
-import { derivePolicyType, getPolicyTitle, getPolicyBadgeColor } from '@/lib/policy-formatter';
+import type { BookingPolicyType } from '@/types/booking-policy';
 import { convertCurrency } from '@/lib/currency';
 import { useUserCurrency } from '@/stores/searchStore';
 
@@ -68,13 +68,7 @@ export default function BookingCard({ booking, onBookingUpdated, index = 0 }: Bo
     const isUpcoming = checkInDate > new Date();
     const isPast = checkOutDate < new Date();
 
-    const policyType = useMemo(
-        () => derivePolicyType(
-            booking.cancellation_policy?.refundableTag,
-            booking.cancellation_policy?.cancelPolicyInfos
-        ),
-        [booking.cancellation_policy]
-    );
+    const policyType = (booking.policy_type || 'non_refundable') as BookingPolicyType;
 
     const rating = (booking as any).rating ?? 0;
 

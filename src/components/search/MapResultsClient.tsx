@@ -5,6 +5,7 @@ import { useTranslations } from 'next-intl';
 import type { Property } from '@/types';
 import LazySearchMapView from './LazySearchMapView';
 import { buildSearchCacheKey, getSearchResults, setSearchResults } from '@/lib/searchResultsCache';
+import { useSearchStore } from '@/stores/searchStore';
 
 interface MapResultsClientProps {
     searchParams: Record<string, string>;
@@ -33,21 +34,29 @@ function StreamingBanner({ count, pricingMode }: { count: number; pricingMode?: 
 
 export function MapResultsClient({ searchParams, destination, onSwitchView }: MapResultsClientProps) {
     const t = useTranslations('hotels.searchResults');
+    const setIsSearching = useSearchStore(s => s.setIsSearching);
+
+    // Dismiss the SearchNavigationOverlay skeleton — same reset useSearchModule does for list view.
+    useEffect(() => { setIsSearching(false); }, [setIsSearching]);
 
     // 'prices-loading' = catalog hotels shown, TGX prices still in flight
     const cacheKey = buildSearchCacheKey(searchParams);
     const cached = getSearchResults(cacheKey);
 
-    const [status, setStatus]         = useState<'loading' | 'prices-loading' | 'completing' | 'streaming' | 'done' | 'error'>(cached ? 'done' : 'loading');
-    const [properties, setProperties] = useState<Property[]>(cached?.properties ?? []);
-    const [totalCount, setTotalCount] = useState(cached?.totalCount ?? 0);
+    const [status, setStatus]           = useState<'loading' | 'prices-loading' | 'completing' | 'streaming' | 'done' | 'error'>(cached ? 'done' : 'loading');
+    const [properties, setProperties]   = useState<Property[]>(cached?.properties ?? []);
+    const [totalCount, setTotalCount]   = useState(cached?.totalCount ?? 0);
     const [allMappable, setAllMappable] = useState<any[]>(cached?.allMappable ?? []);
     const [queryParams, setQueryParams] = useState<Record<string, any>>(cached?.queryParams ?? searchParams);
+    // Only true when TGX returned real availability — guards the cache write below.
+    const [tgxSucceeded, setTgxSucceeded] = useState(!!cached);
 
     const searchKey = JSON.stringify(searchParams);
 
     useEffect(() => {
-        if (status === 'done' && properties.length > 0) {
+        if (status !== 'done' || !tgxSucceeded || properties.length === 0) return;
+        const withImg = properties.filter((h: any) => !!(h as any).image).length;
+        if (withImg > 0) {
             setSearchResults(cacheKey, { properties, totalCount, queryParams, allMappable });
         }
     }, [status]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -94,6 +103,7 @@ export function MapResultsClient({ searchParams, destination, onSwitchView }: Ma
             let buffer        = '';
             let gotFirstHotels = false;
             let gotDone        = false;
+            let completingTimer: ReturnType<typeof setTimeout> | null = null;
 
             while (true) {
                 const { done, value } = await reader.read();
@@ -122,7 +132,7 @@ export function MapResultsClient({ searchParams, destination, onSwitchView }: Ma
                                     } else {
                                         // Priced results (TGX direct or cache hit) — normal flow.
                                         setStatus('completing');
-                                        setTimeout(() => { if (!cancelled) setStatus('streaming'); }, 400);
+                                        completingTimer = setTimeout(() => { if (!cancelled) setStatus('streaming'); }, 400);
                                     }
                                     gotFirstHotels = true;
                                 } else {
@@ -143,7 +153,13 @@ export function MapResultsClient({ searchParams, destination, onSwitchView }: Ma
                                     .map(h => {
                                         const p = priceMap.get((h as any).id ?? (h as any).hotelId);
                                         if (!p) return h;
-                                        return { ...h, price: p.price, currency: p.currency, offerId: p.offerId, refundableTag: p.refundableTag, boardCode: p.boardCode, _tgx: p._tgx, priceLoading: false } as any;
+                                        return {
+                                            ...h,
+                                            price: p.price, currency: p.currency, offerId: p.offerId,
+                                            refundableTag: p.refundableTag, boardCode: p.boardCode, _tgx: p._tgx,
+                                            priceLoading: false,
+                                            ...(p.images?.length ? { images: p.images, image: p.images[0] } : {}),
+                                        } as any;
                                     })
                                     .filter((h: any) => !h.priceLoading)
                                 );
@@ -151,12 +167,37 @@ export function MapResultsClient({ searchParams, destination, onSwitchView }: Ma
                                     .map(h => {
                                         const p = priceMap.get((h as any).id ?? (h as any).hotelId);
                                         if (!p) return h;
-                                        // priceLoading: false so the hotel survives the filter below
-                                        return { ...h, price: p.price, currency: p.currency, priceLoading: false };
+                                        return {
+                                            ...h, price: p.price, currency: p.currency, priceLoading: false,
+                                            ...(p.images?.length ? { image: p.images[0] } : {}),
+                                        };
                                     })
                                     .filter((h: any) => !h.priceLoading)
                                 );
                             }
+                        } else if (chunk.type === 'content') {
+                            // Content patches: images and names from the content-api, arrive ~5s after Phase 1.
+                            // Apply them so hotels gain images before the done filter runs.
+                            const patchMap = chunk.data as Record<string, { images?: string[]; name?: string }>;
+                            setProperties(prev => {
+                                let changed = false;
+                                const next = prev.map(h => {
+                                    const id = (h as any).hotelId ?? (h as any).id;
+                                    const patch = patchMap[id];
+                                    if (!patch) return h;
+                                    const updates: any = {};
+                                    if (patch.images?.length && !(h as any).image) {
+                                        updates.images = patch.images;
+                                        updates.image  = patch.images[0];
+                                    }
+                                    if (patch.name && (!(h as any).name || (h as any).name === id)) {
+                                        updates.name = patch.name;
+                                    }
+                                    if (Object.keys(updates).length) { changed = true; return { ...h, ...updates }; }
+                                    return h;
+                                });
+                                return changed ? next : prev;
+                            });
                         } else if (chunk.type === 'done') {
                             if (Array.isArray(chunk.data) && chunk.data.length > 0) {
                                 setProperties(chunk.data.map(normalize));
@@ -165,20 +206,40 @@ export function MapResultsClient({ searchParams, destination, onSwitchView }: Ma
                                 setTotalCount(chunk.totalCount);
                             }
                             if (Array.isArray(chunk.allMappable) && chunk.allMappable.length > 0) {
-                                // Only use done.allMappable (TGX IDs) as a fallback when the prices
-                                // event didn't populate allMappable with catalog-ID hotels.
-                                // Overwriting here would cause card IDs (catalog) to mismatch pin IDs (TGX).
-                                setAllMappable(prev => prev.length > 0 ? prev : chunk.allMappable);
+                                setAllMappable(prev => {
+                                    if (prev.length === 0) return chunk.allMappable;
+                                    // Merge: done.allMappable includes hotels that gained coordinates from
+                                    // the content API during this search (had lat=0 in DB). Add any that
+                                    // aren't already in the prices-filtered allMappable.
+                                    const prevIds = new Set(prev.map((h: any) => (h as any).id ?? (h as any).hotelId));
+                                    const toAdd = (chunk.allMappable as any[]).filter((h: any) => !prevIds.has(h.id ?? h.hotelId));
+                                    return toAdd.length > 0 ? [...prev, ...toAdd] : prev;
+                                });
                             }
-                            // Remove catalog hotels that TGX had no pricing for (unavailable dates).
-                            setProperties(prev => {
-                                const filtered = prev.filter((h: any) => !h.priceLoading);
-                                if (filtered.length > 0 && chunk.totalCount) setTotalCount(filtered.length);
-                                return filtered;
-                            });
-                            setAllMappable(prev => prev.filter((h: any) => !h.priceLoading));
+                            if (completingTimer) { clearTimeout(completingTimer); completingTimer = null; }
+                            const didTgxSucceed = (chunk.tgxCount ?? 0) > 0;
+                            if (didTgxSucceed) {
+                                // TGX returned prices — remove catalog hotels that never got priced.
+                                // Do NOT require !!image: hotels priced but without DB images would be
+                                // filtered to [], causing SearchMapView's useEffect to return early and
+                                // leaving catalog hotels stuck as priceLoading:true skeleton forever.
+                                setProperties(prev => {
+                                    const filtered = prev.filter((h: any) => !h.priceLoading);
+                                    if (filtered.length > 0 && chunk.totalCount) setTotalCount(filtered.length);
+                                    return filtered;
+                                });
+                                setAllMappable(prev => prev.filter((h: any) => !h.priceLoading));
+                            } else {
+                                // TGX timed out / ALL_PROCESSES_FAILED — keep catalog hotels on the map,
+                                // just clear priceLoading so pins don't spin indefinitely.
+                                setProperties(prev => prev.map(h => (h as any).priceLoading ? { ...h as any, priceLoading: false } : h));
+                                setAllMappable(prev => prev.map(h => (h as any).priceLoading ? { ...h as any, priceLoading: false } : h));
+                            }
                             gotDone = true;
-                            if (!cancelled) setStatus('done');
+                            if (!cancelled) {
+                                setTgxSucceeded(didTgxSucceed);
+                                setStatus('done');
+                            }
                         } else if (chunk.type === 'error') {
                             console.error('[Stream] error chunk:', chunk.message);
                             if (!gotFirstHotels && !cancelled) {

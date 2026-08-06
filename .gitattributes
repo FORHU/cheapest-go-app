@@ -16,6 +16,8 @@
 *.xml text eol=lf
 *.svg text eol=lf
 *.sh text eol=lf
+crontab text eol=lf
+docker/cron/crontab text eol=lf
 *.env text eol=lf
 *.env.* text eol=lf
 .gitignore text eol=lf

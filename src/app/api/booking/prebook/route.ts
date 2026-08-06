@@ -73,7 +73,8 @@ function roomNamesMatch(a: string, b: string): boolean {
  */
 function parseTgxOptionToken(token: string) {
     const segs: Record<string, string> = {};
-    for (const seg of token.split('!~|')) {
+    const separator = token.includes('!~|') ? '!~|' : '[';
+    for (const seg of token.split(separator)) {
         if (seg.length > 1) segs[seg[0]] = seg.slice(1);
     }
     const parseYYMMDD = (v: string | undefined): string | null => {
@@ -81,9 +82,10 @@ function parseTgxOptionToken(token: string) {
         return `20${v.slice(0, 2)}-${v.slice(2, 4)}-${v.slice(4, 6)}`;
     };
     return {
-        hotelCode: segs['d'] || null,
-        checkIn:   parseYYMMDD(segs['b']),
-        checkOut:  parseYYMMDD(segs['c']),
+        hotelCode:   segs['d'] || null,
+        checkIn:     parseYYMMDD(segs['b']),
+        checkOut:    parseYYMMDD(segs['c']),
+        nationality: segs['h'] || 'US',
     };
 }
 
@@ -114,15 +116,16 @@ export async function POST(req: Request) {
 
             // TGX option tokens expire quickly. Decode the hotel code and dates from
             // the stale token, then re-search that hotel to get a fresh optionRefId.
-            const { hotelCode, checkIn, checkOut } = parseTgxOptionToken(staleOptionRefId);
+            const { hotelCode, checkIn, checkOut, nationality } = parseTgxOptionToken(staleOptionRefId);
 
             if (!hotelCode || !checkIn || !checkOut) {
                 console.error('[prebook/tgx] Could not parse hotel code or dates from token:', staleOptionRefId.substring(0, 80));
                 return Response.json({ success: false, error: 'Invalid TGX offer ID — could not decode hotel details' }, { status: 400 });
             }
 
-            console.log(`[prebook/tgx] Fresh search: hotel=${hotelCode} ${checkIn}→${checkOut} adults=${adults}`);
-            // In-process search (was an HTTP self-call to /api/fn/travelgatex-search).
+            console.log(`[prebook/tgx] Fresh search: hotel=${hotelCode} ${checkIn}→${checkOut} adults=${adults} nationality=${nationality}`);
+            // bypassCache=true: skip the DB cache so we always get live OTV tokens.
+            // Cached tokens from a prior search expire quickly and fail TGX valuation.
             const freshResult = await runTgxSearch({
                 hotelCode,
                 checkin:  checkIn,
@@ -130,7 +133,8 @@ export async function POST(req: Request) {
                 adults,
                 children,
                 currency,
-                guest_nationality: 'KR',
+                guest_nationality: nationality,
+                bypassCache: true,
             });
 
             const freshRooms: any[] = freshResult?.data?.roomTypes || [];
@@ -176,11 +180,12 @@ export async function POST(req: Request) {
             for (const room of candidates) {
                 const rOfferId: string = room?.offerId || '';
                 if (!rOfferId.startsWith('TGX:')) continue;
-                const rOptionId = rOfferId.slice(4);
-                const rNativeToken: string = room?.rates?.[0]?._tgx?.token || rOptionId;
-                const tokensToTry = rNativeToken !== rOptionId
-                    ? [rNativeToken, rOptionId]
-                    : [rOptionId];
+                const rOptionId = rOfferId.slice(4);        // opt.id (canonical TGX id, per docs)
+                const rTgxId: string    = room?.rates?.[0]?._tgx?.id    || '';  // explicit id field
+                const rNativeToken: string = room?.rates?.[0]?._tgx?.token || '';  // OTV native token
+                // TGX docs: pass id from Search as optionRefId in Quote.
+                // Try all unique non-empty values, id first.
+                const tokensToTry = [...new Set([rOptionId, rTgxId, rNativeToken].filter(Boolean))];
 
                 for (const tok of tokensToTry) {
                     console.log('[prebook/tgx] Quoting with token:', tok.substring(0, 80));
@@ -250,7 +255,7 @@ export async function POST(req: Request) {
             });
         }
 
-        return Response.json({ success: false, error: 'Only TravelgateX offers are supported' }, { status: 400 });
+        return Response.json({ success: false, error: 'This hotel is not available for instant online booking. Please try a different hotel.' }, { status: 400 });
     } catch (err) {
         return Response.json(
             { success: false, error: safeError(err, 'prebook') },

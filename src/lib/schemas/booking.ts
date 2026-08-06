@@ -4,15 +4,14 @@ import { z } from 'zod';
 // Prebook
 // ============================================================================
 
-// offerId may carry a TGX search token encoded as "TGX:{token}" — backend detects the prefix.
+// offerId carries a TGX search token encoded as "TGX:{token}".
 export const prebookSchema = z.object({
   offerId: z.string().min(1, 'Offer ID is required'),
   currency: z.string().length(3, 'Currency must be 3 characters (e.g., PHP)').optional(),
   voucherCode: z.string().optional(),
-  // TGX: needed to re-search with fresh options on checkout
   adults: z.number().int().min(1).optional(),
   children: z.number().int().min(0).optional(),
-  // Used to match the user's original room selection after token refresh
+  // Used to match the user's original room selection after token refresh (TGX)
   roomName: z.string().optional(),
 });
 
@@ -46,6 +45,8 @@ export const bookingConfirmSchema = z.object({
     transactionId: z.string().optional(),
   }),
   cancellationPolicies: z.any().optional(),
+  /** Price the user was quoted at prebook time (in the booking currency, before service fee) */
+  quotedPrice: z.number().positive().optional(),
 });
 
 export type BookingConfirmInput = z.infer<typeof bookingConfirmSchema>;

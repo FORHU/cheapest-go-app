@@ -478,7 +478,7 @@ function BookingContent() {
                     <div className="w-16 h-16 rounded-full border-4 border-blue-100 dark:border-blue-900 border-t-blue-600 animate-spin" />
                     <div>
                         <h2 className="text-lg font-normal text-slate-900 dark:text-white mb-1">{t('confirmingBooking')}</h2>
-                        <p className="text-[11px] text-blue-600 dark:text-blue-400 font-normal animate-pulse min-h-[20px]">
+                        <p className="text-[11px] text-blue-600 dark:text-blue-400 font-normal animate-pulse min-h-5">
                             {(t.raw('bookingSteps') as string[])[bookingStepIdx] || FLIGHT_BOOKING_STEPS[bookingStepIdx]}
                         </p>
                     </div>
@@ -1035,7 +1035,7 @@ function BookingContent() {
                                                     <ChevronDown size={12} className="text-slate-400 transition-transform group-data-[state=open]:rotate-180" />
                                                 </button>
                                             </DropdownMenuTrigger>
-                                            <DropdownMenuContent align="end" className="rounded-xl min-w-[100px] z-1001">
+                                            <DropdownMenuContent align="end" className="rounded-xl min-w-25 z-1001">
                                                 {PASSENGER_TYPES.map((pt) => (
                                                     <DropdownMenuItem
                                                         key={pt.code}
@@ -1099,7 +1099,7 @@ function BookingContent() {
                                                 <ChevronDown size={14} className="text-slate-400 transition-transform group-data-[state=open]:rotate-180" />
                                             </button>
                                         </DropdownMenuTrigger>
-                                        <DropdownMenuContent align="start" className="rounded-xl min-w-[140px] z-1001">
+                                        <DropdownMenuContent align="start" className="rounded-xl min-w-35 z-1001">
                                             {GENDERS.map((g) => (
                                                 <DropdownMenuItem
                                                     key={g.value}
@@ -1139,7 +1139,7 @@ function BookingContent() {
                                                 <ChevronDown size={14} className="text-slate-400 transition-transform group-data-[state=open]:rotate-180" />
                                             </button>
                                         </DropdownMenuTrigger>
-                                        <DropdownMenuContent align="start" className="rounded-xl min-w-[200px] max-h-[300px] overflow-y-auto z-1001">
+                                        <DropdownMenuContent align="start" className="rounded-xl min-w-50 max-h-75 overflow-y-auto z-1001">
                                             {NATIONALITIES.map((n) => (
                                                 <DropdownMenuItem
                                                     key={n.code}
@@ -1215,13 +1215,13 @@ function BookingContent() {
                                         <DropdownMenuTrigger asChild>
                                             <button
                                                 type="button"
-                                                className="w-[90px] lg:w-[105px] flex items-center justify-between px-1.5 lg:px-2 py-2 lg:py-2.5 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-[10px] lg:text-[13px] focus:outline-none focus:ring-2 focus:ring-indigo-500/50 group"
+                                                className="w-22.5 lg:w-26.25 flex items-center justify-between px-1.5 lg:px-2 py-2 lg:py-2.5 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-[10px] lg:text-[13px] focus:outline-none focus:ring-2 focus:ring-indigo-500/50 group"
                                             >
                                                 <span>+{contact.countryCode}</span>
                                                 <ChevronDown size={12} className="text-slate-400 transition-transform group-data-[state=open]:rotate-180" />
                                             </button>
                                         </DropdownMenuTrigger>
-                                        <DropdownMenuContent align="start" className="rounded-xl min-w-[120px] max-h-[300px] overflow-y-auto z-1001">
+                                        <DropdownMenuContent align="start" className="rounded-xl min-w-30 max-h-75 overflow-y-auto z-1001">
                                             {PHONE_CODES.map((p) => (
                                                 <DropdownMenuItem
                                                     key={p.code}
@@ -1289,7 +1289,7 @@ function BookingContent() {
                                             <ChevronDown size={14} className="text-slate-400 transition-transform group-data-[state=open]:rotate-180" />
                                         </button>
                                     </DropdownMenuTrigger>
-                                    <DropdownMenuContent align="start" className="rounded-xl min-w-[200px] max-h-[300px] overflow-y-auto z-1001">
+                                    <DropdownMenuContent align="start" className="rounded-xl min-w-50 max-h-75 overflow-y-auto z-1001">
                                         {NATIONALITIES.map((n) => (
                                             <DropdownMenuItem
                                                 key={n.code}

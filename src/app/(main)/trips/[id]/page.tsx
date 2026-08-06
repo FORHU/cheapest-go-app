@@ -93,7 +93,7 @@ function Section({ title, icon, children }: { title: string; icon: React.ReactNo
 function HotelDetail({ booking, t }: { booking: any; t: TFunc }) {
     const nights = calculateNights(new Date(booking.check_in), new Date(booking.check_out));
     const policy = booking.cancellation_policy as any;
-    const refundable = policy?.refundableTag === 'RFN';
+    const refundable = booking.policy_type === 'free_cancellation' || booking.policy_type === 'partial_refund';
     const freeCancelDeadline = policy?.cancelPolicyInfos?.[0]?.cancelTime;
     const s = t;
     const l = (key: string, params?: Record<string, string | number>) => t(`labels.${key}`, params);

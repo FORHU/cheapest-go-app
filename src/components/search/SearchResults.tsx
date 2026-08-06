@@ -26,11 +26,11 @@ function matchesBoardType(hotelBoardTypes: string[], selected: string[]): boolea
     return hotelBoardTypes.some(bt => {
         const lower = bt.toLowerCase();
         return selected.some(code => {
-            if (code === 'RO') return lower === 'ro' || (lower.includes('room') && lower.includes('only'));
-            if (code === 'BB') return lower === 'bb' || lower.includes('breakfast');
-            if (code === 'HB') return lower === 'hb' || lower.includes('half');
-            if (code === 'FB') return lower === 'fb' || lower.includes('full board');
-            if (code === 'AI') return lower === 'ai' || lower.includes('all inclusive') || lower.includes('all-inclusive');
+            if (code === 'RO') return lower === 'ro' || lower === 'nomeal' || lower === 'room_only' || (lower.includes('room') && lower.includes('only'));
+            if (code === 'BB') return lower === 'bb' || lower === 'breakfast' || lower === 'breakfast_included' || lower.includes('breakfast');
+            if (code === 'HB') return lower === 'hb' || lower === 'halfboard' || lower === 'half_board' || lower.includes('half');
+            if (code === 'FB') return lower === 'fb' || lower === 'fullboard' || lower === 'full_board' || lower.includes('full board');
+            if (code === 'AI') return lower === 'ai' || lower === 'allinclusive' || lower === 'all_inclusive' || lower.includes('all inclusive') || lower.includes('all-inclusive');
             return lower === code.toLowerCase();
         });
     });
@@ -41,11 +41,12 @@ interface SearchResultsProps {
     totalCount?: number;
     rawSearchParams?: Record<string, any>;
     onSwitchToMap?: () => void;
+    slowSearch?: boolean;
 }
 
 const PAGE_SIZE = 20;
 
-const SearchResultsContent = ({ initialProperties = [], totalCount: initialTotalCount = 0, rawSearchParams = {}, onSwitchToMap }: SearchResultsProps) => {
+const SearchResultsContent = ({ initialProperties = [], totalCount: initialTotalCount = 0, rawSearchParams = {}, onSwitchToMap, slowSearch = false }: SearchResultsProps) => {
     const router = useRouter();
     const searchParams = useSearchParams();
     const destination = searchParams?.get('destination') || '';
@@ -223,12 +224,32 @@ const SearchResultsContent = ({ initialProperties = [], totalCount: initialTotal
                     </div>
                 ) : (
                     <div className="text-center py-20 bg-slate-50 dark:bg-slate-900/50 rounded-xl border border-dashed border-slate-300 dark:border-slate-700 px-4">
-                        <h3 className="text-lg font-medium text-slate-900 dark:text-white">
-                            {destination ? t('noHotelsFoundIn', { destination }) : t('noPropertiesFound')}
-                        </h3>
-                        <p className="text-slate-500 dark:text-slate-400 mt-1 text-sm">
-                            {t('supplierUnavailable')}
-                        </p>
+                        {slowSearch ? (
+                            <>
+                                <div className="text-3xl mb-3">⏳</div>
+                                <h3 className="text-lg font-medium text-slate-900 dark:text-white">
+                                    Still loading {destination ? `hotels in ${destination}` : 'hotels'}
+                                </h3>
+                                <p className="text-slate-500 dark:text-slate-400 mt-1 text-sm max-w-xs mx-auto">
+                                    This destination is being indexed for the first time. Please search again — results should appear now.
+                                </p>
+                                <button
+                                    onClick={() => window.location.reload()}
+                                    className="mt-4 px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-full transition-colors cursor-pointer"
+                                >
+                                    Search again
+                                </button>
+                            </>
+                        ) : (
+                            <>
+                                <h3 className="text-lg font-medium text-slate-900 dark:text-white">
+                                    {destination ? t('noHotelsFoundIn', { destination }) : t('noPropertiesFound')}
+                                </h3>
+                                <p className="text-slate-500 dark:text-slate-400 mt-1 text-sm">
+                                    {t('supplierUnavailable')}
+                                </p>
+                            </>
+                        )}
                     </div>
                 )
             }
@@ -256,7 +277,7 @@ const SearchResultsContent = ({ initialProperties = [], totalCount: initialTotal
     );
 };
 
-const SearchResults = ({ initialProperties = [], totalCount = 0, rawSearchParams = {}, onSwitchToMap }: SearchResultsProps) => {
+const SearchResults = ({ initialProperties = [], totalCount = 0, rawSearchParams = {}, onSwitchToMap, slowSearch = false }: SearchResultsProps) => {
     return (
         <Suspense fallback={
             <div className="flex-1 min-w-0">
@@ -271,7 +292,7 @@ const SearchResults = ({ initialProperties = [], totalCount = 0, rawSearchParams
                 </div>
             </div>
         }>
-            <SearchResultsContent initialProperties={initialProperties} totalCount={totalCount} rawSearchParams={rawSearchParams} onSwitchToMap={onSwitchToMap} />
+            <SearchResultsContent initialProperties={initialProperties} totalCount={totalCount} rawSearchParams={rawSearchParams} onSwitchToMap={onSwitchToMap} slowSearch={slowSearch} />
         </Suspense>
     );
 };

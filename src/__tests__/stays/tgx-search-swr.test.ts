@@ -13,19 +13,22 @@ import { getSqlAdmin } from '@/lib/db/postgres';
 vi.mock('@/lib/db/postgres', () => ({ getSqlAdmin: vi.fn() }));
 
 vi.mock('@/lib/server/stays/travelgatex/client', () => ({
-    tgxGraphQL:        vi.fn(),
-    getTgxSettings:    vi.fn().mockReturnValue({}),
-    getTgxConfig:      vi.fn().mockReturnValue({ accessCode: 'test', context: 'OTV', client: 'test', supplier: 'OTV' }),
-    buildOccupancies:  vi.fn().mockReturnValue([{ occupancyRefId: 1, paxes: [] }]),
-    normalizeOption:   vi.fn().mockImplementation((o: any) => o),
+    tgxGraphQL:           vi.fn(),
+    getTgxSettings:       vi.fn().mockReturnValue({}),
+    getTgxConfig:         vi.fn().mockReturnValue({ accessCode: 'test', context: 'OTV', client: 'test', supplier: 'OTV' }),
+    getTgxFilterSearch:   vi.fn().mockReturnValue({}),
+    buildOccupancies:     vi.fn().mockReturnValue([{ occupancyRefId: 1, paxes: [] }]),
+    normalizeOption:      vi.fn().mockImplementation((o: any) => o),
 }));
 
 vi.mock('@/lib/server/search', () => ({
     resolveTgxDestinationCode: vi.fn().mockResolvedValue(undefined),
+    backgroundResolveDestCode: vi.fn(),
 }));
 
 import { runTgxSearch } from '@/lib/server/stays/travelgatex/search';
 import { tgxGraphQL } from '@/lib/server/stays/travelgatex/client';
+import { resolveTgxDestinationCode } from '@/lib/server/search';
 
 // Minimal cached result shape that the client code expects
 const CACHED_RESULT = {
@@ -79,6 +82,7 @@ describe('runTgxSearch – stale cache hit (SWR)', () => {
     });
 
     it('fires a background TGX refresh after returning stale result', async () => {
+        vi.mocked(resolveTgxDestinationCode).mockResolvedValue('850');
         vi.mocked(tgxGraphQL).mockResolvedValue({
             data: { hotelX: { search: { options: [], errors: [] } } },
         });
@@ -108,6 +112,7 @@ describe('runTgxSearch – stale cache hit (SWR)', () => {
 
 describe('runTgxSearch – cache miss', () => {
     it('calls TGX and returns live result when cache is empty', async () => {
+        vi.mocked(resolveTgxDestinationCode).mockResolvedValue('999');
         vi.mocked(tgxGraphQL).mockResolvedValue({
             data: { hotelX: { search: { options: [], errors: [] } } },
         });

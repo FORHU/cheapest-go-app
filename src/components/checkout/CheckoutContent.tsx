@@ -36,6 +36,7 @@ import {
     BookingSummary,
     SubmitBookingButton,
 } from '@/components/checkout';
+import { PriceChangedNotice } from '@/components/checkout/PriceChangedNotice';
 import dynamic from 'next/dynamic';
 
 // Stripe JS (~60 kB) is only needed when the user reaches the payment step.
@@ -127,6 +128,9 @@ export function CheckoutContent() {
     const [step, setStep] = useState<'form' | 'payment'>('form');
     const [clientSecret, setClientSecret] = useState<string | null>(null);
     const [isCreatingPayment, setIsCreatingPayment] = useState(false);
+
+    // Price-change state: set when TGX books at a higher price than quoted
+    const [priceChanged, setPriceChanged] = useState<{ oldPrice: number; newPrice: number } | null>(null);
 
     // Duplicate booking warning dialog state
     const [duplicateBooking, setDuplicateBooking] = useState<{
@@ -234,7 +238,7 @@ export function CheckoutContent() {
     });
 
     // Pricing calculation hook
-    const { displayProperty, displayRoom, totalNights, roomPrice, taxes, totalPrice, surcharges } = usePricingCalculation({
+    const { displayProperty, displayRoom, totalNights, roomPrice, taxes, totalPrice, serviceFee, chargedTotal, surcharges } = usePricingCalculation({
         priceData,
     });
 
@@ -369,6 +373,7 @@ export function CheckoutContent() {
                 voucherCode: appliedVoucher?.code || undefined,
                 discountAmount: appliedVoucher?.discountAmount || 0,
                 cancellationPolicies: priceData?.cancellationPolicies || undefined,
+                quotedPrice: priceData?.total || undefined,
             });
 
             // Show success immediately
@@ -418,6 +423,15 @@ export function CheckoutContent() {
             );
         } catch (err) {
             const message = err instanceof Error ? err.message : 'Booking failed';
+            const bookingErr = err as Error & { errorCode?: string; oldPrice?: number; newPrice?: number };
+
+            // Price increased beyond threshold — payment already refunded server-side
+            if (bookingErr.errorCode === 'price_changed') {
+                setPriceChanged({ oldPrice: bookingErr.oldPrice!, newPrice: bookingErr.newPrice! });
+                setStep('form');
+                setClientSecret(null);
+                return;
+            }
 
             // Session expired AFTER Stripe captured payment — the booking is NOT confirmed.
             // Do NOT claim a refund will happen automatically (auth failed before refund logic runs).
@@ -702,6 +716,14 @@ export function CheckoutContent() {
                         <div className="lg:col-span-2 space-y-2.5 lg:space-y-6">
                             {step === 'form' ? (
                                 <>
+                                    {/* Price changed — refund already issued */}
+                                    {priceChanged && (
+                                        <PriceChangedNotice
+                                            oldPrice={priceChanged.oldPrice}
+                                            newPrice={priceChanged.newPrice}
+                                        />
+                                    )}
+
                                     {/* Duplicate booking inline banner */}
                                     {duplicateBooking && (
                                         <div className="rounded-xl border-2 border-red-300 dark:border-red-700 bg-red-50 dark:bg-red-900/20 p-3 lg:p-4 space-y-2.5">
@@ -807,6 +829,8 @@ export function CheckoutContent() {
                                 taxes={taxes}
                                 surcharges={surcharges}
                                 totalPrice={totalPrice}
+                                serviceFee={serviceFee}
+                                chargedTotal={chargedTotal}
                                 checkIn={checkIn}
                                 checkOut={checkOut}
                                 prebookId={prebookId}

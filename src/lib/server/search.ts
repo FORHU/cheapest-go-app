@@ -173,6 +173,11 @@ async function filterCitiesWithHotels(
 // In-process cache — avoids repeat DB lookups within the same server process
 const _destCodeCache = new Map<string, string>();
 
+/** Overwrite an entry in the in-process dest code cache (e.g. after manually seeding the DB). */
+export function setDestCodeCache(cityKey: string, destCode: string): void {
+    _destCodeCache.set(cityKey.toLowerCase().trim(), destCode);
+}
+
 /**
  * Resolve a TravelgateX destination code for a given city.
  * Checks in-process cache → DB → TGX API (in that order).
@@ -193,66 +198,136 @@ export async function resolveTgxDestinationCode(cityName: string, countryCode?: 
     if (_destCodeCache.has(key)) return _destCodeCache.get(key);
 
     // 2. DB cache (fast, survives server restarts)
+    const cityOnlyKey = cityName.toLowerCase().trim();
     try {
         const sql = getSqlAdmin();
         const rows = await sql`SELECT destination_code FROM tgx_destination_cache WHERE city_key = ${key} LIMIT 1`;
         if (rows.length > 0) {
             const code = rows[0].destination_code as string;
+            if (code === 'NONE') return undefined; // sentinel — unresolvable city name
             _destCodeCache.set(key, code);
             return code;
         }
+        // Fallback: sync-dest-cache stores codes without the ":countryCode" suffix.
+        // When the scoped key misses, check the city-only key so we don't re-hit TGX.
+        if (key !== cityOnlyKey) {
+            const cityRows = await sql`SELECT destination_code FROM tgx_destination_cache WHERE city_key = ${cityOnlyKey} LIMIT 1`;
+            if (cityRows.length > 0) {
+                const code = cityRows[0].destination_code as string;
+                if (code !== 'NONE') {
+                    _destCodeCache.set(key, code);
+                    return code;
+                }
+            }
+        }
     } catch { /* non-fatal — fall through to TGX */ }
-    try {
-        const { tgxGraphQL, getTgxConfig } = await import('@/lib/server/stays/travelgatex/client');
-        const cfg = getTgxConfig();
-        const timeout = new Promise<never>((_, reject) =>
-            setTimeout(() => reject(new Error('resolve timeout')), 18000)
-        );
-        const result = await Promise.race([
-            tgxGraphQL(
-                `query TgxResolveCity($access: ID!, $text: String!, $maxSize: Int) {
+    // 3. TGX API — share the raw fetch with backgroundResolveDestCode so both
+    //    callers join the same HTTP request. Race against 18s so the search
+    //    stream isn't blocked; runCityFallback will await the same promise for
+    //    up to 12s more when this returns undefined.
+    return Promise.race([
+        _fetchDestCodeRaw(cityName, countryCode),
+        new Promise<undefined>(resolve => setTimeout(() => resolve(undefined), 18_000)),
+    ]);
+}
+
+// In-flight raw TGX dest-code fetches, keyed by city_key.
+// Shared so resolveTgxDestinationCode (18s race) and backgroundResolveDestCode
+// both await the SAME underlying HTTP call — no duplicate TGX requests.
+const _bgResolvingPromises = new Map<string, Promise<string | undefined>>();
+
+/**
+ * Shared raw TGX destinationSearcher fetch — no AbortSignal, no timeout.
+ * Next.js request-context signals would abort the call when the stream closes;
+ * raw fetch runs until TGX responds (can take 30-60s for cold destinations).
+ * Result is cached in _destCodeCache and DB so future calls are instant.
+ */
+function _fetchDestCodeRaw(cityName: string, countryCode?: string): Promise<string | undefined> {
+    const key = countryCode
+        ? `${cityName.toLowerCase().trim()}:${countryCode.toLowerCase()}`
+        : cityName.toLowerCase().trim();
+
+    if (_destCodeCache.has(key)) return Promise.resolve(_destCodeCache.get(key) as string);
+    const existing = _bgResolvingPromises.get(key);
+    if (existing) return existing;
+
+    const promise = (async (): Promise<string | undefined> => {
+        try {
+            const { getTgxConfig } = await import('@/lib/server/stays/travelgatex/client');
+            const cfg = getTgxConfig();
+            if (!cfg.apiKey) return undefined;
+            const DEST_QUERY = `query TgxResolveCity($access: ID!, $text: String!, $maxSize: Int) {
                    hotelX {
                      destinationSearcher(criteria: { access: $access, text: $text, maxSize: $maxSize }) {
                        ... on DestinationData { code type texts { text language } }
                      }
                    }
-                 }`,
-                { access: cfg.accessCode, text: cityName, maxSize: 20 }
-            ),
-            timeout,
-        ]);
-        const items: any[] = result?.data?.hotelX?.destinationSearcher ?? [];
-        const exactName = cityName.toLowerCase();
-        const matchesName = (i: any) =>
-            (i.texts ?? []).some((t: any) => t.language === 'en' && t.text.toLowerCase() === exactName);
-
-        // Prefer the item whose English text exactly matches the query to avoid
-        // false positives (e.g. "Little Tokyo" LA being picked over "Tokyo" Japan).
-        // With a known country, prefer ZONE: "Bali, Indonesia" is a ZONE while
-        // the Greek town of Bali is a CITY — zone-first avoids cross-country mismatches.
-        const cityItem =
-            items.find((i: any) => i.type === 'CITY' && matchesName(i)) ??
-            items.find((i: any) => i.type === 'CITY');
-        const zoneItem =
-            items.find((i: any) => i.type === 'ZONE' && matchesName(i)) ??
-            items.find((i: any) => i.type === 'ZONE');
-        const code = countryCode
-            ? (zoneItem?.code ?? cityItem?.code ?? undefined)
-            : (cityItem?.code ?? zoneItem?.code ?? undefined);
-        if (code) {
-            _destCodeCache.set(key, code);
-            // Write to DB (fire-and-forget — non-blocking)
-            try {
-                const sql = getSqlAdmin();
-                sql`INSERT INTO tgx_destination_cache (city_key, destination_code)
-                    VALUES (${key}, ${code})
-                    ON CONFLICT (city_key) DO NOTHING`.catch(() => {});
-            } catch { /* non-fatal */ }
+                 }`;
+            const res = await fetch(cfg.endpoint, {
+                method:  'POST',
+                headers: { 'Authorization': `Apikey ${cfg.apiKey}`, 'Content-Type': 'application/json', 'Accept-Encoding': 'gzip' },
+                body:    JSON.stringify({ query: DEST_QUERY, variables: { access: cfg.accessCode, text: cityName, maxSize: 50 } }),
+            });
+            if (!res.ok) {
+                console.warn(`[dest-resolve] HTTP ${res.status} for "${cityName}"`);
+                // 5xx from TGX (e.g. 580 = "not found in access") means their
+                // destinationSearcher has no coverage for this city. Cache NONE so
+                // future searches skip the 30s wait entirely.
+                if (res.status >= 500) {
+                    try {
+                        const sql = getSqlAdmin();
+                        await sql`INSERT INTO tgx_destination_cache (city_key, destination_code)
+                                  VALUES (${key}, 'NONE') ON CONFLICT (city_key) DO NOTHING`;
+                        console.log(`[dest-resolve] Marked "${cityName}" as NONE (HTTP ${res.status})`);
+                    } catch { /* non-fatal */ }
+                }
+                return undefined;
+            }
+            const result = await res.json();
+            const items: any[] = result?.data?.hotelX?.destinationSearcher ?? [];
+            const exactName = cityName.toLowerCase();
+            const matchesName = (i: any) =>
+                (i.texts ?? []).some((t: any) => t.language === 'en' && t.text.toLowerCase() === exactName);
+            const cityItem = items.find((i: any) => i.type === 'CITY' && matchesName(i)) ?? items.find((i: any) => i.type === 'CITY');
+            const zoneItem = items.find((i: any) => i.type === 'ZONE' && matchesName(i)) ?? items.find((i: any) => i.type === 'ZONE');
+            const selectedItem = countryCode ? (zoneItem ?? cityItem) : (cityItem ?? zoneItem);
+            const code      = selectedItem?.code as string | undefined;
+            const dest_type = selectedItem?.type as string | undefined;
+            if (code) {
+                _destCodeCache.set(key, code);
+                try {
+                    const sql = getSqlAdmin();
+                    await sql`INSERT INTO tgx_destination_cache (city_key, destination_code, dest_type)
+                        VALUES (${key}, ${code}, ${dest_type ?? 'CITY'})
+                        ON CONFLICT (city_key) DO UPDATE SET
+                            destination_code = EXCLUDED.destination_code,
+                            dest_type        = EXCLUDED.dest_type`;
+                    console.log(`[dest-resolve] Resolved "${cityName}" → ${code} (${dest_type ?? 'CITY'})`);
+                } catch { /* non-fatal */ }
+            } else {
+                console.warn(`[dest-resolve] No code found for "${cityName}"`);
+            }
+            return code;
+        } catch (e: any) {
+            console.warn(`[dest-resolve] Raw fetch failed for "${cityName}":`, e.message?.slice(0, 100));
+            return undefined;
+        } finally {
+            _bgResolvingPromises.delete(key);
         }
-        return code;
-    } catch {
-        return undefined;
-    }
+    })();
+
+    _bgResolvingPromises.set(key, promise);
+    return promise;
+}
+
+/**
+ * Start (or join) a background dest-code resolution and return its Promise.
+ * Callers that need the code can await the returned Promise with their own timeout.
+ * Previously fire-and-forget (void); now returns Promise so runCityFallback can
+ * await the same ongoing fetch with extra budget after the 18s fast-path times out.
+ */
+export function backgroundResolveDestCode(cityName: string, countryCode?: string): Promise<string | undefined> {
+    return _fetchDestCodeRaw(cityName, countryCode);
 }
 
 async function fetchAutocomplete(query: string, locale?: string): Promise<AutocompleteResult[]> {

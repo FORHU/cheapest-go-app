@@ -428,6 +428,7 @@
             "roomConfirmed": "Room Confirmed",
             "roomNights": "1 room × {nights} {count}",
             "taxesAndFees": "Taxes and fees",
+            "serviceFee": "Platform service fee",
             "total": "Total",
             "updateDates": "Update dates",
             "youSave": "You save {amount} with this promo",
@@ -462,6 +463,14 @@
             "requiresAuth": "Authentication required",
             "sessionExpired": "Booking session expired. Please go back and select the room again.",
             "sessionExpiredCharge": "Your session expired during payment. Your card was charged — please contact support with payment reference: {id}"
+        },
+        "priceChanged": {
+            "title": "Price has changed",
+            "description": "The price for this room changed between when you selected it and when we tried to confirm your booking.",
+            "originalPrice": "Original price",
+            "newPrice": "New price",
+            "refundNotice": "Your payment of {amount} has been automatically refunded. It may take 3–5 business days to appear on your statement.",
+            "backToSearch": "Back to search"
         },
         "verifyingPayment": "Verifying payment...",
         "viewExistingBooking": "View existing booking",
@@ -1440,6 +1449,12 @@
             "privacyLink": "Privacy Policy",
             "opensInNewTab": "Opens in a new tab — you won't lose your place.",
             "checkboxLabel": "I have read and agree to the Terms of Service and Privacy Policy.",
+            "checkboxPrefix": "I agree to the ",
+            "checkboxTerms": "Terms & Conditions",
+            "checkboxConnector": " and ",
+            "checkboxPrivacy": "Privacy Policy",
+            "checkboxSuffix": ".",
+            "checkboxAriaLabel": "I agree to the Terms & Conditions and Privacy Policy",
             "acceptButton": "Accept and continue"
         },
         "termsOfService": {
@@ -1992,10 +2007,14 @@
     },
     "propertyOverview": {
         "aboutProperty": "About this property",
+        "checkIn": "Check-in",
+        "checkOut": "Check-out",
         "cleaningSafety": {
             "description": "This property has extensive hygiene measures in place, including contactless check-in and enhanced cleaning protocols.",
             "title": "Cleaning and safety practices"
         },
+        "contactInfo": "Contact",
+        "importantInfo": "Important information",
         "noReviewsYet": "No reviews yet",
         "popularAmenities": "Popular amenities",
         "readMore": "Read more",

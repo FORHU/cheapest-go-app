@@ -42,6 +42,8 @@ export function LoginContent({ isAdmin = false }: LoginContentProps) {
         setFirstName,
         lastName,
         setLastName,
+        birthDate,
+        setBirthDate,
         password,
         setPassword,
         errors,
@@ -50,8 +52,6 @@ export function LoginContent({ isAdmin = false }: LoginContentProps) {
 
     const [confirmPassword, setConfirmPassword] = useState('');
     const [agreedToTerms, setAgreedToTerms] = useState(false);
-    // Third path that can create an account — same 18+ requirement as the modal.
-    const [birthDate, setBirthDate] = useState('');
 
     const handleSubmit = useCallback(async (e: React.FormEvent) => {
         e.preventDefault();

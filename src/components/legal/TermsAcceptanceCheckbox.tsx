@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useId, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { LegalModal, type LegalDoc } from './LegalModal';
 
 interface TermsAcceptanceCheckboxProps {
@@ -24,6 +25,7 @@ export function TermsAcceptanceCheckbox({
     error,
     disabled,
 }: TermsAcceptanceCheckboxProps) {
+    const t = useTranslations('legal.termsGate');
     const checkboxId = useId();
     const errorId = useId();
 
@@ -54,30 +56,30 @@ export function TermsAcceptanceCheckbox({
                     onChange={(e) => onChange(e.target.checked)}
                     disabled={disabled}
                     aria-invalid={!!error}
-                    aria-label="I agree to the Terms & Conditions and Privacy Policy"
+                    aria-label={t('checkboxAriaLabel')}
                     aria-describedby={error ? errorId : undefined}
                     className="mt-0.5 size-4 shrink-0 rounded border-slate-300 dark:border-slate-600 text-blue-600 focus:ring-2 focus:ring-blue-500 cursor-pointer disabled:cursor-not-allowed"
                 />
                 <span className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
-                    I agree to the{' '}
+                    {t('checkboxPrefix')}
                     <button
                         type="button"
                         onClick={() => openDoc('terms')}
                         disabled={disabled}
                         className={linkClass}
                     >
-                        Terms &amp; Conditions
+                        {t('checkboxTerms')}
                     </button>
-                    {' '}and{' '}
+                    {t('checkboxConnector')}
                     <button
                         type="button"
                         onClick={() => openDoc('privacy')}
                         disabled={disabled}
                         className={linkClass}
                     >
-                        Privacy Policy
+                        {t('checkboxPrivacy')}
                     </button>
-                    .
+                    {t('checkboxSuffix')}
                 </span>
             </div>
 

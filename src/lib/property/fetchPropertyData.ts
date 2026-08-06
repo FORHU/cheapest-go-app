@@ -5,7 +5,7 @@
 
 import { cache } from 'react';
 import { preBook } from '@/utils/postgres/functions';
-import { runTgxSearch } from '@/lib/server/stays/travelgatex/search';
+import { runTgxSearch, fetchTgxHotelContent } from '@/lib/server/stays/travelgatex/search';
 import { otvCodeToLabel } from '@/lib/server/stays/travelgatex/amenityCodes';
 import { type Property } from '@/types';
 import { getSqlAdmin } from '@/lib/db/postgres';
@@ -24,7 +24,9 @@ export async function fetchHotelStatic(id: string): Promise<StaticHotelResult | 
         const sql = getSqlAdmin();
         const rows = await sql`
             SELECT hotel_id, name, images, star_rating, lat, lng, address, city, country,
-                   description, amenities, review_rating, review_count
+                   description, amenities, amenity_groups, check_in_time, check_out_time,
+                   important_information, contact_info, chain_code, giata_id,
+                   review_rating, review_count
             FROM hotel_content
             WHERE hotel_id = ${id}
             LIMIT 1
@@ -35,26 +37,80 @@ export async function fetchHotelStatic(id: string): Promise<StaticHotelResult | 
         const city = r.city || '';
         const country = r.country || '';
         const address = r.address || '';
-        // amenities in hotel_content is jsonb — may be string[] (new) or [{code}] objects (old OTV rows).
         const rawAmenities = Array.isArray(r.amenities) ? r.amenities : [];
         const amenities: string[] = rawAmenities.flatMap((a: any) =>
             typeof a === 'string' ? [a] : a?.code ? [otvCodeToLabel(a.code)] : []
         ).filter(Boolean);
+        let description = (r.description as string) || '';
+        let finalAmenities = amenities;
+        let checkIn    = (r.check_in_time as string)         || '';
+        let checkOut   = (r.check_out_time as string)        || '';
+        let importantInfo = (r.important_information as string) || '';
+        let contactInfo   = (r.contact_info as any)          || null;
+        let amenityGroups = Array.isArray(r.amenity_groups) ? r.amenity_groups : [];
+
+        // If content is missing, fetch live from TGX Hotels Query and cache back to DB.
+        const needsEnrichment = (!description || !finalAmenities.length) && /^\d+$|^[A-Z]{2}\d+$/.test(id);
+        if (needsEnrichment) {
+            try {
+                const tgxMap = await fetchTgxHotelContent([id]);
+                const tgx = tgxMap.get(id);
+                if (tgx) {
+                    if (!description && tgx.description)               description    = tgx.description;
+                    if (!finalAmenities.length && tgx.amenities.length) finalAmenities = tgx.amenities;
+                    if (!checkIn    && tgx.check_in_time)              checkIn        = tgx.check_in_time;
+                    if (!checkOut   && tgx.check_out_time)             checkOut       = tgx.check_out_time;
+                    if (!importantInfo && tgx.important_information)   importantInfo  = tgx.important_information;
+                    if (!contactInfo && tgx.contact_info)              contactInfo    = tgx.contact_info;
+                    if (!amenityGroups.length && tgx.amenity_groups?.length) amenityGroups = tgx.amenity_groups;
+                    // Cache back to DB in background
+                    if (tgx.description || tgx.amenities.length) {
+                        const adminSql = getSqlAdmin();
+                        adminSql`
+                            UPDATE hotel_content SET
+                                description           = COALESCE(description, ${tgx.description}),
+                                amenities             = CASE WHEN (amenities IS NULL OR jsonb_typeof(amenities) != 'array' OR jsonb_array_length(amenities) = 0)
+                                                        THEN ${JSON.stringify(tgx.amenities)}::jsonb ELSE amenities END,
+                                amenity_groups        = COALESCE(amenity_groups, ${tgx.amenity_groups ? JSON.stringify(tgx.amenity_groups) : null}::jsonb),
+                                check_in_time         = COALESCE(check_in_time,  ${tgx.check_in_time}),
+                                check_out_time        = COALESCE(check_out_time, ${tgx.check_out_time}),
+                                important_information = COALESCE(important_information, ${tgx.important_information}),
+                                contact_info          = COALESCE(contact_info, ${tgx.contact_info ? JSON.stringify(tgx.contact_info) : null}::jsonb),
+                                chain_code            = COALESCE(chain_code, ${tgx.chain_code}),
+                                giata_id              = COALESCE(giata_id,   ${tgx.giata_id}),
+                                fetched_at            = now()
+                            WHERE hotel_id = ${id}
+                        `.catch(e => console.error('[enrichment-cache]', e.message));
+                    }
+                }
+            } catch { /* enrichment must never block the page */ }
+        }
+
         const property: PropertyData = {
             id: r.hotel_id,
             name: r.name || id,
             location: [address, city, country].filter(Boolean).join(', '),
-            description: r.description || '',
+            description,
             rating: Number(r.review_rating ?? 0),
             reviews: Number(r.review_count ?? 0),
             price: 0,
             currency: 'USD',
             image: images[0] || '',
             images,
-            amenities,
+            amenities: finalAmenities,
             badges: [],
             type: 'hotel',
             coordinates: { lat: Number(r.lat ?? 0), lng: Number(r.lng ?? 0) },
+            starRating:  Number(r.star_rating ?? 0) || undefined,
+            checkIn:     checkIn   || undefined,
+            checkOut:    checkOut  || undefined,
+            importantInformation: importantInfo || undefined,
+            contactEmail: contactInfo?.email  || undefined,
+            contactPhone: contactInfo?.phone  || undefined,
+            contactWeb:   contactInfo?.web    || undefined,
+            amenityGroups: amenityGroups.length ? amenityGroups : undefined,
+            giataId:     (r.giata_id as string) || undefined,
+            chainCode:   (r.chain_code as string) || undefined,
         };
         return { property, city, country, address };
     } catch (e: any) {
@@ -457,7 +513,7 @@ export async function fetchTGXPropertyData(
             children:  Number(searchParams.children || 0),
             rooms:     Number(searchParams.rooms   || 1),
             currency:  searchParams.currency || 'KRW',
-            guest_nationality: searchParams.nationality || 'KR',
+            guest_nationality: searchParams.nationality || 'US',
         });
 
         const hotel = result?.data;

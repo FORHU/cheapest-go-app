@@ -1,0 +1,178 @@
+{
+  "data": {
+    "hotelX": {
+      "destinationSearcher": [
+        {},
+        {},
+        {},
+        {},
+        {},
+        {},
+        {},
+        {},
+        {},
+        {},
+        {
+          "code": "850",
+          "type": "CITY",
+          "texts": [
+            {
+              "text": "Jeju",
+              "language": "en"
+            }
+          ]
+        },
+        {
+          "code": "850",
+          "type": "CITY",
+          "texts": [
+            {
+              "text": "Jeju",
+              "language": "en"
+            },
+            {
+              "text": "Jeju",
+              "language": "it"
+            },
+            {
+              "text": "Чеджу",
+              "language": "ru"
+            },
+            {
+              "text": "Jeju",
+              "language": "de"
+            },
+            {
+              "text": "Jeju-stad",
+              "language": "nl"
+            },
+            {
+              "text": "Jeju",
+              "language": "es"
+            }
+          ]
+        },
+        {
+          "code": "6052863",
+          "type": "CITY",
+          "texts": [
+            {
+              "text": "Jeju City",
+              "language": "en"
+            }
+          ]
+        },
+        {
+          "code": "965846151",
+          "type": "ZONE",
+          "texts": [
+            {
+              "text": "Jeju International Airport",
+              "language": "en"
+            }
+          ]
+        },
+        {
+          "code": "965846151",
+          "type": "ZONE",
+          "texts": [
+            {
+              "text": "Jeju International Airport",
+              "language": "en"
+            },
+            {
+              "text": "Jeju International Airport",
+              "language": "it"
+            },
+            {
+              "text": "Международный аэропорт Чеджу",
+              "language": "ru"
+            },
+            {
+              "text": "Jeju International Airport",
+              "language": "de"
+            },
+            {
+              "text": "Jeju International Airport",
+              "language": "es"
+            },
+            {
+              "text": "Jeju International Airport",
+              "language": "nl"
+            }
+          ]
+        },
+        {
+          "code": "6049718",
+          "type": "ZONE",
+          "texts": [
+            {
+              "text": "Jeju Island",
+              "language": "en"
+            }
+          ]
+        },
+        {
+          "code": "850",
+          "type": "CITY",
+          "texts": [
+            {
+              "text": "Jeju",
+              "language": "en"
+            },
+            {
+              "text": "Jeju",
+              "language": "it"
+            },
+            {
+              "text": "Чеджу",
+              "language": "ru"
+            },
+            {
+              "text": "Jeju",
+              "language": "de"
+            },
+            {
+              "text": "Jeju-stad",
+              "language": "nl"
+            },
+            {
+              "text": "Jeju",
+              "language": "es"
+            }
+          ]
+        },
+        {
+          "code": "965846151",
+          "type": "ZONE",
+          "texts": [
+            {
+              "text": "Jeju International Airport",
+              "language": "en"
+            },
+            {
+              "text": "Jeju International Airport",
+              "language": "it"
+            },
+            {
+              "text": "Международный аэропорт Чеджу",
+              "language": "ru"
+            },
+            {
+              "text": "Jeju International Airport",
+              "language": "de"
+            },
+            {
+              "text": "Jeju International Airport",
+              "language": "es"
+            },
+            {
+              "text": "Jeju International Airport",
+              "language": "nl"
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

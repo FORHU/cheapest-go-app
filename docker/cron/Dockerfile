@@ -10,5 +10,7 @@ RUN wget -q -O /usr/local/bin/supercronic \
     && chmod +x /usr/local/bin/supercronic
 
 COPY crontab /app/crontab
+# Strip Windows CRLF line endings so supercronic can exec commands correctly
+RUN sed -i 's/\r$//' /app/crontab
 
 CMD ["supercronic", "/app/crontab"]

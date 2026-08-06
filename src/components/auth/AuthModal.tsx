@@ -2,7 +2,7 @@
 
 import React, { useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, PlaneTakeoff } from 'lucide-react';
+import { X } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { useAuthStore } from '@/stores/authStore';
 import { useAuthFormStore } from '@/stores/authFormStore';
@@ -89,14 +89,13 @@ const AuthModal: React.FC = () => {
 
                         {/* Logo Header */}
                         <div className="pt-6 pb-3 px-6 flex justify-center shrink-0">
-                            <div className="flex items-center gap-3">
-                                <div className="size-10 flex items-center justify-center bg-slate-900 dark:bg-white/5 rounded-lg shadow-sm border border-transparent dark:border-white/10">
-                                    <PlaneTakeoff className="text-white dark:text-obsidian-accent w-6 h-6" />
-                                </div>
-                                <h1 className="text-slate-900 dark:text-white font-display font-bold text-xl tracking-tight">
-                                    Cheapest<span className="text-alabaster-accent dark:text-obsidian-accent">Go</span>
-                                </h1>
-                            </div>
+                            <h1 className="text-slate-900 dark:text-white font-display font-bold text-xl tracking-tight">
+                                {BRAND_NAME === 'CheapestGo'
+                                    ? <>Cheapest<span className="text-alabaster-accent dark:text-obsidian-accent">Go</span></>
+                                    : BRAND_NAME === 'GeomeeGo'
+                                    ? <>Geomee<span className="text-alabaster-accent dark:text-obsidian-accent">Go</span></>
+                                    : BRAND_NAME}
+                            </h1>
                         </div>
 
                         {/* Content */}

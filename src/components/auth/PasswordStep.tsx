@@ -119,14 +119,6 @@ const PasswordStep: React.FC = () => {
                     {t('actions.createOne')}
                 </button>
             </p>
-
-            <div className="pt-4 flex items-center justify-center gap-4 text-sm text-slate-400 dark:text-slate-500">
-                <span>CheapestGo</span>
-                <span>•</span>
-                <span>Hotels.com</span>
-                <span>•</span>
-                <span>Vrbo</span>
-            </div>
         </div>
     );
 };

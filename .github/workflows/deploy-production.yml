@@ -108,6 +108,7 @@ jobs:
           V_MYSTIFLY_BASE_URL: ${{ secrets.MYSTIFLY_BASE_URL }}
           V_MYSTIFLY_PASSWORD: ${{ secrets.MYSTIFLY_PASSWORD }}
           V_MYSTIFLY_USERNAME: ${{ secrets.MYSTIFLY_USERNAME }}
+          V_JWT_SECRET: ${{ secrets.JWT_SECRET }}
         run: |
           printf '%s\n' \
             "DATABASE_URL=$V_DATABASE_URL" \
@@ -156,6 +157,7 @@ jobs:
             "MYSTIFLY_BASE_URL=$V_MYSTIFLY_BASE_URL" \
             "MYSTIFLY_PASSWORD=$V_MYSTIFLY_PASSWORD" \
             "MYSTIFLY_USERNAME=$V_MYSTIFLY_USERNAME" \
+            "JWT_SECRET=$V_JWT_SECRET" \
           | ssh -i ~/.ssh/id_rsa ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} \
               "cat > ~/.env && chmod 600 ~/.env"
 

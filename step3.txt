@@ -1,0 +1,1550 @@
+{
+  "data": {
+    "hotelX": {
+      "search": {
+        "options": [
+          {
+            "id": "33!~|a0!~|b260905!~|c260908!~|d8715070!~|ebreakfast!~|f0!~|gMO!~|hUS!~|ien!~|jUSD!~|k0!~|l38327!~|m8715070!~|nbreakfast!~|nOTV!~|o1!~|p1!~|x31070853!~|M9814!~|N0!~|Ofalse!~|PPHP!~|Q!~|R0!~|S!~|T!~|z1#232300200000!~|A232300200000!~|B232300200000!~|C30|30!~|EStandard Double room (full double bed) (bed type is subject to availability)!~|FStandard Double room (full double bed) (bed type is subject to availability)!~|G1!~|U2,9814,1787846400!~|Hcurrency!~|IPHP!~|HoptPrice!~|I9814.00!~|Hcomission!~|I0.00!~|HlanguageAvailCode!~|Ien!~|Hresidency!~|IUS!~|HdailyPrices!~|ITrue!~|HnewRoomCodes!~|Itrue!~|His_package!~|Ifalse!~|HAvail_Hash!~|Isr-019fb760-4f4d-7d2d-960d-73794c19e3f1!~|HNoReembolsable!~|IFalse!~|Htgx_price!~|I9814!~|HDB!~|I3|1785487970|OTV|38327|8715070|20260905|3|361|US|MO|USD|9814!~|tOK!~|uSith!~|v0!~|w!~|y!~|qHOTEL!~|q1!~|y!~|",
+            "hotelCode": "8715070",
+            "boardCode": "breakfast",
+            "paymentType": "MERCHANT",
+            "status": "OK",
+            "price": {
+              "currency": "PHP",
+              "net": 9814,
+              "gross": 9814
+            }
+          },
+          {
+            "id": "33!~|a0!~|b260905!~|c260908!~|d8447226!~|enomeal!~|f0!~|gBD!~|hUS!~|ien!~|jUSD!~|k0!~|l38327!~|m8447226!~|nnomeal!~|nOTV!~|o1!~|p1!~|x31070853!~|M13053!~|N0!~|Ofalse!~|PPHP!~|Q!~|R0!~|S!~|T!~|z1#242300200000!~|A242300200000!~|B242300200000!~|C30|30!~|EStandard Double room (twin beds) (bed type is subject to availability)!~|FStandard Double room (twin beds) (bed type is subject to availability)!~|G1!~|U2,13053,1787842620!~|Hcurrency!~|IPHP!~|HoptPrice!~|I13053.00!~|Hcomission!~|I0.00!~|HlanguageAvailCode!~|Ien!~|Hresidency!~|IUS!~|HdailyPrices!~|ITrue!~|HnewRoomCodes!~|Itrue!~|His_package!~|Ifalse!~|HAvail_Hash!~|Isr-019fb760-58f6-72fb-b7db-e3a098cf891a!~|HNoReembolsable!~|IFalse!~|Htgx_price!~|I13053!~|HDB!~|I3|1785487973|OTV|38327|8447226|20260905|3|361|US|BD|USD|13053!~|tOK!~|uSith!~|v0!~|w!~|y!~|qHOTEL!~|q1!~|y!~|",
+            "hotelCode": "8447226",
+            "boardCode": "nomeal",
+            "paymentType": "MERCHANT",
+            "status": "OK",
+            "price": {
+              "currency": "PHP",
+              "net": 13053,
+              "gross": 13053
+            }
+          },
+          {
+            "id": "33!~|a0!~|b260905!~|c260908!~|d8726816!~|enomeal!~|f0!~|gMY!~|hUS!~|ien!~|jUSD!~|k0!~|l38327!~|m8726816!~|nnomeal!~|nOTV!~|o1!~|p0!~|x31070853!~|M5669!~|N0!~|Ofalse!~|PPHP!~|Q!~|R0!~|S!~|T!~|z1#242300200000!~|A242300200000!~|B242300200000!~|C30|30!~|EStandard Double room (twin beds) (bed type is subject to availability)!~|FStandard Double room (twin beds) (bed type is subject to availability)!~|G1!~|Hcurrency!~|IPHP!~|HoptPrice!~|I5669.00!~|Hcomission!~|I0.00!~|HlanguageAvailCode!~|Ien!~|Hresidency!~|IUS!~|HdailyPrices!~|ITrue!~|HnewRoomCodes!~|Itrue!~|His_package!~|Ifalse!~|HAvail_Hash!~|Isr-019fb760-5911-7534-b15d-efbde8deb148!~|HNoReembolsable!~|ITrue!~|Htgx_price!~|I5669!~|HDB!~|I3|1785487972|OTV|38327|8726816|20260905|3|361|US|MY|USD|5669!~|tOK!~|uSith!~|v0!~|w!~|yNON_REFUNDABLE!~|qHOTEL!~|q1!~|y!~|",
+            "hotelCode": "8726816",
+            "boardCode": "nomeal",
+            "paymentType": "MERCHANT",
+            "status": "OK",
+            "price": {
+              "currency": "PHP",
+              "net": 5669,
+              "gross": 5669
+            }
+          },
+          {
+            "id": "33!~|a0!~|b260905!~|c260908!~|d10301643!~|enomeal!~|f0!~|gBD!~|hUS!~|ien!~|jUSD!~|k0!~|l38327!~|m10301643!~|nnomeal!~|nOTV!~|o1!~|p1!~|x31070853!~|M6988!~|N0!~|Ofalse!~|PPHP!~|Q!~|R0!~|S!~|T!~|z1#242300200000!~|A242300200000!~|B242300200000!~|C30|30!~|EStandard Double room (twin beds) (bed type is subject to availability)!~|FStandard Double room (twin beds) (bed type is subject to availability)!~|G1!~|U2,6988,1788443820!~|Hcurrency!~|IPHP!~|HoptPrice!~|I6988.00!~|Hcomission!~|I0.00!~|HlanguageAvailCode!~|Ien!~|Hresidency!~|IUS!~|HdailyPrices!~|ITrue!~|HnewRoomCodes!~|Itrue!~|His_package!~|Ifalse!~|HAvail_Hash!~|Isr-019fb760-58f8-701a-be37-753f6343a5bd!~|HNoReembolsable!~|IFalse!~|Htgx_price!~|I6988!~|HDB!~|I3|1785487973|OTV|38327|10301643|20260905|3|361|US|BD|USD|6988!~|tOK!~|uSith!~|v0!~|w!~|y!~|qHOTEL!~|q1!~|y!~|",
+            "hotelCode": "10301643",
+            "boardCode": "nomeal",
+            "paymentType": "MERCHANT",
+            "status": "OK",
+            "price": {
+              "currency": "PHP",
+              "net": 6988,
+              "gross": 6988
+            }
+          },
+          {
+            "id": "33!~|a0!~|b260905!~|c260908!~|d6303459!~|enomeal!~|f0!~|gBD!~|hUS!~|ien!~|jUSD!~|k0!~|l38327!~|m6303459!~|nnomeal!~|nOTV!~|o1!~|p1!~|x31070853!~|M7417!~|N0!~|Ofalse!~|PPHP!~|Q!~|R0!~|S!~|T!~|z1#242300200000!~|A242300200000!~|B242300200000!~|C30|30!~|EStandard Double room (twin beds) (bed type is subject to availability)!~|FStandard Double room (twin beds) (bed type is subject to availability)!~|G1!~|U2,7417,1788015420!~|Hcurrency!~|IPHP!~|HoptPrice!~|I7417.00!~|Hcomission!~|I0.00!~|HlanguageAvailCode!~|Ien!~|Hresidency!~|IUS!~|HdailyPrices!~|ITrue!~|HnewRoomCodes!~|Itrue!~|His_package!~|Ifalse!~|HAvail_Hash!~|Isr-019fb760-58f6-7319-bbc1-ea7403e95b67!~|HNoReembolsable!~|IFalse!~|Htgx_price!~|I7417!~|HDB!~|I3|1785487973|OTV|38327|6303459|20260905|3|361|US|BD|USD|7417!~|tOK!~|uSith!~|v0!~|w!~|y!~|qHOTEL!~|q1!~|y!~|",
+            "hotelCode": "6303459",
+            "boardCode": "nomeal",
+            "paymentType": "MERCHANT",
+            "status": "OK",
+            "price": {
+              "currency": "PHP",
+              "net": 7417,
+              "gross": 7417
+            }
+          },
+          {
+            "id": "33!~|a0!~|b260905!~|c260908!~|d6930706!~|enomeal!~|f0!~|gBD!~|hUS!~|ien!~|jUSD!~|k0!~|l38327!~|m6930706!~|nnomeal!~|nOTV!~|o1!~|p1!~|x31070853!~|M10826!~|N0!~|Ofalse!~|PPHP!~|Q!~|R0!~|S!~|T!~|z1#232300500000!~|A232300500000!~|B232300500000!~|C30|30!~|ESuperior Double room (full double bed) (bed type is subject to availability)!~|FSuperior Double room (full double bed) (bed type is subject to availability)!~|G1!~|U2,10826,1788361020!~|Hcurrency!~|IPHP!~|HoptPrice!~|I10826.00!~|Hcomission!~|I0.00!~|HlanguageAvailCode!~|Ien!~|Hresidency!~|IUS!~|HdailyPrices!~|ITrue!~|HnewRoomCodes!~|Itrue!~|His_package!~|Ifalse!~|HAvail_Hash!~|Isr-019fb760-58fa-73a5-b711-0c20133acd3f!~|HNoReembolsable!~|IFalse!~|Htgx_price!~|I10826!~|HDB!~|I3|1785487973|OTV|38327|6930706|20260905|3|361|US|BD|USD|10826!~|tOK!~|uSith!~|v0!~|w!~|y!~|qHOTEL!~|q1!~|y!~|",
+            "hotelCode": "6930706",
+            "boardCode": "nomeal",
+            "paymentType": "MERCHANT",
+            "status": "OK",
+            "price": {
+              "currency": "PHP",
+              "net": 10826,
+              "gross": 10826
+            }
+          },
+          {
+            "id": "33!~|a0!~|b260905!~|c260908!~|d9755483!~|enomeal!~|f0!~|gMY!~|hUS!~|ien!~|jUSD!~|k0!~|l38327!~|m9755483!~|nnomeal!~|nOTV!~|o1!~|p0!~|x31070853!~|M55975!~|N0!~|Ofalse!~|PPHP!~|Q!~|R0!~|S!~|T!~|z1#232300200050!~|A232300200050!~|B232300200050!~|C30|30!~|EDouble room with city view (full double bed) (king size bed)!~|FDouble room with city view (full double bed) (king size bed)!~|G1!~|Hcurrency!~|IPHP!~|HoptPrice!~|I55975.00!~|Hcomission!~|I0.00!~|HlanguageAvailCode!~|Ien!~|Hresidency!~|IUS!~|HdailyPrices!~|ITrue!~|HnewRoomCodes!~|Itrue!~|His_package!~|Ifalse!~|HAvail_Hash!~|Isr-019fb760-591f-7657-8737-c0d7d7ab2a73!~|HNoReembolsable!~|ITrue!~|Htgx_price!~|I55975!~|HDB!~|I3|1785487972|OTV|38327|9755483|20260905|3|361|US|MY|USD|55975!~|tOK!~|uSith!~|v0!~|w!~|yNON_REFUNDABLE!~|qHOTEL!~|q1!~|y!~|",
+            "hotelCode": "9755483",
+            "boardCode": "nomeal",
+            "paymentType": "MERCHANT",
+            "status": "OK",
+            "price": {
+              "currency": "PHP",
+              "net": 55975,
+              "gross": 55975
+            }
+          },
+          {
+            "id": "33!~|a0!~|b260905!~|c260908!~|d6303372!~|enomeal!~|f0!~|gBD!~|hUS!~|ien!~|jUSD!~|k0!~|l38327!~|m6303372!~|nnomeal!~|nOTV!~|o1!~|p1!~|x31070853!~|M21905!~|N0!~|Ofalse!~|PPHP!~|Q!~|R0!~|S!~|T!~|z1#242300200000!~|A242300200000!~|B242300200000!~|C30|30!~|EStandard Double room (twin beds)!~|FStandard Double room (twin beds)!~|G1!~|U2,10905,1788361200|2,21905,1788447600!~|Hcurrency!~|IPHP!~|HoptPrice!~|I21905.00!~|Hcomission!~|I0.00!~|HlanguageAvailCode!~|Ien!~|Hresidency!~|IUS!~|HdailyPrices!~|ITrue!~|HnewRoomCodes!~|Itrue!~|His_package!~|Ifalse!~|HAvail_Hash!~|Isr-019fb760-58f5-72d0-99cd-6f15efff35f7!~|HNoReembolsable!~|IFalse!~|Htgx_price!~|I21905!~|HDB!~|I3|1785487973|OTV|38327|6303372|20260905|3|361|US|BD|USD|21905!~|tOK!~|uSith!~|v0!~|w!~|y!~|qHOTEL!~|q1!~|y!~|",
+            "hotelCode": "6303372",
+            "boardCode": "nomeal",
+            "paymentType": "MERCHANT",
+            "status": "OK",
+            "price": {
+              "currency": "PHP",
+              "net": 21905,
+              "gross": 21905
+            }
+          },
+          {
+            "id": "33!~|a0!~|b260905!~|c260908!~|d8332367!~|enomeal!~|f0!~|gBD!~|hUS!~|ien!~|jUSD!~|k0!~|l38327!~|m8332367!~|nnomeal!~|nOTV!~|o1!~|p1!~|x31070853!~|M6584!~|N0!~|Ofalse!~|PPHP!~|Q!~|R0!~|S!~|T!~|z1#232300200000!~|A232300200000!~|B232300200000!~|C30|30!~|EStandard Double room (full double bed) (bed type is subject to availability)!~|FStandard Double room (full double bed) (bed type is subject to availability)!~|G1!~|U2,6584,1788533820!~|Hcurrency!~|IPHP!~|HoptPrice!~|I6584.00!~|Hcomission!~|I0.00!~|HlanguageAvailCode!~|Ien!~|Hresidency!~|IUS!~|HdailyPrices!~|ITrue!~|HnewRoomCodes!~|Itrue!~|His_package!~|Ifalse!~|HAvail_Hash!~|Isr-019fb760-58ee-718b-9abf-985d13f956c6!~|HNoReembolsable!~|IFalse!~|Htgx_price!~|I6584!~|HDB!~|I3|1785487973|OTV|38327|8332367|20260905|3|361|US|BD|USD|6584!~|tOK!~|uSith!~|v0!~|w!~|y!~|qHOTEL!~|q1!~|y!~|",
+            "hotelCode": "8332367",
+            "boardCode": "nomeal",
+            "paymentType": "MERCHANT",
+            "status": "OK",
+            "price": {
+              "currency": "PHP",
+              "net": 6584,
+              "gross": 6584
+            }
+          },
+          {
+            "id": "33!~|a0!~|b260905!~|c260908!~|d8517423!~|enomeal!~|f0!~|gBD!~|hUS!~|ien!~|jUSD!~|k0!~|l38327!~|m8517423!~|nnomeal!~|nOTV!~|o1!~|p1!~|x31070853!~|M7526!~|N0!~|Ofalse!~|PPHP!~|Q!~|R0!~|S!~|T!~|z1#232300200000!~|A232300200000!~|B232300200000!~|C30|30!~|EStandard Double room (full double bed) (bed type is subject to availability)!~|FStandard Double room (full double bed) (bed type is subject to availability)!~|G1!~|U2,7526,1788274620!~|Hcurrency!~|IPHP!~|HoptPrice!~|I7526.00!~|Hcomission!~|I0.00!~|HlanguageAvailCode!~|Ien!~|Hresidency!~|IUS!~|HdailyPrices!~|ITrue!~|HnewRoomCodes!~|Itrue!~|His_package!~|Ifalse!~|HAvail_Hash!~|Isr-019fb760-58f9-7044-a9be-9fdd9b472298!~|HNoReembolsable!~|IFalse!~|Htgx_price!~|I7526!~|HDB!~|I3|1785487973|OTV|38327|8517423|20260905|3|361|US|BD|USD|7526!~|tOK!~|uSith!~|v0!~|w!~|y!~|qHOTEL!~|q1!~|y!~|",
+            "hotelCode": "8517423",
+            "boardCode": "nomeal",
+            "paymentType": "MERCHANT",
+            "status": "OK",
+            "price": {
+              "currency": "PHP",
+              "net": 7526,
+              "gross": 7526
+            }
+          },
+          {
+            "id": "33!~|a0!~|b260905!~|c260908!~|d6673724!~|enomeal!~|f0!~|gBD!~|hUS!~|ien!~|jUSD!~|k0!~|l38327!~|m6673724!~|nnomeal!~|nOTV!~|o1!~|p1!~|x31070853!~|M9456!~|N0!~|Ofalse!~|PPHP!~|Q!~|R0!~|S!~|T!~|z1#200300200000!~|A200300200000!~|B200300200000!~|C30|30!~|EStandard room!~|FStandard room!~|G1!~|U2,9456,1788534001!~|Hcurrency!~|IPHP!~|HoptPrice!~|I9456.00!~|Hcomission!~|I0.00!~|HlanguageAvailCode!~|Ien!~|Hresidency!~|IUS!~|HdailyPrices!~|ITrue!~|HnewRoomCodes!~|Itrue!~|His_package!~|Ifalse!~|HAvail_Hash!~|Isr-019fb760-447b-7d76-8a28-977df70b7917!~|HNoReembolsable!~|IFalse!~|Htgx_price!~|I9456!~|HDB!~|I3|1785487973|OTV|38327|6673724|20260905|3|361|US|BD|USD|9456!~|tOK!~|uSith!~|v0!~|w!~|y!~|qHOTEL!~|q1!~|y!~|",
+            "hotelCode": "6673724",
+            "boardCode": "nomeal",
+            "paymentType": "MERCHANT",
+            "status": "OK",
+            "price": {
+              "currency": "PHP",
+              "net": 9456,
+              "gross": 9456
+            }
+          },
+          {
+            "id": "33!~|a0!~|b260905!~|c260908!~|d6824027!~|enomeal!~|f0!~|gBD!~|hUS!~|ien!~|jUSD!~|k0!~|l38327!~|m6824027!~|nnomeal!~|nOTV!~|o1!~|p1!~|x31070853!~|M10539!~|N0!~|Ofalse!~|PPHP!~|Q!~|R0!~|S!~|T!~|z1#2003002000310!~|A2003002000310!~|B2003002000310!~|C30|30!~|EStandard room with sea view!~|FStandard room with sea view!~|G1!~|U2,10539,1787839200!~|Hcurrency!~|IPHP!~|HoptPrice!~|I10539.00!~|Hcomission!~|I0.00!~|HlanguageAvailCode!~|Ien!~|Hresidency!~|IUS!~|HdailyPrices!~|ITrue!~|HnewRoomCodes!~|Itrue!~|His_package!~|Ifalse!~|HAvail_Hash!~|Isr-019fb760-58ed-7fa0-b208-9b5b2fb2ddfb!~|HNoReembolsable!~|IFalse!~|Htgx_price!~|I10539!~|HDB!~|I3|1785487973|OTV|38327|6824027|20260905|3|361|US|BD|USD|10539!~|tOK!~|uSith!~|v0!~|w!~|y!~|qHOTEL!~|q1!~|y!~|",
+            "hotelCode": "6824027",
+            "boardCode": "nomeal",
+            "paymentType": "MERCHANT",
+            "status": "OK",
+            "price": {
+              "currency": "PHP",
+              "net": 10539,
+              "gross": 10539
+            }
+          },
+          {
+            "id": "33!~|a0!~|b260905!~|c260908!~|d8111583!~|enomeal!~|f0!~|gBD!~|hUS!~|ien!~|jUSD!~|k0!~|l38327!~|m8111583!~|nnomeal!~|nOTV!~|o1!~|p1!~|x31070853!~|M23059!~|N0!~|Ofalse!~|PPHP!~|Q!~|R0!~|S!~|T!~|z1#242300200000!~|A242300200000!~|B242300200000!~|C30|30!~|EStandard Double room (twin beds) (bed type is subject to availability)!~|FStandard Double room (twin beds) (bed type is subject to availability)!~|G1!~|U2,23059,1788317820!~|Hcurrency!~|IPHP!~|HoptPrice!~|I23059.00!~|Hcomission!~|I0.00!~|HlanguageAvailCode!~|Ien!~|Hresidency!~|IUS!~|HdailyPrices!~|ITrue!~|HnewRoomCodes!~|Itrue!~|His_package!~|Ifalse!~|HAvail_Hash!~|Isr-019fb760-5904-753d-b996-2accf77b8b59!~|HNoReembolsable!~|IFalse!~|Htgx_price!~|I23059!~|HDB!~|I3|1785487973|OTV|38327|8111583|20260905|3|361|US|BD|USD|23059!~|tOK!~|uSith!~|v0!~|w!~|y!~|qHOTEL!~|q1!~|y!~|",
+            "hotelCode": "8111583",
+            "boardCode": "nomeal",
+            "paymentType": "MERCHANT",
+            "status": "OK",
+            "price": {
+              "currency": "PHP",
+              "net": 23059,
+              "gross": 23059
+            }
+          },
+          {
+            "id": "33!~|a0!~|b260905!~|c260908!~|d8821125!~|enomeal!~|f0!~|gMY!~|hUS!~|ien!~|jUSD!~|k0!~|l38327!~|m8821125!~|nnomeal!~|nOTV!~|o1!~|p1!~|x31070853!~|M7636!~|N0!~|Ofalse!~|PPHP!~|Q!~|R0!~|S!~|T!~|z1#232300200000!~|A232300200000!~|B232300200000!~|C30|30!~|EStandard Double room (full double bed) (bed type is subject to availability)!~|FStandard Double room (full double bed) (bed type is subject to availability)!~|G1!~|U2,7636,1788278220!~|Hcurrency!~|IPHP!~|HoptPrice!~|I7636.00!~|Hcomission!~|I0.00!~|HlanguageAvailCode!~|Ien!~|Hresidency!~|IUS!~|HdailyPrices!~|ITrue!~|HnewRoomCodes!~|Itrue!~|His_package!~|Ifalse!~|HAvail_Hash!~|Isr-019fb760-4edd-7b3b-a43a-2de7874b0f4f!~|HNoReembolsable!~|IFalse!~|Htgx_price!~|I7636!~|HDB!~|I3|1785487972|OTV|38327|8821125|20260905|3|361|US|MY|USD|7636!~|tOK!~|uSith!~|v0!~|w!~|y!~|qHOTEL!~|q1!~|y!~|",
+            "hotelCode": "8821125",
+            "boardCode": "nomeal",
+            "paymentType": "MERCHANT",
+            "status": "OK",
+            "price": {
+              "currency": "PHP",
+              "net": 7636,
+              "gross": 7636
+            }
+          },
+          {
+            "id": "33!~|a0!~|b260905!~|c260908!~|d6620257!~|enomeal!~|f0!~|gBD!~|hUS!~|ien!~|jUSD!~|k0!~|l38327!~|m6620257!~|nnomeal!~|nOTV!~|o1!~|p1!~|x31070853!~|M7890!~|N0!~|Ofalse!~|PPHP!~|Q!~|R0!~|S!~|T!~|z1#242300200000!~|A242300200000!~|B242300200000!~|C30|30!~|EStandard Double room (twin beds) (bed type is subject to availability)!~|FStandard Double room (twin beds) (bed type is subject to availability)!~|G1!~|U2,7890,1788364800!~|Hcurrency!~|IPHP!~|HoptPrice!~|I7890.00!~|Hcomission!~|I0.00!~|HlanguageAvailCode!~|Ien!~|Hresidency!~|IUS!~|HdailyPrices!~|ITrue!~|HnewRoomCodes!~|Itrue!~|His_package!~|Ifalse!~|HAvail_Hash!~|Isr-019fb760-4edc-71cf-a955-15e93961dd70!~|HNoReembolsable!~|IFalse!~|Htgx_price!~|I7890!~|HDB!~|I3|1785487973|OTV|38327|6620257|20260905|3|361|US|BD|USD|7890!~|tOK!~|uSith!~|v0!~|w!~|y!~|qHOTEL!~|q1!~|y!~|",
+            "hotelCode": "6620257",
+            "boardCode": "nomeal",
+            "paymentType": "MERCHANT",
+            "status": "OK",
+            "price": {
+              "currency": "PHP",
+              "net": 7890,
+              "gross": 7890
+            }
+          },
+          {
+            "id": "33!~|a0!~|b260905!~|c260908!~|d8677540!~|enomeal!~|f0!~|gMO!~|hUS!~|ien!~|jUSD!~|k0!~|l38327!~|m8677540!~|nnomeal!~|nOTV!~|o1!~|p1!~|x31070853!~|M9547!~|N0!~|Ofalse!~|PPHP!~|Q!~|R0!~|S!~|T!~|z1#2003006000310!~|A2003006000310!~|B2003006000310!~|C30|30!~|EDeluxe room with sea view!~|FDeluxe room with sea view!~|G1!~|U2,9547,1788011820!~|Hcurrency!~|IPHP!~|HoptPrice!~|I9547.00!~|Hcomission!~|I0.00!~|HlanguageAvailCode!~|Ien!~|Hresidency!~|IUS!~|HdailyPrices!~|ITrue!~|HnewRoomCodes!~|Itrue!~|His_package!~|Ifalse!~|HAvail_Hash!~|Isr-019fb760-48c1-72d3-b5f4-0ae958966268!~|HNoReembolsable!~|IFalse!~|Htgx_price!~|I9547!~|HDB!~|I3|1785487970|OTV|38327|8677540|20260905|3|361|US|MO|USD|9547!~|tOK!~|uSith!~|v0!~|w!~|y!~|qHOTEL!~|q1!~|y!~|",
+            "hotelCode": "8677540",
+            "boardCode": "nomeal",
+            "paymentType": "MERCHANT",
+            "status": "OK",
+            "price": {
+              "currency": "PHP",
+              "net": 9547,
+              "gross": 9547
+            }
+          },
+          {
+            "id": "33!~|a0!~|b260905!~|c260908!~|d7018340!~|enomeal!~|f0!~|gBD!~|hUS!~|ien!~|jUSD!~|k0!~|l38327!~|m7018340!~|nnomeal!~|nOTV!~|o1!~|p1!~|x31070853!~|M9794!~|N0!~|Ofalse!~|PPHP!~|Q!~|R0!~|S!~|T!~|z1#000000000000!~|A000000000000!~|B000000000000!~|C30|30!~|EDouble Run of House room!~|FDouble Run of House room!~|G1!~|U2,5147,1788271200|2,9794,1788444000!~|Hcurrency!~|IPHP!~|HoptPrice!~|I9794.00!~|Hcomission!~|I0.00!~|HlanguageAvailCode!~|Ien!~|Hresidency!~|IUS!~|HdailyPrices!~|ITrue!~|HnewRoomCodes!~|Itrue!~|His_package!~|Ifalse!~|HAvail_Hash!~|Isr-019fb760-58f7-7ffc-a5c9-dafd5a0a49f3!~|HNoReembolsable!~|IFalse!~|Htgx_price!~|I9794!~|HDB!~|I3|1785487973|OTV|38327|7018340|20260905|3|361|US|BD|USD|9794!~|tOK!~|uSith!~|v0!~|w!~|y!~|qHOTEL!~|q1!~|y!~|",
+            "hotelCode": "7018340",
+            "boardCode": "nomeal",
+            "paymentType": "MERCHANT",
+            "status": "OK",
+            "price": {
+              "currency": "PHP",
+              "net": 9794,
+              "gross": 9794
+            }
+          },
+          {
+            "id": "33!~|a0!~|b260905!~|c260908!~|d7017601!~|enomeal!~|f0!~|gBD!~|hUS!~|ien!~|jUSD!~|k0!~|l38327!~|m7017601!~|nnomeal!~|nOTV!~|o1!~|p1!~|x31070853!~|M10044!~|N0!~|Ofalse!~|PPHP!~|Q!~|R0!~|S!~|T!~|z1#232300500000!~|A232300500000!~|B232300500000!~|C30|30!~|ESuperior Double room (full double bed) (bed type is subject to availability)!~|FSuperior Double room (full double bed) (bed type is subject to availability)!~|G1!~|U2,10044,1788335820!~|Hcurrency!~|IPHP!~|HoptPrice!~|I10044.00!~|Hcomission!~|I0.00!~|HlanguageAvailCode!~|Ien!~|Hresidency!~|IUS!~|HdailyPrices!~|ITrue!~|HnewRoomCodes!~|Itrue!~|His_package!~|Ifalse!~|HAvail_Hash!~|Isr-019fb760-5901-74f4-90fa-498b7561c30d!~|HNoReembolsable!~|IFalse!~|Htgx_price!~|I10044!~|HDB!~|I3|1785487973|OTV|38327|7017601|20260905|3|361|US|BD|USD|10044!~|tOK!~|uSith!~|v0!~|w!~|y!~|qHOTEL!~|q1!~|y!~|",
+            "hotelCode": "7017601",
+            "boardCode": "nomeal",
+            "paymentType": "MERCHANT",
+            "status": "OK",
+            "price": {
+              "currency": "PHP",
+              "net": 10044,
+              "gross": 10044
+            }
+          },
+          {
+            "id": "33!~|a0!~|b260905!~|c260908!~|d9957455!~|enomeal!~|f0!~|gMY!~|hUS!~|ien!~|jUSD!~|k0!~|l38327!~|m9957455!~|nnomeal!~|nOTV!~|o1!~|p1!~|x31070853!~|M10867!~|N0!~|Ofalse!~|PPHP!~|Q!~|R0!~|S!~|T!~|z1#232300600000!~|A232300600000!~|B232300600000!~|C30|30!~|EDeluxe Double room (full double bed) (king size bed)!~|FDeluxe Double room (full double bed) (king size bed)!~|G1!~|U2,3615,1788188400|2,10867,1788534000!~|Hcurrency!~|IPHP!~|HoptPrice!~|I10867.00!~|Hcomission!~|I0.00!~|HlanguageAvailCode!~|Ien!~|Hresidency!~|IUS!~|HdailyPrices!~|ITrue!~|HnewRoomCodes!~|Itrue!~|His_package!~|Ifalse!~|HAvail_Hash!~|Isr-019fb760-590f-74be-b6cf-4bfa802e4654!~|HNoReembolsable!~|IFalse!~|Htgx_price!~|I10867!~|HDB!~|I3|1785487972|OTV|38327|9957455|20260905|3|361|US|MY|USD|10867!~|tOK!~|uSith!~|v0!~|w!~|y!~|qHOTEL!~|q1!~|y!~|",
+            "hotelCode": "9957455",
+            "boardCode": "nomeal",
+            "paymentType": "MERCHANT",
+            "status": "OK",
+            "price": {
+              "currency": "PHP",
+              "net": 10867,
+              "gross": 10867
+            }
+          },
+          {
+            "id": "33!~|a0!~|b260905!~|c260908!~|d9896121!~|enomeal!~|f0!~|gMY!~|hUS!~|ien!~|jUSD!~|k0!~|l38327!~|m9896121!~|nnomeal!~|nOTV!~|o1!~|p1!~|x31070853!~|M12229!~|N0!~|Ofalse!~|PPHP!~|Q!~|R0!~|S!~|T!~|z1#2423006000310!~|A2423006000310!~|B2423006000310!~|C30|30!~|EDeluxe Double room with sea view (twin beds) (bed type is subject to availability)!~|FDeluxe Double room with sea view (twin beds) (bed type is subject to availability)!~|G1!~|U2,12229,1787846400!~|Hcurrency!~|IPHP!~|HoptPrice!~|I12229.00!~|Hcomission!~|I0.00!~|HlanguageAvailCode!~|Ien!~|Hresidency!~|IUS!~|HdailyPrices!~|ITrue!~|HnewRoomCodes!~|Itrue!~|His_package!~|Ifalse!~|HAvail_Hash!~|Isr-019fb760-449a-7cda-aff5-acc00285dff7!~|HNoReembolsable!~|IFalse!~|Htgx_price!~|I12229!~|HDB!~|I3|1785487972|OTV|38327|9896121|20260905|3|361|US|MY|USD|12229!~|tOK!~|uSith!~|v0!~|w!~|y!~|qHOTEL!~|q1!~|y!~|",
+            "hotelCode": "9896121",
+            "boardCode": "nomeal",
+            "paymentType": "MERCHANT",
+            "status": "OK",
+            "price": {
+              "currency": "PHP",
+              "net": 12229,
+              "gross": 12229
+            }
+          },
+          {
+            "id": "33!~|a0!~|b260905!~|c260908!~|d8805007!~|enomeal!~|f0!~|gMO!~|hUS!~|ien!~|jUSD!~|k0!~|l38327!~|m8805007!~|nnomeal!~|nOTV!~|o1!~|p1!~|x31070853!~|M12313!~|N0!~|Ofalse!~|PPHP!~|Q!~|R0!~|S!~|T!~|z1#242300500000!~|A242300500000!~|B242300500000!~|C30|30!~|ESuperior Double room (twin beds) (bed type is subject to availability)!~|FSuperior Double room (twin beds) (bed type is subject to availability)!~|G1!~|U2,12313,1786323600!~|Hcurrency!~|IPHP!~|HoptPrice!~|I12313.00!~|Hcomission!~|I0.00!~|HlanguageAvailCode!~|Ien!~|Hresidency!~|IUS!~|HdailyPrices!~|ITrue!~|HnewRoomCodes!~|Itrue!~|His_package!~|Ifalse!~|HAvail_Hash!~|Isr-019fb760-4f4c-7d27-a3d9-52370cb6f94f!~|HNoReembolsable!~|IFalse!~|Htgx_price!~|I12313!~|HDB!~|I3|1785487970|OTV|38327|8805007|20260905|3|361|US|MO|USD|12313!~|tOK!~|uSith!~|v0!~|w!~|y!~|qHOTEL!~|q1!~|y!~|",
+            "hotelCode": "8805007",
+            "boardCode": "nomeal",
+            "paymentType": "MERCHANT",
+            "status": "OK",
+            "price": {
+              "currency": "PHP",
+              "net": 12313,
+              "gross": 12313
+            }
+          },
+          {
+            "id": "33!~|a0!~|b260905!~|c260908!~|d10516825!~|enomeal!~|f0!~|gBD!~|hUS!~|ien!~|jUSD!~|k0!~|l38327!~|m10516825!~|nnomeal!~|nOTV!~|o1!~|p1!~|x31070853!~|M4898!~|N0!~|Ofalse!~|PPHP!~|Q!~|R0!~|S!~|T!~|z1#232300200000!~|A232300200000!~|B232300200000!~|C30|30!~|EStandard Double room (full double bed) (bed type is subject to availability)!~|FStandard Double room (full double bed) (bed type is subject to availability)!~|G1!~|U2,4898,1788533820!~|Hcurrency!~|IPHP!~|HoptPrice!~|I4898.00!~|Hcomission!~|I0.00!~|HlanguageAvailCode!~|Ien!~|Hresidency!~|IUS!~|HdailyPrices!~|ITrue!~|HnewRoomCodes!~|Itrue!~|His_package!~|Ifalse!~|HAvail_Hash!~|Isr-019fb760-4edb-71c0-8952-35348ab2ba25!~|HNoReembolsable!~|IFalse!~|Htgx_price!~|I4898!~|HDB!~|I3|1785487973|OTV|38327|10516825|20260905|3|361|US|BD|USD|4898!~|tOK!~|uSith!~|v0!~|w!~|y!~|qHOTEL!~|q1!~|y!~|",
+            "hotelCode": "10516825",
+            "boardCode": "nomeal",
+            "paymentType": "MERCHANT",
+            "status": "OK",
+            "price": {
+              "currency": "PHP",
+              "net": 4898,
+              "gross": 4898
+            }
+          },
+          {
+            "id": "33!~|a0!~|b260905!~|c260908!~|d8628358!~|enomeal!~|f0!~|gMO!~|hUS!~|ien!~|jUSD!~|k0!~|l38327!~|m8628358!~|nnomeal!~|nOTV!~|o1!~|p1!~|x31070853!~|M8179!~|N0!~|Ofalse!~|PPHP!~|Q!~|R0!~|S!~|T!~|z1#200700000000!~|A200700000000!~|B200700000000!~|C30|30!~|EStudio!~|FStudio!~|G1!~|U2,8179,1788102001!~|Hcurrency!~|IPHP!~|HoptPrice!~|I8179.00!~|Hcomission!~|I0.00!~|HlanguageAvailCode!~|Ien!~|Hresidency!~|IUS!~|HdailyPrices!~|ITrue!~|HnewRoomCodes!~|Itrue!~|His_package!~|Ifalse!~|HAvail_Hash!~|Isr-019fb760-4b40-78d8-b1d8-5c7e5555d313!~|HNoReembolsable!~|IFalse!~|Htgx_price!~|I8179!~|HDB!~|I3|1785487970|OTV|38327|8628358|20260905|3|361|US|MO|USD|8179!~|tOK!~|uSith!~|v0!~|w!~|y!~|qHOTEL!~|q1!~|y!~|",
+            "hotelCode": "8628358",
+            "boardCode": "nomeal",
+            "paymentType": "MERCHANT",
+            "status": "OK",
+            "price": {
+              "currency": "PHP",
+              "net": 8179,
+              "gross": 8179
+            }
+          },
+          {
+            "id": "33!~|a0!~|b260905!~|c260908!~|d8730568!~|enomeal!~|f0!~|gMY!~|hUS!~|ien!~|jUSD!~|k0!~|l38327!~|m8730568!~|nnomeal!~|nOTV!~|o1!~|p1!~|x31070853!~|M7748!~|N0!~|Ofalse!~|PPHP!~|Q!~|R0!~|S!~|T!~|z1#2323002000310!~|A2323002000310!~|B2323002000310!~|C30|30!~|EStandard Double room with sea view (full double bed) (bed type is subject to availability)!~|FStandard Double room with sea view (full double bed) (bed type is subject to availability)!~|G1!~|U2,7748,1788278400!~|Hcurrency!~|IPHP!~|HoptPrice!~|I7748.00!~|Hcomission!~|I0.00!~|HlanguageAvailCode!~|Ien!~|Hresidency!~|IUS!~|HdailyPrices!~|ITrue!~|HnewRoomCodes!~|Itrue!~|His_package!~|Ifalse!~|HAvail_Hash!~|Isr-019fb760-590f-74b8-bf64-581d5c70f1f0!~|HNoReembolsable!~|IFalse!~|Htgx_price!~|I7748!~|HDB!~|I3|1785487972|OTV|38327|8730568|20260905|3|361|US|MY|USD|7748!~|tOK!~|uSith!~|v0!~|w!~|y!~|qHOTEL!~|q1!~|y!~|",
+            "hotelCode": "8730568",
+            "boardCode": "nomeal",
+            "paymentType": "MERCHANT",
+            "status": "OK",
+            "price": {
+              "currency": "PHP",
+              "net": 7748,
+              "gross": 7748
+            }
+          },
+          {
+            "id": "33!~|a0!~|b260905!~|c260908!~|d7037369!~|enomeal!~|f0!~|gBD!~|hUS!~|ien!~|jUSD!~|k0!~|l38327!~|m7037369!~|nnomeal!~|nOTV!~|o1!~|p1!~|x31070853!~|M8267!~|N0!~|Ofalse!~|PPHP!~|Q!~|R0!~|S!~|T!~|z1#242300200000!~|A242300200000!~|B242300200000!~|C30|30!~|EStandard Double room (twin beds) (bed type is subject to availability)!~|FStandard Double room (twin beds) (bed type is subject to availability)!~|G1!~|U2,8267,1788163020!~|Hcurrency!~|IPHP!~|HoptPrice!~|I8267.00!~|Hcomission!~|I0.00!~|HlanguageAvailCode!~|Ien!~|Hresidency!~|IUS!~|HdailyPrices!~|ITrue!~|HnewRoomCodes!~|Itrue!~|His_package!~|Ifalse!~|HAvail_Hash!~|Isr-019fb760-58f1-71ec-8bdc-9192d13288bb!~|HNoReembolsable!~|IFalse!~|Htgx_price!~|I8267!~|HDB!~|I3|1785487973|OTV|38327|7037369|20260905|3|361|US|BD|USD|8267!~|tOK!~|uSith!~|v0!~|w!~|y!~|qHOTEL!~|q1!~|y!~|",
+            "hotelCode": "7037369",
+            "boardCode": "nomeal",
+            "paymentType": "MERCHANT",
+            "status": "OK",
+            "price": {
+              "currency": "PHP",
+              "net": 8267,
+              "gross": 8267
+            }
+          },
+          {
+            "id": "33!~|a0!~|b260905!~|c260908!~|d8409571!~|enomeal!~|f0!~|gBD!~|hUS!~|ien!~|jUSD!~|k0!~|l38327!~|m8409571!~|nnomeal!~|nOTV!~|o1!~|p1!~|x31070853!~|M7637!~|N0!~|Ofalse!~|PPHP!~|Q!~|R0!~|S!~|T!~|z1#242300600000!~|A242300600000!~|B242300600000!~|C30|30!~|EDeluxe Double room (twin beds) (bed type is subject to availability)!~|FDeluxe Double room (twin beds) (bed type is subject to availability)!~|G1!~|U2,7637,1788364620!~|Hcurrency!~|IPHP!~|HoptPrice!~|I7637.00!~|Hcomission!~|I0.00!~|HlanguageAvailCode!~|Ien!~|Hresidency!~|IUS!~|HdailyPrices!~|ITrue!~|HnewRoomCodes!~|Itrue!~|His_package!~|Ifalse!~|HAvail_Hash!~|Isr-019fb760-4edb-71c1-8d13-fa8296dc1c0d!~|HNoReembolsable!~|IFalse!~|Htgx_price!~|I7637!~|HDB!~|I3|1785487973|OTV|38327|8409571|20260905|3|361|US|BD|USD|7637!~|tOK!~|uSith!~|v0!~|w!~|y!~|qHOTEL!~|q1!~|y!~|",
+            "hotelCode": "8409571",
+            "boardCode": "nomeal",
+            "paymentType": "MERCHANT",
+            "status": "OK",
+            "price": {
+              "currency": "PHP",
+              "net": 7637,
+              "gross": 7637
+            }
+          },
+          {
+            "id": "33!~|a0!~|b260905!~|c260908!~|d13679695!~|enomeal!~|f0!~|gBD!~|hUS!~|ien!~|jUSD!~|k0!~|l38327!~|m13679695!~|nnomeal!~|nOTV!~|o1!~|p1!~|x31070853!~|M7662!~|N0!~|Ofalse!~|PPHP!~|Q!~|R0!~|S!~|T!~|z1#2323006000220!~|A2323006000220!~|B2323006000220!~|C30|30!~|EDeluxe Double room with mountain view (full double bed) (bed type is subject to availability)!~|FDeluxe Double room with mountain view (full double bed) (bed type is subject to availability)!~|G1!~|U2,7662,1788451020!~|Hcurrency!~|IPHP!~|HoptPrice!~|I7662.00!~|Hcomission!~|I0.00!~|HlanguageAvailCode!~|Ien!~|Hresidency!~|IUS!~|HdailyPrices!~|ITrue!~|HnewRoomCodes!~|Itrue!~|His_package!~|Ifalse!~|HAvail_Hash!~|Isr-019fb760-4eda-7e5a-b82b-6d2c03c1dd7b!~|HNoReembolsable!~|IFalse!~|Htgx_price!~|I7662!~|HDB!~|I3|1785487973|OTV|38327|13679695|20260905|3|361|US|BD|USD|7662!~|tOK!~|uSith!~|v0!~|w!~|y!~|qHOTEL!~|q1!~|y!~|",
+            "hotelCode": "13679695",
+            "boardCode": "nomeal",
+            "paymentType": "MERCHANT",
+            "status": "OK",
+            "price": {
+              "currency": "PHP",
+              "net": 7662,
+              "gross": 7662
+            }
+          },
+          {
+            "id": "33!~|a0!~|b260905!~|c260908!~|d8597192!~|enomeal!~|f0!~|gMO!~|hUS!~|ien!~|jUSD!~|k0!~|l38327!~|m8597192!~|nnomeal!~|nOTV!~|o1!~|p1!~|x31070853!~|M9642!~|N0!~|Ofalse!~|PPHP!~|Q!~|R0!~|S!~|T!~|z1#2003002000310!~|A2003002000310!~|B2003002000310!~|C30|30!~|EStandard room with sea view!~|FStandard room with sea view!~|G1!~|U2,9642,1788102001!~|Hcurrency!~|IPHP!~|HoptPrice!~|I9642.00!~|Hcomission!~|I0.00!~|HlanguageAvailCode!~|Ien!~|Hresidency!~|IUS!~|HdailyPrices!~|ITrue!~|HnewRoomCodes!~|Itrue!~|His_package!~|Ifalse!~|HAvail_Hash!~|Isr-019fb760-4f4d-7d3d-bd1b-2b92fcd6a5d2!~|HNoReembolsable!~|IFalse!~|Htgx_price!~|I9642!~|HDB!~|I3|1785487970|OTV|38327|8597192|20260905|3|361|US|MO|USD|9642!~|tOK!~|uSith!~|v0!~|w!~|y!~|qHOTEL!~|q1!~|y!~|",
+            "hotelCode": "8597192",
+            "boardCode": "nomeal",
+            "paymentType": "MERCHANT",
+            "status": "OK",
+            "price": {
+              "currency": "PHP",
+              "net": 9642,
+              "gross": 9642
+            }
+          },
+          {
+            "id": "33!~|a0!~|b260905!~|c260908!~|d9052118!~|enomeal!~|f0!~|gMY!~|hUS!~|ien!~|jUSD!~|k0!~|l38327!~|m9052118!~|nnomeal!~|nOTV!~|o1!~|p1!~|x31070853!~|M14252!~|N0!~|Ofalse!~|PPHP!~|Q!~|R0!~|S!~|T!~|z1#200700200000!~|A200700200000!~|B200700200000!~|C30|30!~|EStandard Studio!~|FStandard Studio!~|G1!~|U2,14252,1786118220!~|Hcurrency!~|IPHP!~|HoptPrice!~|I14252.00!~|Hcomission!~|I0.00!~|HlanguageAvailCode!~|Ien!~|Hresidency!~|IUS!~|HdailyPrices!~|ITrue!~|HnewRoomCodes!~|Itrue!~|His_package!~|Ifalse!~|HAvail_Hash!~|Isr-019fb760-5911-755c-a1b2-c325055caa32!~|HNoReembolsable!~|IFalse!~|Htgx_price!~|I14252!~|HDB!~|I3|1785487972|OTV|38327|9052118|20260905|3|361|US|MY|USD|14252!~|tOK!~|uSith!~|v0!~|w!~|y!~|qHOTEL!~|q1!~|y!~|",
+            "hotelCode": "9052118",
+            "boardCode": "nomeal",
+            "paymentType": "MERCHANT",
+            "status": "OK",
+            "price": {
+              "currency": "PHP",
+              "net": 14252,
+              "gross": 14252
+            }
+          },
+          {
+            "id": "33!~|a0!~|b260905!~|c260908!~|d10516847!~|enomeal!~|f0!~|gBD!~|hUS!~|ien!~|jUSD!~|k0!~|l38327!~|m10516847!~|nnomeal!~|nOTV!~|o1!~|p0!~|x31070853!~|M22002!~|N0!~|Ofalse!~|PPHP!~|Q!~|R0!~|S!~|T!~|z1#242300600080!~|A242300600080!~|B242300600080!~|C30|30!~|EDeluxe Double room with garden view (twin beds) (bed type is subject to availability)!~|FDeluxe Double room with garden view (twin beds) (bed type is subject to availability)!~|G1!~|Hcurrency!~|IPHP!~|HoptPrice!~|I22002.00!~|Hcomission!~|I0.00!~|HlanguageAvailCode!~|Ien!~|Hresidency!~|IUS!~|HdailyPrices!~|ITrue!~|HnewRoomCodes!~|Itrue!~|His_package!~|Ifalse!~|HAvail_Hash!~|Isr-019fb760-58f4-72bc-9ba8-258a27fbc887!~|HNoReembolsable!~|ITrue!~|Htgx_price!~|I22002!~|HDB!~|I3|1785487973|OTV|38327|10516847|20260905|3|361|US|BD|USD|22002!~|tOK!~|uSith!~|v0!~|w!~|yNON_REFUNDABLE!~|qHOTEL!~|q1!~|y!~|",
+            "hotelCode": "10516847",
+            "boardCode": "nomeal",
+            "paymentType": "MERCHANT",
+            "status": "OK",
+            "price": {
+              "currency": "PHP",
+              "net": 22002,
+              "gross": 22002
+            }
+          },
+          {
+            "id": "33!~|a0!~|b260905!~|c260908!~|d10105699!~|enomeal!~|f0!~|gBD!~|hUS!~|ien!~|jUSD!~|k0!~|l38327!~|m10105699!~|nnomeal!~|nOTV!~|o1!~|p1!~|x31070853!~|M62002!~|N0!~|Ofalse!~|PPHP!~|Q!~|R0!~|S!~|T!~|z1#2003002010230!~|A2003002010230!~|B2003002010230!~|C30|30!~|E1 Bedroom Standard room with ocean view!~|F1 Bedroom Standard room with ocean view!~|G1!~|U2,62002,1787500800!~|Hcurrency!~|IPHP!~|HoptPrice!~|I62002.00!~|Hcomission!~|I0.00!~|HlanguageAvailCode!~|Ien!~|Hresidency!~|IUS!~|HdailyPrices!~|ITrue!~|HnewRoomCodes!~|Itrue!~|His_package!~|Ifalse!~|HAvail_Hash!~|Isr-019fb760-4d4f-7834-a0c7-cfc3449ffcb0!~|HNoReembolsable!~|IFalse!~|Htgx_price!~|I62002!~|HDB!~|I3|1785487973|OTV|38327|10105699|20260905|3|361|US|BD|USD|62002!~|tOK!~|uSith!~|v0!~|w!~|y!~|qHOTEL!~|q1!~|y!~|",
+            "hotelCode": "10105699",
+            "boardCode": "nomeal",
+            "paymentType": "MERCHANT",
+            "status": "OK",
+            "price": {
+              "currency": "PHP",
+              "net": 62002,
+              "gross": 62002
+            }
+          },
+          {
+            "id": "33!~|a0!~|b260905!~|c260908!~|d9962489!~|enomeal!~|f0!~|gMO!~|hUS!~|ien!~|jUSD!~|k0!~|l38327!~|m9962489!~|nnomeal!~|nOTV!~|o1!~|p1!~|x31070853!~|M10462!~|N0!~|Ofalse!~|PPHP!~|Q!~|R0!~|S!~|T!~|z1#2003002000220!~|A2003002000220!~|B2003002000220!~|C30|30!~|EStandard room with mountain view!~|FStandard room with mountain view!~|G1!~|U2,10462,1787752800!~|Hcurrency!~|IPHP!~|HoptPrice!~|I10462.00!~|Hcomission!~|I0.00!~|HlanguageAvailCode!~|Ien!~|Hresidency!~|IUS!~|HdailyPrices!~|ITrue!~|HnewRoomCodes!~|Itrue!~|His_package!~|Ifalse!~|HAvail_Hash!~|Isr-019fb760-4f4f-7d9e-8e77-a97c8f640506!~|HNoReembolsable!~|IFalse!~|Htgx_price!~|I10462!~|HDB!~|I3|1785487970|OTV|38327|9962489|20260905|3|361|US|MO|USD|10462!~|tOK!~|uSith!~|v0!~|w!~|y!~|qHOTEL!~|q1!~|y!~|",
+            "hotelCode": "9962489",
+            "boardCode": "nomeal",
+            "paymentType": "MERCHANT",
+            "status": "OK",
+            "price": {
+              "currency": "PHP",
+              "net": 10462,
+              "gross": 10462
+            }
+          },
+          {
+            "id": "33!~|a0!~|b260905!~|c260908!~|d6809114!~|enomeal!~|f0!~|gBD!~|hUS!~|ien!~|jUSD!~|k0!~|l38327!~|m6809114!~|nnomeal!~|nOTV!~|o1!~|p1!~|x31070853!~|M11448!~|N0!~|Ofalse!~|PPHP!~|Q!~|R0!~|S!~|T!~|z1#232300200000!~|A232300200000!~|B232300200000!~|C30|30!~|EStandard Double room (full double bed) (bed type is subject to availability)!~|FStandard Double room (full double bed) (bed type is subject to availability)!~|G1!~|U2,11448,1785718800!~|Hcurrency!~|IPHP!~|HoptPrice!~|I11448.00!~|Hcomission!~|I0.00!~|HlanguageAvailCode!~|Ien!~|Hresidency!~|IUS!~|HdailyPrices!~|ITrue!~|HnewRoomCodes!~|Itrue!~|His_package!~|Ifalse!~|HAvail_Hash!~|Isr-019fb760-58ed-7fa1-85e9-637ad9ee1e02!~|HNoReembolsable!~|IFalse!~|Htgx_price!~|I11448!~|HDB!~|I3|1785487973|OTV|38327|6809114|20260905|3|361|US|BD|USD|11448!~|tOK!~|uSith!~|v0!~|w!~|y!~|qHOTEL!~|q1!~|y!~|",
+            "hotelCode": "6809114",
+            "boardCode": "nomeal",
+            "paymentType": "MERCHANT",
+            "status": "OK",
+            "price": {
+              "currency": "PHP",
+              "net": 11448,
+              "gross": 11448
+            }
+          },
+          {
+            "id": "33!~|a0!~|b260905!~|c260908!~|d8551539!~|enomeal!~|f0!~|gBD!~|hUS!~|ien!~|jUSD!~|k0!~|l38327!~|m8551539!~|nnomeal!~|nOTV!~|o1!~|p1!~|x31070853!~|M17605!~|N0!~|Ofalse!~|PPHP!~|Q!~|R0!~|S!~|T!~|z1#100100000000!~|A100100000000!~|B100100000000!~|C30|30!~|EBed in Dorm (shared bathroom)!~|FBed in Dorm (shared bathroom)!~|G1!~|U2,17605,1788102001!~|Hcurrency!~|IPHP!~|HoptPrice!~|I17605.00!~|Hcomission!~|I0.00!~|HlanguageAvailCode!~|Ien!~|Hresidency!~|IUS!~|HdailyPrices!~|ITrue!~|HnewRoomCodes!~|Itrue!~|His_package!~|Ifalse!~|HAvail_Hash!~|Isr-019fb760-58ee-7fa3-a774-b460cbf5a0d1!~|HNoReembolsable!~|IFalse!~|Htgx_price!~|I17605!~|HDB!~|I3|1785487973|OTV|38327|8551539|20260905|3|361|US|BD|USD|17605!~|tOK!~|uSith!~|v0!~|w!~|y!~|qHOTEL!~|q1!~|y!~|",
+            "hotelCode": "8551539",
+            "boardCode": "nomeal",
+            "paymentType": "MERCHANT",
+            "status": "OK",
+            "price": {
+              "currency": "PHP",
+              "net": 17605,
+              "gross": 17605
+            }
+          },
+          {
+            "id": "33!~|a0!~|b260905!~|c260908!~|d9083522!~|enomeal!~|f0!~|gMY!~|hUS!~|ien!~|jUSD!~|k0!~|l38327!~|m9083522!~|nnomeal!~|nOTV!~|o1!~|p1!~|x31070853!~|M11300!~|N0!~|Ofalse!~|PPHP!~|Q!~|R0!~|S!~|T!~|z1#200300200000!~|A200300200000!~|B200300200000!~|C30|30!~|EStandard room!~|FStandard room!~|G1!~|U2,11300,1788274620!~|Hcurrency!~|IPHP!~|HoptPrice!~|I11300.00!~|Hcomission!~|I0.00!~|HlanguageAvailCode!~|Ien!~|Hresidency!~|IUS!~|HdailyPrices!~|ITrue!~|HnewRoomCodes!~|Itrue!~|His_package!~|Ifalse!~|HAvail_Hash!~|Isr-019fb760-5913-75c1-aeae-8d594aca0e1f!~|HNoReembolsable!~|IFalse!~|Htgx_price!~|I11300!~|HDB!~|I3|1785487972|OTV|38327|9083522|20260905|3|361|US|MY|USD|11300!~|tOK!~|uSith!~|v0!~|w!~|y!~|qHOTEL!~|q1!~|y!~|",
+            "hotelCode": "9083522",
+            "boardCode": "nomeal",
+            "paymentType": "MERCHANT",
+            "status": "OK",
+            "price": {
+              "currency": "PHP",
+              "net": 11300,
+              "gross": 11300
+            }
+          },
+          {
+            "id": "33!~|a0!~|b260905!~|c260908!~|d6570618!~|enomeal!~|f0!~|gBD!~|hUS!~|ien!~|jUSD!~|k0!~|l38327!~|m6570618!~|nnomeal!~|nOTV!~|o1!~|p1!~|x31070853!~|M12164!~|N0!~|Ofalse!~|PPHP!~|Q!~|R0!~|S!~|T!~|z1#242300600000!~|A242300600000!~|B242300600000!~|C30|30!~|EDeluxe Double room (twin beds) (bed type is subject to availability)!~|FDeluxe Double room (twin beds) (bed type is subject to availability)!~|G1!~|U2,12164,1787929020!~|Hcurrency!~|IPHP!~|HoptPrice!~|I12164.00!~|Hcomission!~|I0.00!~|HlanguageAvailCode!~|Ien!~|Hresidency!~|IUS!~|HdailyPrices!~|ITrue!~|HnewRoomCodes!~|Itrue!~|His_package!~|Ifalse!~|HAvail_Hash!~|Isr-019fb760-5908-761a-98e9-793ac89f79fc!~|HNoReembolsable!~|IFalse!~|Htgx_price!~|I12164!~|HDB!~|I3|1785487973|OTV|38327|6570618|20260905|3|361|US|BD|USD|12164!~|tOK!~|uSith!~|v0!~|w!~|y!~|qHOTEL!~|q1!~|y!~|",
+            "hotelCode": "6570618",
+            "boardCode": "nomeal",
+            "paymentType": "MERCHANT",
+            "status": "OK",
+            "price": {
+              "currency": "PHP",
+              "net": 12164,
+              "gross": 12164
+            }
+          },
+          {
+            "id": "33!~|a0!~|b260905!~|c260908!~|d10516839!~|enomeal!~|f0!~|gBD!~|hUS!~|ien!~|jUSD!~|k0!~|l38327!~|m10516839!~|nnomeal!~|nOTV!~|o1!~|p1!~|x31070853!~|M9951!~|N0!~|Ofalse!~|PPHP!~|Q!~|R0!~|S!~|T!~|z1#242300600000!~|A242300600000!~|B242300600000!~|C30|30!~|EDeluxe Double room (twin beds)!~|FDeluxe Double room (twin beds)!~|G1!~|U2,9951,1788101941!~|Hcurrency!~|IPHP!~|HoptPrice!~|I9951.00!~|Hcomission!~|I0.00!~|HlanguageAvailCode!~|Ien!~|Hresidency!~|IUS!~|HdailyPrices!~|ITrue!~|HnewRoomCodes!~|Itrue!~|His_package!~|Ifalse!~|HAvail_Hash!~|Isr-019fb760-58f3-7fe4-8782-41a24852c417!~|HNoReembolsable!~|IFalse!~|Htgx_price!~|I9951!~|HDB!~|I3|1785487973|OTV|38327|10516839|20260905|3|361|US|BD|USD|9951!~|tOK!~|uSith!~|v0!~|w!~|y!~|qHOTEL!~|q1!~|y!~|",
+            "hotelCode": "10516839",
+            "boardCode": "nomeal",
+            "paymentType": "MERCHANT",
+            "status": "OK",
+            "price": {
+              "currency": "PHP",
+              "net": 9951,
+              "gross": 9951
+            }
+          },
+          {
+            "id": "33!~|a0!~|b260905!~|c260908!~|d8801125!~|enomeal!~|f0!~|gMY!~|hUS!~|ien!~|jUSD!~|k0!~|l38327!~|m8801125!~|nnomeal!~|nOTV!~|o1!~|p0!~|x31070853!~|M11925!~|N0!~|Ofalse!~|PPHP!~|Q!~|R0!~|S!~|T!~|z1#232300600000!~|A232300600000!~|B232300600000!~|C30|30!~|EDeluxe Double room (full double bed) (bed type is subject to availability)!~|FDeluxe Double room (full double bed) (bed type is subject to availability)!~|G1!~|Hcurrency!~|IPHP!~|HoptPrice!~|I11925.00!~|Hcomission!~|I0.00!~|HlanguageAvailCode!~|Ien!~|Hresidency!~|IUS!~|HdailyPrices!~|ITrue!~|HnewRoomCodes!~|Itrue!~|His_package!~|Ifalse!~|HAvail_Hash!~|Isr-019fb760-5913-75d2-97a4-4cdc916c56fb!~|HNoReembolsable!~|ITrue!~|Htgx_price!~|I11925!~|HDB!~|I3|1785487972|OTV|38327|8801125|20260905|3|361|US|MY|USD|11925!~|tOK!~|uSith!~|v0!~|w!~|yNON_REFUNDABLE!~|qHOTEL!~|q1!~|y!~|",
+            "hotelCode": "8801125",
+            "boardCode": "nomeal",
+            "paymentType": "MERCHANT",
+            "status": "OK",
+            "price": {
+              "currency": "PHP",
+              "net": 11925,
+              "gross": 11925
+            }
+          },
+          {
+            "id": "33!~|a0!~|b260905!~|c260908!~|d9147695!~|enomeal!~|f0!~|gMO!~|hUS!~|ien!~|jUSD!~|k0!~|l38327!~|m9147695!~|nnomeal!~|nOTV!~|o1!~|p1!~|x31070853!~|M14786!~|N0!~|Ofalse!~|PPHP!~|Q!~|R0!~|S!~|T!~|z1#242300200000!~|A242300200000!~|B242300200000!~|C30|30!~|EStandard Double room (twin beds) (bed type is subject to availability)!~|FStandard Double room (twin beds) (bed type is subject to availability)!~|G1!~|U2,14786,1785546000!~|Hcurrency!~|IPHP!~|HoptPrice!~|I14786.00!~|Hcomission!~|I0.00!~|HlanguageAvailCode!~|Ien!~|Hresidency!~|IUS!~|HdailyPrices!~|ITrue!~|HnewRoomCodes!~|Itrue!~|His_package!~|Ifalse!~|HAvail_Hash!~|Isr-019fb760-4f4d-7d27-9941-36447efbe53c!~|HNoReembolsable!~|IFalse!~|Htgx_price!~|I14786!~|HDB!~|I3|1785487970|OTV|38327|9147695|20260905|3|361|US|MO|USD|14786!~|tOK!~|uSith!~|v0!~|w!~|y!~|qHOTEL!~|q1!~|y!~|",
+            "hotelCode": "9147695",
+            "boardCode": "nomeal",
+            "paymentType": "MERCHANT",
+            "status": "OK",
+            "price": {
+              "currency": "PHP",
+              "net": 14786,
+              "gross": 14786
+            }
+          },
+          {
+            "id": "33!~|a0!~|b260905!~|c260908!~|d8770900!~|enomeal!~|f0!~|gMY!~|hUS!~|ien!~|jUSD!~|k0!~|l38327!~|m8770900!~|nnomeal!~|nOTV!~|o1!~|p1!~|x31070853!~|M196145!~|N0!~|Ofalse!~|PPHP!~|Q!~|R0!~|S!~|T!~|z1#200900000000!~|A200900000000!~|B200900000000!~|C30|30!~|ECharacter House!~|FCharacter House!~|G1!~|U2,196145,1787846400!~|Hcurrency!~|IPHP!~|HoptPrice!~|I196145.00!~|Hcomission!~|I0.00!~|HlanguageAvailCode!~|Ien!~|Hresidency!~|IUS!~|HdailyPrices!~|ITrue!~|HnewRoomCodes!~|Itrue!~|His_package!~|Ifalse!~|HAvail_Hash!~|Isr-019fb760-5910-74c4-a178-5ebde318bab2!~|HNoReembolsable!~|IFalse!~|Htgx_price!~|I196145!~|HDB!~|I3|1785487972|OTV|38327|8770900|20260905|3|361|US|MY|USD|196145!~|tOK!~|uSith!~|v0!~|w!~|y!~|qHOTEL!~|q1!~|y!~|",
+            "hotelCode": "8770900",
+            "boardCode": "nomeal",
+            "paymentType": "MERCHANT",
+            "status": "OK",
+            "price": {
+              "currency": "PHP",
+              "net": 196145,
+              "gross": 196145
+            }
+          },
+          {
+            "id": "33!~|a0!~|b260905!~|c260908!~|d8332678!~|enomeal!~|f0!~|gBD!~|hUS!~|ien!~|jUSD!~|k0!~|l38327!~|m8332678!~|nnomeal!~|nOTV!~|o1!~|p1!~|x31070853!~|M6827!~|N0!~|Ofalse!~|PPHP!~|Q!~|R0!~|S!~|T!~|z1#232300200000!~|A232300200000!~|B232300200000!~|C30|30!~|EStandard Double room (full double bed) (bed type is subject to availability)!~|FStandard Double room (full double bed) (bed type is subject to availability)!~|G1!~|U2,6827,1786323600!~|Hcurrency!~|IPHP!~|HoptPrice!~|I6827.00!~|Hcomission!~|I0.00!~|HlanguageAvailCode!~|Ien!~|Hresidency!~|IUS!~|HdailyPrices!~|ITrue!~|HnewRoomCodes!~|Itrue!~|His_package!~|Ifalse!~|HAvail_Hash!~|Isr-019fb760-4edb-71c7-a103-39db23cbe029!~|HNoReembolsable!~|IFalse!~|Htgx_price!~|I6827!~|HDB!~|I3|1785487973|OTV|38327|8332678|20260905|3|361|US|BD|USD|6827!~|tOK!~|uSith!~|v0!~|w!~|y!~|qHOTEL!~|q1!~|y!~|",
+            "hotelCode": "8332678",
+            "boardCode": "nomeal",
+            "paymentType": "MERCHANT",
+            "status": "OK",
+            "price": {
+              "currency": "PHP",
+              "net": 6827,
+              "gross": 6827
+            }
+          },
+          {
+            "id": "33!~|a0!~|b260905!~|c260908!~|d6705050!~|enomeal!~|f0!~|gBD!~|hUS!~|ien!~|jUSD!~|k0!~|l38327!~|m6705050!~|nnomeal!~|nOTV!~|o1!~|p1!~|x31070853!~|M14637!~|N0!~|Ofalse!~|PPHP!~|Q!~|R0!~|S!~|T!~|z1#200300200000!~|A200300200000!~|B200300200000!~|C30|30!~|EStandard room!~|FStandard room!~|G1!~|U2,14637,1787929020!~|Hcurrency!~|IPHP!~|HoptPrice!~|I14637.00!~|Hcomission!~|I0.00!~|HlanguageAvailCode!~|Ien!~|Hresidency!~|IUS!~|HdailyPrices!~|ITrue!~|HnewRoomCodes!~|Itrue!~|His_package!~|Ifalse!~|HAvail_Hash!~|Isr-019fb760-4edb-71cc-bd02-7ce7ed2250c1!~|HNoReembolsable!~|IFalse!~|Htgx_price!~|I14637!~|HDB!~|I3|1785487973|OTV|38327|6705050|20260905|3|361|US|BD|USD|14637!~|tOK!~|uSith!~|v0!~|w!~|y!~|qHOTEL!~|q1!~|y!~|",
+            "hotelCode": "6705050",
+            "boardCode": "nomeal",
+            "paymentType": "MERCHANT",
+            "status": "OK",
+            "price": {
+              "currency": "PHP",
+              "net": 14637,
+              "gross": 14637
+            }
+          },
+          {
+            "id": "33!~|a0!~|b260905!~|c260908!~|d7820600!~|enomeal!~|f0!~|gBD!~|hUS!~|ien!~|jUSD!~|k0!~|l38327!~|m7820600!~|nnomeal!~|nOTV!~|o1!~|p1!~|x31070853!~|M20359!~|N0!~|Ofalse!~|PPHP!~|Q!~|R0!~|S!~|T!~|z1#200300600000!~|A200300600000!~|B200300600000!~|C30|30!~|EDeluxe room!~|FDeluxe room!~|G1!~|U2,13417,1788188341|2,20359,1788361141!~|Hcurrency!~|IPHP!~|HoptPrice!~|I20359.00!~|Hcomission!~|I0.00!~|HlanguageAvailCode!~|Ien!~|Hresidency!~|IUS!~|HdailyPrices!~|ITrue!~|HnewRoomCodes!~|Itrue!~|His_package!~|Ifalse!~|HAvail_Hash!~|Isr-019fb760-4edb-71ce-8938-4ebe784ea1e5!~|HNoReembolsable!~|IFalse!~|Htgx_price!~|I20359!~|HDB!~|I3|1785487973|OTV|38327|7820600|20260905|3|361|US|BD|USD|20359!~|tOK!~|uSith!~|v0!~|w!~|y!~|qHOTEL!~|q1!~|y!~|",
+            "hotelCode": "7820600",
+            "boardCode": "nomeal",
+            "paymentType": "MERCHANT",
+            "status": "OK",
+            "price": {
+              "currency": "PHP",
+              "net": 20359,
+              "gross": 20359
+            }
+          },
+          {
+            "id": "33!~|a0!~|b260905!~|c260908!~|d8729768!~|enomeal!~|f0!~|gMY!~|hUS!~|ien!~|jUSD!~|k0!~|l38327!~|m8729768!~|nnomeal!~|nOTV!~|o1!~|p1!~|x31070853!~|M8484!~|N0!~|Ofalse!~|PPHP!~|Q!~|R0!~|S!~|T!~|z1#242300200000!~|A242300200000!~|B242300200000!~|C30|30!~|EStandard Double room (twin beds) (bed type is subject to availability)!~|FStandard Double room (twin beds) (bed type is subject to availability)!~|G1!~|U2,8484,1788184620!~|Hcurrency!~|IPHP!~|HoptPrice!~|I8484.00!~|Hcomission!~|I0.00!~|HlanguageAvailCode!~|Ien!~|Hresidency!~|IUS!~|HdailyPrices!~|ITrue!~|HnewRoomCodes!~|Itrue!~|His_package!~|Ifalse!~|HAvail_Hash!~|Isr-019fb760-5911-756d-96bf-481866130981!~|HNoReembolsable!~|IFalse!~|Htgx_price!~|I8484!~|HDB!~|I3|1785487972|OTV|38327|8729768|20260905|3|361|US|MY|USD|8484!~|tOK!~|uSith!~|v0!~|w!~|y!~|qHOTEL!~|q1!~|y!~|",
+            "hotelCode": "8729768",
+            "boardCode": "nomeal",
+            "paymentType": "MERCHANT",
+            "status": "OK",
+            "price": {
+              "currency": "PHP",
+              "net": 8484,
+              "gross": 8484
+            }
+          },
+          {
+            "id": "33!~|a0!~|b260905!~|c260908!~|d6655746!~|enomeal!~|f0!~|gBD!~|hUS!~|ien!~|jUSD!~|k0!~|l38327!~|m6655746!~|nnomeal!~|nOTV!~|o1!~|p1!~|x31070853!~|M15964!~|N0!~|Ofalse!~|PPHP!~|Q!~|R0!~|S!~|T!~|z1#232300500000!~|A232300500000!~|B232300500000!~|C30|30!~|ESuperior Double room (full double bed)!~|FSuperior Double room (full double bed)!~|G1!~|U2,15964,1787785199!~|Hcurrency!~|IPHP!~|HoptPrice!~|I15964.00!~|Hcomission!~|I0.00!~|HlanguageAvailCode!~|Ien!~|Hresidency!~|IUS!~|HdailyPrices!~|ITrue!~|HnewRoomCodes!~|Itrue!~|His_package!~|Ifalse!~|HAvail_Hash!~|Isr-019fb760-58f9-736e-80a6-d28fa6d5eba4!~|HNoReembolsable!~|IFalse!~|Htgx_price!~|I15964!~|HDB!~|I3|1785487973|OTV|38327|6655746|20260905|3|361|US|BD|USD|15964!~|tOK!~|uSith!~|v0!~|w!~|y!~|qHOTEL!~|q1!~|y!~|",
+            "hotelCode": "6655746",
+            "boardCode": "nomeal",
+            "paymentType": "MERCHANT",
+            "status": "OK",
+            "price": {
+              "currency": "PHP",
+              "net": 15964,
+              "gross": 15964
+            }
+          },
+          {
+            "id": "33!~|a0!~|b260905!~|c260908!~|d6627816!~|enomeal!~|f0!~|gBD!~|hUS!~|ien!~|jUSD!~|k0!~|l38327!~|m6627816!~|nnomeal!~|nOTV!~|o1!~|p1!~|x31070853!~|M10350!~|N0!~|Ofalse!~|PPHP!~|Q!~|R0!~|S!~|T!~|z1#232300500000!~|A232300500000!~|B232300500000!~|C30|30!~|ESuperior Double room (full double bed) (bed type is subject to availability)!~|FSuperior Double room (full double bed) (bed type is subject to availability)!~|G1!~|U2,10350,1787903820!~|Hcurrency!~|IPHP!~|HoptPrice!~|I10350.00!~|Hcomission!~|I0.00!~|HlanguageAvailCode!~|Ien!~|Hresidency!~|IUS!~|HdailyPrices!~|ITrue!~|HnewRoomCodes!~|Itrue!~|His_package!~|Ifalse!~|HAvail_Hash!~|Isr-019fb760-58ee-7193-ba21-60052444a75f!~|HNoReembolsable!~|IFalse!~|Htgx_price!~|I10350!~|HDB!~|I3|1785487973|OTV|38327|6627816|20260905|3|361|US|BD|USD|10350!~|tOK!~|uSith!~|v0!~|w!~|y!~|qHOTEL!~|q1!~|y!~|",
+            "hotelCode": "6627816",
+            "boardCode": "nomeal",
+            "paymentType": "MERCHANT",
+            "status": "OK",
+            "price": {
+              "currency": "PHP",
+              "net": 10350,
+              "gross": 10350
+            }
+          },
+          {
+            "id": "33!~|a0!~|b260905!~|c260908!~|d8757759!~|enomeal!~|f0!~|gMO!~|hUS!~|ien!~|jUSD!~|k0!~|l38327!~|m8757759!~|nnomeal!~|nOTV!~|o1!~|p1!~|x31070853!~|M10822!~|N0!~|Ofalse!~|PPHP!~|Q!~|R0!~|S!~|T!~|z1#242300200000!~|A242300200000!~|B242300200000!~|C30|30!~|EStandard Double room (twin beds) (bed type is subject to availability)!~|FStandard Double room (twin beds) (bed type is subject to availability)!~|G1!~|U2,10822,1788274620!~|Hcurrency!~|IPHP!~|HoptPrice!~|I10822.00!~|Hcomission!~|I0.00!~|HlanguageAvailCode!~|Ien!~|Hresidency!~|IUS!~|HdailyPrices!~|ITrue!~|HnewRoomCodes!~|Itrue!~|His_package!~|Ifalse!~|HAvail_Hash!~|Isr-019fb760-4f4f-7daf-ab21-87e9457838f4!~|HNoReembolsable!~|IFalse!~|Htgx_price!~|I10822!~|HDB!~|I3|1785487970|OTV|38327|8757759|20260905|3|361|US|MO|USD|10822!~|tOK!~|uSith!~|v0!~|w!~|y!~|qHOTEL!~|q1!~|y!~|",
+            "hotelCode": "8757759",
+            "boardCode": "nomeal",
+            "paymentType": "MERCHANT",
+            "status": "OK",
+            "price": {
+              "currency": "PHP",
+              "net": 10822,
+              "gross": 10822
+            }
+          },
+          {
+            "id": "33!~|a0!~|b260905!~|c260908!~|d10130083!~|enomeal!~|f0!~|gBD!~|hUS!~|ien!~|jUSD!~|k0!~|l38327!~|m10130083!~|nnomeal!~|nOTV!~|o1!~|p0!~|x31070853!~|M22605!~|N0!~|Ofalse!~|PPHP!~|Q!~|R0!~|S!~|T!~|z1#232300500000!~|A232300500000!~|B232300500000!~|C30|30!~|ESuperior Double room (full double bed)!~|FSuperior Double room (full double bed)!~|G1!~|Hcurrency!~|IPHP!~|HoptPrice!~|I22605.00!~|Hcomission!~|I0.00!~|HlanguageAvailCode!~|Ien!~|Hresidency!~|IUS!~|HdailyPrices!~|ITrue!~|HnewRoomCodes!~|Itrue!~|His_package!~|Ifalse!~|HAvail_Hash!~|Isr-019fb760-58f9-738c-aef7-fe8ef17377f8!~|HNoReembolsable!~|ITrue!~|Htgx_price!~|I22605!~|HDB!~|I3|1785487973|OTV|38327|10130083|20260905|3|361|US|BD|USD|22605!~|tOK!~|uSith!~|v0!~|w!~|yNON_REFUNDABLE!~|qHOTEL!~|q1!~|y!~|",
+            "hotelCode": "10130083",
+            "boardCode": "nomeal",
+            "paymentType": "MERCHANT",
+            "status": "OK",
+            "price": {
+              "currency": "PHP",
+              "net": 22605,
+              "gross": 22605
+            }
+          },
+          {
+            "id": "33!~|a0!~|b260905!~|c260908!~|d6604687!~|enomeal!~|f0!~|gBD!~|hUS!~|ien!~|jUSD!~|k0!~|l38327!~|m6604687!~|nnomeal!~|nOTV!~|o1!~|p1!~|x31070853!~|M6561!~|N0!~|Ofalse!~|PPHP!~|Q!~|R0!~|S!~|T!~|z1#200300200000!~|A200300200000!~|B200300200000!~|C30|30!~|EStandard room!~|FStandard room!~|G1!~|U2,6561,1788102001!~|Hcurrency!~|IPHP!~|HoptPrice!~|I6561.00!~|Hcomission!~|I0.00!~|HlanguageAvailCode!~|Ien!~|Hresidency!~|IUS!~|HdailyPrices!~|ITrue!~|HnewRoomCodes!~|Itrue!~|His_package!~|Ifalse!~|HAvail_Hash!~|Isr-019fb760-4d4f-7646-b826-3edc375ec605!~|HNoReembolsable!~|IFalse!~|Htgx_price!~|I6561!~|HDB!~|I3|1785487973|OTV|38327|6604687|20260905|3|361|US|BD|USD|6561!~|tOK!~|uSith!~|v0!~|w!~|y!~|qHOTEL!~|q1!~|y!~|",
+            "hotelCode": "6604687",
+            "boardCode": "nomeal",
+            "paymentType": "MERCHANT",
+            "status": "OK",
+            "price": {
+              "currency": "PHP",
+              "net": 6561,
+              "gross": 6561
+            }
+          },
+          {
+            "id": "33!~|a0!~|b260905!~|c260908!~|d6392134!~|enomeal!~|f0!~|gBD!~|hUS!~|ien!~|jUSD!~|k0!~|l38327!~|m6392134!~|nnomeal!~|nOTV!~|o1!~|p1!~|x31070853!~|M12483!~|N0!~|Ofalse!~|PPHP!~|Q!~|R0!~|S!~|T!~|z1#200300200000!~|A200300200000!~|B200300200000!~|C30|30!~|EStandard room!~|FStandard room!~|G1!~|U2,12483,1788101820!~|Hcurrency!~|IPHP!~|HoptPrice!~|I12483.00!~|Hcomission!~|I0.00!~|HlanguageAvailCode!~|Ien!~|Hresidency!~|IUS!~|HdailyPrices!~|ITrue!~|HnewRoomCodes!~|Itrue!~|His_package!~|Ifalse!~|HAvail_Hash!~|Isr-019fb760-4edc-71d8-bf9e-b654e9640919!~|HNoReembolsable!~|IFalse!~|Htgx_price!~|I12483!~|HDB!~|I3|1785487973|OTV|38327|6392134|20260905|3|361|US|BD|USD|12483!~|tOK!~|uSith!~|v0!~|w!~|y!~|qHOTEL!~|q1!~|y!~|",
+            "hotelCode": "6392134",
+            "boardCode": "nomeal",
+            "paymentType": "MERCHANT",
+            "status": "OK",
+            "price": {
+              "currency": "PHP",
+              "net": 12483,
+              "gross": 12483
+            }
+          },
+          {
+            "id": "33!~|a0!~|b260905!~|c260908!~|d8835945!~|enomeal!~|f0!~|gMY!~|hUS!~|ien!~|jUSD!~|k0!~|l38327!~|m8835945!~|nnomeal!~|nOTV!~|o1!~|p1!~|x31070853!~|M6380!~|N0!~|Ofalse!~|PPHP!~|Q!~|R0!~|S!~|T!~|z1#242300200000!~|A242300200000!~|B242300200000!~|C30|30!~|EStandard Double room (twin beds) (bed type is subject to availability)!~|FStandard Double room (twin beds) (bed type is subject to availability)!~|G1!~|U2,6380,1788278220!~|Hcurrency!~|IPHP!~|HoptPrice!~|I6380.00!~|Hcomission!~|I0.00!~|HlanguageAvailCode!~|Ien!~|Hresidency!~|IUS!~|HdailyPrices!~|ITrue!~|HnewRoomCodes!~|Itrue!~|His_package!~|Ifalse!~|HAvail_Hash!~|Isr-019fb760-5911-754c-afca-ff01631af759!~|HNoReembolsable!~|IFalse!~|Htgx_price!~|I6380!~|HDB!~|I3|1785487972|OTV|38327|8835945|20260905|3|361|US|MY|USD|6380!~|tOK!~|uSith!~|v0!~|w!~|y!~|qHOTEL!~|q1!~|y!~|",
+            "hotelCode": "8835945",
+            "boardCode": "nomeal",
+            "paymentType": "MERCHANT",
+            "status": "OK",
+            "price": {
+              "currency": "PHP",
+              "net": 6380,
+              "gross": 6380
+            }
+          },
+          {
+            "id": "33!~|a0!~|b260905!~|c260908!~|d8678481!~|enomeal!~|f0!~|gMY!~|hUS!~|ien!~|jUSD!~|k0!~|l38327!~|m8678481!~|nnomeal!~|nOTV!~|o1!~|p1!~|x31070853!~|M8602!~|N0!~|Ofalse!~|PPHP!~|Q!~|R0!~|S!~|T!~|z1#232300200000!~|A232300200000!~|B232300200000!~|C30|30!~|EStandard Double room (full double bed) (bed type is subject to availability)!~|FStandard Double room (full double bed) (bed type is subject to availability)!~|G1!~|U2,8602,1787846400!~|Hcurrency!~|IPHP!~|HoptPrice!~|I8602.00!~|Hcomission!~|I0.00!~|HlanguageAvailCode!~|Ien!~|Hresidency!~|IUS!~|HdailyPrices!~|ITrue!~|HnewRoomCodes!~|Itrue!~|His_package!~|Ifalse!~|HAvail_Hash!~|Isr-019fb760-45a0-7514-9fd8-058665503fa0!~|HNoReembolsable!~|IFalse!~|Htgx_price!~|I8602!~|HDB!~|I3|1785487972|OTV|38327|8678481|20260905|3|361|US|MY|USD|8602!~|tOK!~|uSith!~|v0!~|w!~|y!~|qHOTEL!~|q1!~|y!~|",
+            "hotelCode": "8678481",
+            "boardCode": "nomeal",
+            "paymentType": "MERCHANT",
+            "status": "OK",
+            "price": {
+              "currency": "PHP",
+              "net": 8602,
+              "gross": 8602
+            }
+          },
+          {
+            "id": "33!~|a0!~|b260905!~|c260908!~|d8713865!~|enomeal!~|f0!~|gMO!~|hUS!~|ien!~|jUSD!~|k0!~|l38327!~|m8713865!~|nnomeal!~|nOTV!~|o1!~|p1!~|x31070853!~|M8895!~|N0!~|Ofalse!~|PPHP!~|Q!~|R0!~|S!~|T!~|z1#200300600000!~|A200300600000!~|B200300600000!~|C30|30!~|EDeluxe room!~|FDeluxe room!~|G1!~|U2,8895,1788533820!~|Hcurrency!~|IPHP!~|HoptPrice!~|I8895.00!~|Hcomission!~|I0.00!~|HlanguageAvailCode!~|Ien!~|Hresidency!~|IUS!~|HdailyPrices!~|ITrue!~|HnewRoomCodes!~|Itrue!~|His_package!~|Ifalse!~|HAvail_Hash!~|Isr-019fb760-4b40-78dc-a294-9e09411282d0!~|HNoReembolsable!~|IFalse!~|Htgx_price!~|I8895!~|HDB!~|I3|1785487970|OTV|38327|8713865|20260905|3|361|US|MO|USD|8895!~|tOK!~|uSith!~|v0!~|w!~|y!~|qHOTEL!~|q1!~|y!~|",
+            "hotelCode": "8713865",
+            "boardCode": "nomeal",
+            "paymentType": "MERCHANT",
+            "status": "OK",
+            "price": {
+              "currency": "PHP",
+              "net": 8895,
+              "gross": 8895
+            }
+          },
+          {
+            "id": "33!~|a0!~|b260905!~|c260908!~|d6888457!~|enomeal!~|f0!~|gBD!~|hUS!~|ien!~|jUSD!~|k0!~|l38327!~|m6888457!~|nnomeal!~|nOTV!~|o1!~|p1!~|x31070853!~|M11426!~|N0!~|Ofalse!~|PPHP!~|Q!~|R0!~|S!~|T!~|z1#232300200000!~|A232300200000!~|B232300200000!~|C30|30!~|EStandard Double room (full double bed) (bed type is subject to availability)!~|FStandard Double room (full double bed) (bed type is subject to availability)!~|G1!~|U2,11426,1788451020!~|Hcurrency!~|IPHP!~|HoptPrice!~|I11426.00!~|Hcomission!~|I0.00!~|HlanguageAvailCode!~|Ien!~|Hresidency!~|IUS!~|HdailyPrices!~|ITrue!~|HnewRoomCodes!~|Itrue!~|His_package!~|Ifalse!~|HAvail_Hash!~|Isr-019fb760-58f0-71d8-b525-afacb4df9ae1!~|HNoReembolsable!~|IFalse!~|Htgx_price!~|I11426!~|HDB!~|I3|1785487973|OTV|38327|6888457|20260905|3|361|US|BD|USD|11426!~|tOK!~|uSith!~|v0!~|w!~|y!~|qHOTEL!~|q1!~|y!~|",
+            "hotelCode": "6888457",
+            "boardCode": "nomeal",
+            "paymentType": "MERCHANT",
+            "status": "OK",
+            "price": {
+              "currency": "PHP",
+              "net": 11426,
+              "gross": 11426
+            }
+          },
+          {
+            "id": "33!~|a0!~|b260905!~|c260908!~|d8332725!~|enomeal!~|f0!~|gBD!~|hUS!~|ien!~|jUSD!~|k0!~|l38327!~|m8332725!~|nnomeal!~|nOTV!~|o1!~|p1!~|x31070853!~|M6584!~|N0!~|Ofalse!~|PPHP!~|Q!~|R0!~|S!~|T!~|z1#232300200000!~|A232300200000!~|B232300200000!~|C30|30!~|EStandard Double room (full double bed) (bed type is subject to availability)!~|FStandard Double room (full double bed) (bed type is subject to availability)!~|G1!~|U2,6584,1788533820!~|Hcurrency!~|IPHP!~|HoptPrice!~|I6584.00!~|Hcomission!~|I0.00!~|HlanguageAvailCode!~|Ien!~|Hresidency!~|IUS!~|HdailyPrices!~|ITrue!~|HnewRoomCodes!~|Itrue!~|His_package!~|Ifalse!~|HAvail_Hash!~|Isr-019fb760-58f7-7016-bd12-d7f1410daf61!~|HNoReembolsable!~|IFalse!~|Htgx_price!~|I6584!~|HDB!~|I3|1785487973|OTV|38327|8332725|20260905|3|361|US|BD|USD|6584!~|tOK!~|uSith!~|v0!~|w!~|y!~|qHOTEL!~|q1!~|y!~|",
+            "hotelCode": "8332725",
+            "boardCode": "nomeal",
+            "paymentType": "MERCHANT",
+            "status": "OK",
+            "price": {
+              "currency": "PHP",
+              "net": 6584,
+              "gross": 6584
+            }
+          },
+          {
+            "id": "33!~|a0!~|b260905!~|c260908!~|d6479159!~|enomeal!~|f0!~|gBD!~|hUS!~|ien!~|jUSD!~|k0!~|l38327!~|m6479159!~|nnomeal!~|nOTV!~|o1!~|p0!~|x31070853!~|M16161!~|N0!~|Ofalse!~|PPHP!~|Q!~|R0!~|S!~|T!~|z1#2423006000310!~|A2423006000310!~|B2423006000310!~|C30|30!~|EDeluxe Double room with sea view (twin beds) (bed type is subject to availability)!~|FDeluxe Double room with sea view (twin beds) (bed type is subject to availability)!~|G1!~|Hcurrency!~|IPHP!~|HoptPrice!~|I16161.00!~|Hcomission!~|I0.00!~|HlanguageAvailCode!~|Ien!~|Hresidency!~|IUS!~|HdailyPrices!~|ITrue!~|HnewRoomCodes!~|Itrue!~|His_package!~|Ifalse!~|HAvail_Hash!~|Isr-019fb760-5905-7589-b60a-24a072bd03e6!~|HNoReembolsable!~|ITrue!~|Htgx_price!~|I16161!~|HDB!~|I3|1785487973|OTV|38327|6479159|20260905|3|361|US|BD|USD|16161!~|tOK!~|uSith!~|v0!~|w!~|yNON_REFUNDABLE!~|qHOTEL!~|q1!~|y!~|",
+            "hotelCode": "6479159",
+            "boardCode": "nomeal",
+            "paymentType": "MERCHANT",
+            "status": "OK",
+            "price": {
+              "currency": "PHP",
+              "net": 16161,
+              "gross": 16161
+            }
+          },
+          {
+            "id": "33!~|a0!~|b260905!~|c260908!~|d8482355!~|enomeal!~|f0!~|gBD!~|hUS!~|ien!~|jUSD!~|k0!~|l38327!~|m8482355!~|nnomeal!~|nOTV!~|o1!~|p1!~|x31070853!~|M7011!~|N0!~|Ofalse!~|PPHP!~|Q!~|R0!~|S!~|T!~|z1#242300600000!~|A242300600000!~|B242300600000!~|C30|30!~|EDeluxe Double room (twin beds) (bed type is subject to availability)!~|FDeluxe Double room (twin beds) (bed type is subject to availability)!~|G1!~|U2,7011,1787990220!~|Hcurrency!~|IPHP!~|HoptPrice!~|I7011.00!~|Hcomission!~|I0.00!~|HlanguageAvailCode!~|Ien!~|Hresidency!~|IUS!~|HdailyPrices!~|ITrue!~|HnewRoomCodes!~|Itrue!~|His_package!~|Ifalse!~|HAvail_Hash!~|Isr-019fb760-4edb-71c3-b8a0-98a81dd2f605!~|HNoReembolsable!~|IFalse!~|Htgx_price!~|I7011!~|HDB!~|I3|1785487973|OTV|38327|8482355|20260905|3|361|US|BD|USD|7011!~|tOK!~|uSith!~|v0!~|w!~|y!~|qHOTEL!~|q1!~|y!~|",
+            "hotelCode": "8482355",
+            "boardCode": "nomeal",
+            "paymentType": "MERCHANT",
+            "status": "OK",
+            "price": {
+              "currency": "PHP",
+              "net": 7011,
+              "gross": 7011
+            }
+          },
+          {
+            "id": "33!~|a0!~|b260905!~|c260908!~|d7802779!~|enomeal!~|f0!~|gBD!~|hUS!~|ien!~|jUSD!~|k0!~|l38327!~|m7802779!~|nnomeal!~|nOTV!~|o1!~|p1!~|x31070853!~|M21390!~|N0!~|Ofalse!~|PPHP!~|Q!~|R0!~|S!~|T!~|z1#232300600000!~|A232300600000!~|B232300600000!~|C30|30!~|EDeluxe Double room (full double bed)!~|FDeluxe Double room (full double bed)!~|G1!~|U2,10048,1787929200|2,21390,1788480000!~|Hcurrency!~|IPHP!~|HoptPrice!~|I21390.00!~|Hcomission!~|I0.00!~|HlanguageAvailCode!~|Ien!~|Hresidency!~|IUS!~|HdailyPrices!~|ITrue!~|HnewRoomCodes!~|Itrue!~|His_package!~|Ifalse!~|HAvail_Hash!~|Isr-019fb760-58f1-7207-950e-69d2b9fc9858!~|HNoReembolsable!~|IFalse!~|Htgx_price!~|I21390!~|HDB!~|I3|1785487973|OTV|38327|7802779|20260905|3|361|US|BD|USD|21390!~|tOK!~|uSith!~|v0!~|w!~|y!~|qHOTEL!~|q1!~|y!~|",
+            "hotelCode": "7802779",
+            "boardCode": "nomeal",
+            "paymentType": "MERCHANT",
+            "status": "OK",
+            "price": {
+              "currency": "PHP",
+              "net": 21390,
+              "gross": 21390
+            }
+          },
+          {
+            "id": "33!~|a0!~|b260905!~|c260908!~|d8890531!~|enomeal!~|f0!~|gMY!~|hUS!~|ien!~|jUSD!~|k0!~|l38327!~|m8890531!~|nnomeal!~|nOTV!~|o1!~|p1!~|x31070853!~|M28965!~|N0!~|Ofalse!~|PPHP!~|Q!~|R0!~|S!~|T!~|z1#232301200000!~|A232301200000!~|B232301200000!~|C30|30!~|EStandard Double Family room (full double bed) (bed type is subject to availability)!~|FStandard Double Family room (full double bed) (bed type is subject to availability)!~|G1!~|U2,28965,1788019200!~|Hcurrency!~|IPHP!~|HoptPrice!~|I28965.00!~|Hcomission!~|I0.00!~|HlanguageAvailCode!~|Ien!~|Hresidency!~|IUS!~|HdailyPrices!~|ITrue!~|HnewRoomCodes!~|Itrue!~|His_package!~|Ifalse!~|HAvail_Hash!~|Isr-019fb760-4edb-7b34-8e95-ff8ff269d818!~|HNoReembolsable!~|IFalse!~|Htgx_price!~|I28965!~|HDB!~|I3|1785487972|OTV|38327|8890531|20260905|3|361|US|MY|USD|28965!~|tOK!~|uSith!~|v0!~|w!~|y!~|qHOTEL!~|q1!~|y!~|",
+            "hotelCode": "8890531",
+            "boardCode": "nomeal",
+            "paymentType": "MERCHANT",
+            "status": "OK",
+            "price": {
+              "currency": "PHP",
+              "net": 28965,
+              "gross": 28965
+            }
+          },
+          {
+            "id": "33!~|a0!~|b260905!~|c260908!~|d10669879!~|enomeal!~|f0!~|gBD!~|hUS!~|ien!~|jUSD!~|k0!~|l38327!~|m10669879!~|nnomeal!~|nOTV!~|o1!~|p0!~|x31070853!~|M638103!~|N0!~|Ofalse!~|PPHP!~|Q!~|R0!~|S!~|T!~|z1#200300200000!~|A200300200000!~|B200300200000!~|C30|30!~|EStandard room!~|FStandard room!~|G1!~|Hcurrency!~|IPHP!~|HoptPrice!~|I638103.00!~|Hcomission!~|I0.00!~|HlanguageAvailCode!~|Ien!~|Hresidency!~|IUS!~|HdailyPrices!~|ITrue!~|HnewRoomCodes!~|Itrue!~|His_package!~|Ifalse!~|HAvail_Hash!~|Isr-019fb760-45a0-7fb1-b071-e7f330c838f8!~|HNoReembolsable!~|ITrue!~|Htgx_price!~|I638103!~|HDB!~|I3|1785487973|OTV|38327|10669879|20260905|3|361|US|BD|USD|638103!~|tOK!~|uSith!~|v0!~|w!~|yNON_REFUNDABLE!~|qHOTEL!~|q1!~|y!~|",
+            "hotelCode": "10669879",
+            "boardCode": "nomeal",
+            "paymentType": "MERCHANT",
+            "status": "OK",
+            "price": {
+              "currency": "PHP",
+              "net": 638103,
+              "gross": 638103
+            }
+          },
+          {
+            "id": "33!~|a0!~|b260905!~|c260908!~|d8493766!~|enomeal!~|f0!~|gBD!~|hUS!~|ien!~|jUSD!~|k0!~|l38327!~|m8493766!~|nnomeal!~|nOTV!~|o1!~|p1!~|x31070853!~|M5124!~|N0!~|Ofalse!~|PPHP!~|Q!~|R0!~|S!~|T!~|z1#200300200000!~|A200300200000!~|B200300200000!~|C30|30!~|EStandard room!~|FStandard room!~|G1!~|U2,5124,1788278220!~|Hcurrency!~|IPHP!~|HoptPrice!~|I5124.00!~|Hcomission!~|I0.00!~|HlanguageAvailCode!~|Ien!~|Hresidency!~|IUS!~|HdailyPrices!~|ITrue!~|HnewRoomCodes!~|Itrue!~|His_package!~|Ifalse!~|HAvail_Hash!~|Isr-019fb760-58f3-72a3-a950-c7a9daaee262!~|HNoReembolsable!~|IFalse!~|Htgx_price!~|I5124!~|HDB!~|I3|1785487973|OTV|38327|8493766|20260905|3|361|US|BD|USD|5124!~|tOK!~|uSith!~|v0!~|w!~|y!~|qHOTEL!~|q1!~|y!~|",
+            "hotelCode": "8493766",
+            "boardCode": "nomeal",
+            "paymentType": "MERCHANT",
+            "status": "OK",
+            "price": {
+              "currency": "PHP",
+              "net": 5124,
+              "gross": 5124
+            }
+          },
+          {
+            "id": "33!~|a0!~|b260905!~|c260908!~|d6835849!~|enomeal!~|f0!~|gBD!~|hUS!~|ien!~|jUSD!~|k0!~|l38327!~|m6835849!~|nnomeal!~|nOTV!~|o1!~|p1!~|x31070853!~|M7789!~|N0!~|Ofalse!~|PPHP!~|Q!~|R0!~|S!~|T!~|z1#242300200000!~|A242300200000!~|B242300200000!~|C30|30!~|EStandard Double room (twin beds) (bed type is subject to availability)!~|FStandard Double room (twin beds) (bed type is subject to availability)!~|G1!~|U2,7789,1787842620!~|Hcurrency!~|IPHP!~|HoptPrice!~|I7789.00!~|Hcomission!~|I0.00!~|HlanguageAvailCode!~|Ien!~|Hresidency!~|IUS!~|HdailyPrices!~|ITrue!~|HnewRoomCodes!~|Itrue!~|His_package!~|Ifalse!~|HAvail_Hash!~|Isr-019fb760-58f0-71e2-bf5c-1e0fd75c45ce!~|HNoReembolsable!~|IFalse!~|Htgx_price!~|I7789!~|HDB!~|I3|1785487973|OTV|38327|6835849|20260905|3|361|US|BD|USD|7789!~|tOK!~|uSith!~|v0!~|w!~|y!~|qHOTEL!~|q1!~|y!~|",
+            "hotelCode": "6835849",
+            "boardCode": "nomeal",
+            "paymentType": "MERCHANT",
+            "status": "OK",
+            "price": {
+              "currency": "PHP",
+              "net": 7789,
+              "gross": 7789
+            }
+          },
+          {
+            "id": "33!~|a0!~|b260905!~|c260908!~|d6480119!~|enomeal!~|f0!~|gBD!~|hUS!~|ien!~|jUSD!~|k0!~|l38327!~|m6480119!~|nnomeal!~|nOTV!~|o1!~|p1!~|x31070853!~|M17063!~|N0!~|Ofalse!~|PPHP!~|Q!~|R0!~|S!~|T!~|z1#242300200000!~|A242300200000!~|B242300200000!~|C30|30!~|EStandard Double room (twin beds) (bed type is subject to availability)!~|FStandard Double room (twin beds) (bed type is subject to availability)!~|G1!~|U2,6494,1788192000|2,17063,1788559200!~|Hcurrency!~|IPHP!~|HoptPrice!~|I17063.00!~|Hcomission!~|I0.00!~|HlanguageAvailCode!~|Ien!~|Hresidency!~|IUS!~|HdailyPrices!~|ITrue!~|HnewRoomCodes!~|Itrue!~|His_package!~|Ifalse!~|HAvail_Hash!~|Isr-019fb760-58f7-7338-b293-f71eac529c3f!~|HNoReembolsable!~|IFalse!~|Htgx_price!~|I17063!~|HDB!~|I3|1785487973|OTV|38327|6480119|20260905|3|361|US|BD|USD|17063!~|tOK!~|uSith!~|v0!~|w!~|y!~|qHOTEL!~|q1!~|y!~|",
+            "hotelCode": "6480119",
+            "boardCode": "nomeal",
+            "paymentType": "MERCHANT",
+            "status": "OK",
+            "price": {
+              "currency": "PHP",
+              "net": 17063,
+              "gross": 17063
+            }
+          },
+          {
+            "id": "33!~|a0!~|b260905!~|c260908!~|d13402927!~|enomeal!~|f0!~|gBD!~|hUS!~|ien!~|jUSD!~|k0!~|l38327!~|m13402927!~|nnomeal!~|nOTV!~|o1!~|p1!~|x31070853!~|M331862!~|N0!~|Ofalse!~|PPHP!~|Q!~|R0!~|S!~|T!~|z1#200300202000!~|A200300202000!~|B200300202000!~|C30|30!~|E2 Bedrooms Standard room!~|F2 Bedrooms Standard room!~|G1!~|U2,331862,1787932800!~|Hcurrency!~|IPHP!~|HoptPrice!~|I331862.00!~|Hcomission!~|I0.00!~|HlanguageAvailCode!~|Ien!~|Hresidency!~|IUS!~|HdailyPrices!~|ITrue!~|HnewRoomCodes!~|Itrue!~|His_package!~|Ifalse!~|HAvail_Hash!~|Isr-019fb760-41bb-7779-a296-5369920b19d6!~|HNoReembolsable!~|IFalse!~|Htgx_price!~|I331862!~|HDB!~|I3|1785487973|OTV|38327|13402927|20260905|3|361|US|BD|USD|331862!~|tOK!~|uSith!~|v0!~|w!~|y!~|qHOTEL!~|q1!~|y!~|",
+            "hotelCode": "13402927",
+            "boardCode": "nomeal",
+            "paymentType": "MERCHANT",
+            "status": "OK",
+            "price": {
+              "currency": "PHP",
+              "net": 331862,
+              "gross": 331862
+            }
+          },
+          {
+            "id": "33!~|a0!~|b260905!~|c260908!~|d9099058!~|enomeal!~|f0!~|gMO!~|hUS!~|ien!~|jUSD!~|k0!~|l38327!~|m9099058!~|nnomeal!~|nOTV!~|o1!~|p1!~|x31070853!~|M8101!~|N0!~|Ofalse!~|PPHP!~|Q!~|R0!~|S!~|T!~|z1#232300200000!~|A232300200000!~|B232300200000!~|C30|30!~|EStandard Double room (full double bed) (bed type is subject to availability)!~|FStandard Double room (full double bed) (bed type is subject to availability)!~|G1!~|U2,8101,1787846400!~|Hcurrency!~|IPHP!~|HoptPrice!~|I8101.00!~|Hcomission!~|I0.00!~|HlanguageAvailCode!~|Ien!~|Hresidency!~|IUS!~|HdailyPrices!~|ITrue!~|HnewRoomCodes!~|Itrue!~|His_package!~|Ifalse!~|HAvail_Hash!~|Isr-019fb760-4f4d-7d2f-90a2-260d692d7470!~|HNoReembolsable!~|IFalse!~|Htgx_price!~|I8101!~|HDB!~|I3|1785487970|OTV|38327|9099058|20260905|3|361|US|MO|USD|8101!~|tOK!~|uSith!~|v0!~|w!~|y!~|qHOTEL!~|q1!~|y!~|",
+            "hotelCode": "9099058",
+            "boardCode": "nomeal",
+            "paymentType": "MERCHANT",
+            "status": "OK",
+            "price": {
+              "currency": "PHP",
+              "net": 8101,
+              "gross": 8101
+            }
+          },
+          {
+            "id": "33!~|a0!~|b260905!~|c260908!~|d11350674!~|enomeal!~|f0!~|gBD!~|hUS!~|ien!~|jUSD!~|k0!~|l38327!~|m11350674!~|nnomeal!~|nOTV!~|o1!~|p1!~|x31070853!~|M11840!~|N0!~|Ofalse!~|PPHP!~|Q!~|R0!~|S!~|T!~|z1#232300200000!~|A232300200000!~|B232300200000!~|C30|30!~|EStandard Double room (full double bed) (bed type is subject to availability, bridal room)!~|FStandard Double room (full double bed) (bed type is subject to availability, bridal room)!~|G1!~|U2,3493,1787875200|2,11840,1788566400!~|Hcurrency!~|IPHP!~|HoptPrice!~|I11840.00!~|Hcomission!~|I0.00!~|HlanguageAvailCode!~|Ien!~|Hresidency!~|IUS!~|HdailyPrices!~|ITrue!~|HnewRoomCodes!~|Itrue!~|His_package!~|Ifalse!~|HAvail_Hash!~|Isr-019fb760-4eda-7e53-820a-abf215e44ee0!~|HNoReembolsable!~|IFalse!~|Htgx_price!~|I11840!~|HDB!~|I3|1785487973|OTV|38327|11350674|20260905|3|361|US|BD|USD|11840!~|tOK!~|uSith!~|v0!~|w!~|y!~|qHOTEL!~|q1!~|y!~|",
+            "hotelCode": "11350674",
+            "boardCode": "nomeal",
+            "paymentType": "MERCHANT",
+            "status": "OK",
+            "price": {
+              "currency": "PHP",
+              "net": 11840,
+              "gross": 11840
+            }
+          },
+          {
+            "id": "33!~|a0!~|b260905!~|c260908!~|d10516842!~|enomeal!~|f0!~|gBD!~|hUS!~|ien!~|jUSD!~|k0!~|l38327!~|m10516842!~|nnomeal!~|nOTV!~|o1!~|p1!~|x31070853!~|M51548!~|N0!~|Ofalse!~|PPHP!~|Q!~|R0!~|S!~|T!~|z1#232300200000!~|A232300200000!~|B232300200000!~|C30|30!~|EStandard Double room (full double bed) (bed type is subject to availability)!~|FStandard Double room (full double bed) (bed type is subject to availability)!~|G1!~|U2,51548,1787932620!~|Hcurrency!~|IPHP!~|HoptPrice!~|I51548.00!~|Hcomission!~|I0.00!~|HlanguageAvailCode!~|Ien!~|Hresidency!~|IUS!~|HdailyPrices!~|ITrue!~|HnewRoomCodes!~|Itrue!~|His_package!~|Ifalse!~|HAvail_Hash!~|Isr-019fb760-58f1-7fb4-bc48-eaaaebaf8108!~|HNoReembolsable!~|IFalse!~|Htgx_price!~|I51548!~|HDB!~|I3|1785487973|OTV|38327|10516842|20260905|3|361|US|BD|USD|51548!~|tOK!~|uSith!~|v0!~|w!~|y!~|qHOTEL!~|q1!~|y!~|",
+            "hotelCode": "10516842",
+            "boardCode": "nomeal",
+            "paymentType": "MERCHANT",
+            "status": "OK",
+            "price": {
+              "currency": "PHP",
+              "net": 51548,
+              "gross": 51548
+            }
+          },
+          {
+            "id": "33!~|a0!~|b260905!~|c260908!~|d8773561!~|enomeal!~|f0!~|gMO!~|hUS!~|ien!~|jUSD!~|k0!~|l38327!~|m8773561!~|nnomeal!~|nOTV!~|o1!~|p1!~|x31070853!~|M7006!~|N0!~|Ofalse!~|PPHP!~|Q!~|R0!~|S!~|T!~|z1#242301500000!~|A242301500000!~|B242301500000!~|C30|30!~|ESuperior Double Family room (twin beds) (bed type is subject to availability)!~|FSuperior Double Family room (twin beds) (bed type is subject to availability)!~|G1!~|U2,7006,1788274620!~|Hcurrency!~|IPHP!~|HoptPrice!~|I7006.00!~|Hcomission!~|I0.00!~|HlanguageAvailCode!~|Ien!~|Hresidency!~|IUS!~|HdailyPrices!~|ITrue!~|HnewRoomCodes!~|Itrue!~|His_package!~|Ifalse!~|HAvail_Hash!~|Isr-019fb760-4f4d-7d41-8c9f-69d431beea59!~|HNoReembolsable!~|IFalse!~|Htgx_price!~|I7006!~|HDB!~|I3|1785487970|OTV|38327|8773561|20260905|3|361|US|MO|USD|7006!~|tOK!~|uSith!~|v0!~|w!~|y!~|qHOTEL!~|q1!~|y!~|",
+            "hotelCode": "8773561",
+            "boardCode": "nomeal",
+            "paymentType": "MERCHANT",
+            "status": "OK",
+            "price": {
+              "currency": "PHP",
+              "net": 7006,
+              "gross": 7006
+            }
+          },
+          {
+            "id": "33!~|a0!~|b260905!~|c260908!~|d10516727!~|enomeal!~|f0!~|gBD!~|hUS!~|ien!~|jUSD!~|k0!~|l38327!~|m10516727!~|nnomeal!~|nOTV!~|o1!~|p0!~|x31070853!~|M14317!~|N0!~|Ofalse!~|PPHP!~|Q!~|R0!~|S!~|T!~|z1#232700000000!~|A232700000000!~|B232700000000!~|C30|30!~|EDouble Studio (full double bed)!~|FDouble Studio (full double bed)!~|G1!~|Hcurrency!~|IPHP!~|HoptPrice!~|I14317.00!~|Hcomission!~|I0.00!~|HlanguageAvailCode!~|Ien!~|Hresidency!~|IUS!~|HdailyPrices!~|ITrue!~|HnewRoomCodes!~|Itrue!~|His_package!~|Ifalse!~|HAvail_Hash!~|Isr-019fb760-58f1-71e7-9e3e-57f0ead2ee44!~|HNoReembolsable!~|ITrue!~|Htgx_price!~|I14317!~|HDB!~|I3|1785487973|OTV|38327|10516727|20260905|3|361|US|BD|USD|14317!~|tOK!~|uSith!~|v0!~|w!~|yNON_REFUNDABLE!~|qHOTEL!~|q1!~|y!~|",
+            "hotelCode": "10516727",
+            "boardCode": "nomeal",
+            "paymentType": "MERCHANT",
+            "status": "OK",
+            "price": {
+              "currency": "PHP",
+              "net": 14317,
+              "gross": 14317
+            }
+          },
+          {
+            "id": "33!~|a0!~|b260905!~|c260908!~|d9891000!~|enomeal!~|f0!~|gMY!~|hUS!~|ien!~|jUSD!~|k0!~|l38327!~|m9891000!~|nnomeal!~|nOTV!~|o1!~|p0!~|x31070853!~|M17248!~|N0!~|Ofalse!~|PPHP!~|Q!~|R0!~|S!~|T!~|z1#242300200000!~|A242300200000!~|B242300200000!~|C30|30!~|EStandard Double room (twin beds)!~|FStandard Double room (twin beds)!~|G1!~|Hcurrency!~|IPHP!~|HoptPrice!~|I17248.00!~|Hcomission!~|I0.00!~|HlanguageAvailCode!~|Ien!~|Hresidency!~|IUS!~|HdailyPrices!~|ITrue!~|HnewRoomCodes!~|Itrue!~|His_package!~|Ifalse!~|HAvail_Hash!~|Isr-019fb760-5914-7604-8faf-f043252604b5!~|HNoReembolsable!~|ITrue!~|Htgx_price!~|I17248!~|HDB!~|I3|1785487972|OTV|38327|9891000|20260905|3|361|US|MY|USD|17248!~|tOK!~|uSith!~|v0!~|w!~|yNON_REFUNDABLE!~|qHOTEL!~|q1!~|y!~|",
+            "hotelCode": "9891000",
+            "boardCode": "nomeal",
+            "paymentType": "MERCHANT",
+            "status": "OK",
+            "price": {
+              "currency": "PHP",
+              "net": 17248,
+              "gross": 17248
+            }
+          },
+          {
+            "id": "33!~|a0!~|b260905!~|c260908!~|d8575077!~|enomeal!~|f0!~|gMO!~|hUS!~|ien!~|jUSD!~|k0!~|l38327!~|m8575077!~|nnomeal!~|nOTV!~|o1!~|p1!~|x31070853!~|M33146!~|N0!~|Ofalse!~|PPHP!~|Q!~|R0!~|S!~|T!~|z1#242301200000!~|A242301200000!~|B242301200000!~|C30|30!~|EStandard Double Family room (twin beds)!~|FStandard Double Family room (twin beds)!~|G1!~|U2,12866,1788102000|2,33146,1788534000!~|Hcurrency!~|IPHP!~|HoptPrice!~|I33146.00!~|Hcomission!~|I0.00!~|HlanguageAvailCode!~|Ien!~|Hresidency!~|IUS!~|HdailyPrices!~|ITrue!~|HnewRoomCodes!~|Itrue!~|His_package!~|Ifalse!~|HAvail_Hash!~|Isr-019fb760-4b40-78d4-8a29-081405f69c9f!~|HNoReembolsable!~|IFalse!~|Htgx_price!~|I33146!~|HDB!~|I3|1785487970|OTV|38327|8575077|20260905|3|361|US|MO|USD|33146!~|tOK!~|uSith!~|v0!~|w!~|y!~|qHOTEL!~|q1!~|y!~|",
+            "hotelCode": "8575077",
+            "boardCode": "nomeal",
+            "paymentType": "MERCHANT",
+            "status": "OK",
+            "price": {
+              "currency": "PHP",
+              "net": 33146,
+              "gross": 33146
+            }
+          },
+          {
+            "id": "33!~|a0!~|b260905!~|c260908!~|d9931329!~|enomeal!~|f0!~|gMY!~|hUS!~|ien!~|jUSD!~|k0!~|l38327!~|m9931329!~|nnomeal!~|nOTV!~|o1!~|p1!~|x31070853!~|M7747!~|N0!~|Ofalse!~|PPHP!~|Q!~|R0!~|S!~|T!~|z1#232300600000!~|A232300600000!~|B232300600000!~|C30|30!~|EDeluxe Double room (full double bed) (bed type is subject to availability)!~|FDeluxe Double room (full double bed) (bed type is subject to availability)!~|G1!~|U2,7747,1787842800!~|Hcurrency!~|IPHP!~|HoptPrice!~|I7747.00!~|Hcomission!~|I0.00!~|HlanguageAvailCode!~|Ien!~|Hresidency!~|IUS!~|HdailyPrices!~|ITrue!~|HnewRoomCodes!~|Itrue!~|His_package!~|Ifalse!~|HAvail_Hash!~|Isr-019fb760-4edc-7b35-adcc-0512b8c9c706!~|HNoReembolsable!~|IFalse!~|Htgx_price!~|I7747!~|HDB!~|I3|1785487972|OTV|38327|9931329|20260905|3|361|US|MY|USD|7747!~|tOK!~|uSith!~|v0!~|w!~|y!~|qHOTEL!~|q1!~|y!~|",
+            "hotelCode": "9931329",
+            "boardCode": "nomeal",
+            "paymentType": "MERCHANT",
+            "status": "OK",
+            "price": {
+              "currency": "PHP",
+              "net": 7747,
+              "gross": 7747
+            }
+          },
+          {
+            "id": "33!~|a0!~|b260905!~|c260908!~|d6509128!~|enomeal!~|f0!~|gBD!~|hUS!~|ien!~|jUSD!~|k0!~|l38327!~|m6509128!~|nnomeal!~|nOTV!~|o1!~|p1!~|x31070853!~|M8720!~|N0!~|Ofalse!~|PPHP!~|Q!~|R0!~|S!~|T!~|z1#242300200000!~|A242300200000!~|B242300200000!~|C30|30!~|EStandard Double room (twin beds) (bed type is subject to availability)!~|FStandard Double room (twin beds) (bed type is subject to availability)!~|G1!~|U2,8720,1787846400!~|Hcurrency!~|IPHP!~|HoptPrice!~|I8720.00!~|Hcomission!~|I0.00!~|HlanguageAvailCode!~|Ien!~|Hresidency!~|IUS!~|HdailyPrices!~|ITrue!~|HnewRoomCodes!~|Itrue!~|His_package!~|Ifalse!~|HAvail_Hash!~|Isr-019fb760-58ee-7189-b71e-1c04b88cbf63!~|HNoReembolsable!~|IFalse!~|Htgx_price!~|I8720!~|HDB!~|I3|1785487973|OTV|38327|6509128|20260905|3|361|US|BD|USD|8720!~|tOK!~|uSith!~|v0!~|w!~|y!~|qHOTEL!~|q1!~|y!~|",
+            "hotelCode": "6509128",
+            "boardCode": "nomeal",
+            "paymentType": "MERCHANT",
+            "status": "OK",
+            "price": {
+              "currency": "PHP",
+              "net": 8720,
+              "gross": 8720
+            }
+          },
+          {
+            "id": "33!~|a0!~|b260905!~|c260908!~|d10516845!~|enomeal!~|f0!~|gBD!~|hUS!~|ien!~|jUSD!~|k0!~|l38327!~|m10516845!~|nnomeal!~|nOTV!~|o1!~|p1!~|x31070853!~|M9299!~|N0!~|Ofalse!~|PPHP!~|Q!~|R0!~|S!~|T!~|z1#200301600000!~|A200301600000!~|B200301600000!~|C30|30!~|EDeluxe Family room!~|FDeluxe Family room!~|G1!~|U2,9299,1788274620!~|Hcurrency!~|IPHP!~|HoptPrice!~|I9299.00!~|Hcomission!~|I0.00!~|HlanguageAvailCode!~|Ien!~|Hresidency!~|IUS!~|HdailyPrices!~|ITrue!~|HnewRoomCodes!~|Itrue!~|His_package!~|Ifalse!~|HAvail_Hash!~|Isr-019fb760-58ef-7fa3-a77f-b12fcb0d16ac!~|HNoReembolsable!~|IFalse!~|Htgx_price!~|I9299!~|HDB!~|I3|1785487973|OTV|38327|10516845|20260905|3|361|US|BD|USD|9299!~|tOK!~|uSith!~|v0!~|w!~|y!~|qHOTEL!~|q1!~|y!~|",
+            "hotelCode": "10516845",
+            "boardCode": "nomeal",
+            "paymentType": "MERCHANT",
+            "status": "OK",
+            "price": {
+              "currency": "PHP",
+              "net": 9299,
+              "gross": 9299
+            }
+          },
+          {
+            "id": "33!~|a0!~|b260905!~|c260908!~|d8475905!~|enomeal!~|f0!~|gBD!~|hUS!~|ien!~|jUSD!~|k0!~|l38327!~|m8475905!~|nnomeal!~|nOTV!~|o1!~|p1!~|x31070853!~|M10115!~|N0!~|Ofalse!~|PPHP!~|Q!~|R0!~|S!~|T!~|z1#232300200000!~|A232300200000!~|B232300200000!~|C30|30!~|EStandard Double room (full double bed) (bed type is subject to availability)!~|FStandard Double room (full double bed) (bed type is subject to availability)!~|G1!~|U2,10115,1788278220!~|Hcurrency!~|IPHP!~|HoptPrice!~|I10115.00!~|Hcomission!~|I0.00!~|HlanguageAvailCode!~|Ien!~|Hresidency!~|IUS!~|HdailyPrices!~|ITrue!~|HnewRoomCodes!~|Itrue!~|His_package!~|Ifalse!~|HAvail_Hash!~|Isr-019fb760-58f6-7ff8-b34a-dd46c24dd8f8!~|HNoReembolsable!~|IFalse!~|Htgx_price!~|I10115!~|HDB!~|I3|1785487973|OTV|38327|8475905|20260905|3|361|US|BD|USD|10115!~|tOK!~|uSith!~|v0!~|w!~|y!~|qHOTEL!~|q1!~|y!~|",
+            "hotelCode": "8475905",
+            "boardCode": "nomeal",
+            "paymentType": "MERCHANT",
+            "status": "OK",
+            "price": {
+              "currency": "PHP",
+              "net": 10115,
+              "gross": 10115
+            }
+          },
+          {
+            "id": "33!~|a0!~|b260905!~|c260908!~|d6349201!~|enomeal!~|f0!~|gBD!~|hUS!~|ien!~|jUSD!~|k0!~|l38327!~|m6349201!~|nnomeal!~|nOTV!~|o1!~|p1!~|x31070853!~|M14861!~|N0!~|Ofalse!~|PPHP!~|Q!~|R0!~|S!~|T!~|z1#242300600000!~|A242300600000!~|B242300600000!~|C30|30!~|EDeluxe Double room (twin beds) (bed type is subject to availability)!~|FDeluxe Double room (twin beds) (bed type is subject to availability)!~|G1!~|U2,14861,1788249420!~|Hcurrency!~|IPHP!~|HoptPrice!~|I14861.00!~|Hcomission!~|I0.00!~|HlanguageAvailCode!~|Ien!~|Hresidency!~|IUS!~|HdailyPrices!~|ITrue!~|HnewRoomCodes!~|Itrue!~|His_package!~|Ifalse!~|HAvail_Hash!~|Isr-019fb760-58ee-7197-a246-633d7ceef7a4!~|HNoReembolsable!~|IFalse!~|Htgx_price!~|I14861!~|HDB!~|I3|1785487973|OTV|38327|6349201|20260905|3|361|US|BD|USD|14861!~|tOK!~|uSith!~|v0!~|w!~|y!~|qHOTEL!~|q1!~|y!~|",
+            "hotelCode": "6349201",
+            "boardCode": "nomeal",
+            "paymentType": "MERCHANT",
+            "status": "OK",
+            "price": {
+              "currency": "PHP",
+              "net": 14861,
+              "gross": 14861
+            }
+          },
+          {
+            "id": "33!~|a0!~|b260905!~|c260908!~|d8139075!~|enomeal!~|f0!~|gBD!~|hUS!~|ien!~|jUSD!~|k0!~|l38327!~|m8139075!~|nnomeal!~|nOTV!~|o1!~|p1!~|x31070853!~|M16448!~|N0!~|Ofalse!~|PPHP!~|Q!~|R0!~|S!~|T!~|z1#2003001902000!~|A2003001902000!~|B2003001902000!~|C30|30!~|E2 Bedrooms Family room!~|F2 Bedrooms Family room!~|G1!~|U2,16448,1788231420!~|Hcurrency!~|IPHP!~|HoptPrice!~|I16448.00!~|Hcomission!~|I0.00!~|HlanguageAvailCode!~|Ien!~|Hresidency!~|IUS!~|HdailyPrices!~|ITrue!~|HnewRoomCodes!~|Itrue!~|His_package!~|Ifalse!~|HAvail_Hash!~|Isr-019fb760-58f1-7fae-b170-2808147d065f!~|HNoReembolsable!~|IFalse!~|Htgx_price!~|I16448!~|HDB!~|I3|1785487973|OTV|38327|8139075|20260905|3|361|US|BD|USD|16448!~|tOK!~|uSith!~|v0!~|w!~|y!~|qHOTEL!~|q1!~|y!~|",
+            "hotelCode": "8139075",
+            "boardCode": "nomeal",
+            "paymentType": "MERCHANT",
+            "status": "OK",
+            "price": {
+              "currency": "PHP",
+              "net": 16448,
+              "gross": 16448
+            }
+          },
+          {
+            "id": "33!~|a0!~|b260905!~|c260908!~|d6817956!~|enomeal!~|f0!~|gBD!~|hUS!~|ien!~|jUSD!~|k0!~|l38327!~|m6817956!~|nnomeal!~|nOTV!~|o1!~|p0!~|x31070853!~|M638103!~|N0!~|Ofalse!~|PPHP!~|Q!~|R0!~|S!~|T!~|z1#200300200000!~|A200300200000!~|B200300200000!~|C30|30!~|EStandard room!~|FStandard room!~|G1!~|Hcurrency!~|IPHP!~|HoptPrice!~|I638103.00!~|Hcomission!~|I0.00!~|HlanguageAvailCode!~|Ien!~|Hresidency!~|IUS!~|HdailyPrices!~|ITrue!~|HnewRoomCodes!~|Itrue!~|His_package!~|Ifalse!~|HAvail_Hash!~|Isr-019fb760-58ee-718f-93c5-fae1f5e2355f!~|HNoReembolsable!~|ITrue!~|Htgx_price!~|I638103!~|HDB!~|I3|1785487973|OTV|38327|6817956|20260905|3|361|US|BD|USD|638103!~|tOK!~|uSith!~|v0!~|w!~|yNON_REFUNDABLE!~|qHOTEL!~|q1!~|y!~|",
+            "hotelCode": "6817956",
+            "boardCode": "nomeal",
+            "paymentType": "MERCHANT",
+            "status": "OK",
+            "price": {
+              "currency": "PHP",
+              "net": 638103,
+              "gross": 638103
+            }
+          },
+          {
+            "id": "33!~|a0!~|b260905!~|c260908!~|d10109001!~|enomeal!~|f0!~|gBD!~|hUS!~|ien!~|jUSD!~|k0!~|l38327!~|m10109001!~|nnomeal!~|nOTV!~|o1!~|p1!~|x31070853!~|M4366!~|N0!~|Ofalse!~|PPHP!~|Q!~|R0!~|S!~|T!~|z1#200300200000!~|A200300200000!~|B200300200000!~|C30|30!~|EStandard room!~|FStandard room!~|G1!~|U2,4366,1788533820!~|Hcurrency!~|IPHP!~|HoptPrice!~|I4366.00!~|Hcomission!~|I0.00!~|HlanguageAvailCode!~|Ien!~|Hresidency!~|IUS!~|HdailyPrices!~|ITrue!~|HnewRoomCodes!~|Itrue!~|His_package!~|Ifalse!~|HAvail_Hash!~|Isr-019fb760-58ef-719e-b06d-ed8eb9a64e0e!~|HNoReembolsable!~|IFalse!~|Htgx_price!~|I4366!~|HDB!~|I3|1785487973|OTV|38327|10109001|20260905|3|361|US|BD|USD|4366!~|tOK!~|uSith!~|v0!~|w!~|y!~|qHOTEL!~|q1!~|y!~|",
+            "hotelCode": "10109001",
+            "boardCode": "nomeal",
+            "paymentType": "MERCHANT",
+            "status": "OK",
+            "price": {
+              "currency": "PHP",
+              "net": 4366,
+              "gross": 4366
+            }
+          },
+          {
+            "id": "33!~|a0!~|b260905!~|c260908!~|d10516701!~|enomeal!~|f0!~|gBD!~|hUS!~|ien!~|jUSD!~|k0!~|l38327!~|m10516701!~|nnomeal!~|nOTV!~|o1!~|p1!~|x31070853!~|M6561!~|N0!~|Ofalse!~|PPHP!~|Q!~|R0!~|S!~|T!~|z1#242300600000!~|A242300600000!~|B242300600000!~|C30|30!~|EDeluxe Double room (twin beds)!~|FDeluxe Double room (twin beds)!~|G1!~|U2,6561,1788534001!~|Hcurrency!~|IPHP!~|HoptPrice!~|I6561.00!~|Hcomission!~|I0.00!~|HlanguageAvailCode!~|Ien!~|Hresidency!~|IUS!~|HdailyPrices!~|ITrue!~|HnewRoomCodes!~|Itrue!~|His_package!~|Ifalse!~|HAvail_Hash!~|Isr-019fb760-4eda-7e54-8f40-d7868497ba9d!~|HNoReembolsable!~|IFalse!~|Htgx_price!~|I6561!~|HDB!~|I3|1785487973|OTV|38327|10516701|20260905|3|361|US|BD|USD|6561!~|tOK!~|uSith!~|v0!~|w!~|y!~|qHOTEL!~|q1!~|y!~|",
+            "hotelCode": "10516701",
+            "boardCode": "nomeal",
+            "paymentType": "MERCHANT",
+            "status": "OK",
+            "price": {
+              "currency": "PHP",
+              "net": 6561,
+              "gross": 6561
+            }
+          },
+          {
+            "id": "33!~|a0!~|b260905!~|c260908!~|d10575037!~|enomeal!~|f0!~|gBD!~|hUS!~|ien!~|jUSD!~|k0!~|l38327!~|m10575037!~|nnomeal!~|nOTV!~|o1!~|p1!~|x31070853!~|M7382!~|N0!~|Ofalse!~|PPHP!~|Q!~|R0!~|S!~|T!~|z1#200300200000!~|A200300200000!~|B200300200000!~|C30|30!~|EStandard room!~|FStandard room!~|G1!~|U2,7382,1787929020!~|Hcurrency!~|IPHP!~|HoptPrice!~|I7382.00!~|Hcomission!~|I0.00!~|HlanguageAvailCode!~|Ien!~|Hresidency!~|IUS!~|HdailyPrices!~|ITrue!~|HnewRoomCodes!~|Itrue!~|His_package!~|Ifalse!~|HAvail_Hash!~|Isr-019fb760-447b-7d72-a350-2522a10a0beb!~|HNoReembolsable!~|IFalse!~|Htgx_price!~|I7382!~|HDB!~|I3|1785487973|OTV|38327|10575037|20260905|3|361|US|BD|USD|7382!~|tOK!~|uSith!~|v0!~|w!~|y!~|qHOTEL!~|q1!~|y!~|",
+            "hotelCode": "10575037",
+            "boardCode": "nomeal",
+            "paymentType": "MERCHANT",
+            "status": "OK",
+            "price": {
+              "currency": "PHP",
+              "net": 7382,
+              "gross": 7382
+            }
+          },
+          {
+            "id": "33!~|a0!~|b260905!~|c260908!~|d8508288!~|enomeal!~|f0!~|gBD!~|hUS!~|ien!~|jUSD!~|k0!~|l38327!~|m8508288!~|nnomeal!~|nOTV!~|o1!~|p1!~|x31070853!~|M9135!~|N0!~|Ofalse!~|PPHP!~|Q!~|R0!~|S!~|T!~|z1#232300600000!~|A232300600000!~|B232300600000!~|C30|30!~|EDeluxe Double room (full double bed) (bed type is subject to availability)!~|FDeluxe Double room (full double bed) (bed type is subject to availability)!~|G1!~|U2,9135,1787410620!~|Hcurrency!~|IPHP!~|HoptPrice!~|I9135.00!~|Hcomission!~|I0.00!~|HlanguageAvailCode!~|Ien!~|Hresidency!~|IUS!~|HdailyPrices!~|ITrue!~|HnewRoomCodes!~|Itrue!~|His_package!~|Ifalse!~|HAvail_Hash!~|Isr-019fb760-5906-7067-b714-db66ffe1d09b!~|HNoReembolsable!~|IFalse!~|Htgx_price!~|I9135!~|HDB!~|I3|1785487973|OTV|38327|8508288|20260905|3|361|US|BD|USD|9135!~|tOK!~|uSith!~|v0!~|w!~|y!~|qHOTEL!~|q1!~|y!~|",
+            "hotelCode": "8508288",
+            "boardCode": "nomeal",
+            "paymentType": "MERCHANT",
+            "status": "OK",
+            "price": {
+              "currency": "PHP",
+              "net": 9135,
+              "gross": 9135
+            }
+          },
+          {
+            "id": "33!~|a0!~|b260905!~|c260908!~|d8492793!~|enomeal!~|f0!~|gBD!~|hUS!~|ien!~|jUSD!~|k0!~|l38327!~|m8492793!~|nnomeal!~|nOTV!~|o1!~|p0!~|x31070853!~|M9216!~|N0!~|Ofalse!~|PPHP!~|Q!~|R0!~|S!~|T!~|z1#242301200000!~|A242301200000!~|B242301200000!~|C30|30!~|EStandard Double Family room (twin beds)!~|FStandard Double Family room (twin beds)!~|G1!~|Hcurrency!~|IPHP!~|HoptPrice!~|I9216.00!~|Hcomission!~|I0.00!~|HlanguageAvailCode!~|Ien!~|Hresidency!~|IUS!~|HdailyPrices!~|ITrue!~|HnewRoomCodes!~|Itrue!~|His_package!~|Ifalse!~|HAvail_Hash!~|Isr-019fb760-4eda-7e58-a38f-d3ac82bb12e1!~|HNoReembolsable!~|ITrue!~|Htgx_price!~|I9216!~|HDB!~|I3|1785487973|OTV|38327|8492793|20260905|3|361|US|BD|USD|9216!~|tOK!~|uSith!~|v0!~|w!~|yNON_REFUNDABLE!~|qHOTEL!~|q1!~|y!~|",
+            "hotelCode": "8492793",
+            "boardCode": "nomeal",
+            "paymentType": "MERCHANT",
+            "status": "OK",
+            "price": {
+              "currency": "PHP",
+              "net": 9216,
+              "gross": 9216
+            }
+          },
+          {
+            "id": "33!~|a0!~|b260905!~|c260908!~|d8666470!~|enomeal!~|f0!~|gTH!~|hUS!~|ien!~|jUSD!~|k0!~|l38327!~|m8666470!~|nnomeal!~|nOTV!~|o1!~|p1!~|x31070853!~|M10592!~|N0!~|Ofalse!~|PPHP!~|Q!~|R0!~|S!~|T!~|z1#2323002000220!~|A2323002000220!~|B2323002000220!~|C30|30!~|EStandard Double room with mountain view (full double bed) (bed type is subject to availability)!~|FStandard Double room with mountain view (full double bed) (bed type is subject to availability)!~|G1!~|U2,10592,1787846400!~|Hcurrency!~|IPHP!~|HoptPrice!~|I10592.00!~|Hcomission!~|I0.00!~|HlanguageAvailCode!~|Ien!~|Hresidency!~|IUS!~|HdailyPrices!~|ITrue!~|HnewRoomCodes!~|Itrue!~|His_package!~|Ifalse!~|HAvail_Hash!~|Isr-019fb75a-5eca-7a3f-8cec-ebdea133de72!~|HNoReembolsable!~|IFalse!~|Htgx_price!~|I10592!~|HDB!~|I0|1785487581|OTV|38327|8666470|20260905|3|361|US|TH|USD|10592!~|tOK!~|uSith!~|v0!~|w!~|y!~|qHOTEL!~|q1!~|y!~|",
+            "hotelCode": "8666470",
+            "boardCode": "nomeal",
+            "paymentType": "MERCHANT",
+            "status": "OK",
+            "price": {
+              "currency": "PHP",
+              "net": 10592,
+              "gross": 10592
+            }
+          },
+          {
+            "id": "33!~|a0!~|b260905!~|c260908!~|d9964588!~|enomeal!~|f0!~|gMY!~|hUS!~|ien!~|jUSD!~|k0!~|l38327!~|m9964588!~|nnomeal!~|nOTV!~|o1!~|p1!~|x31070853!~|M10810!~|N0!~|Ofalse!~|PPHP!~|Q!~|R0!~|S!~|T!~|z1#232300200000!~|A232300200000!~|B232300200000!~|C30|30!~|EStandard Double room (full double bed) (queen size bed)!~|FStandard Double room (full double bed) (queen size bed)!~|G1!~|U2,3186,1788361200|2,10810,1788447600!~|Hcurrency!~|IPHP!~|HoptPrice!~|I10810.00!~|Hcomission!~|I0.00!~|HlanguageAvailCode!~|Ien!~|Hresidency!~|IUS!~|HdailyPrices!~|ITrue!~|HnewRoomCodes!~|Itrue!~|His_package!~|Ifalse!~|HAvail_Hash!~|Isr-019fb760-5910-7519-88c8-7a6d6970be20!~|HNoReembolsable!~|IFalse!~|Htgx_price!~|I10810!~|HDB!~|I3|1785487972|OTV|38327|9964588|20260905|3|361|US|MY|USD|10810!~|tOK!~|uSith!~|v0!~|w!~|y!~|qHOTEL!~|q1!~|y!~|",
+            "hotelCode": "9964588",
+            "boardCode": "nomeal",
+            "paymentType": "MERCHANT",
+            "status": "OK",
+            "price": {
+              "currency": "PHP",
+              "net": 10810,
+              "gross": 10810
+            }
+          },
+          {
+            "id": "33!~|a0!~|b260905!~|c260908!~|d8755987!~|enomeal!~|f0!~|gMO!~|hUS!~|ien!~|jUSD!~|k0!~|l38327!~|m8755987!~|nnomeal!~|nOTV!~|o1!~|p1!~|x31070853!~|M12122!~|N0!~|Ofalse!~|PPHP!~|Q!~|R0!~|S!~|T!~|z1#242300200000!~|A242300200000!~|B242300200000!~|C30|30!~|EStandard Double room (twin beds) (bed type is subject to availability)!~|FStandard Double room (twin beds) (bed type is subject to availability)!~|G1!~|U2,12122,1788404220!~|Hcurrency!~|IPHP!~|HoptPrice!~|I12122.00!~|Hcomission!~|I0.00!~|HlanguageAvailCode!~|Ien!~|Hresidency!~|IUS!~|HdailyPrices!~|ITrue!~|HnewRoomCodes!~|Itrue!~|His_package!~|Ifalse!~|HAvail_Hash!~|Isr-019fb760-4f57-7e3c-b7d8-5902c362f021!~|HNoReembolsable!~|IFalse!~|Htgx_price!~|I12122!~|HDB!~|I3|1785487970|OTV|38327|8755987|20260905|3|361|US|MO|USD|12122!~|tOK!~|uSith!~|v0!~|w!~|y!~|qHOTEL!~|q1!~|y!~|",
+            "hotelCode": "8755987",
+            "boardCode": "nomeal",
+            "paymentType": "MERCHANT",
+            "status": "OK",
+            "price": {
+              "currency": "PHP",
+              "net": 12122,
+              "gross": 12122
+            }
+          },
+          {
+            "id": "33!~|a0!~|b260905!~|c260908!~|d8680946!~|enomeal!~|f0!~|gMO!~|hUS!~|ien!~|jUSD!~|k0!~|l38327!~|m8680946!~|nnomeal!~|nOTV!~|o1!~|p1!~|x31070853!~|M12255!~|N0!~|Ofalse!~|PPHP!~|Q!~|R0!~|S!~|T!~|z1#242300200000!~|A242300200000!~|B242300200000!~|C30|30!~|EStandard Double room (twin beds) (bed type is subject to availability)!~|FStandard Double room (twin beds) (bed type is subject to availability)!~|G1!~|U2,12255,1788188220!~|Hcurrency!~|IPHP!~|HoptPrice!~|I12255.00!~|Hcomission!~|I0.00!~|HlanguageAvailCode!~|Ien!~|Hresidency!~|IUS!~|HdailyPrices!~|ITrue!~|HnewRoomCodes!~|Itrue!~|His_package!~|Ifalse!~|HAvail_Hash!~|Isr-019fb760-4f52-7e12-af43-d775cb53a843!~|HNoReembolsable!~|IFalse!~|Htgx_price!~|I12255!~|HDB!~|I3|1785487970|OTV|38327|8680946|20260905|3|361|US|MO|USD|12255!~|tOK!~|uSith!~|v0!~|w!~|y!~|qHOTEL!~|q1!~|y!~|",
+            "hotelCode": "8680946",
+            "boardCode": "nomeal",
+            "paymentType": "MERCHANT",
+            "status": "OK",
+            "price": {
+              "currency": "PHP",
+              "net": 12255,
+              "gross": 12255
+            }
+          },
+          {
+            "id": "33!~|a0!~|b260905!~|c260908!~|d8546346!~|enomeal!~|f0!~|gBD!~|hUS!~|ien!~|jUSD!~|k0!~|l38327!~|m8546346!~|nnomeal!~|nOTV!~|o1!~|p1!~|x31070853!~|M7180!~|N0!~|Ofalse!~|PPHP!~|Q!~|R0!~|S!~|T!~|z1#242300200000!~|A242300200000!~|B242300200000!~|C30|30!~|EStandard Double room (twin beds) (bed type is subject to availability)!~|FStandard Double room (twin beds) (bed type is subject to availability)!~|G1!~|U2,7180,1788361020!~|Hcurrency!~|IPHP!~|HoptPrice!~|I7180.00!~|Hcomission!~|I0.00!~|HlanguageAvailCode!~|Ien!~|Hresidency!~|IUS!~|HdailyPrices!~|ITrue!~|HnewRoomCodes!~|Itrue!~|His_package!~|Ifalse!~|HAvail_Hash!~|Isr-019fb760-58f1-7fd2-b926-7b7332f69e8b!~|HNoReembolsable!~|IFalse!~|Htgx_price!~|I7180!~|HDB!~|I3|1785487973|OTV|38327|8546346|20260905|3|361|US|BD|USD|7180!~|tOK!~|uSith!~|v0!~|w!~|y!~|qHOTEL!~|q1!~|y!~|",
+            "hotelCode": "8546346",
+            "boardCode": "nomeal",
+            "paymentType": "MERCHANT",
+            "status": "OK",
+            "price": {
+              "currency": "PHP",
+              "net": 7180,
+              "gross": 7180
+            }
+          },
+          {
+            "id": "33!~|a0!~|b260905!~|c260908!~|d8399958!~|enomeal!~|f0!~|gBD!~|hUS!~|ien!~|jUSD!~|k0!~|l38327!~|m8399958!~|nnomeal!~|nOTV!~|o1!~|p1!~|x31070853!~|M7882!~|N0!~|Ofalse!~|PPHP!~|Q!~|R0!~|S!~|T!~|z1#200300400000!~|A200300400000!~|B200300400000!~|C30|30!~|EBusiness room!~|FBusiness room!~|G1!~|U2,7882,1788533820!~|Hcurrency!~|IPHP!~|HoptPrice!~|I7882.00!~|Hcomission!~|I0.00!~|HlanguageAvailCode!~|Ien!~|Hresidency!~|IUS!~|HdailyPrices!~|ITrue!~|HnewRoomCodes!~|Itrue!~|His_package!~|Ifalse!~|HAvail_Hash!~|Isr-019fb760-58f2-7fdd-9e1b-33a6b150ff07!~|HNoReembolsable!~|IFalse!~|Htgx_price!~|I7882!~|HDB!~|I3|1785487973|OTV|38327|8399958|20260905|3|361|US|BD|USD|7882!~|tOK!~|uSith!~|v0!~|w!~|y!~|qHOTEL!~|q1!~|y!~|",
+            "hotelCode": "8399958",
+            "boardCode": "nomeal",
+            "paymentType": "MERCHANT",
+            "status": "OK",
+            "price": {
+              "currency": "PHP",
+              "net": 7882,
+              "gross": 7882
+            }
+          },
+          {
+            "id": "33!~|a0!~|b260905!~|c260908!~|d11023948!~|enomeal!~|f0!~|gBD!~|hUS!~|ien!~|jUSD!~|k0!~|l38327!~|m11023948!~|nnomeal!~|nOTV!~|o1!~|p0!~|x31070853!~|M8355!~|N0!~|Ofalse!~|PPHP!~|Q!~|R0!~|S!~|T!~|z1#274301500000!~|A274301500000!~|B274301500000!~|C30|30!~|ESuperior Quadruple Family room (full double bed and twin beds)!~|FSuperior Quadruple Family room (full double bed and twin beds)!~|G1!~|Hcurrency!~|IPHP!~|HoptPrice!~|I8355.00!~|Hcomission!~|I0.00!~|HlanguageAvailCode!~|Ien!~|Hresidency!~|IUS!~|HdailyPrices!~|ITrue!~|HnewRoomCodes!~|Itrue!~|His_package!~|Ifalse!~|HAvail_Hash!~|Isr-019fb760-4f16-7fde-bb63-fb208e2384fb!~|HNoReembolsable!~|ITrue!~|Htgx_price!~|I8355!~|HDB!~|I3|1785487973|OTV|38327|11023948|20260905|3|361|US|BD|USD|8355!~|tOK!~|uSith!~|v0!~|w!~|yNON_REFUNDABLE!~|qHOTEL!~|q1!~|y!~|",
+            "hotelCode": "11023948",
+            "boardCode": "nomeal",
+            "paymentType": "MERCHANT",
+            "status": "OK",
+            "price": {
+              "currency": "PHP",
+              "net": 8355,
+              "gross": 8355
+            }
+          },
+          {
+            "id": "33!~|a0!~|b260905!~|c260908!~|d6633056!~|enomeal!~|f0!~|gBD!~|hUS!~|ien!~|jUSD!~|k0!~|l38327!~|m6633056!~|nnomeal!~|nOTV!~|o1!~|p1!~|x31070853!~|M10491!~|N0!~|Ofalse!~|PPHP!~|Q!~|R0!~|S!~|T!~|z1#242300200000!~|A242300200000!~|B242300200000!~|C30|30!~|EStandard Double room (twin beds)!~|FStandard Double room (twin beds)!~|G1!~|U2,10491,1788253200!~|Hcurrency!~|IPHP!~|HoptPrice!~|I10491.00!~|Hcomission!~|I0.00!~|HlanguageAvailCode!~|Ien!~|Hresidency!~|IUS!~|HdailyPrices!~|ITrue!~|HnewRoomCodes!~|Itrue!~|His_package!~|Ifalse!~|HAvail_Hash!~|Isr-019fb760-5903-7521-8e58-133695cb878e!~|HNoReembolsable!~|IFalse!~|Htgx_price!~|I10491!~|HDB!~|I3|1785487973|OTV|38327|6633056|20260905|3|361|US|BD|USD|10491!~|tOK!~|uSith!~|v0!~|w!~|y!~|qHOTEL!~|q1!~|y!~|",
+            "hotelCode": "6633056",
+            "boardCode": "nomeal",
+            "paymentType": "MERCHANT",
+            "status": "OK",
+            "price": {
+              "currency": "PHP",
+              "net": 10491,
+              "gross": 10491
+            }
+          },
+          {
+            "id": "33!~|a0!~|b260905!~|c260908!~|d6740334!~|enomeal!~|f0!~|gBD!~|hUS!~|ien!~|jUSD!~|k0!~|l38327!~|m6740334!~|nnomeal!~|nOTV!~|o1!~|p1!~|x31070853!~|M11388!~|N0!~|Ofalse!~|PPHP!~|Q!~|R0!~|S!~|T!~|z1#2323002000220!~|A2323002000220!~|B2323002000220!~|C30|30!~|EStandard Double room with mountain view (full double bed)!~|FStandard Double room with mountain view (full double bed)!~|G1!~|U2,11388,1787929141!~|Hcurrency!~|IPHP!~|HoptPrice!~|I11388.00!~|Hcomission!~|I0.00!~|HlanguageAvailCode!~|Ien!~|Hresidency!~|IUS!~|HdailyPrices!~|ITrue!~|HnewRoomCodes!~|Itrue!~|His_package!~|Ifalse!~|HAvail_Hash!~|Isr-019fb760-58fc-741a-a8e1-587c0b4c5098!~|HNoReembolsable!~|IFalse!~|Htgx_price!~|I11388!~|HDB!~|I3|1785487973|OTV|38327|6740334|20260905|3|361|US|BD|USD|11388!~|tOK!~|uSith!~|v0!~|w!~|y!~|qHOTEL!~|q1!~|y!~|",
+            "hotelCode": "6740334",
+            "boardCode": "nomeal",
+            "paymentType": "MERCHANT",
+            "status": "OK",
+            "price": {
+              "currency": "PHP",
+              "net": 11388,
+              "gross": 11388
+            }
+          },
+          {
+            "id": "33!~|a0!~|b260905!~|c260908!~|d6947829!~|enomeal!~|f0!~|gBD!~|hUS!~|ien!~|jUSD!~|k0!~|l38327!~|m6947829!~|nnomeal!~|nOTV!~|o1!~|p1!~|x31070853!~|M19479!~|N0!~|Ofalse!~|PPHP!~|Q!~|R0!~|S!~|T!~|z1#242301200000!~|A242301200000!~|B242301200000!~|C30|30!~|EStandard Double Family room (twin beds)!~|FStandard Double Family room (twin beds)!~|G1!~|U2,9680,1788274800|2,19479,1788361200!~|Hcurrency!~|IPHP!~|HoptPrice!~|I19479.00!~|Hcomission!~|I0.00!~|HlanguageAvailCode!~|Ien!~|Hresidency!~|IUS!~|HdailyPrices!~|ITrue!~|HnewRoomCodes!~|Itrue!~|His_package!~|Ifalse!~|HAvail_Hash!~|Isr-019fb760-58ef-71c5-b218-e357d8121b84!~|HNoReembolsable!~|IFalse!~|Htgx_price!~|I19479!~|HDB!~|I3|1785487973|OTV|38327|6947829|20260905|3|361|US|BD|USD|19479!~|tOK!~|uSith!~|v0!~|w!~|y!~|qHOTEL!~|q1!~|y!~|",
+            "hotelCode": "6947829",
+            "boardCode": "nomeal",
+            "paymentType": "MERCHANT",
+            "status": "OK",
+            "price": {
+              "currency": "PHP",
+              "net": 19479,
+              "gross": 19479
+            }
+          },
+          {
+            "id": "33!~|a0!~|b260905!~|c260908!~|d8561499!~|enomeal!~|f0!~|gBD!~|hUS!~|ien!~|jUSD!~|k0!~|l38327!~|m8561499!~|nnomeal!~|nOTV!~|o1!~|p1!~|x31070853!~|M20722!~|N0!~|Ofalse!~|PPHP!~|Q!~|R0!~|S!~|T!~|z1#242301200050!~|A242301200050!~|B242301200050!~|C30|30!~|EStandard Double Family room with city view (twin beds) (bed type is subject to availability)!~|FStandard Double Family room with city view (twin beds) (bed type is subject to availability)!~|G1!~|U2,20722,1788278220!~|Hcurrency!~|IPHP!~|HoptPrice!~|I20722.00!~|Hcomission!~|I0.00!~|HlanguageAvailCode!~|Ien!~|Hresidency!~|IUS!~|HdailyPrices!~|ITrue!~|HnewRoomCodes!~|Itrue!~|His_package!~|Ifalse!~|HAvail_Hash!~|Isr-019fb760-49f7-7dc8-9582-88401d01d374!~|HNoReembolsable!~|IFalse!~|Htgx_price!~|I20722!~|HDB!~|I3|1785487973|OTV|38327|8561499|20260905|3|361|US|BD|USD|20722!~|tOK!~|uSith!~|v0!~|w!~|y!~|qHOTEL!~|q1!~|y!~|",
+            "hotelCode": "8561499",
+            "boardCode": "nomeal",
+            "paymentType": "MERCHANT",
+            "status": "OK",
+            "price": {
+              "currency": "PHP",
+              "net": 20722,
+              "gross": 20722
+            }
+          },
+          {
+            "id": "33!~|a0!~|b260905!~|c260908!~|d8068474!~|enomeal!~|f0!~|gBD!~|hUS!~|ien!~|jUSD!~|k0!~|l38327!~|m8068474!~|nnomeal!~|nOTV!~|o1!~|p1!~|x31070853!~|M7055!~|N0!~|Ofalse!~|PPHP!~|Q!~|R0!~|S!~|T!~|z1#232300200000!~|A232300200000!~|B232300200000!~|C30|30!~|EStandard Double room (full double bed) (bed type is subject to availability)!~|FStandard Double room (full double bed) (bed type is subject to availability)!~|G1!~|U2,7055,1788533820!~|Hcurrency!~|IPHP!~|HoptPrice!~|I7055.00!~|Hcomission!~|I0.00!~|HlanguageAvailCode!~|Ien!~|Hresidency!~|IUS!~|HdailyPrices!~|ITrue!~|HnewRoomCodes!~|Itrue!~|His_package!~|Ifalse!~|HAvail_Hash!~|Isr-019fb760-58ef-719b-849e-b6d228ea8440!~|HNoReembolsable!~|IFalse!~|Htgx_price!~|I7055!~|HDB!~|I3|1785487973|OTV|38327|8068474|20260905|3|361|US|BD|USD|7055!~|tOK!~|uSith!~|v0!~|w!~|y!~|qHOTEL!~|q1!~|y!~|",
+            "hotelCode": "8068474",
+            "boardCode": "nomeal",
+            "paymentType": "MERCHANT",
+            "status": "OK",
+            "price": {
+              "currency": "PHP",
+              "net": 7055,
+              "gross": 7055
+            }
+          },
+          {
+            "id": "33!~|a0!~|b260905!~|c260908!~|d6670060!~|enomeal!~|f0!~|gBD!~|hUS!~|ien!~|jUSD!~|k0!~|l38327!~|m6670060!~|nnomeal!~|nOTV!~|o1!~|p0!~|x31070853!~|M638103!~|N0!~|Ofalse!~|PPHP!~|Q!~|R0!~|S!~|T!~|z1#200300200000!~|A200300200000!~|B200300200000!~|C30|30!~|EStandard room!~|FStandard room!~|G1!~|Hcurrency!~|IPHP!~|HoptPrice!~|I638103.00!~|Hcomission!~|I0.00!~|HlanguageAvailCode!~|Ien!~|Hresidency!~|IUS!~|HdailyPrices!~|ITrue!~|HnewRoomCodes!~|Itrue!~|His_package!~|Ifalse!~|HAvail_Hash!~|Isr-019fb760-4eda-71c0-83a3-255dc70b97d7!~|HNoReembolsable!~|ITrue!~|Htgx_price!~|I638103!~|HDB!~|I3|1785487973|OTV|38327|6670060|20260905|3|361|US|BD|USD|638103!~|tOK!~|uSith!~|v0!~|w!~|yNON_REFUNDABLE!~|qHOTEL!~|q1!~|y!~|",
+            "hotelCode": "6670060",
+            "boardCode": "nomeal",
+            "paymentType": "MERCHANT",
+            "status": "OK",
+            "price": {
+              "currency": "PHP",
+              "net": 638103,
+              "gross": 638103
+            }
+          },
+          {
+            "id": "33!~|a0!~|b260905!~|c260908!~|d7024492!~|enomeal!~|f0!~|gBD!~|hUS!~|ien!~|jUSD!~|k0!~|l38327!~|m7024492!~|nnomeal!~|nOTV!~|o1!~|p1!~|x31070853!~|M5636!~|N0!~|Ofalse!~|PPHP!~|Q!~|R0!~|S!~|T!~|z1#232300200000!~|A232300200000!~|B232300200000!~|C30|30!~|EStandard Double room (full double bed) (bed type is subject to availability)!~|FStandard Double room (full double bed) (bed type is subject to availability)!~|G1!~|U2,5636,1788364800!~|Hcurrency!~|IPHP!~|HoptPrice!~|I5636.00!~|Hcomission!~|I0.00!~|HlanguageAvailCode!~|Ien!~|Hresidency!~|IUS!~|HdailyPrices!~|ITrue!~|HnewRoomCodes!~|Itrue!~|His_package!~|Ifalse!~|HAvail_Hash!~|Isr-019fb760-58ef-719d-9ce3-929846ddce3c!~|HNoReembolsable!~|IFalse!~|Htgx_price!~|I5636!~|HDB!~|I3|1785487973|OTV|38327|7024492|20260905|3|361|US|BD|USD|5636!~|tOK!~|uSith!~|v0!~|w!~|y!~|qHOTEL!~|q1!~|y!~|",
+            "hotelCode": "7024492",
+            "boardCode": "nomeal",
+            "paymentType": "MERCHANT",
+            "status": "OK",
+            "price": {
+              "currency": "PHP",
+              "net": 5636,
+              "gross": 5636
+            }
+          },
+          {
+            "id": "33!~|a0!~|b260905!~|c260908!~|d8902672!~|enomeal!~|f0!~|gMY!~|hUS!~|ien!~|jUSD!~|k0!~|l38327!~|m8902672!~|nnomeal!~|nOTV!~|o1!~|p1!~|x31070853!~|M7207!~|N0!~|Ofalse!~|PPHP!~|Q!~|R0!~|S!~|T!~|z1#232300200000!~|A232300200000!~|B232300200000!~|C30|30!~|EStandard Double room (full double bed) (queen size bed)!~|FStandard Double room (full double bed) (queen size bed)!~|G1!~|U2,7207,1788274800!~|Hcurrency!~|IPHP!~|HoptPrice!~|I7207.00!~|Hcomission!~|I0.00!~|HlanguageAvailCode!~|Ien!~|Hresidency!~|IUS!~|HdailyPrices!~|ITrue!~|HnewRoomCodes!~|Itrue!~|His_package!~|Ifalse!~|HAvail_Hash!~|Isr-019fb760-5910-74e7-a611-7721fccfd1d1!~|HNoReembolsable!~|IFalse!~|Htgx_price!~|I7207!~|HDB!~|I3|1785487972|OTV|38327|8902672|20260905|3|361|US|MY|USD|7207!~|tOK!~|uSith!~|v0!~|w!~|y!~|qHOTEL!~|q1!~|y!~|",
+            "hotelCode": "8902672",
+            "boardCode": "nomeal",
+            "paymentType": "MERCHANT",
+            "status": "OK",
+            "price": {
+              "currency": "PHP",
+              "net": 7207,
+              "gross": 7207
+            }
+          },
+          {
+            "id": "33!~|a0!~|b260905!~|c260908!~|d9946484!~|enomeal!~|f0!~|gMO!~|hUS!~|ien!~|jUSD!~|k0!~|l38327!~|m9946484!~|nnomeal!~|nOTV!~|o1!~|p1!~|x31070853!~|M11478!~|N0!~|Ofalse!~|PPHP!~|Q!~|R0!~|S!~|T!~|z1#242300200000!~|A242300200000!~|B242300200000!~|C30|30!~|EStandard Double room (twin beds) (bed type is subject to availability)!~|FStandard Double room (twin beds) (bed type is subject to availability)!~|G1!~|U2,11478,1785805200!~|Hcurrency!~|IPHP!~|HoptPrice!~|I11478.00!~|Hcomission!~|I0.00!~|HlanguageAvailCode!~|Ien!~|Hresidency!~|IUS!~|HdailyPrices!~|ITrue!~|HnewRoomCodes!~|Itrue!~|His_package!~|Ifalse!~|HAvail_Hash!~|Isr-019fb760-4f4f-7d94-93f1-3055a201a5df!~|HNoReembolsable!~|IFalse!~|Htgx_price!~|I11478!~|HDB!~|I3|1785487970|OTV|38327|9946484|20260905|3|361|US|MO|USD|11478!~|tOK!~|uSith!~|v0!~|w!~|y!~|qHOTEL!~|q1!~|y!~|",
+            "hotelCode": "9946484",
+            "boardCode": "nomeal",
+            "paymentType": "MERCHANT",
+            "status": "OK",
+            "price": {
+              "currency": "PHP",
+              "net": 11478,
+              "gross": 11478
+            }
+          },
+          {
+            "id": "33!~|a0!~|b260905!~|c260908!~|d8675504!~|enomeal!~|f0!~|gMY!~|hUS!~|ien!~|jUSD!~|k0!~|l38327!~|m8675504!~|nnomeal!~|nOTV!~|o1!~|p1!~|x31070853!~|M14313!~|N0!~|Ofalse!~|PPHP!~|Q!~|R0!~|S!~|T!~|z1#2423016000220!~|A2423016000220!~|B2423016000220!~|C30|30!~|EDeluxe Double Family room with mountain view (twin beds)!~|FDeluxe Double Family room with mountain view (twin beds)!~|G1!~|U2,14313,1788015600!~|Hcurrency!~|IPHP!~|HoptPrice!~|I14313.00!~|Hcomission!~|I0.00!~|HlanguageAvailCode!~|Ien!~|Hresidency!~|IUS!~|HdailyPrices!~|ITrue!~|HnewRoomCodes!~|Itrue!~|His_package!~|Ifalse!~|HAvail_Hash!~|Isr-019fb760-5910-752d-a11d-19c5b9b48c20!~|HNoReembolsable!~|IFalse!~|Htgx_price!~|I14313!~|HDB!~|I3|1785487972|OTV|38327|8675504|20260905|3|361|US|MY|USD|14313!~|tOK!~|uSith!~|v0!~|w!~|y!~|qHOTEL!~|q1!~|y!~|",
+            "hotelCode": "8675504",
+            "boardCode": "nomeal",
+            "paymentType": "MERCHANT",
+            "status": "OK",
+            "price": {
+              "currency": "PHP",
+              "net": 14313,
+              "gross": 14313
+            }
+          },
+          {
+            "id": "33!~|a0!~|b260905!~|c260908!~|d9004916!~|enomeal!~|f0!~|gMO!~|hUS!~|ien!~|jUSD!~|k0!~|l38327!~|m9004916!~|nnomeal!~|nOTV!~|o1!~|p1!~|x31070853!~|M21107!~|N0!~|Ofalse!~|PPHP!~|Q!~|R0!~|S!~|T!~|z1#242300200000!~|A242300200000!~|B242300200000!~|C30|30!~|EStandard Double room (twin beds) (terrace)!~|FStandard Double room (twin beds) (terrace)!~|G1!~|U2,21107,1787785199!~|Hcurrency!~|IPHP!~|HoptPrice!~|I21107.00!~|Hcomission!~|I0.00!~|HlanguageAvailCode!~|Ien!~|Hresidency!~|IUS!~|HdailyPrices!~|ITrue!~|HnewRoomCodes!~|Itrue!~|His_package!~|Ifalse!~|HAvail_Hash!~|Isr-019fb760-4f51-7df1-b730-daa85aaa7133!~|HNoReembolsable!~|IFalse!~|Htgx_price!~|I21107!~|HDB!~|I3|1785487970|OTV|38327|9004916|20260905|3|361|US|MO|USD|21107!~|tOK!~|uSith!~|v0!~|w!~|y!~|qHOTEL!~|q1!~|y!~|",
+            "hotelCode": "9004916",
+            "boardCode": "nomeal",
+            "paymentType": "MERCHANT",
+            "status": "OK",
+            "price": {
+              "currency": "PHP",
+              "net": 21107,
+              "gross": 21107
+            }
+          },
+          {
+            "id": "33!~|a0!~|b260905!~|c260908!~|d13124984!~|enomeal!~|f0!~|gBD!~|hUS!~|ien!~|jUSD!~|k0!~|l38327!~|m13124984!~|nnomeal!~|nOTV!~|o1!~|p1!~|x31070853!~|M22589!~|N0!~|Ofalse!~|PPHP!~|Q!~|R0!~|S!~|T!~|z1#200300100000!~|A200300100000!~|B200300100000!~|C30|30!~|EStandard Ondol room!~|FStandard Ondol room!~|G1!~|U2,22589,1788274620!~|Hcurrency!~|IPHP!~|HoptPrice!~|I22589.00!~|Hcomission!~|I0.00!~|HlanguageAvailCode!~|Ien!~|Hresidency!~|IUS!~|HdailyPrices!~|ITrue!~|HnewRoomCodes!~|Itrue!~|His_package!~|Ifalse!~|HAvail_Hash!~|Isr-019fb760-58f5-72ed-97e7-3c08086bf17c!~|HNoReembolsable!~|IFalse!~|Htgx_price!~|I22589!~|HDB!~|I3|1785487973|OTV|38327|13124984|20260905|3|361|US|BD|USD|22589!~|tOK!~|uSith!~|v0!~|w!~|y!~|qHOTEL!~|q1!~|y!~|",
+            "hotelCode": "13124984",
+            "boardCode": "nomeal",
+            "paymentType": "MERCHANT",
+            "status": "OK",
+            "price": {
+              "currency": "PHP",
+              "net": 22589,
+              "gross": 22589
+            }
+          },
+          {
+            "id": "33!~|a0!~|b260905!~|c260908!~|d8317787!~|enomeal!~|f0!~|gBD!~|hUS!~|ien!~|jUSD!~|k0!~|l38327!~|m8317787!~|nnomeal!~|nOTV!~|o1!~|p1!~|x31070853!~|M27611!~|N0!~|Ofalse!~|PPHP!~|Q!~|R0!~|S!~|T!~|z1#242300200000!~|A242300200000!~|B242300200000!~|C30|30!~|EStandard Double room (twin beds)!~|FStandard Double room (twin beds)!~|G1!~|U2,27611,1788130799!~|Hcurrency!~|IPHP!~|HoptPrice!~|I27611.00!~|Hcomission!~|I0.00!~|HlanguageAvailCode!~|Ien!~|Hresidency!~|IUS!~|HdailyPrices!~|ITrue!~|HnewRoomCodes!~|Itrue!~|His_package!~|Ifalse!~|HAvail_Hash!~|Isr-019fb760-5905-704e-893a-5ca43ae8a664!~|HNoReembolsable!~|IFalse!~|Htgx_price!~|I27611!~|HDB!~|I3|1785487973|OTV|38327|8317787|20260905|3|361|US|BD|USD|27611!~|tOK!~|uSith!~|v0!~|w!~|y!~|qHOTEL!~|q1!~|y!~|",
+            "hotelCode": "8317787",
+            "boardCode": "nomeal",
+            "paymentType": "MERCHANT",
+            "status": "OK",
+            "price": {
+              "currency": "PHP",
+              "net": 27611,
+              "gross": 27611
+            }
+          },
+          {
+            "id": "33!~|a0!~|b260905!~|c260908!~|d8835019!~|enomeal!~|f0!~|gMY!~|hUS!~|ien!~|jUSD!~|k0!~|l38327!~|m8835019!~|nnomeal!~|nOTV!~|o1!~|p1!~|x31070853!~|M12616!~|N0!~|Ofalse!~|PPHP!~|Q!~|R0!~|S!~|T!~|z1#232300600000!~|A232300600000!~|B232300600000!~|C30|30!~|EDeluxe Double room (full double bed)!~|FDeluxe Double room (full double bed)!~|G1!~|U2,12616,1787929200!~|Hcurrency!~|IPHP!~|HoptPrice!~|I12616.00!~|Hcomission!~|I0.00!~|HlanguageAvailCode!~|Ien!~|Hresidency!~|IUS!~|HdailyPrices!~|ITrue!~|HnewRoomCodes!~|Itrue!~|His_package!~|Ifalse!~|HAvail_Hash!~|Isr-019fb760-5913-75a6-bcfe-50ea503f0956!~|HNoReembolsable!~|IFalse!~|Htgx_price!~|I12616!~|HDB!~|I3|1785487972|OTV|38327|8835019|20260905|3|361|US|MY|USD|12616!~|tOK!~|uSith!~|v0!~|w!~|y!~|qHOTEL!~|q1!~|y!~|",
+            "hotelCode": "8835019",
+            "boardCode": "nomeal",
+            "paymentType": "MERCHANT",
+            "status": "OK",
+            "price": {
+              "currency": "PHP",
+              "net": 12616,
+              "gross": 12616
+            }
+          },
+          {
+            "id": "33!~|a0!~|b260905!~|c260908!~|d6551338!~|ebreakfast!~|f0!~|gBD!~|hUS!~|ien!~|jUSD!~|k0!~|l38327!~|m6551338!~|nbreakfast!~|nOTV!~|o1!~|p1!~|x31070853!~|M13065!~|N0!~|Ofalse!~|PPHP!~|Q!~|R0!~|S!~|T!~|z1#242300600000!~|A242300600000!~|B242300600000!~|C30|30!~|EDeluxe Double room (twin beds) (bed type is subject to availability)!~|FDeluxe Double room (twin beds) (bed type is subject to availability)!~|G1!~|U2,13065,1788184620!~|Hcurrency!~|IPHP!~|HoptPrice!~|I13065.00!~|Hcomission!~|I0.00!~|HlanguageAvailCode!~|Ien!~|Hresidency!~|IUS!~|HdailyPrices!~|ITrue!~|HnewRoomCodes!~|Itrue!~|His_package!~|Ifalse!~|HAvail_Hash!~|Isr-019fb760-58ef-71d4-a8eb-8ff3d1e0f3e5!~|HNoReembolsable!~|IFalse!~|Htgx_price!~|I13065!~|HDB!~|I3|1785487973|OTV|38327|6551338|20260905|3|361|US|BD|USD|13065!~|tOK!~|uSith!~|v0!~|w!~|y!~|qHOTEL!~|q1!~|y!~|",
+            "hotelCode": "6551338",
+            "boardCode": "breakfast",
+            "paymentType": "MERCHANT",
+            "status": "OK",
+            "price": {
+              "currency": "PHP",
+              "net": 13065,
+              "gross": 13065
+            }
+          },
+          {
+            "id": "33!~|a0!~|b260905!~|c260908!~|d8754440!~|enomeal!~|f0!~|gMO!~|hUS!~|ien!~|jUSD!~|k0!~|l38327!~|m8754440!~|nnomeal!~|nOTV!~|o1!~|p1!~|x31070853!~|M14352!~|N0!~|Ofalse!~|PPHP!~|Q!~|R0!~|S!~|T!~|z1#242300200000!~|A242300200000!~|B242300200000!~|C30|30!~|EStandard Double room (twin beds) (bed type is subject to availability)!~|FStandard Double room (twin beds) (bed type is subject to availability)!~|G1!~|U2,14352,1787580000!~|Hcurrency!~|IPHP!~|HoptPrice!~|I14352.00!~|Hcomission!~|I0.00!~|HlanguageAvailCode!~|Ien!~|Hresidency!~|IUS!~|HdailyPrices!~|ITrue!~|HnewRoomCodes!~|Itrue!~|His_package!~|Ifalse!~|HAvail_Hash!~|Isr-019fb760-4f4e-7d69-b821-10720a4f630f!~|HNoReembolsable!~|IFalse!~|Htgx_price!~|I14352!~|HDB!~|I3|1785487970|OTV|38327|8754440|20260905|3|361|US|MO|USD|14352!~|tOK!~|uSith!~|v0!~|w!~|y!~|qHOTEL!~|q1!~|y!~|",
+            "hotelCode": "8754440",
+            "boardCode": "nomeal",
+            "paymentType": "MERCHANT",
+            "status": "OK",
+            "price": {
+              "currency": "PHP",
+              "net": 14352,
+              "gross": 14352
+            }
+          },
+          {
+            "id": "33!~|a0!~|b260905!~|c260908!~|d6764047!~|enomeal!~|f0!~|gBD!~|hUS!~|ien!~|jUSD!~|k0!~|l38327!~|m6764047!~|nnomeal!~|nOTV!~|o1!~|p1!~|x31070853!~|M14556!~|N0!~|Ofalse!~|PPHP!~|Q!~|R0!~|S!~|T!~|z1#242300600000!~|A242300600000!~|B242300600000!~|C30|30!~|EDeluxe Double room (twin beds) (bed type is subject to availability)!~|FDeluxe Double room (twin beds) (bed type is subject to availability)!~|G1!~|U2,14556,1788188220!~|Hcurrency!~|IPHP!~|HoptPrice!~|I14556.00!~|Hcomission!~|I0.00!~|HlanguageAvailCode!~|Ien!~|Hresidency!~|IUS!~|HdailyPrices!~|ITrue!~|HnewRoomCodes!~|Itrue!~|His_package!~|Ifalse!~|HAvail_Hash!~|Isr-019fb760-58f5-72da-9e19-062620a48463!~|HNoReembolsable!~|IFalse!~|Htgx_price!~|I14556!~|HDB!~|I3|1785487973|OTV|38327|6764047|20260905|3|361|US|BD|USD|14556!~|tOK!~|uSith!~|v0!~|w!~|y!~|qHOTEL!~|q1!~|y!~|",
+            "hotelCode": "6764047",
+            "boardCode": "nomeal",
+            "paymentType": "MERCHANT",
+            "status": "OK",
+            "price": {
+              "currency": "PHP",
+              "net": 14556,
+              "gross": 14556
+            }
+          },
+          {
+            "id": "33!~|a0!~|b260905!~|c260908!~|d8988618!~|enomeal!~|f0!~|gMO!~|hUS!~|ien!~|jUSD!~|k0!~|l38327!~|m8988618!~|nnomeal!~|nOTV!~|o1!~|p1!~|x31070853!~|M14608!~|N0!~|Ofalse!~|PPHP!~|Q!~|R0!~|S!~|T!~|z1#242300200000!~|A242300200000!~|B242300200000!~|C30|30!~|EStandard Double room (twin beds) (bed type is subject to availability)!~|FStandard Double room (twin beds) (bed type is subject to availability)!~|G1!~|U2,14608,1785978000!~|Hcurrency!~|IPHP!~|HoptPrice!~|I14608.00!~|Hcomission!~|I0.00!~|HlanguageAvailCode!~|Ien!~|Hresidency!~|IUS!~|HdailyPrices!~|ITrue!~|HnewRoomCodes!~|Itrue!~|His_package!~|Ifalse!~|HAvail_Hash!~|Isr-019fb760-4f4e-7d60-9390-b2b23426fc4c!~|HNoReembolsable!~|IFalse!~|Htgx_price!~|I14608!~|HDB!~|I3|1785487970|OTV|38327|8988618|20260905|3|361|US|MO|USD|14608!~|tOK!~|uSith!~|v0!~|w!~|y!~|qHOTEL!~|q1!~|y!~|",
+            "hotelCode": "8988618",
+            "boardCode": "nomeal",
+            "paymentType": "MERCHANT",
+            "status": "OK",
+            "price": {
+              "currency": "PHP",
+              "net": 14608,
+              "gross": 14608
+            }
+          },
+          {
+            "id": "33!~|a0!~|b260905!~|c260908!~|d9925657!~|enomeal!~|f0!~|gMO!~|hUS!~|ien!~|jUSD!~|k0!~|l38327!~|m9925657!~|nnomeal!~|nOTV!~|o1!~|p1!~|x31070853!~|M6561!~|N0!~|Ofalse!~|PPHP!~|Q!~|R0!~|S!~|T!~|z1#200300200000!~|A200300200000!~|B200300200000!~|C30|30!~|EStandard room!~|FStandard room!~|G1!~|U2,6561,1788102001!~|Hcurrency!~|IPHP!~|HoptPrice!~|I6561.00!~|Hcomission!~|I0.00!~|HlanguageAvailCode!~|Ien!~|Hresidency!~|IUS!~|HdailyPrices!~|ITrue!~|HnewRoomCodes!~|Itrue!~|His_package!~|Ifalse!~|HAvail_Hash!~|Isr-019fb760-41f7-7a47-9a97-4f1d1ab48127!~|HNoReembolsable!~|IFalse!~|Htgx_price!~|I6561!~|HDB!~|I3|1785487970|OTV|38327|9925657|20260905|3|361|US|MO|USD|6561!~|tOK!~|uSith!~|v0!~|w!~|y!~|qHOTEL!~|q1!~|y!~|",
+            "hotelCode": "9925657",
+            "boardCode": "nomeal",
+            "paymentType": "MERCHANT",
+            "status": "OK",
+            "price": {
+              "currency": "PHP",
+              "net": 6561,
+              "gross": 6561
+            }
+          },
+          {
+            "id": "33!~|a0!~|b260905!~|c260908!~|d9971987!~|enomeal!~|f0!~|gMO!~|hUS!~|ien!~|jUSD!~|k0!~|l38327!~|m9971987!~|nnomeal!~|nOTV!~|o1!~|p1!~|x31070853!~|M13561!~|N0!~|Ofalse!~|PPHP!~|Q!~|R0!~|S!~|T!~|z1#200300201000!~|A200300201000!~|B200300201000!~|C30|30!~|E1 Bedroom Standard room!~|F1 Bedroom Standard room!~|G1!~|U2,13561,1788004800!~|Hcurrency!~|IPHP!~|HoptPrice!~|I13561.00!~|Hcomission!~|I0.00!~|HlanguageAvailCode!~|Ien!~|Hresidency!~|IUS!~|HdailyPrices!~|ITrue!~|HnewRoomCodes!~|Itrue!~|His_package!~|Ifalse!~|HAvail_Hash!~|Isr-019fb760-43d0-7382-a039-485be719907a!~|HNoReembolsable!~|IFalse!~|Htgx_price!~|I13561!~|HDB!~|I3|1785487970|OTV|38327|9971987|20260905|3|361|US|MO|USD|13561!~|tOK!~|uSith!~|v0!~|w!~|y!~|qHOTEL!~|q1!~|y!~|",
+            "hotelCode": "9971987",
+            "boardCode": "nomeal",
+            "paymentType": "MERCHANT",
+            "status": "OK",
+            "price": {
+              "currency": "PHP",
+              "net": 13561,
+              "gross": 13561
+            }
+          },
+          {
+            "id": "33!~|a0!~|b260905!~|c260908!~|d6485870!~|enomeal!~|f0!~|gBD!~|hUS!~|ien!~|jUSD!~|k0!~|l38327!~|m6485870!~|nnomeal!~|nOTV!~|o1!~|p1!~|x31070853!~|M13819!~|N0!~|Ofalse!~|PPHP!~|Q!~|R0!~|S!~|T!~|z1#232300500000!~|A232300500000!~|B232300500000!~|C30|30!~|ESuperior Double room (full double bed) (bed type is subject to availability)!~|FSuperior Double room (full double bed) (bed type is subject to availability)!~|G1!~|U2,13819,1788101820!~|Hcurrency!~|IPHP!~|HoptPrice!~|I13819.00!~|Hcomission!~|I0.00!~|HlanguageAvailCode!~|Ien!~|Hresidency!~|IUS!~|HdailyPrices!~|ITrue!~|HnewRoomCodes!~|Itrue!~|His_package!~|Ifalse!~|HAvail_Hash!~|Isr-019fb760-58f8-7350-b099-760ca3d93cd5!~|HNoReembolsable!~|IFalse!~|Htgx_price!~|I13819!~|HDB!~|I3|1785487973|OTV|38327|6485870|20260905|3|361|US|BD|USD|13819!~|tOK!~|uSith!~|v0!~|w!~|y!~|qHOTEL!~|q1!~|y!~|",
+            "hotelCode": "6485870",
+            "boardCode": "nomeal",
+            "paymentType": "MERCHANT",
+            "status": "OK",
+            "price": {
+              "currency": "PHP",
+              "net": 13819,
+              "gross": 13819
+            }
+          },
+          {
+            "id": "33!~|a0!~|b260905!~|c260908!~|d6350867!~|enomeal!~|f0!~|gBD!~|hUS!~|ien!~|jUSD!~|k0!~|l38327!~|m6350867!~|nnomeal!~|nOTV!~|o1!~|p1!~|x31070853!~|M16513!~|N0!~|Ofalse!~|PPHP!~|Q!~|R0!~|S!~|T!~|z1#200300200000!~|A200300200000!~|B200300200000!~|C30|30!~|EStandard room!~|FStandard room!~|G1!~|U2,16513,1787903820!~|Hcurrency!~|IPHP!~|HoptPrice!~|I16513.00!~|Hcomission!~|I0.00!~|HlanguageAvailCode!~|Ien!~|Hresidency!~|IUS!~|HdailyPrices!~|ITrue!~|HnewRoomCodes!~|Itrue!~|His_package!~|Ifalse!~|HAvail_Hash!~|Isr-019fb760-4eda-7e55-9204-1cae519205ae!~|HNoReembolsable!~|IFalse!~|Htgx_price!~|I16513!~|HDB!~|I3|1785487973|OTV|38327|6350867|20260905|3|361|US|BD|USD|16513!~|tOK!~|uSith!~|v0!~|w!~|y!~|qHOTEL!~|q1!~|y!~|",
+            "hotelCode": "6350867",
+            "boardCode": "nomeal",
+            "paymentType": "MERCHANT",
+            "status": "OK",
+            "price": {
+              "currency": "PHP",
+              "net": 16513,
+              "gross": 16513
+            }
+          },
+          {
+            "id": "33!~|a0!~|b260905!~|c260908!~|d9920497!~|enomeal!~|f0!~|gMO!~|hUS!~|ien!~|jUSD!~|k0!~|l38327!~|m9920497!~|nnomeal!~|nOTV!~|o1!~|p0!~|x31070853!~|M18169!~|N0!~|Ofalse!~|PPHP!~|Q!~|R0!~|S!~|T!~|z1#232300600000!~|A232300600000!~|B232300600000!~|C30|30!~|EDeluxe Double room (full double bed) (queen size bed)!~|FDeluxe Double room (full double bed) (queen size bed)!~|G1!~|Hcurrency!~|IPHP!~|HoptPrice!~|I18169.00!~|Hcomission!~|I0.00!~|HlanguageAvailCode!~|Ien!~|Hresidency!~|IUS!~|HdailyPrices!~|ITrue!~|HnewRoomCodes!~|Itrue!~|His_package!~|Ifalse!~|HAvail_Hash!~|Isr-019fb760-4f4e-7d46-8ba9-4408b50d00e5!~|HNoReembolsable!~|ITrue!~|Htgx_price!~|I18169!~|HDB!~|I3|1785487970|OTV|38327|9920497|20260905|3|361|US|MO|USD|18169!~|tOK!~|uSith!~|v0!~|w!~|yNON_REFUNDABLE!~|qHOTEL!~|q1!~|y!~|",
+            "hotelCode": "9920497",
+            "boardCode": "nomeal",
+            "paymentType": "MERCHANT",
+            "status": "OK",
+            "price": {
+              "currency": "PHP",
+              "net": 18169,
+              "gross": 18169
+            }
+          },
+          {
+            "id": "33!~|a0!~|b260905!~|c260908!~|d8697257!~|enomeal!~|f0!~|gMO!~|hUS!~|ien!~|jUSD!~|k0!~|l38327!~|m8697257!~|nnomeal!~|nOTV!~|o1!~|p1!~|x31070853!~|M5547!~|N0!~|Ofalse!~|PPHP!~|Q!~|R0!~|S!~|T!~|z1#232300200000!~|A232300200000!~|B232300200000!~|C30|30!~|EStandard Double room (full double bed) (bed type is subject to availability)!~|FStandard Double room (full double bed) (bed type is subject to availability)!~|G1!~|U2,5547,1788533820!~|Hcurrency!~|IPHP!~|HoptPrice!~|I5547.00!~|Hcomission!~|I0.00!~|HlanguageAvailCode!~|Ien!~|Hresidency!~|IUS!~|HdailyPrices!~|ITrue!~|HnewRoomCodes!~|Itrue!~|His_package!~|Ifalse!~|HAvail_Hash!~|Isr-019fb760-4f4e-7d71-941d-37aef0953a7f!~|HNoReembolsable!~|IFalse!~|Htgx_price!~|I5547!~|HDB!~|I3|1785487970|OTV|38327|8697257|20260905|3|361|US|MO|USD|5547!~|tOK!~|uSith!~|v0!~|w!~|y!~|qHOTEL!~|q1!~|y!~|",
+            "hotelCode": "8697257",
+            "boardCode": "nomeal",
+            "paymentType": "MERCHANT",
+            "status": "OK",
+            "price": {
+              "currency": "PHP",
+              "net": 5547,
+              "gross": 5547
+            }
+          },
+          {
+            "id": "33!~|a0!~|b260905!~|c260908!~|d11023999!~|enomeal!~|f0!~|gBD!~|hUS!~|ien!~|jUSD!~|k0!~|l38327!~|m11023999!~|nnomeal!~|nOTV!~|o1!~|p1!~|x31070853!~|M11478!~|N0!~|Ofalse!~|PPHP!~|Q!~|R0!~|S!~|T!~|z1#200300200050!~|A200300200050!~|B200300200050!~|C30|30!~|EStandard room with city view!~|FStandard room with city view!~|G1!~|U2,11478,1786150800!~|Hcurrency!~|IPHP!~|HoptPrice!~|I11478.00!~|Hcomission!~|I0.00!~|HlanguageAvailCode!~|Ien!~|Hresidency!~|IUS!~|HdailyPrices!~|ITrue!~|HnewRoomCodes!~|Itrue!~|His_package!~|Ifalse!~|HAvail_Hash!~|Isr-019fb760-4eda-7e52-a876-bd33afd31280!~|HNoReembolsable!~|IFalse!~|Htgx_price!~|I11478!~|HDB!~|I3|1785487973|OTV|38327|11023999|20260905|3|361|US|BD|USD|11478!~|tOK!~|uSith!~|v0!~|w!~|y!~|qHOTEL!~|q1!~|y!~|",
+            "hotelCode": "11023999",
+            "boardCode": "nomeal",
+            "paymentType": "MERCHANT",
+            "status": "OK",
+            "price": {
+              "currency": "PHP",
+              "net": 11478,
+              "gross": 11478
+            }
+          },
+          {
+            "id": "33!~|a0!~|b260905!~|c260908!~|d8774420!~|enomeal!~|f0!~|gMO!~|hUS!~|ien!~|jUSD!~|k0!~|l38327!~|m8774420!~|nnomeal!~|nOTV!~|o1!~|p0!~|x31070853!~|M13271!~|N0!~|Ofalse!~|PPHP!~|Q!~|R0!~|S!~|T!~|z1#200300300000!~|A200300300000!~|B200300300000!~|C30|30!~|EDeluxe Ondol room!~|FDeluxe Ondol room!~|G1!~|Hcurrency!~|IPHP!~|HoptPrice!~|I13271.00!~|Hcomission!~|I0.00!~|HlanguageAvailCode!~|Ien!~|Hresidency!~|IUS!~|HdailyPrices!~|ITrue!~|HnewRoomCodes!~|Itrue!~|His_package!~|Ifalse!~|HAvail_Hash!~|Isr-019fb760-4f4f-7db6-aea3-28d974c4d5d0!~|HNoReembolsable!~|ITrue!~|Htgx_price!~|I13271!~|HDB!~|I3|1785487970|OTV|38327|8774420|20260905|3|361|US|MO|USD|13271!~|tOK!~|uSith!~|v0!~|w!~|yNON_REFUNDABLE!~|qHOTEL!~|q1!~|y!~|",
+            "hotelCode": "8774420",
+            "boardCode": "nomeal",
+            "paymentType": "MERCHANT",
+            "status": "OK",
+            "price": {
+              "currency": "PHP",
+              "net": 13271,
+              "gross": 13271
+            }
+          }
+        ],
+        "errors": null,
+        "warnings": [
+          {
+            "code": "TIMEOUT",
+            "type": "CONNECTION_ERROR",
+            "description": "Access `38327` returned:  connection timeout"
+          },
+          {
+            "code": "TIMEOUT",
+            "type": "CONNECTION_ERROR",
+            "description": "Access `38327` returned:  connection timeout"
+          },
+          {
+            "code": "TIMEOUT",
+            "type": "CONNECTION_ERROR",
+            "description": "Access `38327` returned:  connection timeout"
+          },
+          {
+            "code": "",
+            "type": "104",
+            "description": "Access `38327` returned:  Connection timeout with supplier"
+          },
+          {
+            "code": "",
+            "type": "104",
+            "description": "Access `38327` returned:  Connection timeout with supplier"
+          },
+          {
+            "code": "",
+            "type": "104",
+            "description": "Access `38327` returned:  Connection timeout with supplier"
+          },
+          {
+            "code": "",
+            "type": "104",
+            "description": "Access `38327` returned:  Connection timeout with supplier"
+          },
+          {
+            "code": "",
+            "type": "104",
+            "description": "Access `38327` returned:  Connection timeout with supplier"
+          },
+          {
+            "code": "",
+            "type": "104",
+            "description": "Access `38327` returned:  Connection timeout with supplier"
+          },
+          {
+            "code": "",
+            "type": "104",
+            "description": "Access `38327` returned:  Connection timeout with supplier"
+          },
+          {
+            "code": "",
+            "type": "104",
+            "description": "Access `38327` returned:  Connection timeout with supplier"
+          },
+          {
+            "code": "",
+            "type": "104",
+            "description": "Access `38327` returned:  Connection timeout with supplier"
+          },
+          {
+            "code": "",
+            "type": "104",
+            "description": "Access `38327` returned:  Connection timeout with supplier"
+          },
+          {
+            "code": "",
+            "type": "104",
+            "description": "Access `38327` returned:  Connection timeout with supplier"
+          },
+          {
+            "code": "",
+            "type": "104",
+            "description": "Access `38327` returned:  Connection timeout with supplier"
+          },
+          {
+            "code": "",
+            "type": "104",
+            "description": "Access `38327` returned:  Connection timeout with supplier"
+          },
+          {
+            "code": "",
+            "type": "104",
+            "description": "Access `38327` returned:  Connection timeout with supplier"
+          },
+          {
+            "code": "",
+            "type": "104",
+            "description": "Access `38327` returned:  Connection timeout with supplier"
+          },
+          {
+            "code": "",
+            "type": "104",
+            "description": "Access `38327` returned:  Connection timeout with supplier"
+          },
+          {
+            "code": "",
+            "type": "104",
+            "description": "Access `38327` returned:  Connection timeout with supplier"
+          },
+          {
+            "code": "",
+            "type": "104",
+            "description": "Access `38327` returned:  Connection timeout with supplier"
+          },
+          {
+            "code": "",
+            "type": "104",
+            "description": "Access `38327` returned:  Connection timeout with supplier"
+          },
+          {
+            "code": "",
+            "type": "104",
+            "description": "Access `38327` returned:  Connection timeout with supplier"
+          },
+          {
+            "code": "",
+            "type": "104",
+            "description": "Access `38327` returned:  Connection timeout with supplier"
+          },
+          {
+            "code": "",
+            "type": "104",
+            "description": "Access `38327` returned:  Connection timeout with supplier"
+          },
+          {
+            "code": "",
+            "type": "104",
+            "description": "Access `38327` returned:  Connection timeout with supplier"
+          },
+          {
+            "code": "",
+            "type": "104",
+            "description": "Access `38327` returned:  Connection timeout with supplier"
+          },
+          {
+            "code": "",
+            "type": "104",
+            "description": "Access `38327` returned:  Connection timeout with supplier"
+          },
+          {
+            "code": "",
+            "type": "104",
+            "description": "Access `38327` returned:  Connection timeout with supplier"
+          }
+        ]
+      }
+    }
+  }
+}
