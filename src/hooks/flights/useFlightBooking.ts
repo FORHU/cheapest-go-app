@@ -6,7 +6,6 @@ import { flightBookingSchema, FlightPassengerForm, FlightContactForm } from '@/l
 import type { FlightOffer } from '@/types/flights';
 import type { SelectedSeat } from '@/types/seatMap';
 import type { SelectedBag } from '@/types/bags';
-import { invokeEdgeFunction } from '@/utils/postgres/functions';
 import { useUser } from '@/stores/authStore';
 import { useUserCurrency } from '@/stores/searchStore';
 import { clientFetch } from '@/lib/api/client';
@@ -300,31 +299,50 @@ export function useFlightBooking() {
         // Auto-revalidate the flight
         let isMounted = true;
         const revalidate = async () => {
-            
-
             try {
-                const data = await invokeEdgeFunction('revalidate-flight', {
-                    provider: parsedOffer.provider,
-                    userId: user?.id || 'anonymous',
-                    flightPayload: {
-                        oldPrice: parsedOffer?.price?.total,
-                        currency: parsedOffer?.price?.currency,
-                        traceId: parsedOffer?.provider?.startsWith('mystifly') ? ((parsedOffer as any).traceId ?? parsedOffer.offerId) : undefined,
-                        flight: parsedOffer?.provider === 'duffel'
-                            ? ((parsedOffer as any).raw || (parsedOffer as any)._rawOffer || (parsedOffer as any).rawOffer || parsedOffer)
-                            : undefined,
-                    }
+                // Use a relative URL so this always hits the current origin regardless of
+                // NEXT_PUBLIC_SITE_URL or whether Docker is running on a different port.
+                const res = await fetch('/api/fn/revalidate-flight', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-Requested-By': 'cheapestgo-client' },
+                    body: JSON.stringify({
+                        provider: parsedOffer.provider,
+                        userId: user?.id || 'anonymous',
+                        flightPayload: {
+                            oldPrice: parsedOffer?.price?.total,
+                            currency: parsedOffer?.price?.currency,
+                            traceId: parsedOffer?.provider?.startsWith('mystifly') ? ((parsedOffer as any).traceId ?? parsedOffer.offerId) : undefined,
+                            flight: parsedOffer?.provider === 'duffel'
+                                ? ((parsedOffer as any).raw || (parsedOffer as any)._rawOffer || (parsedOffer as any).rawOffer || parsedOffer)
+                                : undefined,
+                        },
+                    }),
                 });
 
-                if (!data.success) throw new Error(data.error || 'Revalidation failed');
-                if (!data.seatsAvailable) {
-                    // SearchIdentifier errors mean the revalidation API can't run — not that
-                    // the flight is unavailable. Soft-pass and let the booking API validate.
+                // The revalidate route soft-passes all Duffel API errors and always returns
+                // 200. A non-2xx here is an infrastructure problem (stale Docker image,
+                // network), not a "flight unavailable" signal — fall through to soft-pass.
+                if (!res.ok) {
+                    console.warn('[useFlightBooking] Revalidation endpoint returned', res.status, '— soft-passing');
+                    if (isMounted) setOffer(parsedOffer);
+                    return;
+                }
+
+                const data = await res.json();
+
+                if (!data.success || !data.seatsAvailable) {
                     const isSearchIdError = /searchIdentifier.*empty|cannot revalidate/i.test(data.error || '');
-                    if (!isSearchIdError) {
-                        throw new Error(data.error || 'Flight is no longer available. Please search again.');
+                    if (!data.seatsAvailable && !isSearchIdError) {
+                        if (isMounted) {
+                            setErrorMsg('This flight is no longer available. Please search again.');
+                            setStep('error');
+                            setOffer(parsedOffer);
+                        }
+                        return;
                     }
-                    console.warn('[useFlightBooking] SearchIdentifier revalidation error — soft-passing, proceeding with original offer');
+                    console.warn('[useFlightBooking] Revalidation soft-pass:', data.error);
+                    if (isMounted) setOffer(parsedOffer);
+                    return;
                 }
 
                 // When to move the number the traveller is looking at.
@@ -364,12 +382,11 @@ export function useFlightBooking() {
                     if (rExpiry) setOfferExpiresAt(new Date(rExpiry));
                 }
             } catch (err) {
-                console.error('[useFlightBooking] Revalidation failed:', err);
-                if (isMounted) {
-                    setErrorMsg('This flight is no longer available or its fare rules have expired. Please search again.');
-                    setStep('error');
-                    setOffer(parsedOffer); // Set old offer just so the error UI renders
-                }
+                // Network-level failure (fetch threw entirely — CORS, connection refused, etc.).
+                // The /api/flights/book route re-validates independently, so don't block the
+                // user here — show the form and let booking surface real errors.
+                console.warn('[useFlightBooking] Revalidation network error — soft-passing:', (err as any)?.message);
+                if (isMounted) setOffer(parsedOffer);
             }
         };
 
