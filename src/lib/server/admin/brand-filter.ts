@@ -3,11 +3,12 @@ import { cookies } from 'next/headers';
 export const ADMIN_BRAND = process.env.NEXT_PUBLIC_BRAND_NAME ?? 'CheapestGo';
 
 const VALID_BRANDS = ['CheapestGo', 'GeomeeGo', 'all'] as const;
-type AdminBrand = (typeof VALID_BRANDS)[number];
+export type AdminBrand = (typeof VALID_BRANDS)[number];
 
-export function getAdminBrand(): AdminBrand {
+export async function getAdminBrand(): Promise<AdminBrand> {
     try {
-        const brand = cookies().get('admin_brand_view')?.value;
+        const cookieStore = await cookies();
+        const brand = cookieStore.get('admin_brand_view')?.value;
         if (brand && (VALID_BRANDS as readonly string[]).includes(brand)) {
             return brand as AdminBrand;
         }
@@ -18,14 +19,12 @@ export function getAdminBrand(): AdminBrand {
 }
 
 /**
- * Scopes any Supabase query to the active brand's rows.
+ * Scopes any Supabase query to the given brand's rows.
  * 'all' returns unfiltered data. 'CheapestGo' also captures legacy rows
  * where source_brand IS NULL (created before the column existed).
- * Brand is resolved from the admin_brand_view cookie, falling back to
- * the NEXT_PUBLIC_BRAND_NAME env var.
+ * Callers should resolve brand once via getAdminBrand() and pass it here.
  */
-export function applyBrandFilter(query: any): any {
-    const brand = getAdminBrand();
+export function applyBrandFilter(query: any, brand: AdminBrand = ADMIN_BRAND as AdminBrand): any {
     if (brand === 'all') return query;
     if (brand === 'CheapestGo') {
         return query.or('source_brand.eq.CheapestGo,source_brand.is.null');

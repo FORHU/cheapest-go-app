@@ -3,7 +3,7 @@ import { Booking } from '@/types/admin';
 import { checkRefundability } from './recovery';
 import { enrichBookingFinances } from '@/lib/pricing';
 import { EXCHANGE_RATES } from '@/lib/currency';
-import { applyBrandFilter, ADMIN_BRAND } from './brand-filter';
+import { applyBrandFilter, getAdminBrand, ADMIN_BRAND } from './brand-filter';
 
 export interface BookingsListParams {
     page?: number;
@@ -41,11 +41,12 @@ export async function getBookingsList(params: BookingsListParams = {}): Promise<
     } = params;
 
     const supabase = createAdminClient();
+    const brand = await getAdminBrand();
 
     // 1. Build queries for each table — scoped to current brand
-    const unifiedQuery = applyBrandFilter(supabase.from('unified_bookings').select('*', { count: 'exact' }));
-    const legacyHotelQuery = applyBrandFilter(supabase.from('bookings').select('*', { count: 'exact' }));
-    const legacyFlightQuery = applyBrandFilter(supabase.from('flight_bookings').select('*, booking_sessions(contact)', { count: 'exact' }));
+    const unifiedQuery = applyBrandFilter(supabase.from('unified_bookings').select('*', { count: 'exact' }), brand);
+    const legacyHotelQuery = applyBrandFilter(supabase.from('bookings').select('*', { count: 'exact' }), brand);
+    const legacyFlightQuery = applyBrandFilter(supabase.from('flight_bookings').select('*, booking_sessions(contact)', { count: 'exact' }), brand);
 
     // 2. Apply Type Filter
     if (type !== 'all') {

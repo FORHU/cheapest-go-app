@@ -1,6 +1,6 @@
 import { createAdminClient } from '@/utils/postgres/admin';
 import { getSqlAdmin } from '@/lib/db/postgres';
-import { applyBrandFilter } from './brand-filter';
+import { applyBrandFilter, getAdminBrand, AdminBrand } from './brand-filter';
 
 export interface SearchResult {
     id: string;
@@ -25,10 +25,11 @@ export async function searchAdmin(query: string): Promise<SearchResponse> {
     }
 
     const supabase = createAdminClient();
+    const brand = await getAdminBrand();
     const pattern = `%${q}%`;
 
     const [bookings, customers, users] = await Promise.all([
-        searchBookings(supabase, pattern, q),
+        searchBookings(supabase, pattern, q, brand),
         searchCustomers(supabase, pattern, q),
         searchUsers(supabase, pattern, q),
     ]);
@@ -36,17 +37,17 @@ export async function searchAdmin(query: string): Promise<SearchResponse> {
     return { bookings, customers, users };
 }
 
-async function searchBookings(supabase: ReturnType<typeof createAdminClient>, pattern: string, q: string): Promise<SearchResult[]> {
+async function searchBookings(supabase: ReturnType<typeof createAdminClient>, pattern: string, q: string, brand: AdminBrand): Promise<SearchResult[]> {
     const results: SearchResult[] = [];
     const sql = getSqlAdmin();
 
     // unified_bookings — search by external_id (booking ref) and provider
     const [unifiedRes, legacyHotelRes, flightRows] = await Promise.all([
-        applyBrandFilter(supabase.from('unified_bookings').select('id, external_id, type, provider, status, total_price, currency, metadata, created_at'))
+        applyBrandFilter(supabase.from('unified_bookings').select('id, external_id, type, provider, status, total_price, currency, metadata, created_at'), brand)
             .or(`external_id.ilike.${pattern}`)
             .order('created_at', { ascending: false })
             .limit(5),
-        applyBrandFilter(supabase.from('bookings').select('id, booking_id, status, total_price, currency, holder_first_name, holder_last_name, holder_email, created_at'))
+        applyBrandFilter(supabase.from('bookings').select('id, booking_id, status, total_price, currency, holder_first_name, holder_last_name, holder_email, created_at'), brand)
             .or(`booking_id.ilike.${pattern},holder_first_name.ilike.${pattern},holder_last_name.ilike.${pattern},holder_email.ilike.${pattern}`)
             .order('created_at', { ascending: false })
             .limit(5),
