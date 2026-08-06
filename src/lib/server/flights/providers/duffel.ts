@@ -3,6 +3,35 @@ import { env } from "@/utils/env";
 import { logApiCall } from "@/lib/server/api-logger";
 
 /**
+ * How long Duffel waits on each airline before returning without it.
+ *
+ * Left unset, Duffel applies its own default and drops suppliers that haven't
+ * answered — and the slowest responders are typically NDC and low-cost carriers,
+ * exactly the content most likely to be carrying the cheapest fare. Raising it
+ * cannot remove offers; it can only let more arrive.
+ *
+ * It does NOT slow down a fast search: Duffel returns as soon as every supplier
+ * has answered, and only waits out the stragglers. The cost is a longer tail on
+ * searches that have a slow supplier, which is precisely when waiting pays.
+ *
+ * Must stay below FETCH_TIMEOUT_MS — aborting our own request before Duffel's
+ * deadline throws away the very offers this is meant to collect.
+ */
+const SUPPLIER_TIMEOUT_MS = (() => {
+    const raw = Number(process.env.DUFFEL_SUPPLIER_TIMEOUT_MS);
+    // Duffel documents 1000–60000. Sandbox accepts out-of-range values silently,
+    // so clamp here rather than relying on the API to reject a misconfiguration.
+    if (Number.isFinite(raw) && raw > 0) return Math.min(60_000, Math.max(1_000, Math.round(raw)));
+    return 20_000;
+})();
+
+/**
+ * Our own abort. Sits above SUPPLIER_TIMEOUT_MS so Duffel gets to finish and
+ * return partial results, rather than us cancelling mid-aggregation.
+ */
+const FETCH_TIMEOUT_MS = SUPPLIER_TIMEOUT_MS + 5_000;
+
+/**
  * Duffel provider adapter.
  * Handles communication with the Duffel API and transforms results to our unified format.
  */
@@ -51,7 +80,8 @@ export async function searchDuffel(params: FlightSearchParams): Promise<FlightRe
             cabin_class: params.cabinClass === "premium_economy" ? "premium_economy" :
                 params.cabinClass === "business" ? "business" :
                     params.cabinClass === "first" ? "first" : "economy",
-            return_offers: true
+            return_offers: true,
+            supplier_timeout: SUPPLIER_TIMEOUT_MS
         }
     };
 
@@ -72,7 +102,7 @@ export async function searchDuffel(params: FlightSearchParams): Promise<FlightRe
                     "Content-Type": "application/json"
                 },
                 body: JSON.stringify(body),
-                signal: AbortSignal.timeout(12000),
+                signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
             });
 
             lastStatus = response.status;

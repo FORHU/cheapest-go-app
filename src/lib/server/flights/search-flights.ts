@@ -31,7 +31,17 @@ async function withTimeout<T>(promise: Promise<T>, ms: number, providerName: str
  * price history — it just never answers a search.
  */
 export async function searchFlights(params: FlightSearchParams): Promise<FlightOffer[]> {
-    const TIMEOUT_MS = 12000; // 12 seconds
+    // Outermost of three nested deadlines. The ordering is load-bearing:
+    //
+    //   supplier_timeout (20s)  Duffel waits this long on each airline
+    //     < adapter abort (25s) our request gives Duffel room to return stragglers
+    //       < this (30s)        the orchestrator only fires if the adapter is stuck
+    //         < client (45s)    SEARCH_TIMEOUT_MS in search-fetcher.tsx
+    //
+    // These used to be 12s and 12s — equal, so which one fired was a race, and the
+    // adapter's own timeout logging and retry could be pre-empted by this wrapper.
+    // Keep this strictly the largest of the two server-side values.
+    const TIMEOUT_MS = 30000;
 
     // Create the search record up front so the results written at the end have
     // something to hang off.
