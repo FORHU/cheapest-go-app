@@ -12,19 +12,19 @@ describe('Checkout Schemas', () => {
             firstName: 'John',
             lastName: 'Doe',
             email: 'john@example.com',
+            phone: '09123456789',
         };
 
         it('should accept valid user details', () => {
             expect(() => userDetailsSchema.parse(validUser)).not.toThrow();
         });
 
-        it('should accept optional phone', () => {
-            const withPhone = {
-                ...validUser,
-                phone: '+1234567890',
-            };
+        it('should accept digits-only phone', () => {
+            const phones = ['09123456789', '12345', '00441234567890'];
 
-            expect(() => userDetailsSchema.parse(withPhone)).not.toThrow();
+            phones.forEach(phone => {
+                expect(() => userDetailsSchema.parse({ ...validUser, phone })).not.toThrow();
+            });
         });
 
         it('should reject empty first name', () => {
@@ -221,6 +221,7 @@ describe('Checkout Schemas', () => {
             firstName: 'John',
             lastName: 'Doe',
             email: 'john@example.com',
+            phone: '09123456789',
             cardNumber: '4242 4242 4242 4242',
             expiry: '12/26',
             cvc: '123',
@@ -230,10 +231,10 @@ describe('Checkout Schemas', () => {
             expect(() => checkoutSchema.parse(validCheckout)).not.toThrow();
         });
 
-        it('should accept optional phone', () => {
+        it('should accept digits-only phone', () => {
             const withPhone = {
                 ...validCheckout,
-                phone: '+1234567890',
+                phone: '6391234567890',
             };
 
             expect(() => checkoutSchema.parse(withPhone)).not.toThrow();
@@ -260,6 +261,7 @@ describe('Checkout Schemas', () => {
                 { ...validCheckout, firstName: undefined },
                 { ...validCheckout, lastName: undefined },
                 { ...validCheckout, email: undefined },
+                { ...validCheckout, phone: undefined },
                 { ...validCheckout, cardNumber: undefined },
                 { ...validCheckout, expiry: undefined },
                 { ...validCheckout, cvc: undefined },
@@ -277,9 +279,22 @@ describe('Checkout Schemas', () => {
                 firstName: 'François',
                 lastName: 'Müller',
                 email: 'francois@example.com',
+                phone: '09123456789',
             };
 
             expect(() => userDetailsSchema.parse(unicodeNames)).not.toThrow();
+        });
+
+        it('should handle Korean and CJK names', () => {
+            const cjkNames = [
+                { firstName: '홍', lastName: '길동', email: 'hong@example.com', phone: '01012345678' },
+                { firstName: '田中', lastName: '太郎', email: 'tanaka@example.com', phone: '09012345678' },
+                { firstName: '陈', lastName: '伟', email: 'chen@example.com', phone: '13812345678' },
+            ];
+
+            cjkNames.forEach(user => {
+                expect(() => userDetailsSchema.parse(user)).not.toThrow();
+            });
         });
 
         it('should handle very long names', () => {
@@ -287,12 +302,14 @@ describe('Checkout Schemas', () => {
                 firstName: 'A'.repeat(100),
                 lastName: 'B'.repeat(100),
                 email: 'test@example.com',
+                phone: '09123456789',
             };
 
             expect(() => userDetailsSchema.parse(longNames)).not.toThrow();
         });
 
-        it('should handle international phone formats', () => {
+        it('should reject phone formats with non-digit characters', () => {
+            // The UI has a country code dropdown — the phone field expects digits only
             const phones = [
                 '+1234567890',
                 '+44 20 1234 5678',
@@ -307,7 +324,7 @@ describe('Checkout Schemas', () => {
                     email: 'john@example.com',
                     phone,
                 };
-                expect(() => userDetailsSchema.parse(user)).not.toThrow();
+                expect(() => userDetailsSchema.parse(user)).toThrow('Phone number must contain digits only');
             });
         });
     });
