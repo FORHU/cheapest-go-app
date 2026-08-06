@@ -60,6 +60,19 @@ const SearchResultsContent = ({ initialProperties = [], totalCount: initialTotal
     const { filters } = useSearchStore();
     const { propertyTypes, boardTypes, refundable } = filters;
 
+    // District/alias bbox filter — when user searched a neighbourhood the bbox is in the URL.
+    const districtName = rawSearchParams?.districtName as string | undefined;
+    const canonicalCity = rawSearchParams?.canonicalCity as string | undefined;
+    const rawBbox = rawSearchParams?.bbox as string | undefined;
+    const districtBbox = React.useMemo<[number, number, number, number] | null>(() => {
+        if (!rawBbox) return null;
+        const parts = rawBbox.split(',').map(Number);
+        return parts.length === 4 && parts.every(Number.isFinite)
+            ? parts as [number, number, number, number]
+            : null;
+    }, [rawBbox]);
+    const [showAllCity, setShowAllCity] = React.useState(false);
+
     // Reset to page 1 whenever filters change
     React.useEffect(() => { setPage(1); }, [propertyTypes, boardTypes, refundable]);
 
@@ -128,6 +141,18 @@ const SearchResultsContent = ({ initialProperties = [], totalCount: initialTotal
     const filteredProperties = useMemo(() => {
         let props = allProperties && allProperties.length > 0 ? [...allProperties] : [];
 
+        // District bbox filter: show only hotels within the searched neighbourhood
+        // unless the user has explicitly expanded to the full city.
+        if (districtBbox && !showAllCity) {
+            const [minLng, minLat, maxLng, maxLat] = districtBbox;
+            props = props.filter(p => {
+                const lat = p.coordinates?.lat;
+                const lng = p.coordinates?.lng;
+                if (!lat || !lng) return false;
+                return lng >= minLng && lng <= maxLng && lat >= minLat && lat <= maxLat;
+            });
+        }
+
         // Property type
         if (propertyTypes.length > 0) {
             props = props.filter(p => propertyTypes.includes(p.type));
@@ -167,10 +192,20 @@ const SearchResultsContent = ({ initialProperties = [], totalCount: initialTotal
             <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2 mb-3 md:mb-4">
                 <div>
                     <h1 className="text-[14px] md:text-xl lg:text-2xl font-display font-bold text-slate-900 dark:text-white leading-tight">
-                        {destination ? t('staysIn', { destination }) : t('allProperties')}
+                        {districtName && !showAllCity
+                            ? districtName
+                            : (destination ? t('staysIn', { destination }) : t('allProperties'))}
                     </h1>
                     <p className="text-[10px] md:text-sm text-slate-500 dark:text-slate-400 mt-0.5">
                         {t('propertiesFound', { count: filteredProperties.length })} · {t('pricesMayChange')}
+                        {districtName && !showAllCity && (
+                            <button
+                                onClick={() => setShowAllCity(true)}
+                                className="ml-2 text-blue-500 hover:text-blue-600 underline underline-offset-2 cursor-pointer"
+                            >
+                                Show all in {canonicalCity || destination}
+                            </button>
+                        )}
                     </p>
                 </div>
                 <div className="flex items-center gap-2 shrink-0">

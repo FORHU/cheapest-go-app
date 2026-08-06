@@ -446,6 +446,30 @@ function SearchMapView({
         });
     }, [properties]);
 
+    // ── District alias bbox ───────────────────────────────────────
+    // When user searched a neighbourhood (e.g. "Gangnam"), the URL has bbox +
+    // districtName. We filter the sidebar list to that area; the map expands
+    // naturally as the user zooms out.
+    const districtName = rawSearchParams?.districtName as string | undefined;
+    const canonicalCity = rawSearchParams?.canonicalCity as string | undefined;
+    const rawBbox = rawSearchParams?.bbox as string | undefined;
+    const districtBbox = React.useMemo<[number, number, number, number] | null>(() => {
+        if (!rawBbox) return null;
+        const parts = rawBbox.split(',').map(Number);
+        return parts.length === 4 && parts.every(Number.isFinite)
+            ? parts as [number, number, number, number]
+            : null;
+    }, [rawBbox]);
+    // Sidebar list expansion: tracks desktop map zoom + manual button override.
+    // The map handles its own marker filtering internally via currentZoom so
+    // there is no feedback loop even when showAllCity expands the list.
+    // Threshold 11: fitBounds on a ~10km district in the split layout's narrow
+    // map column yields zoom ≈ 11.6, which is safely above 11 but below 12.
+    const DISTRICT_ZOOM_THRESHOLD = 11;
+    const [mapZoom, setMapZoom] = React.useState<number>(DISTRICT_ZOOM_THRESHOLD + 1);
+    const [showAllCityOverride, setShowAllCityOverride] = React.useState(false);
+    const showAllCity = showAllCityOverride || (!!districtBbox && mapZoom < DISTRICT_ZOOM_THRESHOLD);
+
     // ── Client-side display pagination ───────────────────────────
     const [displayCount, setDisplayCount] = useState(LIST_PAGE_SIZE);
     const searchKey = JSON.stringify(rawSearchParams);
@@ -498,6 +522,17 @@ function SearchMapView({
             list = list.filter((p: any) => p.refundableTag === 'RFN');
         }
 
+        // District bbox filter: show only neighbourhood hotels in sidebar until user zooms out.
+        if (districtBbox && !showAllCity) {
+            const [minLng, minLat, maxLng, maxLat] = districtBbox;
+            list = list.filter((p: any) => {
+                const lat = p.coordinates?.lat ?? p.lat;
+                const lng = p.coordinates?.lng ?? p.lng;
+                if (!lat || !lng) return false;
+                return lng >= minLng && lng <= maxLng && lat >= minLat && lat <= maxLat;
+            });
+        }
+
         // Collapse same-location duplicates so the list shows each hotel once —
         // and so the map pins, derived from this list, match the list count.
         list = dedupeByProximity(list);
@@ -514,11 +549,9 @@ function SearchMapView({
         list.sort((a: any, b: any) => (+!!(a as any).priceLoading) - (+!!(b as any).priceLoading));
 
         return list;
-    }, [allProperties, sortBy, propertyTypes, boardTypes, refundable]);
+    }, [allProperties, sortBy, propertyTypes, boardTypes, refundable, districtBbox, showAllCity]);
 
-    // Map pins are the exact same set as the list — already coordinate-filtered
-    // and de-duplicated — normalized to the shape the map expects. Deriving them
-    // from `sortedProperties` guarantees the marker count equals the list count.
+    // Map pins for the list sidebar (bbox-filtered when district search).
     const mappableProperties = useMemo<MappableProperty[]>(
         () =>
             sortedProperties.map((p: any) => ({
@@ -533,6 +566,35 @@ function SearchMapView({
             })),
         [sortedProperties],
     );
+
+    // All-city hotel set for the map — no bbox filter so the map can reveal
+    // city-wide clusters when the user zooms out past the district threshold.
+    const allMappableForMap = useMemo<MappableProperty[]>(() => {
+        const isRawCode = (name: string) => /^[a-z0-9_]+$/.test(name) && name.includes('_');
+        let list = allProperties.filter((p: any) =>
+            p.name && !isRawCode(p.name) && ((p as any).priceLoading || p.price > 0) && hasValidCoords(p)
+        );
+        if (propertyTypes.length > 0) list = list.filter((p: any) => propertyTypes.includes(p.type));
+        if (boardTypes.length > 0) {
+            list = list.filter((p: any) =>
+                p.boardTypes && p.boardTypes.length > 0
+                    ? matchesBoardType(p.boardTypes, boardTypes)
+                    : boardTypes.includes('RO')
+            );
+        }
+        if (refundable === true) list = list.filter((p: any) => p.refundableTag === 'RFN');
+        list = dedupeByProximity(list);
+        return list.map((p: any) => ({
+            ...p,
+            id: p.id || p.hotelId,
+            location: p.location || '',
+            image: p.image || '',
+            rating: p.rating || 0,
+            reviews: p.reviews || 0,
+            price: p.price || 0,
+            currency: p.currency || 'USD',
+        }));
+    }, [allProperties, propertyTypes, boardTypes, refundable]);
 
     // Client-side display pagination — all hotels are already in sortedProperties from streaming
     const canLoadMore = displayCount < sortedProperties.length;
@@ -559,9 +621,16 @@ function SearchMapView({
         if (card) card.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }, [visibleProperties]); // eslint-disable-line react-hooks/exhaustive-deps
 
-    // Always seed the map with the destination's coordinates so it starts centred on
-    // the right city. The guard on mappableProperties was incorrectly cleared this,
-    // causing the map to default to Tokyo (or globe view) while pins were loading.
+    // Prefer the district bbox centre so the map starts at the right location
+    // without animating from the Tokyo fallback. Falls back to city lookup, then null.
+    const districtCenter = useMemo(() => {
+        if (!districtBbox) return null;
+        return {
+            lng: (districtBbox[0] + districtBbox[2]) / 2,
+            lat: (districtBbox[1] + districtBbox[3]) / 2,
+        };
+    }, [districtBbox]);
+
     const fallbackCoords = useMemo(() => {
         return destination ? getDestinationCoords(destination) : null;
     }, [destination]);
@@ -844,6 +913,20 @@ function SearchMapView({
                 <div className="w-[420px] xl:w-[calc(420px+max(0px,50vw-700px))] xl:pl-[max(0px,50vw-700px)] shrink-0 h-full flex flex-col">
                     {sortedProperties.length > 0 ? (
                         <>
+                            {/* District filter banner */}
+                            {districtBbox && !showAllCity && (
+                                <div className="shrink-0 px-3 py-1.5 flex items-center justify-between bg-blue-50 dark:bg-blue-900/20 border-b border-blue-100 dark:border-blue-800/30">
+                                    <span className="text-[11px] font-semibold text-blue-700 dark:text-blue-300">
+                                        {districtName || destination}
+                                    </span>
+                                    <button
+                                        onClick={() => setShowAllCityOverride(true)}
+                                        className="text-[11px] text-blue-600 dark:text-blue-400 hover:underline cursor-pointer"
+                                    >
+                                        Show all in {canonicalCity || destination}
+                                    </button>
+                                </div>
+                            )}
                             {/* Scrollable hotel cards — scrollbar hidden so it doesn't steal width from cards */}
                             <div className="flex-1 overflow-y-auto overscroll-contain [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] scrollbar-none">
                                 {visibleProperties.map((property, idx) => (
@@ -901,14 +984,18 @@ function SearchMapView({
                     style={{ marginRight: 'max(0px, calc((100vw - 1400px) / 2))' }}
                 >
                     <SearchMapContainer
-                        properties={mappableProperties}
+                        properties={allMappableForMap}
                         selectedId={selectedId}
                         onSelectId={setSelectedId}
                         hoveredId={hoveredId}
                         onHoverId={setHoveredId}
                         onViewDetails={handleViewDetails}
                         searchOverlayClassName="absolute top-4 left-1/2 -translate-x-1/2 z-20 w-[300px] md:w-[360px]"
-                        defaultCenter={fallbackCoords ?? undefined}
+                        defaultCenter={districtCenter ?? fallbackCoords ?? undefined}
+                        districtBbox={districtBbox ?? undefined}
+                        districtName={districtName}
+                        cityName={canonicalCity || destination}
+                        onZoomChange={setMapZoom}
                     />
                 </div>
             </div>
@@ -916,14 +1003,17 @@ function SearchMapView({
             {/* ── Mobile Map layout ── */}
             <div className={cn("flex lg:hidden flex-1 relative min-h-0 w-full mobile-search-map", showMobileMap ? "map-cards-visible" : "map-cards-hidden")}>
                 <SearchMapContainer
-                    properties={sortedProperties}
+                    properties={allMappableForMap}
                     selectedId={selectedId}
                     onSelectId={setSelectedId}
                     hoveredId={hoveredId}
                     onHoverId={setHoveredId}
                     onViewDetails={handleViewDetails}
                     searchOverlayClassName="absolute top-4 left-4 right-14 z-20"
-                    defaultCenter={fallbackCoords ?? undefined}
+                    defaultCenter={districtCenter ?? fallbackCoords ?? undefined}
+                    districtBbox={districtBbox ?? undefined}
+                    districtName={districtName}
+                    cityName={canonicalCity || destination}
                 />
 
                 {/* Horizontal Swiper */}

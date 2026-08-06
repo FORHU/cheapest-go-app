@@ -10,6 +10,8 @@ interface UseMapViewportProps {
     selectedId?: string | null;
     /** When true, skip the flyTo animation when a property is selected. */
     disableFlyToSelected?: boolean;
+    /** When true, skip the auto-fitBounds on initial load (e.g. when a district bbox handles it). */
+    disableInitialFit?: boolean;
 }
 
 export const useMapViewport = ({
@@ -18,12 +20,14 @@ export const useMapViewport = ({
     properties,
     selectedId,
     disableFlyToSelected = false,
+    disableInitialFit = false,
 }: UseMapViewportProps) => {
     const propertiesKey = useMemo(() => properties.map(p => p.id).join(','), [properties]);
     const hasFittedRef = useRef<string | null>(null);
 
     // 1. Fit bounds on load / properties change
     useEffect(() => {
+        if (disableInitialFit) return;
         if (!isMapLoaded || properties.length === 0) return;
         // If we have a selection, don't refit bounds (prevents jumping if properties update while selected)
         if (selectedId) return;
@@ -61,7 +65,7 @@ export const useMapViewport = ({
                 bearing: 0,
             }
         );
-    }, [isMapLoaded, propertiesKey, mapRef, selectedId]);
+    }, [isMapLoaded, propertiesKey, mapRef, selectedId, disableInitialFit]);
 
     // 2. Fly to specific property when selected (skip if caller opted out)
     useEffect(() => {
