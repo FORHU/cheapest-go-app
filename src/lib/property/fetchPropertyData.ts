@@ -328,6 +328,11 @@ function isTGXOrETGId(id: string): boolean {
     return /^\d+$/.test(id) || /^[A-Z]{2}\d+$/.test(id);
 }
 
+/** True for ETG slug-format IDs (e.g. "tsai_hotel_and_residences_"). Province/area searches use ETG. */
+function isEtgSlug(id: string): boolean {
+    return /^[a-z][a-z0-9_]+$/.test(id) && id.includes('_');
+}
+
 /** Look up what source populated this hotel in hotel_content. */
 async function getHotelContentSource(id: string): Promise<string | null> {
     try {
@@ -370,7 +375,62 @@ async function fetchETGPropertyData(
                    description, amenities, review_rating, review_count
             FROM hotel_content WHERE hotel_id = ${id} LIMIT 1
         `;
-        const db = rows[0];
+        let db = rows[0];
+
+        // On first visit for a province-search hotel the ETG seeding may not have
+        // run yet — fetch hotel/info directly from ETG so the page doesn't 404.
+        if (!db && process.env.ETG_KEY_ID && process.env.ETG_API_KEY) {
+            try {
+                const token = getEtgToken();
+                const abort2 = new AbortController();
+                const t2 = setTimeout(() => abort2.abort(), 5_000);
+                const infoRes = await fetch('https://api.worldota.net/api/b2b/v3/hotel/info/', {
+                    method: 'POST',
+                    headers: { 'Authorization': `Basic ${token}`, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id, language: 'en' }),
+                    signal: abort2.signal,
+                });
+                clearTimeout(t2);
+                if (infoRes.ok) {
+                    const infoJson = await infoRes.json();
+                    const info = infoJson?.data;
+                    if (info) {
+                        const etgImages: string[] = (info.images ?? [])
+                            .map((u: string) => typeof u === 'string' ? u.replace('{size}', '640x400') : '')
+                            .filter(Boolean).slice(0, 10);
+                        db = {
+                            name:         info.name ?? null,
+                            images:       etgImages,
+                            star_rating:  info.star_rating ?? 0,
+                            lat:          info.latitude ?? 0,
+                            lng:          info.longitude ?? 0,
+                            address:      info.address ?? '',
+                            city:         info.region?.name ?? '',
+                            country:      info.region?.country_code ?? '',
+                            description:  info.description ?? '',
+                            amenities:    null,
+                            review_rating: 0,
+                            review_count:  0,
+                        };
+                        // Seed DB in background so next visit is instant
+                        sql`
+                            INSERT INTO hotel_content
+                                (hotel_id, name, images, lat, lng, address, city, country,
+                                 description, star_rating, content_source, fetched_at)
+                            VALUES (
+                                ${info.id ?? id}, ${info.name ?? null}, ${sql.array(etgImages)},
+                                ${Number(info.latitude ?? 0)}, ${Number(info.longitude ?? 0)},
+                                ${info.address ?? null}, ${info.region?.name ?? null},
+                                ${info.region?.country_code ?? null}, ${info.description ?? null},
+                                ${Number(info.star_rating ?? 0)}, 'etg', now()
+                            )
+                            ON CONFLICT (hotel_id) DO NOTHING
+                        `.catch(() => {});
+                    }
+                }
+            } catch { /* non-fatal */ }
+        }
+
         const city    = (db?.city    as string) || '';
         const country = (db?.country as string) || '';
 
@@ -585,8 +645,12 @@ export const fetchPropertyData = cache(async (
     let preBookResult = null;
 
     // 1. TGX/ETG hotel — route based on which provider sourced this hotel.
-    //    ETG hotels use ETG IDs (not recognized by TGX/OTV) → must use ETG's own availability API.
-    //    OTV hotels use OTV codes → use TGX.
+    //    ETG slug IDs (snake_case like "tsai_hotel_and_residences_") come from
+    //    province/area searches and must go through the ETG availability path.
+    //    Numeric/alphanumeric IDs check the DB source before routing.
+    if (isEtgSlug(id)) {
+        return fetchETGPropertyData(id, searchParams);
+    }
     if (isTGXOrETGId(id)) {
         const source = await getHotelContentSource(id);
         if (source === 'etg') {

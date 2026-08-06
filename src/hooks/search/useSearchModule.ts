@@ -96,16 +96,24 @@ export const useSearchModule = (): UseSearchModuleReturn => {
         const roomsParam = searchParams?.get('rooms');
         const countryCodeParam = searchParams?.get('countryCode');
         const placeIdParam = searchParams?.get('placeId');
+        const bboxParam = searchParams?.get('bbox');
+        const districtNameParam = searchParams?.get('districtName');
+        const canonicalCityParam = searchParams?.get('canonicalCity');
 
         if (destParam) {
             setDestinationQuery(destParam);
-            // IMPORTANT: Preserve placeId and countryCode for LiteAPI searches
+            const bboxParsed = bboxParam
+                ? (bboxParam.split(',').map(Number) as [number, number, number, number])
+                : undefined;
             setDestination({
                 type: 'city',
                 title: destParam,
                 subtitle: 'Selected destination',
                 id: placeIdParam || undefined,
-                countryCode: countryCodeParam || undefined
+                countryCode: countryCodeParam || undefined,
+                bbox: bboxParsed,
+                districtName: districtNameParam || undefined,
+                canonicalCity: canonicalCityParam || undefined,
             });
         }
 
@@ -207,8 +215,12 @@ export const useSearchModule = (): UseSearchModuleReturn => {
 
         const params = new URLSearchParams();
 
-        // Destination
+        // Destination — when the user searched a district alias (e.g. "Gangnam District"),
+        // destination holds the display name and canonicalCity holds the TGX search city ("Seoul").
         params.set('destination', destValue!);
+        if (state.destination?.canonicalCity) {
+            params.set('canonicalCity', state.destination.canonicalCity);
+        }
         if (state.destination?.countryCode) {
             params.set('countryCode', state.destination.countryCode);
         }
@@ -235,6 +247,9 @@ export const useSearchModule = (): UseSearchModuleReturn => {
         }
         if (state.destination?.bbox && state.destination.bbox.length === 4) {
             params.set('bbox', state.destination.bbox.join(','));
+        }
+        if (state.destination?.districtName) {
+            params.set('districtName', state.destination.districtName);
         }
 
         // Currency: based on user's locale (from store), not the destination

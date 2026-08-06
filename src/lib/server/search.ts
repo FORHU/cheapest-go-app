@@ -1,6 +1,7 @@
 import { unstable_cache } from 'next/cache';
 import { extractCountryCode, COUNTRY_SEARCH_LIST } from '@/lib/constants/countries';
 import { getSqlAdmin } from '@/lib/db/postgres';
+import { CITY_ALIASES } from '@/lib/constants/cityAliases';
 
 /** Where a searched place sits on the granularity ladder. See CONTEXT.md
  *  ("Destination granularity") and ADR-0006. Area rungs (country/province/city)
@@ -22,6 +23,12 @@ export interface AutocompleteResult {
     lng?: number;
     /** Mapbox bounding box [minLng, minLat, maxLng, maxLat] — sizes a district's search circle. */
     bbox?: [number, number, number, number];
+    /** Original district/neighbourhood name when this result is a sub-city area.
+     *  e.g. "Gangnam District" — shown in the search bar and results header. */
+    districtName?: string;
+    /** The canonical city used for the actual hotel search (TGX), when the user searched
+     *  a district alias. e.g. "Seoul" when the user searched "Gangnam". */
+    canonicalCity?: string;
 }
 
 /** Map a Mapbox geocoder place_type to a ladder rung. */
@@ -85,7 +92,7 @@ async function fetchCitiesFromMapbox(query: string, locale?: string): Promise<Au
         if (!res.ok) return [];
         const data = await res.json();
 
-        return (data.features ?? []).map((feature: any) => {
+        const mapped = (data.features ?? []).map((feature: any) => {
             // `text_en` is the English name (present because we requested `en`);
             // fall back to `text` for English-only requests. Downstream resolution
             // (destination codes, region_id, cache keys, hotel_content.city) is all
@@ -108,17 +115,70 @@ async function fetchCitiesFromMapbox(query: string, locale?: string): Promise<Au
             const bbox: [number, number, number, number] | undefined =
                 Array.isArray(feature.bbox) && feature.bbox.length === 4 ? feature.bbox : undefined;
 
+            // If this is a district/neighbourhood with a known alias, remap it to
+            // the canonical city so the autocomplete shows "New York" when the user
+            // types "Manhattan", and the search fires as a city rung (not district).
+            // Prefix-match handles Mapbox suffixes like "Gangnam District" → key "gangnam".
+            let aliasedCity: string | undefined;
+            if (rung === 'district' || rung === 'poi') {
+                const nameLower = cityName.toLowerCase();
+                const countryMap = CITY_ALIASES[countryCode];
+                if (countryMap) {
+                    const matchedKey = Object.keys(countryMap).find(key =>
+                        nameLower === key ||
+                        nameLower.startsWith(key + ' ') ||
+                        nameLower.startsWith(key + '-')
+                    );
+                    aliasedCity = matchedKey ? countryMap[matchedKey] : undefined;
+                }
+            }
+
+            // When an alias fired but Mapbox didn't include a bbox (common for
+            // sub-district features), generate an ~5 km radius bbox from the center
+            // so the search page can still filter hotels to this neighbourhood.
+            let effectiveBbox = bbox;
+            if (aliasedCity && !effectiveBbox && center) {
+                const [lng, lat] = center;
+                const latDelta = 0.045; // ~5 km
+                const lngDelta = latDelta / Math.cos(lat * Math.PI / 180);
+                effectiveBbox = [
+                    +(lng - lngDelta).toFixed(6),
+                    +(lat - latDelta).toFixed(6),
+                    +(lng + lngDelta).toFixed(6),
+                    +(lat + latDelta).toFixed(6),
+                ];
+            }
+
             return {
                 type: 'city' as const,
-                rung,
+                rung: aliasedCity ? 'city' : rung,
+                // Show the district name (e.g. "Gangnam District") in the autocomplete
+                // so the user sees what they typed — not the canonical city ("Seoul").
+                // canonicalCity carries "Seoul" for the actual TGX hotel search.
                 title: cityName,
                 subtitle: placeName,
                 countryCode,
                 id: feature.id ?? undefined,
                 lat: center ? center[1] : undefined,
                 lng: center ? center[0] : undefined,
-                bbox,
+                bbox: effectiveBbox,
+                districtName: aliasedCity ? cityName : undefined,
+                canonicalCity: aliasedCity,
             };
+        });
+
+        // Deduplicate: multiple Mapbox district features that alias to the same
+        // canonical city collapse into one entry (e.g. two Gangnam features → one row).
+        const seen = new Set<string>();
+        return mapped.filter((r: AutocompleteResult) => {
+            // Alias results: dedup on the canonical city so only one Gangnam/Seoul row shows.
+            // Non-alias results: dedup on the display title as before.
+            const key = r.canonicalCity
+                ? `${r.canonicalCity.toLowerCase()}|${r.countryCode}`
+                : `${r.title.toLowerCase()}|${r.countryCode}`;
+            if (seen.has(key)) return false;
+            seen.add(key);
+            return true;
         });
     } catch {
         return [];

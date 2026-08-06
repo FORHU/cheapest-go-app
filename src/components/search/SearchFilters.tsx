@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Search, Map as MapIcon, RotateCcw, X } from 'lucide-react';
 import { useSearchFilters, useSearchStore } from '@/stores/searchStore';
@@ -21,7 +20,6 @@ interface SearchFiltersProps {
 }
 
 const SearchFilters = ({ initialFacilities, previewCoordinates }: SearchFiltersProps) => {
-    const router = useRouter();
     const t = useTranslations('hotels.filters');
     const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
     const initializedRef = useRef(false);
@@ -88,7 +86,8 @@ const SearchFilters = ({ initialFacilities, previewCoordinates }: SearchFiltersP
         setFilters(urlFilters);
     }, [setFilters]);
 
-    // URL update helper
+    // URL update helper — uses replaceState so filter changes don't trigger
+    // a new hotel search stream (router.push would re-render with new searchParams).
     const updateURL = useCallback((params: Record<string, string | null>) => {
         const current = new URLSearchParams(window.location.search);
         Object.entries(params).forEach(([key, value]) => {
@@ -98,8 +97,8 @@ const SearchFilters = ({ initialFacilities, previewCoordinates }: SearchFiltersP
                 current.set(key, value);
             }
         });
-        router.push(`/search?${current.toString()}`);
-    }, [router]);
+        window.history.replaceState(null, '', `/search?${current.toString()}`);
+    }, []);
 
     // Debounced hotel name search
     const handleHotelNameChange = useCallback((value: string) => {
@@ -147,8 +146,8 @@ const SearchFilters = ({ initialFacilities, previewCoordinates }: SearchFiltersP
         ['hotelName', 'starRating', 'minRating', 'minReviewsCount', 'facilities', 'strictFacilityFiltering', 'propertyTypes', 'boardTypes', 'refundable'].forEach(key => {
             current.delete(key);
         });
-        router.push(`/search?${current.toString()}`);
-    }, [resetFilters, router]);
+        window.history.replaceState(null, '', `/search?${current.toString()}`);
+    }, [resetFilters]);
 
     const handlePropertyTypeToggle = useCallback((type: string) => {
         togglePropertyType(type);

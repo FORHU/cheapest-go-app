@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server';
 import { runTgxSearch } from '@/lib/server/stays/travelgatex/search';
 import { getSqlAdmin } from '@/lib/db/postgres';
 import { tgxGraphQL, getTgxConfig } from '@/lib/server/stays/travelgatex/client';
+import { CITY_ALIASES } from '@/lib/constants/cityAliases';
 
 const COUNTRY_NAME_TO_ISO: Record<string, string> = {
     'indonesia': 'ID', 'france': 'FR', 'italy': 'IT', 'spain': 'ES', 'germany': 'DE',
@@ -249,6 +250,21 @@ export async function POST(req: NextRequest) {
             const countrySuffix = rawCity.slice(normalizedCity.length).replace(/^,\s*/, '').trim();
             const resolved = resolveIsoCode(countrySuffix);
             if (resolved) body.countryCode = resolved;
+        }
+    }
+
+    // City alias resolution: map district/borough/neighbourhood names to the
+    // canonical city TGX can resolve. Rung is upgraded to 'city' so the district
+    // early-return in _runTgxSearch doesn't kill the search.
+    if (body.countryCode && body.cityName) {
+        const countryAliases = CITY_ALIASES[body.countryCode];
+        const alias = countryAliases?.[body.cityName.toLowerCase()];
+        if (alias) {
+            console.log(`[stream] city alias: "${body.cityName}" (rung: ${body.rung}) → "${alias}" (rung: city)`);
+            body.cityName = alias;
+            if (body.destination) body.destination = alias;
+            // Upgrade rung to city — district/neighbourhood aliases resolve as full cities.
+            body.rung = 'city';
         }
     }
 
