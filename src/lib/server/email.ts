@@ -7,7 +7,11 @@ import { env } from "@/utils/env";
 const BRAND_NAME = process.env.NEXT_PUBLIC_BRAND_NAME ?? 'CheapestGo';
 const BRAND_EMAIL = process.env.NEXT_PUBLIC_BRAND_EMAIL ?? 'no-reply@mail.cheapestgo.com';
 const BRAND_LOGO = process.env.NEXT_PUBLIC_BRAND_LOGO ?? '/Web_Logo_Transparent.png';
-const BRAND_LOGO_URL = `${process.env.NEXT_PUBLIC_SITE_URL ?? 'https://cheapestgo.com'}${BRAND_LOGO}`;
+// Emails are opened by external clients — localhost is unreachable from outside.
+// Always use the public domain for email assets even in local dev.
+const _siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://cheapestgo.com';
+const EMAIL_BASE_URL = /localhost|127\.0\.0\.1/.test(_siteUrl) ? 'https://cheapestgo.com' : _siteUrl;
+const BRAND_LOGO_URL = `${EMAIL_BASE_URL}${BRAND_LOGO}`;
 
 export const FROM_NOREPLY = `${BRAND_NAME} <${BRAND_EMAIL}>`;
 export const FROM_ALERTS  = `${BRAND_NAME} Alerts <${BRAND_EMAIL}>`;
@@ -608,8 +612,12 @@ export async function sendFlightBookingConfirmationEmail(
 
         const firstSeg = segments[0];
         const lastSeg = segments[segments.length - 1];
+        // For round trips the first origin equals the last destination — show a ⇄ label instead
+        const isRoundTrip = firstSeg && lastSeg && firstSeg.origin === lastSeg.destination && segments.length > 1;
         const route = firstSeg && lastSeg
-            ? `${firstSeg.origin} → ${lastSeg.destination}`
+            ? isRoundTrip
+                ? `${firstSeg.origin} ⇄ ${firstSeg.destination}`
+                : `${firstSeg.origin} → ${lastSeg.destination}`
             : 'N/A';
 
         // Build segment rows for email

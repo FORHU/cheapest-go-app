@@ -263,9 +263,10 @@ async function fireBookingEmail(
 ) {
     if (!bookingData.bookingId || !bookingData.pnr) return;
 
-    const [{ data: session }, { data: segments }] = await Promise.all([
+    const [{ data: session }, { data: segments }, { data: booking }] = await Promise.all([
         supabase.from('booking_sessions').select('contact, passengers').eq('id', sessionId).single(),
         supabase.from('flight_segments').select('*').eq('booking_id', bookingData.bookingId),
+        supabase.from('flight_bookings').select('ticket_numbers').eq('id', bookingData.bookingId).maybeSingle(),
     ]);
 
     const email = (session as any)?.contact?.email;
@@ -281,6 +282,19 @@ async function fireBookingEmail(
         destination: s.destination,
         departureTime: s.departure,
         arrivalTime: s.arrival,
+    }));
+
+    // ticket_numbers is stored as a JSON array of strings e.g. ["1234567890123"]
+    const rawTickets: string[] = (() => {
+        const raw = (booking as any)?.ticket_numbers;
+        if (!raw) return [];
+        if (Array.isArray(raw)) return raw;
+        try { return JSON.parse(raw); } catch { return []; }
+    })();
+    const passengers: any[] = (session as any)?.passengers ?? [];
+    const tickets = rawTickets.map((num, i) => ({
+        number: num,
+        name: passengers[i] ? `${passengers[i].firstName} ${passengers[i].lastName}` : `Passenger ${i + 1}`,
     }));
 
     const isAwaiting = bookingData.status === 'awaiting_ticket';
@@ -306,6 +320,7 @@ async function fireBookingEmail(
             passengerName,
             provider,
             segments: mappedSegments,
+            tickets: tickets.length > 0 ? tickets : undefined,
             totalPrice: bookingData.confirmedPrice ?? 0,
             currency: bookingData.confirmedCurrency ?? 'USD',
         });
