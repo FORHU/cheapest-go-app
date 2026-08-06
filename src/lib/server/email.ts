@@ -1,5 +1,7 @@
 import { createAdminClient } from '@/utils/postgres/admin';
 import { env } from "@/utils/env";
+import fs from 'fs';
+import path from 'path';
 
 // ─── Sending addresses ────────────────────────────────────────────────
 // Verified domain: mail.cheapestgo.com (Resend, ap-northeast-1)
@@ -7,11 +9,23 @@ import { env } from "@/utils/env";
 const BRAND_NAME = process.env.NEXT_PUBLIC_BRAND_NAME ?? 'CheapestGo';
 const BRAND_EMAIL = process.env.NEXT_PUBLIC_BRAND_EMAIL ?? 'no-reply@mail.cheapestgo.com';
 const BRAND_LOGO = process.env.NEXT_PUBLIC_BRAND_LOGO ?? '/Web_Logo_Transparent.png';
-// Emails are opened by external clients — localhost is unreachable from outside.
-// Always use the public domain for email assets even in local dev.
+
+// Inline the logo as base64 so email clients display it without fetching an external URL.
+// (External URLs are blocked by default in Gmail, Outlook, etc. until the user enables images.)
+// Falls back to the public site URL if the file cannot be read (e.g. missing in the build).
 const _siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://cheapestgo.com';
 const EMAIL_BASE_URL = /localhost|127\.0\.0\.1/.test(_siteUrl) ? 'https://cheapestgo.com' : _siteUrl;
-const BRAND_LOGO_URL = `${EMAIL_BASE_URL}${BRAND_LOGO}`;
+const BRAND_LOGO_URL = (() => {
+    try {
+        const filePath = path.join(process.cwd(), 'public', BRAND_LOGO);
+        const data = fs.readFileSync(filePath);
+        const ext = path.extname(BRAND_LOGO).slice(1).toLowerCase().replace('jpg', 'jpeg');
+        const mime = ext === 'svg' ? 'image/svg+xml' : `image/${ext || 'png'}`;
+        return `data:${mime};base64,${data.toString('base64')}`;
+    } catch {
+        return `${EMAIL_BASE_URL}${BRAND_LOGO}`;
+    }
+})();
 
 export const FROM_NOREPLY = `${BRAND_NAME} <${BRAND_EMAIL}>`;
 export const FROM_ALERTS  = `${BRAND_NAME} Alerts <${BRAND_EMAIL}>`;
@@ -1021,7 +1035,10 @@ export async function sendFlightCancellationEmail(
         const fmt = (n: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: currency || 'USD' }).format(n);
         const firstSeg = segments[0];
         const lastSeg = segments[segments.length - 1];
-        const route = firstSeg && lastSeg ? `${firstSeg.origin} → ${lastSeg.destination}` : 'N/A';
+        const isRoundTrip = firstSeg && lastSeg && firstSeg.origin === lastSeg.destination && segments.length > 1;
+        const route = firstSeg && lastSeg
+            ? isRoundTrip ? `${firstSeg.origin} ⇄ ${firstSeg.destination}` : `${firstSeg.origin} → ${lastSeg.destination}`
+            : 'N/A';
 
         const isRefundable = refundAmount > 0;
         const refundBanner = isRefundable
