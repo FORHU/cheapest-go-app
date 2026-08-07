@@ -313,6 +313,7 @@ function BookingContent() {
         errorMsg,
         fieldErrors,
         clearFieldError,
+        validateField,
         bookingResult,
         passengers,
         contact,
@@ -1077,6 +1078,7 @@ function BookingContent() {
                                             aria-invalid={!!fieldErrors[`passengers.${idx}.firstName`]}
                                             value={pax.firstName}
                                             onChange={(e) => updatePassenger(idx, 'firstName', e.target.value)}
+                                            onBlur={(e) => validateField(`passengers.${idx}.firstName`, e.target.value)}
                                             className={fieldClass(!!fieldErrors[`passengers.${idx}.firstName`])}
                                         />
                                     </div>
@@ -1088,6 +1090,7 @@ function BookingContent() {
                                             aria-invalid={!!fieldErrors[`passengers.${idx}.lastName`]}
                                             value={pax.lastName}
                                             onChange={(e) => updatePassenger(idx, 'lastName', e.target.value)}
+                                            onBlur={(e) => validateField(`passengers.${idx}.lastName`, e.target.value)}
                                             className={fieldClass(!!fieldErrors[`passengers.${idx}.lastName`])}
                                         />
                                     </div>
@@ -1125,7 +1128,7 @@ function BookingContent() {
                                         <FormDatePicker
                                             placeholder={t('passenger.birthdate')}
                                             value={pax.birthDate}
-                                            onChange={(val) => updatePassenger(idx, 'birthDate', val)}
+                                            onChange={(val) => { updatePassenger(idx, 'birthDate', val); validateField(`passengers.${idx}.birthDate`, val); }}
                                             maxDate={new Date()}
                                             defaultViewDate={defaultBirthdateView()}
                                             required
@@ -1169,6 +1172,7 @@ function BookingContent() {
                                             aria-invalid={!!fieldErrors[`passengers.${idx}.passport`]}
                                             value={pax.passport}
                                             onChange={(e) => updatePassenger(idx, 'passport', e.target.value)}
+                                            onBlur={(e) => validateField(`passengers.${idx}.passport`, e.target.value)}
                                             className={fieldClass(!!fieldErrors[`passengers.${idx}.passport`])}
                                         />
                                     </div>
@@ -1176,7 +1180,7 @@ function BookingContent() {
                                         <FieldError message={fieldErrors[`passengers.${idx}.passportExpiry`]} />
                                         <FormDatePicker
                                             value={pax.passportExpiry}
-                                            onChange={(val) => updatePassenger(idx, 'passportExpiry', val)}
+                                            onChange={(val) => { updatePassenger(idx, 'passportExpiry', val); validateField(`passengers.${idx}.passportExpiry`, val); }}
                                             minDate={new Date()}
                                             required
                                             placeholder={t('passenger.passportExpiry')}
@@ -1210,6 +1214,7 @@ function BookingContent() {
                                     aria-invalid={!!fieldErrors['contact.email']}
                                     value={contact.email}
                                     onChange={(e) => { setContact(prev => ({ ...prev, email: e.target.value })); clearFieldError('contact.email'); }}
+                                    onBlur={(e) => validateField('contact.email', e.target.value)}
                                     className={fieldClass(!!fieldErrors['contact.email'])}
                                 />
                                 </div>
@@ -1249,6 +1254,7 @@ function BookingContent() {
                                         aria-invalid={!!fieldErrors['contact.phone']}
                                         value={contact.phone}
                                         onChange={(e) => { setContact(prev => ({ ...prev, phone: e.target.value })); clearFieldError('contact.phone'); }}
+                                        onBlur={(e) => validateField('contact.phone', e.target.value)}
                                         className={fieldClass(!!fieldErrors['contact.phone'], 'flex-1')}
                                     />
                                 </div>

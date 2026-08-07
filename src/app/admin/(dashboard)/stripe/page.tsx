@@ -8,7 +8,7 @@ export default async function AdminStripePage() {
 
     const [balance, charges, refunds, disputes, payouts] = await Promise.all([
         stripe.balance.retrieve(),
-        stripe.paymentIntents.list({ limit: 20, expand: ['data.latest_charge'] }),
+        stripe.paymentIntents.list({ limit: 50, expand: ['data.latest_charge'] }),
         stripe.refunds.list({ limit: 10 }),
         stripe.disputes.list({ limit: 10 }),
         stripe.payouts.list({ limit: 5 }),

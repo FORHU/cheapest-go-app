@@ -341,9 +341,15 @@
         },
         "validation": {
             "bookingFailed": "予約確認に失敗しました：{message}。お支払いは自動的に返金されます。",
+            "fieldRequired": "この項目は必須です",
+            "firstNameRequired": "名を入力してください",
             "fixHighlighted": "ハイライトされた項目を修正してください。",
             "invalidPrice": "予約価格が無効です。もう一度お試しください。",
+            "lastNameRequired": "姓を入力してください",
+            "nameInvalid": "お名前には文字のみ使用できます",
             "paymentSetupFailed": "支払い設定に失敗しました",
+            "phoneDigitsOnly": "電話番号は数字のみ入力してください",
+            "phoneRequired": "電話番号を入力してください",
             "priceVerifying": "価格を確認中です — しばらく待ってからもう一度お試しください。",
             "requiresAuth": "認証が必要です",
             "sessionExpired": "予約セッションの有効期限が切れました。戻って部屋を選び直してください。",
@@ -717,7 +723,14 @@
             "viewMyTrips": "私の旅行を表示",
             "whatsNext": "次のステップ"
         },
-        "totalPrice": "合計額"
+        "totalPrice": "合計額",
+        "validation": {
+            "firstNameRequired": "名を入力してください",
+            "lastNameRequired": "姓を入力してください",
+            "nameIcao": "英字のみ入力してください（例：Jose、Joséは不可）",
+            "phoneDigitsOnly": "電話番号は数字のみ入力してください",
+            "phoneRequired": "電話番号を入力してください"
+        }
     },
     "flights": {
         "card": {

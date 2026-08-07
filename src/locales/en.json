@@ -456,9 +456,15 @@
         },
         "validation": {
             "bookingFailed": "Booking confirmation failed: {message}. Your payment will be automatically refunded.",
+            "fieldRequired": "This field is required",
+            "firstNameRequired": "First name is required",
             "fixHighlighted": "Please fix the highlighted fields before continuing.",
             "invalidPrice": "Invalid booking price. Please retry.",
+            "lastNameRequired": "Last name is required",
+            "nameInvalid": "Name must only contain letters",
             "paymentSetupFailed": "Payment setup failed",
+            "phoneDigitsOnly": "Phone number must contain digits only",
+            "phoneRequired": "Phone number is required",
             "priceVerifying": "Price is still being verified — please wait a moment and try again.",
             "requiresAuth": "Authentication required",
             "sessionExpired": "Booking session expired. Please go back and select the room again.",
@@ -853,7 +859,14 @@
             "viewMyTrips": "View My Trips",
             "whatsNext": "What's next"
         },
-        "totalPrice": "total price"
+        "totalPrice": "total price",
+        "validation": {
+            "firstNameRequired": "First name is required",
+            "lastNameRequired": "Last name is required",
+            "nameIcao": "Use English letters only (e.g. Jose instead of José)",
+            "phoneDigitsOnly": "Phone number must contain digits only",
+            "phoneRequired": "Phone number is required"
+        }
     },
     "flights": {
         "book": {

@@ -2,7 +2,7 @@ import { createAdminClient } from '@/utils/postgres/admin';
 import { getStripe } from '@/lib/stripe/server';
 import { env } from '@/utils/env';
 import type { ProviderIntegrationsData, DuffelAirline, TravelgateXHotelBooking, TravelgateXApiLog } from '@/types/admin';
-import { applyBrandFilter } from './brand-filter';
+import { applyBrandFilter, getAdminBrand } from './brand-filter';
 
 // ── Stripe ──────────────────────────────────────────────
 
@@ -372,9 +372,10 @@ async function fetchMystiflyData(): Promise<ProviderIntegrationsData['mystifly']
 
     try {
         const supabase = createAdminClient();
+        const brand = await getAdminBrand();
         const [unifiedCount, legacyCount] = await Promise.all([
-            applyBrandFilter(supabase.from('unified_bookings').select('*', { count: 'exact', head: true })).eq('provider', 'mystifly'),
-            applyBrandFilter(supabase.from('flight_bookings').select('*', { count: 'exact', head: true })).eq('provider', 'mystifly'),
+            applyBrandFilter(supabase.from('unified_bookings').select('*', { count: 'exact', head: true }), brand).eq('provider', 'mystifly'),
+            applyBrandFilter(supabase.from('flight_bookings').select('*', { count: 'exact', head: true }), brand).eq('provider', 'mystifly'),
         ]);
 
         return {
@@ -457,9 +458,11 @@ async function fetchTravelgateXData(): Promise<ProviderIntegrationsData['travelg
     try {
         const supabase = createAdminClient();
 
-        // Run Supabase queries and TGX health check concurrently
-        const [bookingsRes, apiLogsRes, healthResult] = await Promise.all([
-            applyBrandFilter(supabase.from('unified_bookings').select('*', { count: 'exact' }))
+        // Run Supabase queries concurrently — health check is done client-side
+        // via /api/admin/tgx-health so it doesn't block the page load.
+        const brand = await getAdminBrand();
+        const [bookingsRes, apiLogsRes] = await Promise.all([
+            applyBrandFilter(supabase.from('unified_bookings').select('*', { count: 'exact' }), brand)
                 .eq('type', 'hotel')
                 .in('provider', ['OTV', 'travelgatex', 'travelgate'])
                 .order('created_at', { ascending: false })
@@ -471,25 +474,6 @@ async function fetchTravelgateXData(): Promise<ProviderIntegrationsData['travelg
                 .ilike('provider', '%travelgate%')
                 .order('created_at', { ascending: false })
                 .limit(10),
-
-            // Lightweight destination health check — proves API key + access code work
-            fetch(endpoint, {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Apikey ${apiKey}`,
-                    'Content-Type': 'application/json',
-                    'Accept-Encoding': 'gzip',
-                },
-                body: JSON.stringify({
-                    query: `query { hotelX { destinationSearcher(criteria: { access: "${accessCode}", text: "Paris", maxSize: 1 }) { ... on DestinationData { code type } } } }`,
-                }),
-                signal: AbortSignal.timeout(8000),
-            }).then(async r => {
-                if (!r.ok) return 'no_rates' as const;
-                const body = await r.json();
-                const results = body?.data?.hotelX?.destinationSearcher;
-                return Array.isArray(results) && results.length > 0 ? 'active' as const : 'no_rates' as const;
-            }).catch(() => 'unknown' as const),
         ]);
 
         const allBookings = bookingsRes.data || [];
@@ -541,7 +525,7 @@ async function fetchTravelgateXData(): Promise<ProviderIntegrationsData['travelg
             cancelledBookings: cancelled,
             totalRevenue: Math.round(totalRevenue * 100) / 100,
             revenueCurrency: allBookings[0]?.currency || 'USD',
-            otvStatus: healthResult,
+            otvStatus: 'unknown' as const,
             recentBookings,
             recentApiLogs,
         };

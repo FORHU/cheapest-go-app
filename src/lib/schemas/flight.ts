@@ -14,10 +14,19 @@ const dateSchema = z
 
 // ─── Passenger ────────────────────────────────────────────────────────────────
 
+const nameSchema = z
+    .string()
+    .min(1, 'Required')
+    .max(100)
+    .regex(
+        /^[A-Za-z\s'\-]+$/,
+        "Use English letters only (e.g. Jose instead of José)",
+    );
+
 export const flightPassengerSchema = z.object({
     type: z.enum(['ADT', 'CHD', 'INF']),
-    firstName: z.string().min(1, 'First name is required').max(100),
-    lastName: z.string().min(1, 'Last name is required').max(100),
+    firstName: nameSchema.refine(v => v.trim().length > 0, 'First name is required'),
+    lastName: nameSchema.refine(v => v.trim().length > 0, 'Last name is required'),
     gender: z.enum(['M', 'F'], { message: 'Gender is required' }),
     // Bounded at both ends: "in the past" alone accepted 1850-01-01, which reaches
     // the airline as a valid-looking passenger and is rejected at check-in.
@@ -42,7 +51,11 @@ export const flightPassengerSchema = z.object({
 
 export const flightContactSchema = z.object({
     email: z.string().min(1, 'Email is required').email('Valid email is required').max(254),
-    phone: z.string().min(1, 'Phone number is required').max(20),
+    phone: z
+        .string()
+        .min(5, 'Phone number is required')
+        .max(20)
+        .regex(/^\d+$/, 'Phone number must contain digits only'),
     countryCode: z.string().min(1, 'Country code is required').max(5),
     addressLine: z.string().min(1).max(200).optional(),
     city: z.string().min(1).max(100).optional(),

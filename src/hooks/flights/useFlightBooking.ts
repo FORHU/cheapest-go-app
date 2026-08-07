@@ -1,8 +1,9 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useMutation } from '@tanstack/react-query';
+import { useTranslations } from 'next-intl';
 import { z } from 'zod';
-import { flightBookingSchema, FlightPassengerForm, FlightContactForm } from '@/lib/schemas/flight';
+import { flightBookingSchema, flightPassengerSchema, flightContactSchema, FlightPassengerForm, FlightContactForm } from '@/lib/schemas/flight';
 import type { FlightOffer } from '@/types/flights';
 import type { SelectedSeat } from '@/types/seatMap';
 import type { SelectedBag } from '@/types/bags';
@@ -86,6 +87,7 @@ export interface PriceChangedData {
 
 export function useFlightBooking() {
     const router = useRouter();
+    const t = useTranslations('flightBook');
     const [offer, setOffer] = useState<FlightOffer | null>(null);
     const [offerExpiresAt, setOfferExpiresAt] = useState<Date | null>(null);
     const [step, setStep] = useState<BookingStep>('form');
@@ -141,6 +143,35 @@ export function useFlightBooking() {
             return next;
         });
     }, []);
+
+    // Validate a single field on blur using the field's own sub-schema.
+    // path follows Zod's dotted convention: 'passengers.0.firstName', 'contact.email'.
+    const validateField = useCallback((path: string, value: string) => {
+        const parts = path.split('.');
+        let schema: z.ZodTypeAny | undefined;
+
+        if (parts[0] === 'passengers' && parts.length === 3) {
+            const field = parts[2] as keyof typeof flightPassengerSchema.shape;
+            schema = flightPassengerSchema.shape[field];
+        } else if (parts[0] === 'contact' && parts.length === 2) {
+            const field = parts[1] as keyof typeof flightContactSchema.shape;
+            schema = flightContactSchema.shape[field];
+        }
+
+        if (!schema) return;
+        const result = schema.safeParse(value);
+        if (!result.success) {
+            const raw = result.error.issues[0]?.message ?? 'Invalid';
+            const translated: Record<string, string> = {
+                'Use English letters only (e.g. Jose instead of José)': t('validation.nameIcao'),
+                'First name is required': t('validation.firstNameRequired'),
+                'Last name is required': t('validation.lastNameRequired'),
+                'Phone number is required': t('validation.phoneRequired'),
+                'Phone number must contain digits only': t('validation.phoneDigitsOnly'),
+            };
+            setFieldErrors(prev => ({ ...prev, [path]: translated[raw] ?? raw }));
+        }
+    }, [t]);
 
     const [passengers, setPassengers] = useState<FlightPassengerForm[]>(() => {
         if (typeof window !== 'undefined') {
@@ -838,6 +869,7 @@ export function useFlightBooking() {
         setErrorMsg,
         fieldErrors,
         clearFieldError,
+        validateField,
         priceChangedData,
         duplicateBookingData,
         dismissDuplicateWarning: () => setDuplicateBookingData(null),

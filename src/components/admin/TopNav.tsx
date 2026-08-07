@@ -22,6 +22,7 @@ import {
 
 import { useAuthStore } from '@/stores/authStore';
 import { CommandPalette } from './CommandPalette';
+import { BrandSwitcher } from './BrandSwitcher';
 
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
@@ -188,6 +189,11 @@ export function TopNav({ onMenuClick, isCollapsed }: TopNavProps) {
                 </button>
             </div>
 
+            {/* Center: Brand Switcher */}
+            <div className="flex items-center justify-center px-2 sm:px-4">
+                <BrandSwitcher />
+            </div>
+
             {/* Right: Actions & Profile */}
             <div className="flex items-center gap-1 sm:gap-4">
                 <Button
@@ -267,7 +273,7 @@ export function TopNav({ onMenuClick, isCollapsed }: TopNavProps) {
                 <div className="flex items-center gap-2 sm:gap-3 sm:pl-2 cursor-pointer group">
                     <div className="text-right hidden sm:block">
                         <p className="text-sm font-black text-slate-900 dark:text-white leading-none group-hover:text-blue-600 transition-colors">
-                            {user ? `${user.firstName} ${user.lastName}` : 'Guest User'}
+                            {user ? ((user.firstName || user.lastName) ? `${user.firstName ?? ''} ${user.lastName ?? ''}`.trim() : (user.email ?? 'Admin')) : 'Guest User'}
                         </p>
                         <p className="text-[10px] font-bold text-slate-400 mt-1 uppercase tracking-wider">
                             {user?.role === 'admin' ? 'Administrator' : 'Standard User'}

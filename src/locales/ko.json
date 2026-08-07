@@ -451,9 +451,15 @@
         },
         "validation": {
             "bookingFailed": "예약 확인 실패: {message}. 결제가 자동으로 환불됩니다.",
+            "fieldRequired": "이 항목은 필수입니다",
+            "firstNameRequired": "이름을 입력해 주세요",
             "fixHighlighted": "강조 표시된 항목을 먼저 수정해 주세요.",
             "invalidPrice": "유효하지 않은 예약 가격입니다. 다시 시도해 주세요.",
+            "lastNameRequired": "성을 입력해 주세요",
+            "nameInvalid": "이름은 문자만 포함해야 합니다",
             "paymentSetupFailed": "결제 설정 실패",
+            "phoneDigitsOnly": "전화번호는 숫자만 입력해 주세요",
+            "phoneRequired": "전화번호를 입력해 주세요",
             "priceVerifying": "가격 확인 중입니다 — 잠시 기다린 후 다시 시도해 주세요.",
             "requiresAuth": "인증이 필요합니다",
             "sessionExpired": "예약 세션이 만료되었습니다. 돌아가서 객실을 다시 선택해 주세요.",
@@ -828,7 +834,14 @@
             "viewMyTrips": "내 여행 보기",
             "whatsNext": "다음 단계"
         },
-        "totalPrice": "총 금액"
+        "totalPrice": "총 금액",
+        "validation": {
+            "firstNameRequired": "이름을 입력해 주세요",
+            "lastNameRequired": "성을 입력해 주세요",
+            "nameIcao": "영문자만 입력해 주세요 (예: Jose, José 불가)",
+            "phoneDigitsOnly": "전화번호는 숫자만 입력해 주세요",
+            "phoneRequired": "전화번호를 입력해 주세요"
+        }
     },
     "flights": {
         "card": {

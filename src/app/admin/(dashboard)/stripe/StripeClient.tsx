@@ -205,11 +205,10 @@ export function StripeClient({ data }: StripeClientProps) {
                                                 <span className={`text-sm font-bold ${p.refunded ? 'line-through text-slate-400' : 'text-slate-900 dark:text-white'}`}>
                                                     {fmt(p.amount, p.currency)}
                                                 </span>
-                                                {p.refunded && <span className="ml-1 text-[10px] text-rose-500 font-bold">Refunded</span>}
                                             </TableCell>
                                             <TableCell>
-                                                <Badge className={`font-bold text-xs border ${piStatusStyle(p.status)}`}>
-                                                    {p.status.replace(/_/g, ' ')}
+                                                <Badge className={`font-bold text-xs border ${p.refunded ? 'bg-rose-50 text-rose-600 border-rose-200 dark:bg-rose-900/20 dark:text-rose-400 dark:border-rose-800' : piStatusStyle(p.status)}`}>
+                                                    {p.refunded ? 'refunded' : p.status.replace(/_/g, ' ')}
                                                 </Badge>
                                             </TableCell>
                                             <TableCell>
