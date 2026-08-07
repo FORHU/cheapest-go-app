@@ -331,6 +331,9 @@ async function handleDuffel(ctx: {
             total_price, currency,
             payment_intent_id, confirmed_price, confirmed_currency,
             charged_price, supplier_cost,
+            -- ticket_numbers is text[]: postgres.js maps a JS array straight to a
+            -- Postgres array. Never JSON.stringify it — that sends the literal
+            -- string '["123","456"]', which Postgres cannot parse as an array.
             duffel_order_id, ticket_numbers,
             fare_policy, trip_type, source_brand
         ) VALUES (
@@ -347,7 +350,7 @@ async function handleDuffel(ctx: {
             ${confirmedPrice},
             ${session.original_price ?? confirmedPrice},
             ${preOrderId},
-            ${JSON.stringify(preOrderTickets)},
+            ${preOrderTickets},
             ${farePolicy ? sql.json(farePolicy) : null},
             ${tripType},
             ${process.env.NEXT_PUBLIC_BRAND_NAME ?? 'CheapestGo'}

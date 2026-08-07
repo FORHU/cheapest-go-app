@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { isPlausibleBirthDate } from '@/lib/age';
+import { validatePhone } from '@/lib/phone';
 
 // ─── Primitives ───────────────────────────────────────────────────────────────
 
@@ -41,13 +42,32 @@ export const flightPassengerSchema = z.object({
 
 export const flightContactSchema = z.object({
     email: z.string().min(1, 'Email is required').email('Valid email is required').max(254),
-    phone: z.string().min(5, 'Phone number is required').max(20),
+    phone: z.string().min(1, 'Phone number is required').max(20),
     countryCode: z.string().min(1, 'Country code is required').max(5),
     addressLine: z.string().min(1).max(200).optional(),
     city: z.string().min(1).max(100).optional(),
     postalCode: z.string().min(1).max(20).optional(),
     country: z.string().length(2).optional(),
-});
+})
+    // Checked on the pair, not per field: whether a number is valid E.164 depends
+    // on the country code and the subscriber number together.
+    //
+    // This used to be length-only (`min(5).max(20)`), so "abcde" passed and the
+    // real check happened ~600 lines into /api/flights/book — after the booking
+    // session row was written, and only once the airline had already refused it.
+    // The traveller saw "Booking Failed", not a message under the input.
+    .superRefine((contact, ctx) => {
+        const problem = validatePhone(contact.countryCode, contact.phone);
+        if (problem) {
+            ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: problem.message,
+                // Path drives the inline error: the booking form locates inputs by
+                // `data-field="<dotted zod path>"`, so this lands under the right one.
+                path: [problem.field],
+            });
+        }
+    });
 
 // ─── Booking form (used by /api/flights/book) ─────────────────────────────────
 

@@ -175,6 +175,36 @@ export interface SendBookingEmailParams {
     checkOut: string;
     totalPrice: number;
     currency: string;
+
+    // ── Optional enrichment ───────────────────────────────────────────
+    // Every field below renders its block only when supplied. This is a
+    // transactional record of a payment: omitting a row is always correct,
+    // inventing a cancellation deadline or a card number never is.
+    /** City or area, for the headline ("You're booked in Makati"). */
+    cityName?: string;
+    /** Hosted https URL. Email clients will not render app-relative paths. */
+    propertyImageUrl?: string;
+    propertyAddress?: string;
+    /** Deep link for the "Directions" affordance. */
+    propertyUrl?: string;
+    adults?: number;
+    children?: number;
+    /** e.g. "breakfast included" — supplier board description. */
+    boardDescription?: string;
+    checkInTime?: string;
+    checkOutTime?: string;
+    nights?: number;
+    /** Room subtotal before taxes. Renders the breakdown only with taxes present. */
+    roomSubtotal?: number;
+    taxesAndFees?: number;
+    /** Voucher or credit applied, as a positive number. Rendered as a deduction. */
+    discountAmount?: number;
+    /** e.g. "Visa ending 4417". */
+    paymentMethodLabel?: string;
+    /** ISO date the card was charged. */
+    chargedAt?: string;
+    /** Free-cancellation deadline in the property's local time. */
+    freeCancellationUntil?: string;
 }
 
 export interface SendBookingEmailResult {
@@ -182,12 +212,238 @@ export interface SendBookingEmailResult {
     error?: string;
 }
 
+// ─── Hotel confirmation template ─────────────────────────────────────
+//
+// Table-based with inline styles throughout, because that is what email
+// clients render reliably — Outlook has no flexbox or grid, and Gmail strips
+// <style> blocks in some contexts. The one <style> block carries only the
+// mobile @media rules, which degrade harmlessly when stripped.
+
+/** Support contact shown in the email. Constants so a change is one edit. */
+const SUPPORT_EMAIL = process.env.NEXT_PUBLIC_SUPPORT_EMAIL ?? 'support@cheapestgo.com';
+const SUPPORT_PHONE = process.env.NEXT_PUBLIC_SUPPORT_PHONE ?? '+63 2 8555 1200';
+const COMPANY_ADDRESS = process.env.NEXT_PUBLIC_COMPANY_ADDRESS
+    ?? 'CheapestGo Travel Inc., 6795 Ayala Avenue, Makati City 1226, Philippines';
+
+/** "2026-09-04" → "Fri 4 Sep". Falls back to the raw value if unparseable. */
+function formatEmailDate(value: string | undefined): string {
+    if (!value) return '';
+    const d = new Date(value);
+    if (isNaN(d.getTime())) return value;
+    return d.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' });
+}
+
+function formatMoney(amount: number, currency: string): string {
+    try {
+        return new Intl.NumberFormat('en-PH', { style: 'currency', currency: currency || 'PHP' }).format(amount);
+    } catch {
+        return `${currency} ${amount.toFixed(2)}`;
+    }
+}
+
+/**
+ * The brand wordmark. CheapestGo's own lockup accents the final "Go"; that is a
+ * property of this name, not of the design, so any other brand renders plain
+ * rather than having an arbitrary two-character slice tinted.
+ */
+function brandWordmark(): string {
+    const name = escapeHtml(BRAND_NAME);
+    if (BRAND_NAME === 'CheapestGo') {
+        return `cheapest<span style="color:#60a5fa;">Go</span>`;
+    }
+    return name;
+}
+
+/** A spacer row. Email clients ignore margins, so vertical rhythm is explicit. */
+function gap(px: number): string {
+    return `<div style="height:${px}px;line-height:${px}px;">&nbsp;</div>`;
+}
+
+export function buildHotelConfirmationHtml(p: SendBookingEmailParams): string {
+    const siteUrl = env.SITE_URL ?? 'https://cheapestgo.com';
+    const manageUrl = `${siteUrl}/trips${p.dbId ? `/${encodeURIComponent(p.dbId)}` : ''}`;
+
+    const headline = p.cityName
+        ? `You&rsquo;re booked in ${escapeHtml(p.cityName)}`
+        : `Your booking is confirmed`;
+
+    // "Deluxe King · 2 adults · breakfast included" — only the parts we know.
+    const guestCount = (p.adults ?? 0) + (p.children ?? 0);
+    const roomLine = [
+        escapeHtml(p.roomName),
+        guestCount > 0 ? `${guestCount} guest${guestCount === 1 ? '' : 's'}` : '',
+        p.boardDescription ? escapeHtml(p.boardDescription) : '',
+    ].filter(Boolean).join(' &middot; ');
+
+    const priceRow = (label: string, value: string, color = '#0f172a') => `
+          <tr>
+            <td style="padding:5px 0;color:#64748b;">${label}</td>
+            <td align="right" style="padding:5px 0;font-family:'Courier New',Courier,monospace;color:${color};">${value}</td>
+          </tr>`;
+
+    // The breakdown appears only when we genuinely have the components. A total
+    // on its own is honest; a total with fabricated tax lines is not.
+    const breakdown = [
+        p.roomSubtotal != null
+            ? priceRow(
+                p.nights && p.nights > 0
+                    ? `1 room &times; ${p.nights} night${p.nights === 1 ? '' : 's'}`
+                    : 'Room',
+                formatMoney(p.roomSubtotal, p.currency),
+            )
+            : '',
+        p.taxesAndFees != null ? priceRow('Taxes and fees', formatMoney(p.taxesAndFees, p.currency)) : '',
+        p.discountAmount ? priceRow(
+            `${escapeHtml(BRAND_NAME)} credit`,
+            `&minus; ${formatMoney(p.discountAmount, p.currency)}`,
+            '#16a34a',
+        ) : '',
+    ].join('');
+
+    return `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<meta name="supported-color-schemes" content="light dark">
+<title>Your booking is confirmed</title>
+<style>
+  @media only screen and (max-width: 620px) {
+    .container { width: 100% !important; }
+    .px { padding-left: 22px !important; padding-right: 22px !important; }
+    .stack { display: block !important; width: 100% !important; }
+    .h1 { font-size: 26px !important; line-height: 32px !important; }
+    .bigdate { font-size: 22px !important; }
+  }
+</style>
+</head>
+<body style="margin:0;padding:0;background-color:#eef2f7;">
+<span style="display:none;font-size:1px;color:#eef2f7;line-height:1px;max-height:0;max-width:0;opacity:0;overflow:hidden;">Confirmed &mdash; ${escapeHtml(p.hotelName)}, ${formatEmailDate(p.checkIn)}. Reference ${escapeHtml(p.bookingId)}.</span>
+
+<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color:#eef2f7;">
+<tr><td align="center" style="padding:32px 12px 40px 12px;">
+
+<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="600" class="container" style="width:600px;max-width:600px;background-color:#ffffff;border-radius:20px;overflow:hidden;box-shadow:0 20px 40px -12px rgba(15,23,42,0.14);">
+
+  <!-- Header band -->
+  <tr><td class="px" bgcolor="#0f172a" style="padding:36px 36px 34px 36px;background-color:#0f172a;font-family:Arial,Helvetica,sans-serif;">
+    <div style="font-size:17px;font-weight:bold;color:#ffffff;letter-spacing:-0.3px;">${brandWordmark()}</div>
+    ${gap(26)}
+    <div style="font-size:11px;font-weight:bold;letter-spacing:1.6px;text-transform:uppercase;color:#60a5fa;">Confirmed</div>
+    ${gap(10)}
+    <div class="h1" style="font-size:32px;line-height:38px;font-weight:bold;color:#ffffff;letter-spacing:-1px;">${headline}</div>
+    ${gap(12)}
+    <div style="font-size:14px;line-height:21px;color:#94a3b8;">Reference <span style="font-family:'Courier New',Courier,monospace;color:#e2e8f0;">${escapeHtml(p.bookingId)}</span> &middot; paid in full</div>
+  </td></tr>
+
+  <!-- Stay strip -->
+  <tr><td class="px" style="padding:32px 36px 8px 36px;">
+    <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
+      <tr>
+        <td width="46%" class="stack" style="width:46%;font-family:Arial,Helvetica,sans-serif;vertical-align:top;">
+          <div style="font-size:10px;font-weight:bold;letter-spacing:1.4px;text-transform:uppercase;color:#94a3b8;">Check in</div>
+          ${gap(8)}
+          <div class="bigdate" style="font-size:26px;line-height:30px;font-weight:bold;color:#0f172a;letter-spacing:-0.8px;">${formatEmailDate(p.checkIn)}</div>
+          ${p.checkInTime ? `${gap(5)}<div style="font-family:'Courier New',Courier,monospace;font-size:13px;color:#64748b;">from ${escapeHtml(p.checkInTime)}</div>` : ''}
+        </td>
+        <td width="8%" align="center" class="stack" style="width:8%;font-family:Arial,Helvetica,sans-serif;font-size:18px;color:#cbd5e1;vertical-align:middle;padding:14px 0;">&rarr;</td>
+        <td width="46%" class="stack" style="width:46%;font-family:Arial,Helvetica,sans-serif;vertical-align:top;">
+          <div style="font-size:10px;font-weight:bold;letter-spacing:1.4px;text-transform:uppercase;color:#94a3b8;">Check out</div>
+          ${gap(8)}
+          <div class="bigdate" style="font-size:26px;line-height:30px;font-weight:bold;color:#0f172a;letter-spacing:-0.8px;">${formatEmailDate(p.checkOut)}</div>
+          ${p.checkOutTime ? `${gap(5)}<div style="font-family:'Courier New',Courier,monospace;font-size:13px;color:#64748b;">by ${escapeHtml(p.checkOutTime)}</div>` : ''}
+        </td>
+      </tr>
+    </table>
+  </td></tr>
+
+  <tr><td class="px" style="padding:22px 36px 0 36px;"><div style="height:1px;line-height:1px;background-color:#eef2f7;">&nbsp;</div></td></tr>
+
+  <!-- Property -->
+  <tr><td class="px" style="padding:22px 36px 0 36px;">
+    <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
+      <tr>
+        ${p.propertyImageUrl ? `
+        <td width="120" class="stack" style="width:120px;padding-right:18px;vertical-align:top;">
+          <img src="${escapeHtml(p.propertyImageUrl)}" alt="" width="120" height="96" style="display:block;width:120px;height:96px;border-radius:14px;object-fit:cover;border:0;" />
+        </td>` : ''}
+        <td class="stack" style="font-family:Arial,Helvetica,sans-serif;vertical-align:top;">
+          <div style="font-size:19px;font-weight:bold;color:#0f172a;line-height:24px;letter-spacing:-0.4px;">${escapeHtml(p.hotelName)}</div>
+          ${gap(8)}
+          <div style="font-size:14px;line-height:21px;color:#64748b;">${roomLine}</div>
+          ${p.propertyAddress ? `<div style="font-size:14px;line-height:21px;color:#64748b;">${escapeHtml(p.propertyAddress)}</div>` : ''}
+          ${p.propertyUrl ? `${gap(12)}<a href="${escapeHtml(p.propertyUrl)}" style="font-size:13px;font-weight:bold;color:#2563eb;text-decoration:none;">Directions &rarr;</a>` : ''}
+        </td>
+      </tr>
+    </table>
+  </td></tr>
+
+  <!-- CTA -->
+  <tr><td class="px" style="padding:28px 36px 4px 36px;">
+    <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
+      <tr><td align="center" bgcolor="#2563eb" style="border-radius:14px;">
+        <a href="${escapeHtml(manageUrl)}" style="display:block;padding:16px 24px;font-family:Arial,Helvetica,sans-serif;font-size:15px;font-weight:bold;color:#ffffff;text-decoration:none;border-radius:14px;mso-line-height-rule:exactly;line-height:18px;">Manage my booking</a>
+      </td></tr>
+    </table>
+    ${gap(10)}
+    <div style="font-family:Arial,Helvetica,sans-serif;font-size:12px;line-height:18px;color:#94a3b8;text-align:center;">Change dates, edit guest names, add a request, or download your receipt.</div>
+  </td></tr>
+
+  <!-- Payment -->
+  <tr><td class="px" style="padding:28px 36px 0 36px;">
+    <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color:#f8fafc;border-radius:16px;">
+      <tr><td style="padding:22px 22px 20px 22px;">
+        <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="font-family:Arial,Helvetica,sans-serif;font-size:14px;">
+${breakdown}
+          <tr>
+            <td style="padding:16px 0 0 0;font-size:15px;font-weight:bold;color:#0f172a;">Total paid</td>
+            <td align="right" style="padding:16px 0 0 0;font-family:'Courier New',Courier,monospace;font-size:20px;font-weight:bold;color:#0f172a;">${formatMoney(p.totalPrice, p.currency)}</td>
+          </tr>
+          ${p.paymentMethodLabel || p.chargedAt ? `
+          <tr>
+            <td colspan="2" style="padding:8px 0 0 0;font-size:12px;line-height:18px;color:#94a3b8;">${[
+                p.paymentMethodLabel ? escapeHtml(p.paymentMethodLabel) : '',
+                p.chargedAt ? `charged ${formatEmailDate(p.chargedAt)}` : '',
+            ].filter(Boolean).join(' &middot; ')}</td>
+          </tr>` : ''}
+        </table>
+      </td></tr>
+    </table>
+  </td></tr>
+
+  ${p.freeCancellationUntil ? `
+  <!-- Cancellation -->
+  <tr><td class="px" style="padding:24px 36px 0 36px;font-family:Arial,Helvetica,sans-serif;">
+    <div style="font-size:14px;line-height:22px;color:#475569;"><strong style="color:#0f172a;">Free cancellation until ${escapeHtml(p.freeCancellationUntil)}</strong> (property local time).</div>
+  </td></tr>` : ''}
+
+  <!-- Support -->
+  <tr><td class="px" style="padding:24px 36px 0 36px;font-family:Arial,Helvetica,sans-serif;">
+    <div style="font-size:14px;line-height:22px;color:#475569;">Need anything? We&rsquo;re here 24/7 at <a href="mailto:${escapeHtml(SUPPORT_EMAIL)}" style="color:#2563eb;text-decoration:none;font-weight:bold;">${escapeHtml(SUPPORT_EMAIL)}</a> or <a href="tel:${escapeHtml(SUPPORT_PHONE.replace(/\s/g, ''))}" style="color:#2563eb;text-decoration:none;font-weight:bold;">${escapeHtml(SUPPORT_PHONE)}</a>.</div>
+  </td></tr>
+
+  <!-- Footer -->
+  <tr><td class="px" style="padding:28px 36px 30px 36px;font-family:Arial,Helvetica,sans-serif;font-size:12px;line-height:19px;color:#94a3b8;">
+    <div style="height:1px;line-height:1px;background-color:#eef2f7;">&nbsp;</div>
+    ${gap(20)}
+    Transactional message about booking ${escapeHtml(p.bookingId)}.<br>
+    ${escapeHtml(COMPANY_ADDRESS)}<br>
+    <a href="${siteUrl}/account/notifications" style="color:#64748b;text-decoration:underline;">Email preferences</a>
+  </td></tr>
+
+</table>
+
+</td></tr>
+</table>
+</body>
+</html>`;
+}
+
 export async function sendBookingConfirmationEmail(
     params: SendBookingEmailParams
 ): Promise<SendBookingEmailResult> {
-    const { bookingId, dbId, email, guestName, hotelName, roomName, checkIn, checkOut, totalPrice, currency } = params;
-    const siteUrl = env.SITE_URL;
-    const receiptUrl = dbId ? `${siteUrl}/trips/invoice/${dbId}?type=hotel` : null;
+    const { bookingId, email, guestName, hotelName, roomName, checkIn, checkOut, totalPrice, currency } = params;
 
     if (!email || !bookingId) {
         return { success: false, error: 'Missing required fields' };
@@ -198,69 +454,9 @@ export async function sendBookingConfirmationEmail(
     if (dup) return dup;
 
     try {
-        // Format price
-        const formattedPrice = new Intl.NumberFormat('en-PH', {
-            style: 'currency',
-            currency: currency || 'PHP',
-        }).format(totalPrice);
 
-        // Build email HTML content
-        const emailHtml = `${emailOpen('linear-gradient(135deg,#667eea 0%,#764ba2 100%)', 'Booking Confirmed!', 'Your reservation is all set')}
-        <p style="margin: 0 0 20px 0;">Dear <strong>${escapeHtml(guestName)}</strong>,</p>
-
-        <p style="margin: 0 0 20px 0;">Thank you for your booking! Your reservation has been confirmed.</p>
-
-        <div style="background: #f9fafb; padding: 20px; border-radius: 8px; margin: 20px 0;">
-            <h2 style="margin: 0 0 15px 0; font-size: 18px; color: #374151;">Booking Details</h2>
-
-            <table style="width: 100%; border-collapse: collapse;">
-                <tr>
-                    <td style="padding: 8px 0; color: #6b7280;">Booking ID:</td>
-                    <td style="padding: 8px 0; font-weight: 600; font-family: monospace;">${escapeHtml(bookingId)}</td>
-                </tr>
-                <tr>
-                    <td style="padding: 8px 0; color: #6b7280;">Property:</td>
-                    <td style="padding: 8px 0; font-weight: 600;">${escapeHtml(hotelName)}</td>
-                </tr>
-                <tr>
-                    <td style="padding: 8px 0; color: #6b7280;">Room:</td>
-                    <td style="padding: 8px 0;">${escapeHtml(roomName)}</td>
-                </tr>
-                <tr>
-                    <td style="padding: 8px 0; color: #6b7280;">Check-in:</td>
-                    <td style="padding: 8px 0;">${escapeHtml(checkIn)}</td>
-                </tr>
-                <tr>
-                    <td style="padding: 8px 0; color: #6b7280;">Check-out:</td>
-                    <td style="padding: 8px 0;">${escapeHtml(checkOut)}</td>
-                </tr>
-                <tr style="border-top: 1px solid #e5e7eb;">
-                    <td style="padding: 12px 0 8px 0; color: #6b7280; font-weight: 600;">Total:</td>
-                    <td style="padding: 12px 0 8px 0; font-weight: 700; font-size: 18px; color: #059669;">${formattedPrice}</td>
-                </tr>
-            </table>
-        </div>
-
-        <div style="background: #ecfdf5; padding: 15px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #10b981;">
-            <p style="margin: 0; color: #065f46; font-size: 14px;">
-                <strong>What's next?</strong><br>
-                You'll receive additional details from the property closer to your check-in date.
-            </p>
-        </div>
-
-        ${receiptUrl ? `
-        <div style="text-align: center; margin: 24px 0 8px 0;">
-            <a href="${receiptUrl}" style="display:inline-block;background:#4f46e5;color:#fff;text-decoration:none;font-weight:600;font-size:14px;padding:12px 28px;border-radius:8px;">
-                View / Download Receipt
-            </a>
-        </div>` : ''}
-
-        <p style="margin: 20px 0 0 0; color: #6b7280; font-size: 14px;">
-            If you have any questions, please don't hesitate to contact us.
-        </p>
-    </div>
-
-${emailClose()}`;
+        // Build email HTML from the shared hotel-confirmation template.
+        const emailHtml = buildHotelConfirmationHtml(params);
 
 
         const supabase = createAdminClient();

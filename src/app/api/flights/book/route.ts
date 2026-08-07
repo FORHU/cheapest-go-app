@@ -11,6 +11,7 @@ import { checkCsrf } from '@/lib/server/csrf';
 import { flightBookingSchema } from '@/lib/schemas/flight';
 import { applyMarkup, toStripeAmount, FLIGHT_MARKUP, getFlightPriceTolerance } from '@/lib/pricing';
 import { passengerTypeForBirthDate } from '@/lib/age';
+import { validatePhone, normalizePhone, toE164 } from '@/lib/phone';
 import { convertCurrency } from '@/lib/currency';
 
 // Must exceed ORDER_CREATE_TIMEOUT_MS (130s, Duffel's documented floor) plus one
@@ -617,22 +618,21 @@ export async function POST(req: NextRequest) {
             // Build Duffel passenger objects using the offer's passenger IDs
             const duffelPaxTemplates: any[] = rawOffer.passengers ?? [];
 
-            // Build E.164 phone number.
-            // countryCode: strip everything except digits (handles "+82", "82", "0082")
-            // phone: strip non-digits, then strip leading zeros (Korean "010-..." → "10...")
-            const rawCountryCode = String((contact as any).countryCode ?? '82').replace(/\D/g, '') || '82';
-            const rawPhone = String((contact as any).phone ?? '').replace(/\D/g, '').replace(/^0+/, '');
-            const e164Phone = `+${rawCountryCode}${rawPhone}`;
-
-            // E.164 requires at least 7 digits total (country code + subscriber)
-            const totalDigits = rawCountryCode.length + rawPhone.length;
-            if (rawPhone.length < 4 || totalDigits < 7 || !/^\+\d{7,15}$/.test(e164Phone)) {
-                console.error(`[/book] Invalid phone for Duffel: countryCode="${rawCountryCode}" phone="${rawPhone}" e164="${e164Phone}"`);
+            // Build E.164 from the same rule the submit-time schema enforces, so
+            // the two cannot drift. flightBookingSchema has already rejected an
+            // invalid number well before this point; the check is kept as a
+            // backstop for any caller that bypasses the schema, and because an
+            // airline refusal here costs a failed order rather than a form error.
+            const phoneProblem = validatePhone((contact as any).countryCode, (contact as any).phone);
+            if (phoneProblem) {
+                console.error(`[/book] Invalid phone reached the order builder: ${phoneProblem.field} — ${phoneProblem.message}`);
                 return NextResponse.json({
                     success: false,
-                    error: `Invalid phone number. Please enter a valid phone number with country code (e.g. for South Korea: country code 82, number 10-1234-5678).`,
+                    errorCode: 'phone_number_invalid',
+                    error: phoneProblem.message,
                 }, { status: 400 });
             }
+            const e164Phone = toE164(normalizePhone((contact as any).countryCode, (contact as any).phone));
 
             // Per Duffel docs: title values are mr | ms | mrs | miss | dr
             // Map based on passenger type + gender

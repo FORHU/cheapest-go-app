@@ -16,6 +16,7 @@ import { getAirportInfo } from '@/utils/airport-info';
 import { getAirportByCode } from '@/lib/airports';
 import { FareRulesPanel } from './FareRulesPanel';
 import SeatMapPanel from '@/components/flights/SeatMapPanel';
+import { DuplicateBookingModal } from '@/components/flights/DuplicateBookingModal';
 import BagSelectionPanel from '@/components/flights/BagSelectionPanel';
 import DuffelFareConditions from '@/components/flights/DuffelFareConditions';
 import PriceCalendar from '@/components/flights/PriceCalendar';
@@ -58,7 +59,10 @@ function fieldClass(hasError: boolean, extra = ''): string {
 function FieldError({ message }: { message?: string }) {
     if (!message) return null;
     return (
-        <p role="alert" className="mt-1 text-[10px] lg:text-[11px] text-red-600 dark:text-red-400">
+        // Rendered ABOVE its input, so the complaint is read before the value it
+        // is about — and so a long message pushes the field down rather than
+        // shifting whatever follows it.
+        <p role="alert" className="mb-1 text-[10px] lg:text-[11px] text-red-600 dark:text-red-400">
             {message}
         </p>
     );
@@ -1066,6 +1070,7 @@ function BookingContent() {
 
                                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-2.5 lg:gap-3">
                                     <div>
+                                        <FieldError message={fieldErrors[`passengers.${idx}.firstName`]} />
                                         <input
                                             type="text" placeholder={t('passenger.firstName')} required
                                             data-field={`passengers.${idx}.firstName`}
@@ -1074,9 +1079,9 @@ function BookingContent() {
                                             onChange={(e) => updatePassenger(idx, 'firstName', e.target.value)}
                                             className={fieldClass(!!fieldErrors[`passengers.${idx}.firstName`])}
                                         />
-                                        <FieldError message={fieldErrors[`passengers.${idx}.firstName`]} />
                                     </div>
                                     <div>
+                                        <FieldError message={fieldErrors[`passengers.${idx}.lastName`]} />
                                         <input
                                             type="text" placeholder={t('passenger.lastName')} required
                                             data-field={`passengers.${idx}.lastName`}
@@ -1085,7 +1090,6 @@ function BookingContent() {
                                             onChange={(e) => updatePassenger(idx, 'lastName', e.target.value)}
                                             className={fieldClass(!!fieldErrors[`passengers.${idx}.lastName`])}
                                         />
-                                        <FieldError message={fieldErrors[`passengers.${idx}.lastName`]} />
                                     </div>
                                     <DropdownMenu>
                                         <DropdownMenuTrigger asChild>
@@ -1117,6 +1121,7 @@ function BookingContent() {
                                         </DropdownMenuContent>
                                     </DropdownMenu>
                                     <div data-field={`passengers.${idx}.birthDate`}>
+                                        <FieldError message={fieldErrors[`passengers.${idx}.birthDate`]} />
                                         <FormDatePicker
                                             placeholder={t('passenger.birthdate')}
                                             value={pax.birthDate}
@@ -1125,7 +1130,6 @@ function BookingContent() {
                                             defaultViewDate={defaultBirthdateView()}
                                             required
                                         />
-                                        <FieldError message={fieldErrors[`passengers.${idx}.birthDate`]} />
                                     </div>
                                     <DropdownMenu>
                                         <DropdownMenuTrigger asChild>
@@ -1158,6 +1162,7 @@ function BookingContent() {
                                         </DropdownMenuContent>
                                     </DropdownMenu>
                                     <div>
+                                        <FieldError message={fieldErrors[`passengers.${idx}.passport`]} />
                                         <input
                                             type="text" placeholder={t('passenger.passport')} required
                                             data-field={`passengers.${idx}.passport`}
@@ -1166,9 +1171,9 @@ function BookingContent() {
                                             onChange={(e) => updatePassenger(idx, 'passport', e.target.value)}
                                             className={fieldClass(!!fieldErrors[`passengers.${idx}.passport`])}
                                         />
-                                        <FieldError message={fieldErrors[`passengers.${idx}.passport`]} />
                                     </div>
                                     <div className="lg:col-span-2" data-field={`passengers.${idx}.passportExpiry`}>
+                                        <FieldError message={fieldErrors[`passengers.${idx}.passportExpiry`]} />
                                         <FormDatePicker
                                             value={pax.passportExpiry}
                                             onChange={(val) => updatePassenger(idx, 'passportExpiry', val)}
@@ -1176,7 +1181,6 @@ function BookingContent() {
                                             required
                                             placeholder={t('passenger.passportExpiry')}
                                         />
-                                        <FieldError message={fieldErrors[`passengers.${idx}.passportExpiry`]} />
                                     </div>
                                 </div>
                             </div>
@@ -1199,6 +1203,7 @@ function BookingContent() {
                             </h2>
                             <div className="grid grid-cols-1 lg:grid-cols-2 gap-2.5 lg:gap-3">
                                 <div>
+                                <FieldError message={fieldErrors['contact.email']} />
                                 <input
                                     type="email" placeholder={t('contact.email')} required
                                     data-field="contact.email"
@@ -1207,9 +1212,9 @@ function BookingContent() {
                                     onChange={(e) => { setContact(prev => ({ ...prev, email: e.target.value })); clearFieldError('contact.email'); }}
                                     className={fieldClass(!!fieldErrors['contact.email'])}
                                 />
-                                <FieldError message={fieldErrors['contact.email']} />
                                 </div>
                                 <div>
+                                <FieldError message={fieldErrors['contact.phone']} />
                                 <div className="flex gap-1.5 lg:gap-2">
                                     <DropdownMenu>
                                         <DropdownMenuTrigger asChild>
@@ -1247,7 +1252,6 @@ function BookingContent() {
                                         className={fieldClass(!!fieldErrors['contact.phone'], 'flex-1')}
                                     />
                                 </div>
-                                <FieldError message={fieldErrors['contact.phone']} />
                                 </div>
                             </div>
                         </div>
@@ -1448,36 +1452,14 @@ function BookingContent() {
                             </div>
                         )}
 
-                        {/* Duplicate booking warning */}
-                        {duplicateBookingData && (
-                            <div className="rounded-md border-2 border-red-300 dark:border-red-700 bg-red-50 dark:bg-red-900/20 p-3 lg:p-4 space-y-2.5">
-                                <div className="flex items-start gap-2">
-                                    <AlertTriangle className="w-4 h-4 text-red-600 dark:text-red-400 shrink-0 mt-0.5" />
-                                    <div>
-                                        <p className="text-[10px] lg:text-[13px] font-normal text-red-800 dark:text-red-300">{t('duplicate.title')}</p>
-                                        <p className="text-[10px] lg:text-[13px] text-red-700 dark:text-red-400 mt-0.5">
-                                            {t('duplicate.description', { route: duplicateBookingData.route, date: duplicateBookingData.departureDate })}
-                                        </p>
-                                    </div>
-                                </div>
-                                <div className="flex gap-2">
-                                    <button
-                                        type="button"
-                                        onClick={() => router.push(`/trips?highlight=${duplicateBookingData.existingBookingId}`)}
-                                        className="flex-1 py-2 rounded-md bg-red-600 hover:bg-red-700 text-white font-normal text-[10px] lg:text-[13px] transition-colors"
-                                    >
-                                        {t('duplicate.viewExisting')}
-                                    </button>
-                                    <button
-                                        type="button"
-                                        onClick={() => router.push('/')}
-                                        className="flex-1 py-2 rounded-md bg-white dark:bg-slate-800 border border-red-300 dark:border-red-700 text-red-700 dark:text-red-400 font-normal text-[10px] lg:text-[13px] transition-colors hover:bg-red-50 dark:hover:bg-red-900/30"
-                                    >
-                                        {t('duplicate.keepExisting')}
-                                    </button>
-                                </div>
-                            </div>
-                        )}
+                        {/* Duplicate booking — presented as a modal decision point rather
+                            than an inline banner: the server has already refused this
+                            booking, so the form behind it cannot proceed either way. */}
+                        <DuplicateBookingModal
+                            data={duplicateBookingData}
+                            onKeep={dismissDuplicateWarning}
+                            onView={(id) => router.push(`/trips?highlight=${id}`)}
+                        />
 
                         {/* Status/Error Message */}
                         {errorMsg && (() => {

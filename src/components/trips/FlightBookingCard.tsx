@@ -10,6 +10,7 @@ import { formatDate, formatCurrency } from '@/lib/utils';
 import { convertCurrency } from '@/lib/currency';
 import { useUserCurrency } from '@/stores/searchStore';
 import { FormDatePicker } from '@/components/common/FormDatePicker';
+import { splitFlightLegs, stopsInLeg } from '@/lib/trips/flight-legs';
 
 interface FlightBookingCardProps {
     booking: FlightBookingRecord;
@@ -440,6 +441,10 @@ export default function FlightBookingCard({ booking, onCancelled }: FlightBookin
             if (hasLongLayoverOrGap) tripType = t('flightBookingCard.tripTypes.multiCity');
         }
     }
+
+    // Outbound / return, derived — neither itinerary_index nor segment_index
+    // identifies a leg in the data we actually store. See lib/trips/flight-legs.
+    const legs = splitFlightLegs(segments, booking.trip_type);
 
     const fmtDate = (iso: string) =>
         formatDate(new Date(iso), { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' }, 'en-US');
@@ -1275,14 +1280,30 @@ export default function FlightBookingCard({ booking, onCancelled }: FlightBookin
                         </div>
 
                         <div className="flex flex-wrap items-start gap-4 text-[clamp(0.625rem,1.5vw,0.75rem)] text-slate-500 dark:text-slate-400 mb-2">
-                            {firstSegment && (
-                                <div className="flex items-center gap-1.5">
-                                    <Calendar className="w-3.5 h-3.5 text-blue-500 shrink-0" />
-                                    <div>
-                                        <span className="font-medium text-slate-700 dark:text-slate-300 mr-1.5">{fmtDate(firstSegment.departure)}</span>
-                                        <span>
-                                            {fmtTime(firstSegment.departure)} <span className="text-[10px]">({firstSegment.origin})</span> → {fmtTime(lastSegment.arrival)} <span className="text-[10px]">({lastSegment.destination})</span>
-                                        </span>
+                            {legs.length > 0 && (
+                                <div className="flex items-start gap-1.5">
+                                    <Calendar className="w-3.5 h-3.5 text-blue-500 shrink-0 mt-0.5" />
+                                    {/* One row per direction. Collapsing them showed the
+                                        outbound's departure beside the return's arrival —
+                                        i.e. "GMP → GMP" — and hid the return date entirely. */}
+                                    <div className="space-y-0.5">
+                                        {legs.map((leg, i) => {
+                                            const from = leg[0];
+                                            const to = leg[leg.length - 1];
+                                            return (
+                                                <div key={i}>
+                                                    {legs.length > 1 && (
+                                                        <span className="text-[9px] uppercase tracking-wider text-slate-400 dark:text-slate-500 mr-1.5">
+                                                            {i === 0 ? t('flightBookingCard.outbound') : t('flightBookingCard.return')}
+                                                        </span>
+                                                    )}
+                                                    <span className="font-medium text-slate-700 dark:text-slate-300 mr-1.5">{fmtDate(from.departure)}</span>
+                                                    <span>
+                                                        {fmtTime(from.departure)} <span className="text-[10px]">({from.origin})</span> → {fmtTime(to.arrival)} <span className="text-[10px]">({to.destination})</span>
+                                                    </span>
+                                                </div>
+                                            );
+                                        })}
                                     </div>
                                 </div>
                             )}
@@ -1294,17 +1315,13 @@ export default function FlightBookingCard({ booking, onCancelled }: FlightBookin
                                 <Users className="w-3.5 h-3.5 text-green-500 shrink-0" />
                                 <span>{t('flightBookingCard.passengers', { count: booking.passengers?.length || 0 })}</span>
                             </div>
-                            {segments.length > 0 && (() => {
-                                // Group hops by itinerary_index (outbound=0, return=1, etc.)
-                                // Stops per direction = hops in that direction - 1
-                                const byItinerary = segments.reduce<Record<number, typeof segments>>((acc, seg) => {
-                                    const idx = seg.itinerary_index ?? 0;
-                                    (acc[idx] ??= []).push(seg);
-                                    return acc;
-                                }, {});
-                                const itineraryKeys = Object.keys(byItinerary).map(Number).sort();
-                                const stopLabels = itineraryKeys.map(k => {
-                                    const count = byItinerary[k].length - 1;
+                            {legs.length > 0 && (() => {
+                                // Stops PER DIRECTION. This grouped on itinerary_index,
+                                // which create-booking never writes — so both directions
+                                // landed in one bucket and a nonstop round trip counted
+                                // its own return as a stop.
+                                const stopLabels = legs.map(leg => {
+                                    const count = stopsInLeg(leg);
                                     return count === 0 ? t('flightBookingCard.nonstop') : t(count === 1 ? 'flightBookingCard.stop' : 'flightBookingCard.stops', { count });
                                 });
                                 return (

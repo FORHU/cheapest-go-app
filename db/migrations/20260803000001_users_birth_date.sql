@@ -1,3 +1,4 @@
+-- migrate:up
 -- Account holders must be 18+ — they enter a payment contract when booking.
 -- Stored so the attestation is auditable rather than only enforced at signup.
 --
@@ -8,3 +9,6 @@ ALTER TABLE users
 
 COMMENT ON COLUMN users.birth_date IS
     'Date of birth of the account holder. Required at signup (18+); NULL for accounts created before that rule.';
+
+-- migrate:down
+ALTER TABLE users DROP COLUMN IF EXISTS birth_date;

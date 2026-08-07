@@ -501,7 +501,7 @@
         },
         "dontClosePage": "请不要关闭此页面",
         "duplicate": {
-            "description": "发现一个出发日期为 {route} 的活动预订，日期为 {date}。请先取消现有预订，或返回。",
+            "description": "发现一个出发日期为 <mono>{route}</mono> 的活动预订，日期为 <mono>{date}</mono>。请先取消现有预订，或返回。",
             "keepExisting": "保留现有预订",
             "title": "您已有一个当天的航班预订",
             "viewExisting": "查看现有预订"

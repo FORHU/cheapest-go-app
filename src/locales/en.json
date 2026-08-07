@@ -635,7 +635,7 @@
         },
         "dontClosePage": "Please don't close this page",
         "duplicate": {
-            "description": "An active booking was found departing {route} on {date}. Cancel the existing booking first, or go back.",
+            "description": "An active booking was found departing <mono>{route}</mono> on <mono>{date}</mono>. Cancel the existing booking first, or go back.",
             "keepExisting": "Keep existing booking",
             "title": "You already have a flight booked on this day",
             "viewExisting": "View existing booking"
@@ -2260,10 +2260,12 @@
             "noteAdded": "Note added successfully.",
             "notePlaceholder": "Enter a note for this booking…",
             "originTo": "{origin} to {destination}",
+            "outbound": "Outbound",
             "passenger": "{count} passenger",
             "passengers": "{count} passengers",
             "pax": "{count} pax",
             "penaltyApplied": "Penalty applied: {amount}",
+            "return": "Return",
             "pnr": "PNR",
             "receipt": "Receipt",
             "refundFailed": "Refund failed",

@@ -500,7 +500,7 @@
         },
         "dontClosePage": "このページを閉じないでください",
         "duplicate": {
-            "description": "{route} 発のアクティブな予約が{date}に見つかりました。まず現有の予約をキャンセルするか、戻ってください。",
+            "description": "<mono>{route}</mono> 発のアクティブな予約が<mono>{date}</mono>に見つかりました。まず現有の予約をキャンセルするか、戻ってください。",
             "keepExisting": "現有の予約を保持",
             "title": "すでに同じ日の航空券を予約しています",
             "viewExisting": "現有の予約を表示"

@@ -124,6 +124,16 @@ export async function POST(req: NextRequest) {
                 `Booking ${result.data?.bookingId || ''} confirmed for ${user.email}.`,
                 'booking'
             );
+            // Optional fields are passed only when the request actually carried
+            // them. The template omits any block it has no data for rather than
+            // guessing — see buildHotelConfirmationHtml.
+            const nights = (() => {
+                const a = Date.parse(body.checkIn ?? '');
+                const b = Date.parse(body.checkOut ?? '');
+                if (!Number.isFinite(a) || !Number.isFinite(b) || b <= a) return undefined;
+                return Math.round((b - a) / 86_400_000);
+            })();
+
             sendBookingConfirmationEmail({
                 bookingId: result.data?.bookingId || '',
                 email: body.holder?.email || user.email || '',
@@ -134,6 +144,11 @@ export async function POST(req: NextRequest) {
                 checkOut: body.checkOut || '',
                 totalPrice: result.data?.totalPrice || 0,
                 currency: result.data?.currency || body.currency || 'USD',
+                ...(body.propertyImage ? { propertyImageUrl: body.propertyImage } : {}),
+                ...(body.adults ? { adults: body.adults } : {}),
+                ...(body.children ? { children: body.children } : {}),
+                ...(nights ? { nights } : {}),
+                ...(body.discountAmount ? { discountAmount: body.discountAmount } : {}),
             }).catch(e => console.error('[confirm] Email failed:', e));
             return Response.json(result);
         }

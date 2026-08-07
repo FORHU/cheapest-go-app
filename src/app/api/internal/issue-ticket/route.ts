@@ -134,11 +134,14 @@ export async function POST(req: NextRequest) {
         console.log(`[issue-ticket] Order ${orderId}: ${tickets.length} tickets — status → ${newStatus}`);
 
         // ── Update flight_bookings ───────────────────────────────────────
+        // ticket_numbers is text[]: postgres.js maps a JS array straight to a
+        // Postgres array. Never JSON.stringify it — that sends the literal string
+        // '["123","456"]', which Postgres cannot parse as an array.
         await sql`
             UPDATE flight_bookings
             SET
                 status = ${newStatus},
-                ticket_numbers = ${JSON.stringify(tickets)}
+                ticket_numbers = ${tickets}
             WHERE id = ${bookingId}
         `;
 
