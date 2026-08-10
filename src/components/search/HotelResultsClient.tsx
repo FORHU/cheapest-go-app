@@ -229,9 +229,8 @@ export function HotelResultsClient({ searchParams, onSwitchView }: HotelResultsC
                                     }
                                     const withImgAfter = accumulated.filter((h: any) => !!(h as any).image).length;
                                     console.log(`[done] after prune: acc=${accumulated.length}, withImage=${withImgAfter}`);
-                                } else {
-                                    // TGX timed out / ALL_PROCESSES_FAILED — keep catalog hotels but
-                                    // clear priceLoading so cards don't spin indefinitely.
+                                } else if ((msg as any).tgxFailed) {
+                                    // TGX timed out / errored — keep catalog hotels but clear priceLoading.
                                     let changed = false;
                                     for (let i = 0; i < accumulated.length; i++) {
                                         if ((accumulated[i] as any).priceLoading) {
@@ -240,6 +239,11 @@ export function HotelResultsClient({ searchParams, onSwitchView }: HotelResultsC
                                         }
                                     }
                                     if (changed && !cancelled) setProperties([...accumulated]);
+                                } else {
+                                    // TGX returned 0 intentionally (no coverage) — clear catalog so the
+                                    // proper empty state shows instead of $0 hotels.
+                                    accumulated.splice(0, accumulated.length);
+                                    if (!cancelled) setProperties([]);
                                 }
                                 if (!cancelled) {
                                     setTotalCount(accumulated.length);

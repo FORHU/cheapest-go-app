@@ -151,6 +151,16 @@ export async function GET(req: NextRequest) {
         return NextResponse.json({ query: destCacheQuery, count: rows.length, rows });
     }
 
+    // Clear hotel_search_cache entries for a city (e.g. after fixing dest code).
+    // Usage: GET /api/debug/tgx?clearSearchCache=Rome
+    const clearSearchCacheCity = searchParams.get('clearSearchCache');
+    if (clearSearchCacheCity) {
+        const sql = getSqlAdmin();
+        const pattern = `city:${clearSearchCacheCity.toLowerCase().trim()}%`;
+        const result = await sql`DELETE FROM hotel_search_cache WHERE cache_key LIKE ${pattern}`;
+        return NextResponse.json({ ok: true, deleted: Number(result.count ?? 0), pattern });
+    }
+
     // Purge wrong-source hotels: delete content_source='tgx' rows with numeric IDs for a city.
     // These are wrong-country hotels backfilled from old bad TGX dest-code results.
     // Usage: GET /api/debug/tgx?purgeWrong=Phuket

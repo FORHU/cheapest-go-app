@@ -396,7 +396,11 @@ function SearchMapView({
     // Also patches existing entries whose location/image was empty when first received
     // (the `done` event may arrive with the same count as `hotels` but with enriched data).
     React.useEffect(() => {
-        if (properties.length === 0) return;
+        if (properties.length === 0) {
+            // Search reset — clear stale results so the loading state shows instead of old hotels.
+            setAllProperties(prev => prev.length > 0 ? [] : prev);
+            return;
+        }
         setAllProperties(prev => {
             const incomingMap = new Map(properties.map(p => [p.id, p]));
             let changed = false;
@@ -415,7 +419,9 @@ function SearchMapView({
                 const wantsPriceLoading = !!(p as any).priceLoading !== !!(incoming as any).priceLoading;
                 // Sync boardTypes when prices patch arrives (needed for meal plan filter)
                 const wantsBoardTypes = !(p as any).boardTypes?.length && !!(incoming as any).boardTypes?.length;
-                if (!wantsLocation && !wantsImage && !wantsPrice && !wantsPriceLoading && !wantsBoardTypes) return p;
+                // Sync _catalogOnly when TGX returns 0 (catalog hotels stay visible without prices)
+                const wantsCatalogOnly = !(p as any)._catalogOnly && !!(incoming as any)._catalogOnly;
+                if (!wantsLocation && !wantsImage && !wantsPrice && !wantsPriceLoading && !wantsBoardTypes && !wantsCatalogOnly) return p;
                 changed = true;
                 return {
                     ...p,
@@ -424,6 +430,7 @@ function SearchMapView({
                     images: incoming.images?.length ? incoming.images : p.images,
                     ...(wantsPriceLoading && { priceLoading: !!(incoming as any).priceLoading }),
                     ...(wantsBoardTypes && { boardTypes: (incoming as any).boardTypes }),
+                    ...(wantsCatalogOnly && { _catalogOnly: true }),
                     ...(wantsPrice && {
                         price: (incoming as any).price,
                         currency: (incoming as any).currency ?? p.currency,
@@ -502,10 +509,11 @@ function SearchMapView({
         const isRawCode = (name: string) => /^[a-z0-9_]+$/.test(name) && name.includes('_');
         // Exclude hotels without real coordinates — they can't be placed on the
         // map, so they shouldn't appear in the results list either.
-        // Include priceLoading:true hotels so catalog cards appear immediately
-        // while TGX loads, instead of showing PriceLoadingSidebar skeleton.
+        // Include priceLoading:true hotels so catalog cards appear immediately while
+        // TGX loads. Also include _catalogOnly hotels (TGX returned 0 / failed) so
+        // cities with catalog coverage but no TGX availability don't show "0 hotels".
         let list = allProperties.filter((p: any) =>
-            p.name && !isRawCode(p.name) && ((p as any).priceLoading || p.price > 0) && hasValidCoords(p)
+            p.name && !isRawCode(p.name) && ((p as any).priceLoading || p.price > 0 || (p as any)._catalogOnly) && hasValidCoords(p)
         );
 
         if (propertyTypes.length > 0) {
@@ -572,7 +580,7 @@ function SearchMapView({
     const allMappableForMap = useMemo<MappableProperty[]>(() => {
         const isRawCode = (name: string) => /^[a-z0-9_]+$/.test(name) && name.includes('_');
         let list = allProperties.filter((p: any) =>
-            p.name && !isRawCode(p.name) && ((p as any).priceLoading || p.price > 0) && hasValidCoords(p)
+            p.name && !isRawCode(p.name) && ((p as any).priceLoading || p.price > 0 || (p as any)._catalogOnly) && hasValidCoords(p)
         );
         if (propertyTypes.length > 0) list = list.filter((p: any) => propertyTypes.includes(p.type));
         if (boardTypes.length > 0) {
@@ -846,7 +854,7 @@ function SearchMapView({
                         {/* Property count pill */}
                         <span className="hidden sm:inline px-2.5 py-0.5 rounded-full text-[10px] md:text-[11px] font-semibold border bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 whitespace-nowrap">
                             {activeFilterCount > 0
-                                ? tr('filteredCount', { filtered: sortedProperties.length, total: allProperties.filter((p: any) => p.name && (p.price > 0 || (p as any).priceLoading) && hasValidCoords(p)).length })
+                                ? tr('filteredCount', { filtered: sortedProperties.length, total: allProperties.filter((p: any) => p.name && (p.price > 0 || (p as any).priceLoading || (p as any)._catalogOnly) && hasValidCoords(p)).length })
                                 : tr('hotelsCount', { count: sortedProperties.length })
                             }
                         </span>

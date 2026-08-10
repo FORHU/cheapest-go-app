@@ -1363,6 +1363,22 @@ async function runCityFallback(
             } // end else (destResult exists)
         }
     } else {
+        // resolvedCode is undefined — either the NONE sentinel or a destinationSearcher timeout.
+        // Check DB to distinguish: NONE means the city is intentionally unresolvable, so skip
+        // the extended background-resolve path and fall straight to hotel-code fallback.
+        let isNoneSentinel = false;
+        try {
+            const _sql = getSqlAdmin();
+            const cityKey = cityName?.toLowerCase().trim() ?? '';
+            const scopedKey = countryCode ? `${cityKey}:${countryCode.toLowerCase()}` : null;
+            const keys = scopedKey ? [cityKey, scopedKey] : [cityKey];
+            const noneRows = await _sql`SELECT 1 FROM tgx_destination_cache WHERE city_key = ANY(${keys}) AND destination_code = 'NONE' LIMIT 1`;
+            if (noneRows.length > 0) isNoneSentinel = true;
+        } catch { /* non-fatal — treat as timeout */ }
+
+        if (isNoneSentinel) {
+            console.log(`[tgx-search] NONE sentinel for "${cityName}" — skipping extended resolve, going to hotel-code fallback`);
+        } else {
         // destinationSearcher timed out on the initial 18s window. The shared raw
         // fetch is still running — wait up to 12s more for it to finish, then do a
         // quick destination-code search so the FIRST search always yields results.
@@ -1390,6 +1406,49 @@ async function runCityFallback(
             } catch (e: any) {
                 console.warn(`[tgx-search] Extended dest-code search failed: ${e.message?.slice(0, 80)}`);
             }
+        }
+        } // end !isNoneSentinel
+    }
+
+    // Hotel-code fallback: when dest-code yields nothing, search TGX by catalog hotel IDs.
+    // Bypasses destination-code resolution for cities where TGX zones don't map well (e.g. Paris).
+    if (cityName) {
+        try {
+            const sqlAdmin = getSqlAdmin();
+            const cityOnly = cityName.split(',')[0].trim();
+            const catalogRows = countryCode
+                ? await sqlAdmin<{ hotel_id: string }[]>`
+                    SELECT hotel_id FROM hotel_content
+                    WHERE LOWER(TRIM(city)) = LOWER(${cityOnly})
+                      AND LOWER(country) = LOWER(${countryCode})
+                      AND hotel_id ~ '^[0-9]+$'
+                      AND lat != 0 AND lng != 0
+                    LIMIT 300`
+                : await sqlAdmin<{ hotel_id: string }[]>`
+                    SELECT hotel_id FROM hotel_content
+                    WHERE LOWER(TRIM(city)) = LOWER(${cityOnly})
+                      AND hotel_id ~ '^[0-9]+$'
+                      AND lat != 0 AND lng != 0
+                    LIMIT 300`;
+            const catalogIds = catalogRows.map(r => r.hotel_id);
+            if (catalogIds.length > 0) {
+                console.log(`[tgx-search] Hotel-code fallback: querying TGX with ${catalogIds.length} IDs for "${cityName}"`);
+                const _cfg = getTgxConfig();
+                const hotelResult = await tgxGraphQL(CITY_SEARCH_QUERY, {
+                    criteria: { ...baseCriteria, hotels: catalogIds },
+                    settings: getTgxSettings(_cfg, 15_000, true),
+                    filterSearch: getTgxFilterSearch(_cfg),
+                }, 25_000).catch(() => null);
+                const merchant = ((hotelResult?.data?.hotelX?.search?.options) ?? []).filter(
+                    (o: any) => o.paymentType === 'MERCHANT' && (o.status === 'AVAILABLE' || o.status === 'OK')
+                );
+                if (merchant.length > 0) {
+                    console.log(`[tgx-search] Hotel-code fallback: ${merchant.length} options for "${cityName}"`);
+                    return buildCityResults(merchant, cityName, countryCode);
+                }
+            }
+        } catch (e: any) {
+            console.warn(`[tgx-search] Hotel-code fallback failed for "${cityName}": ${e.message?.slice(0, 80)}`);
         }
     }
 

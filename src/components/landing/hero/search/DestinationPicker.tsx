@@ -93,7 +93,7 @@ export const DestinationPicker: React.FC<DestinationPickerProps> = ({ hideIcon, 
         // Province/district/landmark picks must NOT get an OTV destination code — they
         // resolve via ETG (region or serp/geo), and a stale code would hijack routing.
         if (destination.type === 'city' && (destination.rung ?? 'city') === 'city' && !destination.code) {
-            apiFetch('/api/autocomplete/resolve', { cityName: destination.title })
+            apiFetch('/api/autocomplete/resolve', { cityName: destination.canonicalCity ?? destination.title })
                 .then((res: any) => {
                     if (res?.success && res.code) {
                         const enriched = { ...destination, code: res.code };

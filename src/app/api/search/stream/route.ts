@@ -2,7 +2,7 @@ import { NextRequest } from 'next/server';
 import { runTgxSearch } from '@/lib/server/stays/travelgatex/search';
 import { getSqlAdmin } from '@/lib/db/postgres';
 import { tgxGraphQL, getTgxConfig } from '@/lib/server/stays/travelgatex/client';
-import { CITY_ALIASES } from '@/lib/constants/cityAliases';
+import { CITY_ALIASES, resolveHotelDbCity } from '@/lib/constants/cityAliases';
 
 const COUNTRY_NAME_TO_ISO: Record<string, string> = {
     'indonesia': 'ID', 'france': 'FR', 'italy': 'IT', 'spain': 'ES', 'germany': 'DE',
@@ -133,10 +133,13 @@ async function getInstantHotelCatalog(body: any): Promise<any[]> {
         // Strip country suffix (e.g. "Tokyo, Japan" → "Tokyo") so ILIKE matches DB city column
         const cityOnly = cityName.split(',')[0].trim();
         const normalized = cityOnly.replace(/-(si|do|gu|gun|eup)$/i, '').trim();
-        const pattern = `%${normalized}%`;
 
         // Resolve full country name ("Indonesia") or ISO-2 ("ID") to a 2-letter code for DB filtering
         const isoCode = resolveIsoCode(countryCode);
+        // Resolve to DB city name — ETG seeds hotel_content with German-localized names
+        // ("Rom", "Athen") that don't match the English canonical names we receive here.
+        const dbCity = resolveHotelDbCity(normalized, isoCode ?? countryCode);
+        const pattern = `%${dbCity}%`;
 
         const rows = isoCode
             ? await sql`
@@ -232,6 +235,19 @@ function ndjsonLine(obj: unknown): Uint8Array {
 export async function POST(req: NextRequest) {
     const body = await req.json().catch(() => ({}));
 
+    // When canonicalCity differs from destination, the destinationCode was resolved
+    // for the district/alias (e.g. "Ottavia" → code 183294) not the parent city ("Rome").
+    // Clear it before normalization so TGX falls back to city-name lookup.
+    if (
+        body.destinationCode &&
+        body.canonicalCity &&
+        body.destination &&
+        body.destination.toLowerCase() !== body.canonicalCity.toLowerCase()
+    ) {
+        console.log(`[stream] clearing stale destinationCode ${body.destinationCode} (resolved for "${body.destination}", canonical is "${body.canonicalCity}")`);
+        delete body.destinationCode;
+    }
+
     // Normalize city name: strip country suffix (e.g. "Tokyo, Japan" → "Tokyo")
     // Landing cards pass "Tokyo, Japan" but DB and TGX both expect just the city name.
     const rawCity: string = body.cityName ?? body.destination ?? '';
@@ -253,18 +269,45 @@ export async function POST(req: NextRequest) {
         }
     }
 
+    // Resolve full country name → ISO-2 ("France" → "FR", "Indonesia" → "ID").
+    // Landing cards pass the display name; bbox filters and TGX criteria need ISO-2.
+    if (body.countryCode && body.countryCode.length > 2) {
+        const resolved = resolveIsoCode(body.countryCode);
+        if (resolved) body.countryCode = resolved;
+    }
+
     // City alias resolution: map district/borough/neighbourhood names to the
     // canonical city TGX can resolve. Rung is upgraded to 'city' so the district
     // early-return in _runTgxSearch doesn't kill the search.
-    if (body.countryCode && body.cityName) {
-        const countryAliases = CITY_ALIASES[body.countryCode];
-        const alias = countryAliases?.[body.cityName.toLowerCase()];
-        if (alias) {
-            console.log(`[stream] city alias: "${body.cityName}" (rung: ${body.rung}) → "${alias}" (rung: city)`);
-            body.cityName = alias;
-            if (body.destination) body.destination = alias;
-            // Upgrade rung to city — district/neighbourhood aliases resolve as full cities.
-            body.rung = 'city';
+    if (body.cityName) {
+        const nameLower = body.cityName.toLowerCase();
+        if (body.countryCode) {
+            // Fast path: country is known, check only that country's aliases.
+            const alias = CITY_ALIASES[body.countryCode]?.[nameLower];
+            if (alias) {
+                console.log(`[stream] city alias: "${body.cityName}" (rung: ${body.rung}) → "${alias}" (rung: city)`);
+                body.cityName = alias;
+                if (body.destination) body.destination = alias;
+                body.rung = 'city';
+                // The destinationCode was resolved from the district name — it's wrong
+                // for the canonical city. Clear it so TGX falls back to city-name lookup.
+                delete body.destinationCode;
+            }
+        } else {
+            // No country code (user typed and searched without selecting a suggestion).
+            // Scan all country alias maps and take the first match.
+            for (const [cc, aliases] of Object.entries(CITY_ALIASES)) {
+                const alias = aliases[nameLower];
+                if (alias) {
+                    console.log(`[stream] city alias (no CC): "${body.cityName}" → "${alias}" (${cc})`);
+                    body.cityName = alias;
+                    if (body.destination) body.destination = alias;
+                    body.countryCode = cc;
+                    body.rung = 'city';
+                    delete body.destinationCode;
+                    break;
+                }
+            }
         }
     }
 
@@ -508,7 +551,7 @@ export async function POST(req: NextRequest) {
                 // Send done — client can render immediately without waiting for TGX images.
                 const finalCount = tgxHotels.length > 0 ? tgxHotels.length : catalogHotels.length;
                 console.log(`[stream] done — total ${finalCount} hotels, ${elapsed()} wall time`);
-                send({ type: 'done', totalCount: finalCount, tgxCount: tgxHotels.length, allMappable: tgxMappable.length > 0 ? tgxMappable : catalogHotels.filter((h: any) => h.lat && h.lng) });
+                send({ type: 'done', totalCount: finalCount, tgxCount: tgxHotels.length, tgxFailed, allMappable: tgxMappable.length > 0 ? tgxMappable : catalogHotels.filter((h: any) => h.lat && h.lng) });
 
                 // Phase B: fetch images for new TGX hotels (not in catalog) — post-done.
                 // Client processes this type:'content' message to add images to visible cards.

@@ -120,8 +120,146 @@ export const CITY_ALIASES: Record<string, Record<string, string>> = {
         'old town scottsdale': 'Scottsdale', 'scottsdale old town': 'Scottsdale',
         'tempe': 'Phoenix', 'mesa': 'Phoenix', 'chandler': 'Phoenix',
         'downtown phoenix': 'Phoenix', 'midtown phoenix': 'Phoenix',
+        // Orlando
+        'international drive': 'Orlando', 'lake buena vista': 'Orlando',
+        'kissimmee': 'Orlando', 'winter park orlando': 'Orlando', 'downtown orlando': 'Orlando',
+        // Tampa / St Petersburg
+        'ybor city': 'Tampa', 'channelside': 'Tampa', 'soho tampa': 'Tampa',
+        'hyde park tampa': 'Tampa', 'seminole heights': 'Tampa', 'downtown tampa': 'Tampa',
+        'st pete beach': 'Saint Petersburg', 'downtown st pete': 'Saint Petersburg',
+        // Fort Lauderdale
+        'las olas': 'Fort Lauderdale', 'downtown fort lauderdale': 'Fort Lauderdale',
+        // Jacksonville FL
+        'san marco jacksonville': 'Jacksonville', 'avondale jacksonville': 'Jacksonville',
+        // Honolulu / Oahu
+        'waikiki': 'Honolulu', 'downtown honolulu': 'Honolulu', 'chinatown honolulu': 'Honolulu',
+        'ala moana': 'Honolulu', 'kailua oahu': 'Honolulu', 'manoa': 'Honolulu',
+        // Maui
+        'lahaina': 'Maui', 'kaanapali': 'Maui', 'wailea maui': 'Maui',
+        'kihei': 'Maui', 'paia maui': 'Maui', 'makawao': 'Maui',
+        // Big Island Hawaii
+        'kailua kona': 'Kailua-Kona', 'hilo city': 'Hilo', 'waikoloa': 'Waikoloa',
+        // Kauai
+        'poipu': 'Lihue', 'princeville kauai': 'Lihue', 'kapaa': 'Lihue', 'hanalei': 'Lihue',
+        // Philadelphia
+        'fishtown': 'Philadelphia', 'old city philly': 'Philadelphia',
+        'rittenhouse square': 'Philadelphia', 'center city philly': 'Philadelphia',
+        'northern liberties': 'Philadelphia', 'south philly': 'Philadelphia',
+        'east passyunk': 'Philadelphia', 'manayunk': 'Philadelphia',
+        'university city philly': 'Philadelphia', 'graduate hospital': 'Philadelphia',
+        // Baltimore
+        'inner harbor': 'Baltimore', 'fells point': 'Baltimore', 'canton baltimore': 'Baltimore',
+        'federal hill baltimore': 'Baltimore', 'mount vernon baltimore': 'Baltimore',
+        'hampden': 'Baltimore', 'remington': 'Baltimore',
+        // Pittsburgh
+        'strip district': 'Pittsburgh', 'lawrenceville pittsburgh': 'Pittsburgh',
+        'shadyside': 'Pittsburgh', 'squirrel hill': 'Pittsburgh',
+        'south side pittsburgh': 'Pittsburgh', 'bloomfield pittsburgh': 'Pittsburgh',
+        'north shore pittsburgh': 'Pittsburgh',
+        // San Antonio
+        'river walk': 'San Antonio', 'king william': 'San Antonio',
+        'pearl district sa': 'San Antonio', 'downtown san antonio': 'San Antonio',
+        'alamo heights': 'San Antonio',
+        // Salt Lake City
+        'downtown slc': 'Salt Lake City', 'sugarhouse': 'Salt Lake City',
+        'the avenues slc': 'Salt Lake City',
+        // Park City UT
+        'park city downtown': 'Park City',
+        // Sedona AZ
+        'sedona uptown': 'Sedona', 'tlaquepaque sedona': 'Sedona',
+        // Flagstaff AZ
+        'downtown flagstaff': 'Flagstaff',
+        // Kansas City
+        'power and light kc': 'Kansas City', 'crossroads kc': 'Kansas City',
+        'country club plaza': 'Kansas City', 'westport kc': 'Kansas City',
+        // St Louis
+        'soulard': 'St. Louis', 'the grove stl': 'St. Louis',
+        'central west end': 'St. Louis', 'downtown st louis': 'St. Louis',
+        'lafayette square stl': 'St. Louis',
+        // Indianapolis
+        'broad ripple': 'Indianapolis', 'mass ave indy': 'Indianapolis',
+        'fountain square indy': 'Indianapolis',
+        // Columbus OH
+        'short north': 'Columbus', 'german village columbus': 'Columbus',
+        'italian village columbus': 'Columbus', 'clintonville': 'Columbus',
+        // Cincinnati
+        'over-the-rhine': 'Cincinnati', 'hyde park cincinnati': 'Cincinnati',
+        'mount adams': 'Cincinnati', 'oakley': 'Cincinnati',
+        // Louisville
+        'nulu': 'Louisville', 'bardstown road': 'Louisville', 'old louisville': 'Louisville',
+        // Memphis
+        'beale street': 'Memphis', 'south main memphis': 'Memphis',
+        'midtown memphis': 'Memphis', 'cooper young': 'Memphis',
+        // Raleigh / Durham / Chapel Hill
+        'glenwood south': 'Raleigh', 'downtown raleigh': 'Raleigh',
+        'downtown durham': 'Durham', 'ninth street durham': 'Durham',
+        // Charlotte
+        'uptown charlotte': 'Charlotte', 'noda': 'Charlotte',
+        'south end charlotte': 'Charlotte', 'plaza midwood': 'Charlotte',
+        'dilworth': 'Charlotte',
+        // Richmond VA
+        'the fan': 'Richmond', 'scott s addition richmond': 'Richmond',
+        'carytown': 'Richmond', 'shockoe bottom': 'Richmond',
+        // Detroit
+        'midtown detroit': 'Detroit', 'corktown': 'Detroit',
+        'greektown detroit': 'Detroit', 'eastern market': 'Detroit',
+        // Cleveland
+        'ohio city': 'Cleveland', 'tremont cleveland': 'Cleveland',
+        'university circle': 'Cleveland',
+        // Sacramento
+        'midtown sacramento': 'Sacramento', 'east sacramento': 'Sacramento',
+        // San Jose CA
+        'santana row': 'San Jose', 'downtown san jose': 'San Jose', 'willow glen': 'San Jose',
+        // Oakland
+        'grand lake': 'Oakland', 'rockridge': 'Oakland', 'temescal': 'Oakland',
+        'fruitvale': 'Oakland', 'jack london square': 'Oakland',
+        // Napa / Wine Country
+        'napa downtown': 'Napa', 'yountville': 'Napa', 'st helena': 'Napa',
+        'healdsburg': 'Santa Rosa',
+        // Santa Barbara CA
+        'state street sb': 'Santa Barbara', 'santa barbara waterfront': 'Santa Barbara',
+        // Monterey / Carmel CA
+        'cannery row': 'Monterey', 'pacific grove': 'Monterey', 'carmel village': 'Monterey',
+        // Albuquerque
+        'old town albuquerque': 'Albuquerque', 'nob hill abq': 'Albuquerque',
+        // Tucson AZ
+        'downtown tucson': 'Tucson', '4th avenue tucson': 'Tucson',
+        // Savannah GA
+        'historic district savannah': 'Savannah', 'forsyth park': 'Savannah',
+        // Asheville NC
+        'downtown asheville': 'Asheville', 'west asheville': 'Asheville',
+        // Charleston SC
+        'french quarter charleston': 'Charleston', 'lower king charleston': 'Charleston',
+        'the battery charleston': 'Charleston',
+        // Jackson Hole WY
+        'jackson hole town': 'Jackson', 'town square jackson': 'Jackson',
+        // Boise ID
+        'downtown boise': 'Boise', 'north end boise': 'Boise',
+        // Omaha NE
+        'old market omaha': 'Omaha',
+        // Oklahoma City
+        'bricktown okc': 'Oklahoma City',
+        // Madison WI
+        'state street madison': 'Madison',
+        // Anchorage AK
+        'downtown anchorage': 'Anchorage',
     },
     CA: {
+        // British Columbia
+        'victoria bc': 'Victoria', 'victoria city bc': 'Victoria', 'james bay victoria': 'Victoria',
+        'kelowna city': 'Kelowna', 'kelowna waterfront': 'Kelowna',
+        'whistler village': 'Whistler',
+        'kamloops city': 'Kamloops',
+        // Saskatchewan
+        'downtown saskatoon': 'Saskatoon', 'riversdale': 'Saskatoon',
+        'downtown regina': 'Regina',
+        // Manitoba extras
+        'the forks': 'Winnipeg', 'osborne village': 'Winnipeg',
+        // Atlantic Canada
+        'downtown fredericton': 'Fredericton',
+        'downtown charlottetown': 'Charlottetown',
+        // Newfoundland
+        'downtown st johns nl': "St. John's",
         'gastown': 'Vancouver', 'yaletown': 'Vancouver', 'kitsilano': 'Vancouver',
         'west end': 'Vancouver', 'granville island': 'Vancouver',
         'mount pleasant vancouver': 'Vancouver', 'commercial drive': 'Vancouver',
@@ -156,8 +294,36 @@ export const CITY_ALIASES: Record<string, Record<string, string>> = {
         'old guadalajara': 'Guadalajara', 'chapultepec guadalajara': 'Guadalajara',
         'tlaquepaque': 'Guadalajara', 'zona minerva': 'Guadalajara',
         'tecnologico': 'Monterrey', 'san pedro garza garcia': 'Monterrey', 'barrio antiguo': 'Monterrey',
-        'tulum town': 'Tulum', 'la veleta': 'Tulum',
+        'tulum town': 'Tulum', 'la veleta': 'Tulum', 'aldea zama': 'Tulum',
         'sayulita': 'Puerto Vallarta', 'old town pv': 'Puerto Vallarta', 'zona romantica': 'Puerto Vallarta',
+        'bucerias': 'Puerto Vallarta', 'punta de mita': 'Puerto Vallarta',
+        // Oaxaca
+        'oaxaca centro': 'Oaxaca', 'jalatlaco': 'Oaxaca', 'xochimilco oaxaca': 'Oaxaca',
+        // San Miguel de Allende
+        'san miguel centro': 'San Miguel de Allende', 'parroquia area': 'San Miguel de Allende',
+        // Los Cabos
+        'cabo san lucas': 'Los Cabos', 'san jose del cabo': 'Los Cabos',
+        'corridor cabo': 'Los Cabos', 'medano beach': 'Los Cabos',
+        // Merida
+        'paseo de montejo': 'Merida', 'merida centro': 'Merida', 'santa ana merida': 'Merida',
+        // Puerto Escondido
+        'zicatela': 'Puerto Escondido', 'la punta mexico': 'Puerto Escondido',
+        // Huatulco
+        'tangolunda': 'Huatulco', 'la crucecita': 'Huatulco',
+        // Mazatlan
+        'old mazatlan': 'Mazatlan', 'zona dorada mazatlan': 'Mazatlan',
+        // San Cristobal de las Casas
+        'san cristobal centro': 'San Cristobal de las Casas',
+        // Guanajuato
+        'guanajuato centro': 'Guanajuato',
+        // Queretaro
+        'queretaro centro': 'Queretaro',
+        // Puebla
+        'puebla centro': 'Puebla', 'barrio de artistas': 'Puebla',
+        // Veracruz
+        'veracruz malecon': 'Veracruz',
+        // Acapulco
+        'acapulco costera': 'Acapulco',
     },
     // ── South America ──────────────────────────────────────────────────────────
     BR: {
@@ -173,6 +339,29 @@ export const CITY_ALIASES: Record<string, Record<string, string>> = {
         'bom retiro': 'Sao Paulo', 'centro sp': 'Sao Paulo',
         'savassi': 'Belo Horizonte', 'funcionarios': 'Belo Horizonte',
         'pelourinho': 'Salvador', 'barra salvador': 'Salvador',
+        // Fortaleza
+        'meireles': 'Fortaleza', 'iracema': 'Fortaleza', 'aldeota': 'Fortaleza',
+        // Recife / Olinda
+        'boa viagem': 'Recife', 'olinda old town': 'Olinda',
+        // Florianopolis
+        'lagoa da conceicao': 'Florianopolis', 'jurerere': 'Florianopolis',
+        'jurere internacional': 'Florianopolis', 'centro floripa': 'Florianopolis',
+        // Curitiba
+        'batel': 'Curitiba', 'bairro alto curitiba': 'Curitiba',
+        // Manaus
+        'centro manaus': 'Manaus',
+        // Natal
+        'ponta negra natal': 'Natal',
+        // Foz do Iguacu
+        'foz do iguacu': 'Foz do Iguacu',
+        // Gramado
+        'gramado centro': 'Gramado',
+        // Buzios
+        'orla bardot': 'Buzios',
+        // Paraty
+        'paraty centro': 'Paraty',
+        // Angra dos Reis
+        'angra dos reis centro': 'Angra dos Reis',
     },
     AR: {
         'palermo': 'Buenos Aires', 'recoleta': 'Buenos Aires', 'san telmo': 'Buenos Aires',
@@ -180,6 +369,22 @@ export const CITY_ALIASES: Record<string, Record<string, string>> = {
         'villa crespo': 'Buenos Aires', 'caballito': 'Buenos Aires', 'flores': 'Buenos Aires',
         'colegiales': 'Buenos Aires', 'nunez': 'Buenos Aires', 'almagro': 'Buenos Aires',
         'boedo': 'Buenos Aires', 'la boca': 'Buenos Aires', 'villa del parque': 'Buenos Aires',
+        // Mendoza
+        'mendoza city centre': 'Mendoza', 'chacras de coria': 'Mendoza',
+        // Bariloche
+        'bariloche centro': 'Bariloche', 'lago nahuel huapi': 'Bariloche',
+        // Cordoba Argentina
+        'nueva cordoba': 'Cordoba', 'general paz cordoba': 'Cordoba',
+        // Salta
+        'salta centro': 'Salta',
+        // Puerto Madryn / Patagonia
+        'puerto madryn city': 'Puerto Madryn',
+        // El Calafate / Perito Moreno
+        'el calafate city': 'El Calafate',
+        // Ushuaia
+        'ushuaia city': 'Ushuaia',
+        // Iguazu
+        'puerto iguazu': 'Puerto Iguazu',
     },
     CL: {
         'las condes': 'Santiago', 'providencia': 'Santiago', 'vitacura': 'Santiago',
@@ -193,12 +398,34 @@ export const CITY_ALIASES: Record<string, Record<string, string>> = {
         'laureles': 'Medellin', 'envigado': 'Medellin', 'bello': 'Medellin',
         'getsemani': 'Cartagena', 'centro historico cartagena': 'Cartagena',
         'bocagrande': 'Cartagena', 'manga': 'Cartagena',
+        // Santa Marta
+        'rodadero': 'Santa Marta', 'santa marta old town': 'Santa Marta',
+        'taganga': 'Santa Marta',
+        // Cali
+        'el poblado cali': 'Cali', 'granada cali': 'Cali', 'san antonio cali': 'Cali',
+        // Salento / Coffee Region
+        'salento colombia': 'Salento', 'quindio': 'Armenia',
+        // Barranquilla
+        'el prado barranquilla': 'Barranquilla',
+        // San Andres Island
+        'san andres city': 'San Andres',
     },
     PE: {
         'miraflores': 'Lima', 'barranco': 'Lima', 'san isidro': 'Lima', 'surco': 'Lima',
         'la molina': 'Lima', 'magdalena': 'Lima', 'pueblo libre': 'Lima',
         'lince': 'Lima', 'san borja': 'Lima', 'jesus maria': 'Lima',
         'central lima': 'Lima', 'callao': 'Lima',
+        // Cusco / Machu Picchu
+        'cusco san blas': 'Cusco', 'cusco plaza': 'Cusco', 'san pedro cusco': 'Cusco',
+        'aguas calientes': 'Aguas Calientes', 'machu picchu pueblo': 'Aguas Calientes',
+        // Arequipa
+        'arequipa city centre': 'Arequipa', 'yanahuara': 'Arequipa',
+        // Puno / Lake Titicaca
+        'puno city': 'Puno', 'lake titicaca area': 'Puno',
+        // Iquitos
+        'iquitos city': 'Iquitos',
+        // Trujillo
+        'trujillo centro': 'Trujillo',
     },
     EC: {
         'la mariscal': 'Quito', 'la carolina': 'Quito', 'cumbaya': 'Quito',
@@ -237,6 +464,40 @@ export const CITY_ALIASES: Record<string, Record<string, string>> = {
         'bedminster': 'Bristol',
         'headingley': 'Leeds', 'chapel allerton': 'Leeds', 'holbeck urban village': 'Leeds',
         'city centre sheffield': 'Sheffield', 'kelham island': 'Sheffield',
+        // Liverpool
+        'ropewalks': 'Liverpool', 'albert dock': 'Liverpool', 'city centre liverpool': 'Liverpool',
+        'baltic triangle': 'Liverpool', 'waterloo liverpool': 'Liverpool',
+        'kensington liverpool': 'Liverpool',
+        // Newcastle / Gateshead
+        'jesmond': 'Newcastle', 'quayside newcastle': 'Newcastle', 'ouseburn': 'Newcastle',
+        'grainger town': 'Newcastle', 'gateshead quays': 'Gateshead',
+        // Brighton & Hove
+        'north laine': 'Brighton', 'the lanes brighton': 'Brighton', 'kemptown': 'Brighton',
+        'hove': 'Brighton', 'seven dials brighton': 'Brighton',
+        // Cardiff
+        'cardiff bay': 'Cardiff', 'roath': 'Cardiff', 'pontcanna': 'Cardiff',
+        'canton cardiff': 'Cardiff', 'cathays': 'Cardiff',
+        // Oxford
+        'jericho': 'Oxford', 'cowley road': 'Oxford', 'summertown': 'Oxford',
+        'oxford city centre': 'Oxford',
+        // Cambridge
+        'mill road cambridge': 'Cambridge', 'newnham': 'Cambridge',
+        'cambridge city centre': 'Cambridge',
+        // York
+        'the shambles': 'York', 'york city centre': 'York',
+        // Nottingham
+        'hockley': 'Nottingham', 'lace market': 'Nottingham', 'hockley village': 'Nottingham',
+        // Leicester
+        'golden mile leicester': 'Leicester', 'de montfort': 'Leicester',
+        // Exeter
+        'exeter city centre': 'Exeter',
+        // Norwich
+        'norwich lanes': 'Norwich',
+        // Swansea / Wales
+        'swansea city centre': 'Swansea',
+        // Belfast
+        'cathedral quarter belfast': 'Belfast', 'titanic quarter': 'Belfast',
+        'queen s quarter': 'Belfast',
     },
     FR: {
         'montmartre': 'Paris', 'le marais': 'Paris', 'saint-germain': 'Paris',
@@ -256,6 +517,33 @@ export const CITY_ALIASES: Record<string, Record<string, string>> = {
         'grande ile': 'Strasbourg', 'krutenau': 'Strasbourg',
         'ile feydeau': 'Nantes', 'bouffay': 'Nantes',
         'saint-malo old town': 'Saint-Malo',
+        // Toulouse
+        'capitole toulouse': 'Toulouse', 'saint-aubin toulouse': 'Toulouse',
+        'carmes toulouse': 'Toulouse', 'compans toulouse': 'Toulouse',
+        // Cannes
+        'la croisette': 'Cannes', 'suquet': 'Cannes', 'le cannet': 'Cannes',
+        // Monaco
+        'monte carlo': 'Monaco', 'port hercule monaco': 'Monaco',
+        // Montpellier
+        'ecusson': 'Montpellier', 'antigone': 'Montpellier',
+        // Rennes
+        'rennes city center': 'Rennes', 'thabor': 'Rennes',
+        // Tours
+        'tours old town': 'Tours',
+        // Lille
+        'vieux lille': 'Lille', 'euralille': 'Lille',
+        // Annecy
+        'annecy old town': 'Annecy', 'annecy lake': 'Annecy',
+        // Grenoble
+        'bastille grenoble': 'Grenoble',
+        // Dijon
+        'dijon old town': 'Dijon',
+        // Avignon
+        'avignon old town': 'Avignon', 'avignon intramuros': 'Avignon',
+        // Perpignan
+        'perpignan city centre': 'Perpignan',
+        // Biarritz
+        'grande plage biarritz': 'Biarritz', 'biarritz centre': 'Biarritz',
     },
     ES: {
         'gothic quarter': 'Barcelona', 'gotico': 'Barcelona', 'el born': 'Barcelona',
@@ -276,12 +564,56 @@ export const CITY_ALIASES: Record<string, Record<string, string>> = {
         'parte vieja': 'San Sebastian', 'gros': 'San Sebastian', 'centro donostia': 'San Sebastian',
         'old town malaga': 'Malaga', 'soho malaga': 'Malaga', 'teatinos': 'Malaga',
         'palma old town': 'Palma de Mallorca', 'santa catalina': 'Palma de Mallorca',
+        // Ibiza
+        'ibiza old town': 'Ibiza', 'dalt vila': 'Ibiza', 'playa d en bossa': 'Ibiza',
+        'ses salines ibiza': 'Ibiza', 'santa eulalia': 'Ibiza',
+        // Mallorca (non-Palma areas)
+        'alcudia': 'Alcudia', 'port de pollenca': 'Pollensa', 'magaluf': 'Palma de Mallorca',
+        'can picafort': 'Alcudia',
+        // Menorca
+        'ciutadella': 'Ciutadella', 'es migjorn gran': 'Mahon', 'fornells': 'Mahon',
+        // Tenerife
+        'playa de las americas': 'Tenerife', 'los cristianos': 'Tenerife',
+        'puerto de la cruz tenerife': 'Tenerife', 'santa cruz tenerife': 'Tenerife', 'santa cruz de tenerife': 'Tenerife',
+        'costa adeje': 'Tenerife', 'el medano': 'Tenerife',
+        // Gran Canaria
+        'playa del ingles': 'Las Palmas de Gran Canaria', 'maspalomas': 'Las Palmas de Gran Canaria',
+        'puerto rico gran canaria': 'Las Palmas de Gran Canaria',
+        // Lanzarote
+        'puerto del carmen': 'Arrecife', 'puerto calero': 'Arrecife',
+        // Fuerteventura
+        'corralejo': 'Puerto del Rosario', 'costa calma': 'Puerto del Rosario',
+        // Costa del Sol
+        'marbella old town': 'Marbella', 'puerto banus': 'Marbella',
+        'estepona old town': 'Estepona', 'nerja centro': 'Nerja',
+        'fuengirola': 'Fuengirola', 'benalmadena': 'Benalmadena',
+        // Asturias
+        'oviedo old town': 'Oviedo', 'gijon waterfront': 'Gijon',
+        // Salamanca
+        'salamanca city centre': 'Salamanca',
+        // Toledo
+        'toledo old town': 'Toledo',
+        // Cordoba
+        'juderia cordoba': 'Cordoba', 'mezquita area': 'Cordoba',
     },
     IT: {
+        // Rome — centro storico / tourist core
         'trastevere': 'Rome', 'vatican': 'Rome', 'prati': 'Rome',
         'testaccio': 'Rome', 'pigneto': 'Rome', 'monti': 'Rome',
         'parioli': 'Rome', 'esquilino': 'Rome', 'ostiense': 'Rome',
-        'garbatella': 'Rome', 'flaminio': 'Rome', 'pignola': 'Rome',
+        'garbatella': 'Rome', 'flaminio': 'Rome',
+        'navona': 'Rome', 'campo de fiori': 'Rome', 'campo dei fiori': 'Rome',
+        'borgo': 'Rome', 'aventino': 'Rome', 'celio': 'Rome',
+        'centro storico rome': 'Rome', 'colosseo': 'Rome',
+        // Rome — residential & outer districts
+        'ottavia': 'Rome', 'trionfale': 'Rome', 'aurelio': 'Rome',
+        'monteverde': 'Rome', 'portuense': 'Rome', 'trullo': 'Rome',
+        'marconi': 'Rome', 'eur': 'Rome', 'appio': 'Rome',
+        'appio claudio': 'Rome', 'tuscolano': 'Rome', 'casilino': 'Rome',
+        'prenestino': 'Rome', 'centocelle': 'Rome', 'torpignattara': 'Rome',
+        'tiburtino': 'Rome', 'san lorenzo rome': 'Rome',
+        'nomentano': 'Rome', 'salario': 'Rome', 'africano': 'Rome',
+        'coppede': 'Rome', 'balduina': 'Rome', 'vigna clara': 'Rome',
         'navigli': 'Milan', 'brera': 'Milan', 'porta nuova': 'Milan',
         'isola': 'Milan', 'porta venezia': 'Milan', 'magenta': 'Milan',
         'centro storico milan': 'Milan', 'duomo area': 'Milan', 'ticinese': 'Milan',
@@ -299,6 +631,55 @@ export const CITY_ALIASES: Record<string, Record<string, string>> = {
         'quadrilatero': 'Bologna', 'bolognina': 'Bologna', 'porto bologna': 'Bologna',
         'centro storico genoa': 'Genoa', 'boccadasse': 'Genoa',
         'catania city center': 'Catania', 'centro storico palermo': 'Palermo',
+        // Verona
+        'verona centro': 'Verona', 'veronetta': 'Verona', 'isolo verona': 'Verona',
+        // Siena
+        'il campo': 'Siena', 'siena old town': 'Siena',
+        // Lecce
+        'lecce old town': 'Lecce', 'lecce barocca': 'Lecce',
+        // Bari
+        'bari vecchia': 'Bari', 'bari centro': 'Bari',
+        // Catania extras
+        'catania pescheria': 'Catania',
+        // Palermo extras
+        'ballarò': 'Palermo', 'vucciria': 'Palermo', 'mondello': 'Palermo',
+        'politeama': 'Palermo',
+        // Taormina
+        'taormina centro': 'Taormina',
+        // Cinque Terre (nearest TGX city is La Spezia)
+        'riomaggiore': 'La Spezia', 'manarola': 'La Spezia', 'corniglia': 'La Spezia',
+        'vernazza': 'La Spezia', 'monterosso': 'La Spezia',
+        // Amalfi Coast / Sorrentine Peninsula
+        'positano': 'Positano', 'amalfi town': 'Amalfi', 'ravello': 'Ravello',
+        'sorrento centro': 'Sorrento', 'sorrento old town': 'Sorrento',
+        // Rimini
+        'rimini old town': 'Rimini', 'rimini marina centro': 'Rimini',
+        // Ferrara
+        'ferrara old town': 'Ferrara',
+        // Modena
+        'modena centro': 'Modena',
+        // Trieste
+        'trieste old town': 'Trieste', 'borgo teresiano': 'Trieste',
+        // Perugia
+        'perugia centro': 'Perugia',
+        // Assisi
+        'assisi centro': 'Assisi',
+        // Orvieto
+        'orvieto centro': 'Orvieto',
+        // Bergamo
+        'bergamo alta': 'Bergamo', 'citta alta bergamo': 'Bergamo',
+        // Como
+        'como city centre': 'Como', 'como waterfront': 'Como',
+        // Alghero (Sardinia)
+        'alghero old town': 'Alghero',
+        // Cagliari (Sardinia)
+        'castello cagliari': 'Cagliari',
+        // Agrigento (Valley of Temples)
+        'valley of the temples': 'Agrigento',
+        // Pisa
+        'campo dei miracoli': 'Pisa', 'pisa centro': 'Pisa',
+        // Lucca
+        'lucca old town': 'Lucca', 'lucca intramuros': 'Lucca',
     },
     DE: {
         'mitte': 'Berlin', 'kreuzberg': 'Berlin', 'prenzlauer berg': 'Berlin',
@@ -324,6 +705,40 @@ export const CITY_ALIASES: Record<string, Record<string, string>> = {
         'sebald': 'Nuremberg', 'lorenz': 'Nuremberg', 'gostenhof': 'Nuremberg',
         'connewitz': 'Leipzig', 'gohlis': 'Leipzig', 'plagwitz': 'Leipzig',
         'neustadt dresden': 'Dresden', 'altstadt dresden': 'Dresden',
+        // Heidelberg
+        'altstadt heidelberg': 'Heidelberg', 'neuenheim': 'Heidelberg',
+        // Freiburg im Breisgau
+        'altstadt freiburg': 'Freiburg im Breisgau', 'wiehre': 'Freiburg im Breisgau',
+        // Regensburg
+        'altstadt regensburg': 'Regensburg',
+        // Trier
+        'trier city centre': 'Trier',
+        // Mainz
+        'mainz altstadt': 'Mainz',
+        // Wiesbaden
+        'wiesbaden city centre': 'Wiesbaden',
+        // Hannover
+        'hannover mitte': 'Hannover', 'linden hannover': 'Hannover',
+        // Augsburg
+        'augsburg altstadt': 'Augsburg',
+        // Kiel
+        'kiel city centre': 'Kiel',
+        // Lubeck
+        'lubeck altstadt': 'Lubeck',
+        // Rostock
+        'rostock warnemunde': 'Rostock',
+        // Erfurt
+        'erfurt altstadt': 'Erfurt',
+        // Weimar
+        'weimar city centre': 'Weimar',
+        // Bamberg
+        'bamberg altstadt': 'Bamberg',
+        // Rothenburg
+        'rothenburg ob der tauber': 'Rothenburg ob der Tauber',
+        // Garmisch / Bavaria
+        'garmisch-partenkirchen': 'Garmisch-Partenkirchen',
+        // Oberstdorf
+        'oberstdorf village': 'Oberstdorf',
     },
     NL: {
         'jordaan': 'Amsterdam', 'de pijp': 'Amsterdam', 'centrum': 'Amsterdam',
@@ -363,7 +778,42 @@ export const CITY_ALIASES: Record<string, Record<string, string>> = {
         'old town rhodes': 'Rhodes', 'ixia': 'Rhodes', 'faliraki': 'Rhodes',
         'hersonissos': 'Heraklion', 'chania old town': 'Chania', 'elounda': 'Agios Nikolaos',
         'agios nikolaos crete': 'Agios Nikolaos',
-        'corfu town': 'Corfu',
+        'corfu town': 'Corfu', 'paleokastritsa': 'Corfu', 'dassia': 'Corfu',
+        // Thessaloniki
+        'ladadika': 'Thessaloniki', 'ano poli': 'Thessaloniki',
+        'thessaloniki city centre': 'Thessaloniki', 'white tower': 'Thessaloniki',
+        // Zakynthos
+        'zakynthos town': 'Zakynthos', 'laganas': 'Zakynthos', 'navagio area': 'Zakynthos',
+        'tsilivi': 'Zakynthos',
+        // Kefalonia
+        'argostoli': 'Kefalonia', 'fiskardo': 'Kefalonia', 'skala kefalonia': 'Kefalonia',
+        'lixouri': 'Kefalonia',
+        // Paros
+        'naoussa paros': 'Paros', 'parikia': 'Paros', 'golden beach paros': 'Paros',
+        // Naxos
+        'naxos town': 'Naxos', 'agios prokopios': 'Naxos',
+        // Skiathos
+        'skiathos town': 'Skiathos', 'koukounaries': 'Skiathos',
+        // Lefkada
+        'lefkada town': 'Lefkada', 'nidri': 'Lefkada', 'agios nikitas': 'Lefkada',
+        // Lesbos (Mytilene)
+        'mytilini': 'Lesbos', 'molyvos': 'Lesbos', 'petra lesbos': 'Lesbos',
+        // Samos
+        'samos town': 'Samos', 'kokkari': 'Samos', 'pythagoreio': 'Samos',
+        // Kos
+        'kos town': 'Kos', 'kardamena': 'Kos', 'kefalos': 'Kos',
+        // Chalkidiki / Halkidiki
+        'kassandra': 'Thessaloniki', 'sithonia': 'Thessaloniki',
+        // Patras
+        'patras city': 'Patras',
+        // Delphi
+        'delphi village': 'Arachova',
+        // Meteora
+        'kalambaka': 'Kalambaka',
+        // Hydra
+        'hydra town': 'Hydra',
+        // Spetses
+        'spetses town': 'Spetses',
     },
     CZ: {
         'old town': 'Prague', 'mala strana': 'Prague', 'vinohrady': 'Prague',
@@ -473,6 +923,18 @@ export const CITY_ALIASES: Record<string, Record<string, string>> = {
         'chefchaouen old town': 'Chefchaouen',
     },
     ZA: {
+        // Wine regions near Cape Town
+        'stellenbosch city': 'Stellenbosch', 'franschhoek': 'Franschhoek',
+        'paarl city': 'Paarl',
+        // Garden Route
+        'knysna quay': 'Knysna', 'plettenberg bay': 'Plettenberg Bay',
+        'george city': 'George', 'mossel bay': 'Mossel Bay',
+        // Kruger area
+        'hazyview': 'Hazyview', 'white river': 'White River', 'hoedspruit': 'Hoedspruit',
+        // Pretoria
+        'hatfield': 'Pretoria', 'brooklyn pretoria': 'Pretoria', 'arcadia': 'Pretoria',
+        // Durban extras
+        'point road durban': 'Durban', 'morningside durban': 'Durban',
         'waterfront': 'Cape Town', 'v&a waterfront': 'Cape Town', 'bo-kaap': 'Cape Town',
         'sea point': 'Cape Town', 'camps bay': 'Cape Town', 'green point': 'Cape Town',
         'de waterkant': 'Cape Town', 'gardens': 'Cape Town', 'oranjezicht': 'Cape Town',
@@ -530,7 +992,34 @@ export const CITY_ALIASES: Record<string, Record<string, string>> = {
         // Hiroshima
         'peace memorial': 'Hiroshima', 'hiroshima city center': 'Hiroshima',
         // Nara
-        'nara park': 'Nara',
+        'nara park': 'Nara', 'nara city centre': 'Nara',
+        // Yokohama
+        'minato mirai': 'Yokohama', 'chinatown yokohama': 'Yokohama', 'kannai': 'Yokohama',
+        'yamashita yokohama': 'Yokohama', 'isezakicho': 'Yokohama',
+        // Kobe
+        'kitano kobe': 'Kobe', 'sannomiya': 'Kobe', 'motomachi': 'Kobe',
+        'meriken park': 'Kobe', 'harborland kobe': 'Kobe',
+        // Kamakura
+        'kamakura station area': 'Kamakura', 'kita kamakura': 'Kamakura', 'enoshima': 'Kamakura',
+        // Hakone
+        'hakone yumoto': 'Hakone', 'gora': 'Hakone',
+        // Nikko
+        'nikko area': 'Nikko',
+        // Kanazawa
+        'higashichaya': 'Kanazawa', 'kenrokuen': 'Kanazawa', 'kanazawa city': 'Kanazawa',
+        // Nagasaki
+        'dejima nagasaki': 'Nagasaki', 'glover garden': 'Nagasaki',
+        // Kagoshima
+        'kagoshima city': 'Kagoshima',
+        // Okinawa
+        'naha': 'Naha', 'kokusai dori': 'Naha', 'omoromachi': 'Naha',
+        'american village okinawa': 'Naha',
+        // Matsumoto
+        'matsumoto castle': 'Matsumoto',
+        // Takayama
+        'takayama old town': 'Takayama', 'sanmachi suji': 'Takayama',
+        // Beppu / Onsen areas
+        'beppu onsen': 'Beppu', 'yufuin': 'Yufuin',
     },
     KR: {
         // Seoul
@@ -553,6 +1042,25 @@ export const CITY_ALIASES: Record<string, Record<string, string>> = {
         'oncheonjang': 'Busan', 'centum city': 'Busan', 'marine city': 'Busan',
         // Jeju
         'jeju city center': 'Jeju', 'seogwipo': 'Jeju', 'hallasan': 'Jeju',
+        'jungmun': 'Jeju', 'hamdeok beach': 'Jeju',
+        // Gyeongju (historic city)
+        'gyeongju city': 'Gyeongju', 'bulguksa': 'Gyeongju',
+        // Incheon
+        'songdo': 'Incheon', 'chinatown incheon': 'Incheon', 'jung-gu incheon': 'Incheon',
+        // Suwon
+        'suwon hwaseong': 'Suwon',
+        // Jeonju
+        'jeonju hanok village': 'Jeonju',
+        // Sokcho / Gangwon
+        'sokcho city': 'Sokcho', 'seoraksan': 'Sokcho',
+        // Yeosu
+        'yeosu old town': 'Yeosu',
+        // Daegu
+        'dongseongno': 'Daegu', 'seomun market': 'Daegu',
+        // Gwangju
+        'gwangju city centre': 'Gwangju',
+        // Daejeon
+        'daejeon city centre': 'Daejeon',
     },
     CN: {
         'pudong': 'Shanghai', 'the bund': 'Shanghai', 'bund': 'Shanghai',
@@ -574,6 +1082,43 @@ export const CITY_ALIASES: Record<string, Record<string, string>> = {
         'gulangyu': 'Xiamen', 'siming': 'Xiamen',
         'zhongshan road': 'Nanjing', 'xuanwu': 'Nanjing',
         'binjiang': 'Hangzhou', 'xihu': 'Hangzhou', 'west lake': 'Hangzhou',
+        // Xi'an
+        'bell tower xian': "Xi'an", 'muslim quarter': "Xi'an", 'datang everbright': "Xi'an",
+        'xian old city': "Xi'an", 'south gate xian': "Xi'an",
+        // Chongqing
+        'jiefangbei': 'Chongqing', 'nanan chongqing': 'Chongqing', 'hongyadong': 'Chongqing',
+        'chaotianmen': 'Chongqing', 'nanbin road': 'Chongqing',
+        // Suzhou
+        'pingjiang road': 'Suzhou', 'suzhou old town': 'Suzhou', 'shantang street': 'Suzhou',
+        // Wuhan
+        'wuchang': 'Wuhan', 'hankou': 'Wuhan', 'optics valley': 'Wuhan',
+        'east lake wuhan': 'Wuhan',
+        // Guilin / Yangshuo
+        'yangshuo': 'Guilin', 'guilin city': 'Guilin', 'li river': 'Guilin',
+        // Lijiang
+        'lijiang old town': 'Lijiang', 'dayan lijiang': 'Lijiang',
+        // Dali
+        'dali old town': 'Dali',
+        // Zhangjiajie
+        'wulingyuan': 'Zhangjiajie', 'tianmen mountain': 'Zhangjiajie',
+        // Qingdao
+        'beer street qingdao': 'Qingdao', 'old town qingdao': 'Qingdao',
+        'badaguan': 'Qingdao', 'zhongshan road qingdao': 'Qingdao',
+        // Harbin
+        'central street harbin': 'Harbin', 'saint sophia harbin': 'Harbin',
+        // Sanya (Hainan)
+        'sanya bay': 'Sanya', 'dadonghai': 'Sanya', 'yalong bay': 'Sanya',
+        'haitang bay': 'Sanya',
+        // Zhuhai
+        'gongbei': 'Zhuhai', 'xiangzhou': 'Zhuhai',
+        // Kunming
+        'kunming city centre': 'Kunming', 'green lake kunming': 'Kunming',
+        // Huangshan (Yellow Mountain)
+        'tunxi': 'Huangshan', 'huangshan city': 'Huangshan',
+        // Zhouzhuang / Water Towns
+        'zhouzhuang': 'Suzhou',
+        // Nanjing
+        'confucius temple nanjing': 'Nanjing', 'xinjiekou': 'Nanjing',
     },
     HK: {
         'kowloon': 'Hong Kong', 'tsim sha tsui': 'Hong Kong', 'mong kok': 'Hong Kong',
@@ -639,6 +1184,28 @@ export const CITY_ALIASES: Record<string, Record<string, string>> = {
         'chaweng': 'Koh Samui', 'lamai': 'Koh Samui', 'bophut': 'Koh Samui',
         'maenam': 'Koh Samui', 'choengmon': 'Koh Samui',
         'haad rin': 'Koh Phangan', 'thong sala': 'Koh Phangan',
+        // Krabi
+        'ao nang': 'Krabi', 'railay beach': 'Krabi', 'krabi town': 'Krabi',
+        'klong muang': 'Krabi', 'tubkaek': 'Krabi',
+        // Koh Lanta
+        'klong dao': 'Koh Lanta', 'long beach koh lanta': 'Koh Lanta',
+        'koh lanta old town': 'Koh Lanta',
+        // Koh Tao
+        'sairee beach': 'Koh Tao', 'mae haad': 'Koh Tao', 'chalok baan kao': 'Koh Tao',
+        // Koh Chang
+        'white sand beach koh chang': 'Koh Chang', 'lonely beach': 'Koh Chang',
+        // Kanchanaburi
+        'river kwai': 'Kanchanaburi', 'kanchanaburi town': 'Kanchanaburi',
+        // Ayutthaya
+        'ayutthaya ruins': 'Ayutthaya', 'ayutthaya historical park': 'Ayutthaya',
+        // Chiang Rai
+        'chiang rai city': 'Chiang Rai', 'white temple area': 'Chiang Rai',
+        // Koh Phi Phi
+        'phi phi island': 'Krabi',
+        // Sukhothai
+        'sukhothai old city': 'Sukhothai',
+        // Pai
+        'pai city': 'Pai',
     },
     VN: {
         'district 1': 'Ho Chi Minh City', 'ben thanh': 'Ho Chi Minh City',
@@ -654,6 +1221,18 @@ export const CITY_ALIASES: Record<string, Record<string, string>> = {
         'hue citadel': 'Hue',
         'nha trang beach': 'Nha Trang', 'tran phu': 'Nha Trang',
         'phu quoc center': 'Phu Quoc', 'long beach pq': 'Phu Quoc',
+        // Mui Ne
+        'mui ne beach': 'Mui Ne', 'ham tien': 'Mui Ne',
+        // Sapa
+        'sapa town': 'Sapa', 'sapa old town': 'Sapa',
+        // Vung Tau
+        'front beach vung tau': 'Vung Tau', 'back beach vung tau': 'Vung Tau',
+        // Dalat
+        'dalat city': 'Da Lat', 'dalat old market': 'Da Lat',
+        // Can Tho
+        'ninh kieu': 'Can Tho',
+        // Halong extras
+        'cat ba island': 'Ha Long',
     },
     ID: {
         // Bali
@@ -682,6 +1261,22 @@ export const CITY_ALIASES: Record<string, Record<string, string>> = {
         'polonia': 'Medan',
         // Komodo
         'labuan bajo': 'Labuan Bajo',
+        // Flores
+        'bajawa': 'Bajawa', 'ende': 'Ende',
+        // Sumatra
+        'bukit lawang': 'Medan', 'lake toba': 'Parapat', 'prapat': 'Parapat',
+        'berastagi': 'Berastagi', 'banda aceh city': 'Banda Aceh',
+        'padang city': 'Padang', 'bukittinggi': 'Bukittinggi',
+        // Sulawesi
+        'manado city': 'Manado', 'bunaken': 'Manado',
+        'toraja': 'Makassar', 'makassar city': 'Makassar',
+        // Raja Ampat / Papua
+        'waisai': 'Sorong',
+        // Gili Islands (already as gili trawangan → Lombok)
+        // Bromo
+        'mount bromo': 'Probolinggo', 'cemoro lawang': 'Probolinggo',
+        // Ijen
+        'kawah ijen': 'Banyuwangi',
     },
     IN: {
         // Mumbai
@@ -743,7 +1338,50 @@ export const CITY_ALIASES: Record<string, Record<string, string>> = {
         'alleppey': 'Alappuzha',
         // Agra / Varanasi
         'taj ganj': 'Agra',
-        'assi ghat': 'Varanasi', 'dashashwamedh': 'Varanasi',
+        'assi ghat': 'Varanasi', 'dashashwamedh': 'Varanasi', 'ghats varanasi': 'Varanasi',
+        // Rajasthan extras
+        'clock tower jodhpur': 'Jodhpur', 'old city jodhpur': 'Jodhpur',
+        'blue city jodhpur': 'Jodhpur', 'sardar market': 'Jodhpur',
+        'lake pichola': 'Udaipur', 'old city udaipur': 'Udaipur', 'city palace udaipur': 'Udaipur',
+        'fateh sagar': 'Udaipur',
+        'jaisalmer fort': 'Jaisalmer', 'jaisalmer city': 'Jaisalmer',
+        'pushkar lake': 'Pushkar',
+        // Rishikesh / Haridwar
+        'lakshman jhula': 'Rishikesh', 'ram jhula': 'Rishikesh', 'rishikesh town': 'Rishikesh',
+        'haridwar city': 'Haridwar', 'har ki pauri': 'Haridwar',
+        // Himachal Pradesh
+        'manali town': 'Manali', 'old manali': 'Manali',
+        'shimla mall road': 'Shimla',
+        'mcleod ganj': 'Dharamsala', 'dharamsala upper': 'Dharamsala',
+        // Darjeeling
+        'chowrasta darjeeling': 'Darjeeling', 'darjeeling mall': 'Darjeeling',
+        // Amritsar
+        'golden temple area': 'Amritsar', 'hall bazaar': 'Amritsar',
+        // Mysore / Mysuru
+        'mysore palace area': 'Mysore', 'chamundeshwari': 'Mysore',
+        // Srinagar / Kashmir
+        'dal lake': 'Srinagar', 'lal chowk': 'Srinagar', 'srinagar old city': 'Srinagar',
+        // Leh / Ladakh
+        'leh town': 'Leh', 'main bazaar leh': 'Leh',
+        // Hampi
+        'hampi ruins': 'Hospet',
+        // Pondicherry
+        'french quarter pondicherry': 'Pondicherry', 'white town pondicherry': 'Pondicherry',
+        // Coorg / Kodagu
+        'madikeri': 'Madikeri',
+        // Ooty / Nilgiris
+        'ooty city': 'Ooty',
+        // Andaman Islands
+        'havelock island': 'Port Blair', 'neil island': 'Port Blair',
+        // Andhra Pradesh
+        'vizag beach': 'Visakhapatnam', 'rushikonda': 'Visakhapatnam',
+        // Udaipur extras - already added above
+        // Kolkata extras
+        'esplanade kolkata': 'Kolkata', 'college street': 'Kolkata',
+        // North East India
+        'gangtok mg road': 'Gangtok', 'rumtek': 'Gangtok',
+        'shillong police bazaar': 'Shillong',
+        'kaziranga': 'Jorhat',
     },
     AU: {
         // Sydney
@@ -1122,4 +1760,524 @@ export const CITY_ALIASES: Record<string, Record<string, string>> = {
     WS: {
         'apia waterfront': 'Apia',
     },
+    // ── Iceland ────────────────────────────────────────────────────────────────
+    IS: {
+        'old harbour reykjavik': 'Reykjavik', '101 reykjavik': 'Reykjavik',
+        'laugardalur': 'Reykjavik', 'vesturbær': 'Reykjavik', 'hafnarfjordur': 'Reykjavik',
+        'akureyri town': 'Akureyri',
+        'blue lagoon area': 'Grindavik',
+        'vik iceland': 'Vik',
+    },
+    // ── Monaco ────────────────────────────────────────────────────────────────
+    MC: {
+        'monte carlo': 'Monaco', 'port hercule': 'Monaco', 'la condamine': 'Monaco',
+        'fontvieille': 'Monaco', 'monaco ville': 'Monaco',
+    },
+    // ── Malta ─────────────────────────────────────────────────────────────────
+    MT: {
+        'sliema': 'Valletta', 'st julians': 'Valletta', 'paceville': 'Valletta',
+        'mdina': 'Valletta', 'marsaskala': 'Valletta', 'marsaxlokk': 'Valletta',
+        'bugibba': 'St. Paul\'s Bay', 'qawra': 'St. Paul\'s Bay',
+        'golden bay malta': 'Mellieha', 'mellieha bay': 'Mellieha',
+        'gozo island': 'Victoria', 'victoria gozo': 'Victoria', 'xlendi': 'Victoria',
+    },
+    // ── Cyprus ────────────────────────────────────────────────────────────────
+    CY: {
+        'limassol marina': 'Limassol', 'old limassol': 'Limassol', 'germasogeia': 'Limassol',
+        'old nicosia': 'Nicosia', 'laiki yitonia': 'Nicosia', 'engomi': 'Nicosia',
+        'paphos old town': 'Paphos', 'kato paphos': 'Paphos', 'coral bay': 'Paphos',
+        'ayia napa beach': 'Ayia Napa', 'protaras': 'Protaras', 'fig tree bay': 'Protaras',
+        'larnaca city': 'Larnaca', 'finikoudes': 'Larnaca',
+        'polis chrysochous': 'Polis',
+    },
+    // ── Baltic States ─────────────────────────────────────────────────────────
+    EE: {
+        'old town tallinn': 'Tallinn', 'toompea': 'Tallinn', 'kalamaja': 'Tallinn',
+        'telliskivi': 'Tallinn', 'kadriorg': 'Tallinn', 'pirita': 'Tallinn',
+        'tartu old town': 'Tartu', 'tartu city': 'Tartu',
+        'parnu beach': 'Parnu',
+    },
+    LV: {
+        'old riga': 'Riga', 'centre riga': 'Riga', 'agenskalns': 'Riga',
+        'quiet centre riga': 'Riga', 'teika': 'Riga',
+        'jurmala beach': 'Jurmala', 'majori': 'Jurmala', 'dzintari': 'Jurmala',
+        'sigulda': 'Sigulda',
+    },
+    LT: {
+        'old town vilnius': 'Vilnius', 'uzupis': 'Vilnius', 'new town vilnius': 'Vilnius',
+        'gediminas avenue': 'Vilnius',
+        'kaunas old town': 'Kaunas', 'laisves aleja': 'Kaunas',
+        'klaipeda old town': 'Klaipeda', 'smiltyne': 'Klaipeda',
+        'nida': 'Nida', 'palanga beach': 'Palanga',
+    },
+    // ── Slovenia ──────────────────────────────────────────────────────────────
+    SI: {
+        'old town ljubljana': 'Ljubljana', 'trnovo': 'Ljubljana', 'tivoli': 'Ljubljana',
+        'lake bled': 'Bled', 'bled village': 'Bled',
+        'lake bohinj': 'Bohinj',
+        'piran old town': 'Piran', 'portoroz': 'Portoroz',
+        'maribor old town': 'Maribor',
+    },
+    // ── Montenegro ────────────────────────────────────────────────────────────
+    ME: {
+        'kotor old town': 'Kotor', 'stari grad kotor': 'Kotor',
+        'budva old town': 'Budva', 'budva riviera': 'Budva', 'becici': 'Budva',
+        'tivat city': 'Tivat', 'porto montenegro': 'Tivat',
+        'bar center': 'Bar',
+        'ulcinj': 'Ulcinj',
+        'podgorica center': 'Podgorica',
+        'herceg novi': 'Herceg Novi',
+    },
+    // ── Albania ───────────────────────────────────────────────────────────────
+    AL: {
+        'tirana center': 'Tirana', 'blloku': 'Tirana', 'new bazaar': 'Tirana',
+        'saranda waterfront': 'Saranda', 'sarande': 'Saranda',
+        'gjirokastra old town': 'Gjirokaster',
+        'durres beach': 'Durres',
+        'berat old town': 'Berat',
+        'ksamil': 'Saranda',
+    },
+    // ── North Macedonia ───────────────────────────────────────────────────────
+    MK: {
+        'skopje old bazaar': 'Skopje', 'city square skopje': 'Skopje', 'debar maalo': 'Skopje',
+        'ohrid old town': 'Ohrid', 'lake ohrid': 'Ohrid',
+        'struga': 'Struga',
+    },
+    // ── Bosnia & Herzegovina ──────────────────────────────────────────────────
+    BA: {
+        'bascarsija': 'Sarajevo', 'old town sarajevo': 'Sarajevo', 'kovaci': 'Sarajevo',
+        'marijin dvor': 'Sarajevo',
+        'old bridge mostar': 'Mostar', 'kujundziluk': 'Mostar',
+    },
+    // ── Slovakia ──────────────────────────────────────────────────────────────
+    SK: {
+        'old town bratislava': 'Bratislava', 'petrzalka': 'Bratislava',
+        'kosice old town': 'Kosice',
+    },
+    // ── Macau ─────────────────────────────────────────────────────────────────
+    MO: {
+        'cotai strip': 'Macau', 'taipa village': 'Macau', 'coloane': 'Macau',
+        'senado square': 'Macau', 'ruins of st paul': 'Macau',
+        'galaxy macau area': 'Macau', 'venetian macau': 'Macau',
+    },
+    // ── Caucasus ──────────────────────────────────────────────────────────────
+    GE: {
+        'old tbilisi': 'Tbilisi', 'rustaveli': 'Tbilisi', 'vake': 'Tbilisi',
+        'saburtalo': 'Tbilisi', 'vera': 'Tbilisi', 'abanotubani': 'Tbilisi',
+        'batumi boulevard': 'Batumi', 'batumi old town': 'Batumi', 'new boulevard batumi': 'Batumi',
+        'kazbegi village': 'Kazbegi', 'stepantsminda': 'Kazbegi',
+        'sighnaghi': 'Sighnaghi',
+        'kutaisi city': 'Kutaisi',
+    },
+    AM: {
+        'kentron yerevan': 'Yerevan', 'north avenue': 'Yerevan', 'erebuni': 'Yerevan',
+        'cascade yerevan': 'Yerevan', 'mashtots': 'Yerevan',
+        'dilijan': 'Dilijan',
+        'tsaghkadzor': 'Tsaghkadzor',
+    },
+    AZ: {
+        'icherisheher': 'Baku', 'old city baku': 'Baku', 'white city baku': 'Baku',
+        'fountain square baku': 'Baku', 'nizami street': 'Baku', 'narimanov baku': 'Baku',
+        'gabala city': 'Gabala', 'sheki city': 'Sheki', 'quba': 'Quba',
+    },
+    // ── Central Asia ──────────────────────────────────────────────────────────
+    KZ: {
+        'almaty centre': 'Almaty', 'medeu almaty': 'Almaty', 'alatau almaty': 'Almaty',
+        'arbat almaty': 'Almaty',
+        'nur-sultan centre': 'Nur-Sultan', 'astana city': 'Nur-Sultan',
+        'shymkent city': 'Shymkent',
+    },
+    UZ: {
+        'samarkand registan': 'Samarkand', 'samarkand old town': 'Samarkand',
+        'bukhara old town': 'Bukhara', 'lyabi-hauz': 'Bukhara', 'poi-kalyan': 'Bukhara',
+        'khiva old town': 'Khiva', 'itchan kala': 'Khiva',
+        'tashkent city': 'Tashkent', 'chorsu tashkent': 'Tashkent',
+    },
+    // ── Kuwait / Bahrain / Oman ────────────────────────────────────────────────
+    KW: {
+        'kuwait city centre': 'Kuwait City', 'salmiya': 'Kuwait City',
+        'hawally': 'Kuwait City', 'rumaithiya': 'Kuwait City',
+    },
+    BH: {
+        'manama city': 'Manama', 'seef': 'Manama', 'adliya': 'Manama',
+        'amwaj islands': 'Manama', 'reef island': 'Manama', 'juffair': 'Manama',
+    },
+    OM: {
+        'muscat city centre': 'Muscat', 'muttrah': 'Muscat', 'qurum': 'Muscat',
+        'old muscat': 'Muscat', 'al mouj muscat': 'Muscat', 'madinat sultan': 'Muscat',
+        'salalah beach': 'Salalah', 'al hafah': 'Salalah',
+        'nizwa fort': 'Nizwa',
+        'wahiba sands': 'Ibra',
+    },
+    // ── Tunisia ───────────────────────────────────────────────────────────────
+    TN: {
+        'tunis medina': 'Tunis', 'sidi bou said': 'Tunis', 'la marsa': 'Tunis',
+        'carthage ruins': 'Tunis', 'gammarth': 'Tunis',
+        'sousse medina': 'Sousse', 'port el kantaoui': 'Sousse',
+        'hammamet beach': 'Hammamet', 'yasmine hammamet': 'Hammamet',
+        'djerba zone touristique': 'Djerba', 'houmt souk': 'Djerba',
+        'tozeur': 'Tozeur', 'douz': 'Douz',
+        'monastir city': 'Monastir', 'sfax city': 'Sfax',
+    },
+    // ── Senegal ───────────────────────────────────────────────────────────────
+    SN: {
+        'plateau dakar': 'Dakar', 'almadies': 'Dakar', 'ngor': 'Dakar',
+        'les mamelles dakar': 'Dakar', 'yoff': 'Dakar', 'mermoz': 'Dakar',
+        'saly beach': 'Saly', 'mbour': 'Mbour',
+        'saint-louis senegal': 'Saint-Louis',
+        'ziguinchor': 'Ziguinchor',
+    },
+    // ── Rwanda ────────────────────────────────────────────────────────────────
+    RW: {
+        'kigali city center': 'Kigali', 'nyamirambo': 'Kigali', 'kimihurura': 'Kigali',
+        'kacyiru': 'Kigali', 'remera': 'Kigali',
+        'musanze': 'Musanze',
+        'gisenyi': 'Rubavu',
+    },
+    // ── Mozambique ────────────────────────────────────────────────────────────
+    MZ: {
+        'polana': 'Maputo', 'baixa maputo': 'Maputo', 'sommerschield': 'Maputo',
+        'tofo beach': 'Inhambane', 'barra mozambique': 'Inhambane',
+        'vilanculos beach': 'Vilanculos',
+        'pemba beach': 'Pemba',
+    },
+    // ── Puerto Rico ───────────────────────────────────────────────────────────
+    PR: {
+        'old san juan': 'San Juan', 'condado': 'San Juan', 'miramar pr': 'San Juan',
+        'isla verde': 'San Juan', 'ocean park': 'San Juan', 'santurce': 'San Juan',
+        'ponce historic center': 'Ponce',
+        'rincon pr': 'Rincon',
+    },
+    // ── Caribbean additions ────────────────────────────────────────────────────
+    CW: {
+        'punda': 'Willemstad', 'otrobanda': 'Willemstad', 'jan thiel': 'Willemstad',
+        'seaquarium beach': 'Willemstad', 'mambo beach': 'Willemstad',
+    },
+    AW: {
+        'palm beach aruba': 'Oranjestad', 'eagle beach': 'Oranjestad',
+        'noord': 'Oranjestad', 'santa cruz aruba': 'Oranjestad',
+    },
+    TC: {
+        'grace bay': 'Providenciales', 'downtown provo': 'Providenciales',
+        'leeward': 'Providenciales', 'turtle cove': 'Providenciales',
+        'long bay beach': 'Providenciales',
+    },
+    KY: {
+        'seven mile beach cayman': 'George Town', 'west bay cayman': 'George Town',
+        'camana bay': 'George Town', 'grand cayman': 'George Town',
+    },
+    LC: {
+        'rodney bay': 'Gros Islet', 'marigot bay': 'Marigot',
+        'soufriere st lucia': 'Soufriere', 'castries city': 'Castries',
+    },
+    GD: {
+        'grand anse grenada': "St. George's", 'lance aux epines': "St. George's",
+        'gouyave': 'Gouyave',
+    },
+    TT: {
+        'woodbrook': 'Port of Spain', 'st clair trinidad': 'Port of Spain',
+        'maraval': 'Port of Spain', 'newtown trinidad': 'Port of Spain',
+        'crown point tobago': 'Crown Point', 'store bay': 'Crown Point',
+        'speyside': 'Speyside',
+    },
+    // ── Belize ────────────────────────────────────────────────────────────────
+    BZ: {
+        'san pedro belize': 'San Pedro', 'ambergris caye': 'San Pedro',
+        'caye caulker village': 'Caye Caulker',
+        'belize city centre': 'Belize City',
+        'placencia village': 'Placencia',
+        'san ignacio': 'San Ignacio',
+    },
+    // ── El Salvador / Honduras / Nicaragua ────────────────────────────────────
+    SV: {
+        'zona rosa san salvador': 'San Salvador', 'colonia escalon': 'San Salvador',
+        'el tunco': 'La Libertad',
+    },
+    HN: {
+        'copan ruinas': 'Copan', 'roatan west end': 'Roatan', 'west bay roatan': 'Roatan',
+        'la ceiba city': 'La Ceiba',
+    },
+    NI: {
+        'granada centro': 'Granada', 'colonia pellas': 'Managua',
+        'leon colonial': 'Leon',
+    },
+    // ── Bolivia ───────────────────────────────────────────────────────────────
+    BO: {
+        'sopocachi': 'La Paz', 'miraflores la paz': 'La Paz', 'zona sur la paz': 'La Paz',
+        'salar de uyuni': 'Uyuni', 'uyuni town': 'Uyuni',
+        'sucre city': 'Sucre', 'potosi city': 'Potosi',
+        'copacabana bolivia': 'Copacabana',
+        'santa cruz city': 'Santa Cruz de la Sierra',
+    },
+    // ── Paraguay ──────────────────────────────────────────────────────────────
+    PY: {
+        'asuncion city centre': 'Asuncion', 'villa morra': 'Asuncion',
+    },
+    // ── Venezuela ─────────────────────────────────────────────────────────────
+    VE: {
+        'las mercedes': 'Caracas', 'altamira': 'Caracas', 'chacao': 'Caracas',
+        'isla margarita': 'Porlamar',
+    },
+    // ── Mongolia ──────────────────────────────────────────────────────────────
+    MN: {
+        'sukhbaatar square': 'Ulaanbaatar', 'zaisan': 'Ulaanbaatar',
+        'gandan': 'Ulaanbaatar', 'narantuul': 'Ulaanbaatar',
+    },
+    // ── Myanmar additions ──────────────────────────────────────────────────────
+    // (already has MM section — leave as-is)
+    // ── Sri Lanka additions ───────────────────────────────────────────────────
+    // (already has LK section — extra spots)
+    // ── Nepal additions ───────────────────────────────────────────────────────
+    // (already has NP — extra spots below)
+    // ── Additional Middle East ────────────────────────────────────────────────
+    IQ: {
+        'baghdad city': 'Baghdad', 'erbil city': 'Erbil', 'sulaymaniyah': 'Sulaymaniyah',
+    },
+    // ── Algeria ───────────────────────────────────────────────────────────────
+    DZ: {
+        'algiers city': 'Algiers', 'casbah algiers': 'Algiers',
+        'tlemcen old town': 'Tlemcen',
+        'constantine city': 'Constantine',
+    },
+    // ── Cameroon ──────────────────────────────────────────────────────────────
+    CM: {
+        'douala city': 'Douala', 'akwa': 'Douala',
+        'yaounde city': 'Yaounde', 'bastos': 'Yaounde',
+    },
+    // ── Ivory Coast / Cote d'Ivoire ───────────────────────────────────────────
+    CI: {
+        'plateau abidjan': 'Abidjan', 'marcory': 'Abidjan', 'cocody': 'Abidjan',
+        'yopougon': 'Abidjan',
+    },
+    // ── Zambia ────────────────────────────────────────────────────────────────
+    ZM: {
+        'livingstone city': 'Livingstone', 'victoria falls zam': 'Livingstone',
+        'lusaka city': 'Lusaka', 'kabulonga': 'Lusaka',
+    },
+    // ── Zimbabwe ──────────────────────────────────────────────────────────────
+    ZW: {
+        'victoria falls town': 'Victoria Falls', 'victoria falls zimbabwe': 'Victoria Falls',
+        'harare city centre': 'Harare', 'avondale harare': 'Harare',
+        'bulawayo city': 'Bulawayo',
+    },
+    // ── Malawi ────────────────────────────────────────────────────────────────
+    MW: {
+        'cape maclear': 'Cape Maclear', 'lake malawi': 'Salima',
+        'lilongwe old town': 'Lilongwe',
+    },
+    // ── Namibia ───────────────────────────────────────────────────────────────
+    NA: {
+        'windhoek city': 'Windhoek', 'katutura': 'Windhoek',
+        'swakopmund city': 'Swakopmund',
+        'sossusvlei': 'Sesriem',
+    },
+    // ── Botswana ──────────────────────────────────────────────────────────────
+    BW: {
+        'gaborone city': 'Gaborone', 'maun': 'Maun',
+        'kasane': 'Kasane',
+    },
+    // ── Madagascar ────────────────────────────────────────────────────────────
+    MG: {
+        'antananarivo city': 'Antananarivo', 'nosy be': 'Nosy Be',
+    },
+    // ── Cambodia additions (already KH) ──────────────────────────────────────
+    // ── Myanmar additions (already MM) ───────────────────────────────────────
+    // ── Ecuador additions (already EC) ───────────────────────────────────────
+    // (already has EC — add Galapagos)
+    // ── Israel additions (already IL) ────────────────────────────────────────
+    // ── Taiwan additions (already TW) ────────────────────────────────────────
+    // ── Brunei ────────────────────────────────────────────────────────────────
+    BN: {
+        'bandar seri begawan': 'Bandar Seri Begawan', 'gadong': 'Bandar Seri Begawan',
+    },
+    // ── Papua New Guinea ──────────────────────────────────────────────────────
+    PG: {
+        'port moresby city': 'Port Moresby',
+    },
+    // ── Vanuatu ───────────────────────────────────────────────────────────────
+    VU: {
+        'port vila city': 'Port Vila', 'mele beach': 'Port Vila',
+    },
+    // ── Solomon Islands ───────────────────────────────────────────────────────
+    SB: {
+        'honiara city': 'Honiara',
+    },
+    // ── Tonga ─────────────────────────────────────────────────────────────────
+    TO: {
+        'nukualofa': "Nuku'alofa",
+    },
+    // ── Cook Islands ──────────────────────────────────────────────────────────
+    CK: {
+        'avarua': 'Avarua', 'muri beach': 'Avarua',
+    },
+    // ── Reunion Island ────────────────────────────────────────────────────────
+    RE: {
+        'saint-denis reunion': 'Saint-Denis',
+        'saint-gilles': 'Saint-Gilles-les-Bains',
+        'cilaos': 'Cilaos',
+    },
+    // ── Martinique ────────────────────────────────────────────────────────────
+    MQ: {
+        'fort-de-france city': 'Fort-de-France',
+        'les trois-ilets': 'Les Trois-Ilets',
+        'sainte-anne martinique': 'Sainte-Anne',
+    },
+    // ── Guadeloupe ────────────────────────────────────────────────────────────
+    GP: {
+        'pointe-a-pitre': 'Pointe-a-Pitre', 'gosier': 'Gosier',
+        'saint-francois guadeloupe': 'Saint-Francois',
+    },
+    // ── Guyana ────────────────────────────────────────────────────────────────
+    GY: {
+        'georgetown guyana': 'Georgetown',
+    },
+    // ── Suriname ──────────────────────────────────────────────────────────────
+    SR: {
+        'paramaribo city': 'Paramaribo', 'waterkant': 'Paramaribo',
+    },
 };
+
+/**
+ * Maps canonical city names (used in CITY_ALIASES and Mapbox) to the actual
+ * city name stored in hotel_content. ETG seeds hotel_content with German-localized
+ * city names ("Rom", "Athen", "Prag"), which don't match our English canonical names.
+ * Key format: "CanonicalCity|CC" (country code uppercase).
+ * Used in filterCitiesWithHotels (autocomplete ranking) and getInstantHotelCatalog (Phase 1).
+ */
+export const HOTEL_DB_CITY_MAP: Record<string, string> = {
+    // ETG German localizations — "und Umgebung" = "and surroundings"
+    'Rome|IT':                      'Rom',
+    'Athens|GR':                    'Athen',
+    'Prague|CZ':                    'Prag',
+    'Belgrade|RS':                  'Belgrad',
+    'Algiers|DZ':                   'Algier',
+    'Sorrento|IT':                  'Sorrent',
+    'Trieste|IT':                   'Triest',
+    'Phuket|TH':                    'Phuket Stadt',
+    'Fukuoka|JP':                   'Fukuoka (und Umgebung)',
+    'Daegu|KR':                     'Daegu (und Umgebung)',
+    'Barranquilla|CO':              'Barranquilla (und Umgebung)',
+    'Guayaquil|EC':                 'Guayaquil (und Umgebung)',
+    'Iquitos|PE':                   'Iquitos (und Umgebung)',
+    'Ljubljana|SI':                 'Ljubljana (Laibach)',
+    'Cluj-Napoca|RO':               'Cluj-Napoca (Klausenburg)',
+    'Mahe|SC':                      'Insel Mahe',
+    'Praslin|SC':                   'Insel Praslin',
+    // City name differs from DB value
+    'Antwerp|BE':                   'Antwerpen',
+    'Suzhou|CN':                    'Suzhou (Jiangsu)',
+    'Washington DC|US':             'Washington',
+    'Panama City|PA':               'Panama',
+    'Cebu City|PH':                 'Cebu',
+    'Davao City|PH':                'Davao',
+    'Iloilo City|PH':               'Iloilo',
+    'Zamboanga City|PH':            'Zamboanga',
+    'Santorini|GR':                 'Santorini Island',
+    'Antigua|GT':                   'Antigua Guatemala',
+    'Copan|HN':                     'Copan Ruinas',
+    'Ibiza|ES':                     'Ibiza-Stadt',
+    'Ciutadella|ES':                'Ciutadella de Menorca',
+    'Tenerife|ES':                  'Santa Cruz de Tenerife',
+    'San Ignacio|BZ':               'San Ignacio & Santa Elena',
+    'Arachova|GR':                  'Distomo-Arachova-Antikyra',
+    'Vik|IS':                       'Vik I Myrdal',
+    'Bohinj|SI':                    'Bohinjska Bistrica',
+    'Yufuin|JP':                    'Yufu',
+    'Bodrum|TR':                    'Bodrum (Region)',
+    'Huatulco|MX':                  'Santa Cruz Huatulco',
+    'Los Cabos|MX':                 'Puerto Los Cabos',
+    'Apia|WS':                      'Apia-Fagali',
+    // OTV CSV uses alternative spellings for these cities
+    'Marrakech|MA':                 'Marrakes',   // DB uses "Marrakesch" (German); "Marrakes" prefix matches both spellings
+    'Koh Lanta|TH':                 'Ko Lanta',
+    'Ho Chi Minh City|VN':          'Ho-Chi-Minh-Stadt',
+    // ── German city names (other European capitals / cities) ────────────────
+    'Vienna|AT':                    'Wien',
+    'Copenhagen|DK':                'Kopenhagen',
+    'Zurich|CH':                    'Zürich',
+    'Geneva|CH':                    'Genf',
+    'Lucerne|CH':                   'Luzern',
+    'Brussels|BE':                  'Brüssel',
+    'Bruges|BE':                    'Brügge',
+    'Ghent|BE':                     'Gent',
+    'The Hague|NL':                 'Den Haag',
+    'Kyiv|UA':                      'Kiew',
+    'Gothenburg|SE':                'Göteborg',
+    'Malmo|SE':                     'Malmö',
+    'Krakow|PL':                    'Krakau',
+    'Gdansk|PL':                    'Danzig',
+    'Bucharest|RO':                 'Bukarest',
+    'Tbilisi|GE':                   'Tiflis',
+    'Yerevan|AM':                   'Jerewan',
+    'Tashkent|UZ':                  'Taschkent',
+    'Macau|MO':                     'Macao',
+    'Kathmandu|NP':                 'Katmandu',
+    // ── German names for German cities ──────────────────────────────────────
+    'Munich|DE':                    'München',
+    'Cologne|DE':                   'Köln',
+    'Dusseldorf|DE':                'Düsseldorf',
+    'Nuremberg|DE':                 'Nürnberg',
+    // ── German names for French/Italian/Greek cities ─────────────────────────
+    'Nice|FR':                      'Nizza',
+    'Strasbourg|FR':                'Straßburg',
+    'Genoa|IT':                     'Genua',
+    'Rhodes|GR':                    'Rhodos',
+    'Corfu|GR':                     'Korfu',
+    // ── German names for Middle East / Africa / Americas ────────────────────
+    'Riyadh|SA':                    'Riad',
+    'Jeddah|SA':                    'Djiddah',
+    'Cairo|EG':                     'Kairo',
+    'Kuwait City|KW':               'Kuwait-Stadt',
+    'Guatemala City|GT':            'Guatemala-Stadt',
+    'Yaounde|CM':                   'Jaunde',
+    'Windhoek|NA':                  'Windhuk',
+    // ── Spanish/Portuguese accent variants ───────────────────────────────────
+    'Seville|ES':                   'Sevilla',
+    'San Sebastian|ES':             'San Sebastián',
+    'Malaga|ES':                    'Málaga',
+    'Gijon|ES':                     'Gijón',
+    'Cordoba|ES':                   'Córdoba',
+    'Mahon|ES':                     'Maó',
+    'Pollensa|ES':                  'Pollença',
+    'Las Palmas de Gran Canaria|ES':'Las Palmas, Gran Canaria',
+    'Portimao|PT':                  'Portimão',
+    // ── Mexican/Latin American accent variants ───────────────────────────────
+    'Mexico City|MX':               'Mexiko-Stadt',
+    'Cancun|MX':                    'Cancún',
+    'Merida|MX':                    'Mérida',
+    'Queretaro|MX':                 'Querétaro',
+    'Mazatlan|MX':                  'Mazatlán',
+    'San Cristobal de las Casas|MX':'San Cristóbal de las Casas',
+    'Bogota|CO':                    'Bogotá',
+    'Medellin|CO':                  'Medellín',
+    'Armenia|CO':                   'Armenien',
+    'San Andres|CO':                'San Andrés',
+    'Florianopolis|BR':             'Florianópolis',
+    'Foz do Iguacu|BR':             'Foz do Iguaçu',
+    'Cusco|PE':                     'Cuzco',
+    'Asuncion|PY':                  'Asunción (und Umgebung)',
+    'Cordoba|AR':                   'Córdoba',
+    // ── Asian name variants ──────────────────────────────────────────────────
+    'Bangalore|IN':                 'Bengaluru',
+    'Kolkata|IN':                   'Kalkutta',
+    'Ooty|IN':                      'Udagamandalam',
+    'Jorhat|IN':                    'Jorhãt',
+    'Incheon|KR':                   "Inch'on",
+    'Bali|ID':                      'Kuta',
+    'Lombok|ID':                    'Mataram',
+    'Koh Tao|TH':                   'Ko Tao',
+    'Johor Bahru|MY':               'Johore Baharu',
+    'Penang|MY':                    'George Town',
+    'Vung Tau|VN':                  'Vung Tàu',
+    // ── Other name variants ──────────────────────────────────────────────────
+    'Larnaca|CY':                   'Larnaka',
+    'Parnu|EE':                     'Pärnu',
+    'Mauritius|MU':                 'Grand Baie',
+    'Saint Petersburg|US':          'St. Petersburg',
+};
+
+/** Resolve the canonical city name to its actual hotel_content DB value.
+ *  Returns the input unchanged when no mapping exists. */
+export function resolveHotelDbCity(city: string, countryCode: string): string {
+    return HOTEL_DB_CITY_MAP[`${city}|${countryCode.toUpperCase()}`] ?? city;
+}

@@ -34,3 +34,5 @@ nul
 /src/generated/prisma
 *.tsbuildinfo
 OTV_STATIC_DATA.csv
+*.csv
+*.csv

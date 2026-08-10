@@ -134,6 +134,7 @@ export async function GET(req: NextRequest) {
                     destination_code = EXCLUDED.destination_code,
                     dest_type        = EXCLUDED.dest_type,
                     parent_code      = EXCLUDED.parent_code
+                WHERE tgx_destination_cache.destination_code != 'NONE'
             `;
             upserted += rows.length;
         } catch (e: any) {

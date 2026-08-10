@@ -1,7 +1,7 @@
 import { unstable_cache } from 'next/cache';
 import { extractCountryCode, COUNTRY_SEARCH_LIST } from '@/lib/constants/countries';
 import { getSqlAdmin } from '@/lib/db/postgres';
-import { CITY_ALIASES } from '@/lib/constants/cityAliases';
+import { CITY_ALIASES, resolveHotelDbCity } from '@/lib/constants/cityAliases';
 
 /** Where a searched place sits on the granularity ladder. See CONTEXT.md
  *  ("Destination granularity") and ADR-0006. Area rungs (country/province/city)
@@ -84,7 +84,7 @@ async function fetchCitiesFromMapbox(query: string, locale?: string): Promise<Au
     // the local COUNTRY_SEARCH_LIST, so it is not requested here.
     const lang = mapboxLang(locale);
     const language = lang === 'en' ? 'en' : `${lang},en`;
-    const types = 'region,place,district,locality,neighborhood,poi,address';
+    const types = 'region,place,district,locality,neighborhood,poi';
     const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json?types=${types}&limit=8&language=${language}&proximity=126.9780,37.5665&access_token=${token}`;
 
     try {
@@ -115,21 +115,45 @@ async function fetchCitiesFromMapbox(query: string, locale?: string): Promise<Au
             const bbox: [number, number, number, number] | undefined =
                 Array.isArray(feature.bbox) && feature.bbox.length === 4 ? feature.bbox : undefined;
 
-            // If this is a district/neighbourhood with a known alias, remap it to
-            // the canonical city so the autocomplete shows "New York" when the user
-            // types "Manhattan", and the search fires as a city rung (not district).
+            // If this result has a known alias, remap it to the canonical city so
+            // "Ottavia" → "Rome", "Manhattan" → "New York", etc.
+            // We check all rungs (district, poi, AND city) because Mapbox sometimes
+            // classifies sub-city areas as 'place' (city rung) rather than 'neighborhood'.
             // Prefix-match handles Mapbox suffixes like "Gangnam District" → key "gangnam".
             let aliasedCity: string | undefined;
-            if (rung === 'district' || rung === 'poi') {
+            {
                 const nameLower = cityName.toLowerCase();
+                const placeNameLower = placeName.toLowerCase();
                 const countryMap = CITY_ALIASES[countryCode];
                 if (countryMap) {
-                    const matchedKey = Object.keys(countryMap).find(key =>
-                        nameLower === key ||
-                        nameLower.startsWith(key + ' ') ||
-                        nameLower.startsWith(key + '-')
-                    );
-                    aliasedCity = matchedKey ? countryMap[matchedKey] : undefined;
+                    // 1. Context-aware qualified match: when Mapbox strips city qualifiers
+                    // from the name (e.g. returns text="Midtown" for "Midtown Miami"), find
+                    // the longest alias key that starts with nameLower + separator AND whose
+                    // qualifier part appears in the full place_name subtitle. This correctly
+                    // maps "Midtown" in Miami context → Miami, not New York.
+                    const qualifiedKey = Object.keys(countryMap)
+                        .filter(key => {
+                            if (!key.startsWith(nameLower + ' ') && !key.startsWith(nameLower + '-')) return false;
+                            const qualifier = key.slice(nameLower.length + 1);
+                            return qualifier.length > 0 && placeNameLower.includes(qualifier);
+                        })
+                        .sort((a, b) => b.length - a.length)[0];
+
+                    if (qualifiedKey) {
+                        aliasedCity = countryMap[qualifiedKey];
+                    } else {
+                        // 2. Exact match; then longest prefix match so "jamaica plain"
+                        // (Boston) beats the shorter "jamaica" (New York) prefix.
+                        const exactKey = Object.keys(countryMap).find(key => nameLower === key);
+                        if (exactKey) {
+                            aliasedCity = countryMap[exactKey];
+                        } else {
+                            const prefixKey = Object.keys(countryMap)
+                                .filter(key => nameLower.startsWith(key + ' ') || nameLower.startsWith(key + '-'))
+                                .sort((a, b) => b.length - a.length)[0];
+                            aliasedCity = prefixKey ? countryMap[prefixKey] : undefined;
+                        }
+                    }
                 }
             }
 
@@ -191,42 +215,47 @@ async function fetchCitiesFromMapbox(query: string, locale?: string): Promise<Au
  * (e.g. "Jeju, Ethiopia" matching our "Jeju, South Korea" hotels).
  */
 async function filterCitiesWithHotels(
-    cities: Array<{ title: string; countryCode: string }>
+    cities: Array<{ title: string; countryCode: string; canonicalCity?: string }>
 ): Promise<Set<string>> {
     if (!cities.length) return new Set();
     try {
         const sql = getSqlAdmin();
-        // Build composite keys "city|countrycode" for exact matching
-        const pairs = cities.map(c => ({
-            city: c.title.toLowerCase(),
-            country: c.countryCode.toLowerCase(),
-        }));
-        const cityNames = pairs.map(p => p.city);
+        // Build composite keys "city|countrycode" for exact matching.
+        // Use canonicalCity when present (e.g. Ottavia → Rome) so aliased
+        // districts are matched against the real city's hotel inventory.
+        // Track both the canonical name (for the return Set) and the DB city name
+        // (for the hotel_content query). ETG stores German-localized names ("Rom",
+        // "Athen") so resolveHotelDbCity maps canonical → DB before querying.
+        const pairs = cities.map(c => {
+            const canonical = (c.canonicalCity ?? c.title).toLowerCase();
+            const dbCity = resolveHotelDbCity(c.canonicalCity ?? c.title, c.countryCode).toLowerCase();
+            return { canonical, dbCity, country: c.countryCode.toLowerCase() };
+        });
+        const cityNames = pairs.map(p => p.dbCity);
         const rows = await sql`
             SELECT DISTINCT LOWER(city) AS city, LOWER(country) AS country
             FROM hotel_content
             WHERE LOWER(city) = ANY(${cityNames})
         `;
-        // Build a set of "city|country" composite keys that have hotels
+        // Build a set of "dbCity|country" composite keys that have hotels
         const matched = new Set(rows.map((r: any) => `${r.city}|${r.country}`));
-        // Return a set of city titles (original case key) that matched by city+country
+        // Return canonical names (what callers look up) for cities that matched
         const result = new Set<string>();
         for (const p of pairs) {
-            if (matched.has(`${p.city}|${p.country}`)) {
-                result.add(p.city);
+            if (matched.has(`${p.dbCity}|${p.country}`)) {
+                result.add(p.canonical);
             }
         }
-        // Fallback: if no exact country match found, try city-only (for cities
-        // where country field is blank in hotel_content)
+        // Fallback: if no exact country match found, try city-only
         if (result.size === 0) {
             const cityOnlyMatched = new Set(rows.map((r: any) => r.city as string));
             for (const p of pairs) {
-                if (cityOnlyMatched.has(p.city)) result.add(p.city);
+                if (cityOnlyMatched.has(p.dbCity)) result.add(p.canonical);
             }
         }
         return result;
     } catch {
-        return new Set(cities.map(c => c.title.toLowerCase()));
+        return new Set(cities.map(c => (c.canonicalCity ?? c.title).toLowerCase()));
     }
 }
 
@@ -255,7 +284,10 @@ export async function resolveTgxDestinationCode(cityName: string, countryCode?: 
         : cityName.toLowerCase().trim();
 
     // 1. In-process cache (fastest)
-    if (_destCodeCache.has(key)) return _destCodeCache.get(key);
+    if (_destCodeCache.has(key)) {
+        const cached = _destCodeCache.get(key)!;
+        return cached === 'NONE' ? undefined : cached;
+    }
 
     // 2. DB cache (fast, survives server restarts)
     const cityOnlyKey = cityName.toLowerCase().trim();
@@ -264,7 +296,7 @@ export async function resolveTgxDestinationCode(cityName: string, countryCode?: 
         const rows = await sql`SELECT destination_code FROM tgx_destination_cache WHERE city_key = ${key} LIMIT 1`;
         if (rows.length > 0) {
             const code = rows[0].destination_code as string;
-            if (code === 'NONE') return undefined; // sentinel — unresolvable city name
+            if (code === 'NONE') { _destCodeCache.set(key, 'NONE'); return undefined; }
             _destCodeCache.set(key, code);
             return code;
         }
@@ -274,10 +306,9 @@ export async function resolveTgxDestinationCode(cityName: string, countryCode?: 
             const cityRows = await sql`SELECT destination_code FROM tgx_destination_cache WHERE city_key = ${cityOnlyKey} LIMIT 1`;
             if (cityRows.length > 0) {
                 const code = cityRows[0].destination_code as string;
-                if (code !== 'NONE') {
-                    _destCodeCache.set(key, code);
-                    return code;
-                }
+                if (code === 'NONE') { _destCodeCache.set(key, 'NONE'); return undefined; }
+                _destCodeCache.set(key, code);
+                return code;
             }
         }
     } catch { /* non-fatal — fall through to TGX */ }
@@ -307,7 +338,10 @@ function _fetchDestCodeRaw(cityName: string, countryCode?: string): Promise<stri
         ? `${cityName.toLowerCase().trim()}:${countryCode.toLowerCase()}`
         : cityName.toLowerCase().trim();
 
-    if (_destCodeCache.has(key)) return Promise.resolve(_destCodeCache.get(key) as string);
+    if (_destCodeCache.has(key)) {
+        const cached = _destCodeCache.get(key)!;
+        return Promise.resolve(cached === 'NONE' ? undefined : cached);
+    }
     const existing = _bgResolvingPromises.get(key);
     if (existing) return existing;
 
@@ -361,7 +395,8 @@ function _fetchDestCodeRaw(cityName: string, countryCode?: string): Promise<stri
                         VALUES (${key}, ${code}, ${dest_type ?? 'CITY'})
                         ON CONFLICT (city_key) DO UPDATE SET
                             destination_code = EXCLUDED.destination_code,
-                            dest_type        = EXCLUDED.dest_type`;
+                            dest_type        = EXCLUDED.dest_type
+                        WHERE tgx_destination_cache.destination_code != 'NONE'`;
                     console.log(`[dest-resolve] Resolved "${cityName}" → ${code} (${dest_type ?? 'CITY'})`);
                 } catch { /* non-fatal */ }
             } else {
@@ -393,15 +428,6 @@ export function backgroundResolveDestCode(cityName: string, countryCode?: string
 async function fetchAutocomplete(query: string, locale?: string): Promise<AutocompleteResult[]> {
     const countryResults = matchCountries(query);
 
-    const q = query.toLowerCase().trim();
-    const isExactCountryMatch = countryResults.some(
-        c => c.title.toLowerCase() === q || (c.title.toLowerCase().startsWith(q) && q.length >= 4)
-    );
-
-    if (isExactCountryMatch) {
-        return countryResults;
-    }
-
     const cityResults = await fetchCitiesFromMapbox(query, locale);
     if (!cityResults.length) return countryResults;
 
@@ -410,8 +436,8 @@ async function fetchAutocomplete(query: string, locale?: string): Promise<Autoco
     // Sort: cities with hotels in our DB come first, others still shown below.
     const citiesWithHotels = await filterCitiesWithHotels(cityResults);
     const sorted = [
-        ...cityResults.filter(c => citiesWithHotels.has(c.title.toLowerCase())),
-        ...cityResults.filter(c => !citiesWithHotels.has(c.title.toLowerCase())),
+        ...cityResults.filter(c => citiesWithHotels.has((c.canonicalCity ?? c.title).toLowerCase())),
+        ...cityResults.filter(c => !citiesWithHotels.has((c.canonicalCity ?? c.title).toLowerCase())),
     ];
 
     return [...countryResults, ...sorted];

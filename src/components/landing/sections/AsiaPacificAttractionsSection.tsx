@@ -16,29 +16,33 @@ interface Attraction {
   country: string;
   tagline: string;
   searchQuery: string;
+  lat?: number;
+  lng?: number;
+  rung?: string;
+  bbox?: [number, number, number, number];
 }
 
 const ATTRACTIONS: Attraction[] = [
   { name: 'Eiffel Tower',       location: 'Paris',         country: 'France',        tagline: 'Icon of the City of Light',            searchQuery: 'Paris, France' },
-  { name: 'Colosseum',          location: 'Rome',          country: 'Italy',         tagline: 'Arena of the Ancient World',           searchQuery: 'Rome, Italy' },
-  { name: 'Machu Picchu',       location: 'Peru',          country: 'Peru',          tagline: 'Lost City of the Incas',               searchQuery: 'Cusco, Peru' },
-  { name: 'Santorini',          location: 'Greece',        country: 'Greece',        tagline: 'Blue Domes & Aegean Sunsets',          searchQuery: 'Santorini, Greece' },
-  { name: 'Bali',               location: 'Indonesia',     country: 'Indonesia',     tagline: 'Island of the Gods',                   searchQuery: 'Bali, Indonesia' },
+  { name: 'Istanbul',           location: 'Turkey',        country: 'Turkey',        tagline: 'Where East Meets West',                searchQuery: 'Istanbul, Turkey' },
+  { name: 'Seoul',              location: 'South Korea',   country: 'South Korea',   tagline: 'Ancient Palaces & Neon Lights',        searchQuery: 'Seoul, South Korea' },
+  { name: 'Singapore',          location: 'Singapore',     country: 'Singapore',     tagline: 'The Lion City of Asia',                searchQuery: 'Singapore, Singapore' },
+  { name: 'Bali',               location: 'Indonesia',     country: 'Indonesia',     tagline: 'Island of the Gods',                   searchQuery: 'Bali, Indonesia',     lat: -8.652497, lng: 115.219118, rung: 'province', bbox: [114.411761, -8.940731, 115.804333, -7.963451] },
   { name: 'Angkor Wat',         location: 'Cambodia',      country: 'Cambodia',      tagline: 'Ancient Khmer Empire',                 searchQuery: 'Siem Reap, Cambodia' },
-  { name: 'Safari — Serengeti', location: 'Tanzania',      country: 'Tanzania',      tagline: 'Greatest Wildlife Show on Earth',      searchQuery: 'Serengeti, Tanzania' },
-  { name: 'Grand Canyon',       location: 'Arizona',       country: 'USA',           tagline: 'Nature\'s Most Dramatic Masterpiece',  searchQuery: 'Grand Canyon, USA' },
+  { name: 'Safari — Serengeti', location: 'Tanzania',      country: 'Tanzania',      tagline: 'Greatest Wildlife Show on Earth',      searchQuery: 'Arusha, Tanzania' },
+  { name: 'Grand Canyon',       location: 'Arizona',       country: 'USA',           tagline: 'Nature\'s Most Dramatic Masterpiece',  searchQuery: 'Flagstaff, USA' },
   { name: 'Boracay',            location: 'Philippines',   country: 'Philippines',   tagline: 'World-Famous White Sand Beaches',      searchQuery: 'Boracay, Philippines' },
-  { name: 'Mount Fuji',         location: 'Japan',         country: 'Japan',         tagline: 'Japan\'s Sacred Iconic Peak',          searchQuery: 'Mount Fuji, Japan' },
-  { name: 'Ha Long Bay',        location: 'Vietnam',       country: 'Vietnam',       tagline: 'Emerald Waters & Limestone Karsts',    searchQuery: 'Ha Long Bay, Vietnam' },
+  { name: 'Mount Fuji',         location: 'Japan',         country: 'Japan',         tagline: 'Japan\'s Sacred Iconic Peak',          searchQuery: 'Hakone, Japan' },
+  { name: 'Ha Long Bay',        location: 'Vietnam',       country: 'Vietnam',       tagline: 'Emerald Waters & Limestone Karsts',    searchQuery: 'Ha Long, Vietnam' },
   { name: 'Taj Mahal',          location: 'Agra',          country: 'India',         tagline: 'Eternal Monument to Love',             searchQuery: 'Agra, India' },
   { name: 'Phuket',             location: 'Thailand',      country: 'Thailand',      tagline: 'Thailand\'s Pearl of the Andaman',     searchQuery: 'Phuket, Thailand' },
-  { name: 'Northern Lights',    location: 'Iceland',       country: 'Iceland',       tagline: 'Nature\'s Most Magical Light Show',    searchQuery: 'Reykjavik, Iceland' },
-  { name: 'Pyramids of Giza',   location: 'Egypt',         country: 'Egypt',         tagline: 'Wonder of the Ancient World',          searchQuery: 'Cairo, Egypt' },
-  { name: 'Palawan',            location: 'Philippines',   country: 'Philippines',   tagline: 'The Last Frontier',                    searchQuery: 'Palawan, Philippines' },
-  { name: 'Amalfi Coast',       location: 'Italy',         country: 'Italy',         tagline: 'Clifftop Villages & Azure Waters',     searchQuery: 'Amalfi, Italy' },
+  { name: 'Northern Lights',    location: 'Iceland',       country: 'Iceland',       tagline: 'Nature\'s Most Magical Light Show',    searchQuery: 'Reykjavik, Iceland',  lat: 64.145847, lng: -21.9436, rung: 'city', bbox: [-22.1, 64.06, -21.7, 64.22] },
+  { name: 'Dubai',              location: 'UAE',           country: 'UAE',           tagline: 'City of Ambition & Wonder',            searchQuery: 'Dubai, UAE' },
+  { name: 'Palawan',            location: 'Philippines',   country: 'Philippines',   tagline: 'The Last Frontier',                    searchQuery: 'Puerto Princesa, Philippines' },
+  { name: 'Nairobi',            location: 'Kenya',         country: 'Kenya',         tagline: 'Gateway to East African Adventure',    searchQuery: 'Nairobi, Kenya' },
   { name: 'Great Barrier Reef', location: 'Australia',     country: 'Australia',     tagline: 'World\'s Largest Coral Reef',          searchQuery: 'Cairns, Australia' },
-  { name: 'Jeju Island',        location: 'South Korea',   country: 'South Korea',   tagline: 'Island of Wind, Women & Rocks',        searchQuery: 'Jeju Island, South Korea' },
-  { name: 'Maldives',           location: 'Maldives',      country: 'Maldives',      tagline: 'Overwater Bungalows & Crystal Lagoons',searchQuery: 'Maldives' },
+  { name: 'Jeju Island',        location: 'South Korea',   country: 'South Korea',   tagline: 'Island of Wind, Women & Rocks',        searchQuery: 'Jeju, South Korea' },
+  { name: 'Maldives',           location: 'Maldives',      country: 'Maldives',      tagline: 'Overwater Bungalows & Crystal Lagoons',searchQuery: 'Male, Maldives' },
 ];
 
 
@@ -58,6 +62,10 @@ const AttractionCard: React.FC<AttractionCardProps> = ({ attraction, index }) =>
       destinationType: 'city',
       country: attraction.country,
     });
+    if (attraction.lat != null) p.set('lat', String(attraction.lat));
+    if (attraction.lng != null) p.set('lng', String(attraction.lng));
+    if (attraction.rung) p.set('rung', attraction.rung);
+    if (attraction.bbox) p.set('bbox', attraction.bbox.join(','));
     setIsSearching(true);
     router.push(`/search?${p.toString()}`);
   }

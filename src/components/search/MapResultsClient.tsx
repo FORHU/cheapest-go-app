@@ -229,11 +229,16 @@ export function MapResultsClient({ searchParams, destination, onSwitchView }: Ma
                                     return filtered;
                                 });
                                 setAllMappable(prev => prev.filter((h: any) => !h.priceLoading));
+                            } else if ((chunk as any).tgxFailed) {
+                                // TGX timed out / errored — keep catalog visible so users see something
+                                // rather than an empty page from a transient failure.
+                                setProperties(prev => prev.map(h => (h as any).priceLoading ? { ...h as any, priceLoading: false, _catalogOnly: true } : h));
+                                setAllMappable(prev => prev.map(h => (h as any).priceLoading ? { ...h as any, priceLoading: false, _catalogOnly: true } : h));
                             } else {
-                                // TGX timed out / ALL_PROCESSES_FAILED — keep catalog hotels on the map,
-                                // just clear priceLoading so pins don't spin indefinitely.
-                                setProperties(prev => prev.map(h => (h as any).priceLoading ? { ...h as any, priceLoading: false } : h));
-                                setAllMappable(prev => prev.map(h => (h as any).priceLoading ? { ...h as any, priceLoading: false } : h));
+                                // TGX returned 0 intentionally (no coverage for this city) — remove
+                                // catalog skeletons so the proper "No hotels available" empty state shows.
+                                setProperties(prev => prev.filter((h: any) => !(h as any).priceLoading));
+                                setAllMappable(prev => prev.filter((h: any) => !(h as any).priceLoading));
                             }
                             gotDone = true;
                             if (!cancelled) {

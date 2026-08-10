@@ -2,7 +2,7 @@ name: Sync TGX Destination Cache
 
 on:
   schedule:
-    - cron: '0 3 */3 * *'   # every 3 days at 03:00 UTC
+    - cron: '0 3 * * 0'    # weekly, Sunday 03:00 UTC
   workflow_dispatch:          # allow manual trigger from GitHub UI
 
 jobs:
