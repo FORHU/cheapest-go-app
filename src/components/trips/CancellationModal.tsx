@@ -91,12 +91,12 @@ export default function CancellationModal({ booking, isOpen, onClose, onCancelle
 
     // Extract special fees from raw policy data
     const noShowPenalty = useMemo(
-        () => extractNoShowPenalty(cancellationPolicies),
-        [cancellationPolicies]
+        () => extractNoShowPenalty(cancellationPolicies, booking.currency).amount,
+        [cancellationPolicies, booking.currency]
     );
     const earlyDepartureFee = useMemo(
-        () => extractEarlyDepartureFee(cancellationPolicies),
-        [cancellationPolicies]
+        () => extractEarlyDepartureFee(cancellationPolicies, booking.currency).amount,
+        [cancellationPolicies, booking.currency]
     );
 
     const handleCancel = async () => {

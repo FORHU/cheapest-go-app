@@ -39,20 +39,15 @@ function formatCancelDate(isoDate: string): string {
 export function CancellationPolicySection({
     cancellationPolicies,
     totalPrice = 0,
-    currency = 'PHP',
+    currency = 'USD',
 }: CancellationPolicySectionProps) {
     const t = useTranslations('checkout');
     const userCurrency = useUserCurrency();
     const displayCurrency = userCurrency || currency;
-    const noShowPenalty = extractNoShowPenalty(cancellationPolicies);
-    const earlyDepartureFee = extractEarlyDepartureFee(cancellationPolicies);
+    const noShowPenalty = extractNoShowPenalty(cancellationPolicies, currency);
+    const earlyDepartureFee = extractEarlyDepartureFee(cancellationPolicies, currency);
 
-    function formatAmount(amount: number, amountCurrency: string = currency): string {
-        const converted = convertCurrency(amount, amountCurrency, displayCurrency);
-        return formatCurrency(converted, displayCurrency);
-    }
-
-    if (!cancellationPolicies?.cancelPolicyInfos?.length && noShowPenalty === 0 && earlyDepartureFee === 0) {
+    if (!cancellationPolicies?.cancelPolicyInfos?.length && noShowPenalty.amount === 0 && earlyDepartureFee.amount === 0) {
         return null;
     }
 
@@ -104,11 +99,11 @@ export function CancellationPolicySection({
                     const isLastPolicy = index === sortedPolicies.length - 1;
                     const cancelDate = formatCancelDate(policy.cancelTime);
 
-                    // Calculate refund amount (total - fee)
-                    // PERCENT: value is 0-100 percentage; IMPORT/AMOUNT: value is fixed fee
+                    // Both feeAmount and refundAmount are kept in displayCurrency so
+                    // the subsequent formatCurrency calls don't re-convert them.
                     const feeAmount = policy.type === 'PERCENT'
                         ? (totalPrice * policy.amount / 100)
-                        : policy.amount;
+                        : convertCurrency(policy.amount, policy.currency || currency, displayCurrency);
                     const refundAmount = Math.max(0, totalPrice - feeAmount);
 
                     return (
@@ -137,11 +132,11 @@ export function CancellationPolicySection({
                                 ) : (
                                     <div className="text-xs text-slate-600 dark:text-slate-300">
                                         <span className="font-medium">
-                                            {formatAmount(feeAmount, policy.currency || currency)}
+                                            {formatCurrency(feeAmount, displayCurrency)}
                                         </span>
                                         <br />
                                         <span className="text-slate-500 dark:text-slate-400">
-                                            {t('cancellation.refund', { amount: formatAmount(refundAmount, policy.currency || currency) })}
+                                            {t('cancellation.refund', { amount: formatCurrency(refundAmount, displayCurrency) })}
                                         </span>
                                     </div>
                                 )}
@@ -160,21 +155,21 @@ export function CancellationPolicySection({
             </div>
 
             {/* No-Show Penalty */}
-            {noShowPenalty > 0 && (
+            {noShowPenalty.amount > 0 && (
                 <div className="flex items-start gap-2 mt-3 p-2.5 rounded-lg bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800">
                     <AlertTriangle size={14} className="mt-0.5 text-orange-500 shrink-0" />
                     <div className="text-xs text-orange-700 dark:text-orange-300">
-                        {t('cancellation.noShowPenalty', { amount: formatAmount(noShowPenalty, currency) })}
+                        {t('cancellation.noShowPenalty', { amount: formatCurrency(convertCurrency(noShowPenalty.amount, noShowPenalty.currency, displayCurrency), displayCurrency) })}
                     </div>
                 </div>
             )}
 
             {/* Early Departure Fee */}
-            {earlyDepartureFee > 0 && (
+            {earlyDepartureFee.amount > 0 && (
                 <div className="flex items-start gap-2 mt-2 p-2.5 rounded-lg bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800">
                     <LogOut size={14} className="mt-0.5 text-orange-500 shrink-0" />
                     <div className="text-xs text-orange-700 dark:text-orange-300">
-                        {t('cancellation.earlyDepartureFee', { amount: formatAmount(earlyDepartureFee, currency) })}
+                        {t('cancellation.earlyDepartureFee', { amount: formatCurrency(convertCurrency(earlyDepartureFee.amount, earlyDepartureFee.currency, displayCurrency), displayCurrency) })}
                     </div>
                 </div>
             )}

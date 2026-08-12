@@ -861,6 +861,7 @@ export function CheckoutContent() {
                                 checkOut={checkOut}
                                 prebookId={prebookId}
                                 cancellationPolicies={priceData?.cancellationPolicies}
+                                sourceCurrency={priceData?.currency}
                                 appliedVoucher={appliedVoucher}
                                 isLoading={prebooking}
                                 onDatesChange={handleDatesChange}

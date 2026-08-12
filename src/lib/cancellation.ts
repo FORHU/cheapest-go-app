@@ -48,56 +48,67 @@ function normalizeRemarks(remarks: string | string[] | undefined): string[] {
     return [];
 }
 
-export function extractNoShowPenalty(policy: MinimalPolicy | null | undefined): number {
-    if (!policy) return 0;
+export interface SpecialFeeResult {
+    amount: number;
+    currency: string;
+}
 
-    // Check cancelPolicyInfos for NO_SHOW type
+export function extractNoShowPenalty(
+    policy: MinimalPolicy | null | undefined,
+    fallbackCurrency = 'USD'
+): SpecialFeeResult {
+    if (!policy) return { amount: 0, currency: fallbackCurrency };
+
     const infos = policy.cancelPolicyInfos || [];
-    const noShowEntry = infos.find(
-        (i) => {
-            const t = (i.type || '').toUpperCase();
-            return t.includes('NO_SHOW') || t.includes('NOSHOW');
-        }
-    );
-    if (noShowEntry) return Number(noShowEntry.amount) || 0;
+    const noShowEntry = infos.find((i) => {
+        const t = (i.type || '').toUpperCase();
+        return t.includes('NO_SHOW') || t.includes('NOSHOW');
+    });
+    if (noShowEntry) {
+        return {
+            amount: Number(noShowEntry.amount) || 0,
+            currency: noShowEntry.currency || fallbackCurrency,
+        };
+    }
 
-    // Check hotelRemarks for no-show mentions with amounts
-    // LiteAPI may return hotelRemarks as a string or string[]
     const remarks = normalizeRemarks(policy.hotelRemarks);
     for (const remark of remarks) {
         const match = remark.match(/no[- ]?show.*?(\d+[\d,.]*)/i);
-        if (match) return parseFloat(match[1].replace(',', '')) || 0;
+        if (match) return { amount: parseFloat(match[1].replace(',', '')) || 0, currency: fallbackCurrency };
     }
 
-    return 0;
+    return { amount: 0, currency: fallbackCurrency };
 }
 
 /**
  * Extracts early departure / early checkout fee from raw cancellation policy data.
  * Checks cancelPolicyInfos for EARLY_DEPARTURE/EARLY_CHECKOUT type entries and hotelRemarks.
  */
-export function extractEarlyDepartureFee(policy: MinimalPolicy | null | undefined): number {
-    if (!policy) return 0;
+export function extractEarlyDepartureFee(
+    policy: MinimalPolicy | null | undefined,
+    fallbackCurrency = 'USD'
+): SpecialFeeResult {
+    if (!policy) return { amount: 0, currency: fallbackCurrency };
 
-    // Check cancelPolicyInfos for EARLY_DEPARTURE / EARLY_CHECKOUT type
     const infos = policy.cancelPolicyInfos || [];
-    const edEntry = infos.find(
-        (i) => {
-            const t = (i.type || '').toUpperCase();
-            return t.includes('EARLY_DEPARTURE') || t.includes('EARLY_CHECKOUT');
-        }
-    );
-    if (edEntry) return Number(edEntry.amount) || 0;
+    const edEntry = infos.find((i) => {
+        const t = (i.type || '').toUpperCase();
+        return t.includes('EARLY_DEPARTURE') || t.includes('EARLY_CHECKOUT');
+    });
+    if (edEntry) {
+        return {
+            amount: Number(edEntry.amount) || 0,
+            currency: edEntry.currency || fallbackCurrency,
+        };
+    }
 
-    // Check hotelRemarks for early departure/checkout mentions with amounts
-    // LiteAPI may return hotelRemarks as a string or string[]
     const remarks = normalizeRemarks(policy.hotelRemarks);
     for (const remark of remarks) {
         const match = remark.match(/early\s+(?:departure|checkout).*?(\d+[\d,.]*)/i);
-        if (match) return parseFloat(match[1].replace(',', '')) || 0;
+        if (match) return { amount: parseFloat(match[1].replace(',', '')) || 0, currency: fallbackCurrency };
     }
 
-    return 0;
+    return { amount: 0, currency: fallbackCurrency };
 }
 
 export function calculateCancellationFee(

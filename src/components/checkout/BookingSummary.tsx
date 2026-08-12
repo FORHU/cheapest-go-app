@@ -34,6 +34,8 @@ interface BookingSummaryProps {
     checkOut?: Date | null;
     prebookId: string | null | undefined;
     cancellationPolicies?: CancellationPolicy;
+    /** API source currency — used as fallback when policy entries have no currency field */
+    sourceCurrency?: string;
     /** Platform service fee (5% markup) to display before payment */
     serviceFee?: number;
     /** Actual amount charged (totalPrice + serviceFee) */
@@ -87,6 +89,7 @@ export function BookingSummary({
     checkOut,
     prebookId,
     cancellationPolicies,
+    sourceCurrency,
     serviceFee,
     chargedTotal,
     appliedVoucher,
@@ -251,6 +254,7 @@ export function BookingSummary({
                             <CancellationPolicySection
                                 cancellationPolicies={cancellationPolicies}
                                 totalPrice={totalPrice}
+                                currency={sourceCurrency}
                             />
                         </div>
                     ) : null}
