@@ -21,9 +21,10 @@ interface RoomListProps {
     roomTypes?: RoomType[];
     searchParams?: { checkIn?: string; checkOut?: string; adults?: number; children?: number; rooms?: number; currency?: string };
     hotelImages?: string[];
+    bookingDisabled?: boolean;
 }
 
-const RoomList: React.FC<RoomListProps> = ({ property, roomTypes, searchParams, hotelImages = [] }) => {
+const RoomList: React.FC<RoomListProps> = ({ property, roomTypes, searchParams, hotelImages = [], bookingDisabled = false }) => {
     const router = useRouter();
     const t = useTranslations('property.rooms');
     const {
@@ -148,7 +149,7 @@ const RoomList: React.FC<RoomListProps> = ({ property, roomTypes, searchParams, 
                                 amenities={groupedRoom.amenities}
                                 photoCount={groupedRoom.roomPhotos?.length}
                                 rateOptions={hasMultipleRates ? groupedRoom.rateOptions : undefined}
-                                onReserve={(offerId) => {
+                                onReserve={bookingDisabled ? () => {} : (offerId) => {
                                     const selectedRate = findRate(groupedRoom, offerId);
                                     handleReserve(
                                         groupedRoom.roomName,
