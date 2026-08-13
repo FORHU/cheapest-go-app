@@ -90,7 +90,6 @@ export function BookingSummary({
     prebookId,
     cancellationPolicies,
     sourceCurrency,
-    serviceFee,
     chargedTotal,
     appliedVoucher,
     isLoading,
@@ -338,19 +337,6 @@ export function BookingSummary({
                                 </div>
                             )}
 
-                            {/* Platform service fee — covers payment processing costs */}
-                            {serviceFee != null && serviceFee > 0 && (
-                                <div className="flex justify-between text-[11px] lg:text-sm">
-                                    <span className="text-slate-600 dark:text-slate-400">{t('serviceFee')}</span>
-                                    <span className="font-medium text-slate-900 dark:text-white">
-                                        {isLoading ? (
-                                            <span className="h-4 w-12 bg-slate-100 dark:bg-slate-800 rounded animate-pulse inline-block" />
-                                        ) : (
-                                            <>{symbol}{serviceFee.toLocaleString()}</>
-                                        )}
-                                    </span>
-                                </div>
-                            )}
 
                             {/* Voucher discount line (server-calculated amount) */}
                             {appliedVoucher && (
