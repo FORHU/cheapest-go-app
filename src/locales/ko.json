@@ -403,7 +403,17 @@
             "sent": "발송됨",
             "stayDuration": "숙박 기간",
             "viewMyTrips": "내 여행 보기",
-            "openingDestination": "목적지 페이지로 이동 중…"
+            "openingDestination": "목적지 페이지로 이동 중…",
+            "checkIn": "체크인",
+            "checkOut": "체크아웃",
+            "emailInfo": "몇 분 내에 예약 확인 이메일이 발송됩니다.",
+            "freeCancellationInfo": "무료 취소 예약인 경우, 내 여행에서 취소 또는 변경할 수 있습니다.",
+            "hotel": "호텔",
+            "hotelCheckInInfo": "도착 시 호텔 프런트에서 예약 ID를 제시해 주세요.",
+            "hotelSuccess": "호텔이 성공적으로 예약되었습니다.",
+            "room": "객실",
+            "total": "합계",
+            "whatsNext": "다음 단계"
         },
         "summary": {
             "adult": "명",
@@ -422,6 +432,7 @@
             "promoCode": "프로모션: {code}",
             "roomConfirmed": "객실 확정됨",
             "roomNights": "1개 객실 × {nights}{count}",
+            "included": "포함됨",
             "taxesAndFees": "세금 및 수수료",
             "serviceFee": "플랫폼 서비스 수수료",
             "total": "총계",

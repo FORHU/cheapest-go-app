@@ -81,11 +81,13 @@ export function usePricingCalculation({
         const taxes = convertCurrency(rawTaxes, sourceCurrency, selectedCurrency);
         const totalPrice = convertCurrency(rawTotal, sourceCurrency, selectedCurrency);
 
-        const surcharges: ConvertedSurcharge[] = (priceData?.surcharges ?? []).map(s => ({
-            chargeType: s.chargeType,
-            mandatory: s.mandatory,
-            amount: Math.round(convertCurrency(s.price.gross, s.price.currency || sourceCurrency, selectedCurrency) * 100) / 100,
-        }));
+        const surcharges: ConvertedSurcharge[] = (priceData?.surcharges ?? [])
+            .filter(s => s.chargeType?.toUpperCase() !== 'INCLUDE')
+            .map(s => ({
+                chargeType: s.chargeType,
+                mandatory: s.mandatory,
+                amount: Math.round(convertCurrency(s.price.gross, s.price.currency || sourceCurrency, selectedCurrency) * 100) / 100,
+            }));
 
         const roundedTotal = Math.round(totalPrice * 100) / 100;
         const serviceFee   = Math.round(roundedTotal * 0.05 * 100) / 100;

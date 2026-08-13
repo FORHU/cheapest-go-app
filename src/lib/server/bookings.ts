@@ -159,6 +159,12 @@ export async function confirmAndSaveTgxBooking(
 ): Promise<ConfirmAndSaveResult> {
   const clientReference = `FORHU-${Date.now()}-${Math.random().toString(36).substring(2, 7).toUpperCase()}`;
 
+  // Parse authoritative dates from the TGX token — the client-provided checkIn/checkOut
+  // may be stale (e.g. from a previous session in localStorage). Token dates are canonical.
+  const tokenDates = parseTgxToken(params.quoteToken);
+  const checkIn  = tokenDates.checkIn  ?? params.checkIn;
+  const checkOut = tokenDates.checkOut ?? params.checkOut;
+
   // Build paxes: adults first (use individual names from form), then children
   const adultPaxes = Array(params.adults).fill(null).map((_, i) => ({
     name: params.guests[i]?.firstName || params.holder.firstName,
@@ -231,8 +237,8 @@ export async function confirmAndSaveTgxBooking(
     userId: user.id,
     holderEmail: params.holder.email,
     propertyName: params.propertyName,
-    checkIn: params.checkIn,
-    checkOut: params.checkOut,
+    checkIn,
+    checkOut,
     timestamp: new Date().toISOString(),
   }));
 
@@ -327,7 +333,7 @@ export async function confirmAndSaveTgxBooking(
         supplier_cost, charged_price
       ) VALUES (
         ${bookingId}, ${user.id}, ${params.propertyName}, ${params.propertyImage ?? null}, ${params.roomName},
-        ${params.checkIn}::date, ${params.checkOut}::date,
+        ${checkIn}::date, ${checkOut}::date,
         ${params.adults}, ${params.children ?? 0},
         ${totalPrice}, ${storedCurrency},
         ${params.holder.firstName}, ${params.holder.lastName}, ${params.holder.email},
@@ -420,7 +426,7 @@ export async function confirmAndSaveTgxBooking(
           supplier_cost, charged_price
         ) VALUES (
           ${bookingId}, ${user.id}, ${params.propertyName}, ${params.propertyImage ?? null}, ${params.roomName},
-          ${params.checkIn}::date, ${params.checkOut}::date,
+          ${checkIn}::date, ${checkOut}::date,
           ${params.adults}, ${params.children ?? 0},
           ${totalPrice}, ${storedCurrency},
           ${params.holder.firstName}, ${params.holder.lastName}, ${params.holder.email},

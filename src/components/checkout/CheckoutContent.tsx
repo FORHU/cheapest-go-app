@@ -37,6 +37,7 @@ import {
     BookingSummary,
     SubmitBookingButton,
 } from '@/components/checkout';
+import { HotelBookingConfirmed } from '@/components/checkout/HotelBookingConfirmed';
 import { PriceChangedNotice } from '@/components/checkout/PriceChangedNotice';
 import dynamic from 'next/dynamic';
 
@@ -501,14 +502,6 @@ export function CheckoutContent() {
         }
     }, [showSuccess]);
 
-    // Once the booking is confirmed, go straight to the destination map page.
-    // The booking (property, dates, id) is persisted in the booking store, so
-    // the destination page reads everything it needs from there.
-    useEffect(() => {
-        if (showSuccess) {
-            router.replace('/booking/destination');
-        }
-    }, [showSuccess, router]);
 
     // Guard state for missing-dates picker — must be declared before any early returns
     const [guardCheckIn, setGuardCheckIn] = useState('');
@@ -650,16 +643,17 @@ export function CheckoutContent() {
     }
 
     if (showSuccess) {
-        // Booking confirmed — redirecting to the destination map page (see effect above).
         return (
-            <main className="min-h-screen flex items-center justify-center px-4">
-                <div className="flex flex-col items-center gap-4 text-center">
-                    <div className="w-14 h-14 rounded-full border-4 border-emerald-100 dark:border-emerald-900 border-t-emerald-500 animate-spin" />
-                    <p className="text-sm font-medium text-slate-600 dark:text-slate-300">
-                        {t('success.openingDestination')}
-                    </p>
-                </div>
-            </main>
+            <HotelBookingConfirmed
+                propertyName={property?.name || 'Hotel'}
+                propertyImage={property?.images?.[0] || property?.image}
+                bookingId={bookingId}
+                roomTitle={selectedRoom?.title || 'Room'}
+                checkIn={checkIn}
+                checkOut={checkOut}
+                chargedTotal={chargedTotal ?? totalPrice ?? 0}
+                currency={selectedCurrency}
+            />
         );
     }
 

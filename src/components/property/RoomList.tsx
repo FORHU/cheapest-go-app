@@ -65,23 +65,22 @@ const RoomList: React.FC<RoomListProps> = ({ property, roomTypes, searchParams, 
     const targetCurrency = useUserCurrency();
 
     const handleReserve = (roomTitle: string, price: number, roomCurrency?: string, offerId?: string) => {
-        const checkInDate = searchParams?.checkIn ? new Date(searchParams.checkIn) : new Date(2026, 0, 23);
-        const checkOutDate = searchParams?.checkOut ? new Date(searchParams.checkOut) : new Date(2026, 0, 25);
-
         const sourceCurrency = roomCurrency || searchParams?.currency || 'PHP';
-        
+
         // Convert to current user currency for the store
         const convertedPrice = convertCurrency(price, sourceCurrency, targetCurrency);
 
         setProperty(property);
-        setSelectedRoom({ 
-            id: roomTitle, 
-            offerId, 
-            title: roomTitle, 
+        setSelectedRoom({
+            id: roomTitle,
+            offerId,
+            title: roomTitle,
             price: convertedPrice,
-            currency: targetCurrency 
+            currency: targetCurrency
         });
-        setDates(checkInDate, checkOutDate);
+        if (searchParams?.checkIn && searchParams?.checkOut) {
+            setDates(new Date(searchParams.checkIn), new Date(searchParams.checkOut));
+        }
         setGuests(searchParams?.adults || 2, searchParams?.children || 0);
 
         const params = new URLSearchParams();

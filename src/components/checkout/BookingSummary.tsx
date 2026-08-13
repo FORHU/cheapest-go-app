@@ -324,10 +324,10 @@ export function BookingSummary({
                                         </span>
                                     </div>
                                 ))
-                            ) : (
+                            ) : taxes > 0 ? (
                                 <div className="flex justify-between text-[11px] lg:text-sm">
-                                    <span className="text-slate-600 dark:text-slate-400">{t('taxesAndFees')}</span>
-                                    <span className="font-medium text-slate-900 dark:text-white">
+                                    <span className="text-slate-500 dark:text-slate-500">{t('taxesAndFees')} ({t('included')})</span>
+                                    <span className="text-slate-500 dark:text-slate-500">
                                         {isLoading ? (
                                             <span className="h-4 w-12 bg-slate-100 dark:bg-slate-800 rounded animate-pulse inline-block" />
                                         ) : (
@@ -335,7 +335,7 @@ export function BookingSummary({
                                         )}
                                     </span>
                                 </div>
-                            )}
+                            ) : null}
 
 
                             {/* Voucher discount line (server-calculated amount) */}
