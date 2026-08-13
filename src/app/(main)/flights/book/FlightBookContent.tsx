@@ -13,6 +13,8 @@ import { useFlightBooking } from '@/hooks/flights/useFlightBooking';
 import { useUserCurrency } from '@/stores/searchStore';
 import type { FarePolicy } from '@/types/flights';
 import { getAirportInfo } from '@/utils/airport-info';
+import { sanitizePhoneInput, maxSubscriberLength } from '@/lib/phone';
+import { sanitizePassportInput, PASSPORT_MAX_LENGTH } from '@/lib/passport';
 import { getAirportByCode } from '@/lib/airports';
 import { FareRulesPanel } from './FareRulesPanel';
 import SeatMapPanel from '@/components/flights/SeatMapPanel';
@@ -313,7 +315,7 @@ function BookingContent() {
         errorMsg,
         fieldErrors,
         clearFieldError,
-        validateField,
+        markTouched,
         bookingResult,
         passengers,
         contact,
@@ -1078,7 +1080,7 @@ function BookingContent() {
                                             aria-invalid={!!fieldErrors[`passengers.${idx}.firstName`]}
                                             value={pax.firstName}
                                             onChange={(e) => updatePassenger(idx, 'firstName', e.target.value)}
-                                            onBlur={(e) => validateField(`passengers.${idx}.firstName`, e.target.value)}
+                                            onBlur={() => markTouched(`passengers.${idx}.firstName`)}
                                             className={fieldClass(!!fieldErrors[`passengers.${idx}.firstName`])}
                                         />
                                     </div>
@@ -1090,7 +1092,7 @@ function BookingContent() {
                                             aria-invalid={!!fieldErrors[`passengers.${idx}.lastName`]}
                                             value={pax.lastName}
                                             onChange={(e) => updatePassenger(idx, 'lastName', e.target.value)}
-                                            onBlur={(e) => validateField(`passengers.${idx}.lastName`, e.target.value)}
+                                            onBlur={() => markTouched(`passengers.${idx}.lastName`)}
                                             className={fieldClass(!!fieldErrors[`passengers.${idx}.lastName`])}
                                         />
                                     </div>
@@ -1128,7 +1130,7 @@ function BookingContent() {
                                         <FormDatePicker
                                             placeholder={t('passenger.birthdate')}
                                             value={pax.birthDate}
-                                            onChange={(val) => { updatePassenger(idx, 'birthDate', val); validateField(`passengers.${idx}.birthDate`, val); }}
+                                            onChange={(val) => { updatePassenger(idx, 'birthDate', val); markTouched(`passengers.${idx}.birthDate`); }}
                                             maxDate={new Date()}
                                             defaultViewDate={defaultBirthdateView()}
                                             required
@@ -1170,17 +1172,29 @@ function BookingContent() {
                                             type="text" placeholder={t('passenger.passport')} required
                                             data-field={`passengers.${idx}.passport`}
                                             aria-invalid={!!fieldErrors[`passengers.${idx}.passport`]}
+                                            // Passport numbers are uppercase A–Z0–9 (ICAO 9303);
+                                            // stop the browser autocorrecting or capitalising them.
+                                            autoComplete="off"
+                                            autoCapitalize="characters"
+                                            autoCorrect="off"
+                                            spellCheck={false}
+                                            // Hard stop as well as the sanitiser, so the browser
+                                            // itself refuses the extra character.
+                                            maxLength={PASSPORT_MAX_LENGTH}
                                             value={pax.passport}
-                                            onChange={(e) => updatePassenger(idx, 'passport', e.target.value)}
-                                            onBlur={(e) => validateField(`passengers.${idx}.passport`, e.target.value)}
-                                            className={fieldClass(!!fieldErrors[`passengers.${idx}.passport`])}
+                                            // Punctuation and lowercase never reach state — typing
+                                            // or pasting them simply does not appear, rather than
+                                            // producing an error to read.
+                                            onChange={(e) => updatePassenger(idx, 'passport', sanitizePassportInput(e.target.value))}
+                                            onBlur={() => markTouched(`passengers.${idx}.passport`)}
+                                            className={cn(fieldClass(!!fieldErrors[`passengers.${idx}.passport`]), 'uppercase')}
                                         />
                                     </div>
                                     <div className="lg:col-span-2" data-field={`passengers.${idx}.passportExpiry`}>
                                         <FieldError message={fieldErrors[`passengers.${idx}.passportExpiry`]} />
                                         <FormDatePicker
                                             value={pax.passportExpiry}
-                                            onChange={(val) => { updatePassenger(idx, 'passportExpiry', val); validateField(`passengers.${idx}.passportExpiry`, val); }}
+                                            onChange={(val) => { updatePassenger(idx, 'passportExpiry', val); markTouched(`passengers.${idx}.passportExpiry`); }}
                                             minDate={new Date()}
                                             required
                                             placeholder={t('passenger.passportExpiry')}
@@ -1213,8 +1227,8 @@ function BookingContent() {
                                     data-field="contact.email"
                                     aria-invalid={!!fieldErrors['contact.email']}
                                     value={contact.email}
-                                    onChange={(e) => { setContact(prev => ({ ...prev, email: e.target.value })); clearFieldError('contact.email'); }}
-                                    onBlur={(e) => validateField('contact.email', e.target.value)}
+                                    onChange={(e) => { setContact(prev => ({ ...prev, email: e.target.value })); }}
+                                    onBlur={() => markTouched('contact.email')}
                                     className={fieldClass(!!fieldErrors['contact.email'])}
                                 />
                                 </div>
@@ -1235,7 +1249,14 @@ function BookingContent() {
                                             {PHONE_CODES.map((p) => (
                                                 <DropdownMenuItem
                                                     key={p.code}
-                                                    onClick={() => setContact(prev => ({ ...prev, countryCode: p.code }))}
+                                                    // Re-sanitise the number against the new code: a longer
+                                                    // country code leaves fewer digits in the E.164 budget,
+                                                    // so an already-typed number can become over-length.
+                                                    onClick={() => setContact(prev => ({
+                                                        ...prev,
+                                                        countryCode: p.code,
+                                                        phone: sanitizePhoneInput(prev.phone, p.code),
+                                                    }))}
                                                     className={cn(
                                                         "flex items-center gap-2 px-3 py-2 text-[10px] lg:text-[12px] font-normal transition-colors cursor-pointer",
                                                         contact.countryCode === p.code
@@ -1252,9 +1273,23 @@ function BookingContent() {
                                         type="tel" placeholder={t('contact.phone')} required
                                         data-field="contact.phone"
                                         aria-invalid={!!fieldErrors['contact.phone']}
+                                        // Numeric keypad on mobile — most of this
+                                        // traffic is phones, and `type="tel"` alone
+                                        // does not guarantee it on every browser.
+                                        inputMode="numeric"
+                                        autoComplete="tel-national"
+                                        // Hard stop as well as the sanitiser, so the
+                                        // browser itself refuses the extra character.
+                                        maxLength={maxSubscriberLength(contact.countryCode)}
                                         value={contact.phone}
-                                        onChange={(e) => { setContact(prev => ({ ...prev, phone: e.target.value })); clearFieldError('contact.phone'); }}
-                                        onBlur={(e) => validateField('contact.phone', e.target.value)}
+                                        // Non-digits never reach state — typing or
+                                        // pasting punctuation simply does not appear,
+                                        // rather than producing an error to read.
+                                        onChange={(e) => {
+                                            const digits = sanitizePhoneInput(e.target.value, contact.countryCode);
+                                            setContact(prev => ({ ...prev, phone: digits }));
+                                        }}
+                                        onBlur={() => markTouched('contact.phone')}
                                         className={fieldClass(!!fieldErrors['contact.phone'], 'flex-1')}
                                     />
                                 </div>

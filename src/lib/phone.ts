@@ -30,9 +30,38 @@ export interface PhoneValidationError {
 
 /** Total digits E.164 permits after the '+'. */
 const E164_MIN_DIGITS = 7;
-const E164_MAX_DIGITS = 15;
+export const E164_MAX_DIGITS = 15;
 /** Shortest plausible subscriber number, independent of the country code. */
 const MIN_SUBSCRIBER_DIGITS = 4;
+
+/**
+ * How many characters the subscriber input should accept for a given country
+ * code, so the field cannot be typed past what E.164 allows.
+ *
+ * Derived from E164_MAX_DIGITS rather than hardcoded, so the input and
+ * validatePhone() can never disagree about "too long" — a field that accepts
+ * more than the validator permits is a guaranteed error the user cannot see
+ * coming.
+ */
+export function maxSubscriberLength(countryCode: string | null | undefined): number {
+    const cc = String(countryCode ?? '').replace(/\D/g, '').replace(/^0+/, '');
+    return Math.max(MIN_SUBSCRIBER_DIGITS, E164_MAX_DIGITS - cc.length);
+}
+
+/**
+ * Reduce keystrokes or a pasted value to what the field may contain: digits
+ * only, capped to the country's remaining E.164 budget.
+ *
+ * Applied on change rather than on keydown so pasting is covered too — a pasted
+ * "+63 951 598 2061" becomes "639515982061" rather than being silently accepted
+ * with punctuation the airline will reject.
+ *
+ * A leading zero is preserved: it is the national trunk prefix people actually
+ * type ("0951…"), and normalizePhone strips it before the number is sent.
+ */
+export function sanitizePhoneInput(value: string, countryCode: string | null | undefined): string {
+    return String(value ?? '').replace(/\D/g, '').slice(0, maxSubscriberLength(countryCode));
+}
 
 /**
  * Reduce raw form input to E.164 parts.

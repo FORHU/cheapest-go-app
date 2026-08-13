@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { isPlausibleBirthDate } from '@/lib/age';
 import { validatePhone } from '@/lib/phone';
+import { validatePassport } from '@/lib/passport';
 
 // ─── Primitives ───────────────────────────────────────────────────────────────
 
@@ -36,16 +37,30 @@ export const flightPassengerSchema = z.object({
     nationality: z
         .string()
         .length(2, 'Must be a 2-letter country code (e.g. PH)'),
-    passport: z
-        .string()
-        .min(6, 'Passport number must be at least 6 characters')
-        .max(20, 'Passport number must be at most 20 characters')
-        .regex(/^[A-Z0-9]+$/i, 'Passport number must be alphanumeric'),
+    // Structure only here — the real rule depends on the issuing state, so it is
+    // applied against `nationality` in the superRefine below.
+    passport: z.string().min(1, 'Passport number is required'),
     passportExpiry: dateSchema.refine(
         v => new Date(v) > new Date(),
         'Passport has expired',
     ),
-});
+})
+    // Checked on the passenger, not the field: which format is correct depends on
+    // the issuing state, and that lives in `nationality` beside it. Changing the
+    // nationality therefore re-validates the number, which is the behaviour a
+    // traveller expects when they correct their country.
+    .superRefine((pax, ctx) => {
+        const problem = validatePassport(pax.passport, pax.nationality);
+        if (problem) {
+            ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: problem.message,
+                // Anchors the inline error to the passport input — the form finds
+                // fields by `data-field="<dotted zod path>"`.
+                path: ['passport'],
+            });
+        }
+    });
 
 // ─── Contact ──────────────────────────────────────────────────────────────────
 

@@ -4,7 +4,7 @@ import { flightContactSchema } from '@/lib/schemas/flight';
 
 const contact = (over: Record<string, unknown> = {}) => ({
     email: 'traveller@example.com',
-    phone: '10-1234-5678',
+    phone: '1012345678',
     countryCode: '82',
     ...over,
 });

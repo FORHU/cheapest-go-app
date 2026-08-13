@@ -2,8 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useMutation } from '@tanstack/react-query';
 import { useTranslations } from 'next-intl';
-import { z } from 'zod';
-import { flightBookingSchema, flightPassengerSchema, flightContactSchema, FlightPassengerForm, FlightContactForm } from '@/lib/schemas/flight';
+import { flightBookingSchema, FlightPassengerForm, FlightContactForm } from '@/lib/schemas/flight';
 import type { FlightOffer } from '@/types/flights';
 import type { SelectedSeat } from '@/types/seatMap';
 import type { SelectedBag } from '@/types/bags';
@@ -144,34 +143,32 @@ export function useFlightBooking() {
         });
     }, []);
 
-    // Validate a single field on blur using the field's own sub-schema.
-    // path follows Zod's dotted convention: 'passengers.0.firstName', 'contact.email'.
-    const validateField = useCallback((path: string, value: string) => {
-        const parts = path.split('.');
-        let schema: z.ZodTypeAny | undefined;
-
-        if (parts[0] === 'passengers' && parts.length === 3) {
-            const field = parts[2] as keyof typeof flightPassengerSchema.shape;
-            schema = flightPassengerSchema.shape[field];
-        } else if (parts[0] === 'contact' && parts.length === 2) {
-            const field = parts[1] as keyof typeof flightContactSchema.shape;
-            schema = flightContactSchema.shape[field];
-        }
-
-        if (!schema) return;
-        const result = schema.safeParse(value);
-        if (!result.success) {
-            const raw = result.error.issues[0]?.message ?? 'Invalid';
-            const translated: Record<string, string> = {
-                'Use English letters only (e.g. Jose instead of José)': t('validation.nameIcao'),
-                'First name is required': t('validation.firstNameRequired'),
-                'Last name is required': t('validation.lastNameRequired'),
-                'Phone number is required': t('validation.phoneRequired'),
-                'Phone number must contain digits only': t('validation.phoneDigitsOnly'),
-            };
-            setFieldErrors(prev => ({ ...prev, [path]: translated[raw] ?? raw }));
-        }
+    /** Schema messages are authored in English; surface the localised copy where we have it. */
+    const translateIssue = useCallback((raw: string): string => {
+        const translated: Record<string, string> = {
+            'Use English letters only (e.g. Jose instead of José)': t('validation.nameIcao'),
+            'First name is required': t('validation.firstNameRequired'),
+            'Last name is required': t('validation.lastNameRequired'),
+            'Phone number is required': t('validation.phoneRequired'),
+            'Phone number must contain digits only': t('validation.phoneDigitsOnly'),
+        };
+        return translated[raw] ?? raw;
     }, [t]);
+
+    /**
+     * Fields the traveller has already interacted with — blurred, or flagged by a
+     * failed submit.
+     *
+     * Live validation is gated on this so the form does not accuse someone of an
+     * empty first name while they are typing its first letter. Once a field has
+     * been touched it validates on every keystroke, which is what makes an error
+     * both appear and *disappear* as the value is corrected.
+     */
+    const [touched, setTouched] = useState<Record<string, boolean>>({});
+
+    const markTouched = useCallback((path: string) => {
+        setTouched(prev => (prev[path] ? prev : { ...prev, [path]: true }));
+    }, []);
 
     const [passengers, setPassengers] = useState<FlightPassengerForm[]>(() => {
         if (typeof window !== 'undefined') {
@@ -216,6 +213,42 @@ export function useFlightBooking() {
             addressLine: '', city: '', postalCode: '', country: 'KR',
         };
     });
+
+    /**
+     * Live validation.
+     *
+     * Runs the SAME schema submit uses, on every change, and shows the result for
+     * touched fields only. Deriving both from one schema is the point: a per-field
+     * checker cannot express the rules that span fields — a phone number's validity
+     * depends on the country code beside it, and the infant/adult ratio depends on
+     * the whole passenger list — so those would only ever have surfaced on submit.
+     *
+     * It also clears. The previous behaviour wiped an error the moment the field
+     * changed, so a value that was still wrong looked accepted until the next
+     * submit; here the error simply stops being produced once the value is valid.
+     */
+    useEffect(() => {
+        const parsed = flightBookingSchema.safeParse({ passengers, contact });
+
+        const next: Record<string, string> = {};
+        if (!parsed.success) {
+            for (const issue of parsed.error.issues) {
+                const key = issue.path.join('.');
+                // First message per field — later ones are usually consequences.
+                if (!key || next[key] || !touched[key]) continue;
+                next[key] = translateIssue(issue.message);
+            }
+        }
+
+        setFieldErrors(prev => {
+            const prevKeys = Object.keys(prev);
+            const nextKeys = Object.keys(next);
+            if (prevKeys.length === nextKeys.length && nextKeys.every(k => prev[k] === next[k])) {
+                return prev; // identical — returning `prev` avoids a re-render loop
+            }
+            return next;
+        });
+    }, [passengers, contact, touched, translateIssue]);
 
     const user = useUser();
     const userCurrency = useUserCurrency();
@@ -428,9 +461,9 @@ export function useFlightBooking() {
 
     const updatePassenger = (idx: number, field: keyof FlightPassengerForm, value: string) => {
         setPassengers(prev => prev.map((p, i) => i === idx ? { ...p, [field]: value } : p));
-        // Editing a field clears its complaint — leaving a stale error under an input the
-        // traveller has just corrected reads as though the fix did not register.
-        clearFieldError(`passengers.${idx}.${field}`);
+        // No clearing here: the live-validation effect re-derives every error from
+        // the new value. Blanking it first would briefly hide an error that is
+        // still true, which reads as though an invalid value had been accepted.
     };
 
     const addPassenger = () => {
@@ -837,9 +870,17 @@ export function useFlightBooking() {
             for (const issue of parsed.error.issues) {
                 const key = issue.path.join('.');
                 // First message per field — later ones are usually consequences of the first.
-                if (key && !nextErrors[key]) nextErrors[key] = issue.message;
+                if (key && !nextErrors[key]) nextErrors[key] = translateIssue(issue.message);
             }
             setFieldErrors(nextErrors);
+            // A failed submit counts as touching every offending field: from here on
+            // they validate live, so the traveller sees each one resolve as they fix
+            // it rather than having to submit again to find out.
+            setTouched(prev => {
+                const next = { ...prev };
+                for (const key of Object.keys(nextErrors)) next[key] = true;
+                return next;
+            });
 
             const shown = focusFirstInvalidField(Object.keys(nextErrors));
             // Keep the banner only for issues with no field to attach to.
@@ -869,7 +910,8 @@ export function useFlightBooking() {
         setErrorMsg,
         fieldErrors,
         clearFieldError,
-        validateField,
+        /** Call on blur to start validating a field live. */
+        markTouched,
         priceChangedData,
         duplicateBookingData,
         dismissDuplicateWarning: () => setDuplicateBookingData(null),
