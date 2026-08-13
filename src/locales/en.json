@@ -1968,7 +1968,11 @@
             "standardRoom": "Standard Room",
             "total": "total",
             "viewHotelPhotos": "View hotel photos",
-            "viewRoomPhotos": "View room photos"
+            "viewRoomPhotos": "View room photos",
+            "etgNotice": {
+                "title": "Online booking not yet available",
+                "description": "This property is managed by our partner booking system. Indicative prices are shown below. Please contact us to confirm availability and complete your reservation."
+            }
         },
         "savePercent": "SAVE {percent}%",
         "weather": {

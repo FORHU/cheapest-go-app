@@ -1891,7 +1891,11 @@
             "standardRoom": "スタンダードルーム",
             "total": "合計",
             "viewHotelPhotos": "ホテルの写真を見る",
-            "viewRoomPhotos": "客室の写真を見る"
+            "viewRoomPhotos": "客室の写真を見る",
+            "etgNotice": {
+                "title": "オンライン予約は現在ご利用いただけません",
+                "description": "この施設はパートナー予約システムで管理されています。以下の料金は目安価格です。ご予約の確認と完了については、お問い合わせください。"
+            }
         },
         "savePercent": "{percent}%お得",
         "weather": {

@@ -1894,7 +1894,11 @@
             "standardRoom": "标准间",
             "total": "合计",
             "viewHotelPhotos": "查看酒店照片",
-            "viewRoomPhotos": "查看房间照片"
+            "viewRoomPhotos": "查看房间照片",
+            "etgNotice": {
+                "title": "暂不支持在线预订",
+                "description": "该住宿由我们的合作伙伴预订系统管理。以下显示的为参考价格。请联系我们确认可用性并完成预订。"
+            }
         },
         "savePercent": "节省{percent}%",
         "weather": {
