@@ -37,7 +37,6 @@ import {
     BookingSummary,
     SubmitBookingButton,
 } from '@/components/checkout';
-import { HotelBookingConfirmed } from '@/components/checkout/HotelBookingConfirmed';
 import { PriceChangedNotice } from '@/components/checkout/PriceChangedNotice';
 import dynamic from 'next/dynamic';
 
@@ -191,6 +190,17 @@ export function CheckoutContent() {
     const { syncWithUserCurrency } = useCheckoutActions();
 
     const searchParams = useSearchParams();
+
+    // Stripe 3DS redirect return: Stripe appends ?payment_intent=xxx&redirect_status=succeeded
+    // when it redirects back to this page after 3DS authentication.
+    const stripePaymentIntent = searchParams.get('payment_intent');
+    const stripeRedirectStatus = searchParams.get('redirect_status');
+    useEffect(() => {
+        if (stripeRedirectStatus === 'succeeded' && stripePaymentIntent) {
+            router.replace('/booking/hotel-confirmed?payment_intent=' + stripePaymentIntent + '&redirect_status=succeeded');
+        }
+    }, [stripeRedirectStatus, stripePaymentIntent, router]);
+
     // Present when user arrived from the post-flight-booking bundle upsell → triggers 12% bundle rate
     const bundleFlightIdFromUrl = searchParams.get('bundleFlightId') || undefined;
     
@@ -363,6 +373,21 @@ export function CheckoutContent() {
 
             setClientSecret(result.data.clientSecret);
             setStep('payment');
+
+            // Persist checkout session to sessionStorage so we can recover if Stripe does
+            // a 3DS full-page redirect and the component remounts with all state lost.
+            // This mirrors the flight booking pattern (flightBookingSessionId etc.).
+            if (typeof window !== 'undefined') {
+                const guests = buildGuestPayload(formData, specialRequests);
+                const holder = buildHolderPayload(formData);
+                sessionStorage.setItem('hotelCheckoutSession', JSON.stringify({
+                    ts: Date.now(),
+                    holder,
+                    guests,
+                    specialRequests: specialRequests || '',
+                    currency: selectedCurrency,
+                }));
+            }
         } catch (err) {
             const message = err instanceof Error ? err.message : t('validation.paymentSetupFailed');
             toast.error(message);
@@ -402,8 +427,14 @@ export function CheckoutContent() {
                 quotedPrice: priceData?.total || undefined,
             });
 
-            // Show success immediately
             setIsSuccess(true);
+
+            // Clear 3DS recovery data — booking completed successfully
+            if (typeof window !== 'undefined') {
+                sessionStorage.removeItem('hotelCheckoutSession');
+            }
+
+            router.push('/booking/hotel-confirmed');
 
             const confirmedBookingId = useBookingStore.getState().bookingId;
 
@@ -476,7 +507,7 @@ export function CheckoutContent() {
             setStep('form');
             setClientSecret(null);
         }
-    }, [prebookId, selectedRoom, formData, bookingFor, specialRequests, completeBooking, setIsSuccess, sendConfirmationEmail, property, checkIn, checkOut, priceData, selectedCurrency, adults, children, user, totalPrice, appliedVoucher, openAuthModal]);
+    }, [prebookId, selectedRoom, formData, bookingFor, specialRequests, completeBooking, setIsSuccess, setShowSuccess, sendConfirmationEmail, property, checkIn, checkOut, priceData, selectedCurrency, adults, children, user, totalPrice, appliedVoucher, openAuthModal]);
 
     // When the user modifies check-in/check-out in BookingSummary:
     // - No room selected (deal flow): just update store dates, user then clicks "Search rooms"
@@ -639,21 +670,6 @@ export function CheckoutContent() {
                     </button>
                 </div>
             </main>
-        );
-    }
-
-    if (showSuccess) {
-        return (
-            <HotelBookingConfirmed
-                propertyName={property?.name || 'Hotel'}
-                propertyImage={property?.images?.[0] || property?.image}
-                bookingId={bookingId}
-                roomTitle={selectedRoom?.title || 'Room'}
-                checkIn={checkIn}
-                checkOut={checkOut}
-                chargedTotal={chargedTotal ?? totalPrice ?? 0}
-                currency={selectedCurrency}
-            />
         );
     }
 

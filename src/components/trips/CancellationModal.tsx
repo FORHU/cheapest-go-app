@@ -10,6 +10,7 @@ import { formatCurrency } from '@/lib/utils';
 import { convertCurrency } from '@/lib/currency';
 import { useUserCurrency } from '@/stores/searchStore';
 import { calculateCancellationFee, extractNoShowPenalty, extractEarlyDepartureFee } from '@/lib/cancellation';
+import type { CancellationFeeResult } from '@/lib/cancellation';
 import {
     getFreeCancelDeadline,
     getPolicyTitle,
@@ -63,22 +64,46 @@ export default function CancellationModal({ booking, isOpen, onClose, onCancelle
     const hasCachedPolicy = !!cancellationPolicies?.cancelPolicyInfos;
 
     // Calculate fee in stored currency, then convert to user's display currency.
-    // If the JSON policy is unreadable but booking.policy_type says free cancellation,
-    // override to $0 fee so we don't show a misleading full-penalty card.
+    // TGX free-cancellation bookings may store policies without refundableTag='RFN' or
+    // without an explicit amount=0 free-window entry, causing calculateCancellationFee to
+    // return the full penalty even when cancellation is still free. We use booking.policy_type
+    // (set authoritatively at booking time) to override the result when we're still within
+    // the free cancellation window.
     const feeResult = useMemo(() => {
         const raw = calculateCancellationFee(cancellationPolicies, booking.total_price, booking.currency);
-        const effectiveRaw = (!raw.isFreeCancellation && booking.policy_type === 'free_cancellation' && !cancellationPolicies)
-            ? { fee: 0, refund: booking.total_price, currency: booking.currency, isFreeCancellation: true }
-            : raw;
+
+        let baseRaw: CancellationFeeResult | null;
+
+        if (raw === null) {
+            // No parseable policy — use DB policy_type as ground truth
+            baseRaw = booking.policy_type === 'free_cancellation'
+                ? { fee: 0, refund: booking.total_price, currency: booking.currency, isFreeCancellation: true }
+                : null;
+        } else if (raw.fee > 0 && booking.policy_type === 'free_cancellation') {
+            // Calculated fee is non-zero but the booking is free-cancellation.
+            // Check whether we are still before the first penalty deadline; if so, fee = 0.
+            const sortedInfos = [...(cancellationPolicies?.cancelPolicyInfos ?? [])].sort(
+                (a, b) => new Date(a.cancelTime).getTime() - new Date(b.cancelTime).getTime()
+            );
+            const firstDeadline = sortedInfos[0]?.cancelTime;
+            baseRaw = (!firstDeadline || new Date() < new Date(firstDeadline))
+                ? { fee: 0, refund: booking.total_price, currency: booking.currency, isFreeCancellation: true }
+                : raw;
+        } else {
+            baseRaw = raw;
+        }
+
+        if (!baseRaw) return null;
+
         const displayCurrency = userCurrency || booking.currency;
-        if (displayCurrency === booking.currency) return effectiveRaw;
+        if (displayCurrency === booking.currency) return baseRaw;
         return {
-            ...effectiveRaw,
-            fee: convertCurrency(effectiveRaw.fee, booking.currency, displayCurrency),
-            refund: convertCurrency(effectiveRaw.refund, booking.currency, displayCurrency),
+            ...baseRaw,
+            fee: convertCurrency(baseRaw.fee, booking.currency, displayCurrency),
+            refund: convertCurrency(baseRaw.refund, booking.currency, displayCurrency),
             currency: displayCurrency,
         };
-    }, [cancellationPolicies, booking.total_price, booking.currency, userCurrency]);
+    }, [cancellationPolicies, booking.total_price, booking.currency, booking.policy_type, userCurrency]);
 
     // Use policy_type from DB directly — already correctly set at booking time.
     const policyType = (booking.policy_type || 'non_refundable') as BookingPolicyType;

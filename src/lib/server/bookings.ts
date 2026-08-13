@@ -562,7 +562,7 @@ export async function cancelBooking(
             supplierReference: meta?.supplierRef,
             hotelCode: cancelHotelCode,
           });
-          console.log('[cancelBooking] TGX cancellation result:', result?.data);
+          console.log('[cancelBooking] TGX cancellation result:', result);
         } catch (tgxErr: any) {
           console.warn('[cancelBooking] TGX cancel failed (proceeding with internal cancel):', tgxErr.message?.slice(0, 200));
         }
