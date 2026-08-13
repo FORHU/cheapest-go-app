@@ -2,11 +2,12 @@
 
 import React, { useEffect, useState } from 'react';
 import { Popup } from 'react-map-gl/mapbox';
-import { X } from 'lucide-react';
+import { X, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { formatCurrency } from '@/lib/utils';
 import { convertCurrency } from '@/lib/currency';
 import { useUserCurrency } from '@/stores/searchStore';
+import { useIsMobile } from '@/hooks/useMediaQuery';
 import type { MappableProperty } from './types';
 
 interface MapPopupProps {
@@ -67,6 +68,7 @@ const MapPopup = React.memo(function MapPopup({
     isCentered = false
 }: MapPopupProps) {
     const isLandscape = useIsLandscapeMobile();
+    const isMobile = useIsMobile();
     const targetCurrency = useUserCurrency();
     const t = useTranslations('hotels.card');
     const rt = useTranslations('hotels.ratings');
@@ -82,6 +84,33 @@ const MapPopup = React.memo(function MapPopup({
         [property.originalPrice, sourceCurrency, targetCurrency]
     );
     const rating = property.rating ?? 0;
+
+    // Image carousel state
+    const images = React.useMemo(() => {
+        const arr = (property as any).images as string[] | undefined;
+        const all = arr?.length ? arr : property.image ? [property.image] : [];
+        return all.filter(Boolean);
+    }, [property]);
+    const [imgIndex, setImgIndex] = useState(0);
+    const [isImageHovered, setIsImageHovered] = useState(false);
+    const [touchStartX, setTouchStartX] = useState<number | null>(null);
+
+    // Reset index when property changes
+    React.useEffect(() => { setImgIndex(0); }, [property.id]);
+
+    const prevImage = React.useCallback(() =>
+        setImgIndex(i => Math.max(0, i - 1)), []);
+    const nextImage = React.useCallback(() =>
+        setImgIndex(i => Math.min(images.length - 1, i + 1)), [images.length]);
+
+    const handleTouchStart = (e: React.TouchEvent) =>
+        setTouchStartX(e.touches[0].clientX);
+    const handleTouchEnd = (e: React.TouchEvent) => {
+        if (touchStartX === null) return;
+        const dx = e.changedTouches[0].clientX - touchStartX;
+        if (Math.abs(dx) >= 40) dx < 0 ? nextImage() : prevImage();
+        setTouchStartX(null);
+    };
 
     // Keep a stable ref to onClose so the effect never needs to re-run when the
     // parent re-renders and passes a new function identity.
@@ -110,20 +139,56 @@ const MapPopup = React.memo(function MapPopup({
     const content = (
         <div className="bg-white dark:bg-slate-900 rounded-xl overflow-hidden shadow-2xl w-[240px]">
 
-            {/* Image */}
-            <div className="relative">
+            {/* Image carousel */}
+            <div
+                className="relative select-none"
+                onMouseEnter={() => setIsImageHovered(true)}
+                onMouseLeave={() => setIsImageHovered(false)}
+                onTouchStart={handleTouchStart}
+                onTouchEnd={handleTouchEnd}
+            >
                 <img
-                    src={property.image || undefined}
+                    src={images[imgIndex] || undefined}
                     alt={property.name}
-                    className={`w-full object-cover ${isLandscape ? 'h-16' : 'h-24'}`}
+                    className={`w-full object-cover transition-opacity duration-200 ${isLandscape ? 'h-16' : 'h-24'}`}
                     loading="lazy"
                 />
                 <button
                     onClick={onClose}
-                    className="absolute top-1.5 right-1.5 w-6 h-6 bg-black/50 backdrop-blur-sm rounded-full flex items-center justify-center hover:bg-black/70 transition-colors cursor-pointer"
+                    className="absolute top-1.5 right-1.5 w-6 h-6 bg-black/50 backdrop-blur-sm rounded-full flex items-center justify-center hover:bg-black/70 transition-colors cursor-pointer z-10"
                 >
                     <X className="w-3 h-3 text-white" />
                 </button>
+
+                {/* Desktop: hover-reveal arrow buttons */}
+                {!isMobile && images.length > 1 && (
+                    <>
+                        <button
+                            onClick={(e) => { e.stopPropagation(); prevImage(); }}
+                            className={`absolute left-1 top-1/2 -translate-y-1/2 w-5 h-5 bg-black/50 backdrop-blur-sm rounded-full flex items-center justify-center hover:bg-black/70 transition-all cursor-pointer ${isImageHovered && imgIndex > 0 ? 'opacity-100' : 'opacity-0'}`}
+                        >
+                            <ChevronLeft className="w-3 h-3 text-white" />
+                        </button>
+                        <button
+                            onClick={(e) => { e.stopPropagation(); nextImage(); }}
+                            className={`absolute right-1 top-1/2 -translate-y-1/2 w-5 h-5 bg-black/50 backdrop-blur-sm rounded-full flex items-center justify-center hover:bg-black/70 transition-all cursor-pointer ${isImageHovered && imgIndex < images.length - 1 ? 'opacity-100' : 'opacity-0'}`}
+                        >
+                            <ChevronRight className="w-3 h-3 text-white" />
+                        </button>
+                    </>
+                )}
+
+                {/* Dot indicators */}
+                {images.length > 1 && !isLandscape && (
+                    <div className="absolute bottom-1.5 left-1/2 -translate-x-1/2 flex gap-1">
+                        {images.map((_, i) => (
+                            <div
+                                key={i}
+                                className={`rounded-full transition-all duration-200 ${i === imgIndex ? 'w-3 h-1.5 bg-white' : 'w-1.5 h-1.5 bg-white/50'}`}
+                            />
+                        ))}
+                    </div>
+                )}
 
                 {/* Badges */}
                 {property.refundableTag === 'RFN' && (

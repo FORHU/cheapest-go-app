@@ -15,7 +15,7 @@ import { DatePicker } from '@/components/landing/hero/search/DatePicker';
 import CurrencySelector from '@/components/common/CurrencySelector';
 import { useTranslations, useLocale } from 'next-intl';
 import { HotelCardSkeleton, SKELETON_NAME_WIDTHS } from '@/components/shared/Skeleton';
-import { hasValidCoords, dedupeByProximity } from './mappableUtils';
+import { hasValidCoords, dedupeByProximity, haversineDistanceKm } from './mappableUtils';
 
 const SearchMapContainer = dynamic(
     () => import('../mapbox/SearchMapContainer').then(m => ({ default: m.SearchMapContainer })),
@@ -467,6 +467,15 @@ function SearchMapView({
             ? parts as [number, number, number, number]
             : null;
     }, [rawBbox]);
+    // City-center reference point for radius filtering.
+    // Removes pins whose coordinates fall in a completely different city/area (wrong OTV data).
+    // Only applied when the destination maps to a known city center.
+    const MAX_CITY_RADIUS_KM = 75;
+    const cityFilterCenter = useMemo(
+        () => destination ? getDestinationCoords(destination) : null,
+        [destination]
+    );
+
     // Sidebar list expansion: tracks desktop map zoom + manual button override.
     // The map handles its own marker filtering internally via currentZoom so
     // there is no feedback loop even when showAllCity expands the list.
@@ -476,6 +485,20 @@ function SearchMapView({
     const [mapZoom, setMapZoom] = React.useState<number>(DISTRICT_ZOOM_THRESHOLD + 1);
     const [showAllCityOverride, setShowAllCityOverride] = React.useState(false);
     const showAllCity = showAllCityOverride || (!!districtBbox && mapZoom < DISTRICT_ZOOM_THRESHOLD);
+
+    // Read and consume the map viewport that was saved just before navigating to a property page.
+    // On back navigation the component remounts fresh — this lazy initializer runs synchronously
+    // during that render (before any effects) so the value is ready for the first render of
+    // SearchMapContainer, which uses it to set initialViewState directly.
+    const [restoreViewport] = React.useState<{ zoom: number; center: [number, number] } | null>(() => {
+        if (typeof window === 'undefined') return null;
+        try {
+            const raw = sessionStorage.getItem('searchMap_restoreViewport');
+            if (!raw) return null;
+            sessionStorage.removeItem('searchMap_restoreViewport');
+            return JSON.parse(raw);
+        } catch { return null; }
+    });
 
     // ── Client-side display pagination ───────────────────────────
     const [displayCount, setDisplayCount] = useState(LIST_PAGE_SIZE);
@@ -489,6 +512,9 @@ function SearchMapView({
     const [showMobileMap, setShowMobileMap] = useState(true);
     const [showFilters, setShowFilters] = useState(false);
     const targetCurrency = useUserCurrency();
+
+    // True while prices are still streaming in — drives the fetching-pill in the map
+    const isPriceFetching = isStreaming || allProperties.some((p: any) => (p as any).priceLoading);
 
     // Shared filter state from sidebar store
     const filters = useSearchFilters();
@@ -512,9 +538,19 @@ function SearchMapView({
         // Include priceLoading:true hotels so catalog cards appear immediately while
         // TGX loads. Also include _catalogOnly hotels (TGX returned 0 / failed) so
         // cities with catalog coverage but no TGX availability don't show "0 hotels".
-        let list = allProperties.filter((p: any) =>
-            p.name && !isRawCode(p.name) && ((p as any).priceLoading || p.price > 0 || (p as any)._catalogOnly) && hasValidCoords(p)
-        );
+        let list = allProperties.filter((p: any) => {
+            if (!p.name || isRawCode(p.name)) return false;
+            if (!(p as any).priceLoading && p.price <= 0 && !(p as any)._catalogOnly) return false;
+            if (!hasValidCoords(p)) return false;
+            if (cityFilterCenter) {
+                const dist = haversineDistanceKm(
+                    cityFilterCenter.lat, cityFilterCenter.lng,
+                    p.coordinates.lat, p.coordinates.lng
+                );
+                if (dist > MAX_CITY_RADIUS_KM) return false;
+            }
+            return true;
+        });
 
         if (propertyTypes.length > 0) {
             list = list.filter((p: any) => propertyTypes.includes(p.type));
@@ -557,7 +593,7 @@ function SearchMapView({
         list.sort((a: any, b: any) => (+!!(a as any).priceLoading) - (+!!(b as any).priceLoading));
 
         return list;
-    }, [allProperties, sortBy, propertyTypes, boardTypes, refundable, districtBbox, showAllCity]);
+    }, [allProperties, sortBy, propertyTypes, boardTypes, refundable, districtBbox, showAllCity, cityFilterCenter]);
 
     // Map pins for the list sidebar (bbox-filtered when district search).
     const mappableProperties = useMemo<MappableProperty[]>(
@@ -579,9 +615,19 @@ function SearchMapView({
     // city-wide clusters when the user zooms out past the district threshold.
     const allMappableForMap = useMemo<MappableProperty[]>(() => {
         const isRawCode = (name: string) => /^[a-z0-9_]+$/.test(name) && name.includes('_');
-        let list = allProperties.filter((p: any) =>
-            p.name && !isRawCode(p.name) && ((p as any).priceLoading || p.price > 0 || (p as any)._catalogOnly) && hasValidCoords(p)
-        );
+        let list = allProperties.filter((p: any) => {
+            if (!p.name || isRawCode(p.name)) return false;
+            if (!(p as any).priceLoading && p.price <= 0 && !(p as any)._catalogOnly) return false;
+            if (!hasValidCoords(p)) return false;
+            if (cityFilterCenter) {
+                const dist = haversineDistanceKm(
+                    cityFilterCenter.lat, cityFilterCenter.lng,
+                    p.coordinates.lat, p.coordinates.lng
+                );
+                if (dist > MAX_CITY_RADIUS_KM) return false;
+            }
+            return true;
+        });
         if (propertyTypes.length > 0) list = list.filter((p: any) => propertyTypes.includes(p.type));
         if (boardTypes.length > 0) {
             list = list.filter((p: any) =>
@@ -602,7 +648,7 @@ function SearchMapView({
             price: p.price || 0,
             currency: p.currency || 'USD',
         }));
-    }, [allProperties, propertyTypes, boardTypes, refundable]);
+    }, [allProperties, propertyTypes, boardTypes, refundable, cityFilterCenter]);
 
     // Client-side display pagination — all hotels are already in sortedProperties from streaming
     const canLoadMore = displayCount < sortedProperties.length;
@@ -999,11 +1045,15 @@ function SearchMapView({
                         onHoverId={setHoveredId}
                         onViewDetails={handleViewDetails}
                         searchOverlayClassName="absolute top-4 left-1/2 -translate-x-1/2 z-20 w-[300px] md:w-[360px]"
-                        defaultCenter={districtCenter ?? fallbackCoords ?? undefined}
+                        defaultCenter={restoreViewport
+                            ? { lng: restoreViewport.center[0], lat: restoreViewport.center[1] }
+                            : districtCenter ?? fallbackCoords ?? undefined}
+                        defaultZoom={restoreViewport?.zoom}
                         districtBbox={districtBbox ?? undefined}
                         districtName={districtName}
                         cityName={canonicalCity || destination}
                         onZoomChange={setMapZoom}
+                        isPriceFetching={isPriceFetching}
                     />
                 </div>
             </div>
@@ -1018,10 +1068,14 @@ function SearchMapView({
                     onHoverId={setHoveredId}
                     onViewDetails={handleViewDetails}
                     searchOverlayClassName="absolute top-4 left-4 right-14 z-20"
-                    defaultCenter={districtCenter ?? fallbackCoords ?? undefined}
+                    defaultCenter={restoreViewport
+                        ? { lng: restoreViewport.center[0], lat: restoreViewport.center[1] }
+                        : districtCenter ?? fallbackCoords ?? undefined}
+                    defaultZoom={restoreViewport?.zoom}
                     districtBbox={districtBbox ?? undefined}
                     districtName={districtName}
                     cityName={canonicalCity || destination}
+                    isPriceFetching={isPriceFetching}
                 />
 
                 {/* Horizontal Swiper */}
@@ -1041,7 +1095,8 @@ function SearchMapView({
                                     setShowMobileMap(false);
                                 }
                             }}
-                            className="absolute bottom-[58px] left-0 right-0 w-full z-20"
+                            className="absolute left-0 right-0 w-full z-20"
+                            style={{ bottom: 'calc(50px + env(safe-area-inset-bottom, 0px))' }}
                         >
                             {/* Hotel count badge */}
                             <div className="px-4 pb-1.5 flex items-center justify-between">
@@ -1065,6 +1120,7 @@ function SearchMapView({
                                     </div>
                                 ))}
                             </div>
+
                         </motion.div>
                     )}
                 </AnimatePresence>
@@ -1127,11 +1183,14 @@ function SearchMapView({
                 </AnimatePresence>
 
                 {/* Floating List Button (Repositioned to left, above cards) */}
-                <div className={cn(
-                    "absolute left-4 z-50 transition-all duration-300",
-                    showMobileMap ? "bottom-[168px]" : "bottom-[80px]",
-                    "landscape:bottom-[100px] landscape:left-2"
-                )}>
+                <div
+                    className="absolute left-4 z-50 transition-all duration-300 landscape:left-2"
+                    style={{
+                        bottom: showMobileMap
+                            ? 'calc(160px + env(safe-area-inset-bottom, 0px))'
+                            : 'calc(80px + env(safe-area-inset-bottom, 0px))',
+                    }}
+                >
                     <button
                         onClick={handleBackToList}
                         className="bg-white/95 dark:bg-slate-900/95 backdrop-blur-md text-slate-800 dark:text-slate-200 px-3 py-1.5 rounded-md shadow-lg border border-slate-200 dark:border-slate-700 active:scale-95 transition-all flex items-center justify-center gap-1.5 font-bold text-[11px]"

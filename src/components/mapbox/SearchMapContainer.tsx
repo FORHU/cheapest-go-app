@@ -19,7 +19,7 @@ import { convertCurrency, getCurrencySymbol } from '@/lib/currency';
 import { useMapDetails } from './hooks/useMapDetails';
 import { MapDetailsPanel } from './components/MapDetailsPanel';
 import { env } from '@/utils/env';
-import { Layers } from 'lucide-react';
+import { Layers, Loader2, MapPin } from 'lucide-react';
 import { useIsMobile } from '@/hooks/useMediaQuery';
 import { cn, formatCurrency } from '@/lib/utils';
 import { MapGemsPanel } from '../map/MapGemsPanel';
@@ -75,6 +75,8 @@ interface SearchMapContainerProps {
     searchOverlayClassName?: string;
     /** Override the initial map center when properties list is empty */
     defaultCenter?: { lng: number; lat: number };
+    /** Override the initial map zoom (e.g. when restoring viewport after back navigation). */
+    defaultZoom?: number;
     /** Neighbourhood bbox [minLng, minLat, maxLng, maxLat] — map fits to this on load and draws an outline. */
     districtBbox?: [number, number, number, number];
     /** Human-readable district name shown in the zoom-out banner (e.g. "Gangnam"). */
@@ -83,6 +85,8 @@ interface SearchMapContainerProps {
     cityName?: string;
     /** Called whenever the map zoom changes, so the parent can expand the list. */
     onZoomChange?: (zoom: number) => void;
+    /** Show a "fetching prices" pill — true while streaming or any hotel has priceLoading. */
+    isPriceFetching?: boolean;
 }
 
 export const SearchMapContainer = React.memo(({
@@ -94,10 +98,12 @@ export const SearchMapContainer = React.memo(({
     onViewDetails,
     searchOverlayClassName,
     defaultCenter,
+    defaultZoom,
     districtBbox,
     districtName,
     cityName,
     onZoomChange,
+    isPriceFetching = false,
 }: SearchMapContainerProps) => {
     // 1. Map Instance
     const { mapRef, isMapLoaded, handleMapLoad, handleMapStyleChange } = useMapboxInstance();
@@ -168,16 +174,35 @@ export const SearchMapContainer = React.memo(({
         if (isMapLoaded) updateViewBounds();
     }, [isMapLoaded, updateViewBounds]);
 
+    // Lazy-initialized state: reads sessionStorage during the FIRST render (synchronously,
+    // before any effects fire). This means the districtBbox effect below can check it and
+    // skip fitBounds entirely — no animation starts, no stop() race needed.
+    const [pendingRestore, setPendingRestore] = React.useState<{
+        zoom: number;
+        center: [number, number];
+    } | null>(() => {
+        if (typeof window === 'undefined') return null;
+        try {
+            const raw = sessionStorage.getItem('searchMap_restoreViewport');
+            if (!raw) return null;
+            sessionStorage.removeItem('searchMap_restoreViewport');
+            return JSON.parse(raw);
+        } catch { return null; }
+    });
+
     // ── District bbox: fitBounds on load + zoom reporting ────────────────────
     const districtFitDoneRef = React.useRef(false);
     React.useEffect(() => {
         if (!isMapLoaded || !districtBbox || districtFitDoneRef.current) return;
         districtFitDoneRef.current = true;
+        // Skip fitBounds when the map was initialized at a restored zoom via initialViewState
+        // (defaultZoom is set on back navigation). Also skip when a pending jump is queued.
+        if (defaultZoom != null || pendingRestore) return;
         const map = mapRef.current?.getMap();
         if (!map) return;
         const [minLng, minLat, maxLng, maxLat] = districtBbox;
         map.fitBounds([[minLng, minLat], [maxLng, maxLat]], { padding: 60, duration: 800, maxZoom: 15 });
-    }, [isMapLoaded, districtBbox]);
+    }, [isMapLoaded, districtBbox, pendingRestore, defaultZoom]); // eslint-disable-line react-hooks/exhaustive-deps
 
     const [currentZoom, setCurrentZoom] = React.useState(DISTRICT_MARKER_THRESHOLD);
     const handleMoveEnd = useCallback(() => {
@@ -244,15 +269,20 @@ export const SearchMapContainer = React.memo(({
         return cleanup;
     }, [isMapLoaded, attachMouseLeave]);
 
-    // 6. Viewport Management — skip auto-fit when a district bbox will handle it
+    // 6. Viewport Management — skip auto-fit when a district bbox or restore will handle it
     useMapViewport({
         mapRef,
         isMapLoaded,
         properties: mappableProperties,
         selectedId,
         disableFlyToSelected: true,
-        disableInitialFit: !!districtBbox,
+        disableInitialFit: !!districtBbox || defaultZoom != null,
     });
+
+    // Viewport saved before the first pin-click so we can restore it on popup-close
+    // or after back-navigation (browser back → bfcache → same selectedId still set → user closes).
+    const prevViewportRef = React.useRef<{ zoom: number; center: [number, number] } | null>(null);
+    const prevSelectedIdRef = React.useRef<string | null>(null);
 
     // Center and zoom to the selected property.
     // On desktop the MapPopup (anchor="bottom", offset=60) floats ~180px above the marker.
@@ -260,10 +290,34 @@ export const SearchMapContainer = React.memo(({
     // visually centred and clears the ~150px-tall gems panel at the bottom.
     // Mobile uses zoom 14 (vs 16 on desktop) to avoid loading heavy 3D tiles mid-animation.
     React.useEffect(() => {
-        if (!selectedId || !isMapLoaded) return;
+        const wasSelected = prevSelectedIdRef.current;
+        prevSelectedIdRef.current = selectedId;
+
+        if (!selectedId) {
+            // Popup closed — fly back to the viewport that existed before the first pin-click
+            if (prevViewportRef.current) {
+                const { zoom, center } = prevViewportRef.current;
+                prevViewportRef.current = null;
+                mapRef.current?.easeTo({ center, zoom, duration: 600, essential: true });
+            }
+            return;
+        }
+
+        if (!isMapLoaded) return;
         const prop = mappableProperties.find(p => p.id === selectedId);
         if (!prop) return;
+
         const currentZoom = mapRef.current?.getZoom() ?? 12;
+        const currentCenter = mapRef.current?.getCenter();
+
+        // Save city-level viewport only on the first click (null → id), not when switching pins
+        if (!wasSelected && currentCenter) {
+            prevViewportRef.current = {
+                zoom: currentZoom,
+                center: [currentCenter.lng, currentCenter.lat],
+            };
+        }
+
         const targetZoom = isMobile ? Math.max(currentZoom, 14) : Math.max(currentZoom, 16);
         mapRef.current?.easeTo({
             center: [prop.coordinates.lng, prop.coordinates.lat],
@@ -273,6 +327,46 @@ export const SearchMapContainer = React.memo(({
             essential: true,
         });
     }, [selectedId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+    // Case B: component stays mounted (Next.js router cache serves from cache).
+    // The map viewport is already preserved at the zoomed-in level — no jumpTo needed.
+    // We only need to: (1) clear prevViewportRef so popup-close doesn't trigger a
+    // city-level zoom restore, and (2) dismiss the popup per Option B.
+    React.useEffect(() => {
+        const onPopState = () => {
+            prevViewportRef.current = null;
+            onSelectId(null);
+        };
+        window.addEventListener('popstate', onPopState);
+        return () => window.removeEventListener('popstate', onPopState);
+    }, [onSelectId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+    // Apply restore once the map is loaded. stop() is a safety net for any animation
+    // that slipped through (e.g. useMapViewport on searches without a districtBbox).
+    React.useEffect(() => {
+        if (!isMapLoaded || !pendingRestore) return;
+        mapRef.current?.getMap()?.stop();
+        mapRef.current?.jumpTo({ center: pendingRestore.center, zoom: pendingRestore.zoom });
+        setPendingRestore(null);
+    }, [isMapLoaded, pendingRestore]); // eslint-disable-line react-hooks/exhaustive-deps
+
+    // Wrap onViewDetails to save the viewport before navigating to a property page.
+    // Uses the property's actual coordinates + target zoom rather than the map's
+    // current position (which may be mid-animation when the user taps "View" quickly).
+    const handleViewDetailsWithViewportSave = useCallback((id: string, offerId?: string) => {
+        try {
+            const prop = mappableProperties.find(p => p.id === id);
+            if (prop) {
+                const targetZoom = isMobile ? 14 : 16;
+                const currentZoom = mapRef.current?.getZoom() ?? 0;
+                sessionStorage.setItem('searchMap_restoreViewport', JSON.stringify({
+                    zoom: Math.max(currentZoom, targetZoom),
+                    center: [prop.coordinates.lng, prop.coordinates.lat],
+                }));
+            }
+        } catch {}
+        onViewDetails(id, offerId);
+    }, [onViewDetails, mappableProperties, isMobile]); // eslint-disable-line react-hooks/exhaustive-deps
 
     // Index map: position within the currently-visible district set (for marker number badges)
     const propertyIndexMap = useMemo(() => {
@@ -319,6 +413,7 @@ export const SearchMapContainer = React.memo(({
     const [nearbyRadius, setNearbyRadius] = React.useState(1000);
     const [activeGemName, setActiveGemName] = React.useState<string | null>(null);
     const [selectedNearbyPlace, setSelectedNearbyPlace] = React.useState<NearbyPlace | null>(null);
+    const [gemsSheetOpen, setGemsSheetOpen] = React.useState(false);
 
     // Delay the gems fetch until after the easeTo animation finishes (800ms duration + 100ms buffer).
     // Firing it immediately causes Google Places + Mapbox SearchBox calls to compete with
@@ -405,6 +500,7 @@ export const SearchMapContainer = React.memo(({
         if (!selectedId) {
             setActiveGemName(null);
             setSelectedNearbyPlace(null);
+            setGemsSheetOpen(false);
         }
     }, [selectedId]);
 
@@ -495,7 +591,7 @@ export const SearchMapContainer = React.memo(({
                 initialViewState={{
                     longitude: defaultCenter?.lng ?? 139.6917,
                     latitude: defaultCenter?.lat ?? 35.6895,
-                    zoom: 12,
+                    zoom: defaultZoom ?? 12,
                     pitch: 0,
                     bearing: 0,
                 }}
@@ -588,7 +684,7 @@ export const SearchMapContainer = React.memo(({
                         setActiveGemName(null);
                         setSelectedNearbyPlace(null);
                     }}
-                    onViewDetails={onViewDetails}
+                    onViewDetails={handleViewDetailsWithViewportSave}
                     onSelect={(id) => onSelectId(id)}
                     isMobile={isMobile}
                 />
@@ -617,15 +713,15 @@ export const SearchMapContainer = React.memo(({
                                 setActiveGemName(null);
                                 setSelectedNearbyPlace(null);
                             }}
-                            onViewDetails={onViewDetails}
+                            onViewDetails={handleViewDetailsWithViewportSave}
                             isCentered={true}
                         />
                     </div>
                 </div>
             )}
 
-            {/* ── Nearby Gems Panel — slides up when a hotel is selected ── */}
-            {selectedProperty && (
+            {/* ── Nearby Gems Panel — desktop: always visible when hotel selected ── */}
+            {!isMobile && selectedProperty && (
                 <div className="absolute bottom-2 left-2 right-2 z-10">
                     <MapGemsPanel
                         gems={filteredGems}
@@ -643,6 +739,63 @@ export const SearchMapContainer = React.memo(({
                     />
                 </div>
             )}
+
+            {/* ── Nearby Gems Panel — mobile: bottom sheet behind "Places" button ── */}
+            {isMobile && selectedProperty && (
+                <>
+                    {/* Places toggle button — sits at top-right of map, always visible */}
+                    <button
+                        onClick={() => setGemsSheetOpen(v => !v)}
+                        className={cn(
+                            "absolute top-[58px] right-4 z-20 flex items-center gap-1.5 backdrop-blur-md rounded-full px-3 py-1.5 shadow-lg border text-[11px] font-semibold transition-colors",
+                            gemsSheetOpen
+                                ? "bg-blue-600 text-white border-blue-600"
+                                : "bg-white/95 dark:bg-slate-900/95 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700"
+                        )}
+                    >
+                        <MapPin className="w-3.5 h-3.5" />
+                        Places
+                    </button>
+
+                    {/* Bottom sheet */}
+                    {gemsSheetOpen && (
+                        <div className="absolute bottom-0 left-0 right-0 z-30 bg-white dark:bg-slate-900 rounded-t-2xl shadow-2xl">
+                            <div className="flex justify-center pt-2 pb-1">
+                                <div className="w-10 h-1 bg-slate-200 dark:bg-slate-700 rounded-full" />
+                            </div>
+                            <MapGemsPanel
+                                gems={filteredGems}
+                                isLoading={isFetchingGems}
+                                selectedCategory={nearbyCategory}
+                                onCategoryChange={(cat) => {
+                                    setNearbyCategory(cat);
+                                    setActiveGemName(null);
+                                    setSelectedNearbyPlace(null);
+                                }}
+                                radiusMeters={nearbyRadius}
+                                onRadiusChange={setNearbyRadius}
+                                activeGemName={activeGemName}
+                                onGemClick={handleGemClick}
+                            />
+                        </div>
+                    )}
+                </>
+            )}
+
+            {/* ── Price-fetching pill — centered below search bar ── */}
+            <div
+                className={cn(
+                    "absolute top-16 left-1/2 -translate-x-1/2 z-40 pointer-events-none transition-all duration-500",
+                    isPriceFetching ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-2"
+                )}
+            >
+                <div className="flex items-center gap-2 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md rounded-full px-4 py-2 shadow-lg border border-slate-200 dark:border-slate-700 whitespace-nowrap">
+                    <Loader2 className="w-3.5 h-3.5 text-blue-500 animate-spin shrink-0" />
+                    <span className="text-[11px] font-semibold text-slate-700 dark:text-slate-300">
+                        Fetching prices, hang tight…
+                    </span>
+                </div>
+            </div>
 
             {/* ── District zoom-out banner ── */}
             {districtName && cityName && currentZoom < DISTRICT_MARKER_THRESHOLD && (
