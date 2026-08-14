@@ -625,7 +625,7 @@ export async function fetchRoomAvailability(
 ): Promise<FetchPropertyResult> {
     if (id.startsWith('acc_')) return fetchDuffelPropertyData(id, searchParams);
     const source = await getHotelContentSource(id);
-    if (source === 'etg') return fetchETGPropertyData(id, searchParams);
+    if (source === 'etg') return { property: null, fetchedDetails: null, preBookResult: null };
     return fetchTGXPropertyData(id, searchParams);
 }
 
@@ -649,11 +649,8 @@ export const fetchPropertyData = cache(async (
     //    province/area searches and must go through the ETG availability path.
     //    Numeric/alphanumeric IDs check the DB source before routing.
     if (isEtgSlug(id)) {
-        // Treat hotel_content as the authoritative catalog: if the row was purged,
-        // the hotel is gone from our system even if the ETG API still has it.
-        const source = await getHotelContentSource(id);
-        if (!source) return { property: null, fetchedDetails: null, preBookResult: null };
-        return fetchETGPropertyData(id, searchParams);
+        // ETG slug hotels removed from the system — never route to ETG availability.
+        return { property: null, fetchedDetails: null, preBookResult: null };
     }
     if (isTGXOrETGId(id)) {
         const source = await getHotelContentSource(id);
