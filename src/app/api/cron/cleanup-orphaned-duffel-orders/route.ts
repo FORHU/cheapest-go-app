@@ -103,6 +103,14 @@ export async function GET(req: NextRequest) {
 
             if (!quoteRes.ok) {
                 const body = await quoteRes.text().catch(() => '');
+                let parsed: any;
+                try { parsed = JSON.parse(body); } catch { /* not json */ }
+                if (parsed?.errors?.[0]?.code === 'already_cancelled') {
+                    await db.from('booking_sessions').update({ status: 'expired' }).eq('id', session.id);
+                    skipped++;
+                    console.log(`[cleanup-orphaned-duffel-orders] Order ${session.duffel_pre_order_id} already cancelled — marked expired`);
+                    continue;
+                }
                 throw new Error(`Duffel quote failed (${quoteRes.status}): ${body}`);
             }
 
