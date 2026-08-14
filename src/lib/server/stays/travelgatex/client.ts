@@ -20,7 +20,7 @@ export function getTgxConfig() {
     };
 }
 
-export function getTgxSettings(cfg = getTgxConfig(), timeout = 18000, withDestPlugins = false) {
+export function getTgxSettings(cfg = getTgxConfig(), timeout = 18000, withDestPlugins = false, targetCurrency?: string) {
     // timeout: mandatory per TGX docs; max 25,000 ms for Search.
     // auditTransactions: false improves response time.
     const base = {
@@ -29,15 +29,17 @@ export function getTgxSettings(cfg = getTgxConfig(), timeout = 18000, withDestPl
         timeout,
         auditTransactions: false,
     };
-    if (!withDestPlugins) return base;
-    // Destination-search plugins (both required for TGX dest-code searches):
-    //   search_by_destination: translates TGX destination codes → OTV hotel codes.
-    //     Without this, TGX returns WRONG_FIELD/Empty hotels for any destination code.
-    //   cheapest_price: reduces response from ~16MB to ~20KB (Phuket = ~84k options).
-    //     Without this, large destination responses exceed the 25s HTTP abort timeout.
-    return {
-        ...base,
-        plugins: [
+    if (!withDestPlugins && !targetCurrency) return base;
+
+    const plugins: object[] = [];
+
+    if (withDestPlugins) {
+        // Destination-search plugins (both required for TGX dest-code searches):
+        //   search_by_destination: translates TGX destination codes → OTV hotel codes.
+        //     Without this, TGX returns WRONG_FIELD/Empty hotels for any destination code.
+        //   cheapest_price: reduces response from ~16MB to ~20KB (Phuket = ~84k options).
+        //     Without this, large destination responses exceed the 25s HTTP abort timeout.
+        plugins.push(
             {
                 pluginsType: [{
                     name:       'search_by_destination',
@@ -53,8 +55,26 @@ export function getTgxSettings(cfg = getTgxConfig(), timeout = 18000, withDestPl
                     ],
                 }],
             },
-        ],
-    };
+        );
+    }
+
+    if (targetCurrency) {
+        // Currency Converter plugin: converts OTV supplier prices (typically PHP) to the
+        // target currency using rates from HotelX_0000/BusinessRules/currency_map.csv on SFTP.
+        // exclude:false keeps options whose currency isn't in the CSV rather than hiding them,
+        // so a missing/incomplete SFTP file degrades gracefully instead of zeroing results.
+        plugins.push({
+            pluginsType: [{
+                name:       'currency_exchange',
+                parameters: [
+                    { key: 'currency', value: targetCurrency },
+                    { key: 'exclude',  value: 'false' },
+                ],
+            }],
+        });
+    }
+
+    return { ...base, plugins };
 }
 
 // filterSearch tells TGX which access code to route the request to.

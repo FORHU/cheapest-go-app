@@ -126,43 +126,72 @@ async function recordHotelSearchDemand(cityName: string, countryCode: string) {
 async function getInstantHotelCatalog(body: any): Promise<any[]> {
     const cityName: string = body.cityName ?? body.destination ?? '';
     const countryCode: string = body.countryCode ?? '';
-    if (!cityName) return [];
+    const centerLat: number | null = typeof body.lat === 'number' && body.lat ? body.lat : null;
+    const centerLng: number | null = typeof body.lng === 'number' && body.lng ? body.lng : null;
+    if (!cityName && !(centerLat && centerLng)) return [];
 
     try {
         const sql = getSqlAdmin();
-        // Strip country suffix (e.g. "Tokyo, Japan" → "Tokyo") so ILIKE matches DB city column
-        const cityOnly = cityName.split(',')[0].trim();
-        const normalized = cityOnly.replace(/-(si|do|gu|gun|eup)$/i, '').trim();
 
-        // Resolve full country name ("Indonesia") or ISO-2 ("ID") to a 2-letter code for DB filtering
-        const isoCode = resolveIsoCode(countryCode);
-        // Resolve to DB city name — ETG seeds hotel_content with German-localized names
-        // ("Rom", "Athen") that don't match the English canonical names we receive here.
-        const dbCity = resolveHotelDbCity(normalized, isoCode ?? countryCode);
-        const pattern = `%${dbCity}%`;
+        let rows: any[];
 
-        const rows = isoCode
-            ? await sql`
+        if (centerLat && centerLng) {
+            // Radius-based query — works correctly across admin boundaries (e.g. Jeju/Seogwipo)
+            // without any city-name hardcoding. Bounding box pre-filters in SQL; haversine culls in JS.
+            const RADIUS_KM = 50;
+            const DEG = RADIUS_KM / 111;
+            const minLat = centerLat - DEG, maxLat = centerLat + DEG;
+            const minLng = centerLng - DEG, maxLng = centerLng + DEG;
+            rows = await sql`
                 SELECT hotel_id, name, images, star_rating, lat, lng, address, city, country,
                        description, amenities, review_rating, review_count
                 FROM hotel_content
-                WHERE city ILIKE ${pattern}
-                  AND LOWER(country) = LOWER(${isoCode})
+                WHERE lat BETWEEN ${minLat} AND ${maxLat}
+                  AND lng BETWEEN ${minLng} AND ${maxLng}
+                  AND lat != 0 AND lng != 0
                   AND (hotel_id ~ '^[0-9]+$' OR hotel_id ~ '^[A-Z]{2}[0-9]+$')
                   AND (content_source IS NULL OR content_source != 'etg')
                 ORDER BY review_count DESC NULLS LAST
-                LIMIT 300
-              `
-            : await sql`
-                SELECT hotel_id, name, images, star_rating, lat, lng, address, city, country,
-                       description, amenities, review_rating, review_count
-                FROM hotel_content
-                WHERE city ILIKE ${pattern}
-                  AND (hotel_id ~ '^[0-9]+$' OR hotel_id ~ '^[A-Z]{2}[0-9]+$')
-                  AND (content_source IS NULL OR content_source != 'etg')
-                ORDER BY review_count DESC NULLS LAST
-                LIMIT 300
-              `;
+                LIMIT 1000
+            `;
+            // Cull to true 50km circle (bounding box is rectangular)
+            rows = rows.filter((r: any) => {
+                const dLat = ((Number(r.lat) - centerLat) * Math.PI) / 180;
+                const dLng = ((Number(r.lng) - centerLng) * Math.PI) / 180;
+                const a = Math.sin(dLat / 2) ** 2 + Math.cos((centerLat * Math.PI) / 180) * Math.cos((Number(r.lat) * Math.PI) / 180) * Math.sin(dLng / 2) ** 2;
+                return 6371 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)) <= RADIUS_KM;
+            });
+        } else {
+            // Fallback: city-string ILIKE match when no coordinates available.
+            const cityOnly = cityName.split(',')[0].trim();
+            const normalized = cityOnly.replace(/-(si|do|gu|gun|eup)$/i, '').trim();
+            const isoCode = resolveIsoCode(countryCode);
+            const dbCity = resolveHotelDbCity(normalized, isoCode ?? countryCode);
+            const pattern = `%${dbCity}%`;
+
+            rows = isoCode
+                ? await sql`
+                    SELECT hotel_id, name, images, star_rating, lat, lng, address, city, country,
+                           description, amenities, review_rating, review_count
+                    FROM hotel_content
+                    WHERE city ILIKE ${pattern}
+                      AND LOWER(country) = LOWER(${isoCode})
+                      AND (hotel_id ~ '^[0-9]+$' OR hotel_id ~ '^[A-Z]{2}[0-9]+$')
+                      AND (content_source IS NULL OR content_source != 'etg')
+                    ORDER BY review_count DESC NULLS LAST
+                    LIMIT 300
+                  `
+                : await sql`
+                    SELECT hotel_id, name, images, star_rating, lat, lng, address, city, country,
+                           description, amenities, review_rating, review_count
+                    FROM hotel_content
+                    WHERE city ILIKE ${pattern}
+                      AND (hotel_id ~ '^[0-9]+$' OR hotel_id ~ '^[A-Z]{2}[0-9]+$')
+                      AND (content_source IS NULL OR content_source != 'etg')
+                    ORDER BY review_count DESC NULLS LAST
+                    LIMIT 300
+                  `;
+        }
 
         return rows
             // Exclude hotels with slug-like OTV names (e.g. vx_the_fifty) from the

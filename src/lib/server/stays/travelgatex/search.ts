@@ -1269,6 +1269,8 @@ async function runCityFallback(
     countryCode: string | undefined,
     baseCriteria: Record<string, unknown>,
     prefetchDestCode: Promise<string | undefined>,
+    centerLat?: number,
+    centerLng?: number,
 ) {
     // Ensure the DB-persisted failed codes are loaded before we check the set.
     await loadFailedDestCodes();
@@ -1289,7 +1291,7 @@ async function runCityFallback(
             // Supplier timeout=15,000ms + HTTP abort=25,000ms (10s buffer). See the direct
             // destinationCode path above for full rationale — same constraints apply here.
             const _cfg = getTgxConfig();
-            const settingsDestCode = getTgxSettings(_cfg, 15_000, true);
+            const settingsDestCode = getTgxSettings(_cfg, 15_000, true, 'USD');
             const filterSearchDest = getTgxFilterSearch(_cfg);
             try {
                 destResult = await tgxGraphQL(CITY_SEARCH_QUERY, {
@@ -1389,7 +1391,7 @@ async function runCityFallback(
             try {
                 const extResult = await tgxGraphQL(CITY_SEARCH_QUERY, {
                     criteria: { ...baseCriteria, destinations: [bgCode] },
-                    settings: getTgxSettings(_cfg, 12_000, true),
+                    settings: getTgxSettings(_cfg, 12_000, true, 'USD'),
                     filterSearch: getTgxFilterSearch(_cfg),
                 }, 20_000);
                 const extMerchant = ((extResult?.data?.hotelX?.search?.options) ?? []).filter(
@@ -1412,28 +1414,52 @@ async function runCityFallback(
     if (cityName) {
         try {
             const sqlAdmin = getSqlAdmin();
-            const cityOnly = cityName.split(',')[0].trim();
-            const catalogRows = countryCode
-                ? await sqlAdmin<{ hotel_id: string }[]>`
-                    SELECT hotel_id FROM hotel_content
-                    WHERE LOWER(TRIM(city)) = LOWER(${cityOnly})
-                      AND LOWER(country) = LOWER(${countryCode})
-                      AND hotel_id ~ '^[0-9]+$'
+            let catalogRows: { hotel_id: string; lat?: number; lng?: number }[];
+
+            if (centerLat && centerLng) {
+                // Radius-based lookup — covers cities that span admin boundaries without hardcoding.
+                const RADIUS_KM = 50;
+                const DEG = RADIUS_KM / 111;
+                const minLat = centerLat - DEG, maxLat = centerLat + DEG;
+                const minLng = centerLng - DEG, maxLng = centerLng + DEG;
+                const bboxRows = await sqlAdmin<{ hotel_id: string; lat: number; lng: number }[]>`
+                    SELECT hotel_id, lat, lng FROM hotel_content
+                    WHERE lat BETWEEN ${minLat} AND ${maxLat}
+                      AND lng BETWEEN ${minLng} AND ${maxLng}
                       AND lat != 0 AND lng != 0
-                    LIMIT 300`
-                : await sqlAdmin<{ hotel_id: string }[]>`
-                    SELECT hotel_id FROM hotel_content
-                    WHERE LOWER(TRIM(city)) = LOWER(${cityOnly})
                       AND hotel_id ~ '^[0-9]+$'
-                      AND lat != 0 AND lng != 0
-                    LIMIT 300`;
+                    LIMIT 1000`;
+                catalogRows = bboxRows.filter(r => {
+                    const dLat = ((Number(r.lat) - centerLat) * Math.PI) / 180;
+                    const dLng = ((Number(r.lng) - centerLng) * Math.PI) / 180;
+                    const a = Math.sin(dLat / 2) ** 2 + Math.cos((centerLat * Math.PI) / 180) * Math.cos((Number(r.lat) * Math.PI) / 180) * Math.sin(dLng / 2) ** 2;
+                    return 6371 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)) <= RADIUS_KM;
+                });
+            } else {
+                const cityOnly = cityName.split(',')[0].trim();
+                catalogRows = countryCode
+                    ? await sqlAdmin<{ hotel_id: string }[]>`
+                        SELECT hotel_id FROM hotel_content
+                        WHERE LOWER(TRIM(city)) = LOWER(${cityOnly})
+                          AND LOWER(country) = LOWER(${countryCode})
+                          AND hotel_id ~ '^[0-9]+$'
+                          AND lat != 0 AND lng != 0
+                        LIMIT 300`
+                    : await sqlAdmin<{ hotel_id: string }[]>`
+                        SELECT hotel_id FROM hotel_content
+                        WHERE LOWER(TRIM(city)) = LOWER(${cityOnly})
+                          AND hotel_id ~ '^[0-9]+$'
+                          AND lat != 0 AND lng != 0
+                        LIMIT 300`;
+            }
+
             const catalogIds = catalogRows.map(r => r.hotel_id);
             if (catalogIds.length > 0) {
                 console.log(`[tgx-search] Hotel-code fallback: querying TGX with ${catalogIds.length} IDs for "${cityName}"`);
                 const _cfg = getTgxConfig();
                 const hotelResult = await tgxGraphQL(CITY_SEARCH_QUERY, {
                     criteria: { ...baseCriteria, hotels: catalogIds },
-                    settings: getTgxSettings(_cfg, 15_000, true),
+                    settings: getTgxSettings(_cfg, 15_000, true, 'USD'),
                     filterSearch: getTgxFilterSearch(_cfg),
                 }, 25_000).catch(() => null);
                 const merchant = ((hotelResult?.data?.hotelX?.search?.options) ?? []).filter(
@@ -1586,6 +1612,7 @@ async function _runTgxSearch(params: TgxSearchParams): Promise<any> {
             // Passing countryCode creates a different key ("seoul:kr") that misses cache, forces a
             // live TGX destinationSearcher call, and often returns undefined on production.
             resolveTgxDestinationCode(cityName, undefined).catch(() => undefined),
+            params.lat, params.lng,
         );
     } else {
         throw new Error('destinationCode, hotelCode, or cityName is required');
@@ -1610,8 +1637,8 @@ async function _runTgxSearch(params: TgxSearchParams): Promise<any> {
     // Destination: supplier=15,000ms + HTTP abort=25,000ms.  Hotel: 12,000ms + 13,000ms.
     const cfg = getTgxConfig();
     const searchSettings = destinations
-        ? getTgxSettings(cfg, 15_000, true)
-        : getTgxSettings(cfg, 12_000, false);
+        ? getTgxSettings(cfg, 15_000, true, 'USD')
+        : getTgxSettings(cfg, 12_000, false, 'USD');
     const filterSearch = getTgxFilterSearch(cfg);
 
     const result = await tgxGraphQL(gqlQuery, { criteria, settings: searchSettings, filterSearch }, destinations ? 25_000 : 13_000);

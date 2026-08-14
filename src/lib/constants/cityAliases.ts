@@ -1021,8 +1021,8 @@ export const CITY_ALIASES: Record<string, Record<string, string>> = {
         'nampodong': 'Busan', 'jagalchi': 'Busan', 'busan station area': 'Busan',
         'oncheonjang': 'Busan', 'centum city': 'Busan', 'marine city': 'Busan',
         // Jeju
-        'jeju city center': 'Jeju', 'seogwipo': 'Jeju', 'hallasan': 'Jeju',
-        'jungmun': 'Jeju', 'hamdeok beach': 'Jeju',
+        'jeju-do': 'Jeju', 'jeju island': 'Jeju', 'jeju city center': 'Jeju',
+        'seogwipo': 'Jeju', 'hallasan': 'Jeju', 'jungmun': 'Jeju', 'hamdeok beach': 'Jeju',
         // Gyeongju (historic city)
         'gyeongju city': 'Gyeongju', 'bulguksa': 'Gyeongju',
         // Incheon
