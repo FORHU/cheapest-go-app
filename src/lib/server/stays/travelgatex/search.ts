@@ -222,9 +222,6 @@ const COUNTRY_BBOX: Record<string, { minLat: number; maxLat: number; minLng: num
     UY: { minLat: -34.9, maxLat: -30.1, minLng: -58.4,  maxLng: -53.1  },
 };
 
-
-
-
 // ─── TGX hotel content (on-demand per-hotel lookup) ─────────────────────────
 
 /** Full hotel content shape returned by parseTgxHotelData */

@@ -153,7 +153,7 @@ const VerticalCard: React.FC<PropertyCardProps> = ({
 
     // Skip conversion until mounted — EXCHANGE_RATES may differ between server (static)
     // and client (live rates from a previous page visit), causing hydration mismatches.
-    const sourceCurrency = property?.currency || 'PHP';
+    const sourceCurrency = property?.currency || 'USD';
     const rawPrice = property?.price || price || 0;
     const rawOriginalPrice = property?.originalPrice || originalPrice;
 
@@ -317,7 +317,7 @@ const HorizontalCard: React.FC<PropertyCardProps> = ({
 
     // Skip conversion until mounted — EXCHANGE_RATES may differ between server (static)
     // and client (live rates from a previous page visit), causing hydration mismatches.
-    const sourceCurrency = property.currency || 'KRW';
+    const sourceCurrency = property.currency || 'USD';
     const displayPrice = mounted ? convertCurrency(property.price, sourceCurrency, targetCurrency) : property.price;
     const displayOriginalPrice = property.originalPrice
         ? (mounted ? convertCurrency(property.originalPrice, sourceCurrency, targetCurrency) : property.originalPrice)
@@ -371,7 +371,7 @@ const HorizontalCard: React.FC<PropertyCardProps> = ({
                         title={property.name}
                         subtitle={property.location}
                         price={property.price}
-                        currency={property.currency || 'KRW'}
+                        currency={property.currency || 'USD'}
                         imageUrl={property.image}
                         deepLink={`/property/${buildPropertySlug(property.name, property.id)}`}
                         snapshot={property as any}
