@@ -1543,10 +1543,7 @@ async function _runTgxSearch(params: TgxSearchParams): Promise<any> {
         return { data: [], allMappable: [], totalCount: 0 };
     }
 
-    // ETG region search removed — province/country rungs return empty.
-    if ((rung === 'country' || rung === 'province') && cityName) {
-        return { data: [], allMappable: [], totalCount: 0 };
-    }
+    // ETG region search removed — province/country rungs fall through to TGX.
 
     // OTV returns PHP (Philippines account default) regardless of what currency we request.
     const currency = 'USD';

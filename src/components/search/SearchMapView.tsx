@@ -12,7 +12,6 @@ import { formatCurrency, cn, buildPropertySlug } from '@/lib/utils';
 import { convertCurrency } from '@/lib/currency';
 import { useUserCurrency, useSearchStore, useSearchFilters, useDates, useActiveDropdown } from '@/stores/searchStore';
 import { DatePicker } from '@/components/landing/hero/search/DatePicker';
-import CurrencySelector from '@/components/common/CurrencySelector';
 import { useTranslations, useLocale } from 'next-intl';
 import { HotelCardSkeleton, SKELETON_NAME_WIDTHS } from '@/components/shared/Skeleton';
 import { hasValidCoords, dedupeByProximity, haversineDistanceKm } from './mappableUtils';
@@ -221,55 +220,49 @@ function SearchRefinementBar({ rawSearchParams }: { rawSearchParams: Record<stri
     return (
         <div className="shrink-0 bg-white dark:bg-slate-950 border-b border-slate-100 dark:border-slate-800 px-3 py-2">
             <div className="max-w-2xl mx-auto">
-                {/* ── Mobile: 2-row layout ── */}
-                <div className="flex sm:hidden flex-col w-full rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-sm overflow-visible">
-                    {/* Row 1: Check-in | N nights | Check-out */}
-                    <div className="flex h-12">
-                        <div className="relative flex-1 h-full">
-                            <div
-                                className="flex flex-col justify-center px-3 h-full cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors border-r border-slate-100 dark:border-slate-800 rounded-tl-2xl"
-                                onClick={() => setActiveDropdown(activeDropdown === 'dates-in' ? null : 'dates-in')}
-                                data-datepicker-trigger
-                            >
-                                <span className="text-[9px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider">{t('checkIn')}</span>
-                                <span className="text-[12px] font-semibold text-slate-800 dark:text-slate-100 leading-tight truncate">{fmtDay(storeCheckIn)}</span>
-                            </div>
-                            <DatePicker triggerDropdown="dates-in" />
-                        </div>
-                        <div className="flex flex-col items-center justify-center px-2.5 bg-slate-50 dark:bg-slate-800/40 border-r border-slate-100 dark:border-slate-800 shrink-0">
-                            <span className="text-[11px] font-bold text-blue-500">{nights}</span>
-                            <span className="text-[9px] text-slate-400 leading-none">{t('nights')}</span>
-                        </div>
-                        <div className="relative flex-1 h-full">
-                            <div
-                                className="flex flex-col justify-center px-3 h-full cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors rounded-tr-2xl"
-                                onClick={() => setActiveDropdown(activeDropdown === 'dates-out' ? null : 'dates-out')}
-                                data-datepicker-trigger
-                            >
-                                <span className="text-[9px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider">{t('checkOut')}</span>
-                                <span className="text-[12px] font-semibold text-slate-800 dark:text-slate-100 leading-tight truncate">{fmtDay(storeCheckOut)}</span>
-                            </div>
-                            <DatePicker initialCheckOutMode triggerDropdown="dates-out" />
-                        </div>
-                    </div>
-                    {/* Row 2: Guests + Search */}
-                    <div className="flex h-11 border-t border-slate-100 dark:border-slate-800">
-                        <div className="flex flex-col justify-center px-3 border-r border-slate-100 dark:border-slate-800 flex-1">
-                            <span className="text-[9px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider">{t('guests')}</span>
-                            <div className="flex items-center gap-2 mt-0.5">
-                                <button onClick={() => setAdults(a => Math.max(1, a - 1))} className="w-5 h-5 rounded-full bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-300 text-base font-light flex items-center justify-center hover:bg-slate-200 dark:hover:bg-slate-600 cursor-pointer leading-none select-none">−</button>
-                                <span className="text-[13px] font-semibold text-slate-800 dark:text-slate-100 w-4 text-center tabular-nums">{adults + children}</span>
-                                <button onClick={() => setAdults(a => Math.min(16, a + 1))} className="w-5 h-5 rounded-full bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-300 text-base font-light flex items-center justify-center hover:bg-slate-200 dark:hover:bg-slate-600 cursor-pointer leading-none select-none">+</button>
-                            </div>
-                        </div>
-                        <button
-                            onClick={handleSearch}
-                            className="flex items-center gap-2 px-5 h-full bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white text-sm font-bold transition-colors cursor-pointer shrink-0 rounded-br-2xl"
+                {/* ── Mobile: single inline row ── */}
+                <div className="flex sm:hidden items-stretch w-full rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-sm overflow-visible h-12">
+                    {/* Check-in */}
+                    <div className="relative flex-1 min-w-0 h-full">
+                        <div
+                            className="flex flex-col justify-center px-2 h-full cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors border-r border-slate-100 dark:border-slate-800 rounded-l-2xl"
+                            onClick={() => setActiveDropdown(activeDropdown === 'dates-in' ? null : 'dates-in')}
+                            data-datepicker-trigger
                         >
-                            <Search size={15} />
-                            <span>{t('search')}</span>
-                        </button>
+                            <span className="text-[8px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider">{t('checkIn')}</span>
+                            <span className="text-[11px] font-semibold text-slate-800 dark:text-slate-100 leading-tight truncate">{fmtDay(storeCheckIn)}</span>
+                        </div>
+                        <DatePicker triggerDropdown="dates-in" />
                     </div>
+                    {/* Check-out */}
+                    <div className="relative flex-1 min-w-0 h-full">
+                        <div
+                            className="flex flex-col justify-center px-2 h-full cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors border-r border-slate-100 dark:border-slate-800"
+                            onClick={() => setActiveDropdown(activeDropdown === 'dates-out' ? null : 'dates-out')}
+                            data-datepicker-trigger
+                        >
+                            <span className="text-[8px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider">{t('checkOut')}</span>
+                            <span className="text-[11px] font-semibold text-slate-800 dark:text-slate-100 leading-tight truncate">{fmtDay(storeCheckOut)}</span>
+                        </div>
+                        <DatePicker initialCheckOutMode triggerDropdown="dates-out" />
+                    </div>
+                    {/* Guests */}
+                    <div className="flex flex-col justify-center px-2 border-r border-slate-100 dark:border-slate-800 shrink-0 h-full">
+                        <span className="text-[8px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider">{t('guests')}</span>
+                        <div className="flex items-center gap-1.5 mt-0.5">
+                            <button onClick={() => setAdults(a => Math.max(1, a - 1))} className="w-5 h-5 rounded-full bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-300 text-base font-light flex items-center justify-center hover:bg-slate-200 dark:hover:bg-slate-600 cursor-pointer leading-none select-none">−</button>
+                            <span className="text-[12px] font-semibold text-slate-800 dark:text-slate-100 w-4 text-center tabular-nums">{adults + children}</span>
+                            <button onClick={() => setAdults(a => Math.min(16, a + 1))} className="w-5 h-5 rounded-full bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-300 text-base font-light flex items-center justify-center hover:bg-slate-200 dark:hover:bg-slate-600 cursor-pointer leading-none select-none">+</button>
+                        </div>
+                    </div>
+                    {/* Search */}
+                    <button
+                        onClick={handleSearch}
+                        className="flex items-center justify-center gap-1.5 px-3 h-full bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white text-sm font-bold transition-colors cursor-pointer shrink-0 rounded-r-2xl"
+                    >
+                        <Search size={14} />
+                        <span className="text-[12px]">{t('search')}</span>
+                    </button>
                 </div>
 
                 {/* ── Desktop: single row ── */}
@@ -895,8 +888,6 @@ function SearchMapView({
                     )}
 
                     <div className="ml-auto flex items-center gap-1.5 sm:gap-2">
-                        <CurrencySelector variant="pill" align="right" className="sm:hidden" />
-
                         {/* Property count pill */}
                         <span className="hidden sm:inline px-2.5 py-0.5 rounded-full text-[10px] md:text-[11px] font-semibold border bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 whitespace-nowrap">
                             {activeFilterCount > 0
@@ -946,7 +937,7 @@ function SearchMapView({
                         {/* List view toggle */}
                         <button
                             onClick={handleBackToList}
-                            className="hidden sm:flex items-center gap-1 px-2.5 h-[24px] md:h-8 rounded-full border text-[10px] md:text-[11px] font-bold transition-colors cursor-pointer bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-blue-400"
+                            className="flex items-center gap-1 px-2.5 h-[24px] md:h-8 rounded-full border text-[10px] md:text-[11px] font-bold transition-colors cursor-pointer bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-blue-400"
                         >
                             <List size={12} />
                             <span>{t('list')}</span>
@@ -1182,23 +1173,6 @@ function SearchMapView({
                     )}
                 </AnimatePresence>
 
-                {/* Floating List Button (Repositioned to left, above cards) */}
-                <div
-                    className="absolute left-4 z-50 transition-all duration-300 landscape:left-2"
-                    style={{
-                        bottom: showMobileMap
-                            ? 'calc(160px + env(safe-area-inset-bottom, 0px))'
-                            : 'calc(80px + env(safe-area-inset-bottom, 0px))',
-                    }}
-                >
-                    <button
-                        onClick={handleBackToList}
-                        className="bg-white/95 dark:bg-slate-900/95 backdrop-blur-md text-slate-800 dark:text-slate-200 px-3 py-1.5 rounded-md shadow-lg border border-slate-200 dark:border-slate-700 active:scale-95 transition-all flex items-center justify-center gap-1.5 font-bold text-[11px]"
-                    >
-                        <List size={14} />
-                        {t('list')}
-                    </button>
-                </div>
             </div>
         </div>
     );
