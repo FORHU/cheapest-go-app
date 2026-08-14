@@ -278,6 +278,24 @@ export async function POST(req: NextRequest) {
         if (resolved) body.countryCode = resolved;
     }
 
+    // Province rungs are never directly resolvable by TGX — strip common admin
+    // suffixes and force a city-level lookup so runCityFallback gets a clean name.
+    // "Jeju-do" → "Jeju", "Osaka Prefecture" → "Osaka", "Kanagawa-ken" → "Kanagawa".
+    if (body.rung === 'province' && body.cityName) {
+        const stripped = body.cityName
+            .replace(/-(si|do|gu|gun|eup|myeon)$/i, '')  // Korean
+            .replace(/-(ken|to|fu)$/i, '')                 // Japanese
+            .replace(/\s+(Province|Prefecture|County|Region|State|Oblast|Krai|Rayon|Governorate|Emirate|Canton|Department|Distrito|Wilaya|Commune|Voivodeship)$/i, '') // English/global
+            .trim();
+        if (stripped !== body.cityName) {
+            console.log(`[stream] stripped admin suffix: "${body.cityName}" → "${stripped}"`);
+            body.cityName = stripped;
+            if (body.destination) body.destination = stripped;
+        }
+        body.rung = 'city';
+        delete body.destinationCode;
+    }
+
     // City alias resolution: map district/borough/neighbourhood names to the
     // canonical city TGX can resolve. Rung is upgraded to 'city' so the district
     // early-return in _runTgxSearch doesn't kill the search.
