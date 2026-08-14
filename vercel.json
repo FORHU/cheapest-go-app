@@ -1,8 +1,1 @@
-{
-    "crons": [
-        {
-            "path": "/api/cron/geocode-hotels?batch=50",
-            "schedule": "0 */2 * * *"
-        }
-    ]
-}
+{}
