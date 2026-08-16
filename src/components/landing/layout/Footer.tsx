@@ -64,7 +64,7 @@ const StandardFooter = () => {
 
       {/* Legal bottom bar — links now live in the Legal column above */}
       <div className="border-t border-slate-100 dark:border-white/5 px-5 py-6 lg:py-4 flex items-center justify-center lg:justify-start text-[10px] lg:text-xs text-slate-400 dark:text-slate-500">
-        <span className="opacity-70">&copy; 2026 JTP {t('allRightsReserved')}</span>
+        <span className="opacity-70">&copy; 2026 FORHU Inc. {t('allRightsReserved')}</span>
       </div>
     </footer>
   );

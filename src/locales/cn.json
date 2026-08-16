@@ -866,7 +866,7 @@
         "contactMinimal": "联系我们",
         "cookies": "Cookie 政策",
         "cookiesMinimal": "Cookie 设置",
-        "copyright": "© 2026 JTP Partners. 保留所有权利。",
+        "copyright": "© 2026 FORHU Inc.. 保留所有权利。",
         "copyrightMinimal": "{brand} © 2026",
         "enterprise": "企业服务",
         "flights": "航班",
@@ -1280,7 +1280,7 @@
             "contact": {
                 "heading": "对本文件有疑问？",
                 "contactLine": "请通过以下方式联系我们：",
-                "address": "JTP Partners · 30 Wall Street, 8th Floor · New York, NY 10005 · 美国"
+                "address": "FORHU Inc. · 30 Wall Street, 8th Floor · New York, NY 10005 · 美国"
             }
         },
         "cookiePolicy": {
@@ -1328,7 +1328,7 @@
             "terms": {
                 "acceptance": {
                     "title": "接受条款",
-                    "body": "访问或使用CheapestGo网站及服务（以下简称“平台”），即表示您同意受本服务条款（以下简称“条款”）及所有适用法律法规的约束。如您不同意本条款，您将无法使用本平台。CheapestGo由JTP Partners运营，地址为美国纽约州纽约市华尔街30号8楼10005。本条款构成您与CheapestGo之间具有法律约束力的协议。"
+                    "body": "访问或使用CheapestGo网站及服务（以下简称“平台”），即表示您同意受本服务条款（以下简称“条款”）及所有适用法律法规的约束。如您不同意本条款，您将无法使用本平台。CheapestGo由FORHU Inc.运营，地址为美国纽约州纽约市华尔街30号8楼10005。本条款构成您与CheapestGo之间具有法律约束力的协议。"
                 },
                 "eligibility": {
                     "title": "使用资格",
@@ -1412,7 +1412,7 @@
                 },
                 "indemnification": {
                     "title": "赔偿",
-                    "body": "您同意就因使用本平台、违反本条款或侵犯他人权利而产生的所有索赔、责任、损害、损失和费用（包括法律费用），对CheapestGo和JTP Partners进行赔偿、辩护和免责。"
+                    "body": "您同意就因使用本平台、违反本条款或侵犯他人权利而产生的所有索赔、责任、损害、损失和费用（包括法律费用），对CheapestGo和FORHU Inc.进行赔偿、辩护和免责。"
                 },
                 "governingLaw": {
                     "title": "适用法律与争议解决",
@@ -1427,13 +1427,13 @@
                     "title": "联系方式",
                     "intro": "有关本条款的问题：",
                     "email": "📧 support@cheapestgo.com",
-                    "address": "🏢 JTP Partners · 美国纽约州纽约市华尔街30号8楼 10005"
+                    "address": "🏢 FORHU Inc. · 美国纽约州纽约市华尔街30号8楼 10005"
                 }
             },
             "privacy": {
                 "whoWeAre": {
                     "title": "关于我们",
-                    "para1": "CheapestGo（以下简称“我们”）是由JTP Partners运营的在线旅行社，位于美国纽约州纽约市华尔街30号8楼10005。我们通过网站和移动平台，主要为东南亚旅行者提供酒店预订、航班套餐和旅行优惠服务。",
+                    "para1": "CheapestGo（以下简称“我们”）是由FORHU Inc.运营的在线旅行社，位于美国纽约州纽约市华尔街30号8楼10005。我们通过网站和移动平台，主要为东南亚旅行者提供酒店预订、航班套餐和旅行优惠服务。",
                     "para2Before": "有关本隐私政策的问题，请联系我们：",
                     "para2After": "。"
                 },
@@ -1534,7 +1534,7 @@
                     "title": "联系我们",
                     "intro": "有关隐私方面的咨询、请求或投诉：",
                     "email": "📧 support@cheapestgo.com",
-                    "address": "🏢 JTP Partners · 美国纽约州纽约市华尔街30号8楼 10005"
+                    "address": "🏢 FORHU Inc. · 美国纽约州纽约市华尔街30号8楼 10005"
                 }
             },
             "refund": {
@@ -1617,7 +1617,7 @@
                     "title": "退款咨询联系方式",
                     "intro": "所有退款和取消查询，请准备好您的预订参考号后联系我们：",
                     "email": "📧 support@cheapestgo.com",
-                    "address": "🏢 JTP Partners · 美国纽约州纽约市华尔街30号8楼 10005",
+                    "address": "🏢 FORHU Inc. · 美国纽约州纽约市华尔街30号8楼 10005",
                     "outro": "我们力争在1至2个工作日内回复所有退款申请。"
                 }
             },
@@ -1711,7 +1711,7 @@
                     "title": "联系方式",
                     "intro": "有关我们使用Cookie的问题：",
                     "email": "📧 support@cheapestgo.com",
-                    "address": "🏢 JTP Partners · 美国纽约州纽约市华尔街30号8楼 10005"
+                    "address": "🏢 FORHU Inc. · 美国纽约州纽约市华尔街30号8楼 10005"
                 }
             }
         }
