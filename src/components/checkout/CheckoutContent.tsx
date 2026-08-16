@@ -364,6 +364,18 @@ export function CheckoutContent() {
                     });
                     return;
                 }
+                // The server now derives the charge from the stored supplier quote and
+                // converts it itself, so it can legitimately disagree with the total the
+                // browser computed. Show the existing price-changed notice with the
+                // server's figure rather than a bare toast.
+                if (raw.code === 'PRICE_CHANGED' && typeof raw.serverPrice === 'number') {
+                    setPriceChanged({ oldPrice: chargeAmount, newPrice: raw.serverPrice });
+                    return;
+                }
+                if (raw.code === 'QUOTE_EXPIRED' || raw.code === 'QUOTE_NOT_FOUND') {
+                    toast.error('error' in result ? result.error : t('validation.paymentSetupFailed'));
+                    return;
+                }
                 throw new Error('error' in result ? result.error : 'Failed to create payment session');
             }
 

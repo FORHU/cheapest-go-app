@@ -11,12 +11,23 @@ interface Surcharge {
     price: { net: number; gross: number; currency: string };
 }
 
+/** Server-converted figures for the customer's currency, from /api/booking/prebook. */
+interface ServerDisplay {
+    currency: string;
+    subtotal: number;
+    taxes: number;
+    total: number;
+    /** false when the supplier already quoted in this currency and no FX was applied. */
+    converted: boolean;
+}
+
 interface PriceData {
     price?: number;
     tax?: number;
     total?: number;
     currency?: string;
     surcharges?: Surcharge[];
+    display?: ServerDisplay;
 }
 
 interface UsePricingCalculationOptions {
@@ -72,14 +83,29 @@ export function usePricingCalculation({
         const rawTotal = priceData?.total ?? (rawRoomPrice + rawTaxes);
 
         // The currency the raw prices are denominated in.
-        // When prebook data is present, use priceData.currency (authoritative from LiteAPI).
+        // When prebook data is present, use priceData.currency (authoritative from the supplier).
         // Fall back to the room's stored search currency, then selectedCurrency.
         const sourceCurrency = priceData?.currency || displayRoom.currency || selectedCurrency;
 
-        // Apply client-side conversion when the display currency differs
-        const roomPrice = convertCurrency(rawRoomPrice, sourceCurrency, selectedCurrency);
-        const taxes = convertCurrency(rawTaxes, sourceCurrency, selectedCurrency);
-        const totalPrice = convertCurrency(rawTotal, sourceCurrency, selectedCurrency);
+        // Prefer the server's conversion. It is produced by the same code and rates that
+        // create-payment charges from, so the displayed and charged figures agree by
+        // construction rather than by coincidence (CONTEXT.md → Display Currency).
+        //
+        // The client-side branch remains only for the cases the server cannot cover: a
+        // room priced before prebook has run, or an FX outage that left `display` absent.
+        // It is approximate by nature — never the basis for a charge.
+        const serverDisplay = priceData?.display;
+        const useServer = !!serverDisplay && serverDisplay.currency === selectedCurrency.toUpperCase();
+
+        const roomPrice = useServer
+            ? serverDisplay!.subtotal
+            : convertCurrency(rawRoomPrice, sourceCurrency, selectedCurrency);
+        const taxes = useServer
+            ? serverDisplay!.taxes
+            : convertCurrency(rawTaxes, sourceCurrency, selectedCurrency);
+        const totalPrice = useServer
+            ? serverDisplay!.total
+            : convertCurrency(rawTotal, sourceCurrency, selectedCurrency);
 
         const surcharges: ConvertedSurcharge[] = (priceData?.surcharges ?? [])
             .filter(s => s.chargeType?.toUpperCase() !== 'INCLUDE')

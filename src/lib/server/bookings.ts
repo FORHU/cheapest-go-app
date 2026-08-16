@@ -11,6 +11,7 @@ import { invokeEdgeFunction } from '@/utils/postgres/functions';
 
 import { stripe } from '@/lib/stripe/server';
 import { sendHotelRefundEmail } from './email';
+import { lockFx } from '@/lib/bookings/fxLock';
 import type {
   AmendBookingParams,
   SaveBookingParams,
@@ -348,10 +349,16 @@ export async function confirmAndSaveTgxBooking(
     // Patch columns added by later migrations — non-fatal so a missing migration on
     // production doesn't roll back the booking we just confirmed with TGX.
     try {
+      // Rate this booking was taken at, for USD reporting (ADR-0008). lockFx never
+      // throws; if it yields nulls the row is simply counted as unconverted until
+      // scripts/backfill-booking-fx.mjs resolves it.
+      const fx = await lockFx(totalPrice, storedCurrency);
       await sql`
         UPDATE bookings
         SET property_lat = ${property_lat}, property_lng = ${property_lng},
-            source_brand = ${process.env.NEXT_PUBLIC_BRAND_NAME ?? 'CheapestGo'}
+            source_brand = ${process.env.NEXT_PUBLIC_BRAND_NAME ?? 'CheapestGo'},
+            usd_amount = ${fx.usd_amount}, fx_rate = ${fx.fx_rate},
+            fx_captured_at = ${fx.fx_captured_at}, fx_source = ${fx.fx_source}
         WHERE booking_id = ${bookingId}
       `;
     } catch {

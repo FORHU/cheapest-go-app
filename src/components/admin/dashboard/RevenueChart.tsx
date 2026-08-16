@@ -48,7 +48,7 @@ export function RevenueChart({ data, defaultCurrency }: RevenueChartProps) {
     const currentData = React.useMemo(() => {
         return data[timeframe].map(d => ({
             ...d,
-            revenue: convertCurrency(d.revenue, 'PHP', activeCurrency)
+            revenue: convertCurrency(d.revenue, 'USD', activeCurrency)
         }));
     }, [data, timeframe, activeCurrency]);
 
