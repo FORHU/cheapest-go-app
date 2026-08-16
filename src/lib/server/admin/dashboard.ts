@@ -1,5 +1,4 @@
 import { createAdminClient } from '@/utils/postgres/admin';
-import { EXCHANGE_RATES } from '@/lib/currency';
 import { DashboardStats, AnalyticsData, SupplierBreakdown, RecentActivity, AdvancedAnalyticsData, RevenueTrend, ConversionFunnel, RouteMetric, DashboardData, ApiLogRow } from '@/types/admin';
 import { getProviderIntegrations } from './providers';
 import { getAdminSettings } from './settings';
@@ -9,9 +8,12 @@ import { applyBrandFilter, getAdminBrand, ADMIN_BRAND, AdminBrand } from './bran
 // Runs aggregation in Postgres — never hits JS-side row limits.
 // Both the dashboard and revenue page call this so they always match.
 async function fetchRevenueStats(supabase: ReturnType<typeof createAdminClient>, brand: AdminBrand) {
-    const phpRate = 1 / EXCHANGE_RATES['PHP']; // e.g. 55.556
+    // php_rate survives in the RPC signature for call compatibility but is unused: every
+    // figure comes from each booking's own locked rate now (ADR-0008). It used to be
+    // derived from EXCHANGE_RATES here, which nothing on the server ever refreshed — so
+    // the whole dashboard was priced off the static fallback table.
     const p_brand = brand === 'all' ? ADMIN_BRAND : brand;
-    const { data, error } = await supabase.rpc('get_revenue_stats', { php_rate: phpRate, p_brand });
+    const { data, error } = await supabase.rpc('get_revenue_stats', { php_rate: null, p_brand });
     if (error) {
         console.error('[fetchRevenueStats] RPC error:', error.message);
         return null;
@@ -29,7 +31,6 @@ async function fetchRevenueStats(supabase: ReturnType<typeof createAdminClient>,
 
 export async function getDashboardData(): Promise<DashboardData> {
     const supabase = createAdminClient();
-    const PHP_RATE = 1 / EXCHANGE_RATES['PHP'];
     const brand = await getAdminBrand();
 
     // Fire these concurrently — none depend on each other
@@ -189,9 +190,9 @@ export async function getDashboardData(): Promise<DashboardData> {
     // These still fetch rows but are bounded to confirmed bookings only
     // and used only for chart/route display — not the revenue stat card.
     const [unifiedTrend, hotelTrend, flightTrend, flightSegments, quotesRes, searchesRes] = await Promise.all([
-        applyBrandFilter(supabase.from('unified_bookings').select('total_price, created_at, type, metadata, currency'), brand).in('status', ['confirmed', 'ticketed', 'awaiting_ticket', 'booked']),
-        applyBrandFilter(supabase.from('bookings').select('total_price, created_at, property_name, currency'), brand).in('status', ['confirmed', 'ticketed', 'awaiting_ticket']),
-        applyBrandFilter(supabase.from('flight_bookings').select('id, total_price, charged_price, created_at'), brand).in('status', ['booked', 'ticketed', 'awaiting_ticket']),
+        applyBrandFilter(supabase.from('unified_bookings').select('total_price, usd_amount, created_at, type, metadata, currency, provider'), brand).in('status', ['confirmed', 'ticketed', 'awaiting_ticket', 'booked']),
+        applyBrandFilter(supabase.from('bookings').select('total_price, usd_amount, created_at, property_name, currency'), brand).in('status', ['confirmed', 'ticketed', 'awaiting_ticket']),
+        applyBrandFilter(supabase.from('flight_bookings').select('id, total_price, usd_amount, charged_price, created_at'), brand).in('status', ['booked', 'ticketed', 'awaiting_ticket']),
         supabase.from('flight_segments').select('booking_id, destination'),
         supabase.from('booking_sessions').select('*', { count: 'exact', head: true }),
         supabase.from('flight_searches').select('*', { count: 'exact', head: true }),
@@ -199,19 +200,19 @@ export async function getDashboardData(): Promise<DashboardData> {
 
     const allConfirmed = [
         ...(unifiedTrend.data || []).map((b: any) => ({
-            price: Number(b.total_price) * (b.currency === 'USD' ? PHP_RATE : 1),
+            price: Number(b.usd_amount ?? 0),
             date: b.created_at,
             destination: b.metadata?.destination || b.metadata?.city || b.metadata?.segments?.[0]?.arrival_airport || 'Unknown',
         })),
         ...(hotelTrend.data || []).map((b: any) => ({
-            price: Number(b.total_price) * (b.currency === 'USD' ? PHP_RATE : 1),
+            price: Number(b.usd_amount ?? 0),
             date: b.created_at,
             destination: b.property_name || 'Legacy Hotel',
         })),
         ...(flightTrend.data || []).map((b: any) => {
             const segment = (flightSegments.data || []).find((s: any) => s.booking_id === b.id);
             return {
-                price: Number(b.charged_price || b.total_price) * PHP_RATE,
+                price: Number(b.usd_amount ?? 0),
                 date: b.created_at,
                 destination: segment?.destination || 'Legacy Flight',
             };
@@ -249,7 +250,7 @@ export async function getDashboardData(): Promise<DashboardData> {
     const providerRevMap = new Map<string, number>();
     (unifiedTrend.data || []).forEach((b: any) => {
         if (b.provider) {
-            const price = Number(b.total_price) * (b.currency === 'USD' ? PHP_RATE : 1);
+            const price = Number(b.usd_amount ?? 0);
             providerRevMap.set(b.provider, (providerRevMap.get(b.provider) || 0) + price);
         }
     });

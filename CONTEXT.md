@@ -110,6 +110,34 @@ _Avoid_: blacklisting a destination code solely on ALL_PROCESSES_FAILED without 
 So four of the five rungs — everything except **City** — are served by **ETG alone**: ETG is the geographic search engine, and OTV/TravelGateX contributes only at the City rung. See [ADR-0006](docs/adr/0006-granularity-ladder-is-etg-driven.md). A whole-**Country** search is a real ETG country-region search — it no longer silently collapses to a single default city.
 _Avoid_: assuming OTV can service anything below City (province, district, landmark) — it cannot. _Avoid_: assuming a place the picker offers resolves identically on every channel. _Avoid_: calling a District or landmark search a "city search" — it is a point/geo search with its own radius. _Avoid_: reviving an OTV+ETG union to cover the sub-city rungs — that dedup problem was rejected in [ADR-0004](docs/adr/0004-province-search-is-etg-only.md) and stays rejected.
 
+## Money
+
+**Reporting Currency** — US dollars. The one currency every blended revenue, profit, and markup figure is expressed in, whatever the customer actually paid. Chosen because FORHU Inc is the booking entity and suppliers quote predominantly in USD.
+_Avoid_: "base currency" (ambiguous — suppliers, Stripe, and the admin UI each have their own "base"). _Avoid_: assuming PHP is the reporting currency because column defaults and admin code say `'PHP'` — that is legacy, not intent.
+
+**Charge Currency** — the currency Stripe actually bills the customer in, chosen by the customer at checkout. One booking has exactly one Charge Currency, and refunds must be issued in it so the customer sees no FX drift. Deliberately limited to **KRW, USD and PHP** — the markets actually served. Holding an exchange rate for a currency does not make it chargeable.
+_Avoid_: conflating with **Supplier Currency** — the two differ on most bookings. _Avoid_: inferring the charge surface from the rate table, the admin currency picker, or the payment route's accepted list — none of those is the customer-facing set.
+
+**Supplier Currency** — the currency the provider (Duffel, OTV/TGX) quotes and settles in. This is the only price the platform can treat as authoritative; everything the browser computes is a display artefact.
+_Avoid_: treating a converted display price as a quote.
+
+**Display Currency** — what a price is *shown* in across the storefront. Converted server-side, so the figure on screen is the same one that will be charged; the browser renders prices, it does not compute them.
+_Avoid_: converting prices in the browser — two independent conversions drift apart and put the customer in front of a price-changed prompt. _Avoid_: using the admin's own currency selector (a per-viewer display preference) as if it were the **Reporting Currency**.
+
+**Booked Amount** — a payment restated into the **Reporting Currency** using the rate in force at the moment it was taken. Fixed permanently at that instant, so a report for a past period returns the same figure however long afterwards it is run.
+_Avoid_: recomputing a past period at today's rate — a closed month never moves.
+
+**Locked Rate** — the exchange rate captured alongside a payment, and the evidence for its **Booked Amount**. Stored with the booking rather than looked up later, because a rate that was not recorded at the time cannot be recovered.
+
+**Gross Booking Value** — the total customer-facing value of bookings taken, including the supplier's share. A volume measure: it says how much money moved through the platform, not how much the platform earned.
+_Avoid_: calling this "revenue" — most of it belongs to the airline or hotel.
+
+**Net Revenue** — what CheapestGo keeps: **Gross Booking Value** less supplier cost. Equal to the markup, which is deliberately sized to cover Stripe fees rather than to earn a margin.
+_Avoid_: "profit" — the markup is a cost-recovery buffer, and labelling it profit implies a margin the pricing model does not intend to make.
+
+**Reversal** — the accounting undo of a refunded booking, carried out at that booking's own **Locked Rate** so the sale and the refund cancel to nothing. The customer is returned exactly what they paid in their **Charge Currency**, so no gain or loss arises to report.
+_Avoid_: revaluing a refund at the current rate — that manufactures an FX movement out of a transaction that had none.
+
 ## Landing Page
 
 **Flight Deal** — an evergreen route + "from" price card shown in the "Exclusive Deals & Offers" section. No departure date is pinned to the card. The cron finds the lowest available price across a rolling window and stores it. The stored price is what's displayed; users pick their own dates when they search.

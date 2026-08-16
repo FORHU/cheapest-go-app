@@ -109,6 +109,32 @@ export const FLIGHT_PRICE_TOLERANCE_LIVE = 0.50;
 export const FLIGHT_PRICE_TOLERANCE_SANDBOX = 10.00;
 
 /**
+ * How long a persisted hotel prebook quote stays chargeable.
+ *
+ * TGX option tokens expire quickly — prebook already re-searches because search
+ * tokens go stale — so this is deliberately short. Past it, create-payment
+ * rejects the prebookId and the user re-quotes rather than being charged against
+ * a rate the supplier will no longer honour at Book time.
+ */
+export const PREBOOK_QUOTE_TTL_MS = 30 * 60 * 1000; // 30 minutes
+
+/**
+ * How far the client's displayed hotel total may differ from the server's own
+ * conversion of the supplier quote before checkout stops and re-confirms.
+ *
+ * The customer is never billed more than the figure they were shown. Within this
+ * band the server honours the displayed price and absorbs the difference; beyond
+ * it, checkout returns the updated total for the customer to approve.
+ *
+ * 0.5% is chosen against the margin, not picked for roundness. Markup is sized to
+ * break even on Stripe fees, which leaves roughly 1.77% of the charge on a $300
+ * hotel — so absorbing a 2% gap would turn the booking into a loss. Half a percent
+ * stays comfortably inside the buffer while being wide enough that ordinary
+ * intra-hour rate movement never interrupts a checkout.
+ */
+export const HOTEL_FX_DISPLAY_TOLERANCE = 0.005; // 0.5%
+
+/**
  * Effective tolerance for the current environment.
  *
  * Compare **base fares** with this, never a total that includes seats or bags:

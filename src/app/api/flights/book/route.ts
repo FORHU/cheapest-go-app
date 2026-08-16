@@ -11,7 +11,7 @@ import { checkCsrf } from '@/lib/server/csrf';
 import { flightBookingSchema } from '@/lib/schemas/flight';
 import { applyMarkup, toStripeAmount, FLIGHT_MARKUP, getFlightPriceTolerance } from '@/lib/pricing';
 import { passengerTypeForBirthDate } from '@/lib/age';
-import { convertCurrency } from '@/lib/currency';
+import { convertCurrencyStrict, refreshExchangeRates } from '@/lib/currency';
 
 // Must exceed ORDER_CREATE_TIMEOUT_MS (130s, Duffel's documented floor) plus one
 // price-change retry, or the platform kills the request while a real order is
@@ -278,6 +278,30 @@ export async function POST(req: NextRequest) {
                 success: false,
                 error: 'Invalid flight price — must be greater than $0',
             }, { status: 400 });
+        }
+
+        // ── FX readiness guard ──
+        //
+        // Step 2 converts the charge into the customer's display currency. Do that
+        // check HERE, before the Duffel order exists: a conversion failure after
+        // Step 1.5 would leave a real PNR bought with no payment against it. Failing
+        // now costs the customer a retry; failing later costs us an orphaned ticket.
+        const needsFxConversion =
+            !!displayCurrency && displayCurrency.toLowerCase() !== flightCurrency;
+
+        if (needsFxConversion) {
+            await refreshExchangeRates();
+            try {
+                // Probe with the real pair — this throws on unknown currency or stale rates.
+                convertCurrencyStrict(1, flightCurrency, displayCurrency!);
+            } catch (fxErr: any) {
+                console.error('[/book] FX guard rejected booking:', fxErr?.message);
+                return NextResponse.json({
+                    success: false,
+                    error: 'Currency conversion is temporarily unavailable. Please try again shortly, or switch your display currency to match the fare.',
+                    code: 'FX_UNAVAILABLE',
+                }, { status: 503 });
+            }
         }
 
         // One client for the whole request — the three separate instantiations shared a
@@ -1198,8 +1222,12 @@ export async function POST(req: NextRequest) {
         // Charge the customer in their selected display currency, not Duffel's USD.
         // This ensures the refund amount exactly matches what they paid — no FX drift.
         const chargeInCurrency = (displayCurrency || flightCurrency).toLowerCase();
+        // Strict conversion: a silent passthrough here would charge the fare's numeric
+        // value in the customer's currency (e.g. 5800 PHP billed as 5800 USD). The FX
+        // readiness guard near the top of this handler has already proven this pair
+        // converts, so reaching the throw means rates went stale mid-request.
         const chargePrice = chargeInCurrency !== flightCurrency
-            ? Math.round(convertCurrency(pricing.chargedPrice, flightCurrency, chargeInCurrency.toUpperCase()) * 100) / 100
+            ? Math.round(convertCurrencyStrict(pricing.chargedPrice, flightCurrency, chargeInCurrency.toUpperCase()) * 100) / 100
             : pricing.chargedPrice;
         const flightStripeAmount = toStripeAmount(chargePrice, chargeInCurrency);
 

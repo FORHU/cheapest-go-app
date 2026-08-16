@@ -27,7 +27,7 @@ export function StatsGrid({ liveStats, defaultCurrency }: StatsGridProps) {
     }, [userCurrency, defaultCurrency]);
 
     const convertValue = (value: number, targetCurrency: string) => {
-        return convertCurrency(value, 'PHP', targetCurrency);
+        return convertCurrency(value, 'USD', targetCurrency);
     };
 
     const getCurrencyLocale = (curr: string) => {

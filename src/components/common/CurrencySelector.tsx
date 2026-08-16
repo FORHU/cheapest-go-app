@@ -12,11 +12,10 @@ import {
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 
-export const CURRENCIES = [
-    { code: 'KRW', country: 'KR' },
-    { code: 'USD', country: 'US' },
-    { code: 'PHP', country: 'PH' },
-] as const;
+import { CHARGE_CURRENCIES } from '@/lib/constants/currencies';
+
+/** Re-exported for existing importers; the list itself lives in lib/constants/currencies. */
+export const CURRENCIES = CHARGE_CURRENCIES;
 
 interface CurrencySelectorProps {
     className?: string;

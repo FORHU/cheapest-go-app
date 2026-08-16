@@ -1001,14 +1001,14 @@
     },
     "footer": {
         "aboutUs": "About Us",
-        "allRightsReserved": "Partners. All rights reserved.",
+        "allRightsReserved": "All rights reserved.",
         "cars": "Cars",
         "company": "Company",
         "contact": "Contact",
         "contactMinimal": "Contact us",
         "cookies": "Cookies",
         "cookiesMinimal": "Cookie preferences",
-        "copyright": "© 2026 JTP Partners. All rights reserved.",
+        "copyright": "© 2026 FORHU Inc. All rights reserved.",
         "copyrightMinimal": "CheapestGo © 2026",
         "enterprise": "Enterprise",
         "flights": "Flights",
@@ -1493,14 +1493,14 @@
             "contact": {
                 "heading": "Questions about this document?",
                 "contactLine": "Contact us at",
-                "address": "JTP Partners · 30 Wall Street, 8th Floor · New York, NY 10005 · United States"
+                "address": "FORHU Inc · 30 Wall Street, 8th Floor · New York, NY 10005 · United States"
             }
         },
         "content": {
             "terms": {
                 "acceptance": {
                     "title": "Acceptance of Terms",
-                    "body": "By accessing or using the CheapestGo website and services (the \"Platform\"), you agree to be bound by these Terms of Service (\"Terms\") and all applicable laws and regulations. If you do not agree to these Terms, you may not use the Platform. CheapestGo is operated by JTP Partners, 30 Wall Street, 8th Floor, New York, NY 10005, United States. These Terms constitute a legally binding agreement between you and CheapestGo."
+                    "body": "By accessing or using the CheapestGo website and services (the \"Platform\"), you agree to be bound by these Terms of Service (\"Terms\") and all applicable laws and regulations. If you do not agree to these Terms, you may not use the Platform. CheapestGo is operated by FORHU Inc, 30 Wall Street, 8th Floor, New York, NY 10005, United States. These Terms constitute a legally binding agreement between you and CheapestGo."
                 },
                 "eligibility": {
                     "title": "Eligibility",
@@ -1584,7 +1584,7 @@
                 },
                 "indemnification": {
                     "title": "Indemnification",
-                    "body": "You agree to indemnify, defend, and hold harmless CheapestGo and JTP Partners from and against any claims, liabilities, damages, losses, and expenses (including legal fees) arising out of or in any way connected with your use of the Platform, your violation of these Terms, or your violation of any rights of another person."
+                    "body": "You agree to indemnify, defend, and hold harmless CheapestGo and FORHU Inc from and against any claims, liabilities, damages, losses, and expenses (including legal fees) arising out of or in any way connected with your use of the Platform, your violation of these Terms, or your violation of any rights of another person."
                 },
                 "governingLaw": {
                     "title": "Governing Law and Dispute Resolution",
@@ -1599,13 +1599,13 @@
                     "title": "Contact",
                     "intro": "For questions about these Terms:",
                     "email": "📧 support@cheapestgo.com",
-                    "address": "🏢 JTP Partners · 30 Wall Street, 8th Floor · New York, NY 10005 · USA"
+                    "address": "🏢 FORHU Inc · 30 Wall Street, 8th Floor · New York, NY 10005 · USA"
                 }
             },
             "privacy": {
                 "whoWeAre": {
                     "title": "Who We Are",
-                    "para1": "CheapestGo (\"we,\" \"us,\" or \"our\") is an online travel agency operated by JTP Partners, located at 30 Wall Street, 8th Floor, New York, NY 10005, United States. We provide hotel booking, flight package, and travel deal services primarily to travelers in Southeast Asia through our website and mobile platform.",
+                    "para1": "CheapestGo (\"we,\" \"us,\" or \"our\") is an online travel agency operated by FORHU Inc, located at 30 Wall Street, 8th Floor, New York, NY 10005, United States. We provide hotel booking, flight package, and travel deal services primarily to travelers in Southeast Asia through our website and mobile platform.",
                     "para2Before": "For questions regarding this Privacy Policy, contact us at",
                     "para2After": "."
                 },
@@ -1706,7 +1706,7 @@
                     "title": "Contact Us",
                     "intro": "For privacy-related inquiries, requests, or complaints:",
                     "email": "📧 support@cheapestgo.com",
-                    "address": "🏢 JTP Partners · 30 Wall Street, 8th Floor · New York, NY 10005 · USA"
+                    "address": "🏢 FORHU Inc · 30 Wall Street, 8th Floor · New York, NY 10005 · USA"
                 }
             },
             "refund": {
@@ -1789,7 +1789,7 @@
                     "title": "Contact for Refund Requests",
                     "intro": "For all refund and cancellation queries, please have your booking reference number ready and reach us at:",
                     "email": "📧 support@cheapestgo.com",
-                    "address": "🏢 JTP Partners · 30 Wall Street, 8th Floor · New York, NY 10005 · USA",
+                    "address": "🏢 FORHU Inc · 30 Wall Street, 8th Floor · New York, NY 10005 · USA",
                     "outro": "We aim to respond to all refund requests within 1–2 business days."
                 }
             },
@@ -1883,7 +1883,7 @@
                     "title": "Contact",
                     "intro": "For questions about our use of cookies:",
                     "email": "📧 support@cheapestgo.com",
-                    "address": "🏢 JTP Partners · 30 Wall Street, 8th Floor · New York, NY 10005 · USA"
+                    "address": "🏢 FORHU Inc · 30 Wall Street, 8th Floor · New York, NY 10005 · USA"
                 }
             }
         }

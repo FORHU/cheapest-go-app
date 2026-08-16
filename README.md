@@ -331,4 +331,4 @@ supabase/
 
 ## License
 
-Private — all rights reserved. © 2026 JTP Partners
+Private — all rights reserved. © 2026 FORHU Inc

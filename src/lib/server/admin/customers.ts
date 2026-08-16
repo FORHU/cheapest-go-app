@@ -19,9 +19,9 @@ export async function getCustomersList(): Promise<Customer[]> {
     // For hotels, we want holder names as fallback
     // For flights, we need to join with passengers
     const [unified, hotels, flights] = await Promise.all([
-        applyBrandFilter(supabase.from('unified_bookings').select('user_id, total_price, created_at, status, metadata'), brand),
-        applyBrandFilter(supabase.from('bookings').select('user_id, total_price, created_at, status, holder_first_name, holder_last_name'), brand),
-        applyBrandFilter(supabase.from('flight_bookings').select('id, user_id, total_price, created_at, status'), brand),
+        applyBrandFilter(supabase.from('unified_bookings').select('user_id, total_price, usd_amount, created_at, status, metadata'), brand),
+        applyBrandFilter(supabase.from('bookings').select('user_id, total_price, usd_amount, created_at, status, holder_first_name, holder_last_name'), brand),
+        applyBrandFilter(supabase.from('flight_bookings').select('id, user_id, total_price, usd_amount, created_at, status'), brand),
     ]);
 
     // Fetch passengers for these flights to get names
@@ -43,9 +43,14 @@ export async function getCustomersList(): Promise<Customer[]> {
     return profiles.map((profile: any) => {
         const userBookings = allBookings.filter(b => b.user_id === profile.id);
         const totalBookings = userBookings.length;
+        // Spend is in USD, from each booking's locked rate (ADR-0008). This previously
+        // summed total_price across currencies with no conversion at all, adding ₩500,000
+        // to ₱5,000 as though they were the same unit.
+        // Bookings with no locked rate contribute 0 until the backfill resolves them,
+        // which understates rather than inflating.
         const totalSpend = userBookings
             .filter(b => b.status === 'confirmed' || b.status === 'ticketed' || b.status === 'booked')
-            .reduce((sum, b) => sum + Number(b.total_price), 0);
+            .reduce((sum, b) => sum + Number(b.usd_amount ?? 0), 0);
 
         const lastBookingDate = userBookings.length > 0
             ? new Date(Math.max(...userBookings.map(b => new Date(b.created_at).getTime())))
@@ -72,11 +77,15 @@ export async function getCustomersList(): Promise<Customer[]> {
             }
         }
 
-        // Calculate a mock loyalty tier based on spend
+        // Calculate a mock loyalty tier based on spend.
+        // Thresholds restated in USD now that totalSpend is USD — these are the former
+        // ₱10,000 / ₱5,000 / ₱1,000 cutoffs at roughly current rates, kept equivalent so
+        // nobody changes tier because of this fix alone. Worth reviewing as a business
+        // decision rather than inheriting a converted number.
         let loyaltyTier: 'platinum' | 'gold' | 'silver' | 'bronze' = 'bronze';
-        if (totalSpend >= 10000) loyaltyTier = 'platinum';
-        else if (totalSpend >= 5000) loyaltyTier = 'gold';
-        else if (totalSpend >= 1000) loyaltyTier = 'silver';
+        if (totalSpend >= 165) loyaltyTier = 'platinum';
+        else if (totalSpend >= 82) loyaltyTier = 'gold';
+        else if (totalSpend >= 16) loyaltyTier = 'silver';
 
         const ninetyDaysAgo = new Date();
         ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);

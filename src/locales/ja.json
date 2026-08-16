@@ -857,14 +857,14 @@
     },
     "footer": {
         "aboutUs": "会社概要",
-        "allRightsReserved": "Partners. 無断転載を禁じます。",
+        "allRightsReserved": "無断転載を禁じます。",
         "cars": "レンタカー",
         "company": "会社情報",
         "contact": "お問い合わせ",
         "contactMinimal": "お問い合わせ",
         "cookies": "クッキー",
         "cookiesMinimal": "Cookie 設定",
-        "copyright": "© 2026 JTP Partners. All rights reserved.",
+        "copyright": "© 2026 FORHU Inc. All rights reserved.",
         "copyrightMinimal": "{brand} © 2026",
         "enterprise": "法人向け",
         "flights": "フライト",
@@ -1277,7 +1277,7 @@
             "contact": {
                 "heading": "この文書についてご不明な点はありますか？",
                 "contactLine": "お問い合わせはこちら：",
-                "address": "JTP Partners · 30 Wall Street, 8th Floor · New York, NY 10005 · アメリカ合衆国"
+                "address": "FORHU Inc · 30 Wall Street, 8th Floor · New York, NY 10005 · アメリカ合衆国"
             }
         },
         "cookiePolicy": {
@@ -1325,7 +1325,7 @@
             "terms": {
                 "acceptance": {
                     "title": "利用規約への同意",
-                    "body": "CheapestGoのウェブサイトおよびサービス（以下「プラットフォーム」）にアクセスまたは利用することにより、お客様は本利用規約（以下「規約」）およびすべての適用法令に拘束されることに同意します。本規約に同意されない場合は、プラットフォームをご利用いただけません。CheapestGoは、米国ニューヨーク州ニューヨーク市ウォールストリート30番地8階に所在するJTP Partnersにより運営されています。本規約は、お客様とCheapestGoとの間の法的拘束力のある合意を構成します。"
+                    "body": "CheapestGoのウェブサイトおよびサービス（以下「プラットフォーム」）にアクセスまたは利用することにより、お客様は本利用規約（以下「規約」）およびすべての適用法令に拘束されることに同意します。本規約に同意されない場合は、プラットフォームをご利用いただけません。CheapestGoは、米国ニューヨーク州ニューヨーク市ウォールストリート30番地8階に所在するFORHU Incにより運営されています。本規約は、お客様とCheapestGoとの間の法的拘束力のある合意を構成します。"
                 },
                 "eligibility": {
                     "title": "利用資格",
@@ -1409,7 +1409,7 @@
                 },
                 "indemnification": {
                     "title": "補償",
-                    "body": "お客様は、プラットフォームの利用、本規約の違反、または他者の権利の侵害に関連して生じるすべての請求、責任、損害、損失、および費用（法律費用を含む）に対して、CheapestGoおよびJTP Partnersを補償、防御、免責することに同意します。"
+                    "body": "お客様は、プラットフォームの利用、本規約の違反、または他者の権利の侵害に関連して生じるすべての請求、責任、損害、損失、および費用（法律費用を含む）に対して、CheapestGoおよびFORHU Incを補償、防御、免責することに同意します。"
                 },
                 "governingLaw": {
                     "title": "準拠法と紛争解決",
@@ -1424,13 +1424,13 @@
                     "title": "お問い合わせ",
                     "intro": "本規約に関するお問い合わせ：",
                     "email": "📧 support@cheapestgo.com",
-                    "address": "🏢 JTP Partners · 米国ニューヨーク州ニューヨーク市ウォールストリート30番地8階 10005"
+                    "address": "🏢 FORHU Inc · 米国ニューヨーク州ニューヨーク市ウォールストリート30番地8階 10005"
                 }
             },
             "privacy": {
                 "whoWeAre": {
                     "title": "私たちについて",
-                    "para1": "CheapestGo（以下「当社」）は、米国ニューヨーク州ニューヨーク市ウォールストリート30番地8階に所在するJTP Partnersが運営するオンライン旅行代理店です。当社は、ウェブサイトおよびモバイルプラットフォームを通じて、主に東南アジアの旅行者にホテル予約、フライトパッケージ、トラベルディールサービスを提供しています。",
+                    "para1": "CheapestGo（以下「当社」）は、米国ニューヨーク州ニューヨーク市ウォールストリート30番地8階に所在するFORHU Incが運営するオンライン旅行代理店です。当社は、ウェブサイトおよびモバイルプラットフォームを通じて、主に東南アジアの旅行者にホテル予約、フライトパッケージ、トラベルディールサービスを提供しています。",
                     "para2Before": "本プライバシーポリシーに関するお問い合わせは、こちらまでご連絡ください：",
                     "para2After": "。"
                 },
@@ -1531,7 +1531,7 @@
                     "title": "お問い合わせ",
                     "intro": "プライバシーに関するお問い合わせ、ご要望、またはご不満：",
                     "email": "📧 support@cheapestgo.com",
-                    "address": "🏢 JTP Partners · 米国ニューヨーク州ニューヨーク市ウォールストリート30番地8階 10005"
+                    "address": "🏢 FORHU Inc · 米国ニューヨーク州ニューヨーク市ウォールストリート30番地8階 10005"
                 }
             },
             "refund": {
@@ -1614,7 +1614,7 @@
                     "title": "払い戻しに関するお問い合わせ",
                     "intro": "すべての払い戻しおよびキャンセルに関するお問い合わせは、予約参照番号をご用意の上、以下までご連絡ください：",
                     "email": "📧 support@cheapestgo.com",
-                    "address": "🏢 JTP Partners · 米国ニューヨーク州ニューヨーク市ウォールストリート30番地8階 10005",
+                    "address": "🏢 FORHU Inc · 米国ニューヨーク州ニューヨーク市ウォールストリート30番地8階 10005",
                     "outro": "すべての払い戻しリクエストに対して、営業日1〜2日以内にご回答いたします。"
                 }
             },
@@ -1708,7 +1708,7 @@
                     "title": "お問い合わせ",
                     "intro": "Cookieの使用に関するお問い合わせ：",
                     "email": "📧 support@cheapestgo.com",
-                    "address": "🏢 JTP Partners · 米国ニューヨーク州ニューヨーク市ウォールストリート30番地8階 10005"
+                    "address": "🏢 FORHU Inc · 米国ニューヨーク州ニューヨーク市ウォールストリート30番地8階 10005"
                 }
             }
         }
