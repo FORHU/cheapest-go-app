@@ -610,7 +610,8 @@ function SearchMapView({
         const isRawCode = (name: string) => /^[a-z0-9_]+$/.test(name) && name.includes('_');
         let list = allProperties.filter((p: any) => {
             if (!p.name || isRawCode(p.name)) return false;
-            if (!(p as any).priceLoading && p.price <= 0 && !(p as any)._catalogOnly) return false;
+            if ((p as any).priceLoading) return false;
+            if (p.price <= 0 && !(p as any)._catalogOnly) return false;
             if (!hasValidCoords(p)) return false;
             if (cityFilterCenter) {
                 const dist = haversineDistanceKm(
