@@ -188,10 +188,16 @@ export function parseDuffelOffer(offer: any, cabinClassFallback?: string) {
     const refundPenalty = refundCond?.penalty_amount != null ? parseFloat(refundCond.penalty_amount) : null;
     const changePenalty = changeCond?.penalty_amount != null ? parseFloat(changeCond.penalty_amount) : null;
 
+    const totalAmount = parseFloat(offer.total_amount);
+    // Duffel total_amount covers all passengers. Divide by adult count for per-person display.
+    const numAdults = (offer.passengers ?? []).filter((p: any) => p.type === 'adult').length || 1;
+    const pricePerAdult = numAdults > 1 ? Math.round(totalAmount / numAdults) : totalAmount;
+
     return {
         provider: "duffel",
         offer_id: offer.id,
-        price: parseFloat(offer.total_amount),
+        price: totalAmount,
+        pricePerAdult,
         currency: offer.total_currency,
         airline: offer.owner.name,
         departure_time: firstSeg?.departure?.time,
