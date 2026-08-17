@@ -143,9 +143,27 @@ export const FlightCard: React.FC<FlightCardProps> = ({ offer, index = 0, onSele
 
     const routeIndices = Object.keys(legGroups).map(Number).sort((a, b) => a - b);
 
-    // Primary metrics for the collapsed card view
+    // Collapsed card view: always show the outbound leg only.
+    // Using the last segment overall would show the return arrival airport/time for round-trips.
     const primary = offer.segments[0];
-    const last = offer.segments[offer.segments.length - 1];
+    const outboundLeg = legGroups[0] ?? offer.segments;
+    const outboundLast = outboundLeg[outboundLeg.length - 1];
+    const outboundStops = Math.max(0, outboundLeg.length - 1);
+    // Stopover airports for the outbound leg (intermediate airports only)
+    const outboundLayoverAirports = outboundLeg.slice(0, -1).map(s => s.arrival.airport);
+    // Total outbound travel time = air time + layovers.
+    // We cannot subtract departure airport time from arrival airport time (different timezones,
+    // times stored as local-airport ISO strings without offset). Instead: sum segment durations
+    // (timezone-safe, stored in minutes) plus layover times between consecutive segments at the
+    // SAME airport (timezone cancels out since both times are in the same local timezone).
+    const outboundAirMins = outboundLeg.reduce((sum, s) => sum + (s.duration ?? 0), 0);
+    const outboundLayoverMins = outboundLeg.slice(0, -1).reduce((sum, s, i) => {
+        const arrT = s.arrival.time;
+        const depT = outboundLeg[i + 1]?.departure.time;
+        if (!arrT || !depT) return sum;
+        return sum + Math.max(0, Math.round((new Date(depT).getTime() - new Date(arrT).getTime()) / 60000));
+    }, 0);
+    const outboundDurationMins = (outboundAirMins + outboundLayoverMins) || offer.totalDuration;
 
     return (
         <motion.div
@@ -165,12 +183,12 @@ export const FlightCard: React.FC<FlightCardProps> = ({ offer, index = 0, onSele
             <div className="absolute top-2 right-2 z-10 lg:hidden">
                 <SaveButton
                     type="flight"
-                    title={`${primary.departure.airport} → ${last.arrival.airport} · ${primary.departure.time?.slice(0, 10) ?? ''}`}
+                    title={`${primary.departure.airport} → ${outboundLast?.arrival?.airport} · ${primary.departure.time?.slice(0, 10) ?? ''}`}
                     subtitle={`${primary.airline.name} · ${formatDuration(offer.totalDuration)} · ${stopsLabel(offer.totalStops, t)}`}
                     price={offer.price.total}
                     currency={offer.price.currency}
                     imageUrl={`https://pics.avs.io/40/40/${(primary.airline.code || '').toUpperCase()}.png`}
-                    deepLink={`/flights/search?origin=${primary.departure.airport}&destination=${last.arrival.airport}&departure=${primary.departure.time?.slice(0, 10) ?? ''}`}
+                    deepLink={`/flights/search?origin=${primary.departure.airport}&destination=${outboundLast?.arrival?.airport}&departure=${primary.departure.time?.slice(0, 10) ?? ''}`}
                     snapshot={{ offerId: offer.offerId, provider: offer.provider }}
                     size="sm"
                 />
@@ -196,28 +214,31 @@ export const FlightCard: React.FC<FlightCardProps> = ({ offer, index = 0, onSele
                         </div>
                     </div>
 
-                    {/* Route timeline */}
+                    {/* Route timeline — outbound leg only */}
                     <div className="flex items-center gap-1.5 lg:gap-3 min-w-0 w-full">
-                        <div className="text-center">
+                        <div className="text-center shrink-0">
                             <div className="text-xs lg:text-base font-normal text-slate-900 dark:text-white leading-tight">{formatTime(primary.departure.time)}</div>
                             <div className="text-[8px] lg:text-[10px] text-slate-500 dark:text-slate-400 font-normal">{primary.departure.airport}</div>
                         </div>
 
-                        <div className="flex-1 flex flex-col items-center gap-0">
-                            <span className="text-[10px] lg:text-xs text-slate-400 dark:text-slate-500 font-normal">{formatDuration(offer.totalDuration)}</span>
+                        <div className="flex-1 flex flex-col items-center gap-0 min-w-0">
+                            <span className="text-[10px] lg:text-xs text-slate-400 dark:text-slate-500 font-normal">{formatDuration(outboundDurationMins)}</span>
                             <div className="w-full flex items-center gap-0.5">
                                 <div className="h-[1.5px] lg:h-[2px] flex-1 bg-gradient-to-r from-indigo-400 to-purple-400 rounded-full" />
                                 <Plane className="w-2.5 h-2.5 lg:w-4 lg:h-4 text-indigo-500 rotate-90" />
                             </div>
-                            <span className={`text-[10px] lg:text-xs font-normal ${offer.totalStops === 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'}`}>
-                                {stopsLabel(offer.totalStops, t)}
+                            <span className={`text-[10px] lg:text-xs font-normal ${outboundStops === 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'}`}>
+                                {stopsLabel(outboundStops, t)}
+                                {outboundStops > 0 && outboundLayoverAirports.length > 0 && (
+                                    <span className="text-slate-400 dark:text-slate-500"> · {outboundLayoverAirports.join(' · ')}</span>
+                                )}
                             </span>
                         </div>
 
-                        <div className="text-center">
-                            <div className="text-xs lg:text-base font-normal text-slate-900 dark:text-white leading-tight">{formatTime(last.arrival.time)}</div>
+                        <div className="text-center shrink-0">
+                            <div className="text-xs lg:text-base font-normal text-slate-900 dark:text-white leading-tight">{formatTime(outboundLast?.arrival?.time)}</div>
                             <div className="text-[8px] lg:text-[10px] text-slate-500 dark:text-slate-400 font-normal">
-                                {last.arrival.airport}
+                                {outboundLast?.arrival?.airport}
                             </div>
                         </div>
                     </div>
@@ -418,12 +439,12 @@ export const FlightCard: React.FC<FlightCardProps> = ({ offer, index = 0, onSele
                     <div className="hidden lg:flex justify-end w-full mb-1 relative z-10">
                         <SaveButton
                             type="flight"
-                            title={`${primary.departure.airport} → ${last.arrival.airport} · ${primary.departure.time?.slice(0, 10) ?? ''}`}
+                            title={`${primary.departure.airport} → ${outboundLast?.arrival?.airport} · ${primary.departure.time?.slice(0, 10) ?? ''}`}
                             subtitle={`${primary.airline.name} · ${formatDuration(offer.totalDuration)} · ${stopsLabel(offer.totalStops, t)}`}
                             price={offer.price.total}
                             currency={offer.price.currency}
                             imageUrl={`https://pics.avs.io/40/40/${(primary.airline.code || '').toUpperCase()}.png`}
-                            deepLink={`/flights/search?origin=${primary.departure.airport}&destination=${last.arrival.airport}&departure=${primary.departure.time?.slice(0, 10) ?? ''}`}
+                            deepLink={`/flights/search?origin=${primary.departure.airport}&destination=${outboundLast?.arrival?.airport}&departure=${primary.departure.time?.slice(0, 10) ?? ''}`}
                             snapshot={{ offerId: offer.offerId, provider: offer.provider }}
                             size="sm"
                         />

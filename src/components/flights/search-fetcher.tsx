@@ -152,6 +152,7 @@ export function SearchFetcher({
     const router = useRouter();
     const [state, setState] = useState<SearchState>({ status: 'loading' });
     const [retryKey, setRetryKey] = useState(0);
+    const [filterResetKey, setFilterResetKey] = useState(0);
     const [filters, setFilters] = useState<FilterState>({
         sortBy: 'price',
         selectedAirlines: [],
@@ -159,6 +160,11 @@ export function SearchFetcher({
         refundableOnly: false,
         selectedProviders: [],
     });
+
+    const resetFilters = () => {
+        setFilters({ sortBy: 'price', selectedAirlines: [], maxStops: null, refundableOnly: false, selectedProviders: [] });
+        setFilterResetKey(k => k + 1);
+    };
     const { isMobileFiltersOpen } = useSearchStore();
     const { setIsMobileFiltersOpen } = useSearchActions();
     const [filtersOpen, setFiltersOpen] = useState(true);
@@ -420,6 +426,8 @@ export function SearchFetcher({
                             <FlightFilters
                                 airlines={airlines}
                                 onFilterChange={setFilters}
+                                allOffers={allOffers.length > 0 ? allOffers : rawOffers}
+                                resetKey={filterResetKey}
                             />
                         </div>
 
@@ -491,7 +499,13 @@ export function SearchFetcher({
                         {hasResults && filteredOffers.length === 0 && allOffers.length > 0 ? (
                             <div className="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl p-10 text-center space-y-3">
                                 <p className="text-lg font-bold text-slate-700 dark:text-slate-300">No flights match your filters</p>
-                                <p className="text-sm text-slate-500">Try adjusting your filter criteria.</p>
+                                <p className="text-sm text-slate-500">{allOffers.length} flights found — your filters are hiding all of them.</p>
+                                <button
+                                    onClick={resetFilters}
+                                    className="mt-1 inline-flex items-center gap-2 px-5 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium transition-colors"
+                                >
+                                    Reset all filters
+                                </button>
                             </div>
                         ) : (
                             <FlightResults

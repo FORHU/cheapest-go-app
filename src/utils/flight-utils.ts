@@ -89,7 +89,10 @@ export function normalizedToFlightOffer(nf: any, tripType?: FlightOffer['tripTyp
     }
 
     const segments: FlightSegmentDetail[] = (rawSegments ?? []).map((seg: any, idx: number) => ({
-        segmentIndex: idx,
+        // Preserve the provider's slice-based grouping (e.g. Duffel sets sliceIdx so both
+        // outbound segments share index 0 and return segments share index 1). Fall back to
+        // flat array index only when the raw segment has no grouping info.
+        segmentIndex: seg.segmentIndex ?? idx,
         airline: {
             code: (() => {
                 const raw = typeof seg.airline === 'object' ? seg.airline?.code : seg.airline;

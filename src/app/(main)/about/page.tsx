@@ -168,7 +168,7 @@ export default function AboutUsPage() {
                         Who runs CheapestGo
                     </h2>
                     <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed mb-6">
-                        CheapestGo is operated by FORHU Inc, headquartered at 30 Wall Street, 8th Floor,
+                        CheapestGo is operated by FORHU Inc., headquartered at 30 Wall Street, 8th Floor,
                         New York, NY 10005, United States. Questions, feedback, or partnership ideas are always
                         welcome.
                     </p>

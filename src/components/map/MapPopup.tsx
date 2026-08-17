@@ -92,16 +92,21 @@ const MapPopup = React.memo(function MapPopup({
         return all.filter(Boolean);
     }, [property]);
     const [imgIndex, setImgIndex] = useState(0);
+    const [imgLoading, setImgLoading] = useState(false);
     const [isImageHovered, setIsImageHovered] = useState(false);
     const [touchStartX, setTouchStartX] = useState<number | null>(null);
 
     // Reset index when property changes
-    React.useEffect(() => { setImgIndex(0); }, [property.id]);
+    React.useEffect(() => { setImgIndex(0); setImgLoading(false); }, [property.id]);
 
-    const prevImage = React.useCallback(() =>
-        setImgIndex(i => Math.max(0, i - 1)), []);
-    const nextImage = React.useCallback(() =>
-        setImgIndex(i => Math.min(images.length - 1, i + 1)), [images.length]);
+    const prevImage = React.useCallback(() => {
+        setImgLoading(true);
+        setImgIndex(i => Math.max(0, i - 1));
+    }, []);
+    const nextImage = React.useCallback(() => {
+        setImgLoading(true);
+        setImgIndex(i => Math.min(images.length - 1, i + 1));
+    }, [images.length]);
 
     const handleTouchStart = (e: React.TouchEvent) =>
         setTouchStartX(e.touches[0].clientX);
@@ -147,11 +152,24 @@ const MapPopup = React.memo(function MapPopup({
                 onTouchStart={handleTouchStart}
                 onTouchEnd={handleTouchEnd}
             >
+                {/* Skeleton shown while next image loads */}
+                {imgLoading && (
+                    <div className={`absolute inset-x-0 top-0 bg-slate-200 dark:bg-slate-700 animate-pulse ${isLandscape ? 'h-16' : 'h-24'}`}>
+                        <div className="absolute inset-0 flex items-center justify-center gap-1">
+                            <span className="w-1.5 h-1.5 rounded-full bg-slate-400/60 dark:bg-slate-500/60 animate-bounce" style={{ animationDelay: '0ms' }} />
+                            <span className="w-1.5 h-1.5 rounded-full bg-slate-400/60 dark:bg-slate-500/60 animate-bounce" style={{ animationDelay: '150ms' }} />
+                            <span className="w-1.5 h-1.5 rounded-full bg-slate-400/60 dark:bg-slate-500/60 animate-bounce" style={{ animationDelay: '300ms' }} />
+                        </div>
+                    </div>
+                )}
                 <img
+                    key={images[imgIndex]}
                     src={images[imgIndex] || undefined}
                     alt={property.name}
-                    className={`w-full object-cover transition-opacity duration-200 ${isLandscape ? 'h-16' : 'h-24'}`}
+                    className={`w-full object-cover transition-opacity duration-300 ${isLandscape ? 'h-16' : 'h-24'} ${imgLoading ? 'opacity-0' : 'opacity-100'}`}
                     loading="lazy"
+                    onLoad={() => setImgLoading(false)}
+                    onError={() => setImgLoading(false)}
                 />
                 <button
                     onClick={onClose}

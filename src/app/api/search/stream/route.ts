@@ -387,6 +387,14 @@ export async function POST(req: NextRequest) {
         body.checkout = fmt(checkout);
     }
 
+    // TGX/ETG return the total-stay price, not per-night. Compute nights so we
+    // can normalise all prices to per-night before streaming to the client.
+    const _checkin  = body.checkin  ?? body.checkIn  ?? '';
+    const _checkout = body.checkout ?? body.checkOut ?? '';
+    const nights = (_checkin && _checkout)
+        ? Math.max(1, Math.round((new Date(_checkout).getTime() - new Date(_checkin).getTime()) / 86_400_000))
+        : 1;
+
     const stream = new ReadableStream({
         async start(controller) {
             const send = (obj: unknown) => { try { controller.enqueue(ndjsonLine(obj)); } catch { /* client disconnected */ } };
@@ -530,7 +538,10 @@ export async function POST(req: NextRequest) {
                     return { data: [] as any[], allMappable: [] as any[] };
                 });
 
-                const tgxHotels: any[] = Array.isArray(tgxResult.data) ? tgxResult.data : [];
+                // Normalise total-stay prices → per-night. TGX and ETG both return
+                // the price for the full stay; the UI labels it "/night".
+                const tgxHotels: any[] = (Array.isArray(tgxResult.data) ? tgxResult.data : [])
+                    .map((h: any) => nights > 1 ? { ...h, price: Math.round((h.price ?? 0) / nights) } : h);
                 const tgxMappable: any[] = tgxResult.allMappable ?? [];
                 console.log(`[stream] phase2 TGX done: ${tgxHotels.length} hotels in ${Date.now() - p2Start}ms (total ${elapsed()})`);
 
