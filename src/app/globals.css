@@ -4,6 +4,8 @@
 @import "mapbox-gl/dist/mapbox-gl.css";
 
 @theme {
+  --breakpoint-xs: 480px;
+
   --font-sans: 'Inter',
     sans-serif;
   --font-display: 'Inter Tight',

@@ -1,6 +1,6 @@
 import { createAdminClient } from '@/utils/postgres/admin';
 import { stripe } from '@/lib/stripe/server';
-import { sendFlightCancellationEmail, sendFlightCancellationRefundEmail } from '@/lib/server/email';
+import { sendFlightCancellationEmail, sendFlightCancellationRefundEmail, sendHotelRefundEmail } from '@/lib/server/email';
 import { createNotification, logAdminAction } from './notify';
 import { RecoveryActionResult, MonitoringData } from '@/types/admin';
 
@@ -277,6 +277,21 @@ export async function adminCancelBooking(bookingId: string): Promise<RecoveryAct
             newStatus: 'cancelled',
             triggeredBy: 'admin',
         });
+
+        // Send cancellation/refund email for hotel bookings that have a guest email.
+        if (sourceTable === 'bookings' && booking.holder_email) {
+            sendHotelRefundEmail({
+                bookingId,
+                email: booking.holder_email,
+                guestName: `${booking.holder_first_name || ''} ${booking.holder_last_name || ''}`.trim() || 'Guest',
+                hotelName: booking.property_name || 'your hotel',
+                roomName: booking.room_name || '',
+                checkIn: booking.check_in || '',
+                checkOut: booking.check_out || '',
+                refundAmount: booking.total_price ?? 0,
+                currency: booking.currency || 'USD',
+            }).catch(e => console.error('[adminCancelBooking] Cancellation email failed:', e));
+        }
 
         return {
             success: true,
