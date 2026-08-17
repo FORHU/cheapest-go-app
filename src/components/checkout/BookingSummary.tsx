@@ -271,7 +271,7 @@ export function BookingSummary({
                             {isLoading ? (
                                 <span className="animate-pulse">{t('calculatingPerNight')}</span>
                             ) : (
-                                <>{symbol}{perNightPrice.toLocaleString()} {t('averagePerNight')}</>
+                                <>{symbol}{perNightPrice.toLocaleString(undefined, { maximumFractionDigits: 2 })} {t('averagePerNight')}</>
                             )}
                         </div>
                         {prebookId && (
@@ -307,7 +307,7 @@ export function BookingSummary({
                                     {isLoading ? (
                                         <span className="h-4 w-16 bg-slate-100 dark:bg-slate-800 rounded animate-pulse inline-block" />
                                     ) : (
-                                        <>{symbol}{roomPrice.toLocaleString()}</>
+                                        <>{symbol}{roomPrice.toLocaleString(undefined, { maximumFractionDigits: 2 })}</>
                                     )}
                                 </span>
                             </div>
@@ -319,7 +319,7 @@ export function BookingSummary({
                                             {isLoading ? (
                                                 <span className="h-4 w-12 bg-slate-100 dark:bg-slate-800 rounded animate-pulse inline-block" />
                                             ) : (
-                                                <>{symbol}{s.amount.toLocaleString()}</>
+                                                <>{symbol}{s.amount.toLocaleString(undefined, { maximumFractionDigits: 2 })}</>
                                             )}
                                         </span>
                                     </div>
@@ -331,7 +331,7 @@ export function BookingSummary({
                                         {isLoading ? (
                                             <span className="h-4 w-12 bg-slate-100 dark:bg-slate-800 rounded animate-pulse inline-block" />
                                         ) : (
-                                            <>{symbol}{taxes.toLocaleString()}</>
+                                            <>{symbol}{taxes.toLocaleString(undefined, { maximumFractionDigits: 2 })}</>
                                         )}
                                     </span>
                                 </div>
@@ -346,7 +346,7 @@ export function BookingSummary({
                                         <span>{t('promoCode', { code: appliedVoucher.code })}</span>
                                     </span>
                                     <span className="font-semibold text-emerald-600 dark:text-emerald-400">
-                                        -{symbol}{appliedVoucher.discountAmount.toLocaleString()}
+                                        -{symbol}{appliedVoucher.discountAmount.toLocaleString(undefined, { maximumFractionDigits: 2 })}
                                     </span>
                                 </div>
                             )}
@@ -361,15 +361,15 @@ export function BookingSummary({
                                 ) : appliedVoucher ? (
                                     <>
                                         <span className="text-[12px] line-through text-slate-400 dark:text-slate-500 mr-2 font-normal">
-                                            {symbol}{(chargedTotal ?? totalPrice ?? 0).toLocaleString()}
+                                            {symbol}{(chargedTotal ?? totalPrice ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                         </span>
                                         <span className="text-emerald-600 dark:text-emerald-400">
-                                            {symbol}{appliedVoucher.finalPrice.toLocaleString()}
+                                            {symbol}{appliedVoucher.finalPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                         </span>
                                     </>
                                 ) : (
                                     <span className="text-slate-900 dark:text-white">
-                                        {symbol}{(chargedTotal ?? totalPrice ?? 0).toLocaleString()}
+                                        {symbol}{(chargedTotal ?? totalPrice ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                     </span>
                                 )}
                             </div>
@@ -379,7 +379,7 @@ export function BookingSummary({
                         {appliedVoucher && (
                             <div className="text-center pt-1">
                                 <span className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 px-2.5 py-1 rounded-full">
-                                    {t('youSave', { amount: `${symbol}${appliedVoucher.discountAmount.toLocaleString()}` })}
+                                    {t('youSave', { amount: `${symbol}${appliedVoucher.discountAmount.toLocaleString(undefined, { maximumFractionDigits: 2 })}` })}
                                 </span>
                             </div>
                         )}

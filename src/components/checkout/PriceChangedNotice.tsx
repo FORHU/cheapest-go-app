@@ -42,20 +42,20 @@ export function PriceChangedNotice({ oldPrice, newPrice }: PriceChangedNoticePro
                 <div>
                     <p className="text-xs text-amber-700 dark:text-amber-400 mb-0.5">{t('originalPrice')}</p>
                     <p className="font-medium text-amber-900 dark:text-amber-200 line-through">
-                        {symbol}{oldPrice.toLocaleString()}
+                        {symbol}{oldPrice.toLocaleString(undefined, { maximumFractionDigits: 2 })}
                     </p>
                 </div>
                 <div className="text-amber-400">→</div>
                 <div>
                     <p className="text-xs text-amber-700 dark:text-amber-400 mb-0.5">{t('newPrice')}</p>
                     <p className="font-bold text-amber-900 dark:text-amber-200">
-                        {symbol}{newPrice.toLocaleString()}
+                        {symbol}{newPrice.toLocaleString(undefined, { maximumFractionDigits: 2 })}
                     </p>
                 </div>
             </div>
 
             <p className="text-xs text-amber-700 dark:text-amber-400 pl-8">
-                {t('refundNotice', { amount: `${symbol}${oldPrice.toLocaleString()}` })}
+                {t('refundNotice', { amount: `${symbol}${oldPrice.toLocaleString(undefined, { maximumFractionDigits: 2 })}` })}
             </p>
 
             <div className="pl-8">

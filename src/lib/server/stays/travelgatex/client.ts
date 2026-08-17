@@ -149,6 +149,27 @@ export function buildOccupancies(adults: number, children = 0, childrenAges: num
     return [{ paxes }];
 }
 
+// ─── Board code → human label ─────────────────────────────────────────────────
+
+const BOARD_CODE_LABELS: Record<string, string> = {
+    // Standard codes
+    RO: 'Room only',
+    BB: 'Bed & Breakfast',
+    HB: 'Half Board',
+    FB: 'Full Board',
+    AI: 'All Inclusive',
+    SC: 'Self Catering',
+    CB: 'Continental Breakfast',
+    AB: 'American Breakfast',
+    EB: 'English Breakfast',
+    // OTV (RateHawk) lowercase codes
+    nomeal:     'Room only',
+    breakfast:  'Breakfast included',
+    halfboard:  'Half Board',
+    fullboard:  'Full Board',
+    allinclusive: 'All Inclusive',
+};
+
 // ─── Option normalizer ────────────────────────────────────────────────────────
 
 export interface TgxOption {
@@ -194,6 +215,8 @@ export function normalizeOption(opt: TgxOption) {
                 total: [{ amount: opt.price.gross || opt.price.net, currency: opt.price.currency }],
                 currency: opt.price.currency,
             },
+            boardType: opt.boardCode,
+            boardName: BOARD_CODE_LABELS[opt.boardCode] ?? opt.boardCode ?? 'Room only',
             refundableTag: opt.cancelPolicy?.refundable ? 'REFUNDABLE' : 'NON_REFUNDABLE',
             cancellationPolicies: opt.cancelPolicy?.cancelPenalties || [],
             _tgx: {

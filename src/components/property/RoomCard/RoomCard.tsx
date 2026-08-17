@@ -30,6 +30,18 @@ function formatCancellationDeadline(deadline?: string): string | null {
     }
 }
 
+/** Compact date for rate picker rows — "Aug 22" */
+function formatCancelDeadlineShort(deadline?: string): string | null {
+    if (!deadline) return null;
+    try {
+        const date = new Date(deadline);
+        if (isNaN(date.getTime())) return null;
+        return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    } catch {
+        return null;
+    }
+}
+
 /** Rate option for a room */
 export interface RateOption {
     offerId: string;
@@ -39,6 +51,8 @@ export interface RateOption {
     boardName?: string;
     refundable: boolean;
     cancellationDeadline?: string;
+    /** 'Pay now' (MERCHANT) or 'Pay at hotel' (DIRECT) — only set when known */
+    paymentType?: string;
 }
 
 export interface RoomCardProps {
@@ -355,9 +369,19 @@ export const RoomCard: React.FC<RoomCardProps> = ({
                                                 <div className="text-[10px] lg:text-sm font-medium text-slate-800 dark:text-slate-200 truncate">
                                                     {rate.boardName || t('roomOnly')}
                                                 </div>
-                                                <div className={`text-[8px] lg:text-[11px] font-medium leading-tight truncate ${rate.refundable ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'}`}>
-                                                    {rate.refundable ? t('freeCancellation') : t('nonRefundablePill')}
+                                                <div className={`text-[8px] lg:text-[11px] font-medium leading-tight ${rate.refundable ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'}`}>
+                                                    {rate.refundable
+                                                        ? rate.cancellationDeadline
+                                                            ? `Free cancel · ${formatCancelDeadlineShort(rate.cancellationDeadline) ?? ''}`
+                                                            : t('freeCancellation')
+                                                        : t('nonRefundablePill')
+                                                    }
                                                 </div>
+                                                {rate.paymentType && (
+                                                    <div className="text-[7px] lg:text-[10px] text-blue-500 dark:text-blue-400 font-medium leading-tight">
+                                                        {rate.paymentType}
+                                                    </div>
+                                                )}
                                             </div>
                                         </div>
                                         <div className="text-[10px] lg:text-sm font-bold text-slate-900 dark:text-white ml-2 text-right shrink-0 whitespace-nowrap">
@@ -371,15 +395,21 @@ export const RoomCard: React.FC<RoomCardProps> = ({
                     ) : (
                         <div className="bg-slate-50 dark:bg-slate-800/50 rounded-lg p-2 lg:p-2.5 border border-slate-100 dark:border-slate-700">
                             <div className="font-bold text-[10px] lg:text-sm text-slate-900 dark:text-white mb-0.5 lg:mb-1">
-                                {t('roomOnly')}
+                                {rateOptions[0]?.boardName || t('roomOnly')}
                             </div>
                             <div className="space-y-1">
-                                <div className="text-[9px] lg:text-xs text-slate-500 flex items-center gap-1.5">
-                                    <X size={10} className="text-slate-400" /> {t('noMeals')}
-                                </div>
+                                {rateOptions[0]?.boardType && rateOptions[0].boardType !== 'RO' ? null : (
+                                    <div className="text-[9px] lg:text-xs text-slate-500 flex items-center gap-1.5">
+                                        <X size={10} className="text-slate-400" /> {t('noMeals')}
+                                    </div>
+                                )}
                                 {displayRefundable ? (
                                     <div className="text-[9px] lg:text-xs text-emerald-600 font-medium flex items-center gap-1.5">
-                                        <Check size={10} /> {t('freeCancellation')}
+                                        <Check size={10} />
+                                        {rateOptions[0]?.cancellationDeadline
+                                            ? `Free cancel · ${formatCancelDeadlineShort(rateOptions[0].cancellationDeadline) ?? ''}`
+                                            : t('freeCancellation')
+                                        }
                                     </div>
                                 ) : (
                                     <div className="text-[9px] lg:text-xs text-amber-600 dark:text-amber-400 font-medium flex items-center gap-1.5">
@@ -387,6 +417,11 @@ export const RoomCard: React.FC<RoomCardProps> = ({
                                             i
                                         </div>
                                         {t('nonRefundablePill')}
+                                    </div>
+                                )}
+                                {rateOptions[0]?.paymentType && (
+                                    <div className="text-[9px] lg:text-xs text-blue-500 dark:text-blue-400 font-medium">
+                                        {rateOptions[0].paymentType}
                                     </div>
                                 )}
                             </div>

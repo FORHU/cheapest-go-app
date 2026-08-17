@@ -331,24 +331,36 @@ export async function POST(req: NextRequest) {
     else if (event.type === 'charge.refunded') {
         const charge = event.data.object as Stripe.Charge;
         const piId = typeof charge.payment_intent === 'string' ? charge.payment_intent : (charge.payment_intent as any)?.id;
-        
+
         if (piId) {
-            console.log(`[Stripe Webhook] Charge refunded for PI: ${piId}. Updating booking status.`);
-            const { data: updated, error: updateErr } = await supabase
+            console.log(`[Stripe Webhook] Charge refunded for PI: ${piId}. Syncing booking status.`);
+
+            // Hotel bookings (bookings table)
+            const { data: hotelUpdated, error: hotelErr } = await supabase
+                .from('bookings')
+                .update({ status: 'cancelled_refunded', updated_at: new Date().toISOString() })
+                .eq('payment_intent_id', piId)
+                .in('status', ['cancelled_refund_failed', 'cancelled'])
+                .select('booking_id');
+
+            if (hotelErr) {
+                console.error('[Stripe Webhook] Failed to update hotel booking to cancelled_refunded:', hotelErr.message);
+            } else if (hotelUpdated && hotelUpdated.length > 0) {
+                console.log(`[Stripe Webhook] Marked ${hotelUpdated.length} hotel booking(s) as cancelled_refunded:`, hotelUpdated.map((b: any) => b.booking_id));
+            }
+
+            // Flight bookings (flight_bookings table)
+            const { data: flightUpdated, error: flightErr } = await supabase
                 .from('flight_bookings')
-                .update({ 
-                    status: 'refunded',
-                    // Note: we don't overwrite refund_amount here because it might be partial,
-                    // and the cancel-booking route already set the expected amount.
-                })
+                .update({ status: 'refunded' })
                 .eq('payment_intent_id', piId)
                 .in('status', ['refund_pending', 'cancel_requested', 'confirmed', 'ticketed', 'booked', 'pnr_created', 'awaiting_ticket', 'cancel_failed'])
                 .select('id');
 
-            if (updateErr) {
-                console.error('[Stripe Webhook] Failed to update booking to refunded:', updateErr.message);
-            } else if (updated && updated.length > 0) {
-                console.log(`[Stripe Webhook] Successfully marked ${updated.length} booking(s) as refunded.`);
+            if (flightErr) {
+                console.error('[Stripe Webhook] Failed to update flight booking to refunded:', flightErr.message);
+            } else if (flightUpdated && flightUpdated.length > 0) {
+                console.log(`[Stripe Webhook] Marked ${flightUpdated.length} flight booking(s) as refunded.`);
             }
         }
     }

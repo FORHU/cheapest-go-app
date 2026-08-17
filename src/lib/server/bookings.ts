@@ -399,9 +399,13 @@ export async function confirmAndSaveTgxBooking(
     }
 
     if (params.paymentIntentId) {
-      stripe.paymentIntents.update(params.paymentIntentId, {
-        metadata: { bookingId },
-      }).catch(e => console.warn('[confirmAndSaveTgxBooking] PI metadata update failed (non-critical):', e.message));
+      try {
+        await stripe.paymentIntents.update(params.paymentIntentId, {
+          metadata: { bookingId },
+        });
+      } catch (e: any) {
+        console.warn('[confirmAndSaveTgxBooking] PI metadata update failed (non-critical):', e.message);
+      }
     }
 
     return {

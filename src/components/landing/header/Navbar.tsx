@@ -11,6 +11,7 @@ import SignInDropdown from '../../auth/SignInDropdown';
 import { useUserCurrency, useSearchActions } from '@/stores/searchStore';
 import NavLink from './Navlink';
 import { usePWAInstall } from '@/contexts/PWAInstallContext';
+import { useAuthStore } from '@/stores/authStore';
 
 /** Currency code → flag emoji (primary country for that currency) */
 const CURRENCY_FLAGS: Record<string, string> = {
@@ -32,6 +33,7 @@ const HeaderContent = () => {
   const userCurrency = useUserCurrency();
   const { setUserCurrency } = useSearchActions();
   const { isInstallable, isIOS, isInstalled, triggerInstall } = usePWAInstall();
+  const isLoggedIn = useAuthStore((s) => !!s.user);
   const showInstallButton = !isInstalled && (isInstallable || isIOS);
 
   const currencyFlag = CURRENCY_FLAGS[userCurrency] || '🌐';
@@ -82,6 +84,9 @@ const HeaderContent = () => {
           <nav className="flex items-center gap-1 sm:gap-2">
             {/* NavLinks (Hidden on very small mobile) */}
             <div className="hidden xs:flex items-center gap-2">
+              {isLoggedIn && (
+                <NavLink href="/trips" className="text-[10px] sm:text-xs">Trips</NavLink>
+              )}
               <NavLink href="#" className="text-[10px] sm:text-xs">Support</NavLink>
             </div>
 

@@ -181,13 +181,22 @@ export function createRateOption(roomType: RoomType): RateOption {
     // Pass roomType to check cancellationPolicies at the correct level (per LiteAPI docs)
     const refundable = hasFreeCancellation(roomType, roomType.rates);
     const rate = roomType.rates?.[0];
+    const tgxData = (rate as any)?._tgx;
 
-    // Get cancellation deadline - check roomType level first, then rate level
+    // Get cancellation deadline — check LiteAPI format first, then TGX cancelPenalties format
     const cancelDeadline = roomType.cancellationPolicies?.cancelPolicyInfos?.[0]?.cancelTime ||
                           roomType.cancellationPolicies?.cancelPolicyInfos?.[0]?.cancelDeadline ||
                           rate?.cancellationPolicies?.cancelPolicyInfos?.[0]?.cancelTime ||
                           rate?.cancellationPolicies?.cancelPolicyInfos?.[0]?.cancelDeadline ||
-                          rate?.cancellationPolicy?.cancelPolicyInfos?.[0]?.cancelDeadline;
+                          rate?.cancellationPolicy?.cancelPolicyInfos?.[0]?.cancelDeadline ||
+                          // TGX format: cancelPenalties[0].deadline
+                          tgxData?.cancelPolicy?.cancelPenalties?.[0]?.deadline;
+
+    // TGX payment type: MERCHANT = charged now, DIRECT = pay at hotel
+    const rawPaymentType = tgxData?.paymentType;
+    const paymentType = rawPaymentType === 'DIRECT' ? 'Pay at hotel'
+        : rawPaymentType === 'MERCHANT' ? 'Pay now'
+        : undefined;
 
     return {
         offerId: roomType.offerId || '',
@@ -196,7 +205,8 @@ export function createRateOption(roomType: RoomType): RateOption {
         boardType: rate?.boardType,
         boardName: rate?.boardName || 'Room only',
         refundable,
-        cancellationDeadline: cancelDeadline
+        cancellationDeadline: cancelDeadline,
+        paymentType,
     };
 }
 
@@ -253,7 +263,7 @@ export function groupRoomsByName(roomTypes: RoomType[]): GroupedRoom[] {
 
         const seen = new Set<string>();
         group.rateOptions = group.rateOptions.filter((rate) => {
-            const key = `${rate.price}|${rate.boardName || 'Room only'}|${rate.refundable}`;
+            const key = `${rate.price}|${rate.boardName || 'Room only'}|${rate.refundable}|${rate.paymentType || ''}|${rate.cancellationDeadline || ''}`;
             if (seen.has(key)) return false;
             seen.add(key);
             return true;

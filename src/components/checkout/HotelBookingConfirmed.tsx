@@ -148,7 +148,7 @@ export function HotelBookingConfirmed({
                     <div className="flex justify-between items-center">
                         <span className="text-[10px] lg:text-sm text-slate-500 dark:text-slate-400">{t('total')}</span>
                         <span className="text-[10px] lg:text-sm font-normal text-slate-900 dark:text-white">
-                            {symbol}{chargedTotal.toLocaleString()}
+                            {symbol}{chargedTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </span>
                     </div>
                 </motion.div>
