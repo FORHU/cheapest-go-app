@@ -44,10 +44,12 @@ export interface RateOption {
 export interface RoomCardProps {
     /** Room title/name */
     title: string;
-    /** Price per night (lowest rate) */
+    /** Total stay price (all nights combined, from TGX/LiteAPI) */
     price: number;
     /** Currency code */
     currency?: string;
+    /** Number of nights in the stay — used to compute per-night display price */
+    nights?: number;
     /** Maximum occupancy */
     maxOccupancy?: number;
     /** Bed type description */
@@ -177,6 +179,7 @@ export const RoomCard: React.FC<RoomCardProps> = ({
     title,
     price,
     currency = 'PHP',
+    nights = 1,
     maxOccupancy,
     bedType,
     roomSize,
@@ -224,12 +227,14 @@ export const RoomCard: React.FC<RoomCardProps> = ({
     const hasMultipleRates = rateOptions.length > 1;
     const selectedRate = rateOptions[selectedRateIdx];
 
+    const n = Math.max(1, nights);
     const basePriceConverted = mounted ? convertCurrency(price, sourceCurrency, targetCurrency) : price;
     const selectedRatePriceConverted = selectedRate
         ? (mounted ? convertCurrency(selectedRate.price, selectedRate.currency || sourceCurrency, targetCurrency) : selectedRate.price)
         : undefined;
 
-    const displayPrice = selectedRatePriceConverted ?? basePriceConverted;
+    // TGX/LiteAPI prices are total-stay amounts; divide by nights for per-night display.
+    const displayPrice = (selectedRatePriceConverted ?? basePriceConverted) / n;
     const currencySymbol = getCurrencySymbol(mounted ? targetCurrency : sourceCurrency);
     const displayRefundable = selectedRate?.refundable ?? freeCancellation;
     const displayOfferId = selectedRate?.offerId;
@@ -356,7 +361,7 @@ export const RoomCard: React.FC<RoomCardProps> = ({
                                             </div>
                                         </div>
                                         <div className="text-[10px] lg:text-sm font-bold text-slate-900 dark:text-white ml-2 text-right shrink-0 whitespace-nowrap">
-                                            {currencySymbol}{mounted ? convertCurrency(rate.price, rate.currency || sourceCurrency, targetCurrency).toLocaleString('en-US', { maximumFractionDigits: 0 }) : rate.price.toLocaleString('en-US', { maximumFractionDigits: 0 })}
+                                            {currencySymbol}{mounted ? (convertCurrency(rate.price, rate.currency || sourceCurrency, targetCurrency) / n).toLocaleString('en-US', { maximumFractionDigits: 0 }) : (rate.price / n).toLocaleString('en-US', { maximumFractionDigits: 0 })}
                                             <div className="text-[8px] text-slate-500 font-normal">{t('perNight')}</div>
                                         </div>
                                     </label>
@@ -424,7 +429,7 @@ export const RoomCard: React.FC<RoomCardProps> = ({
                         <span className="text-[12px] text-slate-500">{t('perNight')}</span>
                     </div>
                     <div className="text-[10px] text-slate-400 mt-2">
-                        {t('includesTaxes')}
+                        {t('includesTaxes', { nights: n })}
                     </div>
                 </div>
 

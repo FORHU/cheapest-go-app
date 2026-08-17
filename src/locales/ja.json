@@ -1881,7 +1881,7 @@
             "filterRefundable": "返金可能",
             "freeCancellation": "無料キャンセル",
             "freeCancellationTick": "✓ 無料キャンセル",
-            "includesTaxes": "（1泊1室・税込）",
+            "includesTaxes": "（{nights}泊1室・税込）",
             "noMeals": "食事なし",
             "noNonRefundableRooms": "返金不可の部屋はありません。",
             "noRefundableRooms": "返金可能な部屋はありません。",

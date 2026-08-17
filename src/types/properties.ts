@@ -58,6 +58,8 @@ export interface Property {
     priceLoading?: boolean;
     /** Duffel rate ID — required to create a quote/booking for Duffel-sourced hotels */
     rateId?: string;
+    /** Supplier offer token (e.g. "TGX:…") — passed to property page so it can restore the exact search rate */
+    offerId?: string;
     /** TravelgateX booking metadata — required for quote/book flow */
     _tgx?: {
         optionId: string;

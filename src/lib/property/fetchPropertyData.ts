@@ -131,6 +131,9 @@ export interface SearchParamsInput {
     nationality?: string;
     /** Duffel Stays rate ID — passed as URL param when navigating from search results */
     rateId?: string;
+    /** TGX offer token from map search — property page prepends this as the first bookable room */
+    mapPrice?: string | number;
+    mapCurrency?: string;
 }
 
 export interface FetchPropertyResult {
@@ -578,6 +581,39 @@ export async function fetchTGXPropertyData(
 
         const hotel = result?.data;
         if (!hotel?.name) return { property: null, fetchedDetails: null, preBookResult: null };
+
+        // If the user navigated from the map, restore the exact rate they saw so the
+        // property page opens with a bookable "Map Rate" at the map-advertised price.
+        const mapOfferId  = searchParams.offerId as string | undefined;
+        const mapPrice    = Number(searchParams.mapPrice);
+        const mapCurrency = (searchParams.mapCurrency as string) || 'USD';
+        if (mapOfferId?.startsWith('TGX:') && mapPrice > 0 && Array.isArray(hotel.roomTypes)) {
+            const token = mapOfferId.replace(/^TGX:/, '');
+            const mapRoomType = {
+                offerId:       mapOfferId,
+                roomName:      'Map Rate',
+                price:         mapPrice,
+                net:           mapPrice,
+                gross:         mapPrice,
+                currency:      mapCurrency,
+                refundable:    false,
+                refundableTag: 'NON_REFUNDABLE' as const,
+                cancelPolicy:  null,
+                rates: [{
+                    retailRate: {
+                        total:    [{ amount: mapPrice, currency: mapCurrency }],
+                        currency: mapCurrency,
+                    },
+                    refundableTag:        'NON_REFUNDABLE' as const,
+                    cancellationPolicies: [],
+                    _tgx: { token, id: token, boardCode: null, paymentType: 'MERCHANT', cancelPolicy: null },
+                }],
+            };
+            hotel.roomTypes = [
+                mapRoomType,
+                ...hotel.roomTypes.filter((r: any) => r.offerId !== mapOfferId),
+            ];
+        }
 
         const images: string[] = hotel.images || (hotel.thumbnailUrl ? [hotel.thumbnailUrl] : []);
         const property: PropertyData = {

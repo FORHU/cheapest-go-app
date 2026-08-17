@@ -1961,7 +1961,7 @@
             "filterRefundable": "Refundable",
             "freeCancellation": "Free cancellation",
             "freeCancellationTick": "✓ Free cancellation",
-            "includesTaxes": "(1 night, 1 Room incl. taxes)",
+            "includesTaxes": "({nights, plural, one {1 night} other {# nights}}, 1 Room incl. taxes)",
             "noMeals": "No meals included",
             "noNonRefundableRooms": "No non-refundable rooms available.",
             "noRefundableRooms": "No refundable rooms available.",

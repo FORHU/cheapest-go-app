@@ -1884,7 +1884,7 @@
             "filterRefundable": "可退款",
             "freeCancellation": "免费取消",
             "freeCancellationTick": "✓ 免费取消",
-            "includesTaxes": "（1晚1间，含税）",
+            "includesTaxes": "（{nights}晚1间，含税）",
             "noMeals": "不含餐食",
             "noNonRefundableRooms": "没有不可退款的房间。",
             "noRefundableRooms": "没有可退款的房间。",

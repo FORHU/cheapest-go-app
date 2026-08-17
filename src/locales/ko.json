@@ -2000,7 +2000,7 @@
             "filterRefundable": "환불 가능",
             "freeCancellation": "무료 취소",
             "freeCancellationTick": "✓ 무료 취소",
-            "includesTaxes": "(1박, 1실 세금 포함)",
+            "includesTaxes": "({nights}박, 1실 세금 포함)",
             "noMeals": "식사 미포함",
             "noNonRefundableRooms": "환불 불가 객실이 없습니다.",
             "noRefundableRooms": "환불 가능한 객실이 없습니다.",
