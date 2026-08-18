@@ -178,8 +178,6 @@ export function getRoomDisplayName(roomType: RoomType): string {
  */
 export function createRateOption(roomType: RoomType): RateOption {
     const priceInfo = extractRoomPrice(roomType.rates);
-    // Pass roomType to check cancellationPolicies at the correct level (per LiteAPI docs)
-    const refundable = hasFreeCancellation(roomType, roomType.rates);
     const rate = roomType.rates?.[0];
     const tgxData = (rate as any)?._tgx;
 
@@ -191,6 +189,17 @@ export function createRateOption(roomType: RoomType): RateOption {
                           rate?.cancellationPolicy?.cancelPolicyInfos?.[0]?.cancelDeadline ||
                           // TGX format: cancelPenalties[0].deadline
                           tgxData?.cancelPolicy?.cancelPenalties?.[0]?.deadline;
+
+    // For TGX rooms: OTV/RateHawk frequently returns cancelPolicy.refundable=false at search
+    // time even when a free cancellation window exists. Derive refundability from the deadline
+    // instead — if the first penalty deadline is in the future, free cancellation is available.
+    // When no deadline is present and refundable=false (unreliable from OTV), return null to
+    // signal "unknown" so the UI shows "Check at checkout" instead of "Non-Refundable".
+    const refundable: boolean | null = tgxData
+        ? (cancelDeadline
+            ? new Date(cancelDeadline) > new Date()
+            : tgxData?.cancelPolicy?.refundable === true ? true : null)
+        : hasFreeCancellation(roomType, roomType.rates);
 
     // TGX payment type: MERCHANT = charged now, DIRECT = pay at hotel
     const rawPaymentType = tgxData?.paymentType;

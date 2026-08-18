@@ -87,7 +87,6 @@ const HeaderContent = () => {
               {isLoggedIn && (
                 <NavLink href="/trips" className="text-[10px] sm:text-xs">Trips</NavLink>
               )}
-              <NavLink href="#" className="text-[10px] sm:text-xs">Support</NavLink>
             </div>
 
             {/* Install / Open App Button (Compact on mobile) */}

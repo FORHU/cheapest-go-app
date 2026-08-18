@@ -72,7 +72,16 @@ const RoomList: React.FC<RoomListProps> = ({ property, roomTypes, searchParams, 
 
     const targetCurrency = useUserCurrency();
 
-    const handleReserve = (roomTitle: string, price: number, roomCurrency?: string, offerId?: string) => {
+    const handleReserve = (
+        roomTitle: string,
+        price: number,
+        roomCurrency?: string,
+        offerId?: string,
+        refundable?: boolean | null,
+        cancellationDeadline?: string,
+        bedType?: string,
+        roomSize?: string,
+    ) => {
         const sourceCurrency = roomCurrency || searchParams?.currency || 'PHP';
 
         // price is the total-stay amount from TGX/LiteAPI; divide by nights so
@@ -86,7 +95,11 @@ const RoomList: React.FC<RoomListProps> = ({ property, roomTypes, searchParams, 
             offerId,
             title: roomTitle,
             price: convertedPrice,
-            currency: targetCurrency
+            currency: targetCurrency,
+            refundable,
+            cancellationDeadline,
+            bedType,
+            roomSize,
         });
         if (searchParams?.checkIn && searchParams?.checkOut) {
             setDates(new Date(searchParams.checkIn), new Date(searchParams.checkOut));
@@ -165,7 +178,11 @@ const RoomList: React.FC<RoomListProps> = ({ property, roomTypes, searchParams, 
                                         groupedRoom.roomName,
                                         selectedRate?.price || groupedRoom.lowestPrice,
                                         selectedRate?.currency || groupedRoom.currency,
-                                        offerId || lowestRate?.offerId
+                                        offerId || lowestRate?.offerId,
+                                        selectedRate?.refundable,
+                                        selectedRate?.cancellationDeadline,
+                                        groupedRoom.bedType,
+                                        groupedRoom.roomSize,
                                     );
                                 }}
                             />

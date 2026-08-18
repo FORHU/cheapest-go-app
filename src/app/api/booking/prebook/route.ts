@@ -166,52 +166,63 @@ export async function POST(req: Request) {
             console.log('[prebook/tgx] originalRoomName:', originalRoomName || '(none)', '| matched:', matchedRooms.length, '| candidates:', candidates.map(r => r.roomName || r.roomType).join(', ').substring(0, 120));
 
             // OTV needs a moment to propagate the freshly-searched option into its
-            // valuation cache. 3 s is more conservative than 1.5 s; avoids rate_not_found
-            // on options that were genuinely just fetched.
-            await new Promise(resolve => setTimeout(resolve, 3000));
+            // valuation cache before Quote will succeed. 1.5 s is usually enough;
+            // the parallel quoting below adds resilience against transient misses.
+            await new Promise(resolve => setTimeout(resolve, 1500));
 
-            // Try to quote each candidate until one succeeds.
-            // OTV sometimes marks a specific rate as "not found" in valuation even though
-            // it appeared in Search; trying subsequent rooms often yields a quotable option.
-            let optionQuote: any = null;
-            let quotedToken = firstOfferId.slice(4);
-            let successfulRoom = firstCandidate;
+            // Build a flat list of all (room, token) pairs to try, preferred room first.
+            // We quote ALL of them in parallel via Promise.any so the first winner resolves
+            // immediately — worst case is one quote RTT (~3-5 s) instead of N × RTT serially.
+            type QuoteWinner = { quote: any; token: string; room: any };
+            const quoteAttempts: Promise<QuoteWinner>[] = [];
 
             for (const room of candidates) {
                 const rOfferId: string = room?.offerId || '';
                 if (!rOfferId.startsWith('TGX:')) continue;
-                const rOptionId = rOfferId.slice(4);        // opt.id (canonical TGX id, per docs)
-                const rTgxId: string    = room?.rates?.[0]?._tgx?.id    || '';  // explicit id field
-                const rNativeToken: string = room?.rates?.[0]?._tgx?.token || '';  // OTV native token
-                // TGX docs: pass id from Search as optionRefId in Quote.
-                // Try all unique non-empty values, id first.
+                const rOptionId = rOfferId.slice(4);
+                const rTgxId: string       = room?.rates?.[0]?._tgx?.id    || '';
+                const rNativeToken: string = room?.rates?.[0]?._tgx?.token || '';
                 const tokensToTry = [...new Set([rOptionId, rTgxId, rNativeToken].filter(Boolean))];
 
                 for (const tok of tokensToTry) {
-                    console.log('[prebook/tgx] Quoting with token:', tok.substring(0, 80));
-                    try {
-                        const quoteResult = await quoteTravelgateX({ token: tok });
-                        optionQuote = quoteResult?.data;
-                        quotedToken = tok;
-                        successfulRoom = room;
-                        break;
-                    } catch (qErr: any) {
-                        console.warn('[prebook/tgx] Quote failed for token', tok.substring(0, 40), ':', qErr.message?.substring(0, 100));
-                    }
+                    quoteAttempts.push(
+                        quoteTravelgateX({ token: tok })
+                            .then((res) => {
+                                if (!res?.data) throw new Error('empty quote response');
+                                console.log('[prebook/tgx] Quote succeeded | token:', tok.substring(0, 60), '| room:', room?.roomName || room?.roomType);
+                                return { quote: res.data, token: tok, room };
+                            })
+                            .catch((err) => {
+                                console.warn('[prebook/tgx] Quote failed | token:', tok.substring(0, 40), ':', err?.message?.substring(0, 80));
+                                throw err;
+                            })
+                    );
                 }
-                if (optionQuote) break;
             }
 
-            if (!optionQuote) {
-                // All rooms and tokens failed Quote — OTV Valuation is not returning any
-                // available option for this hotel right now. Block checkout so the user is
-                // not charged for a booking that will fail at the Book step.
-                console.warn('[prebook/tgx] All Quote attempts failed for all rooms — blocking checkout');
+            if (quoteAttempts.length === 0) {
                 return Response.json(
                     { success: false, error: 'This room is currently unavailable for booking. Please try a different hotel or check back later.' },
                     { status: 409 }
                 );
             }
+
+            let winner: QuoteWinner | null = null;
+            try {
+                winner = await Promise.any(quoteAttempts);
+            } catch {
+                // AggregateError — every parallel attempt rejected
+            }
+
+            if (!winner) {
+                console.warn('[prebook/tgx] All parallel Quote attempts failed — blocking checkout');
+                return Response.json(
+                    { success: false, error: 'This room is currently unavailable for booking. Please try a different hotel or check back later.' },
+                    { status: 409 }
+                );
+            }
+
+            const { quote: optionQuote, token: quotedToken, room: successfulRoom } = winner;
 
             // Hard gate: only MERCHANT options can proceed to Stripe checkout.
             if (optionQuote.paymentType && optionQuote.paymentType !== 'MERCHANT') {

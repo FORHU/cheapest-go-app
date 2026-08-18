@@ -665,7 +665,7 @@ export function CheckoutContent() {
                     >
                         {t('continue')}
                     </button>
-                    <button onClick={() => router.back()} className="w-full text-center text-sm text-slate-500 hover:text-slate-700 dark:hover:text-slate-300">
+                    <button onClick={() => window.history.length > 1 ? router.back() : router.push('/')} className="w-full text-center text-sm text-slate-500 hover:text-slate-700 dark:hover:text-slate-300">
                         {t('goBack')}
                     </button>
                 </div>
@@ -873,8 +873,12 @@ export function CheckoutContent() {
                                 cancellationPolicies={priceData?.cancellationPolicies}
                                 sourceCurrency={priceData?.currency}
                                 appliedVoucher={appliedVoucher}
-                                isLoading={prebooking}
+                                isLoading={prebooking && !roomPrice}
                                 onDatesChange={handleDatesChange}
+                                refundable={selectedRoom?.refundable}
+                                cancellationDeadline={selectedRoom?.cancellationDeadline}
+                                bedType={selectedRoom?.bedType}
+                                roomSize={selectedRoom?.roomSize}
                             />
 
                             {/* Mobile-only Submit Button — only on form step */}

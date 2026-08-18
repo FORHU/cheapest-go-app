@@ -49,7 +49,7 @@ export interface RateOption {
     currency: string;
     boardType?: string;
     boardName?: string;
-    refundable: boolean;
+    refundable: boolean | null;
     cancellationDeadline?: string;
     /** 'Pay now' (MERCHANT) or 'Pay at hotel' (DIRECT) — only set when known */
     paymentType?: string;
@@ -71,7 +71,7 @@ export interface RoomCardProps {
     /** Room size */
     roomSize?: string;
     /** Whether free cancellation is available (for primary rate) */
-    freeCancellation?: boolean;
+    freeCancellation?: boolean | null;
     /** Room image URL */
     roomImage?: string;
     /** Room description */
@@ -250,7 +250,8 @@ export const RoomCard: React.FC<RoomCardProps> = ({
     // TGX/LiteAPI prices are total-stay amounts; divide by nights for per-night display.
     const displayPrice = (selectedRatePriceConverted ?? basePriceConverted) / n;
     const currencySymbol = getCurrencySymbol(mounted ? targetCurrency : sourceCurrency);
-    const displayRefundable = selectedRate?.refundable ?? freeCancellation;
+    const displayRefundable: boolean | null | undefined =
+        selectedRate !== undefined ? selectedRate.refundable : (freeCancellation ?? null);
     const displayOfferId = selectedRate?.offerId;
 
     return (
@@ -369,12 +370,14 @@ export const RoomCard: React.FC<RoomCardProps> = ({
                                                 <div className="text-[10px] lg:text-sm font-medium text-slate-800 dark:text-slate-200 truncate">
                                                     {rate.boardName || t('roomOnly')}
                                                 </div>
-                                                <div className={`text-[8px] lg:text-[11px] font-medium leading-tight ${rate.refundable ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'}`}>
-                                                    {rate.refundable
+                                                <div className={`text-[8px] lg:text-[11px] font-medium leading-tight ${rate.refundable === true ? 'text-emerald-600 dark:text-emerald-400' : rate.refundable === false ? 'text-amber-600 dark:text-amber-400' : 'text-slate-500 dark:text-slate-400'}`}>
+                                                    {rate.refundable === true
                                                         ? rate.cancellationDeadline
                                                             ? `Free cancel · ${formatCancelDeadlineShort(rate.cancellationDeadline) ?? ''}`
                                                             : t('freeCancellation')
-                                                        : t('nonRefundablePill')
+                                                        : rate.refundable === false
+                                                            ? t('nonRefundablePill')
+                                                            : 'Check at checkout'
                                                     }
                                                 </div>
                                                 {rate.paymentType && (
@@ -403,7 +406,7 @@ export const RoomCard: React.FC<RoomCardProps> = ({
                                         <X size={10} className="text-slate-400" /> {t('noMeals')}
                                     </div>
                                 )}
-                                {displayRefundable ? (
+                                {displayRefundable === true ? (
                                     <div className="text-[9px] lg:text-xs text-emerald-600 font-medium flex items-center gap-1.5">
                                         <Check size={10} />
                                         {rateOptions[0]?.cancellationDeadline
@@ -411,12 +414,19 @@ export const RoomCard: React.FC<RoomCardProps> = ({
                                             : t('freeCancellation')
                                         }
                                     </div>
-                                ) : (
+                                ) : displayRefundable === false ? (
                                     <div className="text-[9px] lg:text-xs text-amber-600 dark:text-amber-400 font-medium flex items-center gap-1.5">
                                         <div className="w-2.5 h-2.5 rounded-full border border-amber-400 dark:border-amber-500 flex items-center justify-center text-[7px] text-amber-500">
                                             i
                                         </div>
                                         {t('nonRefundablePill')}
+                                    </div>
+                                ) : (
+                                    <div className="text-[9px] lg:text-xs text-slate-400 dark:text-slate-500 font-medium flex items-center gap-1.5">
+                                        <div className="w-2.5 h-2.5 rounded-full border border-slate-300 dark:border-slate-600 flex items-center justify-center text-[7px] text-slate-400">
+                                            ?
+                                        </div>
+                                        Check at checkout
                                     </div>
                                 )}
                                 {rateOptions[0]?.paymentType && (

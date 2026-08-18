@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { useTranslations } from 'next-intl';
-import { Calendar, Star, MapPin, Tag, Pencil, Check, X, ChevronDown } from 'lucide-react';
+import { Calendar, Star, MapPin, Tag, Pencil, Check, X, ChevronDown, CheckCircle, AlertCircle, HelpCircle } from 'lucide-react';
 import { CancellationPolicySection } from './CancellationPolicySection';
 import { CancellationPolicy } from '@/services/booking.service';
 import type { AppliedVoucher } from '@/types/voucher';
@@ -44,6 +44,11 @@ interface BookingSummaryProps {
     appliedVoucher?: AppliedVoucher | null;
     isLoading?: boolean;
     onDatesChange?: (checkIn: Date, checkOut: Date) => void;
+    /** Fallback refundability from room selection (shown while prebook is loading) */
+    refundable?: boolean | null;
+    cancellationDeadline?: string;
+    bedType?: string;
+    roomSize?: string;
 }
 
 function formatDate(date: Date): string {
@@ -94,6 +99,10 @@ export function BookingSummary({
     appliedVoucher,
     isLoading,
     onDatesChange,
+    refundable,
+    cancellationDeadline,
+    bedType,
+    roomSize,
 }: BookingSummaryProps) {
     const t = useTranslations('checkout.summary');
     const rt = useTranslations('checkout.rating');
@@ -247,7 +256,7 @@ export function BookingSummary({
                         </div>
                     )}
 
-                    {/* Cancellation Policy */}
+                    {/* Cancellation Policy — prebook result takes priority, fallback to room selection */}
                     {cancellationPolicies?.cancelPolicyInfos?.length ? (
                         <div className="border-t border-dashed border-slate-200 dark:border-white/10 pt-4">
                             <CancellationPolicySection
@@ -255,6 +264,29 @@ export function BookingSummary({
                                 totalPrice={totalPrice}
                                 currency={sourceCurrency}
                             />
+                        </div>
+                    ) : refundable !== undefined ? (
+                        <div className="border-t border-dashed border-slate-200 dark:border-white/10 pt-3 lg:pt-4">
+                            {refundable === true ? (
+                                <div className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400 text-[11px] lg:text-xs font-medium">
+                                    <CheckCircle size={13} />
+                                    <span>
+                                        {cancellationDeadline
+                                            ? `Free cancellation before ${new Date(cancellationDeadline).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`
+                                            : 'Free cancellation'}
+                                    </span>
+                                </div>
+                            ) : refundable === false ? (
+                                <div className="flex items-center gap-1.5 text-amber-600 dark:text-amber-400 text-[11px] lg:text-xs font-medium">
+                                    <AlertCircle size={13} />
+                                    <span>Non-refundable</span>
+                                </div>
+                            ) : (
+                                <div className="flex items-center gap-1.5 text-slate-400 dark:text-slate-500 text-[11px] lg:text-xs font-medium">
+                                    <HelpCircle size={13} />
+                                    <span>Cancellation policy confirmed at checkout</span>
+                                </div>
+                            )}
                         </div>
                     ) : null}
 
@@ -264,7 +296,12 @@ export function BookingSummary({
                         <div className="text-[11px] lg:text-sm font-bold text-slate-900 dark:text-white mb-1">
                             {roomTitle}
                         </div>
-                        <div className="text-[10px] lg:text-xs text-slate-500 dark:text-slate-400">
+                        {(bedType || roomSize) && (
+                            <div className="text-[10px] lg:text-xs text-slate-400 dark:text-slate-500 mt-0.5">
+                                {[bedType, roomSize].filter(Boolean).join(' · ')}
+                            </div>
+                        )}
+                        <div className="text-[10px] lg:text-xs text-slate-500 dark:text-slate-400 mt-0.5">
                             {adults} {t(adults === 1 ? 'adult' : 'adults')}{children > 0 ? ` + ${children} ${t(children === 1 ? 'child' : 'children')}` : ''}
                         </div>
                         <div className="text-[10px] lg:text-xs text-slate-500 dark:text-slate-400 mt-0.5 lg:mt-1">

@@ -30,12 +30,10 @@ export function usePrebook(options?: UsePrebookOptions) {
       children?: number;
       roomName?: string;
     }) => {
-      const result = await apiFetch<PrebookResponse>('/api/booking/prebook', params);
-
+      const result = await apiFetch<PrebookResponse>('/api/booking/prebook', params as unknown as Record<string, unknown>);
       if (!result.success) {
         throw new Error(result.error || 'Prebook failed');
       }
-
       return result.data;
     },
     onSuccess: (data, variables) => {

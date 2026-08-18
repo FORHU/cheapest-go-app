@@ -158,11 +158,6 @@ const HeaderContent = () => {
               </Link>
             )}
 
-            {/* Support (Hidden on very small mobile) */}
-            <a href="#" className="hidden xs:flex items-center gap-1 px-2 py-1 text-[10px] sm:text-xs font-normal text-slate-700 dark:text-slate-300 hover:bg-black/5 dark:hover:bg-white/5 rounded-lg transition-colors shrink-0">
-              {t('support')}
-            </a>
-
             {/* Theme Toggle */}
             <button
               onClick={toggleTheme}
