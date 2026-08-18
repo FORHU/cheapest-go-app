@@ -3,6 +3,9 @@ import { safeError } from '@/lib/server/safe-error';
 import { prebookSchema } from '@/lib/schemas/booking';
 import { quoteTravelgateX } from '@/lib/server/travelgatex';
 import { rateLimit } from '@/lib/server/rate-limit';
+import { createAdminClient } from '@/utils/postgres/admin';
+import { PREBOOK_QUOTE_TTL_MS } from '@/lib/pricing';
+import { convertCurrencyStrict, refreshExchangeRates } from '@/lib/currency';
 
 export const maxDuration = 60;
 
@@ -237,24 +240,93 @@ export async function POST(req: Request) {
             // TGX docs: Book's optionRefId should be the identifier from the Quote step (optionQuote.optionRefId),
             // NOT the search token. Fall back to the quoted token if the field is absent.
             const bookToken = optionQuote.optionRefId || quotedToken;
+            const prebookId = `TGX:${bookToken}`;
             const bookedRoomName: string = successfulRoom?.roomName || successfulRoom?.roomType || '';
             const roomSubstituted = originalRoomName
                 ? !roomNamesMatch(bookedRoomName, originalRoomName)
                 : false;
             console.log('[prebook/tgx] Quote succeeded | quoted with:', quotedToken.substring(0, 40), '| book token:', bookToken.substring(0, 60), '| room:', bookedRoomName, '| substituted:', roomSubstituted, '| price:', optionQuote.price?.gross || optionQuote.price?.net, optionQuote.price?.currency);
 
+            // ── Persist the supplier-quoted price ──
+            //
+            // create-payment charges from this row, not from the client's payload, so
+            // the Stripe base and the FX conversion both come from TGX rather than the
+            // browser. Failing to record it must not fail the prebook: create-payment
+            // rejects an unknown prebookId, so the worst case is a retry.
+            const quotedNet = optionQuote.price?.net || 0;
+            const quotedGross = optionQuote.price?.gross || optionQuote.price?.net || 0;
+            const quotedCurrency = optionQuote.price?.currency || currency;
+
+            try {
+                const db = createAdminClient();
+                await db.from('hotel_prebook_quotes').upsert({
+                    prebook_id: prebookId,
+                    net: quotedNet,
+                    gross: quotedGross,
+                    currency: quotedCurrency.toUpperCase(),
+                    room_name: bookedRoomName || null,
+                    check_in: checkIn,
+                    check_out: checkOut,
+                    expires_at: new Date(Date.now() + PREBOOK_QUOTE_TTL_MS).toISOString(),
+                }, { onConflict: 'prebook_id' });
+            } catch (persistErr) {
+                console.error('[prebook/tgx] Failed to persist quote — checkout will reject this prebookId:', persistErr);
+            }
+
+            // ── Server-side display conversion ──
+            //
+            // The browser renders prices, it does not compute them (CONTEXT.md → Display
+            // Currency). Converting here means the figure the customer sees is produced by
+            // the same code and the same rates that create-payment will charge from, so the
+            // two cannot drift into a price-changed prompt.
+            //
+            // The supplier's own price stays authoritative and is what gets persisted — this
+            // block is presentation only.
+            const quotedSubtotal = optionQuote.price?.net || 0;
+            const quotedTaxes = (optionQuote.price?.gross || 0) - (optionQuote.price?.net || 0);
+            const quotedTotal = optionQuote.price?.gross || optionQuote.price?.net || 0;
+            const displayCurrency = currency.toUpperCase();
+
+            let display: object | null = null;
+            if (quotedCurrency.toUpperCase() === displayCurrency) {
+                display = {
+                    currency: displayCurrency,
+                    subtotal: quotedSubtotal,
+                    taxes: quotedTaxes,
+                    total: quotedTotal,
+                    converted: false,
+                };
+            } else {
+                try {
+                    await refreshExchangeRates();
+                    const to = (n: number) =>
+                        Math.round(convertCurrencyStrict(n, quotedCurrency, displayCurrency) * 100) / 100;
+                    display = {
+                        currency: displayCurrency,
+                        subtotal: to(quotedSubtotal),
+                        taxes: to(quotedTaxes),
+                        total: to(quotedTotal),
+                        converted: true,
+                    };
+                } catch (fxErr: any) {
+                    // Leave display absent; the client falls back to showing supplier currency.
+                    console.warn('[prebook/tgx] display conversion unavailable:', fxErr?.message);
+                }
+            }
+
             return Response.json({
                 success: true,
                 data: {
-                    prebookId: `TGX:${bookToken}`,
+                    prebookId,
                     provider: 'travelgatex',
                     price: {
-                        subtotal: optionQuote.price?.net || 0,
-                        taxes: (optionQuote.price?.gross || 0) - (optionQuote.price?.net || 0),
-                        total: optionQuote.price?.gross || optionQuote.price?.net || 0,
+                        subtotal: quotedSubtotal,
+                        taxes: quotedTaxes,
+                        total: quotedTotal,
                     },
                     surcharges: optionQuote.surcharges || [],
                     currency: optionQuote.price?.currency || currency,
+                    ...(display ? { display } : {}),
                     cancellationPolicies: normalizeTgxCancelPolicy(optionQuote.cancelPolicy),
                     boardCode: optionQuote.boardCode || '',
                     rooms: optionQuote.rooms || [],

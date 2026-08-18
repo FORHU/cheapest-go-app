@@ -53,13 +53,13 @@ export default function AdminDashboardClient({ data }: AdminDashboardClientProps
         const rows: string[][] = [
             ['Section', 'Metric', 'Value'],
             ['Overview', 'Total Bookings', String(liveStats.totalBookings)],
-            ['Overview', 'Revenue', formatCurrency(convertCurrency(liveStats.revenue, 'PHP', activeCurrency), activeCurrency)],
+            ['Overview', 'Revenue', formatCurrency(convertCurrency(liveStats.revenue, 'USD', activeCurrency), activeCurrency)],
             ['Overview', 'Pending Bookings', String(liveStats.pendingBookings)],
             ['Overview', 'Cancelled Bookings', String(liveStats.cancelledBookings)],
-            ['Financial', 'Daily Revenue', formatCurrency(convertCurrency(revenueStats.dailyRevenue, 'PHP', activeCurrency), activeCurrency)],
-            ['Financial', 'Monthly Revenue', formatCurrency(convertCurrency(revenueStats.monthlyRevenue, 'PHP', activeCurrency), activeCurrency)],
-            ['Financial', 'Total Markup', formatCurrency(convertCurrency(revenueStats.totalMarkup, 'PHP', activeCurrency), activeCurrency)],
-            ['Financial', 'Total Profit', formatCurrency(convertCurrency(revenueStats.totalProfit, 'PHP', activeCurrency), activeCurrency)],
+            ['Financial', 'Daily Revenue', formatCurrency(convertCurrency(revenueStats.dailyRevenue, 'USD', activeCurrency), activeCurrency)],
+            ['Financial', 'Monthly Revenue', formatCurrency(convertCurrency(revenueStats.monthlyRevenue, 'USD', activeCurrency), activeCurrency)],
+            ['Financial', 'Total Markup', formatCurrency(convertCurrency(revenueStats.totalMarkup, 'USD', activeCurrency), activeCurrency)],
+            ['Financial', 'Total Profit', formatCurrency(convertCurrency(revenueStats.totalProfit, 'USD', activeCurrency), activeCurrency)],
             [],
             ['Recent Transactions', 'Customer', 'Action', 'Amount', 'Type'],
             ...recentActivity.slice(0, 6).map(a => ['Transaction', a.user, a.action, a.amount, a.type]),
@@ -83,16 +83,16 @@ export default function AdminDashboardClient({ data }: AdminDashboardClientProps
 
     const topMetrics = useMemo(() => [
         { label: 'Total Bookings', value: liveStats.totalBookings.toString(), trend: 'Successful orders', icon: Briefcase, variant: 'blue' as const },
-        { label: 'Revenue', value: formatCurrency(convertCurrency(liveStats.revenue, 'PHP', activeCurrency), activeCurrency), trend: 'Gross volume', icon: DollarSign, variant: 'white' as const },
+        { label: 'Revenue', value: formatCurrency(convertCurrency(liveStats.revenue, 'USD', activeCurrency), activeCurrency), trend: 'Gross volume', icon: DollarSign, variant: 'white' as const },
         { label: 'Pending Bookings', value: liveStats.pendingBookings.toString(), trend: 'Awaiting sync', icon: Clock, variant: 'white' as const },
         { label: 'Cancelled', value: liveStats.cancelledBookings.toString(), trend: 'Voided orders', icon: XCircle, variant: 'white' as const },
     ], [liveStats, activeCurrency]);
 
     const financialMetrics = useMemo(() => [
-        { label: 'Daily Revenue', value: formatCurrency(convertCurrency(revenueStats.dailyRevenue, 'PHP', activeCurrency), activeCurrency), trend: 'Today', icon: DollarSign, variant: 'white' as const },
-        { label: 'Monthly Revenue', value: formatCurrency(convertCurrency(revenueStats.monthlyRevenue, 'PHP', activeCurrency), activeCurrency), trend: 'This month', icon: TrendingUp, variant: 'white' as const },
-        { label: 'Total Markup', value: formatCurrency(convertCurrency(revenueStats.totalMarkup, 'PHP', activeCurrency), activeCurrency), trend: 'Gross gain', icon: Banknote, variant: 'amber' as const },
-        { label: 'Total Profit', value: formatCurrency(convertCurrency(revenueStats.totalProfit, 'PHP', activeCurrency), activeCurrency), trend: 'Total net', icon: Coins, variant: 'emerald' as const },
+        { label: 'Daily Revenue', value: formatCurrency(convertCurrency(revenueStats.dailyRevenue, 'USD', activeCurrency), activeCurrency), trend: 'Today', icon: DollarSign, variant: 'white' as const },
+        { label: 'Monthly Revenue', value: formatCurrency(convertCurrency(revenueStats.monthlyRevenue, 'USD', activeCurrency), activeCurrency), trend: 'This month', icon: TrendingUp, variant: 'white' as const },
+        { label: 'Total Markup', value: formatCurrency(convertCurrency(revenueStats.totalMarkup, 'USD', activeCurrency), activeCurrency), trend: 'Gross gain', icon: Banknote, variant: 'amber' as const },
+        { label: 'Total Profit', value: formatCurrency(convertCurrency(revenueStats.totalProfit, 'USD', activeCurrency), activeCurrency), trend: 'Total net', icon: Coins, variant: 'emerald' as const },
     ], [revenueStats, activeCurrency]);
 
     return (

@@ -160,7 +160,7 @@ export function CustomersClient({ initialCustomers, defaultCurrency = 'USD' }: C
                 />
                 <StatCard
                     title="Total Spend"
-                    value={formatCurrency(convertCurrency(totalSpend, 'PHP', defaultCurrency), defaultCurrency)}
+                    value={formatCurrency(convertCurrency(totalSpend, 'USD', defaultCurrency), defaultCurrency)}
                     icon={DollarSign}
                     variant="blue"
                 />
@@ -307,7 +307,7 @@ export function CustomersClient({ initialCustomers, defaultCurrency = 'USD' }: C
                                         </Badge>
                                     </TableCell>
                                     <TableCell className="py-5 font-black text-slate-900 dark:text-white">
-                                        {formatCurrency(convertCurrency(customer.totalSpend, 'PHP', defaultCurrency), defaultCurrency)}
+                                        {formatCurrency(convertCurrency(customer.totalSpend, 'USD', defaultCurrency), defaultCurrency)}
                                     </TableCell>
                                     <TableCell className="py-5">
                                         <div className="flex items-center gap-1 text-slate-900 dark:text-white font-bold">
@@ -487,7 +487,7 @@ export function CustomersClient({ initialCustomers, defaultCurrency = 'USD' }: C
                                 </div>
                                 <div className="p-4 rounded-xl bg-slate-50 dark:bg-white/5">
                                     <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Total Spend</p>
-                                    <p className="text-lg font-black text-slate-900 dark:text-white">{formatCurrency(convertCurrency(selectedCustomer.totalSpend, 'PHP', defaultCurrency), defaultCurrency)}</p>
+                                    <p className="text-lg font-black text-slate-900 dark:text-white">{formatCurrency(convertCurrency(selectedCustomer.totalSpend, 'USD', defaultCurrency), defaultCurrency)}</p>
                                 </div>
                                 <div className="p-4 rounded-xl bg-slate-50 dark:bg-white/5">
                                     <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Total Bookings</p>

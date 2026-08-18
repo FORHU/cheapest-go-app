@@ -4,6 +4,8 @@ import { stripe } from '@/lib/stripe/server';
 import { rateLimit } from '@/lib/server/rate-limit';
 import { checkCsrf } from '@/lib/server/csrf';
 import { applyMarkup, toStripeAmount, HOTEL_MARKUP, BUNDLE_MARKUP } from '@/lib/pricing';
+import { convertCurrencyStrict, refreshExchangeRates } from '@/lib/currency';
+import { resolveHotelChargeBase } from '@/lib/bookings/hotelChargeBase';
 import { createAdminClient } from '@/utils/postgres/admin';
 import { env } from '@/utils/env';
 import { createHash } from 'crypto';
@@ -111,13 +113,51 @@ export async function POST(req: NextRequest) {
             }
         }
 
+        // ── Establish the trusted base price ──
+        //
+        // `amount` arrives already converted by the browser (usePricingCalculation),
+        // so it is both client-controlled and dependent on client-side FX. Charge from
+        // the supplier quote recorded at prebook time instead, and convert it here.
+        const svcDb = createAdminClient();
+        const { data: quote } = await svcDb
+            .from('hotel_prebook_quotes')
+            .select('gross, currency, expires_at')
+            .eq('prebook_id', prebookId)
+            .maybeSingle();
+
+        // Rates must be live before the conversion inside resolveHotelChargeBase.
+        if (quote && String(quote.currency).toUpperCase() !== currency.toUpperCase()) {
+            await refreshExchangeRates();
+        }
+
+        const resolved = resolveHotelChargeBase(quote, amount, currency, convertCurrencyStrict);
+
+        if (!resolved.ok) {
+            console.warn(
+                `[create-payment] Rejected (${resolved.code}) prebookId=${prebookId.slice(0, 40)} ` +
+                `client=${amount} ${currency.toUpperCase()}` +
+                (resolved.serverPrice !== undefined ? ` server=${resolved.serverPrice}` : '')
+            );
+            return NextResponse.json({
+                success: false,
+                error: resolved.message,
+                code: resolved.code,
+                ...(resolved.serverPrice !== undefined
+                    ? { serverPrice: resolved.serverPrice, currency: resolved.currency }
+                    : {}),
+            }, { status: resolved.code === 'FX_UNAVAILABLE' ? 503 : 409 });
+        }
+
+        const baseInChargeCurrency = resolved.base;
+
         // Apply platform markup — bundle rate (4%) when paired with a flight, standalone rate (5%) otherwise.
         // See src/lib/pricing.ts for full strategy documentation.
+        // Markup is applied to the server-derived base, never to the client's figure.
         const markupRate = bundleFlightId ? BUNDLE_MARKUP : HOTEL_MARKUP;
-        const pricing = applyMarkup(amount, markupRate);
+        const pricing = applyMarkup(baseInChargeCurrency, markupRate);
         const stripeAmount = toStripeAmount(pricing.chargedPrice, currency);
 
-        console.log(`[create-payment] Hotel pricing: original=${pricing.originalPrice} ${currency}, charged=${pricing.chargedPrice}, markup=${(markupRate * 100).toFixed(0)}%${bundleFlightId ? ' (bundle)' : ' (standalone)'}`);
+        console.log(`[create-payment] Hotel pricing: quote=${resolved.quoteGross} ${resolved.quoteCurrency} → base=${pricing.originalPrice} ${currency}, charged=${pricing.chargedPrice}, markup=${(markupRate * 100).toFixed(0)}%${bundleFlightId ? ' (bundle)' : ' (standalone)'}`);
 
         // Create Stripe PaymentIntent (automatic capture — refund on LiteAPI failure)
         // Include amount+currency in the hash so a price change (prebook refresh) produces a new key

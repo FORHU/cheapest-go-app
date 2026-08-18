@@ -20,7 +20,9 @@ const CURRENCY_FLAGS: Record<string, string> = {
   KRW: '🇰🇷',
 };
 
-const CURRENCIES = ['KRW', 'USD', 'PHP'] as const;
+import { CHARGE_CURRENCY_CODES } from '@/lib/constants/currencies';
+
+const CURRENCIES = CHARGE_CURRENCY_CODES;
 
 const HeaderContent = () => {
   const { theme, toggleTheme } = useTheme();

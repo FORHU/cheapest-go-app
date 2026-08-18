@@ -21,6 +21,7 @@ import { createAdminClient } from '@/utils/postgres/admin';
 import { getSqlAdmin } from '@/lib/db/postgres';
 import { stripe } from '@/lib/stripe/server';
 import { mystiflyRequest } from '@/lib/server/flights/mystifly-client';
+import { lockFx } from '@/lib/bookings/fxLock';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 120;
@@ -234,23 +235,34 @@ async function handleMystifly(ctx: {
 
     const bookingStatus = 'pnr_created';
 
-    // ── Insert flight_bookings ───────────────────────────────────────────
+    const fx = await lockFx(confirmedPrice, confirmedCurrency);
+
+    // total_price/currency are written alongside confirmed_* so reporting sees this row:
+    // get_revenue_stats reads COALESCE(charged_price, total_price), which was null here.
     const bookingRows = await sql`
         INSERT INTO flight_bookings (
             user_id, session_id, provider, pnr, status,
+            total_price, currency,
             payment_intent_id, confirmed_price, confirmed_currency,
-            raw_provider_response, source_brand
+            raw_provider_response, source_brand,
+            usd_amount, fx_rate, fx_captured_at, fx_source
         ) VALUES (
             ${session.user_id},
             ${sessionId},
             ${'mystifly'},
             ${pnr},
             ${bookingStatus},
+            ${confirmedPrice},
+            ${confirmedCurrency},
             ${paymentIntentId || null},
             ${confirmedPrice},
             ${confirmedCurrency},
             ${JSON.stringify(bookData)},
-            ${process.env.NEXT_PUBLIC_BRAND_NAME ?? 'CheapestGo'}
+            ${process.env.NEXT_PUBLIC_BRAND_NAME ?? 'CheapestGo'},
+            ${fx.usd_amount},
+            ${fx.fx_rate},
+            ${fx.fx_captured_at},
+            ${fx.fx_source}
         )
         RETURNING id
     `;
@@ -324,6 +336,10 @@ async function handleDuffel(ctx: {
     const tripType: string = flight.tripType ?? flight.trip_type ?? 'one-way';
     const bookingStatus = preOrderTicketed ? 'ticketed' : 'awaiting_ticket';
 
+    // Capture the rate this booking was taken at, for USD reporting. Never throws —
+    // the money has already moved, so an FX outage must not block the row.
+    const fx = await lockFx(confirmedPrice, confirmedCurrency);
+
     // ── Insert flight_bookings ───────────────────────────────────────────
     const bookingRows = await sql`
         INSERT INTO flight_bookings (
@@ -332,7 +348,8 @@ async function handleDuffel(ctx: {
             payment_intent_id, confirmed_price, confirmed_currency,
             charged_price, supplier_cost,
             duffel_order_id, ticket_numbers,
-            fare_policy, trip_type, source_brand
+            fare_policy, trip_type, source_brand,
+            usd_amount, fx_rate, fx_captured_at, fx_source
         ) VALUES (
             ${session.user_id},
             ${sessionId},
@@ -350,7 +367,11 @@ async function handleDuffel(ctx: {
             ${JSON.stringify(preOrderTickets)},
             ${farePolicy ? sql.json(farePolicy) : null},
             ${tripType},
-            ${process.env.NEXT_PUBLIC_BRAND_NAME ?? 'CheapestGo'}
+            ${process.env.NEXT_PUBLIC_BRAND_NAME ?? 'CheapestGo'},
+            ${fx.usd_amount},
+            ${fx.fx_rate},
+            ${fx.fx_captured_at},
+            ${fx.fx_source}
         )
         RETURNING id
     `;

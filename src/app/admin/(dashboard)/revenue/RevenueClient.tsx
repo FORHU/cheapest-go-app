@@ -201,21 +201,21 @@ export function RevenueClient({ data, searchParams, defaultCurrency }: RevenueCl
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                 <StatCard
                     title="Total Revenue"
-                    value={formatCurrency(convertCurrency(stats.totalRevenue, 'PHP', activeCurrency), activeCurrency)}
+                    value={formatCurrency(convertCurrency(stats.totalRevenue, 'USD', activeCurrency), activeCurrency)}
                     icon={DollarSign}
                     variant="white"
                     trend="Gross Bookings Value"
                 />
                 <StatCard
                     title="Net Profit"
-                    value={formatCurrency(convertCurrency(stats.totalProfitAfterFees, 'PHP', activeCurrency), activeCurrency)}
+                    value={formatCurrency(convertCurrency(stats.totalProfitAfterFees, 'USD', activeCurrency), activeCurrency)}
                     icon={TrendingUp}
                     variant="white"
                     trend={`${((stats.totalProfitAfterFees / (stats.totalRevenue || 1)) * 100).toFixed(1)}% margin`}
                 />
                 <StatCard
                     title="Stripe Fees"
-                    value={formatCurrency(convertCurrency(stats.totalStripeFees, 'PHP', activeCurrency), activeCurrency)}
+                    value={formatCurrency(convertCurrency(stats.totalStripeFees, 'USD', activeCurrency), activeCurrency)}
                     icon={DollarSign}
                     variant="white"
                     trend="Processing Costs"
