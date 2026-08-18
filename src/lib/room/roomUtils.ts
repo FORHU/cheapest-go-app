@@ -157,12 +157,25 @@ export function hasFreeCancellation(roomType?: RoomType | null, rates?: RoomRate
 }
 
 /**
- * Normalize room name by removing rate-specific suffixes
+ * Normalize room name by removing rate-specific suffixes and TGX parenthetical qualifiers.
+ * TGX names follow "Base type (qualifier1, qualifier2)" — everything in parens is a variant,
+ * not a room identity. Stripping them lets same-type rooms collapse into one card.
  */
 export function normalizeRoomName(roomName: string): string {
     return roomName
         .replace(/\s*-\s*(non[- ]?refundable|refundable|room only|breakfast included).*$/i, '')
+        .replace(/\s*\(.*$/, '')   // strip everything from first ( onward (TGX variant qualifiers)
         .trim();
+}
+
+/**
+ * Extract the variant label from a TGX room name — the parenthetical portion.
+ * "Standard Single room (smoking, extra bed not included)" → "smoking, extra bed not included"
+ * Returns undefined if no parenthetical found.
+ */
+export function extractRoomVariantLabel(roomName: string): string | undefined {
+    const matches = [...roomName.matchAll(/\(([^)]+)\)/g)].map(m => m[1].trim());
+    return matches.length > 0 ? matches.join(', ') : undefined;
 }
 
 /**
@@ -180,6 +193,8 @@ export function createRateOption(roomType: RoomType): RateOption {
     const priceInfo = extractRoomPrice(roomType.rates);
     const rate = roomType.rates?.[0];
     const tgxData = (rate as any)?._tgx;
+    const rawName = getRoomDisplayName(roomType);
+    const variantLabel = extractRoomVariantLabel(rawName);
 
     // Get cancellation deadline — check LiteAPI format first, then TGX cancelPenalties format
     const cancelDeadline = roomType.cancellationPolicies?.cancelPolicyInfos?.[0]?.cancelTime ||
@@ -216,6 +231,7 @@ export function createRateOption(roomType: RoomType): RateOption {
         refundable,
         cancellationDeadline: cancelDeadline,
         paymentType,
+        variantLabel,
     };
 }
 
@@ -270,9 +286,12 @@ export function groupRoomsByName(roomTypes: RoomType[]): GroupedRoom[] {
     groups.forEach((group) => {
         group.rateOptions.sort((a, b) => a.price - b.price);
 
+        // Dedup: same board + same cancel category → keep cheapest only.
+        // Rates are price-sorted, so the first kept is always the lowest price.
         const seen = new Set<string>();
         group.rateOptions = group.rateOptions.filter((rate) => {
-            const key = `${rate.price}|${rate.boardName || 'Room only'}|${rate.refundable}|${rate.paymentType || ''}|${rate.cancellationDeadline || ''}`;
+            const cancelCat = rate.refundable === true ? 'free' : rate.refundable === false ? 'nrfn' : 'check';
+            const key = `${rate.boardName || 'Room only'}|${cancelCat}|${rate.variantLabel || ''}`;
             if (seen.has(key)) return false;
             seen.add(key);
             return true;
