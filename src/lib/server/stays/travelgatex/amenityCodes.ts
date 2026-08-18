@@ -117,6 +117,93 @@ const OTV_AMENITY_MAP: Record<string, string> = {
     GIFT_SHOP: 'Gift Shop',
     NEWSSTAND: 'Newsstand',
     MULTILINGUAL_STAFF: 'Multilingual Staff',
+
+    // Spanish TGX supplier codes
+    AIRE_ACONDICIONADO: 'Air Conditioning',
+    ASCENSOR: 'Elevator',
+    ZONAS_PARA_FUMADORES: 'Smoking Areas',
+    ALOJAMIENTO_PARA_NO_FUMADORES: 'Non-Smoking Rooms',
+    GUARDIA_DE_SEGURIDAD: 'Security Guard',
+    TELEVISION_EN_EL_VESTIBULO: 'Lobby TV',
+    PISCINA: 'Swimming Pool',
+    PISCINA_CUBIERTA: 'Indoor Pool',
+    PISCINA_AL_AIRE_LIBRE: 'Outdoor Pool',
+    RESTAURANTE: 'Restaurant',
+    GIMNASIO: 'Fitness Center',
+    RECEPCION_24_HORAS: '24/7 Reception',
+    ESTACIONAMIENTO: 'Parking',
+    APARCAMIENTO: 'Parking',
+    APARCAMIENTO_GRATUITO: 'Free Parking',
+    SERVICIO_DE_HABITACIONES: 'Room Service',
+    JARDIN: 'Garden',
+    TERRAZA: 'Terrace',
+    CAJA_FUERTE: 'In-Room Safe',
+    CAJA_DE_SEGURIDAD: 'In-Room Safe',
+    SERVICIO_DE_LAVANDERIA: 'Laundry Service',
+    LAVANDERIA: 'Laundry Service',
+    DESAYUNO_INCLUIDO: 'Breakfast Included',
+    DESAYUNO_DISPONIBLE: 'Breakfast Available',
+    COCINA: 'Kitchen',
+    COCINA_AMERICANA: 'Kitchenette',
+    INTERNET_GRATUITO: 'Free WiFi',
+    INTERNET_DE_ALTA_VELOCIDAD: 'High-Speed Internet',
+    CALEFACCION: 'Heating',
+    BALCON: 'Balcony',
+    VISTA_AL_MAR: 'Sea View',
+    VISTA_A_LA_CIUDAD: 'City View',
+    VISTA_AL_JARDIN: 'Garden View',
+    ACCESO_A_LA_PLAYA: 'Beach Access',
+    PLAYA_PRIVADA: 'Private Beach',
+    CONSERJERIA: 'Concierge',
+    TRASLADO_AL_AEROPUERTO: 'Airport Transfer',
+    ALMACENAMIENTO_DE_EQUIPAJE: 'Luggage Storage',
+    ACCESO_PARA_SILLA_DE_RUEDAS: 'Wheelchair Accessible',
+    INSTALACIONES_PARA_DISCAPACITADOS: 'Disabled Facilities',
+    INSTALACIONES_DE_NEGOCIOS: 'Business Center',
+    SALA_DE_REUNIONES: 'Meeting Rooms',
+    LIMPIEZA_DIARIA: 'Daily Housekeeping',
+    TV_PANTALLA_PLANA: 'Flat-Screen TV',
+    MASCOTAS_PERMITIDAS: 'Pet Friendly',
+    HABITACIONES_FAMILIARES: 'Family Rooms',
+    BARBACOA: 'BBQ Facilities',
+    TERRAZA_DE_SOL: 'Sun Terrace',
+
+    // German TGX supplier codes
+    AUFZUG: 'Elevator',
+    KLIMAANLAGE: 'Air Conditioning',
+    KOSTENLOSER_PARKPLATZ: 'Free Parking',
+    PARKPLATZ: 'Parking',
+    SCHWIMMBAD: 'Swimming Pool',
+    FITNESSCENTER: 'Fitness Center',
+    FRUHSTUCK: 'Breakfast Available',
+    FRUHSTUCK_INKLUSIVE: 'Breakfast Included',
+    ZIMMERSERVICE: 'Room Service',
+    KUCHE: 'Kitchen',
+    KUCHENZEILE: 'Kitchenette',
+    KOSTENLOSES_WLAN: 'Free WiFi',
+    WLAN: 'WiFi',
+    HEIZUNG: 'Heating',
+    BALKON: 'Balcony',
+    MEERBLICK: 'Sea View',
+    STADTBLICK: 'City View',
+    GARTENBLICK: 'Garden View',
+    NICHTRAUCHERZIMMER: 'Non-Smoking Rooms',
+    HAUSTIERE_ERLAUBT: 'Pet Friendly',
+    FAMILIENZIMMER: 'Family Rooms',
+    GEPACK_AUFBEWAHRUNG: 'Luggage Storage',
+    FLUGHAFENTRANSFER: 'Airport Transfer',
+    ROLLSTUHLGERECHT: 'Wheelchair Accessible',
+    BEHINDERTENGERECHTE_EINRICHTUNGEN: 'Disabled Facilities',
+    BUSINESSCENTER: 'Business Center',
+    KONFERENZRAUME: 'Meeting Rooms',
+    TAGLICHE_ZIMMERREINIGUNG: 'Daily Housekeeping',
+    WASCHESERVICE: 'Laundry Service',
+    GARTENANLAGE: 'Garden',
+    SONNENTERRASSE: 'Sun Terrace',
+    STRANDLAGE: 'Beach Access',
+    PRIVATSTRAND: 'Private Beach',
+    CONCIERGE_SERVICE: 'Concierge',
+    GELDAUTOMAT: 'ATM on Site',
 };
 
 /** Convert an OTV amenity code to a display label. Unknown codes are prettified. */
@@ -129,4 +216,19 @@ export function otvCodeToLabel(code: string | null | undefined): string {
         .replace(/[_-]+/g, ' ')
         .toLowerCase()
         .replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+/**
+ * Re-translates already-stored amenity display strings that were prettified
+ * from non-English codes (e.g. "Aire Acondicionado" → "Air Conditioning").
+ * Reverses the fallback prettifier: strips accents, uppercases, replaces spaces
+ * with underscores, then looks up in the map.
+ */
+export function normalizeStoredAmenity(label: string): string {
+    if (!label) return label;
+    const asCode = label
+        .normalize('NFD').replace(/[̀-ͯ]/g, '') // strip accents
+        .toUpperCase()
+        .replace(/\s+/g, '_');
+    return OTV_AMENITY_MAP[asCode] || label;
 }

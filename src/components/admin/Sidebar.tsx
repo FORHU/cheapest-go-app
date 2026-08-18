@@ -27,6 +27,7 @@ import {
     Bookmark,
     Smartphone,
     CreditCard,
+    Timer,
 } from 'lucide-react';
 
 const INTEGRATIONS_PAGE_SIZE = 3;
@@ -77,6 +78,7 @@ const navGroups: NavGroup[] = [
             { label: 'Analytics',     href: '/admin/analytics',      icon: BarChart3 },
             { label: 'Price Alerts',  href: '/admin/price-alerts',   icon: Bell },
             { label: 'Reviews',       href: '/admin/reviews',        icon: Star },
+            { label: 'Cron Jobs',     href: '/admin/crons',          icon: Timer },
             { label: 'Settings',      href: '/admin/settings',       icon: Settings },
         ],
     },

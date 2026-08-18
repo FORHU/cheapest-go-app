@@ -86,16 +86,22 @@ export function formatSearchDate(dateInput: string | undefined): string {
     }
 }
 
+function utcDateStr(offsetDays = 0): string {
+    const d = new Date();
+    d.setUTCDate(d.getUTCDate() + offsetDays);
+    return d.toISOString().split('T')[0];
+}
+
 // Parse raw check-in date from search params
 export function parseCheckInDate(params: SearchParams): string {
     return (typeof params.checkIn === 'string' && params.checkIn ? params.checkIn :
-        typeof params.checkin === 'string' && params.checkin ? params.checkin : "2026-06-01");
+        typeof params.checkin === 'string' && params.checkin ? params.checkin : utcDateStr(0));
 }
 
 // Parse raw check-out date from search params
 export function parseCheckOutDate(params: SearchParams): string {
     return (typeof params.checkOut === 'string' && params.checkOut ? params.checkOut :
-        typeof params.checkout === 'string' && params.checkout ? params.checkout : "2026-06-05");
+        typeof params.checkout === 'string' && params.checkout ? params.checkout : utcDateStr(1));
 }
 
 // Parse filter parameters
@@ -225,8 +231,8 @@ export function buildSearchQueryParams(params: SearchParams): SearchQueryParams 
         ? params.currency : 'KRW';
 
     const queryParams: SearchQueryParams = {
-        checkin: formatSearchDate(rawCheckin) || "2026-06-01",
-        checkout: formatSearchDate(rawCheckout) || "2026-06-05",
+        checkin: formatSearchDate(rawCheckin) || utcDateStr(0),
+        checkout: formatSearchDate(rawCheckout) || utcDateStr(1),
         adults: Number(params.adults) || 2,
         children: Number(params.children) || 0,
         childrenAges,

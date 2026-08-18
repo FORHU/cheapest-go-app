@@ -125,6 +125,11 @@ export function AdminLayoutClient({
                 title: 'Airlines Directory',
                 subtitle: 'Manage global carrier integrations and alliances',
                 image: 'https://images.unsplash.com/photo-1436491865332-7a61a109cc05?auto=format&fit=crop&q=80&w=1600'
+            },
+            crons: {
+                title: 'Cron Jobs',
+                subtitle: 'Manually trigger and monitor scheduled background jobs',
+                image: 'https://images.unsplash.com/photo-1518432031352-d6fc5c10da5a?auto=format&fit=crop&q=80&w=1600'
             }
         };
         return configs[path] || configs.overview;

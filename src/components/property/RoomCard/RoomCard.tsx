@@ -381,9 +381,9 @@ export const RoomCard: React.FC<RoomCardProps> = ({
                                                     }
                                                 </div>
                                                 {rate.paymentType && (
-                                                    <div className="text-[7px] lg:text-[10px] text-blue-500 dark:text-blue-400 font-medium leading-tight">
+                                                    <span className="inline-block mt-0.5 text-[7px] lg:text-[9px] font-medium px-1.5 py-0.5 rounded-full bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400 leading-tight">
                                                         {rate.paymentType}
-                                                    </div>
+                                                    </span>
                                                 )}
                                             </div>
                                         </div>
@@ -430,9 +430,9 @@ export const RoomCard: React.FC<RoomCardProps> = ({
                                     </div>
                                 )}
                                 {rateOptions[0]?.paymentType && (
-                                    <div className="text-[9px] lg:text-xs text-blue-500 dark:text-blue-400 font-medium">
+                                    <span className="inline-block mt-0.5 text-[8px] lg:text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400">
                                         {rateOptions[0].paymentType}
-                                    </div>
+                                    </span>
                                 )}
                             </div>
                         </div>

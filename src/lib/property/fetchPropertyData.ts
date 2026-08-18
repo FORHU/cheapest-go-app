@@ -6,7 +6,7 @@
 import { cache } from 'react';
 import { preBook } from '@/utils/postgres/functions';
 import { runTgxSearch, fetchTgxHotelContent } from '@/lib/server/stays/travelgatex/search';
-import { otvCodeToLabel } from '@/lib/server/stays/travelgatex/amenityCodes';
+import { otvCodeToLabel, normalizeStoredAmenity } from '@/lib/server/stays/travelgatex/amenityCodes';
 import { type Property } from '@/types';
 import { getSqlAdmin } from '@/lib/db/postgres';
 export type PropertyData = Property;
@@ -39,7 +39,7 @@ export async function fetchHotelStatic(id: string): Promise<StaticHotelResult | 
         const address = r.address || '';
         const rawAmenities = Array.isArray(r.amenities) ? r.amenities : [];
         const amenities: string[] = rawAmenities.flatMap((a: any) =>
-            typeof a === 'string' ? [a] : a?.code ? [otvCodeToLabel(a.code)] : []
+            typeof a === 'string' ? [normalizeStoredAmenity(a)] : a?.code ? [otvCodeToLabel(a.code)] : []
         ).filter(Boolean);
         let description = (r.description as string) || '';
         let finalAmenities = amenities;
@@ -634,7 +634,7 @@ export async function fetchTGXPropertyData(
                 const raw = hotel.hotelFacilities || hotel.amenities || [];
                 if (!Array.isArray(raw)) return [];
                 return raw.flatMap((a: any) =>
-                    typeof a === 'string' ? [a] : a?.code ? [otvCodeToLabel(a.code)] : []
+                    typeof a === 'string' ? [normalizeStoredAmenity(a)] : a?.code ? [otvCodeToLabel(a.code)] : []
                 ).filter(Boolean);
             })(),
             badges:      [],

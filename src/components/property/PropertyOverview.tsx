@@ -133,16 +133,20 @@ const PropertyOverview: React.FC<PropertyOverviewProps> = ({ property, reviewsDa
                     <div id="amenities-section" className="w-full scroll-mt-24 lg:scroll-mt-36">
                         <h3 className="text-[11px] lg:text-sm font-bold text-slate-900 dark:text-white mb-1 lg:mb-4">{t('popularAmenities')}</h3>
                         <div className="grid grid-cols-2 lg:grid-cols-3 gap-1 lg:gap-4">
-                            {(isAmenitiesExpanded ? property.amenities : property.amenities.slice(0, 6)).map((amenity, i) => (
+                            {(isAmenitiesExpanded ? property.amenities : property.amenities.slice(0, 6)).map((amenity, i) => {
+                                const amenityLabels = t.raw('amenityLabels') as Record<string, string>;
+                                const label = amenityLabels[amenity] ?? amenity;
+                                return (
                                 <div key={i} className="flex items-center text-[10px] lg:text-sm text-slate-700 dark:text-slate-300">
                                     {amenity === 'Free WiFi' && <Wifi size={11} className="mr-1 lg:mr-3 shrink-0" />}
                                     {amenity === 'Parking' && <Car size={11} className="mr-1 lg:mr-3 shrink-0" />}
                                     {amenity === 'Restaurant' && <Utensils size={11} className="mr-1 lg:mr-3 shrink-0" />}
                                     {amenity === 'Breakfast included' && <Coffee size={11} className="mr-1 lg:mr-3 shrink-0" />}
                                     {!['Free WiFi', 'Parking', 'Restaurant', 'Breakfast included'].includes(amenity) && <Check size={11} className="mr-1 lg:mr-3 text-emerald-500 shrink-0" />}
-                                    {amenity}
+                                    {label}
                                 </div>
-                            ))}
+                                );
+                            })}
                         </div>
                         {property.amenities.length > 6 && (
                             <button

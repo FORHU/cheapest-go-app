@@ -24,7 +24,13 @@ export async function getAdminSettings(): Promise<Record<string, any>> {
 
     const settings: Record<string, any> = {};
     for (const row of data || []) {
-        settings[row.key] = row.value;
+        let v = row.value;
+        // postgres.js sql.unsafe() returns jsonb string values as their raw JSON
+        // representation (e.g. '"USD"' instead of 'USD'). Unwrap if needed.
+        if (typeof v === 'string' && v.length >= 2 && v[0] === '"' && v[v.length - 1] === '"') {
+            try { const p = JSON.parse(v); if (typeof p === 'string') v = p; } catch { /* keep */ }
+        }
+        settings[row.key] = v;
     }
     return settings;
 }

@@ -16,7 +16,8 @@ export async function searchDuffel(params: FlightSearchParams): Promise<FlightRe
     }
 
     // ── Fix 1: Reject past dates before hitting Duffel (422 prevention) ────────
-    // Duffel requires departure_date >= today. Use UTC date to avoid timezone drift.
+    // Duffel requires departure_date >= today. Server runs UTC; departureDate is
+    // the user's local YYYY-MM-DD (emitted correctly by useFlightSearch).
     const todayUTC = new Date().toISOString().slice(0, 10);
     if (params.departureDate < todayUTC) {
         console.warn(`[Duffel] Skipping — departure_date ${params.departureDate} is in the past (today: ${todayUTC})`);
