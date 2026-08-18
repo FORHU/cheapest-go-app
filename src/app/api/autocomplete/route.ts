@@ -5,7 +5,7 @@ import { z } from 'zod';
 
 const autocompleteSchema = z.object({
     query: z.string().max(100),
-    locale: z.enum(['en', 'ko', 'cn', 'ja']).optional(),
+    locale: z.enum(['en', 'ko', 'zh', 'ja']).optional(),
 });
 
 export async function POST(req: Request) {

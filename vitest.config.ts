@@ -8,6 +8,7 @@ export default defineConfig({
     environment: 'happy-dom',
     setupFiles: ['./vitest.setup.ts'],
     globals: true,
+    exclude: ['node_modules', '.next', '.claude/worktrees/**'],
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json', 'html'],

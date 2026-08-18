@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { hreflangAlternates } from '@/lib/seo/hreflang';
 import {
     PlaneTakeoff,
     BedDouble,
@@ -15,6 +16,7 @@ export const metadata: Metadata = {
     title: 'About Us — CheapestGo',
     description:
         'CheapestGo is a modern online travel agency helping travelers across Southeast Asia find and book flights, hotels, and packages at transparent prices.',
+    alternates: hreflangAlternates('/about'),
 };
 
 const whatWeDo = [

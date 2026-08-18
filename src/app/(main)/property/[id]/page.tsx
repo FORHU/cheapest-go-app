@@ -169,12 +169,12 @@ export default async function PropertyPage({
             addressLocality: city,
             addressCountry: country,
         },
-        ...(property.rating && {
+        ...(property.rating && property.reviews && property.reviews > 0 && {
             aggregateRating: {
                 '@type': 'AggregateRating',
                 ratingValue: property.rating,
                 bestRating: 10,
-                reviewCount: property.reviews || 1,
+                reviewCount: property.reviews,
             },
         }),
         ...(property.coordinates?.lat && {

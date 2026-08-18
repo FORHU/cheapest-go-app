@@ -36,11 +36,11 @@ const LOCALE_FLAGS: Record<string, string> = {
 const LOCALE_NAMES: Record<string, string> = {
   en: 'EN',
   ko: '한국어',
-  cn: '中文',
+  zh: '中文',
   ja: '日本語',
 };
 
-const LOCALES = ['en', 'ko', 'cn', 'ja'] as const;
+const LOCALES = ['en', 'ko', 'zh', 'ja'] as const;
 type Locale = (typeof LOCALES)[number];
 
 const LOCALE_COOKIE = 'locale';

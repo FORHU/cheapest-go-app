@@ -1,9 +1,14 @@
+import type { Metadata } from 'next';
 import { createAdminClient } from '@/utils/postgres/admin';
 import { notFound, redirect } from 'next/navigation';
 import { getAuthenticatedUser } from '@/lib/server/auth';
 import { formatCurrency, calculateNights } from '@/lib/utils';
 import { PrintButton } from './PrintButton';
 import { getTranslations } from 'next-intl/server';
+
+export const metadata: Metadata = {
+    robots: { index: false, follow: false },
+};
 
 interface PageProps {
     params: Promise<{ id: string }>;

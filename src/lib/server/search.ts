@@ -61,12 +61,12 @@ function matchCountries(query: string): AutocompleteResult[] {
         }));
 }
 
-/** Map an app locale ('en'|'ko'|'cn'|'ja') to a Mapbox geocoder language code. */
+/** Map an app locale ('en'|'ko'|'zh'|'ja') to a Mapbox geocoder language code. */
 function mapboxLang(locale?: string): string {
     switch (locale) {
         case 'ko': return 'ko';
         case 'ja': return 'ja';
-        case 'cn': return 'zh-Hans'; // app uses 'cn'; Mapbox expects a BCP-47 tag
+        case 'zh': return 'zh-Hans';
         default:   return 'en';
     }
 }

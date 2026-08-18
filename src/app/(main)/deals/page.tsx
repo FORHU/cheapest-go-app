@@ -1,5 +1,6 @@
 import React from 'react';
 import { Metadata } from 'next';
+import { hreflangAlternates } from '@/lib/seo/hreflang';
 
 export const revalidate = 1800; // regenerate every 30 minutes
 import { Sparkles } from 'lucide-react';
@@ -14,6 +15,7 @@ export async function generateMetadata(): Promise<Metadata> {
     return {
         title: t('pageTitle') + ' | CheapestGo',
         description: t('pageSubtitle'),
+        alternates: hreflangAlternates('/deals'),
     };
 }
 
