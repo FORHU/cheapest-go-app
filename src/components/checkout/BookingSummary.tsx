@@ -284,7 +284,7 @@ export function BookingSummary({
                             ) : (
                                 <div className="flex items-center gap-1.5 text-slate-400 dark:text-slate-500 text-[11px] lg:text-xs font-medium">
                                     <HelpCircle size={13} />
-                                    <span>Cancellation policy confirmed at checkout</span>
+                                    <span>{prebookId ? 'Cancellation terms not provided by supplier — confirm with property before booking' : 'Fetching cancellation policy…'}</span>
                                 </div>
                             )}
                         </div>

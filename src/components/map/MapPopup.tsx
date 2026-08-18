@@ -6,7 +6,7 @@ import { X, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { formatCurrency } from '@/lib/utils';
 import { convertCurrency } from '@/lib/currency';
-import { useUserCurrency } from '@/stores/searchStore';
+import { useUserCurrency, useDates } from '@/stores/searchStore';
 import { useIsMobile } from '@/hooks/useMediaQuery';
 import type { MappableProperty } from './types';
 
@@ -70,18 +70,23 @@ const MapPopup = React.memo(function MapPopup({
     const isLandscape = useIsLandscapeMobile();
     const isMobile = useIsMobile();
     const targetCurrency = useUserCurrency();
+    const { checkIn, checkOut } = useDates();
     const t = useTranslations('hotels.card');
     const rt = useTranslations('hotels.ratings');
     const sourceCurrency = property.currency || 'USD';
+    const nights = React.useMemo(() => {
+        if (!checkIn || !checkOut) return 1;
+        return Math.max(1, Math.round((checkOut.getTime() - checkIn.getTime()) / 86400000));
+    }, [checkIn, checkOut]);
     const displayPrice = React.useMemo(
-        () => convertCurrency(property.price, sourceCurrency, targetCurrency),
-        [property.price, sourceCurrency, targetCurrency]
+        () => convertCurrency(property.price, sourceCurrency, targetCurrency) / nights,
+        [property.price, sourceCurrency, targetCurrency, nights]
     );
     const displayOriginalPrice = React.useMemo(
         () => property.originalPrice
-            ? convertCurrency(property.originalPrice, sourceCurrency, targetCurrency)
+            ? convertCurrency(property.originalPrice, sourceCurrency, targetCurrency) / nights
             : undefined,
-        [property.originalPrice, sourceCurrency, targetCurrency]
+        [property.originalPrice, sourceCurrency, targetCurrency, nights]
     );
     const rating = property.rating ?? 0;
 
@@ -238,6 +243,7 @@ const MapPopup = React.memo(function MapPopup({
                                 {formatCurrency(displayOriginalPrice, targetCurrency)}
                             </span>
                         )}
+                        <span className="text-[8px] text-slate-400 mr-0.5">{t('from')}</span>
                         <span className={`font-bold text-blue-600 dark:text-blue-400 ${isLandscape ? 'text-xs' : 'text-[13px]'}`}>
                             {formatCurrency(displayPrice, targetCurrency)}
                         </span>

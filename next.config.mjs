@@ -19,9 +19,7 @@ const nextConfig = {
   eslint: { ignoreDuringBuilds: true },
   typescript: { ignoreBuildErrors: true },
   serverExternalPackages: ['@node-rs/argon2', 'postgres'],
-  experimental: {
-    nodeMiddleware: true,
-  },
+  experimental: {},
   turbopack: {
     root: __dirname,
     resolveAlias: {

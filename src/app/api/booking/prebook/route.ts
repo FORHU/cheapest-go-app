@@ -314,6 +314,15 @@ export async function POST(req: Request) {
                 }
             }
 
+            // Quote is most authoritative; fall back to fresh-search result when
+            // the Quote response omits cancelPenalties (common for cheap OTV rates).
+            const effectiveCancelPolicy =
+                optionQuote.cancelPolicy?.cancelPenalties?.length
+                    ? optionQuote.cancelPolicy
+                    : (successfulRoom?.cancelPolicy?.cancelPenalties?.length
+                        ? successfulRoom.cancelPolicy
+                        : optionQuote.cancelPolicy);
+
             return Response.json({
                 success: true,
                 data: {
@@ -327,7 +336,7 @@ export async function POST(req: Request) {
                     surcharges: optionQuote.surcharges || [],
                     currency: optionQuote.price?.currency || currency,
                     ...(display ? { display } : {}),
-                    cancellationPolicies: normalizeTgxCancelPolicy(optionQuote.cancelPolicy),
+                    cancellationPolicies: normalizeTgxCancelPolicy(effectiveCancelPolicy),
                     boardCode: optionQuote.boardCode || '',
                     rooms: optionQuote.rooms || [],
                     ...(roomSubstituted && bookedRoomName && {

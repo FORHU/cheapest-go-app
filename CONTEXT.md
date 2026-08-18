@@ -101,6 +101,9 @@ _Avoid_: blacklisting a destination code solely on ALL_PROCESSES_FAILED without 
 
 **RTX** — alias for ETG/RateHawk used in legacy notes. Never appears in code. Prefer **ETG** everywhere.
 
+**Cancellation Policy** — per-rate cancellation terms sourced from OTV during the booking flow. Two-stage resolution: the **Quote** step (`hotelX.quote`) is authoritative; if its `cancelPenalties` array is empty (common for cheap OTV rates), the prebook falls back to the `cancelPenalties` returned by the fresh **Search** step run earlier in the same prebook request. If neither has data, the policy is genuinely unavailable from the supplier and the user is told to confirm with the property. The property page shows "Check at checkout" when `refundable` is null — this is intentional and accurate: we do try at checkout, and the checkout page either shows the full timeline or an honest "not provided" message. No contact-the-property channel exists in the platform.
+_Avoid_: treating an empty Quote `cancelPenalties` as definitive — always check the Search fallback first. _Avoid_: adding a "contact property" CTA without a real contact channel wired up.
+
 **Planned Suppliers** — ONDA and Rakuten are the next hotel providers in the pipeline, added for **coverage expansion** (genuinely different hotel inventory from OTV/RateHawk, not price competition on the same hotels). Neither is active yet. When added, dedup against OTV results will be required.
 
 **Destination granularity** — a searched place resolves at one of five levels (the *granularity ladder*): **Country → Province/State → City → District → Specific** (a landmark/POI or address). The ladder has two resolution modes:
