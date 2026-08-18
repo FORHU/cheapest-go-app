@@ -162,10 +162,10 @@ describe('BD (Bangladesh) aliases', () => {
     });
     it('resolves Cox\'s Bazar extras', () => {
         expect(m['st martins island']).toBe("Cox's Bazar");
-        expect(m['teknaf']).toBe('Teknaf');
+        expect(m['teknaf']).toBe("Cox's Bazar");
     });
     it('resolves Sylhet extras', () => {
-        expect(m['srimangal']).toBe('Srimangal');
+        expect(m['srimangal']).toBe('Sylhet');
         expect(m['jaflong']).toBe('Sylhet');
     });
     it('resolves Bengali script names', () => {
