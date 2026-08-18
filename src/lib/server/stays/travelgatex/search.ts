@@ -280,6 +280,24 @@ query TgxHotelContent($criteria: HotelXHotelListInput!, $token: String) {
   }
 }`;
 
+/** Static rooms catalog query — returns room-level medias for given room codes. */
+const TGX_ROOMS_CATALOG_QUERY = `
+query TgxRoomsCatalog($criteria: HotelXRoomQueryInput!, $token: String) {
+  hotelX {
+    rooms(criteria: $criteria, token: $token) {
+      token
+      edges {
+        node {
+          roomData {
+            code
+            medias { url type }
+          }
+        }
+      }
+    }
+  }
+}`;
+
 /** Parse a single `hotelData` node into a TgxHotelContent record. */
 function parseTgxHotelData(d: any, cityName?: string, countryCode?: string): TgxHotelContent {
     const images: string[] = (d.medias ?? [])
@@ -395,6 +413,111 @@ export async function fetchTgxHotelContent(hotelIds: string[]): Promise<Map<stri
         }
     }
     return contentMap;
+}
+
+// ─── TGX Rooms static catalog ─────────────────────────────────────────────────
+
+/** Match a TGX room description to a seeded ETG room group and return its photos. */
+function matchEtgRoomGroup(
+    description: string,
+    groups: Array<{ name: string; images: string[] }>,
+): string[] {
+    const withPhotos = groups.filter(g => g.images?.length > 0);
+    if (!withPhotos.length) return [];
+    const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+    const desc = norm(description);
+    // Exact match
+    let m = withPhotos.find(g => norm(g.name) === desc);
+    // Prefix match (desc starts with group name or vice-versa)
+    if (!m) m = withPhotos.find(g => { const gn = norm(g.name); return desc.startsWith(gn) || gn.startsWith(desc); });
+    // First significant word match
+    if (!m) {
+        const firstWord = desc.split(' ').find(w => w.length > 3) ?? desc.split(' ')[0];
+        if (firstWord) m = withPhotos.find(g => norm(g.name).includes(firstWord));
+    }
+    return m?.images ?? [];
+}
+
+/** Fetch room-level photo URLs. Checks hotel_content.room_groups first (ETG-seeded or TGX cached),
+ *  then falls back to live TGX hotelX.rooms API and caches.
+ *  Returns Map<roomCode, photoUrls[]> — empty entries omitted (only codes with photos). */
+async function fetchTgxRoomCatalog(
+    hotelId: string,
+    roomCodes: string[],
+    descMap?: Map<string, string>,   // code → room description, used for ETG name matching
+): Promise<Map<string, string[]>> {
+    const photoMap = new Map<string, string[]>();
+    if (!hotelId || !roomCodes.length) return photoMap;
+
+    // 1. Check hotel_content.room_groups DB cache.
+    //    Any non-null value means we have data (ETG-seeded or TGX cached) — don't re-fetch TGX.
+    try {
+        const sql = getSqlAdmin();
+        const rows = await sql<{ room_groups: any }[]>`
+            SELECT room_groups FROM hotel_content
+            WHERE hotel_id = ${hotelId} AND room_groups IS NOT NULL
+            LIMIT 1
+        `;
+        if (rows[0] !== undefined) {
+            const raw = rows[0]?.room_groups;
+            if (Array.isArray(raw) && raw.length > 0 && descMap?.size) {
+                // ETG-seeded format: [{name, images}] — match by room description
+                for (const [code, desc] of descMap) {
+                    const photos = matchEtgRoomGroup(desc, raw as Array<{ name: string; images: string[] }>);
+                    if (photos.length) photoMap.set(code, photos);
+                }
+                if (photoMap.size) console.log(`[tgx-rooms] ETG match for hotel ${hotelId}: ${photoMap.size}/${descMap.size} with photos`);
+            } else if (raw && typeof raw === 'object' && !Array.isArray(raw)) {
+                // TGX format: {roomCode: {photos: [...]}}
+                const groups = raw as Record<string, { photos?: string[] }>;
+                for (const code of roomCodes) {
+                    const entry = groups[code];
+                    if (entry?.photos?.length) photoMap.set(code, entry.photos);
+                }
+                if (photoMap.size) console.log(`[tgx-rooms] Cache hit for hotel ${hotelId}: ${photoMap.size}/${roomCodes.length} with photos`);
+            }
+            return photoMap;
+        }
+    } catch (e: any) {
+        console.warn('[tgx-rooms] DB cache check failed:', e.message?.slice(0, 80));
+    }
+
+    // 2. Live TGX hotelX.rooms static catalog query
+    const cfg = getTgxConfig();
+    const catalogData: Record<string, { photos: string[] }> = {};
+    try {
+        const result = await tgxGraphQL(TGX_ROOMS_CATALOG_QUERY, {
+            criteria: { access: cfg.accessCode, roomCodes },
+        }, 10_000);
+        const edges: any[] = result?.data?.hotelX?.rooms?.edges ?? [];
+        for (const edge of edges) {
+            const rd = edge?.node?.roomData;
+            // roomData.roomCode is the supplier-level room code (matches search rooms[].code)
+            const roomCode = rd?.roomCode || rd?.code || edge?.node?.code;
+            if (!roomCode) continue;
+            const photos = (rd?.medias ?? [])
+                .filter((m: any) => m?.url)
+                .map((m: any) => String(m.url))
+                .slice(0, 5);
+            catalogData[roomCode] = { photos };
+            if (photos.length) photoMap.set(roomCode, photos);
+        }
+        console.log(`[tgx-rooms] Fetched catalog for hotel ${hotelId}: ${edges.length} rooms, ${photoMap.size} with photos`);
+    } catch (e: any) {
+        console.warn('[tgx-rooms] hotelX.rooms query failed:', e.message?.slice(0, 100));
+        return photoMap;
+    }
+
+    // 3. Always persist to DB — even empty {} prevents a re-fetch on next visit.
+    //    OTV (RateHawk) doesn't populate room-level static content in TGX today;
+    //    writing {} means we fall back to hotel-level cycling photos without retrying TGX.
+    getSqlAdmin()`
+        UPDATE hotel_content
+        SET room_groups = ${JSON.stringify(catalogData)}::jsonb
+        WHERE hotel_id = ${hotelId}
+    `.catch((e: any) => console.warn('[tgx-rooms] room_groups write failed:', e.message?.slice(0, 80)));
+
+    return photoMap;
 }
 
 // ─── ETG (RateHawk/WorldOTA) hotel content lookup ────────────────────────────
@@ -1657,14 +1780,32 @@ async function _runTgxSearch(params: TgxSearchParams): Promise<any> {
 
     // ── Single hotel mode ──────────────────────────────────────────────────────
     if (hotelCode) {
-        const roomTypes = merchantOptions
-            .sort((a, b) => (a.price.gross || a.price.net) - (b.price.gross || b.price.net))
-            .map(normalizeOption);
+        const sorted = merchantOptions
+            .sort((a, b) => (a.price.gross || a.price.net) - (b.price.gross || b.price.net));
 
-        const [contentMap, reviewMap] = await Promise.all([
+        // Collect unique room codes + description map for room photo lookup (ETG name matching)
+        const uniqueRoomCodes = [
+            ...new Set(sorted.map(o => o.rooms?.[0]?.code).filter((c): c is string => Boolean(c))),
+        ];
+        const roomDescMap = new Map<string, string>(
+            sorted
+                .map(o => [o.rooms?.[0]?.code, o.rooms?.[0]?.description] as [string, string])
+                .filter(([c, d]) => Boolean(c && d)),
+        );
+
+        const [contentMap, reviewMap, roomCatalog] = await Promise.all([
             fetchHotelContent([String(hotelCode)]),
             fetchHotelReviews([String(hotelCode)]),
+            fetchTgxRoomCatalog(String(hotelCode), uniqueRoomCodes, roomDescMap),
         ]);
+
+        // Attach room-specific photos from the static catalog where available
+        const roomTypes = sorted.map(opt => {
+            const normalized = normalizeOption(opt);
+            const photos = roomCatalog.get(normalized.roomCode ?? '');
+            return photos?.length ? { ...normalized, roomPhotos: photos } : normalized;
+        });
+
         const content = contentMap.get(String(hotelCode));
         const reviews = reviewMap.get(String(hotelCode));
         const imageList: string[] = content?.images ?? [];

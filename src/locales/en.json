@@ -1043,6 +1043,7 @@
         "card": {
             "freeCancelShort": "Free cancel",
             "freeCancellation": "Free cancellation",
+            "from": "From",
             "perNight": "/night",
             "reviews": "{count} reviews",
             "viewDeal": "View"
@@ -1980,6 +1981,7 @@
             "sleeps": "Sleeps {count}",
             "standardRoom": "Standard Room",
             "total": "total",
+            "hotelPhotoLabel": "Hotel photo",
             "viewHotelPhotos": "View hotel photos",
             "viewRoomPhotos": "View room photos",
             "etgNotice": {

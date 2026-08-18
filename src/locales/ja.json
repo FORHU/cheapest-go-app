@@ -898,6 +898,7 @@
         "card": {
             "freeCancelShort": "無料キャンセル",
             "freeCancellation": "無料キャンセル",
+            "from": "最安",
             "perNight": "/泊",
             "reviews": "{count}件のレビュー",
             "viewDeal": "料金を見る"
@@ -1978,6 +1979,7 @@
             "sleeps": "最大{count}名",
             "standardRoom": "スタンダードルーム",
             "total": "合計",
+            "hotelPhotoLabel": "ホテル写真",
             "viewHotelPhotos": "ホテルの写真を見る",
             "viewRoomPhotos": "客室の写真を見る",
             "etgNotice": {

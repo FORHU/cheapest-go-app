@@ -283,6 +283,15 @@ export const RoomCard: React.FC<RoomCardProps> = ({
                         </div>
                     )}
 
+                    {/* Hotel photo badge — persistent, visible whenever showing hotel-level fallback */}
+                    {!hasRoomPhotos && displayImage && (
+                        <div className="absolute top-1.5 left-1.5 z-10 pointer-events-none">
+                            <span className="text-[8px] font-semibold text-white bg-black/55 backdrop-blur-sm px-1.5 py-0.5 rounded-full">
+                                {t('hotelPhotoLabel')}
+                            </span>
+                        </div>
+                    )}
+
                     {/* Hover hint */}
                     {lightboxImages.length > 0 && (
                         <div className="absolute inset-0 flex items-end justify-center pb-2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/10 rounded-xl pointer-events-none">

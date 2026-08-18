@@ -1012,6 +1012,7 @@
         "card": {
             "freeCancelShort": "무료 취소",
             "freeCancellation": "무료 취소",
+            "from": "최저",
             "perNight": "/박",
             "reviews": "리뷰 {count}개",
             "viewDeal": "요금 보기"
@@ -2097,6 +2098,7 @@
             "sleeps": "최대 {count}인",
             "standardRoom": "스탠다드 룸",
             "total": "합계",
+            "hotelPhotoLabel": "호텔 사진",
             "viewHotelPhotos": "호텔 사진 보기",
             "viewRoomPhotos": "객실 사진 보기",
             "etgNotice": {
