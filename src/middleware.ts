@@ -49,14 +49,15 @@ export function middleware(request: NextRequest): NextResponse {
         return response;
     }
 
-    // 2. Admin route guard — cookie presence only (no DB call).
-    //    Full Lucia session validation + role check happens in the admin layout.
-    if (pathname.startsWith('/admin')) {
+    // 2. Protected route guard — cookie presence only (no DB call).
+    //    Full Lucia session validation happens in the route/layout.
+    const PROTECTED_PREFIXES = ['/admin', '/checkout'];
+    if (PROTECTED_PREFIXES.some(prefix => pathname.startsWith(prefix))) {
         if (!request.cookies.has(SESSION_COOKIE)) {
-            const loginUrl = request.nextUrl.clone();
-            loginUrl.pathname = '/login';
-            loginUrl.searchParams.set('redirect', pathname);
-            return NextResponse.redirect(loginUrl);
+            const homeUrl = request.nextUrl.clone();
+            homeUrl.pathname = pathname.startsWith('/admin') ? '/login' : '/';
+            homeUrl.search = '';
+            return NextResponse.redirect(homeUrl);
         }
     }
 

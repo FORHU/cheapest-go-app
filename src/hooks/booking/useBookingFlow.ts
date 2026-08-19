@@ -110,7 +110,7 @@ export function useBookingFlow(): UseBookingFlowReturn {
         console.warn('[useBookingFlow] Prebook unavailable:', message);
       } else {
         console.error('[useBookingFlow] Prebook Error:', err);
-        toast.error(message || "Failed to update price for the selected currency.");
+        toast.error(message || "Failed to update price for the selected currency.", { id: 'prebook-error' });
       }
     }
   });

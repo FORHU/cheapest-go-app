@@ -92,13 +92,11 @@ const RecentCard: React.FC<RecentCardProps> = ({ item, destination, index }) => 
         </div>
         <div className="flex items-center justify-between mt-1.5 sm:mt-2 gap-1">
           <Badge variant="default" size="sm">{item.type}</Badge>
-          {displayPrice ? (
+          {displayPrice && (
             <div className="text-right">
               <span className="text-[10px] text-slate-400 dark:text-slate-500 block leading-none">{t('from')}</span>
               <span className="text-xs font-bold text-slate-900 dark:text-white">{displayPrice}</span>
             </div>
-          ) : (
-            <span className="text-[10px] text-slate-400 dark:text-slate-500">—</span>
           )}
         </div>
       </div>

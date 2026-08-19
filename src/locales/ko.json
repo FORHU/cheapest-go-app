@@ -1,2157 +1,2279 @@
 {
-    "account": {
-        "backToHome": "홈으로 돌아가기",
-        "communications": {
-            "emailNotifications": "이메일 알림",
-            "emailNotificationsDesc": "예약 확인 및 업데이트 수신",
-            "heading": "커뮤니케이션 설정",
-            "marketingEmails": "마케팅 이메일",
-            "marketingEmailsDesc": "특가, 프로모션, 여행 팁 수신",
-            "preferencesSaved": "설정이 저장되었습니다",
-            "savePreferences": "설정 저장",
-            "subheading": "수신할 알림과 이메일을 설정하세요",
-            "tripReminders": "여행 리마인더",
-            "tripRemindersDesc": "예정된 여행 전 리마인더 받기"
-        },
-        "help": {
-            "emailSupport": "이메일 지원",
-            "faq1": "예약을 취소하거나 변경하려면 어떻게 하나요?",
-            "faq2": "예약 확인서는 언제 받을 수 있나요?",
-            "faq3": "환불을 요청하려면 어떻게 하나요?",
-            "faq4": "어떤 결제 방법을 사용할 수 있나요?",
-            "faqTitle": "자주 묻는 질문",
-            "heading": "도움말 및 지원",
-            "liveChat": "실시간 채팅",
-            "liveChatDesc": "지원팀과 채팅하기",
-            "subheading": "계정 및 예약에 대한 도움을 받으세요"
-        },
-        "nav": {
-            "communications": {
-                "description": "알림 설정 관리",
-                "title": "커뮤니케이션"
-            },
-            "help": {
-                "description": "고객 지원 받기",
-                "title": "도움말 및 피드백"
-            },
-            "profile": {
-                "description": "개인 정보 확인 및 수정",
-                "title": "프로필"
-            },
-            "security": {
-                "description": "비밀번호 업데이트",
-                "title": "보안"
-            }
-        },
-        "profile": {
-            "cancel": "취소",
-            "edit": "편집",
-            "emailAddress": "이메일 주소",
-            "emailCannotChange": "이메일은 변경할 수 없습니다",
-            "fillAllFields": "모든 필드를 입력해 주세요",
-            "firstName": "이름",
-            "fullName": "이름",
-            "heading": "프로필 정보",
-            "lastName": "성",
-            "save": "저장",
-            "saving": "저장 중...",
-            "subheading": "개인 정보를 관리하세요",
-            "updateError": "프로필 업데이트에 실패했습니다",
-            "updateSuccess": "프로필이 성공적으로 업데이트되었습니다"
-        },
-        "sectionHeader": {
-            "edit": "편집"
-        },
-        "security": {
-            "accountEmail": "계정 이메일",
-            "accountEmailSubtitle": "계정 이메일 주소",
-            "changePassword": "비밀번호 변경",
-            "confirmPassword": "새 비밀번호 확인",
-            "currentPassword": "현재 비밀번호",
-            "emailCannotChange": "이메일은 변경할 수 없습니다",
-            "fillAllPasswordFields": "모든 비밀번호 필드를 입력해 주세요",
-            "heading": "보안 설정",
-            "newPassword": "새 비밀번호",
-            "newPasswordHint": "최소 6자 이상",
-            "passwordTooShort": "새 비밀번호는 최소 6자 이상이어야 합니다",
-            "passwordUpdateError": "비밀번호 업데이트에 실패했습니다",
-            "passwordUpdateSuccess": "비밀번호가 성공적으로 업데이트되었습니다",
-            "passwordsDoNotMatch": "새 비밀번호가 일치하지 않습니다",
-            "subheading": "비밀번호 및 계정 보안을 관리하세요",
-            "updatePassword": "비밀번호 업데이트",
-            "updating": "업데이트 중..."
-        },
-        "sidebar": {
-            "getEmails": "이메일 받기",
-            "greeting": "안녕하세요, {name}",
-            "membershipTier": "블루",
-            "partnerInfo": "계정은 {brand} 및 모든 파트너 사이트에서 사용 가능합니다",
-            "pointsAmount": "₱ 0.00",
-            "pointsValue": "포인트 가치",
-            "promoSubtitle": "{brand}의 특가, 팁, 인사이트를 받아보세요",
-            "promoTitle": "여행 영감과 혜택 받기",
-            "signOut": "로그아웃",
-            "viewRewardsActivity": "리워드 활동 보기"
-        }
+  "account": {
+    "backToHome": "홈으로 돌아가기",
+    "communications": {
+      "emailNotifications": "이메일 알림",
+      "emailNotificationsDesc": "예약 확인 및 업데이트 수신",
+      "heading": "커뮤니케이션 설정",
+      "marketingEmails": "마케팅 이메일",
+      "marketingEmailsDesc": "특가, 프로모션, 여행 팁 수신",
+      "preferencesSaved": "설정이 저장되었습니다",
+      "savePreferences": "설정 저장",
+      "subheading": "수신할 알림과 이메일을 설정하세요",
+      "tripReminders": "여행 리마인더",
+      "tripRemindersDesc": "예정된 여행 전 리마인더 받기"
     },
-    "ai": {
-        "prompts": {
-            "bali": "발리 해변 리조트, 성인 2명, 2월 14-21일...",
-            "cebu": "다음 달 세부 커플 주말 여행...",
-            "manila": "마닐라 근처 패밀리 리조트, 성인 2명 어린이 2명...",
-            "tokyo": "도쿄 럭셔리 호텔, 1박 $200 이하, 수영장 있는 곳..."
-        }
-    },
-    "appBanner": {
-        "badge": "모바일 앱",
-        "downloadBtn": "앱 다운로드",
-        "downloads": "다운로드 수",
-        "installBtn": "앱 설치하기",
-        "learnMore": "더 알아보기",
-        "rating": "앱 평점",
-        "savings": "추가 할인",
-        "subtitle": "앱 전용 특가 혜택, 실시간 알림을 받고 이동 중에도 간편하게 여행을 관리하세요.",
-        "title": "앱으로 더 스마트하게 여행하세요"
-    },
-    "auth": {
-        "actions": {
-            "back": "뒤로",
-            "backToHome": "홈으로 돌아가기",
-            "backToLogin": "로그인으로 돌아가기",
-            "continue": "계속하기",
-            "createAccount": "계정 만들기",
-            "createOne": "계정 만들기",
-            "forgotPassword": "비밀번호를 잊으셨나요?",
-            "resendConfirmation": "확인 이메일 다시 보내기",
-            "resetPassword": "비밀번호 재설정",
-            "sendResetLink": "재설정 링크 보내기",
-            "signIn": "로그인",
-            "tryAgain": "다시 시도해 주세요"
-        },
-        "closeModal": "닫기",
-        "emailStep": {
-            "createWithEmail": "이메일로 계정 만들기",
-            "hasAccount": "이미 계정이 있으신가요?",
-            "noAccount": "계정이 없으신가요?",
-            "otherWays": "다른 로그인 방법",
-            "privacyLink": "개인정보처리방침",
-            "subtitle": "하나의 계정으로 모든 여행을",
-            "terms": "로그인 시 <terms>이용약관</terms> 및 <privacy>개인정보처리방침</privacy>에 동의하게 됩니다.",
-            "termsLink": "이용약관",
-            "title": "로그인 또는 계정 만들기"
-        },
-        "forgotPasswordStep": {
-            "checkInbox": "받은편지함을 확인하세요",
-            "emailPlaceholder": "이메일을 입력하세요",
-            "notReceived": "이메일을 받지 못하셨나요? 스팸함을 확인하시거나",
-            "sentDescription": "{email}(으)로 비밀번호 재설정 링크를 보냈습니다. 이메일의 링크를 클릭하여 새 비밀번호를 설정하세요.",
-            "subtitle": "이메일 주소를 입력하시면 재설정 링크를 보내드립니다.",
-            "title": "비밀번호 재설정"
-        },
-        "labels": {
-            "birthDate": "생년월일",
-            "birthDateHint": "계정을 만들려면 만 18세 이상이어야 합니다.",
-            "confirmPassword": "비밀번호 확인",
-            "confirmPasswordPlaceholder": "비밀번호를 다시 입력하세요",
-            "email": "이메일",
-            "emailPlaceholder": "이메일을 입력하세요",
-            "firstName": "이름",
-            "firstNamePlaceholder": "이름",
-            "lastName": "성",
-            "lastNamePlaceholder": "성",
-            "password": "비밀번호",
-            "passwordPlaceholder": "비밀번호를 만드세요",
-            "passwordPlaceholderSignIn": "비밀번호를 입력하세요"
-        },
-        "messages": {
-            "acceptTerms": "계속하려면 이용약관 및 개인정보처리방침에 동의해 주세요.",
-            "accountCreated": "계정이 생성되었습니다!",
-            "accountExists": "이미 가입된 계정입니다. 로그인을 시도합니다...",
-            "accountExistsSignIn": "이미 가입된 계정입니다. 로그인해 주세요.",
-            "authFailed": "인증에 실패했습니다. 다시 시도해 주세요.",
-            "failedToReset": "비밀번호 재설정에 실패했습니다. 다시 시도해 주세요.",
-            "invalidCredentials": "이메일 또는 비밀번호가 올바르지 않습니다.",
-            "invalidEmail": "유효하지 않은 이메일입니다",
-            "invalidLink": "유효하지 않은 재설정 링크입니다. 새로 요청해 주세요.",
-            "passwordsDoNotMatch": "비밀번호가 일치하지 않습니다",
-            "registrationFailed": "회원가입에 실패했습니다. 다시 시도해 주세요.",
-            "requirementsNotMet": "비밀번호가 모든 조건을 충족하지 않습니다",
-            "resendFailed": "이메일 재전송에 실패했습니다. 다시 시도해 주세요.",
-            "resentSuccess": "확인 이메일을 다시 보냈습니다!",
-            "sendResetFailed": "재설정 이메일 전송에 실패했습니다. 다시 시도해 주세요.",
-            "verificationSent": "이메일을 확인해 주세요. 인증 링크가 이미 발송되었습니다.",
-            "welcomeBack": "다시 오신 것을 환영합니다!",
-            "wrongPassword": "비밀번호가 올바르지 않거나 Google로 만든 계정입니다. Google 로그인을 이용하거나 비밀번호를 재설정해 주세요."
-        },
-        "passwordRequirements": {
-            "lowercase": "소문자",
-            "minLength": "8자 이상",
-            "number": "숫자",
-            "uppercase": "대문자"
-        },
-        "passwordStep": {
-            "for": "계정:",
-            "keepSignedIn": "로그인 상태 유지",
-            "noAccount": "계정이 없으신가요?",
-            "title": "비밀번호를 입력하세요"
-        },
-        "registerStep": {
-            "for": "계정:",
-            "hasAccount": "이미 계정이 있으신가요?",
-            "keepSignedIn": "로그인 상태 유지",
-            "privacyLink": "개인정보처리방침",
-            "terms": "계정을 만들면 <terms>이용약관</terms> 및 <privacy>개인정보처리방침</privacy>에 동의하게 됩니다.",
-            "termsLink": "이용약관",
-            "title": "계정 만들기"
-        },
-        "resetPassword": {
-            "confirmPasswordLabel": "비밀번호 확인",
-            "confirmPasswordPlaceholder": "새 비밀번호를 다시 입력하세요",
-            "newPasswordLabel": "새 비밀번호",
-            "newPasswordPlaceholder": "새 비밀번호를 입력하세요",
-            "subtitle": "아래에 새 비밀번호를 입력하세요",
-            "successDescription": "비밀번호가 변경되었습니다. 이제 새 비밀번호로 로그인할 수 있습니다.",
-            "successTitle": "비밀번호 재설정 완료",
-            "title": "비밀번호 재설정"
-        },
-        "signIn": {
-            "continueWithApple": "Apple로 계속하기",
-            "continueWithEmail": "이메일로 계속하기",
-            "continueWithGoogle": "Google로 계속하기",
-            "emailLabel": "이메일 주소",
-            "emailPlaceholder": "example@email.com",
-            "orDivider": "또는",
-            "privacyLink": "개인정보처리방침",
-            "terms": "로그인 시 {terms} 및 {privacy}에 동의하게 됩니다.",
-            "termsLink": "이용약관",
-            "title": "{brand} 로그인"
-        },
-        "social": {
-            "appleAriaLabel": "Apple로 로그인",
-            "facebookAriaLabel": "Facebook으로 로그인",
-            "signInWithGoogle": "Google로 로그인"
-        },
-        "verifyEmailStep": {
-            "description": "확인 링크를 보낸 주소:",
-            "description2": "이메일의 링크를 클릭하여 로그인하세요.",
-            "title": "이메일을 확인하세요"
-        }
-    },
-    "bookingDestination": {
-        "confirmed": "예약 완료",
-        "emailed": "확인 메일이 이메일로 전송되었습니다",
-        "myTrips": "내 여행",
-        "noBooking": "둘러볼 예약이 없습니다. 내 여행으로 이동합니다…",
-        "goToTrips": "내 여행으로 이동",
-        "clocks": {
-            "ariaTrigger": "목적지 현지 시간",
-            "title": "현지 시간",
-            "home": "출발지",
-            "destination": "목적지",
-            "diffSame": "출발지와 동일한 시간",
-            "diffAhead": "출발지보다 {hours, plural, other {#시간}} 빠름",
-            "diffBehind": "출발지보다 {hours, plural, other {#시간}} 느림"
-        },
-        "currency": {
-            "ariaLabel": "환율 변환기",
-            "title": "환율 변환기",
-            "swap": "통화 교체",
-            "liveRates": "실시간 환율",
-            "updating": "업데이트 중…",
-            "rate": "1 {from} = {rate} {to}"
-        }
-    },
-    "checkout": {
-        "back": "뒤로",
-        "backToBookingDetails": "예약 상세로 돌아가기",
-        "bookingErrorTitle": "예약 오류",
-        "bookingFor": {
-            "guestFirstName": "게스트 이름 *",
-            "guestLastName": "게스트 성 *",
-            "myself": "본인",
-            "someoneElse": "다른 사람",
-            "whoIsBooking": "누구를 위한 예약인가요?"
-        },
-        "cancellation": {
-            "cancelAfter": "이후 취소",
-            "cancelBy": "까지 취소",
-            "description": "객실을 취소하는 데 얼마의 비용이 드나요?",
-            "earlyDepartureFee": "조기 출발 수수료: {amount} — 예정된 날짜보다 먼저 체크아웃할 경우.",
-            "footer": "취소 비용은 총 예약 금액을 기준으로 합니다. 모든 날짜와 시간은 GMT 기준입니다.",
-            "freeCancellation": "무료 취소 가능 — 아래 마감일을 확인하세요",
-            "freeCancellationLabel": "무료 취소",
-            "fullRefund": "(전액 환불)",
-            "noShowPenalty": "노쇼 패널티: {amount} — 취소 없이 체크인하지 않을 경우.",
-            "nonRefundable": "환불 불가 — 이 예약은 환불을 위해 취소할 수 없습니다",
-            "refund": "{amount} 환불",
-            "title": "취소 정책"
-        },
-        "checkIn": "체크인",
-        "checkOut": "체크아웃",
-        "chooseYourDates": "날짜 선택",
-        "completeYourBooking": "예약 완료하기",
-        "confirmingBooking": "예약 확인 중",
-        "confirmingWithHotel": "호텔 확인 중...",
-        "continue": "계속",
-        "dontClosePage": "이 페이지를 닫지 마세요",
-        "duplicateBookingDesc": "기존 예약을 먼저 취소하거나, 돌아가서 유지하세요.",
-        "duplicateBookingTitle": "{hotel}에 중복된 날짜의 예약이 이미 있습니다",
-        "finalizingDetails": "예약 세부사항 확정 중...",
-        "goBack": "← 뒤로",
-        "goBackBtn": "뒤로",
-        "keepExistingBooking": "기존 예약 유지",
-        "loadingPaymentForm": "결제 양식 로딩 중...",
-        "modifyBooking": "예약 수정",
-        "payment": {
-            "card": "카드",
-            "cardNumber": "카드 번호",
-            "countries": {
-                "ID": "인도네시아",
-                "JP": "일본",
-                "KR": "대한민국",
-                "MY": "말레이시아",
-                "PH": "필리핀",
-                "SG": "싱가포르",
-                "TH": "태국",
-                "US": "미국",
-                "VN": "베트남"
-            },
-            "country": "국가",
-            "mmYY": "월 / 년",
-            "payeeFirstName": "수취인 이름",
-            "payeeLastName": "수취인 성",
-            "paymentInformation": "결제 정보",
-            "securedMessage": "결제 정보는 안전하게 보호됩니다.",
-            "securityCode": "보안 코드"
-        },
-        "pickDatesDescription": "체크인 및 체크아웃 날짜를 선택하세요.",
-        "promos": {
-            "applied": "적용됨",
-            "apply": "적용",
-            "availableForBooking": "이 예약에 사용 가능한 프로모션",
-            "availablePromos": "사용 가능한 프로모션",
-            "failedToApply": "프로모션 적용에 실패했습니다. 다시 시도해 주세요.",
-            "hotelDeal": "호텔 딜",
-            "loadingPromos": "프로모션 로딩 중...",
-            "location": "위치",
-            "minAmount": "최소 {amount}",
-            "newUser": "신규 사용자",
-            "off": "할인",
-            "promo": "프로모션",
-            "seasonal": "시즌 한정",
-            "until": "{date}까지",
-            "upTo": "최대 {amount}"
-        },
-        "rating": {
-            "average": "보통",
-            "exceptional": "최고",
-            "fabulous": "훌륭함",
-            "good": "좋음",
-            "pleasant": "쾌적함",
-            "veryGood": "매우 좋음"
-        },
-        "retry": "재시도",
-        "searchAvailableRooms": "객실 검색 →",
-        "secureYourBooking": "예약 확정하기",
-        "securingReservation": "예약 확정 중...",
-        "selectYourDates": "날짜 선택",
-        "signIn": "로그인",
-        "signInBannerDesc": "이메일로 예약 확인 및 업데이트를 받으실 수 있습니다.",
-        "signInToComplete": "로그인하여 예약 완료",
-        "specialRequests": {
-            "placeholder": "호텔이 최선을 다해 준비해 드립니다.",
-            "title": "특별 요청이 있으신가요?"
-        },
-        "stripe": {
-            "completePayment": "결제 완료",
-            "loadError": "결제 양식을 불러오지 못했습니다. 새로고침 후 다시 시도해 주세요.",
-            "payNow": "지금 결제",
-            "processing": "결제 처리 중...",
-            "unexpectedError": "예상치 못한 오류가 발생했습니다."
-        },
-        "submit": {
-            "continueToPayment": "결제 계속하기 • {amount}",
-            "goBackDifferentHotel": "돌아가서 다른 호텔 선택",
-            "goBackReselect": "돌아가서 객실 재선택",
-            "hotelUnavailable": "호텔을 일시적으로 사용할 수 없음",
-            "hotelUnavailableDesc": "이 호텔은 현재 예약할 수 없습니다. 돌아가서 다른 호텔을 선택해 주세요.",
-            "processingBooking": "예약 처리 중...",
-            "sessionExpired": "객실 세션 만료",
-            "sessionExpiredDesc": "객실 보류가 만료되었습니다. 돌아가서 객실을 다시 선택해 주세요 — 같은 객실을 다시 선택할 수 있습니다.",
-            "signInToComplete": "로그인하여 예약 완료",
-            "verificationFailed": "확인 실패 — 위 오류를 참조하세요",
-            "verifyingPrice": "가격 확인 중...",
-            "verifyingRoom": "객실 확인 중...",
-            "waitingMessage": "호텔과 예약을 확인하는 동안 기다려 주세요...",
-            "waitingWarning": "최대 30초까지 소요될 수 있습니다. 이 페이지를 닫지 마세요."
-        },
-        "success": {
-            "bookFlightBundle": "지금 항공편을 예약하고 총액에서 번들 할인을 받으세요.",
-            "bookingConfirmed": "예약 완료! 🎉",
-            "bookingId": "예약 ID",
-            "bundleDeal": "✦ 번들 딜",
-            "bundleDiscountApplied": "번들 할인이 적용되었습니다",
-            "checkEmail": "예약 세부정보 및 업데이트는 이메일을 확인하세요",
-            "confirmationSentTo": "확인 메일 발송처",
-            "flightHotelBundle": "항공 + 호텔 번들",
-            "needFlight": "{destination}행 항공편이 필요하신가요?",
-            "reservationComplete": "<strong>{name}</strong>의 예약이 완료되었습니다.",
-            "returnToHome": "홈으로 돌아가기",
-            "saveUpTo": "최대 8% 할인",
-            "saved": "{amount} 절약",
-            "searchFlightsAndBundle": "항공편 & 번들 검색",
-            "sent": "발송됨",
-            "stayDuration": "숙박 기간",
-            "viewMyTrips": "내 여행 보기",
-            "openingDestination": "목적지 페이지로 이동 중…",
-            "checkIn": "체크인",
-            "checkOut": "체크아웃",
-            "emailInfo": "몇 분 내에 예약 확인 이메일이 발송됩니다.",
-            "freeCancellationInfo": "무료 취소 예약인 경우, 내 여행에서 취소 또는 변경할 수 있습니다.",
-            "hotel": "호텔",
-            "hotelCheckInInfo": "도착 시 호텔 프런트에서 예약 ID를 제시해 주세요.",
-            "hotelSuccess": "호텔이 성공적으로 예약되었습니다.",
-            "room": "객실",
-            "total": "합계",
-            "whatsNext": "다음 단계"
-        },
-        "summary": {
-            "adult": "명",
-            "adults": "명",
-            "averagePerNight": "1박 평균 요금",
-            "calculatingPerNight": "1박 요금 계산 중...",
-            "checkInAndOut": "체크인 & 체크아웃",
-            "checkInLabel": "체크인",
-            "checkOutLabel": "체크아웃",
-            "child": "명 (어린이)",
-            "children": "명 (어린이)",
-            "edit": "편집",
-            "night": "박",
-            "nights": "박",
-            "priceDetails": "가격 세부정보",
-            "promoCode": "프로모션: {code}",
-            "roomConfirmed": "객실 확정됨",
-            "roomNights": "1개 객실 × {nights}{count}",
-            "included": "포함됨",
-            "taxesAndFees": "세금 및 수수료",
-            "serviceFee": "플랫폼 서비스 수수료",
-            "total": "총계",
-            "updateDates": "날짜 업데이트",
-            "youSave": "이 프로모션으로 {amount} 절약",
-            "yourRoom": "객실"
-        },
-        "title": "결제 | {brand}",
-        "userDetails": {
-            "email": "이메일 *",
-            "emailPlaceholder": "이메일",
-            "firstName": "이름 *",
-            "firstNamePlaceholder": "이름",
-            "lastName": "성 *",
-            "lastNamePlaceholder": "성",
-            "no": "아니요",
-            "phone": "전화번호 *",
-            "phonePlaceholder": "번호",
-            "title": "내 정보",
-            "travelingForWork": "출장인가요?",
-            "yes": "예",
-            "guest1": "게스트 1 (본인)",
-            "guestN": "게스트 {n}",
-            "childN": "아동 {n}",
-            "age": "나이 *",
-            "agePlaceholder": "0–17"
-        },
-        "validation": {
-            "bookingFailed": "예약 확인 실패: {message}. 결제가 자동으로 환불됩니다.",
-            "fieldRequired": "이 항목은 필수입니다",
-            "firstNameRequired": "이름을 입력해 주세요",
-            "fixHighlighted": "강조 표시된 항목을 먼저 수정해 주세요.",
-            "invalidPrice": "유효하지 않은 예약 가격입니다. 다시 시도해 주세요.",
-            "lastNameRequired": "성을 입력해 주세요",
-            "nameInvalid": "이름은 문자만 포함해야 합니다",
-            "paymentSetupFailed": "결제 설정 실패",
-            "phoneDigitsOnly": "전화번호는 숫자만 입력해 주세요",
-            "phoneRequired": "전화번호를 입력해 주세요",
-            "priceVerifying": "가격 확인 중입니다 — 잠시 기다린 후 다시 시도해 주세요.",
-            "requiresAuth": "인증이 필요합니다",
-            "sessionExpired": "예약 세션이 만료되었습니다. 돌아가서 객실을 다시 선택해 주세요.",
-            "sessionExpiredCharge": "결제 중 세션이 만료되었습니다. 카드가 청구되었습니다 — 결제 참조 번호({id})와 함께 고객지원에 문의해 주세요.",
-            "refreshingSession": "가격 보장을 갱신 중입니다…",
-            "quoteExpiringSoon": "가격 보장이 5분 후 만료됩니다 — 빨리 예약을 완료해 주세요."
-        },
-        "priceChanged": {
-            "title": "가격이 변경되었습니다",
-            "description": "선택하신 시점과 예약을 확인하려는 시점 사이에 이 객실의 가격이 변경되었습니다.",
-            "originalPrice": "기존 가격",
-            "newPrice": "변경된 가격",
-            "refundNotice": "{amount}의 결제 금액이 자동으로 환불되었습니다. 명세서에 반영되기까지 영업일 기준 3–5일이 소요될 수 있습니다.",
-            "backToSearch": "검색으로 돌아가기"
-        },
-        "verifyingPayment": "결제 확인 중...",
-        "viewExistingBooking": "기존 예약 보기",
-        "voucher": {
-            "apply": "적용",
-            "enterPromoCode": "프로모션 코드 입력",
-            "failedToValidate": "프로모션 코드 확인에 실패했습니다. 다시 시도해 주세요.",
-            "havePromoCode": "프로모션 코드가 있으신가요?",
-            "off": "할인",
-            "promoCode": "프로모션 코드",
-            "removeVoucher": "프로모션 코드 제거",
-            "saved": "{amount} 절약"
-        }
-    },
-    "currencyPicker": {
-        "label": "통화 선택"
-    },
-    "deals": {
-        "all": "전체",
-        "allDealsCount": "전체 {count}개 특가",
-        "collapse": "접기 ↑",
-        "headerDefault": "독점 특가 및 혜택",
-        "headerPersonalized": "<highlight>{city}</highlight> 출발 항공권 특가",
-        "oneWay": "편도",
-        "popularRoute": "인기 노선",
-        "roundTrip": "왕복",
-        "searchFlights": "항공편 검색",
-        "subtitleDefault": "인기 노선 최저가 항공권",
-        "subtitlePersonalized": "{city} 출발 최저가 항공권"
-    },
-    "errors": {
-        "generic": "오류가 발생했습니다. 다시 시도해 주세요.",
-        "notFound": "페이지를 찾을 수 없습니다.",
-        "searchFailed": "검색에 실패했습니다. 연결 상태를 확인하고 다시 시도해 주세요."
-    },
-    "flightBook": {
-        "address": {
-            "addressLine": "주소 *",
-            "city": "도시 *",
-            "country": "국가 *",
-            "postalCode": "우편번호 *",
-            "title": "청구지 주소"
-        },
-        "ancillaryExpired": {
-            "description": "이 요금은 더 이상 보조 서비스를 제공하지 않습니다. 예약은 계속할 수 있으며 좌석과 수화물은 항공사에서 직접 관리할 수 있습니다.",
-            "title": "이 혜택에서는 사용할 수 없습니다"
-        },
-        "backToDetails": "세부 정보로 돌아가기",
-        "bags": {
-            "added": "수화물 {count}개 추가됨 · +{price}",
-            "addedPlural": "수화물 {count}개 추가됨 · +{price}",
-            "carryOn": "기내 수화물",
-            "checked": "위탑 수화물",
-            "errorDetail": "수화물 옵션을 불러올 수 없습니다: {error}",
-            "free": "무료",
-            "loading": "수화물 옵션 불러오는 중…",
-            "notAvailable": "수화물 업그레이드를 사용할 수 없습니다",
-            "notSupported": "이 항곸은 추가 수화물 선택을 지원하지 않습니다.",
-            "optional": "선택 — 위탑 또는 기내 수화물 추가",
-            "refreshing": "혜택 새로고침 중…",
-            "title": "추가 수화물",
-            "upgradeTotal": "수화물 업그레이드 합계",
-            "weight": "최대 {weight} kg"
-        },
-        "bookingSteps": [
-            "결제 확인 중...",
-            "좌석 확보 중...",
-            "항공사 확인 중...",
-            "예약 세부 정리 중..."
-        ],
-        "confirmingBooking": "예약 확인 중",
-        "contact": {
-            "email": "이메일 *",
-            "phone": "전화번호 *",
-            "title": "연락처"
-        },
-        "countries": {
-            "AU": "호주",
-            "CA": "캐나다",
-            "CN": "중국",
-            "DE": "독일",
-            "FR": "프랑스",
-            "GB": "영국",
-            "IN": "인도",
-            "JP": "일본",
-            "KR": "대한민국",
-            "MY": "말레이시아",
-            "PH": "필리핀",
-            "SG": "싱가포르",
-            "TH": "태국",
-            "US": "미국",
-            "VN": "베트남"
-        },
-        "datePicker": {
-            "cancel": "취소",
-            "days": [
-                "일",
-                "월",
-                "화",
-                "수",
-                "목",
-                "금",
-                "토"
-            ],
-            "month": "월",
-            "months": [
-                "1월",
-                "2월",
-                "3월",
-                "4월",
-                "5월",
-                "6월",
-                "7월",
-                "8월",
-                "9월",
-                "10월",
-                "11월",
-                "12월"
-            ],
-            "select": "선택",
-            "selectDate": "날짜 선택",
-            "year": "년"
-        },
-        "dealBanner": {
-            "dealApplied": "{discount} 할인이 적용되었습니다",
-            "departs": "{date} 출발",
-            "perPerson": "/ 1인",
-            "returns": "{date} 돌아온"
-        },
-        "dealGate": {
-            "dealUnavailable": "혜택을 이용할 수 없습니다",
-            "noFlightsFound": "이 딜에 해당하는 항공편을 찾을 수 없습니다. 딜이 만료되었을 수 있습니다.",
-            "searchAll": "모든 항곸 검색",
-            "searchMessages": [
-                "이용 가능한 항곸 검색 중…",
-                "좌석 가능 여부 확인 중…",
-                "최고 가격 확보 중…",
-                "거의 다 됐습니다…"
-            ],
-            "securingDeal": "혜택 확보 중",
-            "somethingWrong": "문제가 발생했습니다. 다시 시도해 주세요.",
-            "tryAgain": "다시 시도"
-        },
-        "dontClosePage": "이 페이지를 닫지 마세요",
-        "duplicate": {
-            "description": "{route} 출발하는 활성 예약이 {date}에 발견되었습니다. 먼저 기존 예약을 취소하거나 뒤로 돌아가세요.",
-            "keepExisting": "기존 예약 유지",
-            "title": "이미 해당 날짜의 항곸을 예약하셨습니다",
-            "viewExisting": "기존 예약 보기"
-        },
-        "error": {
-            "bookingFailed": "예약 실패",
-            "bookingFailedDefault": "예약이 실패했습니다. 다시 시도해 주세요.",
-            "codes": {
-                "balance_insufficient": "항공권 예약이 일시적으로 불가능합니다. 잠시 후 다시 시도해 주세요. 카드는 결제되지 않았습니다.",
-                "booking_failed": "예약을 완료하지 못했습니다. 다시 시도해 주세요.",
-                "booking_failed_refunded": "예약을 완료하지 못해 결제 금액이 환불되었습니다.",
-                "booking_pending": "항공사에서 아직 예약을 확정하지 않았습니다. 발권이 완료되면 이메일로 안내해 드립니다.",
-                "booking_timeout": "항공사 응답이 지연되고 있습니다. 잠시 후 다시 시도해 주세요.",
-                "duplicate_booking": "해당 출발일에 이미 예약된 항공편이 있습니다. 기존 예약을 취소하거나 다른 날짜를 선택해 주세요.",
-                "flight_unavailable": "해당 항공편은 더 이상 예약할 수 없습니다. 다시 검색해 주세요.",
-                "offer_expired": "해당 운임이 만료되었습니다. 다시 검색해 주세요.",
-                "offer_replaced_seats_cleared": "운임이 갱신되어 좌석과 수하물 선택이 초기화되었습니다. 다시 선택해 주세요.",
-                "pending": "항공사에서 아직 예약을 확정하지 않았습니다. 발권이 완료되면 이메일로 안내해 드립니다.",
-                "phone_number_invalid": "항공사에서 연락처 전화번호를 거부했습니다. 국가번호가 포함되어 있는지 확인 후 다시 시도해 주세요.",
-                "seats_unavailable": "선택하신 좌석 또는 수하물을 더 이상 이용할 수 없습니다. 부가 서비스를 다시 확인해 주세요.",
-                "supplier_outage": "항공사 예약 시스템이 응답하지 않습니다. 몇 분 후 다시 시도해 주세요.",
-                "server_error": "시스템 오류가 발생했습니다. 카드는 결제되지 않았으니 다시 시도해 주세요.",
-                "unauthenticated": "예약을 완료하려면 로그인해 주세요."
-            },
-            "defaultMessage": "예약을 완료할 수 없습니다.",
-            "flightUnavailable": "항곸을 사용할 수 없습니다",
-            "goBack": "뒤로 가기",
-            "notCharged": "카드가 <strong>아직</strong> 첩8리되지 않았습니다. 다른 항곸나 날짜를 시도해 주세요.",
-            "notChargedShort": "다른 항곸나 날짜를 시도해 주세요.",
-            "searchAgain": "다시 검색",
-            "tryAgain": "다시 시도"
-        },
-        "fareConditions": {
-            "allowedFee": "허용됨 · {fee} 수수료",
-            "allowedFeeMayApply": "허용됨(수수료가 부과될 수 있음)",
-            "changeAfter": "출발 후 변경",
-            "changeBefore": "출발 전 변경",
-            "disclaimer": "조건은 여객 마다 적용되며 항공사 정책에 따릅니다. 벌금은 티켓 당 적용됩니다.",
-            "free": "무료",
-            "fullyRefundable": "전액 환불 가능",
-            "nonRefundable": "환불 불가",
-            "notAllowed": "허용되지 않음",
-            "partialRefund": "부분 환불",
-            "refundAfter": "출발 후 환불",
-            "refundBefore": "출발 전 환불",
-            "title": "요금 조건"
-        },
-        "farePolicy": {
-            "airlineConfirmed": "✓ 항공사 확인 완료",
-            "changesAllowed": "변경 가능",
-            "finalRules": "최종 요금 규칙은 예약 시 항공사가 확인합니다.",
-            "freeCancellation": "무료 취소",
-            "indicativeOnly": "참고용입니다 — 최정 정책은 결제 단계에서 확인됩니다.",
-            "nonRefundable": "환불 불가",
-            "policyUpdated": "<strong>요금 정책이 업데이트되었습니다.</strong> 이 항곸의 환불 가능성이 변경되었습니다. 계속하기 전에 검토해 주세요.",
-            "refundableFee": "환불 가능(수수료: {fee})",
-            "refundableFeesMayApply": "환불 가능(수수료가 부과될 수 있음)",
-            "title": "요금 정책"
-        },
-        "fareRules": {
-            "error": "요금 규칙을 불러올 수 없습니다",
-            "noRules": "항공사에서 제공한 규칙 텍스트가 없습니다.",
-            "routeLabel": "노선 {number}",
-            "rule": "규칙",
-            "rules": "규칙",
-            "title": "요금 규칙",
-            "viewOnWebsite": "항공사 웹사이트에서 요금 규칙 보기 →"
-        },
-        "genderOptions": {
-            "female": "여성",
-            "male": "남성"
-        },
-        "header": {
-            "oneWay": "{name}({code})(으)로 예약",
-            "roundTrip": "{name}({code}) 왕복"
-        },
-        "offerExpiry": {
-            "expired": "이 혜택이 만료되었습니다 — 다시 검색해 주세요.",
-            "expiresIn": "{time} 후에 혜택이 만료됩니다 — 시간 내에 예약을 완료하세요."
-        },
-        "orderSummary": {
-            "baseFare": "기본 요금",
-            "economy": "이코노미",
-            "extraBags": "추가 수화물",
-            "nonstop": "직항",
-            "passenger": "여객 {count}명",
-            "passengerPlural": "여객 {count}명",
-            "seatSelection": "좌석 선택",
-            "stops": "경유 {count}회",
-            "title": "주문 요약",
-            "total": "총계"
-        },
-        "passenger": {
-            "addPassenger": "+ 여객 추가",
-            "adult": "성인",
-            "birthdate": "생년월일 *",
-            "child": "소아",
-            "firstName": "이름 *",
-            "gender": "성별 *",
-            "infant": "유아",
-            "lastName": "성 *",
-            "nationality": "국적 *",
-            "passport": "여권 번호 *",
-            "passportExpiry": "여권 만료일 *",
-            "remove": "삭제",
-            "title": "여객 {number}"
-        },
-        "priceCalendar": {
-            "checkingPrices": "가격 확인 중…",
-            "clickToSearch": "클릭하여 이 날짜 검색",
-            "clickToSearchWithPrice": "{price} — 클릭하여 검색",
-            "datesFound": "{count}개 날짜에 가격 있음",
-            "days": [
-                "일",
-                "월",
-                "화",
-                "수",
-                "목",
-                "금",
-                "토"
-            ],
-            "exploreOneWay": "날짜별 가격 탐색(편도)",
-            "exploreRoundTrip": "날짜별 가격 탐색(왕복)",
-            "fetchingLive": "실시간 가격 조회 중…",
-            "from": "{price}부터",
-            "loading": "불러오는 중…",
-            "months": [
-                "1월",
-                "2월",
-                "3월",
-                "4월",
-                "5월",
-                "6월",
-                "7월",
-                "8월",
-                "9월",
-                "10월",
-                "11월",
-                "12월"
-            ],
-            "searchDates": "{month}의 {count}개 날짜 검색",
-            "searchingBestPrices": "최고 가격 검색 중…",
-            "tipDescription": "이것은 해당 제공사의 근처 날짜 실제 요금입니다. 날짜를 클릭하면 그 날짜의 항곸을 검색합니다.",
-            "tipTitle": "팁:",
-            "updatingMonth": "월 업데이트 중…"
-        },
-        "priceChange": {
-            "accept": "새 금액 수낙 및 계속",
-            "description": "이 항곸은 현재 {newPrice}입니다(이전 금액 {oldPrice}). 새 금액으로 계속하시겠습니까?",
-            "searchAgain": "다시 검색",
-            "title": "요금이 변경되었습니다"
-        },
-        "seats": {
-            "clear": "지우기",
-            "done": "완료",
-            "errorDetail": "좌석 맵을 불러올 수 없습니다: {error}",
-            "exitRowTooltip": "⚠ 비상구 열",
-            "extraLegroomTooltip": "✦ 다리 공간 확보",
-            "legend": {
-                "exitRow": "비상구 열",
-                "extraLegroom": "다리 공간 확보",
-                "free": "무료",
-                "paid": "유료",
-                "selected": "선택됨",
-                "taken": "지난 좌석"
-            },
-            "loading": "좌석 맵 불러오는 중…",
-            "notAvailable": "좌석 맵을 사용할 수 없습니다",
-            "notSupported": "이 항곸은 예약 시스템을 통한 좌석 선택을 지원하지 않습니다.",
-            "optional": "선택 — 기내 맵에서 좌석 선택",
-            "seatChosen": "· {designator} 좌석 선택됨",
-            "seatLabel": "좌석 {designator}",
-            "seatUpgrade": "좌석 업그레이드:",
-            "seatsCount": "{selected}/{total} 좌석",
-            "selected": "좌석 {count}개 선택됨 · +{price}",
-            "selectedPlural": "좌석 {count}개 선택됨 · +{price}",
-            "selectingFor": "{name} 선택 중",
-            "skip": "스킵",
-            "tapSeatBelow": "· 아래 좌석을 탭하세요",
-            "tapToSelect": "탭하여 좌석 선택",
-            "title": "좌석 선택"
-        },
-        "seatsRemaining": {
-            "available": "{count}석 이용 가능",
-            "leftPlural": "{count}석 남음",
-            "onlyLeft": "{count}석 만 남음!",
-            "onlyLeftPlural": "{count}석 만 남음!"
-        },
-        "submitBtn": {
-            "confirm": "예약 확인 · {price}",
-            "processing": "예약 처리 중..."
-        },
-        "success": {
-            "addHotel": "호텔을 추가하여 여행을 매끄어보세요",
-            "addHotelDesc": "{destination}에서 숙박을 예약하고 항곸 + 호텔 번듨로 할인혜택을 받으세요",
-            "addToThisTrip": "이 여행에 추가",
-            "boardingPassInfo": "탑승권은 체크인 시 발급됩니다. 체크인 후 항공사의 앱 또는 웹사이트에서 다운로드할 수 있습니다.",
-            "bookSeparately": "별도 예약",
-            "bookingConfirmed": "예약 확정! 🎉",
-            "bookingId": "예약 ID",
-            "bundleDealBadge": "✦ 번들 할인",
-            "bundleDiscountApplied": "번들 할인 적용됨",
-            "bundleSavings": "번들 할인",
-            "bundleSuccess": "항곸이 번들에 성공적으로 추가되었습니다.",
-            "checkInInfo": "온라인 체크인은 보통 출발 24–48 시간 전에 열립니다. 항공사 웹사이트에 방문하여 PNR {pnr}을 사용하여 체크인하세요.",
-            "eTickets": "전자 티켓",
-            "emailInfo": "전자 티켓과 예약 확인메일이 분 내에 이메일로 발송됩니다.",
-            "findHotels": "{destination} 호텔 검색",
-            "flightSuccess": "항곸이 성공적으로 예약되었습니다.",
-            "returnToHome": "홈으로 돌아가기",
-            "route": "노선",
-            "standardRate": "표준 요금",
-            "total": "총계",
-            "viewMyTrips": "내 여행 보기",
-            "whatsNext": "다음 단계"
-        },
-        "totalPrice": "총 금액",
-        "validation": {
-            "firstNameRequired": "이름을 입력해 주세요",
-            "lastNameRequired": "성을 입력해 주세요",
-            "nameIcao": "영문자만 입력해 주세요 (예: Jose, José 불가)",
-            "phoneDigitsOnly": "전화번호는 숫자만 입력해 주세요",
-            "phoneRequired": "전화번호를 입력해 주세요"
-        }
-    },
-    "flights": {
-        "card": {
-            "availableFareOptions": "이용 가능한 요금 옵션",
-            "bagsCount": "수하물 {count}개",
-            "bestValue": "최고 가치",
-            "brandsAvailable": "브랜드 {count}개 이용 가능",
-            "compareOptions": "{count}개 옵션 비교",
-            "currentlySelected": "현재 선택됨",
-            "direct": "직항",
-            "freeCancellation": "무료 취소",
-            "hideDetails": "상세 정보 숨기기",
-            "includesTaxesFees": "세금 및 수수료 포함",
-            "legLabel": "{number}번째 구간",
-            "moreSegments": "+ {count} 더",
-            "noBag": "수하물 없음",
-            "nonRefundable": "환불 불가",
-            "nonstop": "직항",
-            "onlySeatsLeft": "{count}석만 남음!",
-            "option": "옵션",
-            "outbound": "가는 편",
-            "perPerson": "1인당",
-            "perPersonShort": "/1인",
-            "refundableFee": "환불 가능 (예상 수수료: {fee})",
-            "refundableFeesMayApply": "환불 가능 (수수료가 부과될 수 있음)",
-            "return": "오는 편",
-            "seatsAvailable": "{count}석 이용 가능",
-            "seatsLeft": "{count}석 남음",
-            "select": "선택",
-            "selectFare": "{fare} 선택",
-            "showAllSegments": "모든 구간 보기",
-            "standard": "스탠다드",
-            "stop": "회 경유",
-            "stopCount": "{count}회 경유",
-            "stopCountShort": "{count}회 경유",
-            "stops": "회 경유",
-            "stopsCount": "{count}회 경유",
-            "thisFare": "이 요금",
-            "viewDeal": "요금 보기"
-        },
-        "filtersPanel": {
-            "airlines": "항공사",
-            "anyStops": "전체 경유",
-            "branded": "브랜드 요금",
-            "cheapestFirst": "최저가순",
-            "earliestDeparture": "가장 이른 출발순",
-            "fareType": "요금 유형",
-            "fastestFirst": "최단 시간순",
-            "nonStopOnly": "직항만",
-            "provider": "공급사",
-            "refundableFares": "환불 가능 요금",
-            "refundableFaresDescription": "환불 취소가 가능한 요금",
-            "sortBy": "정렬 기준",
-            "stops": "경유",
-            "upToOneStop": "최대 1회 경유"
-        },
-        "priceAlert": {
-            "active": "알림 활성화됨",
-            "emailWhenDrops": "가격이 내려가면 이메일 받기",
-            "enabled": "알림이 켜졌습니다. 가격이 내려가면 이메일로 알려드릴게요.",
-            "failed": "알림 설정에 실패했습니다",
-            "loading": "불러오는 중...",
-            "remove": "가격 알림 제거",
-            "removed": "알림이 제거되었습니다",
-            "signInRequired": "가격 알림을 설정하려면 로그인하세요",
-            "trackPrice": "가격 추적"
-        },
-        "results": {
-            "allSeen": "이용 가능한 항공편 {count}개를 모두 확인하셨습니다. 즐거운 여행 되세요!",
-            "checkingProviders": "여러 공급사를 확인하는 중입니다",
-            "discoveringMore": "더 많은 옵션을 찾는 중 ({total}개 중 {shown}개)",
-            "duration": "소요 시간",
-            "empty": "해당 날짜에 항공편이 없습니다.",
-            "filters": "필터",
-            "loading": "최저가 항공편을 찾고 있습니다…",
-            "noFlightsDefaultMessage": "항공편을 찾을 수 없습니다. 필터를 조정하거나 다른 날짜로 검색해 보세요.",
-            "noFlightsTitle": "항공편을 찾을 수 없습니다",
-            "price": "가격",
-            "result": "{count, plural, other {결과}}",
-            "searchFailedTitle": "검색 실패",
-            "searchingFlights": "항공편 검색 중...",
-            "sortBy": "정렬 기준",
-            "stops": {
-                "any": "전체",
-                "direct": "직항",
-                "oneStop": "경유 1회",
-                "twoPlus": "경유 2회 이상"
-            },
-            "tryAgain": "다시 시도"
-        },
-        "search": {
-            "adult": "성인 {count}명",
-            "adult_plural": "성인 {count}명",
-            "fetchingProviders": "공급사에서 검색 중...",
-            "newSearch": "새 검색",
-            "providersSlow": "항공사 공급사의 응답이 느립니다. 잠시만 기다려 주세요. 최적의 요금을 계속 찾고 있습니다.",
-            "providersSlowDescription": "항공사 공급사의 응답이 느립니다. 다시 시도하거나 검색 조건을 조정해 주세요.",
-            "sources": "출처:",
-            "stillSearching": "아직 검색 중...",
-            "takingLonger": "평소보다 검색 시간이 더 걸리고 있습니다",
-            "total_count": "(총 {count}개)",
-            "tryAgain": "다시 시도"
-        },
-        "validation": {
-            "fields": {
-                "returnDate": "귀국편 날짜",
-                "returnDestinationAirport": "귀국편 도착 공항",
-                "returnOriginAirport": "귀국편 출발 공항",
-                "segmentDate": "구간 {index} 날짜",
-                "segmentDestinationAirport": "구간 {index} 도착 공항",
-                "segmentOriginAirport": "구간 {index} 출발 공항"
-            },
-            "missingInformation": "정보가 부족합니다",
-            "selectField": "{field}을(를) 선택해 주세요"
-        }
-    },
-    "footer": {
-        "aboutUs": "회사 소개",
-        "allRightsReserved": "모든 권리 보유.",
-        "cars": "렌터카",
-        "company": "회사",
-        "contact": "문의",
-        "contactMinimal": "문의하기",
-        "cookies": "쿠키",
-        "cookiesMinimal": "쿠키 설정",
-        "copyright": "© 2026 FORHU Inc.. All rights reserved.",
-        "copyrightMinimal": "{brand} © 2026",
-        "enterprise": "기업 제휴",
-        "flights": "항공편",
-        "flightsApi": "항공편 API",
-        "hotels": "호텔",
-        "legal": "법적 고지",
-        "module": "모듈",
-        "network": "네트워크",
-        "paymentGateway": "결제 게이트웨이",
-        "privacy": "개인정보",
-        "privacyMinimal": "개인정보처리방침",
-        "reportBug": "버그 신고",
-        "support": "고객지원",
-        "tagline": "안목 있는 여행자를 위해 정밀하게 설계되었습니다.",
-        "taglinePrecision": "정밀한 데이터. 타협 없는 서비스.",
-        "terms": "이용약관",
-        "termsMinimal": "이용약관 및 조건"
-    },
-    "guestFavorites": {
-        "allFavoritesCount": "전체 {count}개 인기 호텔",
-        "collapse": "접기 ↑",
-        "headerHighlight": "인기 호텔",
-        "headerMain": "고객",
-        "subtitle": "여행자들이 사랑하는 최고 평점 호텔 · 매일 업데이트"
-    },
-    "hotels": {
-        "allHotelsCount": "전체 {count}개 호텔",
-        "bookNow": "지금 예약",
-        "card": {
-            "freeCancelShort": "무료 취소",
-            "freeCancellation": "무료 취소",
-            "from": "최저",
-            "perNight": "/박",
-            "reviews": "리뷰 {count}개",
-            "viewDeal": "요금 보기"
-        },
-        "collapse": "접기 ↑",
-        "filters": {
-            "activeFilters": "적용된 필터:",
-            "amenities": "편의시설",
-            "any": "전체",
-            "boardTypes": {
-                "allInclusive": "올인클루시브",
-                "breakfast": "조식 포함",
-                "fullBoard": "풀보드",
-                "halfBoard": "하프보드",
-                "roomOnly": "숙박만"
-            },
-            "cancellation": "취소 정책",
-            "filterBy": "필터",
-            "filters": "필터",
-            "freeCancellationOnly": "무료 취소만",
-            "guestRating": "게스트 평점",
-            "minimumReviews": "최소 리뷰 수",
-            "mustHaveAllAmenities": "선택한 모든 편의시설 포함 필수",
-            "propertyType": "숙소 유형",
-            "propertyTypes": {
-                "apartment": "아파트",
-                "hotel": "호텔",
-                "resort": "리조트",
-                "villa": "빌라"
-            },
-            "reset": "초기화",
-            "roomFeatures": "객실 특징",
-            "searchByPropertyName": "숙소명으로 검색",
-            "searchPlaceholder": "예: 메리어트",
-            "showPlaces": "숙소 보기",
-            "starCount": "{count}성급",
-            "starRating": "성급",
-            "strictAmenitiesDescription": "활성화하면 선택한 모든 편의시설을 갖춘 호텔만 표시합니다"
-        },
-        "fromPrice": "{price}부터",
-        "guestFavorite": "게스트 최애",
-        "headerDefault": "인기 호텔 특가",
-        "headerPersonalized": "<highlight>{country}</highlight> 호텔 특가",
-        "mapSearch": {
-            "placeholder": "지도에서 위치 검색..."
-        },
-        "mapView": {
-            "any": "전체",
-            "back": "뒤로",
-            "cancellation": "취소",
-            "checkIn": "체크인",
-            "checkOut": "체크아웃",
-            "clearFilters": "필터 지우기",
-            "almostThere": "거의 다 됐습니다 — 최적의 결과가 곧 나타납니다…",
-            "checkingAvailabilityDates": "선택하신 날짜의 가용성을 확인 중입니다…",
-            "comparingRates": "200개 이상의 호텔 객실 요금 비교 중…",
-            "findingBestDeals": "이 지역에서 최저가를 찾고 있습니다…",
-            "securingLivePrices": "공급업체로부터 실시간 가격을 가져오는 중…",
-            "filterOptions": {
-                "boardTypes": {
-                    "allInclusive": "올 인클루시브",
-                    "breakfast": "조식 포함",
-                    "fullBoard": "전식 제공",
-                    "halfBoard": "반식 제공",
-                    "roomOnly": "객실만"
-                },
-                "mealPlan": "식사 계획",
-                "propertyType": "숙소 유형",
-                "propertyTypes": {
-                    "apartment": "아파트",
-                    "hotel": "호텔",
-                    "resort": "리조트",
-                    "villa": "빌라"
-                }
-            },
-            "filters": "필터",
-            "findingHotels": "호텔 찾는 중",
-            "findingHotelsIn": "{destination} 호텔 찾는 중",
-            "guests": "게스트",
-            "list": "목록",
-            "mapDetails": {
-                "biking": "자전거",
-                "default": "기본",
-                "default-3d": "3D 기본",
-                "explore": "탐색",
-                "labels": "레이블",
-                "mapType": "지도 유형",
-                "satellite": "위성",
-                "terrain": "지형",
-                "title": "지도 세부 정보",
-                "traffic": "교통",
-                "transit": "대중교통"
-            },
-            "nights": "박",
-            "pricePerNight": "{min} – {max} /박",
-            "search": "검색",
-            "searchFallback": "검색",
-            "swipeToBrowse": "스와이프하여 보기"
-        },
-        "mobileSearch": {
-            "addDates": "날짜 추가",
-            "checkIn": "체크인",
-            "checkInQuestion": "체크인 날짜는 언제인가요?",
-            "checkOut": "체크아웃",
-            "checkOutQuestion": "체크아웃 날짜는 언제인가요?",
-            "clearAll": "전체 지우기",
-            "numberOfGuests": "게스트 수",
-            "search": "검색",
-            "searchCityHotel": "도시 또는 호텔 검색",
-            "title": "호텔 검색",
-            "where": "위치",
-            "whereQuestion": "어디로?",
-            "who": "인원",
-            "whoQuestion": "누가 여행하나요?"
-        },
-        "perNight": "/박",
-        "poiPopup": {
-            "fromHotel": "호텔에서",
-            "fromProperty": "숙소에서",
-            "kmFromHotel": "km 거리",
-            "kmFromProperty": "km 거리",
-            "mFromHotel": "m 거리",
-            "mFromProperty": "m 거리",
-            "viewOnGoogleMaps": "Google Maps에서 보기"
-        },
-        "pricesMayVary": "가격은 변동될 수 있습니다",
-        "propertyDatePicker": {
-            "addDate": "날짜 추가",
-            "adult": "성인",
-            "adults": "성인",
-            "adultsLabel": "성인",
-            "checkAvailability": "가용성 확인",
-            "checkIn": "체크인",
-            "checkOut": "체크아웃",
-            "child": "어린이",
-            "childrenAges": "만 0–17세",
-            "childrenLabel": "어린이",
-            "children": "어린이",
-            "done": "완료",
-            "guests": "게스트",
-            "searching": "검색 중…",
-            "selectCheckIn": "체크인 날짜 선택",
-            "selectCheckOut": "체크아웃 날짜 선택",
-            "yourStay": "숙박 정보"
-        },
-        "ratings": {
-            "average": "보통",
-            "belowAverage": "평균 이하",
-            "excellent": "매우 훌륭함",
-            "exceptional": "최고",
-            "fair": "무난함",
-            "good": "좋음",
-            "pleasant": "쾌적함",
-            "poor": "낮음",
-            "superb": "최상급",
-            "veryGood": "훌륭함"
-        },
-        "searchPage": {
-            "description": "전 세계 호텔, 아파트, 특별한 숙소를 최저가로 찾아 예약하세요. {brand}에서 가격을 비교하고 완벽한 숙소를 발견하세요.",
-            "title": "호텔 및 숙소 검색 | {brand}"
-        },
-        "searchResults": {
-            "allProperties": "전체 숙소",
-            "allResultsLoaded": "전체 {count}개 결과를 모두 불러왔습니다",
-            "allResultsShown": "전체 {count}개 결과 표시됨",
-            "checkingAvailability": "예약 가능 여부 확인 중…",
-            "discovery": {
-                "all": "전체 발견",
-                "attraction": "관광명소 & 공원",
-                "grocery": "식료품점",
-                "medical": "병원 & 건강",
-                "restaurant": "식당",
-                "transit": "대중교통"
-            },
-            "filteredCount": "{filtered}/{total}",
-            "found": "찾음",
-            "foundCount": "{count}개 찾음",
-            "hotelsCount": "{count}개 호텔",
-            "hotelsFound": "{count}개 호텔 찾음",
-            "loadMoreShowing": "더 보기 · {shown}/{total} 표시 중",
-            "loadingMore": "호텔을 더 불러오는 중",
-            "map": "지도",
-            "noHotelsAvailable": "예약 가능한 호텔이 없습니다",
-            "noHotelsAvailableIn": "{destination}에 예약 가능한 호텔이 없습니다",
-            "noHotelsFound": "호텔을 찾을 수 없습니다",
-            "noHotelsFoundIn": "{destination}에서 호텔을 찾을 수 없습니다",
-            "noPlacesFound": "이 지역에 장소가 없습니다",
-            "noPropertiesFound": "숙소를 찾을 수 없습니다",
-            "pricesMayChange": "가격은 예약 가능 여부에 따라 변경될 수 있습니다.",
-            "propertiesFound": "{count}개 숙소 찾음",
-            "refreshPage": "문제가 발생했습니다. 페이지를 새로고침해 주세요.",
-            "searchFailed": "검색에 실패했습니다. 다시 시도해 주세요.",
-            "searchUnavailable": "검색을 사용할 수 없습니다",
-            "searching": "호텔 검색 중…",
-            "searchingInDestination": "{destination} 호텔 검색 중",
-            "showMoreRemaining": "더 보기 ({count}개 남음)",
-            "sort": {
-                "cheapest": "최저가",
-                "mostReviewed": "리뷰 많은 순",
-                "priceHighToLow": "가격 높은 순",
-                "recommended": "추천순",
-                "topRated": "평점 높은 순"
-            },
-            "staysIn": "{destination} 숙소",
-            "supplierUnavailable": "현재 공급사가 이 목적지를 지원하지 않을 수 있습니다. 다른 날짜, 필터 조정 또는 근처 도시로 검색해 보세요.",
-            "supplierUnavailableShort": "현재 공급사가 이 목적지를 지원하지 않을 수 있습니다. 다른 날짜나 근처 도시를 시도해 보세요.",
-            "tryDifferentDates": "다른 날짜나 근처 도시를 시도해 보세요."
-        },
-        "subtitleDefault": "엄선된 호텔을 최저가에 제공",
-        "subtitlePersonalized": "{country} 인기 호텔 · 매일 업데이트"
-    },
-    "landing": {
-        "hero": {
-            "cta": "항공편 검색",
-            "monoSubtext": "무엇이든 물어보고, 모든 것을 예약하세요.",
-            "smartPriceTracking": "스마트 가격 추적",
-            "subtitle": "현대 여행자를 위한 운영체제.",
-            "title": "가장 저렴한 항공권",
-            "titleLine1": "정밀한 여행.",
-            "titleLine2": "당신만을 위한 설계."
-        },
-        "howItWorksSteps": {
-            "book": "여행을 예약하세요",
-            "bookNext": "간단한 3단계로.",
-            "bookStep": {
-                "description": "안전하게 암호화된 결제로 몇 분 만에 여행을 예약하세요. 매번 즉시 확인됩니다.",
-                "title": "예약"
-            },
-            "compareStep": {
-                "description": "여러 항공사와 호텔의 실시간 가격을 살펴보세요. 가격, 평점, 편의시설로 필터링할 수 있습니다.",
-                "title": "비교"
-            },
-            "howItWorks": "이용 방법",
-            "search": {
-                "description": "목적지, 날짜, 인원 수를 입력하여 최고의 항공권과 호텔을 찾아보세요.",
-                "title": "검색"
-            }
-        },
-        "recentlyViewed": {
-            "flight": "항공편",
-            "from": "부터",
-            "recentlySearched": "최근 검색",
-            "showLess": "접기",
-            "stay": "숙소",
-            "subtitle": "이전 검색을 이어보세요",
-            "title": "검색 이어보기",
-            "viewAll": "전체 보기"
-        },
-        "search": {
-            "addGuests": "인원 추가",
-            "adultAge": "만 12세 이상",
-            "adults": "성인",
-            "aiDevelopment": "AI 검색 개발 중입니다. 기대해 주세요!",
-            "aiGreeting": "오늘 아침 무엇을 도와드릴까요?",
-            "anyWeek": "아무 주나",
-            "anywhere": "어디든지",
-            "askAi": "AI에게 물어보기",
-            "bundle": {
-                "hotelBooked": "호텔 예약 완료!",
-                "instructions": "{from}과 {to} 공항을 입력하고 날짜를 선택한 후 검색을 누르면 최대 8% 절약됩니다."
-            },
-            "cabinClass": {
-                "business": "비즈니스석",
-                "economy": "일반석",
-                "first": "일등석",
-                "premiumEconomy": "프리미엄 일반석"
-            },
-            "cabinClassLabel": "좌석 등급",
-            "calendar": "달력",
-            "checkIn": "체크인",
-            "checkOut": "체크아웃",
-            "childAge": "만 2~11세",
-            "childLabel": "어린이 {index}: {age}세",
-            "children": "어린이",
-            "childrenAges": "만 0~17세",
-            "cities": "도시",
-            "clearAll": "모두 지우기",
-            "comingSoon": "출시 예정",
-            "countries": "국가",
-            "days": [
-                "일",
-                "월",
-                "화",
-                "수",
-                "목",
-                "금",
-                "토"
-            ],
-            "depart": "출발일",
-            "done": "완료",
-            "findDeals": "최저가 찾기",
-            "findingFlights": "항공편 검색 중…",
-            "flexOptions": [
-                "정확한 날짜",
-                "±1일",
-                "±2일",
-                "±3일",
-                "±7일"
-            ],
-            "flexibleDates": "유연한 날짜",
-            "from": "출발지",
-            "guest": "{count}명",
-            "guestPlural": "{count}명",
-            "guests": "{count}명",
-            "guestsPlural": "{count}명",
-            "guestsRooms": "게스트 및 객실",
-            "infantAge": "만 2세 미만 (무릎 착석)",
-            "infants": "유아",
-            "month": "월",
-            "months": [
-                "일월",
-                "이월",
-                "삼월",
-                "사월",
-                "오월",
-                "유월",
-                "칠월",
-                "팔월",
-                "구월",
-                "십월",
-                "십일월",
-                "십이월"
-            ],
-            "noAirportsFound": "\"{query}\"에 대한 공항을 찾을 수 없습니다",
-            "noResults": "검색 결과가 없습니다",
-            "passengers": "승객",
-            "placeholder": {
-                "airport": "도시 또는 공항",
-                "date": "날짜 선택"
-            },
-            "recentSearches": "최근 검색",
-            "results": "검색 결과",
-            "return": "귀국일",
-            "rooms": "객실",
-            "roomsNote": "예약당 1개 객실. 추가 객실은 별도 예약하세요.",
-            "searchDestination": "목적지 검색",
-            "searchDestinationsPlaceholder": "목적지 검색...",
-            "searchFlightsHeader": "항공편 검색",
-            "searchMode": {
-                "aiSearch": "AI 검색",
-                "flights": "항공편",
-                "stays": "숙소"
-            },
-            "searchAirport": "공항 검색...",
-            "searching": "검색 중...",
-            "selectDate": "날짜 선택",
-            "submit": "검색",
-            "to": "목적지",
-            "travelers": "여행자",
-            "tripType": {
-                "multiCity": "다구간",
-                "oneWay": "편도",
-                "roundTrip": "왕복"
-            },
-            "typeToSearch": "도시 이름 또는 공항 코드를 입력하세요...",
-            "typeToSearchPrompt": "도시 또는 공항 코드를 입력하여 검색하세요",
-            "whenTravel": "여행 날짜를 언제로 하시겠어요?",
-            "whereTo": "어디로?",
-            "year": "연도",
-            "yearsOld": "{age}세"
-        }
-    },
-    "languagePicker": {
-        "zh": "中文",
-        "ja": "日本語",
-        "ko": "한국어",
-        "label": "언어 선택"
-    },
-    "legal": {
-        "layout": {
-            "breadcrumb": "GeomeeGo · 법적 고지",
-            "effective": "시행일:",
-            "lastUpdated": "최종 업데이트:",
-            "disclaimer": {
-                "label": "참고:",
-                "body": "이 문서는 정보 제공 목적으로만 제공됩니다. GeomeeGo는 귀하의 특정 관할권에 맞는 약관 검토를 위해 자격을 갖춘 변호사와 상담할 것을 권장합니다."
-            },
-            "contents": "목차",
-            "contact": {
-                "heading": "이 문서에 대해 궁금한 점이 있으신가요?",
-                "contactLine": "다음 주소로 문의해 주세요:",
-                "address": "FORHU Inc. · 30 Wall Street, 8th Floor · New York, NY 10005 · 미국"
-            }
-        },
-        "cookiePolicy": {
-            "description": "GeomeeGo가 쿠키 및 유사 추적 기술을 사용하는 방법입니다.",
-            "pageSubtitle": "GeomeeGo에서 쿠키 및 유사 기술을 사용하는 방법을 안내합니다.",
-            "pageTitle": "쿠키 정책",
-            "title": "쿠키 정책 — GeomeeGo"
-        },
-        "privacyPolicy": {
-            "description": "GeomeeGo가 귀하의 개인정보를 수집, 이용 및 보호하는 방법입니다.",
-            "pageSubtitle": "귀하의 개인정보를 수집, 이용 및 보호하는 방법을 안내합니다.",
-            "pageTitle": "개인정보 처리방침",
-            "title": "개인정보 처리방침 — GeomeeGo"
-        },
-        "refundPolicy": {
-            "description": "GeomeeGo에서 취소, 환불 및 예약 변경이 처리되는 방법을 확인하세요.",
-            "pageSubtitle": "취소, 환불 및 예약 변경에 관한 모든 사항을 안내합니다.",
-            "pageTitle": "환불 및 취소 정책",
-            "title": "환불 및 취소 정책 — GeomeeGo"
-        },
-        "termsGate": {
-            "title": "시작하기 전에",
-            "subtitle": "GeomeeGo를 계속 이용하시려면 이용약관을 검토하고 동의해 주십시오.",
-            "points": [
-                "만 18세 이상이며 법적 구속력 있는 계약을 체결할 수 있어야 합니다.",
-                "GeomeeGo는 중개인으로서, 예약 계약은 호텔, 항공사, 패키지 공급업체와 체결되며 당사와 체결되지 않습니다.",
-                "결제가 처리되고 확인 이메일을 받기 전까지 가격과 가용성은 보장되지 않습니다.",
-                "취소 및 환불은 공급업체 정책과 당사의 환불 및 취소 정책을 따릅니다.",
-                "결제는 Stripe가 처리합니다. 당사는 귀하의 카드 정보를 저장하지 않습니다.",
-                "분쟁은 뉴욕에서 구속력 있는 중재로 해결되며, 귀하는 집단 소송에 참여할 권리를 포기합니다."
-            ],
-            "termsLink": "이용약관",
-            "privacyLink": "개인정보 처리방침",
-            "opensInNewTab": "새 탭에서 열립니다 — 현재 위치를 잃지 않습니다.",
-            "checkboxLabel": "이용약관 및 개인정보 처리방침을 읽고 동의합니다.",
-            "checkboxPrefix": "",
-            "checkboxTerms": "이용약관",
-            "checkboxConnector": " 및 ",
-            "checkboxPrivacy": "개인정보 처리방침",
-            "checkboxSuffix": "에 동의합니다.",
-            "checkboxAriaLabel": "이용약관 및 개인정보 처리방침에 동의합니다",
-            "acceptButton": "동의하고 계속하기"
-        },
-        "termsOfService": {
-            "description": "GeomeeGo 이용에 적용되는 약관 및 조건입니다.",
-            "pageSubtitle": "GeomeeGo를 이용하기 전에 이 약관을 주의 깊게 읽어 주십시오.",
-            "pageTitle": "이용약관",
-            "title": "이용약관 — GeomeeGo"
-        },
-        "content": {
-            "terms": {
-                "acceptance": {
-                    "title": "이용약관 동의",
-                    "body": "GeomeeGo 웹사이트 및 서비스(이하 '플랫폼')에 접속하거나 이용함으로써, 귀하는 본 이용약관('약관')과 모든 적용 법률 및 규정에 구속되는 것에 동의합니다. 귀하가 본 약관에 동의하지 않으실 경우, 플랫폼을 이용하실 수 없습니다. GeomeeGo는 미국 뉴욕주 뉴욕시 10005 Wall Street 30번지 8층에 위치한 FORHU Inc.에 의해 운영됩니다. 본 약관은 귀하와 GeomeeGo 간의 법적 구속력 있는 계약을 구성합니다."
-                },
-                "eligibility": {
-                    "title": "이용 자격",
-                    "intro": "GeomeeGo를 이용하시려면 다음 조건을 충족하셔야 합니다:",
-                    "items": [
-                        "만 18세 이상이어야 합니다",
-                        "법적 구속력 있는 계약을 체결할 법적 능력을 보유해야 합니다",
-                        "관련 법률에 따라 플랫폼 이용이 금지되지 않아야 합니다",
-                        "계정 생성 또는 예약 시 정확하고 최신의 완전한 정보를 제공해야 합니다"
-                    ]
-                },
-                "accountRegistration": {
-                    "title": "계정 등록",
-                    "intro": "플랫폼의 일부 기능을 이용하시려면 계정을 생성하셔야 할 수 있습니다. 귀하는 다음에 동의합니다:",
-                    "items": [
-                        "등록 시 정확하고 진실된 정보 제공",
-                        "로그인 자격 증명을 기밀로 유지하고 제3자와 공유하지 않음",
-                        "계정의 무단 사용을 즉시 당사에 통지",
-                        "계정에서 발생하는 모든 활동에 대한 책임 부담"
-                    ],
-                    "note": "GeomeeGo는 본 약관을 위반하거나 장기간 비활성 상태인 계정을 정지 또는 해지할 권리를 보유합니다."
-                },
-                "bookingProcess": {
-                    "title": "예약 절차 및 확인",
-                    "intro": "GeomeeGo를 통해 예약하시면, 귀하는 GeomeeGo가 아닌 여행 공급업체(호텔, 항공사 또는 패키지 제공업체)와 계약을 체결하시게 됩니다. GeomeeGo는 예약을 중개하는 중간 역할을 합니다.",
-                    "items": [
-                        { "label": "예약 확인", "text": "GeomeeGo로부터 예약 참조 번호가 포함된 서면 확인 이메일을 받으신 경우에만 예약이 확정됩니다." },
-                        { "label": "정확성", "text": "결제 확정 전에 모든 예약 세부 정보(날짜, 투숙객 이름, 객실 유형)가 정확한지 확인하실 책임이 있습니다." },
-                        { "label": "공급업체 약관", "text": "귀하의 예약은 해당 여행 공급업체의 약관(취소 및 노쇼 정책 포함)에 적용을 받습니다." },
-                        { "label": "가용성", "text": "결제가 성공적으로 처리되고 확인서가 발행되기 전까지 가격과 가용성은 보장되지 않습니다." }
-                    ]
-                },
-                "pricing": {
-                    "title": "요금 및 결제",
-                    "items": [
-                        { "label": "요금", "text": "표시된 가격은 여행 파트너로부터 직접 소싱되며 현재 도매 요금을 반영합니다. 숨겨진 플랫폼 수수료는 없습니다." },
-                        { "label": "통화", "text": "가격은 귀하가 선택한 통화로 표시됩니다. 통화 환율은 참고용으로 제공되며 결제 시 변경될 수 있습니다." },
-                        { "label": "결제 처리", "text": "모든 결제는 Stripe, Inc.에서 안전하게 처리됩니다. 결제 시 귀하는 Stripe의 이용약관에도 동의하시게 됩니다. GeomeeGo는 귀하의 카드 정보를 저장하지 않습니다." },
-                        { "label": "세금 및 수수료", "text": "표시된 가격에는 해당 서비스 수수료가 포함됩니다. 별도로 명시되지 않는 한, 체크인 시 호텔에서 직접 부과하는 현지 세금이나 관광세는 포함되지 않습니다." },
-                        { "label": "가격 변동", "text": "결제가 완료되기 전까지 가격은 변경될 수 있습니다. 예약 확정 전 가격 변동에 대해 당사는 책임지지 않습니다." }
-                    ]
-                },
-                "cancellations": {
-                    "title": "취소 및 환불",
-                    "textBefore": "취소 및 환불은 본 약관에 참조로 포함된 당사의",
-                    "refundLinkText": "환불 및 취소 정책",
-                    "textAfter": "에 의해 규율됩니다. 정책은 호텔 및 요금 유형에 따라 다르므로, 예약 전에 주의 깊게 검토해 주십시오."
-                },
-                "prohibitedConduct": {
-                    "title": "금지 행위",
-                    "intro": "귀하는 다음 행위를 하지 않을 것에 동의합니다:",
-                    "items": [
-                        "불법 목적 또는 관련 규정을 위반하여 플랫폼 이용",
-                        "허위 예약, 도용된 결제 정보 사용 또는 악의적인 지급 거절(차지백) 행위",
-                        "플랫폼의 리버스 엔지니어링, 스크래핑 또는 데이터 추출 시도",
-                        "자동화된 봇 또는 스크립트를 이용하여 플랫폼에 접속하거나 상호작용",
-                        "당사의 서면 동의 없이 상업적 목적으로 예약 재판매 또는 재배포",
-                        "허위 또는 오해의 소지가 있는 정보나 리뷰 게시, 또는 타인이나 단체를 사칭",
-                        "플랫폼의 보안, 무결성 또는 성능 방해",
-                        "다른 이용자나 GeomeeGo 직원에 대한 괴롭힘, 위협 또는 해악 행위"
-                    ]
-                },
-                "intellectualProperty": {
-                    "title": "지식재산권",
-                    "body": "GeomeeGo 플랫폼의 모든 콘텐츠(로고, 텍스트, 그래픽, 소프트웨어, 디자인 포함)는 GeomeeGo 또는 그 라이선스 허여자의 재산이며, 관련 지식재산권법에 의해 보호됩니다. 사전 서면 동의 없이 당사 콘텐츠를 복제, 배포하거나 파생 저작물을 제작하실 수 없습니다. 호텔 및 항공편 이미지와 설명은 당사의 파트너(Duffel, Mystifly, TravelgateX, ONDA, Rakuten)와 해당 공급업체가 라이선스에 따라 제공합니다."
-                },
-                "disclaimers": {
-                    "title": "면책 조항",
-                    "intro": "GeomeeGo는 '있는 그대로' 및 '이용 가능한 상태'로 서비스를 제공합니다. 당사는 다음 사항을 보장하지 않습니다:",
-                    "items": [
-                        "플랫폼이 중단 없이, 오류 없이 또는 바이러스 없이 운영됨",
-                        "호텔 설명, 사진 또는 편의 시설 목록이 완전히 정확함(이는 공급업체가 제공)",
-                        "표시된 가격이 항상 시장에서 가장 저렴함",
-                        "공급업체 파산 또는 초과 예약 시 여행 공급업체가 모든 예약을 이행함"
-                    ],
-                    "note": "GeomeeGo는 여행 공급업체의 행위, 오류, 누락, 진술, 보증 또는 과실에 대해 책임지지 않습니다."
-                },
-                "liability": {
-                    "title": "책임의 제한",
-                    "body": "적용 법률이 허용하는 최대 범위 내에서, GeomeeGo 및 그 임원, 이사, 직원, 계열사는 플랫폼 이용 또는 이를 통한 예약과 관련하여 발생하는 이익 손실, 데이터 손실 또는 영업권 손실을 포함한 간접적, 우발적, 특별, 결과적 또는 징벌적 손해에 대해 책임지지 않습니다. 본 약관으로 인한 모든 청구에 대한 당사의 총 책임은 해당 청구를 야기한 예약에 대해 귀하가 지불한 총 금액을 초과하지 않습니다."
-                },
-                "indemnification": {
-                    "title": "면책 의무",
-                    "body": "귀하는 플랫폼 이용, 본 약관 위반 또는 타인의 권리 침해와 관련하여 발생하는 모든 청구, 책임, 손해, 손실 및 비용(법률 비용 포함)에 대해 GeomeeGo 및 FORHU Inc.를 면책, 방어 및 보호할 것에 동의합니다."
-                },
-                "governingLaw": {
-                    "title": "준거법 및 분쟁 해결",
-                    "para1": "본 약관은 저촉법 조항에 관계없이 미국 뉴욕주 법률의 적용을 받습니다.",
-                    "para2": "본 약관 또는 GeomeeGo 이용과 관련하여 발생하는 모든 분쟁은 우선 성실한 협의를 통해 해결을 시도합니다. 30일 이내에 해결되지 않는 경우, 분쟁은 미국중재협회(AAA)의 규정에 따라 뉴욕주 뉴욕시에서 구속력 있는 중재에 회부됩니다. 귀하는 집단 소송 또는 집단 중재에 참여할 권리를 포기합니다."
-                },
-                "changes": {
-                    "title": "약관 변경",
-                    "body": "GeomeeGo는 언제든지 본 약관을 수정할 권리를 보유합니다. 중요한 변경 사항이 있을 경우 등록된 사용자에게 이메일로 통지하고, 개정된 '최종 업데이트' 날짜와 함께 업데이트된 버전을 플랫폼에 게시합니다. 변경 사항이 발효된 후 플랫폼을 계속 이용하시면 개정된 약관에 동의하신 것으로 간주됩니다."
-                },
-                "contact": {
-                    "title": "문의",
-                    "intro": "본 약관에 관한 문의사항:",
-                    "email": "📧 support@cheapestgo.com",
-                    "address": "🏢 FORHU Inc. · 미국 뉴욕주 뉴욕시 10005 Wall Street 30번지 8층"
-                }
-            },
-            "privacy": {
-                "whoWeAre": {
-                    "title": "회사 소개",
-                    "para1": "GeomeeGo(이하 '당사')는 미국 뉴욕주 뉴욕시 10005 Wall Street 30번지 8층에 위치한 FORHU Inc.가 운영하는 온라인 여행사입니다. 당사는 웹사이트 및 모바일 플랫폼을 통해 주로 동남아시아 여행자들에게 호텔 예약, 항공편 패키지 및 여행 특가 서비스를 제공합니다.",
-                    "para2Before": "본 개인정보 처리방침에 관한 문의사항은 다음으로 연락해 주십시오:",
-                    "para2After": "."
-                },
-                "informationWeCollect": {
-                    "title": "수집하는 정보",
-                    "directLabel": "귀하가 직접 제공하는 정보:",
-                    "directItems": [
-                        "계정 생성 또는 예약 시 성명, 이메일 주소, 전화번호, 생년월일",
-                        "청구 주소 및 결제 정보(Stripe가 안전하게 처리 — 카드 번호는 저장하지 않음)",
-                        "여행 선호도, 검색 기록, 과거 예약 내역",
-                        "이메일 또는 지원 채널을 통해 보내신 문의 내용"
-                    ],
-                    "autoLabel": "자동으로 수집되는 정보:",
-                    "autoItems": [
-                        "IP 주소, 브라우저 종류, 운영체제, 기기 식별자",
-                        "방문한 페이지, 페이지 체류 시간, 클릭한 링크, 유입 URL",
-                        "쿠키, 웹 비콘 및 유사 추적 기술(쿠키 정책 참조)",
-                        "IP 주소에서 도출된 위치 데이터(국가/지역 수준)"
-                    ],
-                    "thirdPartyLabel": "제3자로부터 수집된 정보:",
-                    "thirdPartyItems": [
-                        "파트너(Duffel, Mystifly, TravelgateX, ONDA, Rakuten)로부터의 여행 가용성 및 요금 데이터",
-                        "Stripe로부터의 결제 확인 및 사기 감지 신호",
-                        "플랫폼 개선을 위해 이용하는 서비스 제공업체의 분석 데이터"
-                    ]
-                },
-                "howWeUse": {
-                    "title": "정보 이용 방법",
-                    "items": [
-                        "여행 예약 처리 및 확인, 예약 확인 이메일 발송",
-                        "Stripe를 통한 결제 처리 및 사기 예방",
-                        "GeomeeGo 계정 생성 및 관리",
-                        "거래 이메일 발송(예약 확인, 영수증, 일정 업데이트)",
-                        "프로모션 이메일 및 특가 알림 발송 — 귀하의 동의 하에만 발송되며, 언제든지 수신 거부 가능",
-                        "플랫폼 개선, 콘텐츠 개인화, 이용 패턴 분석",
-                        "법적 의무 준수 및 이용약관 이행",
-                        "귀하의 문의에 대한 응대 및 고객 지원 제공"
-                    ]
-                },
-                "howWeShare": {
-                    "title": "정보 공유 방법",
-                    "intro": "당사는 귀하의 개인정보를 판매하지 않습니다. 다음과 같은 경우에만 귀하의 데이터를 공유합니다:",
-                    "items": [
-                        { "label": "호텔 및 여행 공급업체", "text": "예약 이행을 위해 호텔 및 공급업체와 귀하의 성명, 연락처, 예약 정보를 공유합니다." },
-                        { "label": "Stripe", "text": "결제 정보는 Stripe, Inc.가 처리합니다. Stripe의 개인정보 처리방침은 결제 데이터 처리 방식을 규율합니다. 참조:", "linkText": "stripe.com/privacy", "linkHref": "https://stripe.com/privacy" },
-                        { "label": "여행 파트너 (Duffel, Mystifly, TravelgateX, ONDA, Rakuten)", "text": "가용성 및 요금 조회를 위해 검색 쿼리 및 예약 세부 정보를 파트너 API를 통해 처리합니다." },
-                        { "label": "Supabase", "text": "당사의 데이터베이스 인프라는 Supabase에서 호스팅됩니다. 데이터는 저장 및 전송 시 암호화됩니다." },
-                        { "label": "법적 요건", "text": "법률, 법원 명령에 따르거나 GeomeeGo 또는 타인의 권리, 재산, 안전을 보호하기 위해 필요한 경우 정보를 공개할 수 있습니다." }
-                    ]
-                },
-                "cookies": {
-                    "title": "쿠키 및 추적 기술",
-                    "textBefore": "당사는 플랫폼 운영 및 이용자 경험 개선을 위해 쿠키 및 유사 기술을 사용합니다. 당사가 사용하는 쿠키의 종류와 환경설정 방법에 대한 자세한 내용은 당사의",
-                    "linkText": "쿠키 정책",
-                    "textAfter": "을 참조해 주십시오."
-                },
-                "dataRetention": {
-                    "title": "데이터 보유",
-                    "intro": "당사는 다음을 위해 필요한 기간 동안 귀하의 개인 데이터를 보유합니다:",
-                    "items": [
-                        "계정 유지 및 서비스 제공",
-                        "법적, 세무적, 회계적 의무 준수(금융 기록의 경우 일반적으로 7년)",
-                        "분쟁 해결 및 계약 이행"
-                    ],
-                    "note": "계정을 삭제하시면, 법률에 의해 보유가 요구되는 경우를 제외하고 90일 이내에 귀하의 개인 데이터를 삭제하거나 익명화합니다."
-                },
-                "internationalTransfers": {
-                    "title": "국제 데이터 이전",
-                    "body": "GeomeeGo는 미국에 본사를 두고 있습니다. 귀하가 동남아시아 또는 기타 지역에서 당사 서비스를 이용하실 경우, 귀하의 데이터는 미국으로 이전되어 처리됩니다. 당사는 적용 법률(GDPR 및 2012년 필리핀 개인정보보호법, 공화국법 제10173호 포함)에 따라 요구되는 경우 표준 계약 조항을 포함한 적절한 안전 조치를 갖추고 있습니다."
-                },
-                "yourRights": {
-                    "title": "귀하의 권리 및 선택",
-                    "intro": "귀하의 거주 지역에 따라 다음과 같은 권리를 보유할 수 있습니다:",
-                    "items": [
-                        { "label": "열람권", "text": "당사가 보유한 귀하의 개인 데이터 사본 요청" },
-                        { "label": "정정권", "text": "부정확하거나 불완전한 데이터의 정정 요청" },
-                        { "label": "삭제권", "text": "귀하의 개인 데이터 삭제 요청('잊힐 권리')" },
-                        { "label": "이동권", "text": "구조화된 기계 판독 가능 형식으로 데이터 수령" },
-                        { "label": "수신 거부권", "text": "이메일의 링크를 사용하여 언제든지 마케팅 이메일 수신 거부" },
-                        { "label": "동의 철회권", "text": "처리가 동의에 기반한 경우 언제든지 동의 철회" }
-                    ],
-                    "emailBefore": "이러한 권리를 행사하시려면 다음으로 이메일을 보내주십시오:",
-                    "emailAfter": " 30일 이내에 회신드리겠습니다."
-                },
-                "childrensPrivacy": {
-                    "title": "아동 개인정보 보호",
-                    "body": "GeomeeGo는 만 18세 미만의 아동을 대상으로 하지 않습니다. 당사는 아동으로부터 의도적으로 개인정보를 수집하지 않습니다. 아동의 정보가 실수로 수집되었다고 판단되시면, 즉시 support@cheapestgo.com으로 연락해 주십시오. 해당 정보를 즉시 삭제하겠습니다."
-                },
-                "security": {
-                    "title": "보안",
-                    "body": "당사는 귀하의 개인 데이터를 보호하기 위해 전송 시 암호화(TLS/HTTPS), 저장 시 암호화, 접근 통제, 정기적인 보안 검토 등 업계 표준의 기술적·조직적 조치를 시행합니다. 결제 데이터는 PCI DSS 준수 업체인 Stripe에서 독점 처리합니다. 그러나 인터넷을 통한 전송 방식이 완전히 안전하지는 않으며, 절대적인 보안을 보장할 수 없습니다."
-                },
-                "changes": {
-                    "title": "방침 변경",
-                    "body": "당사는 본 개인정보 처리방침을 수시로 업데이트할 수 있습니다. 중요한 변경 사항이 있을 경우, 계정이 있으시면 이메일로 통지하거나 웹사이트에 눈에 띄는 공지를 게시합니다. 개정된 방침의 발효일 이후 GeomeeGo를 계속 이용하시면 변경 사항에 동의하신 것으로 간주됩니다."
-                },
-                "contact": {
-                    "title": "문의하기",
-                    "intro": "개인정보 관련 문의, 요청 또는 불만 사항:",
-                    "email": "📧 support@cheapestgo.com",
-                    "address": "🏢 FORHU Inc. · 미국 뉴욕주 뉴욕시 10005 Wall Street 30번지 8층"
-                }
-            },
-            "refund": {
-                "overview": {
-                    "title": "개요",
-                    "body": "GeomeeGo는 귀하와 여행 공급업체(호텔, 항공사, 패키지 제공업체) 사이의 중개인 역할을 합니다. 취소 및 환불 권리는 주로 부동산 유형, 요금 유형 및 예약 날짜에 따라 다른 개별 공급업체의 정책에 의해 규율됩니다. 본 정책은 당사가 귀하를 대신하여 취소 및 환불을 처리하는 방법을 설명합니다."
-                },
-                "cancellationTypes": {
-                    "title": "호텔 취소 유형",
-                    "intro": "GeomeeGo를 통해 호텔을 예약하시면 다음 중 하나의 요금 유형을 확인하실 수 있습니다:",
-                    "free": {
-                        "heading": "무료 취소",
-                        "body": "예약 시 명시된 기한 전에 취소하시면 취소 수수료가 부과되지 않습니다. 정확한 기한(예: '체크인 48시간 전까지 무료 취소')은 예약 페이지 및 확인 이메일에 표시됩니다."
-                    },
-                    "partial": {
-                        "heading": "부분 환불",
-                        "body": "체크인 날짜 기준 취소 시점에 따라 부분 환불이 적용됩니다. 위약금 금액 및 기한은 결제 확정 전에 표시됩니다."
-                    },
-                    "nonRefundable": {
-                        "heading": "환불 불가",
-                        "body": "취소 시 환불이 제공되지 않습니다. 이 요금은 일반적으로 가격이 낮으며, 결제 전에 '환불 불가'로 명확히 표시됩니다."
-                    }
-                },
-                "howToCancel": {
-                    "title": "예약 취소 방법",
-                    "intro": "예약을 취소하시려면:",
-                    "steps": [
-                        "GeomeeGo 계정에 로그인하고 내 예약으로 이동합니다.",
-                        "취소하려는 예약을 선택하고 예약 취소를 클릭합니다.",
-                        "취소 정책 및 화면에 표시된 수수료를 검토합니다.",
-                        "취소를 확인합니다. 취소 확인 이메일을 받으실 것입니다."
-                    ],
-                    "emailBefore": "또는 예약 참조 번호와 함께 다음으로 문의해 주십시오:",
-                    "emailAfter": "영업일 1일 이내에 취소를 처리해 드리겠습니다."
-                },
-                "processing": {
-                    "title": "환불 처리",
-                    "items": [
-                        { "label": "환불 대상", "text": "Stripe를 통해 결제 시 사용한 원래 결제 수단(신용/체크카드 또는 GrabPay)으로 환불됩니다." },
-                        { "label": "처리 기간", "text": "환불을 시작한 후, 귀하의 은행이나 카드 발급사에 따라 명세서에 표시되기까지 일반적으로 5~10 영업일이 소요됩니다." },
-                        { "label": "GeomeeGo 서비스 수수료", "text": "공급업체 오류 또는 GeomeeGo 시스템 결함으로 인한 취소가 아닌 한, 해당 플랫폼 서비스 수수료는 환불되지 않습니다." },
-                        { "label": "Stripe 처리 수수료", "text": "Stripe가 부과하는 결제 처리 수수료는 Stripe의 표준 정책에 따라 GeomeeGo에서 환불되지 않습니다." },
-                        { "label": "통화", "text": "환불은 원래 결제 시 사용한 통화로 이루어집니다. 환불 시점의 환율 차이에 대해 당사는 책임지지 않습니다." }
-                    ]
-                },
-                "noShows": {
-                    "title": "노쇼",
-                    "body": "사전 취소 없이 예정된 도착일에 체크인하지 않으실 경우, 예약은 노쇼로 처리됩니다. 노쇼 정책은 호텔마다 다르며, 대부분의 호텔은 전체 예약 금액을 청구합니다. GeomeeGo는 호텔의 노쇼 정책을 변경할 수 없습니다. 계획이 변경되시면 미리 취소하실 것을 강력히 권고합니다."
-                },
-                "amendments": {
-                    "title": "예약 변경",
-                    "intro": "날짜 변경, 객실 유형 변경, 투숙객 이름 수정은 호텔 가용성 및 공급업체 정책에 따라 달라집니다. 변경을 요청하시려면:",
-                    "steps": [
-                        "예약 참조 번호와 함께 support@cheapestgo.com으로 문의해 주십시오",
-                        "필요한 변경 사항과 이유를 명시해 주십시오",
-                        "당사가 공급업체와 가용성을 확인하고 변경 가능 여부를 안내해 드립니다"
-                    ],
-                    "noteLabel": "참고:",
-                    "noteText": "변경으로 인해 가격 차이(추가 요금 또는 크레딧)가 발생할 수 있으며, 취소 후 재예약 없이는 변경이 불가능한 경우도 있습니다. 변경 요청이 반드시 수용된다고 보장할 수 없습니다."
-                },
-                "supplierCancellations": {
-                    "title": "공급업체 취소 및 불가항력",
-                    "intro": "드문 경우이지만, 호텔 또는 여행 공급업체가 초과 예약, 폐쇄, 자연재해 또는 불가항력 사유로 예약을 취소할 수 있습니다. 이 경우:",
-                    "items": [
-                        "GeomeeGo는 공급업체로부터 통보를 받는 즉시 귀하에게 알려드립니다",
-                        "서비스 수수료를 포함하여 GeomeeGo에 지불한 금액 전액을 환불해 드립니다",
-                        "가능한 경우 대체 숙소 찾기를 도와드리지만, 대체 숙소를 보장할 수는 없습니다"
-                    ],
-                    "note": "GeomeeGo는 공급업체 취소로 인한 교통비, 다른 곳에서 추가 예약한 호텔 비용, 결과적 손실을 포함한 손실에 대해 책임지지 않습니다. 이러한 사태에 대비하여 여행 보험 가입을 권고합니다."
-                },
-                "disputes": {
-                    "title": "분쟁 및 지급 거절",
-                    "body": "청구 관련 우려 사항이 있으시면, 은행에 지급 거절(차지백)을 신청하기 전에 먼저 support@cheapestgo.com으로 문의해 주십시오. 대부분의 문제는 신속하게 해결할 수 있습니다. GeomeeGo에 먼저 연락하지 않고 시작된 지급 거절은 계정 정지로 이어질 수 있습니다. GeomeeGo는 악의적으로 또는 당사의 취소 정책을 준수하지 않고 신청된 지급 거절에 이의를 제기할 권리를 보유합니다."
-                },
-                "flightPackages": {
-                    "title": "항공편 패키지",
-                    "body": "항공편 + 호텔 올인클루시브 패키지의 경우, 취소 조건은 호텔과 항공편 구성 요소 모두에 따라 달라집니다. 항공권은 일반적으로 환불이 불가하거나 상당한 취소 수수료가 발생합니다. 패키지의 구체적인 조건은 결제 시 및 확인 이메일에 표시됩니다. 패키지를 취소해야 하실 경우, 즉시 support@cheapestgo.com으로 문의해 주십시오."
-                },
-                "contact": {
-                    "title": "환불 문의",
-                    "intro": "모든 환불 및 취소 문의는 예약 참조 번호를 준비하신 후 다음으로 연락해 주십시오:",
-                    "email": "📧 support@cheapestgo.com",
-                    "address": "🏢 FORHU Inc. · 미국 뉴욕주 뉴욕시 10005 Wall Street 30번지 8층",
-                    "outro": "모든 환불 요청에 대해 영업일 1~2일 이내에 답변해 드리겠습니다."
-                }
-            },
-            "cookie": {
-                "whatAreCookies": {
-                    "title": "쿠키란 무엇인가요?",
-                    "body": "쿠키는 웹사이트를 방문할 때 귀하의 기기에 저장되는 소형 텍스트 파일입니다. 웹사이트를 효율적으로 작동시키고, 귀하의 환경설정을 기억하며, 웹사이트 운영자에게 정보를 제공하기 위해 널리 사용됩니다. 유사 기술에는 웹 비콘, 픽셀, 로컬 스토리지, 세션 스토리지 등이 있으며, 본 정책에서는 이를 총칭하여 '쿠키'라고 합니다."
-                },
-                "whyWeUse": {
-                    "title": "쿠키 사용 목적",
-                    "intro": "GeomeeGo는 다음과 같은 목적으로 쿠키를 사용합니다:",
-                    "items": [
-                        "로그인 상태 유지 및 세션 보안 관리",
-                        "환경설정 기억(통화, 언어, 다크/라이트 모드)",
-                        "최근 검색 내역 및 열람한 숙소 저장",
-                        "사기 예방 및 계정 보안 보호",
-                        "성능 측정 및 방문자 플랫폼 이용 방식 파악",
-                        "콘텐츠 개인화 및 관련 특가·추천 상품 제공"
-                    ]
-                },
-                "types": {
-                    "title": "사용하는 쿠키 유형",
-                    "categories": [
-                        {
-                            "heading": "필수 쿠키",
-                            "body": "이 쿠키는 플랫폼 작동에 필수적입니다. 인증, 세션 관리, 보안 토큰, 결제 처리 등 핵심 기능을 지원합니다. 서비스 운영에 필요하므로 이 쿠키는 거부하실 수 없습니다.",
-                            "items": [
-                                "supabase-auth-token — 인증 세션",
-                                "__stripe_mid / __stripe_sid — Stripe 사기 방지"
-                            ]
-                        },
-                        {
-                            "heading": "기능성 쿠키",
-                            "body": "이 쿠키는 귀하의 선택을 기억하고 경험을 개인화합니다. 비활성화하면 일부 기능이 저하될 수 있습니다.",
-                            "items": [
-                                "통화 환경설정(예: KRW, USD, PHP)",
-                                "테마 환경설정(다크 또는 라이트 모드)",
-                                "최근 열람한 호텔 및 검색 기록"
-                            ]
-                        },
-                        {
-                            "heading": "분석 쿠키",
-                            "body": "방문자가 플랫폼을 어떻게 이용하는지(가장 많이 방문한 페이지, 이탈 지점, 경험 개선 방법)를 파악하는 데 도움을 줍니다. 데이터는 가능한 한 집계 및 익명화됩니다.",
-                            "items": [
-                                "페이지 조회 추적 및 세션 시간",
-                                "특가 및 검색 결과 클릭률",
-                                "오류 로깅 및 성능 모니터링"
-                            ]
-                        },
-                        {
-                            "heading": "마케팅 쿠키",
-                            "body": "플랫폼에서 귀하와 관련된 여행 특가를 표시하는 데 사용될 수 있습니다. 현재 당사는 제3자 광고를 게재하지 않습니다. 변경 시 본 정책을 업데이트하고 동의를 요청하겠습니다."
-                        }
-                    ]
-                },
-                "thirdParty": {
-                    "title": "제3자 쿠키",
-                    "intro": "일부 쿠키는 당사 페이지에 표시되는 제3자 서비스에 의해 설정됩니다:",
-                    "stripeBefore": "사기 감지 및 결제 세션 관리를 위한 쿠키를 설정합니다. 참조:",
-                    "stripeLinkText": "Stripe 개인정보 처리방침",
-                    "supabaseText": "당사 데이터베이스 인프라에서 귀하의 로그인 세션을 관리하기 위한 인증 쿠키를 설정합니다.",
-                    "outro": "당사는 제3자 쿠키를 통제할 수 없습니다. 자세한 내용은 해당 서비스 제공업체의 개인정보 처리방침을 참조해 주십시오."
-                },
-                "duration": {
-                    "title": "쿠키 유지 기간",
-                    "intro": "GeomeeGo의 쿠키는 다음 두 가지 유형입니다:",
-                    "items": [
-                        { "label": "세션 쿠키", "text": "브라우저를 닫으면 자동으로 삭제됩니다. 로그인 세션 및 임시 상태에 사용됩니다." },
-                        { "label": "영구 쿠키", "text": "일정 기간(일반적으로 30일~1년) 동안 기기에 남아 있습니다. 환경설정 및 분석에 사용됩니다." }
-                    ]
-                },
-                "managing": {
-                    "title": "쿠키 환경설정 관리",
-                    "intro": "여러 가지 방법으로 쿠키를 제어하실 수 있습니다:",
-                    "items": [
-                        { "label": "브라우저 설정", "text": "대부분의 브라우저에서 개인정보 또는 보안 설정을 통해 쿠키를 거부하거나 삭제할 수 있습니다. 필수 쿠키를 비활성화하면 로그인 및 결제와 같은 핵심 기능이 작동하지 않습니다." },
-                        { "label": "쿠키 배너", "text": "GeomeeGo를 처음 방문하시면 비필수 쿠키의 수락 또는 거부를 선택할 수 있는 쿠키 동의 배너가 표시될 수 있습니다." },
-                        { "label": "수신 거부 도구", "text": "분석 쿠키의 경우 해당하는 경우 Google 애널리틱스 차단 브라우저 추가 기능과 같은 브라우저 확장 프로그램을 사용하실 수 있습니다." }
-                    ],
-                    "note": "쿠키 설정을 조정하면 플랫폼 기능에 영향을 미칠 수 있습니다. 필수 쿠키는 비활성화하면 GeomeeGo를 이용하실 수 없게 됩니다."
-                },
-                "doNotTrack": {
-                    "title": "추적 거부(Do Not Track)",
-                    "body": "일부 브라우저는 '추적 거부'(DNT) 신호를 전송합니다. 웹사이트가 DNT 신호에 어떻게 반응해야 하는지에 대한 보편적인 표준이 없으므로, GeomeeGo는 현재 DNT 신호에 응답하지 않습니다. 표준이 발전함에 따라 이 분야를 계속 평가하겠습니다."
-                },
-                "changes": {
-                    "title": "쿠키 정책 변경",
-                    "body": "당사는 기술, 규정 또는 쿠키 사용 방식의 변화를 반영하기 위해 본 쿠키 정책을 수시로 업데이트할 수 있습니다. 중요한 변경 사항이 있을 경우 본 페이지 상단의 '최종 업데이트' 날짜를 변경합니다. 변경 사항 게시 후 플랫폼을 계속 이용하시면 개정된 정책에 동의하신 것으로 간주됩니다."
-                },
-                "contact": {
-                    "title": "문의",
-                    "intro": "쿠키 사용에 관한 문의사항:",
-                    "email": "📧 support@cheapestgo.com",
-                    "address": "🏢 FORHU Inc. · 미국 뉴욕주 뉴욕시 10005 Wall Street 30번지 8층"
-                }
-            }
-        }
+    "help": {
+      "emailSupport": "이메일 지원",
+      "faq1": "예약을 취소하거나 변경하려면 어떻게 하나요?",
+      "faq2": "예약 확인서는 언제 받을 수 있나요?",
+      "faq3": "환불을 요청하려면 어떻게 하나요?",
+      "faq4": "어떤 결제 방법을 사용할 수 있나요?",
+      "faqTitle": "자주 묻는 질문",
+      "heading": "도움말 및 지원",
+      "liveChat": "실시간 채팅",
+      "liveChatDesc": "지원팀과 채팅하기",
+      "subheading": "계정 및 예약에 대한 도움을 받으세요"
     },
     "nav": {
-        "account": "계정",
-        "accountSettings": "계정 설정",
-        "accountWorks": "계정은 {brand} 및 모든 파트너 사이트에서 사용 가능합니다",
-        "createAccount": "계정 만들기",
-        "home": "홈",
-        "membersSave": "회원은 10% 이상 절약",
-        "membersSaveSubtitle": "로그인 시 선정 숙소 할인 적용",
-        "myTrips": "내 여행",
-        "openApp": "앱 열기",
-        "profile": "프로필",
-        "signIn": "로그인",
-        "signOut": "로그아웃",
-        "support": "고객지원",
-        "trips": "여행"
+      "communications": {
+        "description": "알림 설정 관리",
+        "title": "커뮤니케이션"
+      },
+      "help": {
+        "description": "고객 지원 받기",
+        "title": "도움말 및 피드백"
+      },
+      "profile": {
+        "description": "개인 정보 확인 및 수정",
+        "title": "프로필"
+      },
+      "security": {
+        "description": "비밀번호 업데이트",
+        "title": "보안"
+      }
     },
-    "popularDestinations": {
-        "subtitle": "아시아 태평양의 인기 명소를 둘러보세요 — 몇 초 만에 항공편과 호텔을 검색하세요.",
-        "title": "인기 여행지"
+    "profile": {
+      "cancel": "취소",
+      "edit": "편집",
+      "emailAddress": "이메일 주소",
+      "emailCannotChange": "이메일은 변경할 수 없습니다",
+      "fillAllFields": "모든 필드를 입력해 주세요",
+      "firstName": "이름",
+      "fullName": "이름",
+      "heading": "프로필 정보",
+      "lastName": "성",
+      "save": "저장",
+      "saving": "저장 중...",
+      "subheading": "개인 정보를 관리하세요",
+      "updateError": "프로필 업데이트에 실패했습니다",
+      "updateSuccess": "프로필이 성공적으로 업데이트되었습니다"
     },
-    "propertyGallery": {
-        "alt": {
-            "galleryView": "갤러리 이미지 {number}",
-            "mainPropertyView": "숙소 메인 이미지",
-            "propertyView": "숙소 이미지",
-            "propertyViewNumbered": "숙소 이미지 {number}",
-            "thumbnail": "썸네일 {number}",
-            "view": "이미지 {number}"
-        },
-        "moreInfo": "추가 정보",
-        "morePhotos": "+{count}장의 사진",
-        "noImages": "이용 가능한 이미지가 없습니다",
-        "showAllPhotos": "모든 사진 보기",
-        "viewPhoto": "사진 보기"
+    "sectionHeader": {
+      "edit": "편집"
     },
-    "propertyNav": {
-        "amenities": "편의시설",
-        "location": "위치",
-        "overview": "개요",
-        "policies": "정책",
-        "reviews": "리뷰",
-        "rooms": "객실"
+    "security": {
+      "accountEmail": "계정 이메일",
+      "accountEmailSubtitle": "계정 이메일 주소",
+      "changePassword": "비밀번호 변경",
+      "confirmPassword": "새 비밀번호 확인",
+      "currentPassword": "현재 비밀번호",
+      "emailCannotChange": "이메일은 변경할 수 없습니다",
+      "fillAllPasswordFields": "모든 비밀번호 필드를 입력해 주세요",
+      "heading": "보안 설정",
+      "newPassword": "새 비밀번호",
+      "newPasswordHint": "최소 6자 이상",
+      "passwordTooShort": "새 비밀번호는 최소 6자 이상이어야 합니다",
+      "passwordUpdateError": "비밀번호 업데이트에 실패했습니다",
+      "passwordUpdateSuccess": "비밀번호가 성공적으로 업데이트되었습니다",
+      "passwordsDoNotMatch": "새 비밀번호가 일치하지 않습니다",
+      "subheading": "비밀번호 및 계정 보안을 관리하세요",
+      "updatePassword": "비밀번호 업데이트",
+      "updating": "업데이트 중..."
     },
-    "propertyOverview": {
-        "aboutProperty": "숙소 소개",
-        "checkIn": "체크인",
-        "checkOut": "체크아웃",
-        "contactInfo": "연락처",
-        "importantInfo": "중요 안내",
-        "cleaningSafety": {
-            "description": "이 숙소는 비대면 체크인과 강화된 청소 절차 등 철저한 위생 관리를 시행하고 있습니다.",
-            "title": "청결 및 안전 수칙"
-        },
-        "popularAmenities": "인기 편의시설",
-        "readMore": "더 보기",
-        "seeAllAmenities": "편의시설 {count}개 모두 보기",
-        "showLess": "간략히 보기",
-        "showLessAmenities": "편의시설 간략히 보기",
-        "verifiedReview": "인증된 리뷰 {count}개",
-        "verifiedReviews": "인증된 리뷰 {count}개",
-        "amenityLabels": {
-            "Free WiFi": "무료 Wi-Fi",
-            "WiFi": "Wi-Fi",
-            "Internet": "인터넷",
-            "High-Speed Internet": "고속 인터넷",
-            "Free Parking": "무료 주차",
-            "Parking": "주차장",
-            "Valet Parking": "발레 파킹",
-            "Secure Parking": "보안 주차장",
-            "Underground Parking": "지하 주차장",
-            "Swimming Pool": "수영장",
-            "Indoor Pool": "실내 수영장",
-            "Outdoor Pool": "야외 수영장",
-            "Heated Pool": "온수 수영장",
-            "Rooftop Pool": "루프탑 수영장",
-            "Fitness Center": "피트니스 센터",
-            "Sauna": "사우나",
-            "Spa": "스파",
-            "Hot Tub": "자쿠지",
-            "Jacuzzi": "자쿠지",
-            "Steam Room": "스팀룸",
-            "Restaurant": "레스토랑",
-            "Bar": "바",
-            "Breakfast Available": "조식 제공",
-            "Breakfast Included": "조식 포함",
-            "Buffet Breakfast": "뷔페 조식",
-            "Room Service": "룸 서비스",
-            "Minibar": "미니바",
-            "Kitchen": "주방",
-            "Kitchenette": "간이 주방",
-            "Coffee Maker": "커피 메이커",
-            "Snack Bar": "스낵바",
-            "Air Conditioning": "에어컨",
-            "Heating": "난방",
-            "Balcony": "발코니",
-            "Terrace": "테라스",
-            "Sea View": "바다 전망",
-            "City View": "도시 전망",
-            "Garden View": "정원 전망",
-            "In-Room Safe": "객실 금고",
-            "TV": "TV",
-            "Flat-Screen TV": "평면 TV",
-            "Concierge": "컨시어지",
-            "24/7 Reception": "24시간 프런트",
-            "Laundry Service": "세탁 서비스",
-            "Dry Cleaning": "드라이클리닝",
-            "Luggage Storage": "수하물 보관",
-            "Airport Transfer": "공항 셔틀",
-            "Shuttle Service": "셔틀 서비스",
-            "Tour Desk": "투어 데스크",
-            "Daily Housekeeping": "매일 객실 청소",
-            "Business Center": "비즈니스 센터",
-            "Meeting Rooms": "회의실",
-            "Conference Facilities": "컨퍼런스 시설",
-            "Wheelchair Accessible": "휠체어 이용 가능",
-            "Disabled Facilities": "장애인 편의시설",
-            "Elevator": "엘리베이터",
-            "Non-Smoking Rooms": "금연 객실",
-            "Pet Friendly": "반려동물 동반 가능",
-            "Family Rooms": "패밀리룸",
-            "Smoke-Free Property": "금연 시설",
-            "Garden": "정원",
-            "BBQ Facilities": "바베큐 시설",
-            "Sun Terrace": "선 테라스",
-            "Beach Access": "해변 접근",
-            "Private Beach": "전용 해변",
-            "Express Check-in": "빠른 체크인",
-            "Early Check-in": "조기 체크인",
-            "Late Check-out": "늦은 체크아웃",
-            "Lockers": "사물함",
-            "ATM on Site": "현장 ATM",
-            "Gift Shop": "기프트샵",
-            "Newsstand": "신문 가판대",
-            "Multilingual Staff": "다국어 스태프",
-            "Smoking Areas": "흡연 구역",
-            "Security Guard": "경비원",
-            "Lobby TV": "로비 TV"
-        }
+    "sidebar": {
+      "getEmails": "이메일 받기",
+      "greeting": "안녕하세요, {name}",
+      "membershipTier": "블루",
+      "partnerInfo": "계정은 {brand} 및 모든 파트너 사이트에서 사용 가능합니다",
+      "pointsAmount": "₱ 0.00",
+      "pointsValue": "포인트 가치",
+      "promoSubtitle": "{brand}의 특가, 팁, 인사이트를 받아보세요",
+      "promoTitle": "여행 영감과 혜택 받기",
+      "signOut": "로그아웃",
+      "viewRewardsActivity": "리워드 활동 보기"
+    }
+  },
+  "ai": {
+    "prompts": {
+      "bali": "발리 해변 리조트, 성인 2명, 2월 14-21일...",
+      "cebu": "다음 달 세부 커플 주말 여행...",
+      "manila": "마닐라 근처 패밀리 리조트, 성인 2명 어린이 2명...",
+      "tokyo": "도쿄 럭셔리 호텔, 1박 $200 이하, 수영장 있는 곳..."
+    }
+  },
+  "appBanner": {
+    "badge": "모바일 앱",
+    "downloadBtn": "앱 다운로드",
+    "downloads": "다운로드 수",
+    "installBtn": "앱 설치하기",
+    "learnMore": "더 알아보기",
+    "rating": "앱 평점",
+    "savings": "추가 할인",
+    "subtitle": "앱 전용 특가 혜택, 실시간 알림을 받고 이동 중에도 간편하게 여행을 관리하세요.",
+    "title": "앱으로 더 스마트하게 여행하세요"
+  },
+  "auth": {
+    "actions": {
+      "back": "뒤로",
+      "backToHome": "홈으로 돌아가기",
+      "backToLogin": "로그인으로 돌아가기",
+      "continue": "계속하기",
+      "createAccount": "계정 만들기",
+      "createOne": "계정 만들기",
+      "forgotPassword": "비밀번호를 잊으셨나요?",
+      "resendConfirmation": "확인 이메일 다시 보내기",
+      "resetPassword": "비밀번호 재설정",
+      "sendResetLink": "재설정 링크 보내기",
+      "signIn": "로그인",
+      "tryAgain": "다시 시도해 주세요"
     },
-    "pwa": {
-        "installPrompt": {
-            "body": "홈 화면에 추가하면 더 빠르게 이용할 수 있습니다.",
-            "dismiss": "나중에",
-            "install": "설치",
-            "title": "{brand} 앱 받기"
-        }
+    "closeModal": "닫기",
+    "emailStep": {
+      "createWithEmail": "이메일로 계정 만들기",
+      "hasAccount": "이미 계정이 있으신가요?",
+      "noAccount": "계정이 없으신가요?",
+      "otherWays": "다른 로그인 방법",
+      "privacyLink": "개인정보처리방침",
+      "subtitle": "하나의 계정으로 모든 여행을",
+      "terms": "로그인 시 <terms>이용약관</terms> 및 <privacy>개인정보처리방침</privacy>에 동의하게 됩니다.",
+      "termsLink": "이용약관",
+      "title": "로그인 또는 계정 만들기"
+    },
+    "forgotPasswordStep": {
+      "checkInbox": "받은편지함을 확인하세요",
+      "emailPlaceholder": "이메일을 입력하세요",
+      "notReceived": "이메일을 받지 못하셨나요? 스팸함을 확인하시거나",
+      "sentDescription": "{email}(으)로 비밀번호 재설정 링크를 보냈습니다. 이메일의 링크를 클릭하여 새 비밀번호를 설정하세요.",
+      "subtitle": "이메일 주소를 입력하시면 재설정 링크를 보내드립니다.",
+      "title": "비밀번호 재설정"
+    },
+    "labels": {
+      "birthDate": "생년월일",
+      "birthDateHint": "계정을 만들려면 만 18세 이상이어야 합니다.",
+      "confirmPassword": "비밀번호 확인",
+      "confirmPasswordPlaceholder": "비밀번호를 다시 입력하세요",
+      "email": "이메일",
+      "emailPlaceholder": "이메일을 입력하세요",
+      "firstName": "이름",
+      "firstNamePlaceholder": "이름",
+      "lastName": "성",
+      "lastNamePlaceholder": "성",
+      "password": "비밀번호",
+      "passwordPlaceholder": "비밀번호를 만드세요",
+      "passwordPlaceholderSignIn": "비밀번호를 입력하세요"
+    },
+    "messages": {
+      "acceptTerms": "계속하려면 이용약관 및 개인정보처리방침에 동의해 주세요.",
+      "accountCreated": "계정이 생성되었습니다!",
+      "accountExists": "이미 가입된 계정입니다. 로그인을 시도합니다...",
+      "accountExistsSignIn": "이미 가입된 계정입니다. 로그인해 주세요.",
+      "authFailed": "인증에 실패했습니다. 다시 시도해 주세요.",
+      "failedToReset": "비밀번호 재설정에 실패했습니다. 다시 시도해 주세요.",
+      "invalidCredentials": "이메일 또는 비밀번호가 올바르지 않습니다.",
+      "invalidEmail": "유효하지 않은 이메일입니다",
+      "invalidLink": "유효하지 않은 재설정 링크입니다. 새로 요청해 주세요.",
+      "passwordsDoNotMatch": "비밀번호가 일치하지 않습니다",
+      "registrationFailed": "회원가입에 실패했습니다. 다시 시도해 주세요.",
+      "requirementsNotMet": "비밀번호가 모든 조건을 충족하지 않습니다",
+      "resendFailed": "이메일 재전송에 실패했습니다. 다시 시도해 주세요.",
+      "resentSuccess": "확인 이메일을 다시 보냈습니다!",
+      "sendResetFailed": "재설정 이메일 전송에 실패했습니다. 다시 시도해 주세요.",
+      "verificationSent": "이메일을 확인해 주세요. 인증 링크가 이미 발송되었습니다.",
+      "welcomeBack": "다시 오신 것을 환영합니다!",
+      "wrongPassword": "비밀번호가 올바르지 않거나 Google로 만든 계정입니다. Google 로그인을 이용하거나 비밀번호를 재설정해 주세요."
+    },
+    "passwordRequirements": {
+      "lowercase": "소문자",
+      "minLength": "8자 이상",
+      "number": "숫자",
+      "uppercase": "대문자"
+    },
+    "passwordStep": {
+      "for": "계정:",
+      "keepSignedIn": "로그인 상태 유지",
+      "noAccount": "계정이 없으신가요?",
+      "title": "비밀번호를 입력하세요"
+    },
+    "registerStep": {
+      "for": "계정:",
+      "hasAccount": "이미 계정이 있으신가요?",
+      "keepSignedIn": "로그인 상태 유지",
+      "privacyLink": "개인정보처리방침",
+      "terms": "계정을 만들면 <terms>이용약관</terms> 및 <privacy>개인정보처리방침</privacy>에 동의하게 됩니다.",
+      "termsLink": "이용약관",
+      "title": "계정 만들기"
+    },
+    "resetPassword": {
+      "confirmPasswordLabel": "비밀번호 확인",
+      "confirmPasswordPlaceholder": "새 비밀번호를 다시 입력하세요",
+      "newPasswordLabel": "새 비밀번호",
+      "newPasswordPlaceholder": "새 비밀번호를 입력하세요",
+      "subtitle": "아래에 새 비밀번호를 입력하세요",
+      "successDescription": "비밀번호가 변경되었습니다. 이제 새 비밀번호로 로그인할 수 있습니다.",
+      "successTitle": "비밀번호 재설정 완료",
+      "title": "비밀번호 재설정"
+    },
+    "signIn": {
+      "continueWithApple": "Apple로 계속하기",
+      "continueWithEmail": "이메일로 계속하기",
+      "continueWithGoogle": "Google로 계속하기",
+      "emailLabel": "이메일 주소",
+      "emailPlaceholder": "example@email.com",
+      "orDivider": "또는",
+      "privacyLink": "개인정보처리방침",
+      "terms": "로그인 시 {terms} 및 {privacy}에 동의하게 됩니다.",
+      "termsLink": "이용약관",
+      "title": "{brand} 로그인"
+    },
+    "social": {
+      "appleAriaLabel": "Apple로 로그인",
+      "facebookAriaLabel": "Facebook으로 로그인",
+      "signInWithGoogle": "Google로 로그인"
+    },
+    "verifyEmailStep": {
+      "description": "확인 링크를 보낸 주소:",
+      "description2": "이메일의 링크를 클릭하여 로그인하세요.",
+      "title": "이메일을 확인하세요"
+    }
+  },
+  "bookingDestination": {
+    "confirmed": "예약 완료",
+    "emailed": "확인 메일이 이메일로 전송되었습니다",
+    "myTrips": "내 여행",
+    "noBooking": "둘러볼 예약이 없습니다. 내 여행으로 이동합니다…",
+    "goToTrips": "내 여행으로 이동",
+    "clocks": {
+      "ariaTrigger": "목적지 현지 시간",
+      "title": "현지 시간",
+      "home": "출발지",
+      "destination": "목적지",
+      "diffSame": "출발지와 동일한 시간",
+      "diffAhead": "출발지보다 {hours, plural, other {#시간}} 빠름",
+      "diffBehind": "출발지보다 {hours, plural, other {#시간}} 느림"
+    },
+    "currency": {
+      "ariaLabel": "환율 변환기",
+      "title": "환율 변환기",
+      "swap": "통화 교체",
+      "liveRates": "실시간 환율",
+      "updating": "업데이트 중…",
+      "rate": "1 {from} = {rate} {to}"
+    }
+  },
+  "checkout": {
+    "back": "뒤로",
+    "backToBookingDetails": "예약 상세로 돌아가기",
+    "bookingErrorTitle": "예약 오류",
+    "bookingFor": {
+      "guestFirstName": "게스트 이름 *",
+      "guestLastName": "게스트 성 *",
+      "myself": "본인",
+      "someoneElse": "다른 사람",
+      "whoIsBooking": "누구를 위한 예약인가요?"
+    },
+    "cancellation": {
+      "cancelAfter": "이후 취소",
+      "cancelBy": "까지 취소",
+      "description": "객실을 취소하는 데 얼마의 비용이 드나요?",
+      "earlyDepartureFee": "조기 출발 수수료: {amount} — 예정된 날짜보다 먼저 체크아웃할 경우.",
+      "footer": "취소 비용은 총 예약 금액을 기준으로 합니다. 모든 날짜와 시간은 GMT 기준입니다.",
+      "freeCancellation": "무료 취소 가능 — 아래 마감일을 확인하세요",
+      "freeCancellationLabel": "무료 취소",
+      "fullRefund": "(전액 환불)",
+      "noShowPenalty": "노쇼 패널티: {amount} — 취소 없이 체크인하지 않을 경우.",
+      "nonRefundable": "환불 불가 — 이 예약은 환불을 위해 취소할 수 없습니다",
+      "refund": "{amount} 환불",
+      "title": "취소 정책"
+    },
+    "checkIn": "체크인",
+    "checkOut": "체크아웃",
+    "chooseYourDates": "날짜 선택",
+    "completeYourBooking": "예약 완료하기",
+    "confirmingBooking": "예약 확인 중",
+    "confirmingWithHotel": "호텔 확인 중...",
+    "continue": "계속",
+    "dontClosePage": "이 페이지를 닫지 마세요",
+    "duplicateBookingDesc": "기존 예약을 먼저 취소하거나, 돌아가서 유지하세요.",
+    "duplicateBookingTitle": "{hotel}에 중복된 날짜의 예약이 이미 있습니다",
+    "finalizingDetails": "예약 세부사항 확정 중...",
+    "goBack": "← 뒤로",
+    "goBackBtn": "뒤로",
+    "keepExistingBooking": "기존 예약 유지",
+    "loadingPaymentForm": "결제 양식 로딩 중...",
+    "modifyBooking": "예약 수정",
+    "payment": {
+      "card": "카드",
+      "cardNumber": "카드 번호",
+      "countries": {
+        "ID": "인도네시아",
+        "JP": "일본",
+        "KR": "대한민국",
+        "MY": "말레이시아",
+        "PH": "필리핀",
+        "SG": "싱가포르",
+        "TH": "태국",
+        "US": "미국",
+        "VN": "베트남"
+      },
+      "country": "국가",
+      "mmYY": "월 / 년",
+      "payeeFirstName": "수취인 이름",
+      "payeeLastName": "수취인 성",
+      "paymentInformation": "결제 정보",
+      "securedMessage": "결제 정보는 안전하게 보호됩니다.",
+      "securityCode": "보안 코드"
+    },
+    "pickDatesDescription": "체크인 및 체크아웃 날짜를 선택하세요.",
+    "promos": {
+      "applied": "적용됨",
+      "apply": "적용",
+      "availableForBooking": "이 예약에 사용 가능한 프로모션",
+      "availablePromos": "사용 가능한 프로모션",
+      "failedToApply": "프로모션 적용에 실패했습니다. 다시 시도해 주세요.",
+      "hotelDeal": "호텔 딜",
+      "loadingPromos": "프로모션 로딩 중...",
+      "location": "위치",
+      "minAmount": "최소 {amount}",
+      "newUser": "신규 사용자",
+      "off": "할인",
+      "promo": "프로모션",
+      "seasonal": "시즌 한정",
+      "until": "{date}까지",
+      "upTo": "최대 {amount}"
+    },
+    "rating": {
+      "average": "보통",
+      "exceptional": "최고",
+      "fabulous": "훌륭함",
+      "good": "좋음",
+      "pleasant": "쾌적함",
+      "veryGood": "매우 좋음"
+    },
+    "retry": "재시도",
+    "searchAvailableRooms": "객실 검색 →",
+    "secureYourBooking": "예약 확정하기",
+    "securingReservation": "예약 확정 중...",
+    "selectYourDates": "날짜 선택",
+    "signIn": "로그인",
+    "signInBannerDesc": "이메일로 예약 확인 및 업데이트를 받으실 수 있습니다.",
+    "signInToComplete": "로그인하여 예약 완료",
+    "specialRequests": {
+      "placeholder": "호텔이 최선을 다해 준비해 드립니다.",
+      "title": "특별 요청이 있으신가요?"
+    },
+    "stripe": {
+      "completePayment": "결제 완료",
+      "loadError": "결제 양식을 불러오지 못했습니다. 새로고침 후 다시 시도해 주세요.",
+      "payNow": "지금 결제",
+      "processing": "결제 처리 중...",
+      "unexpectedError": "예상치 못한 오류가 발생했습니다."
+    },
+    "submit": {
+      "continueToPayment": "결제 계속하기 • {amount}",
+      "goBackDifferentHotel": "돌아가서 다른 호텔 선택",
+      "goBackReselect": "돌아가서 객실 재선택",
+      "hotelUnavailable": "호텔을 일시적으로 사용할 수 없음",
+      "hotelUnavailableDesc": "이 호텔은 현재 예약할 수 없습니다. 돌아가서 다른 호텔을 선택해 주세요.",
+      "processingBooking": "예약 처리 중...",
+      "sessionExpired": "객실 세션 만료",
+      "sessionExpiredDesc": "객실 보류가 만료되었습니다. 돌아가서 객실을 다시 선택해 주세요 — 같은 객실을 다시 선택할 수 있습니다.",
+      "signInToComplete": "로그인하여 예약 완료",
+      "verificationFailed": "확인 실패 — 위 오류를 참조하세요",
+      "verifyingPrice": "가격 확인 중...",
+      "verifyingRoom": "객실 확인 중...",
+      "waitingMessage": "호텔과 예약을 확인하는 동안 기다려 주세요...",
+      "waitingWarning": "최대 30초까지 소요될 수 있습니다. 이 페이지를 닫지 마세요."
+    },
+    "success": {
+      "bookFlightBundle": "지금 항공편을 예약하고 총액에서 번들 할인을 받으세요.",
+      "bookingConfirmed": "예약 완료! 🎉",
+      "bookingId": "예약 ID",
+      "bundleDeal": "✦ 번들 딜",
+      "bundleDiscountApplied": "번들 할인이 적용되었습니다",
+      "checkEmail": "예약 세부정보 및 업데이트는 이메일을 확인하세요",
+      "confirmationSentTo": "확인 메일 발송처",
+      "flightHotelBundle": "항공 + 호텔 번들",
+      "needFlight": "{destination}행 항공편이 필요하신가요?",
+      "reservationComplete": "<strong>{name}</strong>의 예약이 완료되었습니다.",
+      "returnToHome": "홈으로 돌아가기",
+      "saveUpTo": "최대 8% 할인",
+      "saved": "{amount} 절약",
+      "searchFlightsAndBundle": "항공편 & 번들 검색",
+      "sent": "발송됨",
+      "stayDuration": "숙박 기간",
+      "viewMyTrips": "내 여행 보기",
+      "openingDestination": "목적지 페이지로 이동 중…",
+      "checkIn": "체크인",
+      "checkOut": "체크아웃",
+      "emailInfo": "몇 분 내에 예약 확인 이메일이 발송됩니다.",
+      "freeCancellationInfo": "무료 취소 예약인 경우, 내 여행에서 취소 또는 변경할 수 있습니다.",
+      "hotel": "호텔",
+      "hotelCheckInInfo": "도착 시 호텔 프런트에서 예약 ID를 제시해 주세요.",
+      "hotelSuccess": "호텔이 성공적으로 예약되었습니다.",
+      "room": "객실",
+      "total": "합계",
+      "whatsNext": "다음 단계"
+    },
+    "summary": {
+      "adult": "명",
+      "adults": "명",
+      "averagePerNight": "1박 평균 요금",
+      "calculatingPerNight": "1박 요금 계산 중...",
+      "checkInAndOut": "체크인 & 체크아웃",
+      "checkInLabel": "체크인",
+      "checkOutLabel": "체크아웃",
+      "child": "명 (어린이)",
+      "children": "명 (어린이)",
+      "edit": "편집",
+      "night": "박",
+      "nights": "박",
+      "priceDetails": "가격 세부정보",
+      "promoCode": "프로모션: {code}",
+      "roomConfirmed": "객실 확정됨",
+      "roomNights": "1개 객실 × {nights}{count}",
+      "included": "포함됨",
+      "taxesAndFees": "세금 및 수수료",
+      "serviceFee": "플랫폼 서비스 수수료",
+      "total": "총계",
+      "updateDates": "날짜 업데이트",
+      "youSave": "이 프로모션으로 {amount} 절약",
+      "yourRoom": "객실"
+    },
+    "title": "결제 | {brand}",
+    "userDetails": {
+      "email": "이메일 *",
+      "emailPlaceholder": "이메일",
+      "firstName": "이름 *",
+      "firstNamePlaceholder": "이름",
+      "lastName": "성 *",
+      "lastNamePlaceholder": "성",
+      "no": "아니요",
+      "phone": "전화번호 *",
+      "phonePlaceholder": "번호",
+      "title": "내 정보",
+      "travelingForWork": "출장인가요?",
+      "yes": "예",
+      "guest1": "게스트 1 (본인)",
+      "guestN": "게스트 {n}",
+      "childN": "아동 {n}",
+      "age": "나이 *",
+      "agePlaceholder": "0–17"
+    },
+    "validation": {
+      "bookingFailed": "예약 확인 실패: {message}. 결제가 자동으로 환불됩니다.",
+      "fieldRequired": "이 항목은 필수입니다",
+      "firstNameRequired": "이름을 입력해 주세요",
+      "fixHighlighted": "강조 표시된 항목을 먼저 수정해 주세요.",
+      "invalidPrice": "유효하지 않은 예약 가격입니다. 다시 시도해 주세요.",
+      "lastNameRequired": "성을 입력해 주세요",
+      "nameInvalid": "이름은 문자만 포함해야 합니다",
+      "paymentSetupFailed": "결제 설정 실패",
+      "phoneDigitsOnly": "전화번호는 숫자만 입력해 주세요",
+      "phoneRequired": "전화번호를 입력해 주세요",
+      "priceVerifying": "가격 확인 중입니다 — 잠시 기다린 후 다시 시도해 주세요.",
+      "requiresAuth": "인증이 필요합니다",
+      "sessionExpired": "예약 세션이 만료되었습니다. 돌아가서 객실을 다시 선택해 주세요.",
+      "sessionExpiredCharge": "결제 중 세션이 만료되었습니다. 카드가 청구되었습니다 — 결제 참조 번호({id})와 함께 고객지원에 문의해 주세요.",
+      "refreshingSession": "가격 보장을 갱신 중입니다…",
+      "quoteExpiringSoon": "가격 보장이 5분 후 만료됩니다 — 빨리 예약을 완료해 주세요."
+    },
+    "priceChanged": {
+      "title": "가격이 변경되었습니다",
+      "description": "선택하신 시점과 예약을 확인하려는 시점 사이에 이 객실의 가격이 변경되었습니다.",
+      "originalPrice": "기존 가격",
+      "newPrice": "변경된 가격",
+      "refundNotice": "{amount}의 결제 금액이 자동으로 환불되었습니다. 명세서에 반영되기까지 영업일 기준 3–5일이 소요될 수 있습니다.",
+      "backToSearch": "검색으로 돌아가기"
+    },
+    "verifyingPayment": "결제 확인 중...",
+    "viewExistingBooking": "기존 예약 보기",
+    "voucher": {
+      "apply": "적용",
+      "enterPromoCode": "프로모션 코드 입력",
+      "failedToValidate": "프로모션 코드 확인에 실패했습니다. 다시 시도해 주세요.",
+      "havePromoCode": "프로모션 코드가 있으신가요?",
+      "off": "할인",
+      "promoCode": "프로모션 코드",
+      "removeVoucher": "프로모션 코드 제거",
+      "saved": "{amount} 절약"
+    }
+  },
+  "currencyPicker": {
+    "label": "통화 선택"
+  },
+  "deals": {
+    "all": "전체",
+    "allDealsCount": "전체 {count}개 특가",
+    "collapse": "접기 ↑",
+    "headerDefault": "독점 특가 및 혜택",
+    "headerPersonalized": "<highlight>{city}</highlight> 출발 항공권 특가",
+    "oneWay": "편도",
+    "popularRoute": "인기 노선",
+    "roundTrip": "왕복",
+    "searchFlights": "항공편 검색",
+    "subtitleDefault": "인기 노선 최저가 항공권",
+    "subtitlePersonalized": "{city} 출발 최저가 항공권"
+  },
+  "errors": {
+    "generic": "오류가 발생했습니다. 다시 시도해 주세요.",
+    "notFound": "페이지를 찾을 수 없습니다.",
+    "searchFailed": "검색에 실패했습니다. 연결 상태를 확인하고 다시 시도해 주세요."
+  },
+  "flightBook": {
+    "address": {
+      "addressLine": "주소 *",
+      "city": "도시 *",
+      "country": "국가 *",
+      "postalCode": "우편번호 *",
+      "title": "청구지 주소"
+    },
+    "ancillaryExpired": {
+      "description": "이 요금은 더 이상 보조 서비스를 제공하지 않습니다. 예약은 계속할 수 있으며 좌석과 수화물은 항공사에서 직접 관리할 수 있습니다.",
+      "title": "이 혜택에서는 사용할 수 없습니다"
+    },
+    "backToDetails": "세부 정보로 돌아가기",
+    "bags": {
+      "added": "수화물 {count}개 추가됨 · +{price}",
+      "addedPlural": "수화물 {count}개 추가됨 · +{price}",
+      "carryOn": "기내 수화물",
+      "checked": "위탑 수화물",
+      "errorDetail": "수화물 옵션을 불러올 수 없습니다: {error}",
+      "free": "무료",
+      "loading": "수화물 옵션 불러오는 중…",
+      "notAvailable": "수화물 업그레이드를 사용할 수 없습니다",
+      "notSupported": "이 항곸은 추가 수화물 선택을 지원하지 않습니다.",
+      "optional": "선택 — 위탑 또는 기내 수화물 추가",
+      "refreshing": "혜택 새로고침 중…",
+      "title": "추가 수화물",
+      "upgradeTotal": "수화물 업그레이드 합계",
+      "weight": "최대 {weight} kg"
+    },
+    "bookingSteps": [
+      "결제 확인 중...",
+      "좌석 확보 중...",
+      "항공사 확인 중...",
+      "예약 세부 정리 중..."
+    ],
+    "confirmingBooking": "예약 확인 중",
+    "contact": {
+      "email": "이메일 *",
+      "phone": "전화번호 *",
+      "title": "연락처"
+    },
+    "countries": {
+      "AU": "호주",
+      "CA": "캐나다",
+      "CN": "중국",
+      "DE": "독일",
+      "FR": "프랑스",
+      "GB": "영국",
+      "IN": "인도",
+      "JP": "일본",
+      "KR": "대한민국",
+      "MY": "말레이시아",
+      "PH": "필리핀",
+      "SG": "싱가포르",
+      "TH": "태국",
+      "US": "미국",
+      "VN": "베트남"
+    },
+    "datePicker": {
+      "cancel": "취소",
+      "days": [
+        "일",
+        "월",
+        "화",
+        "수",
+        "목",
+        "금",
+        "토"
+      ],
+      "month": "월",
+      "months": [
+        "1월",
+        "2월",
+        "3월",
+        "4월",
+        "5월",
+        "6월",
+        "7월",
+        "8월",
+        "9월",
+        "10월",
+        "11월",
+        "12월"
+      ],
+      "select": "선택",
+      "selectDate": "날짜 선택",
+      "year": "년"
+    },
+    "dealBanner": {
+      "dealApplied": "{discount} 할인이 적용되었습니다",
+      "departs": "{date} 출발",
+      "perPerson": "/ 1인",
+      "returns": "{date} 돌아온"
+    },
+    "dealGate": {
+      "dealUnavailable": "혜택을 이용할 수 없습니다",
+      "noFlightsFound": "이 딜에 해당하는 항공편을 찾을 수 없습니다. 딜이 만료되었을 수 있습니다.",
+      "searchAll": "모든 항곸 검색",
+      "searchMessages": [
+        "이용 가능한 항곸 검색 중…",
+        "좌석 가능 여부 확인 중…",
+        "최고 가격 확보 중…",
+        "거의 다 됐습니다…"
+      ],
+      "securingDeal": "혜택 확보 중",
+      "somethingWrong": "문제가 발생했습니다. 다시 시도해 주세요.",
+      "tryAgain": "다시 시도"
+    },
+    "dontClosePage": "이 페이지를 닫지 마세요",
+    "duplicate": {
+      "description": "{route} 출발하는 활성 예약이 {date}에 발견되었습니다. 먼저 기존 예약을 취소하거나 뒤로 돌아가세요.",
+      "keepExisting": "기존 예약 유지",
+      "title": "이미 해당 날짜의 항곸을 예약하셨습니다",
+      "viewExisting": "기존 예약 보기"
+    },
+    "error": {
+      "bookingFailed": "예약 실패",
+      "bookingFailedDefault": "예약이 실패했습니다. 다시 시도해 주세요.",
+      "codes": {
+        "balance_insufficient": "항공권 예약이 일시적으로 불가능합니다. 잠시 후 다시 시도해 주세요. 카드는 결제되지 않았습니다.",
+        "booking_failed": "예약을 완료하지 못했습니다. 다시 시도해 주세요.",
+        "booking_failed_refunded": "예약을 완료하지 못해 결제 금액이 환불되었습니다.",
+        "booking_pending": "항공사에서 아직 예약을 확정하지 않았습니다. 발권이 완료되면 이메일로 안내해 드립니다.",
+        "booking_timeout": "항공사 응답이 지연되고 있습니다. 잠시 후 다시 시도해 주세요.",
+        "duplicate_booking": "해당 출발일에 이미 예약된 항공편이 있습니다. 기존 예약을 취소하거나 다른 날짜를 선택해 주세요.",
+        "flight_unavailable": "해당 항공편은 더 이상 예약할 수 없습니다. 다시 검색해 주세요.",
+        "offer_expired": "해당 운임이 만료되었습니다. 다시 검색해 주세요.",
+        "offer_replaced_seats_cleared": "운임이 갱신되어 좌석과 수하물 선택이 초기화되었습니다. 다시 선택해 주세요.",
+        "pending": "항공사에서 아직 예약을 확정하지 않았습니다. 발권이 완료되면 이메일로 안내해 드립니다.",
+        "phone_number_invalid": "항공사에서 연락처 전화번호를 거부했습니다. 국가번호가 포함되어 있는지 확인 후 다시 시도해 주세요.",
+        "seats_unavailable": "선택하신 좌석 또는 수하물을 더 이상 이용할 수 없습니다. 부가 서비스를 다시 확인해 주세요.",
+        "supplier_outage": "항공사 예약 시스템이 응답하지 않습니다. 몇 분 후 다시 시도해 주세요.",
+        "server_error": "시스템 오류가 발생했습니다. 카드는 결제되지 않았으니 다시 시도해 주세요.",
+        "unauthenticated": "예약을 완료하려면 로그인해 주세요."
+      },
+      "defaultMessage": "예약을 완료할 수 없습니다.",
+      "flightUnavailable": "항곸을 사용할 수 없습니다",
+      "goBack": "뒤로 가기",
+      "notCharged": "카드가 <strong>아직</strong> 첩8리되지 않았습니다. 다른 항곸나 날짜를 시도해 주세요.",
+      "notChargedShort": "다른 항곸나 날짜를 시도해 주세요.",
+      "searchAgain": "다시 검색",
+      "tryAgain": "다시 시도"
+    },
+    "fareConditions": {
+      "allowedFee": "허용됨 · {fee} 수수료",
+      "allowedFeeMayApply": "허용됨(수수료가 부과될 수 있음)",
+      "changeAfter": "출발 후 변경",
+      "changeBefore": "출발 전 변경",
+      "disclaimer": "조건은 여객 마다 적용되며 항공사 정책에 따릅니다. 벌금은 티켓 당 적용됩니다.",
+      "free": "무료",
+      "fullyRefundable": "전액 환불 가능",
+      "nonRefundable": "환불 불가",
+      "notAllowed": "허용되지 않음",
+      "partialRefund": "부분 환불",
+      "refundAfter": "출발 후 환불",
+      "refundBefore": "출발 전 환불",
+      "title": "요금 조건"
+    },
+    "farePolicy": {
+      "airlineConfirmed": "✓ 항공사 확인 완료",
+      "changesAllowed": "변경 가능",
+      "finalRules": "최종 요금 규칙은 예약 시 항공사가 확인합니다.",
+      "freeCancellation": "무료 취소",
+      "indicativeOnly": "참고용입니다 — 최정 정책은 결제 단계에서 확인됩니다.",
+      "nonRefundable": "환불 불가",
+      "policyUpdated": "<strong>요금 정책이 업데이트되었습니다.</strong> 이 항곸의 환불 가능성이 변경되었습니다. 계속하기 전에 검토해 주세요.",
+      "refundableFee": "환불 가능(수수료: {fee})",
+      "refundableFeesMayApply": "환불 가능(수수료가 부과될 수 있음)",
+      "title": "요금 정책"
+    },
+    "fareRules": {
+      "error": "요금 규칙을 불러올 수 없습니다",
+      "noRules": "항공사에서 제공한 규칙 텍스트가 없습니다.",
+      "routeLabel": "노선 {number}",
+      "rule": "규칙",
+      "rules": "규칙",
+      "title": "요금 규칙",
+      "viewOnWebsite": "항공사 웹사이트에서 요금 규칙 보기 →"
+    },
+    "genderOptions": {
+      "female": "여성",
+      "male": "남성"
+    },
+    "header": {
+      "oneWay": "{name}({code})(으)로 예약",
+      "roundTrip": "{name}({code}) 왕복"
+    },
+    "offerExpiry": {
+      "expired": "이 혜택이 만료되었습니다 — 다시 검색해 주세요.",
+      "expiresIn": "{time} 후에 혜택이 만료됩니다 — 시간 내에 예약을 완료하세요."
+    },
+    "orderSummary": {
+      "baseFare": "기본 요금",
+      "economy": "이코노미",
+      "extraBags": "추가 수화물",
+      "nonstop": "직항",
+      "passenger": "여객 {count}명",
+      "passengerPlural": "여객 {count}명",
+      "seatSelection": "좌석 선택",
+      "stops": "경유 {count}회",
+      "title": "주문 요약",
+      "total": "총계"
+    },
+    "passenger": {
+      "addPassenger": "+ 여객 추가",
+      "adult": "성인",
+      "birthdate": "생년월일 *",
+      "child": "소아",
+      "firstName": "이름 *",
+      "gender": "성별 *",
+      "infant": "유아",
+      "lastName": "성 *",
+      "nationality": "국적 *",
+      "passport": "여권 번호 *",
+      "passportExpiry": "여권 만료일 *",
+      "remove": "삭제",
+      "title": "여객 {number}"
+    },
+    "priceCalendar": {
+      "checkingPrices": "가격 확인 중…",
+      "clickToSearch": "클릭하여 이 날짜 검색",
+      "clickToSearchWithPrice": "{price} — 클릭하여 검색",
+      "datesFound": "{count}개 날짜에 가격 있음",
+      "days": [
+        "일",
+        "월",
+        "화",
+        "수",
+        "목",
+        "금",
+        "토"
+      ],
+      "exploreOneWay": "날짜별 가격 탐색(편도)",
+      "exploreRoundTrip": "날짜별 가격 탐색(왕복)",
+      "fetchingLive": "실시간 가격 조회 중…",
+      "from": "{price}부터",
+      "loading": "불러오는 중…",
+      "months": [
+        "1월",
+        "2월",
+        "3월",
+        "4월",
+        "5월",
+        "6월",
+        "7월",
+        "8월",
+        "9월",
+        "10월",
+        "11월",
+        "12월"
+      ],
+      "searchDates": "{month}의 {count}개 날짜 검색",
+      "searchingBestPrices": "최고 가격 검색 중…",
+      "tipDescription": "이것은 해당 제공사의 근처 날짜 실제 요금입니다. 날짜를 클릭하면 그 날짜의 항곸을 검색합니다.",
+      "tipTitle": "팁:",
+      "updatingMonth": "월 업데이트 중…"
+    },
+    "priceChange": {
+      "accept": "새 금액 수낙 및 계속",
+      "description": "이 항곸은 현재 {newPrice}입니다(이전 금액 {oldPrice}). 새 금액으로 계속하시겠습니까?",
+      "searchAgain": "다시 검색",
+      "title": "요금이 변경되었습니다"
+    },
+    "seats": {
+      "clear": "지우기",
+      "done": "완료",
+      "errorDetail": "좌석 맵을 불러올 수 없습니다: {error}",
+      "exitRowTooltip": "⚠ 비상구 열",
+      "extraLegroomTooltip": "✦ 다리 공간 확보",
+      "legend": {
+        "exitRow": "비상구 열",
+        "extraLegroom": "다리 공간 확보",
+        "free": "무료",
+        "paid": "유료",
+        "selected": "선택됨",
+        "taken": "지난 좌석"
+      },
+      "loading": "좌석 맵 불러오는 중…",
+      "notAvailable": "좌석 맵을 사용할 수 없습니다",
+      "notSupported": "이 항곸은 예약 시스템을 통한 좌석 선택을 지원하지 않습니다.",
+      "optional": "선택 — 기내 맵에서 좌석 선택",
+      "seatChosen": "· {designator} 좌석 선택됨",
+      "seatLabel": "좌석 {designator}",
+      "seatUpgrade": "좌석 업그레이드:",
+      "seatsCount": "{selected}/{total} 좌석",
+      "selected": "좌석 {count}개 선택됨 · +{price}",
+      "selectedPlural": "좌석 {count}개 선택됨 · +{price}",
+      "selectingFor": "{name} 선택 중",
+      "skip": "스킵",
+      "tapSeatBelow": "· 아래 좌석을 탭하세요",
+      "tapToSelect": "탭하여 좌석 선택",
+      "title": "좌석 선택"
+    },
+    "seatsRemaining": {
+      "available": "{count}석 이용 가능",
+      "leftPlural": "{count}석 남음",
+      "onlyLeft": "{count}석 만 남음!",
+      "onlyLeftPlural": "{count}석 만 남음!"
+    },
+    "submitBtn": {
+      "confirm": "예약 확인 · {price}",
+      "processing": "예약 처리 중..."
+    },
+    "success": {
+      "addHotel": "호텔을 추가하여 여행을 매끄어보세요",
+      "addHotelDesc": "{destination}에서 숙박을 예약하고 항곸 + 호텔 번듨로 할인혜택을 받으세요",
+      "addToThisTrip": "이 여행에 추가",
+      "boardingPassInfo": "탑승권은 체크인 시 발급됩니다. 체크인 후 항공사의 앱 또는 웹사이트에서 다운로드할 수 있습니다.",
+      "bookSeparately": "별도 예약",
+      "bookingConfirmed": "예약 확정! 🎉",
+      "bookingId": "예약 ID",
+      "bundleDealBadge": "✦ 번들 할인",
+      "bundleDiscountApplied": "번들 할인 적용됨",
+      "bundleSavings": "번들 할인",
+      "bundleSuccess": "항곸이 번들에 성공적으로 추가되었습니다.",
+      "checkInInfo": "온라인 체크인은 보통 출발 24–48 시간 전에 열립니다. 항공사 웹사이트에 방문하여 PNR {pnr}을 사용하여 체크인하세요.",
+      "eTickets": "전자 티켓",
+      "emailInfo": "전자 티켓과 예약 확인메일이 분 내에 이메일로 발송됩니다.",
+      "findHotels": "{destination} 호텔 검색",
+      "flightSuccess": "항곸이 성공적으로 예약되었습니다.",
+      "returnToHome": "홈으로 돌아가기",
+      "route": "노선",
+      "standardRate": "표준 요금",
+      "total": "총계",
+      "viewMyTrips": "내 여행 보기",
+      "whatsNext": "다음 단계"
+    },
+    "totalPrice": "총 금액",
+    "validation": {
+      "firstNameRequired": "이름을 입력해 주세요",
+      "lastNameRequired": "성을 입력해 주세요",
+      "nameIcao": "영문자만 입력해 주세요 (예: Jose, José 불가)",
+      "phoneDigitsOnly": "전화번호는 숫자만 입력해 주세요",
+      "phoneRequired": "전화번호를 입력해 주세요"
+    }
+  },
+  "flights": {
+    "card": {
+      "availableFareOptions": "이용 가능한 요금 옵션",
+      "bagsCount": "수하물 {count}개",
+      "bestValue": "최고 가치",
+      "brandsAvailable": "브랜드 {count}개 이용 가능",
+      "compareOptions": "{count}개 옵션 비교",
+      "currentlySelected": "현재 선택됨",
+      "direct": "직항",
+      "freeCancellation": "무료 취소",
+      "hideDetails": "상세 정보 숨기기",
+      "includesTaxesFees": "세금 및 수수료 포함",
+      "legLabel": "{number}번째 구간",
+      "moreSegments": "+ {count} 더",
+      "noBag": "수하물 없음",
+      "nonRefundable": "환불 불가",
+      "nonstop": "직항",
+      "onlySeatsLeft": "{count}석만 남음!",
+      "option": "옵션",
+      "outbound": "가는 편",
+      "perPerson": "1인당",
+      "perPersonShort": "/1인",
+      "refundableFee": "환불 가능 (예상 수수료: {fee})",
+      "refundableFeesMayApply": "환불 가능 (수수료가 부과될 수 있음)",
+      "return": "오는 편",
+      "seatsAvailable": "{count}석 이용 가능",
+      "seatsLeft": "{count}석 남음",
+      "select": "선택",
+      "selectFare": "{fare} 선택",
+      "showAllSegments": "모든 구간 보기",
+      "standard": "스탠다드",
+      "stop": "회 경유",
+      "stopCount": "{count}회 경유",
+      "stopCountShort": "{count}회 경유",
+      "stops": "회 경유",
+      "stopsCount": "{count}회 경유",
+      "thisFare": "이 요금",
+      "viewDeal": "요금 보기"
+    },
+    "filtersPanel": {
+      "airlines": "항공사",
+      "anyStops": "전체 경유",
+      "branded": "브랜드 요금",
+      "cheapestFirst": "최저가순",
+      "earliestDeparture": "가장 이른 출발순",
+      "fareType": "요금 유형",
+      "fastestFirst": "최단 시간순",
+      "nonStopOnly": "직항만",
+      "provider": "공급사",
+      "refundableFares": "환불 가능 요금",
+      "refundableFaresDescription": "환불 취소가 가능한 요금",
+      "sortBy": "정렬 기준",
+      "stops": "경유",
+      "upToOneStop": "최대 1회 경유"
+    },
+    "priceAlert": {
+      "active": "알림 활성화됨",
+      "emailWhenDrops": "가격이 내려가면 이메일 받기",
+      "enabled": "알림이 켜졌습니다. 가격이 내려가면 이메일로 알려드릴게요.",
+      "failed": "알림 설정에 실패했습니다",
+      "loading": "불러오는 중...",
+      "remove": "가격 알림 제거",
+      "removed": "알림이 제거되었습니다",
+      "signInRequired": "가격 알림을 설정하려면 로그인하세요",
+      "trackPrice": "가격 추적"
+    },
+    "results": {
+      "allSeen": "이용 가능한 항공편 {count}개를 모두 확인하셨습니다. 즐거운 여행 되세요!",
+      "checkingProviders": "여러 공급사를 확인하는 중입니다",
+      "discoveringMore": "더 많은 옵션을 찾는 중 ({total}개 중 {shown}개)",
+      "duration": "소요 시간",
+      "empty": "해당 날짜에 항공편이 없습니다.",
+      "filters": "필터",
+      "loading": "최저가 항공편을 찾고 있습니다…",
+      "noFlightsDefaultMessage": "항공편을 찾을 수 없습니다. 필터를 조정하거나 다른 날짜로 검색해 보세요.",
+      "noFlightsTitle": "항공편을 찾을 수 없습니다",
+      "price": "가격",
+      "result": "{count, plural, other {결과}}",
+      "searchFailedTitle": "검색 실패",
+      "searchingFlights": "항공편 검색 중...",
+      "sortBy": "정렬 기준",
+      "stops": {
+        "any": "전체",
+        "direct": "직항",
+        "oneStop": "경유 1회",
+        "twoPlus": "경유 2회 이상"
+      },
+      "tryAgain": "다시 시도"
     },
     "search": {
-        "validation": {
-            "allHotelFieldsRequired": "호텔을 검색하려면 모든 필드를 입력해야 합니다",
-            "fieldList": "{fields} 및 {last}",
-            "fields": {
-                "checkInDate": "체크인 날짜",
-                "checkOutDate": "체크아웃 날짜",
-                "destination": "목적지"
-            },
-            "selectField": "{field}을(를) 선택해 주세요"
-        }
+      "adult": "성인 {count}명",
+      "adult_plural": "성인 {count}명",
+      "fetchingProviders": "공급사에서 검색 중...",
+      "newSearch": "새 검색",
+      "providersSlow": "항공사 공급사의 응답이 느립니다. 잠시만 기다려 주세요. 최적의 요금을 계속 찾고 있습니다.",
+      "providersSlowDescription": "항공사 공급사의 응답이 느립니다. 다시 시도하거나 검색 조건을 조정해 주세요.",
+      "sources": "출처:",
+      "stillSearching": "아직 검색 중...",
+      "takingLonger": "평소보다 검색 시간이 더 걸리고 있습니다",
+      "total_count": "(총 {count}개)",
+      "tryAgain": "다시 시도"
     },
-    "seo": {
-        "faq": {
-            "a1": "{brand}는 여러 항공사와 글로벌 유통 시스템을 검색해 실시간으로 최저가를 찾아 한 곳에서 비교하고 예약할 수 있게 합니다.",
-            "a2": "네. {brand}는 항공권, 호텔, 아파트, 독특한 숙소까지 하나의 플랫폼에서 예약할 수 있습니다.",
-            "a3": "네, 가격 검색과 비교는 완전히 무료입니다. 예약할 때만 비용이 발생합니다.",
-            "a4": "{brand}는 다양한 통화를 지원하며 설정에 따라 자동으로 가격을 변환해 현지 통화로 확인할 수 있습니다.",
-            "q1": "{brand}는 어떻게 저렴한 항공권을 찾나요?",
-            "q2": "{brand}에서 항공권과 호텔을 모두 예약할 수 있나요?",
-            "q3": "{brand}는 무료로 사용할 수 있나요?",
-            "q4": "{brand}는 어떤 통화를 지원하나요?"
-        },
-        "orgDescription": "{brand}는 전 세계 최저가 항공권과 호텔을 찾는 현대적인 여행 예약 플랫폼입니다.",
-        "siteDescription": "전 세계 최고의 여행 상품을 발견하세요. {brand}와 함께 항공편과 호텔을 쉽게 계획하고, 비용을 절약하며, 세계를 여행하세요.",
-        "siteTagline": "전 세계 여행을 발견하고 예약하세요"
-    },
-    "theme": {
-        "contextError": "useTheme은 ThemeProvider 안에서 사용해야 합니다",
-        "switchToDark": "다크 모드로 전환",
-        "switchToLight": "라이트 모드로 전환"
-    },
-    "topCities": {
-        "exploreHotels": "호텔 찾아보기",
-        "headerHighlight": "전 세계",
-        "headerMain": "인기 도시",
-        "subtitle": "가장 인기 있는 여행지 · 즉시 호텔 검색"
-    },
-    "topDestinations": {
-        "findHotels": "호텔 찾기",
-        "headerHighlight": "전 세계",
-        "headerMain": "인기 여행지",
-        "subtitle": "세계 구석구석에서 선사하는 상징적인 경험"
-    },
-    "property": {
-        "addressNotAvailable": "주소를 이용할 수 없습니다",
-        "bookingWidget": {
-            "amenities": "편의시설",
-            "bookThisRoom": "이 객실 예약",
-            "description": "설명",
-            "guests": "{count}명",
-            "roomDetails": "객실 세부 정보",
-            "selectedRoom": "선택한 객실"
-        },
-        "breadcrumbHome": "홈",
-        "breadcrumbStaysIn": "{city} 숙소",
-        "bundleActive": "번들 할인 적용 중",
-        "bundleApplied": "번들 할인 적용됨 — {percent}% 절약 중",
-        "faq": {
-            "checkInAnswer": "체크인 시간은 {time}입니다",
-            "checkInQuestion": "이 숙소의 체크인 시간은 언제인가요?",
-            "checkOutAnswer": "체크아웃 시간은 {time}입니다",
-            "checkOutQuestion": "체크아웃 시간은 언제인가요?",
-            "fallbackCancellationAnswer": "취소 정책은 요금에 따라 다릅니다. 예약 전에 위의 객실 옵션에서 구체적인 취소 조건을 확인하세요.",
-            "fallbackCancellationQuestion": "{name}의 취소 정책은 무엇인가요?",
-            "fallbackModificationAnswer": "예약 후 받은 확인 이메일을 통해 예약을 관리할 수 있습니다. 긴급한 변경 사항은 숙소에 직접 문의하세요.",
-            "fallbackModificationQuestion": "예약을 변경하거나 취소하려면 어떻게 해야 하나요?",
-            "fallbackPaymentAnswer": "대부분의 주요 신용카드 및 체크카드를 사용할 수 있습니다. 수락 가능한 결제 방법을 확인하려면 숙소에 직접 문의하세요.",
-            "fallbackPaymentQuestion": "{name}에서 신용카드를 사용할 수 있나요?",
-            "importantQuestion": "예약 전에 알아야 할 중요한 사항이 있나요?",
-            "parkingAnswer": "네, 숙소에서 {facility}을(를) 제공합니다.",
-            "parkingQuestion": "{name}에 주차장이 있나요?",
-            "poolAnswer": "네, 숙소에 {facility}이(가) 있습니다.",
-            "poolQuestion": "{name}에 수영장이 있나요?",
-            "restaurantAnswer": "네, 숙소에 레스토랑이 있습니다.",
-            "restaurantQuestion": "{name}에 레스토랑이 있나요?",
-            "title": "자주 묻는 질문",
-            "wifiAnswer": "네, 숙소에서 WiFi를 이용할 수 있습니다.",
-            "wifiQuestion": "{name}에서 WiFi를 사용할 수 있나요?"
-        },
-        "locationLabel": "위치",
-        "locationTitle": "위치 안내",
-        "mobileCta": {
-            "checkRoomRates": "객실 요금 확인",
-            "from": "시작",
-            "perNight": "/박",
-            "viewRooms": "객실 보기"
-        },
-        "propertyNotFound": "숙소를 찾을 수 없습니다. (ID: {id})",
-        "rooms": {
-            "availableRooms": "예약 가능한 객실 ({count})",
-            "choose": "선택",
-            "chooseRoom": "객실 선택",
-            "filterAll": "전체",
-            "filterNonRefundable": "환불 불가",
-            "filterRefundable": "환불 가능",
-            "freeCancellation": "무료 취소",
-            "freeCancellationTick": "✓ 무료 취소",
-            "includesTaxes": "({nights}박, 1실 세금 포함)",
-            "noMeals": "식사 미포함",
-            "noNonRefundableRooms": "환불 불가 객실이 없습니다.",
-            "noRefundableRooms": "환불 가능한 객실이 없습니다.",
-            "changeDates": "날짜 변경",
-            "noRooms": "선택한 날짜에 이용 가능한 객실이 없습니다.",
-            "nonRefundable": "환불 불가",
-            "nonRefundablePill": "환불 불가",
-            "pageOf": "{current}/{total} 페이지",
-            "perNight": "/박",
-            "rateOptions": "{count}가지 요금 옵션",
-            "reserve": "예약",
-            "roomOnly": "객실만",
-            "showingRooms": "{total}개 객실 중 {start}–{end} 표시",
-            "sleeps": "최대 {count}인",
-            "standardRoom": "스탠다드 룸",
-            "total": "합계",
-            "hotelPhotoLabel": "호텔 사진",
-            "viewHotelPhotos": "호텔 사진 보기",
-            "viewRoomPhotos": "객실 사진 보기",
-            "etgNotice": {
-                "title": "온라인 예약이 아직 불가합니다",
-                "description": "이 숙소는 파트너 예약 시스템을 통해 운영됩니다. 아래 가격은 참고용입니다. 가용성 확인 및 예약 완료를 위해 문의해 주세요."
-            }
-        },
-        "savePercent": "{percent}% 절약",
-        "weather": {
-            "feelsLike": "체감 온도",
-            "forecast": "예보",
-            "humidity": "습도",
-            "nextHours": "다음 시간",
-            "poweredBy": "Google Weather 제공",
-            "today": "오늘",
-            "tomorrow": "내일",
-            "uv": {
-                "extreme": "매우 강함",
-                "high": "강함",
-                "low": "낮음",
-                "moderate": "보통",
-                "veryHigh": "높음"
-            },
-            "wind": "바람"
-        }
-    },
-    "reviewsSection": {
-        "aggregatedNote": "게스트 점수는 집계된 평점을 기반으로 합니다.",
-        "aggregatedScore": "집계된 게스트 점수",
-        "anonymous": "익명",
-        "basedOnReview": "{count}개의 리뷰를 기반으로",
-        "basedOnReviews": "{count}개의 리뷰를 기반으로",
-        "guestReviews": "게스트 리뷰",
-        "loadMore": "리뷰 더 보기",
-        "noReviews": "개별 리뷰가 없습니다.",
-        "noReviewsAvailable": "리뷰가 없습니다",
-        "showAllReviews": "모든 리뷰 {count}개 보기",
-        "showLess": "접기",
-        "showMore": "더 보기",
-        "showingCount": "전체 {total}개 중 {shown}개 표시",
-        "sort": {
-            "highestRated": "높은 평점순",
-            "lowestRated": "낮은 평점순",
-            "newestFirst": "최신순"
-        },
-        "travelerTypes": {
-            "business": "비즈니스",
-            "couple": "커플",
-            "family": "가족",
-            "friendsGroup": "친구/그룹",
-            "solo": "혼자"
-        },
-        "verifiedReviewCount": "{count, plural, other {인증된 리뷰 {count}개}}",
-        "whoStaysHere": "누가 머무나요"
+    "validation": {
+      "fields": {
+        "returnDate": "귀국편 날짜",
+        "returnDestinationAirport": "귀국편 도착 공항",
+        "returnOriginAirport": "귀국편 출발 공항",
+        "segmentDate": "구간 {index} 날짜",
+        "segmentDestinationAirport": "구간 {index} 도착 공항",
+        "segmentOriginAirport": "구간 {index} 출발 공항"
+      },
+      "missingInformation": "정보가 부족합니다",
+      "selectField": "{field}을(를) 선택해 주세요"
     }
+  },
+  "footer": {
+    "aboutUs": "회사 소개",
+    "allRightsReserved": "모든 권리 보유.",
+    "cars": "렌터카",
+    "company": "회사",
+    "contact": "문의",
+    "contactMinimal": "문의하기",
+    "cookies": "쿠키",
+    "cookiesMinimal": "쿠키 설정",
+    "copyright": "© 2026 FORHU Inc.. All rights reserved.",
+    "copyrightMinimal": "{brand} © 2026",
+    "enterprise": "기업 제휴",
+    "flights": "항공편",
+    "flightsApi": "항공편 API",
+    "hotels": "호텔",
+    "legal": "법적 고지",
+    "module": "모듈",
+    "network": "네트워크",
+    "paymentGateway": "결제 게이트웨이",
+    "privacy": "개인정보",
+    "privacyMinimal": "개인정보처리방침",
+    "reportBug": "버그 신고",
+    "support": "고객지원",
+    "tagline": "안목 있는 여행자를 위해 정밀하게 설계되었습니다.",
+    "taglinePrecision": "정밀한 데이터. 타협 없는 서비스.",
+    "terms": "이용약관",
+    "termsMinimal": "이용약관 및 조건"
+  },
+  "guestFavorites": {
+    "allFavoritesCount": "전체 {count}개 인기 호텔",
+    "collapse": "접기 ↑",
+    "headerHighlight": "인기 호텔",
+    "headerMain": "고객",
+    "subtitle": "여행자들이 사랑하는 최고 평점 호텔 · 매일 업데이트"
+  },
+  "hotels": {
+    "allHotelsCount": "전체 {count}개 호텔",
+    "bookNow": "지금 예약",
+    "card": {
+      "freeCancelShort": "무료 취소",
+      "freeCancellation": "무료 취소",
+      "from": "최저",
+      "perNight": "/박",
+      "reviews": "리뷰 {count}개",
+      "viewDeal": "요금 보기"
+    },
+    "collapse": "접기 ↑",
+    "filters": {
+      "activeFilters": "적용된 필터:",
+      "amenities": "편의시설",
+      "any": "전체",
+      "boardTypes": {
+        "allInclusive": "올인클루시브",
+        "breakfast": "조식 포함",
+        "fullBoard": "풀보드",
+        "halfBoard": "하프보드",
+        "roomOnly": "숙박만"
+      },
+      "cancellation": "취소 정책",
+      "filterBy": "필터",
+      "filters": "필터",
+      "freeCancellationOnly": "무료 취소만",
+      "guestRating": "게스트 평점",
+      "minimumReviews": "최소 리뷰 수",
+      "mustHaveAllAmenities": "선택한 모든 편의시설 포함 필수",
+      "propertyType": "숙소 유형",
+      "propertyTypes": {
+        "apartment": "아파트",
+        "hotel": "호텔",
+        "resort": "리조트",
+        "villa": "빌라"
+      },
+      "reset": "초기화",
+      "roomFeatures": "객실 특징",
+      "searchByPropertyName": "숙소명으로 검색",
+      "searchPlaceholder": "예: 메리어트",
+      "showPlaces": "숙소 보기",
+      "starCount": "{count}성급",
+      "starRating": "성급",
+      "strictAmenitiesDescription": "활성화하면 선택한 모든 편의시설을 갖춘 호텔만 표시합니다"
+    },
+    "fromPrice": "{price}부터",
+    "guestFavorite": "게스트 최애",
+    "headerDefault": "인기 호텔 특가",
+    "headerPersonalized": "<highlight>{country}</highlight> 호텔 특가",
+    "mapSearch": {
+      "placeholder": "지도에서 위치 검색..."
+    },
+    "mapView": {
+      "any": "전체",
+      "back": "뒤로",
+      "cancellation": "취소",
+      "checkIn": "체크인",
+      "checkOut": "체크아웃",
+      "clearFilters": "필터 지우기",
+      "almostThere": "거의 다 됐습니다 — 최적의 결과가 곧 나타납니다…",
+      "checkingAvailabilityDates": "선택하신 날짜의 가용성을 확인 중입니다…",
+      "comparingRates": "200개 이상의 호텔 객실 요금 비교 중…",
+      "findingBestDeals": "이 지역에서 최저가를 찾고 있습니다…",
+      "securingLivePrices": "공급업체로부터 실시간 가격을 가져오는 중…",
+      "filterOptions": {
+        "boardTypes": {
+          "allInclusive": "올 인클루시브",
+          "breakfast": "조식 포함",
+          "fullBoard": "전식 제공",
+          "halfBoard": "반식 제공",
+          "roomOnly": "객실만"
+        },
+        "mealPlan": "식사 계획",
+        "propertyType": "숙소 유형",
+        "propertyTypes": {
+          "apartment": "아파트",
+          "hotel": "호텔",
+          "resort": "리조트",
+          "villa": "빌라"
+        }
+      },
+      "filters": "필터",
+      "findingHotels": "호텔 찾는 중",
+      "findingHotelsIn": "{destination} 호텔 찾는 중",
+      "guests": "게스트",
+      "list": "목록",
+      "mapDetails": {
+        "biking": "자전거",
+        "default": "기본",
+        "default-3d": "3D 기본",
+        "explore": "탐색",
+        "labels": "레이블",
+        "mapType": "지도 유형",
+        "satellite": "위성",
+        "terrain": "지형",
+        "title": "지도 세부 정보",
+        "traffic": "교통",
+        "transit": "대중교통"
+      },
+      "nights": "박",
+      "pricePerNight": "{min} – {max} /박",
+      "search": "검색",
+      "searchFallback": "검색",
+      "swipeToBrowse": "스와이프하여 보기"
+    },
+    "mobileSearch": {
+      "addDates": "날짜 추가",
+      "checkIn": "체크인",
+      "checkInQuestion": "체크인 날짜는 언제인가요?",
+      "checkOut": "체크아웃",
+      "checkOutQuestion": "체크아웃 날짜는 언제인가요?",
+      "clearAll": "전체 지우기",
+      "numberOfGuests": "게스트 수",
+      "search": "검색",
+      "searchCityHotel": "도시 또는 호텔 검색",
+      "title": "호텔 검색",
+      "where": "위치",
+      "whereQuestion": "어디로?",
+      "who": "인원",
+      "whoQuestion": "누가 여행하나요?"
+    },
+    "perNight": "/박",
+    "poiPopup": {
+      "fromHotel": "호텔에서",
+      "fromProperty": "숙소에서",
+      "kmFromHotel": "km 거리",
+      "kmFromProperty": "km 거리",
+      "mFromHotel": "m 거리",
+      "mFromProperty": "m 거리",
+      "viewOnGoogleMaps": "Google Maps에서 보기"
+    },
+    "pricesMayVary": "가격은 변동될 수 있습니다",
+    "propertyDatePicker": {
+      "addDate": "날짜 추가",
+      "adult": "성인",
+      "adults": "성인",
+      "adultsLabel": "성인",
+      "checkAvailability": "가용성 확인",
+      "checkIn": "체크인",
+      "checkOut": "체크아웃",
+      "child": "어린이",
+      "childrenAges": "만 0–17세",
+      "childrenLabel": "어린이",
+      "children": "어린이",
+      "done": "완료",
+      "guests": "게스트",
+      "searching": "검색 중…",
+      "selectCheckIn": "체크인 날짜 선택",
+      "selectCheckOut": "체크아웃 날짜 선택",
+      "yourStay": "숙박 정보"
+    },
+    "ratings": {
+      "average": "보통",
+      "belowAverage": "평균 이하",
+      "excellent": "매우 훌륭함",
+      "exceptional": "최고",
+      "fair": "무난함",
+      "good": "좋음",
+      "pleasant": "쾌적함",
+      "poor": "낮음",
+      "superb": "최상급",
+      "veryGood": "훌륭함"
+    },
+    "searchPage": {
+      "description": "전 세계 호텔, 아파트, 특별한 숙소를 최저가로 찾아 예약하세요. {brand}에서 가격을 비교하고 완벽한 숙소를 발견하세요.",
+      "title": "호텔 및 숙소 검색 | {brand}"
+    },
+    "searchResults": {
+      "allProperties": "전체 숙소",
+      "allResultsLoaded": "전체 {count}개 결과를 모두 불러왔습니다",
+      "allResultsShown": "전체 {count}개 결과 표시됨",
+      "checkingAvailability": "예약 가능 여부 확인 중…",
+      "discovery": {
+        "all": "전체 발견",
+        "attraction": "관광명소 & 공원",
+        "grocery": "식료품점",
+        "medical": "병원 & 건강",
+        "restaurant": "식당",
+        "transit": "대중교통"
+      },
+      "filteredCount": "{filtered}/{total}",
+      "found": "찾음",
+      "foundCount": "{count}개 찾음",
+      "hotelsCount": "{count}개 호텔",
+      "hotelsFound": "{count}개 호텔 찾음",
+      "loadMoreShowing": "더 보기 · {shown}/{total} 표시 중",
+      "loadingMore": "호텔을 더 불러오는 중",
+      "map": "지도",
+      "noHotelsAvailable": "예약 가능한 호텔이 없습니다",
+      "noHotelsAvailableIn": "{destination}에 예약 가능한 호텔이 없습니다",
+      "noHotelsFound": "호텔을 찾을 수 없습니다",
+      "noHotelsFoundIn": "{destination}에서 호텔을 찾을 수 없습니다",
+      "noPlacesFound": "이 지역에 장소가 없습니다",
+      "noPropertiesFound": "숙소를 찾을 수 없습니다",
+      "pricesMayChange": "가격은 예약 가능 여부에 따라 변경될 수 있습니다.",
+      "propertiesFound": "{count}개 숙소 찾음",
+      "refreshPage": "문제가 발생했습니다. 페이지를 새로고침해 주세요.",
+      "searchFailed": "검색에 실패했습니다. 다시 시도해 주세요.",
+      "searchUnavailable": "검색을 사용할 수 없습니다",
+      "searching": "호텔 검색 중…",
+      "searchingInDestination": "{destination} 호텔 검색 중",
+      "showMoreRemaining": "더 보기 ({count}개 남음)",
+      "sort": {
+        "cheapest": "최저가",
+        "mostReviewed": "리뷰 많은 순",
+        "priceHighToLow": "가격 높은 순",
+        "recommended": "추천순",
+        "topRated": "평점 높은 순"
+      },
+      "staysIn": "{destination} 숙소",
+      "supplierUnavailable": "현재 공급사가 이 목적지를 지원하지 않을 수 있습니다. 다른 날짜, 필터 조정 또는 근처 도시로 검색해 보세요.",
+      "supplierUnavailableShort": "현재 공급사가 이 목적지를 지원하지 않을 수 있습니다. 다른 날짜나 근처 도시를 시도해 보세요.",
+      "tryDifferentDates": "다른 날짜나 근처 도시를 시도해 보세요."
+    },
+    "subtitleDefault": "엄선된 호텔을 최저가에 제공",
+    "subtitlePersonalized": "{country} 인기 호텔 · 매일 업데이트"
+  },
+  "landing": {
+    "hero": {
+      "cta": "항공편 검색",
+      "monoSubtext": "무엇이든 물어보고, 모든 것을 예약하세요.",
+      "smartPriceTracking": "스마트 가격 추적",
+      "subtitle": "현대 여행자를 위한 운영체제.",
+      "title": "가장 저렴한 항공권",
+      "titleLine1": "정밀한 여행.",
+      "titleLine2": "당신만을 위한 설계."
+    },
+    "howItWorksSteps": {
+      "book": "여행을 예약하세요",
+      "bookNext": "간단한 3단계로.",
+      "bookStep": {
+        "description": "안전하게 암호화된 결제로 몇 분 만에 여행을 예약하세요. 매번 즉시 확인됩니다.",
+        "title": "예약"
+      },
+      "compareStep": {
+        "description": "여러 항공사와 호텔의 실시간 가격을 살펴보세요. 가격, 평점, 편의시설로 필터링할 수 있습니다.",
+        "title": "비교"
+      },
+      "howItWorks": "이용 방법",
+      "search": {
+        "description": "목적지, 날짜, 인원 수를 입력하여 최고의 항공권과 호텔을 찾아보세요.",
+        "title": "검색"
+      }
+    },
+    "recentlyViewed": {
+      "flight": "항공편",
+      "from": "부터",
+      "recentlySearched": "최근 검색",
+      "showLess": "접기",
+      "stay": "숙소",
+      "subtitle": "이전 검색을 이어보세요",
+      "title": "검색 이어보기",
+      "viewAll": "전체 보기"
+    },
+    "search": {
+      "addGuests": "인원 추가",
+      "adultAge": "만 12세 이상",
+      "adults": "성인",
+      "aiDevelopment": "AI 검색 개발 중입니다. 기대해 주세요!",
+      "aiGreeting": "오늘 아침 무엇을 도와드릴까요?",
+      "anyWeek": "아무 주나",
+      "anywhere": "어디든지",
+      "askAi": "AI에게 물어보기",
+      "bundle": {
+        "hotelBooked": "호텔 예약 완료!",
+        "instructions": "{from}과 {to} 공항을 입력하고 날짜를 선택한 후 검색을 누르면 최대 8% 절약됩니다."
+      },
+      "cabinClass": {
+        "business": "비즈니스석",
+        "economy": "일반석",
+        "first": "일등석",
+        "premiumEconomy": "프리미엄 일반석"
+      },
+      "cabinClassLabel": "좌석 등급",
+      "calendar": "달력",
+      "checkIn": "체크인",
+      "checkOut": "체크아웃",
+      "childAge": "만 2~11세",
+      "childLabel": "어린이 {index}: {age}세",
+      "children": "어린이",
+      "childrenAges": "만 0~17세",
+      "cities": "도시",
+      "clearAll": "모두 지우기",
+      "comingSoon": "출시 예정",
+      "countries": "국가",
+      "days": [
+        "일",
+        "월",
+        "화",
+        "수",
+        "목",
+        "금",
+        "토"
+      ],
+      "depart": "출발일",
+      "done": "완료",
+      "findDeals": "최저가 찾기",
+      "findingFlights": "항공편 검색 중…",
+      "flexOptions": [
+        "정확한 날짜",
+        "±1일",
+        "±2일",
+        "±3일",
+        "±7일"
+      ],
+      "flexibleDates": "유연한 날짜",
+      "from": "출발지",
+      "guest": "{count}명",
+      "guestPlural": "{count}명",
+      "guests": "{count}명",
+      "guestsPlural": "{count}명",
+      "guestsRooms": "게스트 및 객실",
+      "infantAge": "만 2세 미만 (무릎 착석)",
+      "infants": "유아",
+      "month": "월",
+      "months": [
+        "일월",
+        "이월",
+        "삼월",
+        "사월",
+        "오월",
+        "유월",
+        "칠월",
+        "팔월",
+        "구월",
+        "십월",
+        "십일월",
+        "십이월"
+      ],
+      "noAirportsFound": "\"{query}\"에 대한 공항을 찾을 수 없습니다",
+      "noResults": "검색 결과가 없습니다",
+      "passengers": "승객",
+      "placeholder": {
+        "airport": "도시 또는 공항",
+        "date": "날짜 선택"
+      },
+      "recentSearches": "최근 검색",
+      "results": "검색 결과",
+      "return": "귀국일",
+      "rooms": "객실",
+      "roomsNote": "예약당 1개 객실. 추가 객실은 별도 예약하세요.",
+      "searchDestination": "목적지 검색",
+      "searchDestinationsPlaceholder": "목적지 검색...",
+      "searchFlightsHeader": "항공편 검색",
+      "searchMode": {
+        "aiSearch": "AI 검색",
+        "flights": "항공편",
+        "stays": "숙소"
+      },
+      "searchAirport": "공항 검색...",
+      "searching": "검색 중...",
+      "selectDate": "날짜 선택",
+      "submit": "검색",
+      "to": "목적지",
+      "travelers": "여행자",
+      "tripType": {
+        "multiCity": "다구간",
+        "oneWay": "편도",
+        "roundTrip": "왕복"
+      },
+      "typeToSearch": "도시 이름 또는 공항 코드를 입력하세요...",
+      "typeToSearchPrompt": "도시 또는 공항 코드를 입력하여 검색하세요",
+      "whenTravel": "여행 날짜를 언제로 하시겠어요?",
+      "whereTo": "어디로?",
+      "year": "연도",
+      "yearsOld": "{age}세"
+    }
+  },
+  "languagePicker": {
+    "zh": "中文",
+    "ja": "日本語",
+    "ko": "한국어",
+    "label": "언어 선택"
+  },
+  "legal": {
+    "layout": {
+      "breadcrumb": "GeomeeGo · 법적 고지",
+      "effective": "시행일:",
+      "lastUpdated": "최종 업데이트:",
+      "disclaimer": {
+        "label": "참고:",
+        "body": "이 문서는 정보 제공 목적으로만 제공됩니다. GeomeeGo는 귀하의 특정 관할권에 맞는 약관 검토를 위해 자격을 갖춘 변호사와 상담할 것을 권장합니다."
+      },
+      "contents": "목차",
+      "contact": {
+        "heading": "이 문서에 대해 궁금한 점이 있으신가요?",
+        "contactLine": "다음 주소로 문의해 주세요:",
+        "address": "FORHU Inc. · 30 Wall Street, 8th Floor · New York, NY 10005 · 미국"
+      }
+    },
+    "cookiePolicy": {
+      "description": "GeomeeGo가 쿠키 및 유사 추적 기술을 사용하는 방법입니다.",
+      "pageSubtitle": "GeomeeGo에서 쿠키 및 유사 기술을 사용하는 방법을 안내합니다.",
+      "pageTitle": "쿠키 정책",
+      "title": "쿠키 정책 — GeomeeGo"
+    },
+    "privacyPolicy": {
+      "description": "GeomeeGo가 귀하의 개인정보를 수집, 이용 및 보호하는 방법입니다.",
+      "pageSubtitle": "귀하의 개인정보를 수집, 이용 및 보호하는 방법을 안내합니다.",
+      "pageTitle": "개인정보 처리방침",
+      "title": "개인정보 처리방침 — GeomeeGo"
+    },
+    "refundPolicy": {
+      "description": "GeomeeGo에서 취소, 환불 및 예약 변경이 처리되는 방법을 확인하세요.",
+      "pageSubtitle": "취소, 환불 및 예약 변경에 관한 모든 사항을 안내합니다.",
+      "pageTitle": "환불 및 취소 정책",
+      "title": "환불 및 취소 정책 — GeomeeGo"
+    },
+    "termsGate": {
+      "title": "시작하기 전에",
+      "subtitle": "GeomeeGo를 계속 이용하시려면 이용약관을 검토하고 동의해 주십시오.",
+      "points": [
+        "만 18세 이상이며 법적 구속력 있는 계약을 체결할 수 있어야 합니다.",
+        "GeomeeGo는 중개인으로서, 예약 계약은 호텔, 항공사, 패키지 공급업체와 체결되며 당사와 체결되지 않습니다.",
+        "결제가 처리되고 확인 이메일을 받기 전까지 가격과 가용성은 보장되지 않습니다.",
+        "취소 및 환불은 공급업체 정책과 당사의 환불 및 취소 정책을 따릅니다.",
+        "결제는 Stripe가 처리합니다. 당사는 귀하의 카드 정보를 저장하지 않습니다.",
+        "분쟁은 뉴욕에서 구속력 있는 중재로 해결되며, 귀하는 집단 소송에 참여할 권리를 포기합니다."
+      ],
+      "termsLink": "이용약관",
+      "privacyLink": "개인정보 처리방침",
+      "opensInNewTab": "새 탭에서 열립니다 — 현재 위치를 잃지 않습니다.",
+      "checkboxLabel": "이용약관 및 개인정보 처리방침을 읽고 동의합니다.",
+      "checkboxPrefix": "",
+      "checkboxTerms": "이용약관",
+      "checkboxConnector": " 및 ",
+      "checkboxPrivacy": "개인정보 처리방침",
+      "checkboxSuffix": "에 동의합니다.",
+      "checkboxAriaLabel": "이용약관 및 개인정보 처리방침에 동의합니다",
+      "acceptButton": "동의하고 계속하기"
+    },
+    "termsOfService": {
+      "description": "GeomeeGo 이용에 적용되는 약관 및 조건입니다.",
+      "pageSubtitle": "GeomeeGo를 이용하기 전에 이 약관을 주의 깊게 읽어 주십시오.",
+      "pageTitle": "이용약관",
+      "title": "이용약관 — GeomeeGo"
+    },
+    "content": {
+      "terms": {
+        "acceptance": {
+          "title": "이용약관 동의",
+          "body": "GeomeeGo 웹사이트 및 서비스(이하 '플랫폼')에 접속하거나 이용함으로써, 귀하는 본 이용약관('약관')과 모든 적용 법률 및 규정에 구속되는 것에 동의합니다. 귀하가 본 약관에 동의하지 않으실 경우, 플랫폼을 이용하실 수 없습니다. GeomeeGo는 미국 뉴욕주 뉴욕시 10005 Wall Street 30번지 8층에 위치한 FORHU Inc.에 의해 운영됩니다. 본 약관은 귀하와 GeomeeGo 간의 법적 구속력 있는 계약을 구성합니다."
+        },
+        "eligibility": {
+          "title": "이용 자격",
+          "intro": "GeomeeGo를 이용하시려면 다음 조건을 충족하셔야 합니다:",
+          "items": [
+            "만 18세 이상이어야 합니다",
+            "법적 구속력 있는 계약을 체결할 법적 능력을 보유해야 합니다",
+            "관련 법률에 따라 플랫폼 이용이 금지되지 않아야 합니다",
+            "계정 생성 또는 예약 시 정확하고 최신의 완전한 정보를 제공해야 합니다"
+          ]
+        },
+        "accountRegistration": {
+          "title": "계정 등록",
+          "intro": "플랫폼의 일부 기능을 이용하시려면 계정을 생성하셔야 할 수 있습니다. 귀하는 다음에 동의합니다:",
+          "items": [
+            "등록 시 정확하고 진실된 정보 제공",
+            "로그인 자격 증명을 기밀로 유지하고 제3자와 공유하지 않음",
+            "계정의 무단 사용을 즉시 당사에 통지",
+            "계정에서 발생하는 모든 활동에 대한 책임 부담"
+          ],
+          "note": "GeomeeGo는 본 약관을 위반하거나 장기간 비활성 상태인 계정을 정지 또는 해지할 권리를 보유합니다."
+        },
+        "bookingProcess": {
+          "title": "예약 절차 및 확인",
+          "intro": "GeomeeGo를 통해 예약하시면, 귀하는 GeomeeGo가 아닌 여행 공급업체(호텔, 항공사 또는 패키지 제공업체)와 계약을 체결하시게 됩니다. GeomeeGo는 예약을 중개하는 중간 역할을 합니다.",
+          "items": [
+            {
+              "label": "예약 확인",
+              "text": "GeomeeGo로부터 예약 참조 번호가 포함된 서면 확인 이메일을 받으신 경우에만 예약이 확정됩니다."
+            },
+            {
+              "label": "정확성",
+              "text": "결제 확정 전에 모든 예약 세부 정보(날짜, 투숙객 이름, 객실 유형)가 정확한지 확인하실 책임이 있습니다."
+            },
+            {
+              "label": "공급업체 약관",
+              "text": "귀하의 예약은 해당 여행 공급업체의 약관(취소 및 노쇼 정책 포함)에 적용을 받습니다."
+            },
+            {
+              "label": "가용성",
+              "text": "결제가 성공적으로 처리되고 확인서가 발행되기 전까지 가격과 가용성은 보장되지 않습니다."
+            }
+          ]
+        },
+        "pricing": {
+          "title": "요금 및 결제",
+          "items": [
+            {
+              "label": "요금",
+              "text": "표시된 가격은 여행 파트너로부터 직접 소싱되며 현재 도매 요금을 반영합니다. 숨겨진 플랫폼 수수료는 없습니다."
+            },
+            {
+              "label": "통화",
+              "text": "가격은 귀하가 선택한 통화로 표시됩니다. 통화 환율은 참고용으로 제공되며 결제 시 변경될 수 있습니다."
+            },
+            {
+              "label": "결제 처리",
+              "text": "모든 결제는 Stripe, Inc.에서 안전하게 처리됩니다. 결제 시 귀하는 Stripe의 이용약관에도 동의하시게 됩니다. GeomeeGo는 귀하의 카드 정보를 저장하지 않습니다."
+            },
+            {
+              "label": "세금 및 수수료",
+              "text": "표시된 가격에는 해당 서비스 수수료가 포함됩니다. 별도로 명시되지 않는 한, 체크인 시 호텔에서 직접 부과하는 현지 세금이나 관광세는 포함되지 않습니다."
+            },
+            {
+              "label": "가격 변동",
+              "text": "결제가 완료되기 전까지 가격은 변경될 수 있습니다. 예약 확정 전 가격 변동에 대해 당사는 책임지지 않습니다."
+            }
+          ]
+        },
+        "cancellations": {
+          "title": "취소 및 환불",
+          "textBefore": "취소 및 환불은 본 약관에 참조로 포함된 당사의",
+          "refundLinkText": "환불 및 취소 정책",
+          "textAfter": "에 의해 규율됩니다. 정책은 호텔 및 요금 유형에 따라 다르므로, 예약 전에 주의 깊게 검토해 주십시오."
+        },
+        "prohibitedConduct": {
+          "title": "금지 행위",
+          "intro": "귀하는 다음 행위를 하지 않을 것에 동의합니다:",
+          "items": [
+            "불법 목적 또는 관련 규정을 위반하여 플랫폼 이용",
+            "허위 예약, 도용된 결제 정보 사용 또는 악의적인 지급 거절(차지백) 행위",
+            "플랫폼의 리버스 엔지니어링, 스크래핑 또는 데이터 추출 시도",
+            "자동화된 봇 또는 스크립트를 이용하여 플랫폼에 접속하거나 상호작용",
+            "당사의 서면 동의 없이 상업적 목적으로 예약 재판매 또는 재배포",
+            "허위 또는 오해의 소지가 있는 정보나 리뷰 게시, 또는 타인이나 단체를 사칭",
+            "플랫폼의 보안, 무결성 또는 성능 방해",
+            "다른 이용자나 GeomeeGo 직원에 대한 괴롭힘, 위협 또는 해악 행위"
+          ]
+        },
+        "intellectualProperty": {
+          "title": "지식재산권",
+          "body": "GeomeeGo 플랫폼의 모든 콘텐츠(로고, 텍스트, 그래픽, 소프트웨어, 디자인 포함)는 GeomeeGo 또는 그 라이선스 허여자의 재산이며, 관련 지식재산권법에 의해 보호됩니다. 사전 서면 동의 없이 당사 콘텐츠를 복제, 배포하거나 파생 저작물을 제작하실 수 없습니다. 호텔 및 항공편 이미지와 설명은 당사의 파트너(Duffel, Mystifly, TravelgateX, ONDA, Rakuten)와 해당 공급업체가 라이선스에 따라 제공합니다."
+        },
+        "disclaimers": {
+          "title": "면책 조항",
+          "intro": "GeomeeGo는 '있는 그대로' 및 '이용 가능한 상태'로 서비스를 제공합니다. 당사는 다음 사항을 보장하지 않습니다:",
+          "items": [
+            "플랫폼이 중단 없이, 오류 없이 또는 바이러스 없이 운영됨",
+            "호텔 설명, 사진 또는 편의 시설 목록이 완전히 정확함(이는 공급업체가 제공)",
+            "표시된 가격이 항상 시장에서 가장 저렴함",
+            "공급업체 파산 또는 초과 예약 시 여행 공급업체가 모든 예약을 이행함"
+          ],
+          "note": "GeomeeGo는 여행 공급업체의 행위, 오류, 누락, 진술, 보증 또는 과실에 대해 책임지지 않습니다."
+        },
+        "liability": {
+          "title": "책임의 제한",
+          "body": "적용 법률이 허용하는 최대 범위 내에서, GeomeeGo 및 그 임원, 이사, 직원, 계열사는 플랫폼 이용 또는 이를 통한 예약과 관련하여 발생하는 이익 손실, 데이터 손실 또는 영업권 손실을 포함한 간접적, 우발적, 특별, 결과적 또는 징벌적 손해에 대해 책임지지 않습니다. 본 약관으로 인한 모든 청구에 대한 당사의 총 책임은 해당 청구를 야기한 예약에 대해 귀하가 지불한 총 금액을 초과하지 않습니다."
+        },
+        "indemnification": {
+          "title": "면책 의무",
+          "body": "귀하는 플랫폼 이용, 본 약관 위반 또는 타인의 권리 침해와 관련하여 발생하는 모든 청구, 책임, 손해, 손실 및 비용(법률 비용 포함)에 대해 GeomeeGo 및 FORHU Inc.를 면책, 방어 및 보호할 것에 동의합니다."
+        },
+        "governingLaw": {
+          "title": "준거법 및 분쟁 해결",
+          "para1": "본 약관은 저촉법 조항에 관계없이 미국 뉴욕주 법률의 적용을 받습니다.",
+          "para2": "본 약관 또는 GeomeeGo 이용과 관련하여 발생하는 모든 분쟁은 우선 성실한 협의를 통해 해결을 시도합니다. 30일 이내에 해결되지 않는 경우, 분쟁은 미국중재협회(AAA)의 규정에 따라 뉴욕주 뉴욕시에서 구속력 있는 중재에 회부됩니다. 귀하는 집단 소송 또는 집단 중재에 참여할 권리를 포기합니다."
+        },
+        "changes": {
+          "title": "약관 변경",
+          "body": "GeomeeGo는 언제든지 본 약관을 수정할 권리를 보유합니다. 중요한 변경 사항이 있을 경우 등록된 사용자에게 이메일로 통지하고, 개정된 '최종 업데이트' 날짜와 함께 업데이트된 버전을 플랫폼에 게시합니다. 변경 사항이 발효된 후 플랫폼을 계속 이용하시면 개정된 약관에 동의하신 것으로 간주됩니다."
+        },
+        "contact": {
+          "title": "문의",
+          "intro": "본 약관에 관한 문의사항:",
+          "email": "📧 support@cheapestgo.com",
+          "address": "🏢 FORHU Inc. · 미국 뉴욕주 뉴욕시 10005 Wall Street 30번지 8층"
+        }
+      },
+      "privacy": {
+        "whoWeAre": {
+          "title": "회사 소개",
+          "para1": "GeomeeGo(이하 '당사')는 미국 뉴욕주 뉴욕시 10005 Wall Street 30번지 8층에 위치한 FORHU Inc.가 운영하는 온라인 여행사입니다. 당사는 웹사이트 및 모바일 플랫폼을 통해 주로 동남아시아 여행자들에게 호텔 예약, 항공편 패키지 및 여행 특가 서비스를 제공합니다.",
+          "para2Before": "본 개인정보 처리방침에 관한 문의사항은 다음으로 연락해 주십시오:",
+          "para2After": "."
+        },
+        "informationWeCollect": {
+          "title": "수집하는 정보",
+          "directLabel": "귀하가 직접 제공하는 정보:",
+          "directItems": [
+            "계정 생성 또는 예약 시 성명, 이메일 주소, 전화번호, 생년월일",
+            "청구 주소 및 결제 정보(Stripe가 안전하게 처리 — 카드 번호는 저장하지 않음)",
+            "여행 선호도, 검색 기록, 과거 예약 내역",
+            "이메일 또는 지원 채널을 통해 보내신 문의 내용"
+          ],
+          "autoLabel": "자동으로 수집되는 정보:",
+          "autoItems": [
+            "IP 주소, 브라우저 종류, 운영체제, 기기 식별자",
+            "방문한 페이지, 페이지 체류 시간, 클릭한 링크, 유입 URL",
+            "쿠키, 웹 비콘 및 유사 추적 기술(쿠키 정책 참조)",
+            "IP 주소에서 도출된 위치 데이터(국가/지역 수준)"
+          ],
+          "thirdPartyLabel": "제3자로부터 수집된 정보:",
+          "thirdPartyItems": [
+            "파트너(Duffel, Mystifly, TravelgateX, ONDA, Rakuten)로부터의 여행 가용성 및 요금 데이터",
+            "Stripe로부터의 결제 확인 및 사기 감지 신호",
+            "플랫폼 개선을 위해 이용하는 서비스 제공업체의 분석 데이터"
+          ]
+        },
+        "howWeUse": {
+          "title": "정보 이용 방법",
+          "items": [
+            "여행 예약 처리 및 확인, 예약 확인 이메일 발송",
+            "Stripe를 통한 결제 처리 및 사기 예방",
+            "GeomeeGo 계정 생성 및 관리",
+            "거래 이메일 발송(예약 확인, 영수증, 일정 업데이트)",
+            "프로모션 이메일 및 특가 알림 발송 — 귀하의 동의 하에만 발송되며, 언제든지 수신 거부 가능",
+            "플랫폼 개선, 콘텐츠 개인화, 이용 패턴 분석",
+            "법적 의무 준수 및 이용약관 이행",
+            "귀하의 문의에 대한 응대 및 고객 지원 제공"
+          ]
+        },
+        "howWeShare": {
+          "title": "정보 공유 방법",
+          "intro": "당사는 귀하의 개인정보를 판매하지 않습니다. 다음과 같은 경우에만 귀하의 데이터를 공유합니다:",
+          "items": [
+            {
+              "label": "호텔 및 여행 공급업체",
+              "text": "예약 이행을 위해 호텔 및 공급업체와 귀하의 성명, 연락처, 예약 정보를 공유합니다."
+            },
+            {
+              "label": "Stripe",
+              "text": "결제 정보는 Stripe, Inc.가 처리합니다. Stripe의 개인정보 처리방침은 결제 데이터 처리 방식을 규율합니다. 참조:",
+              "linkText": "stripe.com/privacy",
+              "linkHref": "https://stripe.com/privacy"
+            },
+            {
+              "label": "여행 파트너 (Duffel, Mystifly, TravelgateX, ONDA, Rakuten)",
+              "text": "가용성 및 요금 조회를 위해 검색 쿼리 및 예약 세부 정보를 파트너 API를 통해 처리합니다."
+            },
+            {
+              "label": "Supabase",
+              "text": "당사의 데이터베이스 인프라는 Supabase에서 호스팅됩니다. 데이터는 저장 및 전송 시 암호화됩니다."
+            },
+            {
+              "label": "법적 요건",
+              "text": "법률, 법원 명령에 따르거나 GeomeeGo 또는 타인의 권리, 재산, 안전을 보호하기 위해 필요한 경우 정보를 공개할 수 있습니다."
+            }
+          ]
+        },
+        "cookies": {
+          "title": "쿠키 및 추적 기술",
+          "textBefore": "당사는 플랫폼 운영 및 이용자 경험 개선을 위해 쿠키 및 유사 기술을 사용합니다. 당사가 사용하는 쿠키의 종류와 환경설정 방법에 대한 자세한 내용은 당사의",
+          "linkText": "쿠키 정책",
+          "textAfter": "을 참조해 주십시오."
+        },
+        "dataRetention": {
+          "title": "데이터 보유",
+          "intro": "당사는 다음을 위해 필요한 기간 동안 귀하의 개인 데이터를 보유합니다:",
+          "items": [
+            "계정 유지 및 서비스 제공",
+            "법적, 세무적, 회계적 의무 준수(금융 기록의 경우 일반적으로 7년)",
+            "분쟁 해결 및 계약 이행"
+          ],
+          "note": "계정을 삭제하시면, 법률에 의해 보유가 요구되는 경우를 제외하고 90일 이내에 귀하의 개인 데이터를 삭제하거나 익명화합니다."
+        },
+        "internationalTransfers": {
+          "title": "국제 데이터 이전",
+          "body": "GeomeeGo는 미국에 본사를 두고 있습니다. 귀하가 동남아시아 또는 기타 지역에서 당사 서비스를 이용하실 경우, 귀하의 데이터는 미국으로 이전되어 처리됩니다. 당사는 적용 법률(GDPR 및 2012년 필리핀 개인정보보호법, 공화국법 제10173호 포함)에 따라 요구되는 경우 표준 계약 조항을 포함한 적절한 안전 조치를 갖추고 있습니다."
+        },
+        "yourRights": {
+          "title": "귀하의 권리 및 선택",
+          "intro": "귀하의 거주 지역에 따라 다음과 같은 권리를 보유할 수 있습니다:",
+          "items": [
+            {
+              "label": "열람권",
+              "text": "당사가 보유한 귀하의 개인 데이터 사본 요청"
+            },
+            {
+              "label": "정정권",
+              "text": "부정확하거나 불완전한 데이터의 정정 요청"
+            },
+            {
+              "label": "삭제권",
+              "text": "귀하의 개인 데이터 삭제 요청('잊힐 권리')"
+            },
+            {
+              "label": "이동권",
+              "text": "구조화된 기계 판독 가능 형식으로 데이터 수령"
+            },
+            {
+              "label": "수신 거부권",
+              "text": "이메일의 링크를 사용하여 언제든지 마케팅 이메일 수신 거부"
+            },
+            {
+              "label": "동의 철회권",
+              "text": "처리가 동의에 기반한 경우 언제든지 동의 철회"
+            }
+          ],
+          "emailBefore": "이러한 권리를 행사하시려면 다음으로 이메일을 보내주십시오:",
+          "emailAfter": " 30일 이내에 회신드리겠습니다."
+        },
+        "childrensPrivacy": {
+          "title": "아동 개인정보 보호",
+          "body": "GeomeeGo는 만 18세 미만의 아동을 대상으로 하지 않습니다. 당사는 아동으로부터 의도적으로 개인정보를 수집하지 않습니다. 아동의 정보가 실수로 수집되었다고 판단되시면, 즉시 support@cheapestgo.com으로 연락해 주십시오. 해당 정보를 즉시 삭제하겠습니다."
+        },
+        "security": {
+          "title": "보안",
+          "body": "당사는 귀하의 개인 데이터를 보호하기 위해 전송 시 암호화(TLS/HTTPS), 저장 시 암호화, 접근 통제, 정기적인 보안 검토 등 업계 표준의 기술적·조직적 조치를 시행합니다. 결제 데이터는 PCI DSS 준수 업체인 Stripe에서 독점 처리합니다. 그러나 인터넷을 통한 전송 방식이 완전히 안전하지는 않으며, 절대적인 보안을 보장할 수 없습니다."
+        },
+        "changes": {
+          "title": "방침 변경",
+          "body": "당사는 본 개인정보 처리방침을 수시로 업데이트할 수 있습니다. 중요한 변경 사항이 있을 경우, 계정이 있으시면 이메일로 통지하거나 웹사이트에 눈에 띄는 공지를 게시합니다. 개정된 방침의 발효일 이후 GeomeeGo를 계속 이용하시면 변경 사항에 동의하신 것으로 간주됩니다."
+        },
+        "contact": {
+          "title": "문의하기",
+          "intro": "개인정보 관련 문의, 요청 또는 불만 사항:",
+          "email": "📧 support@cheapestgo.com",
+          "address": "🏢 FORHU Inc. · 미국 뉴욕주 뉴욕시 10005 Wall Street 30번지 8층"
+        }
+      },
+      "refund": {
+        "overview": {
+          "title": "개요",
+          "body": "GeomeeGo는 귀하와 여행 공급업체(호텔, 항공사, 패키지 제공업체) 사이의 중개인 역할을 합니다. 취소 및 환불 권리는 주로 부동산 유형, 요금 유형 및 예약 날짜에 따라 다른 개별 공급업체의 정책에 의해 규율됩니다. 본 정책은 당사가 귀하를 대신하여 취소 및 환불을 처리하는 방법을 설명합니다."
+        },
+        "cancellationTypes": {
+          "title": "호텔 취소 유형",
+          "intro": "GeomeeGo를 통해 호텔을 예약하시면 다음 중 하나의 요금 유형을 확인하실 수 있습니다:",
+          "free": {
+            "heading": "무료 취소",
+            "body": "예약 시 명시된 기한 전에 취소하시면 취소 수수료가 부과되지 않습니다. 정확한 기한(예: '체크인 48시간 전까지 무료 취소')은 예약 페이지 및 확인 이메일에 표시됩니다."
+          },
+          "partial": {
+            "heading": "부분 환불",
+            "body": "체크인 날짜 기준 취소 시점에 따라 부분 환불이 적용됩니다. 위약금 금액 및 기한은 결제 확정 전에 표시됩니다."
+          },
+          "nonRefundable": {
+            "heading": "환불 불가",
+            "body": "취소 시 환불이 제공되지 않습니다. 이 요금은 일반적으로 가격이 낮으며, 결제 전에 '환불 불가'로 명확히 표시됩니다."
+          }
+        },
+        "howToCancel": {
+          "title": "예약 취소 방법",
+          "intro": "예약을 취소하시려면:",
+          "steps": [
+            "GeomeeGo 계정에 로그인하고 내 예약으로 이동합니다.",
+            "취소하려는 예약을 선택하고 예약 취소를 클릭합니다.",
+            "취소 정책 및 화면에 표시된 수수료를 검토합니다.",
+            "취소를 확인합니다. 취소 확인 이메일을 받으실 것입니다."
+          ],
+          "emailBefore": "또는 예약 참조 번호와 함께 다음으로 문의해 주십시오:",
+          "emailAfter": "영업일 1일 이내에 취소를 처리해 드리겠습니다."
+        },
+        "processing": {
+          "title": "환불 처리",
+          "items": [
+            {
+              "label": "환불 대상",
+              "text": "Stripe를 통해 결제 시 사용한 원래 결제 수단(신용/체크카드 또는 GrabPay)으로 환불됩니다."
+            },
+            {
+              "label": "처리 기간",
+              "text": "환불을 시작한 후, 귀하의 은행이나 카드 발급사에 따라 명세서에 표시되기까지 일반적으로 5~10 영업일이 소요됩니다."
+            },
+            {
+              "label": "GeomeeGo 서비스 수수료",
+              "text": "공급업체 오류 또는 GeomeeGo 시스템 결함으로 인한 취소가 아닌 한, 해당 플랫폼 서비스 수수료는 환불되지 않습니다."
+            },
+            {
+              "label": "Stripe 처리 수수료",
+              "text": "Stripe가 부과하는 결제 처리 수수료는 Stripe의 표준 정책에 따라 GeomeeGo에서 환불되지 않습니다."
+            },
+            {
+              "label": "통화",
+              "text": "환불은 원래 결제 시 사용한 통화로 이루어집니다. 환불 시점의 환율 차이에 대해 당사는 책임지지 않습니다."
+            }
+          ]
+        },
+        "noShows": {
+          "title": "노쇼",
+          "body": "사전 취소 없이 예정된 도착일에 체크인하지 않으실 경우, 예약은 노쇼로 처리됩니다. 노쇼 정책은 호텔마다 다르며, 대부분의 호텔은 전체 예약 금액을 청구합니다. GeomeeGo는 호텔의 노쇼 정책을 변경할 수 없습니다. 계획이 변경되시면 미리 취소하실 것을 강력히 권고합니다."
+        },
+        "amendments": {
+          "title": "예약 변경",
+          "intro": "날짜 변경, 객실 유형 변경, 투숙객 이름 수정은 호텔 가용성 및 공급업체 정책에 따라 달라집니다. 변경을 요청하시려면:",
+          "steps": [
+            "예약 참조 번호와 함께 support@cheapestgo.com으로 문의해 주십시오",
+            "필요한 변경 사항과 이유를 명시해 주십시오",
+            "당사가 공급업체와 가용성을 확인하고 변경 가능 여부를 안내해 드립니다"
+          ],
+          "noteLabel": "참고:",
+          "noteText": "변경으로 인해 가격 차이(추가 요금 또는 크레딧)가 발생할 수 있으며, 취소 후 재예약 없이는 변경이 불가능한 경우도 있습니다. 변경 요청이 반드시 수용된다고 보장할 수 없습니다."
+        },
+        "supplierCancellations": {
+          "title": "공급업체 취소 및 불가항력",
+          "intro": "드문 경우이지만, 호텔 또는 여행 공급업체가 초과 예약, 폐쇄, 자연재해 또는 불가항력 사유로 예약을 취소할 수 있습니다. 이 경우:",
+          "items": [
+            "GeomeeGo는 공급업체로부터 통보를 받는 즉시 귀하에게 알려드립니다",
+            "서비스 수수료를 포함하여 GeomeeGo에 지불한 금액 전액을 환불해 드립니다",
+            "가능한 경우 대체 숙소 찾기를 도와드리지만, 대체 숙소를 보장할 수는 없습니다"
+          ],
+          "note": "GeomeeGo는 공급업체 취소로 인한 교통비, 다른 곳에서 추가 예약한 호텔 비용, 결과적 손실을 포함한 손실에 대해 책임지지 않습니다. 이러한 사태에 대비하여 여행 보험 가입을 권고합니다."
+        },
+        "disputes": {
+          "title": "분쟁 및 지급 거절",
+          "body": "청구 관련 우려 사항이 있으시면, 은행에 지급 거절(차지백)을 신청하기 전에 먼저 support@cheapestgo.com으로 문의해 주십시오. 대부분의 문제는 신속하게 해결할 수 있습니다. GeomeeGo에 먼저 연락하지 않고 시작된 지급 거절은 계정 정지로 이어질 수 있습니다. GeomeeGo는 악의적으로 또는 당사의 취소 정책을 준수하지 않고 신청된 지급 거절에 이의를 제기할 권리를 보유합니다."
+        },
+        "flightPackages": {
+          "title": "항공편 패키지",
+          "body": "항공편 + 호텔 올인클루시브 패키지의 경우, 취소 조건은 호텔과 항공편 구성 요소 모두에 따라 달라집니다. 항공권은 일반적으로 환불이 불가하거나 상당한 취소 수수료가 발생합니다. 패키지의 구체적인 조건은 결제 시 및 확인 이메일에 표시됩니다. 패키지를 취소해야 하실 경우, 즉시 support@cheapestgo.com으로 문의해 주십시오."
+        },
+        "contact": {
+          "title": "환불 문의",
+          "intro": "모든 환불 및 취소 문의는 예약 참조 번호를 준비하신 후 다음으로 연락해 주십시오:",
+          "email": "📧 support@cheapestgo.com",
+          "address": "🏢 FORHU Inc. · 미국 뉴욕주 뉴욕시 10005 Wall Street 30번지 8층",
+          "outro": "모든 환불 요청에 대해 영업일 1~2일 이내에 답변해 드리겠습니다."
+        }
+      },
+      "cookie": {
+        "whatAreCookies": {
+          "title": "쿠키란 무엇인가요?",
+          "body": "쿠키는 웹사이트를 방문할 때 귀하의 기기에 저장되는 소형 텍스트 파일입니다. 웹사이트를 효율적으로 작동시키고, 귀하의 환경설정을 기억하며, 웹사이트 운영자에게 정보를 제공하기 위해 널리 사용됩니다. 유사 기술에는 웹 비콘, 픽셀, 로컬 스토리지, 세션 스토리지 등이 있으며, 본 정책에서는 이를 총칭하여 '쿠키'라고 합니다."
+        },
+        "whyWeUse": {
+          "title": "쿠키 사용 목적",
+          "intro": "GeomeeGo는 다음과 같은 목적으로 쿠키를 사용합니다:",
+          "items": [
+            "로그인 상태 유지 및 세션 보안 관리",
+            "환경설정 기억(통화, 언어, 다크/라이트 모드)",
+            "최근 검색 내역 및 열람한 숙소 저장",
+            "사기 예방 및 계정 보안 보호",
+            "성능 측정 및 방문자 플랫폼 이용 방식 파악",
+            "콘텐츠 개인화 및 관련 특가·추천 상품 제공"
+          ]
+        },
+        "types": {
+          "title": "사용하는 쿠키 유형",
+          "categories": [
+            {
+              "heading": "필수 쿠키",
+              "body": "이 쿠키는 플랫폼 작동에 필수적입니다. 인증, 세션 관리, 보안 토큰, 결제 처리 등 핵심 기능을 지원합니다. 서비스 운영에 필요하므로 이 쿠키는 거부하실 수 없습니다.",
+              "items": [
+                "supabase-auth-token — 인증 세션",
+                "__stripe_mid / __stripe_sid — Stripe 사기 방지"
+              ]
+            },
+            {
+              "heading": "기능성 쿠키",
+              "body": "이 쿠키는 귀하의 선택을 기억하고 경험을 개인화합니다. 비활성화하면 일부 기능이 저하될 수 있습니다.",
+              "items": [
+                "통화 환경설정(예: KRW, USD, PHP)",
+                "테마 환경설정(다크 또는 라이트 모드)",
+                "최근 열람한 호텔 및 검색 기록"
+              ]
+            },
+            {
+              "heading": "분석 쿠키",
+              "body": "방문자가 플랫폼을 어떻게 이용하는지(가장 많이 방문한 페이지, 이탈 지점, 경험 개선 방법)를 파악하는 데 도움을 줍니다. 데이터는 가능한 한 집계 및 익명화됩니다.",
+              "items": [
+                "페이지 조회 추적 및 세션 시간",
+                "특가 및 검색 결과 클릭률",
+                "오류 로깅 및 성능 모니터링"
+              ]
+            },
+            {
+              "heading": "마케팅 쿠키",
+              "body": "플랫폼에서 귀하와 관련된 여행 특가를 표시하는 데 사용될 수 있습니다. 현재 당사는 제3자 광고를 게재하지 않습니다. 변경 시 본 정책을 업데이트하고 동의를 요청하겠습니다."
+            }
+          ]
+        },
+        "thirdParty": {
+          "title": "제3자 쿠키",
+          "intro": "일부 쿠키는 당사 페이지에 표시되는 제3자 서비스에 의해 설정됩니다:",
+          "stripeBefore": "사기 감지 및 결제 세션 관리를 위한 쿠키를 설정합니다. 참조:",
+          "stripeLinkText": "Stripe 개인정보 처리방침",
+          "supabaseText": "당사 데이터베이스 인프라에서 귀하의 로그인 세션을 관리하기 위한 인증 쿠키를 설정합니다.",
+          "outro": "당사는 제3자 쿠키를 통제할 수 없습니다. 자세한 내용은 해당 서비스 제공업체의 개인정보 처리방침을 참조해 주십시오."
+        },
+        "duration": {
+          "title": "쿠키 유지 기간",
+          "intro": "GeomeeGo의 쿠키는 다음 두 가지 유형입니다:",
+          "items": [
+            {
+              "label": "세션 쿠키",
+              "text": "브라우저를 닫으면 자동으로 삭제됩니다. 로그인 세션 및 임시 상태에 사용됩니다."
+            },
+            {
+              "label": "영구 쿠키",
+              "text": "일정 기간(일반적으로 30일~1년) 동안 기기에 남아 있습니다. 환경설정 및 분석에 사용됩니다."
+            }
+          ]
+        },
+        "managing": {
+          "title": "쿠키 환경설정 관리",
+          "intro": "여러 가지 방법으로 쿠키를 제어하실 수 있습니다:",
+          "items": [
+            {
+              "label": "브라우저 설정",
+              "text": "대부분의 브라우저에서 개인정보 또는 보안 설정을 통해 쿠키를 거부하거나 삭제할 수 있습니다. 필수 쿠키를 비활성화하면 로그인 및 결제와 같은 핵심 기능이 작동하지 않습니다."
+            },
+            {
+              "label": "쿠키 배너",
+              "text": "GeomeeGo를 처음 방문하시면 비필수 쿠키의 수락 또는 거부를 선택할 수 있는 쿠키 동의 배너가 표시될 수 있습니다."
+            },
+            {
+              "label": "수신 거부 도구",
+              "text": "분석 쿠키의 경우 해당하는 경우 Google 애널리틱스 차단 브라우저 추가 기능과 같은 브라우저 확장 프로그램을 사용하실 수 있습니다."
+            }
+          ],
+          "note": "쿠키 설정을 조정하면 플랫폼 기능에 영향을 미칠 수 있습니다. 필수 쿠키는 비활성화하면 GeomeeGo를 이용하실 수 없게 됩니다."
+        },
+        "doNotTrack": {
+          "title": "추적 거부(Do Not Track)",
+          "body": "일부 브라우저는 '추적 거부'(DNT) 신호를 전송합니다. 웹사이트가 DNT 신호에 어떻게 반응해야 하는지에 대한 보편적인 표준이 없으므로, GeomeeGo는 현재 DNT 신호에 응답하지 않습니다. 표준이 발전함에 따라 이 분야를 계속 평가하겠습니다."
+        },
+        "changes": {
+          "title": "쿠키 정책 변경",
+          "body": "당사는 기술, 규정 또는 쿠키 사용 방식의 변화를 반영하기 위해 본 쿠키 정책을 수시로 업데이트할 수 있습니다. 중요한 변경 사항이 있을 경우 본 페이지 상단의 '최종 업데이트' 날짜를 변경합니다. 변경 사항 게시 후 플랫폼을 계속 이용하시면 개정된 정책에 동의하신 것으로 간주됩니다."
+        },
+        "contact": {
+          "title": "문의",
+          "intro": "쿠키 사용에 관한 문의사항:",
+          "email": "📧 support@cheapestgo.com",
+          "address": "🏢 FORHU Inc. · 미국 뉴욕주 뉴욕시 10005 Wall Street 30번지 8층"
+        }
+      }
+    }
+  },
+  "nav": {
+    "account": "계정",
+    "accountSettings": "계정 설정",
+    "accountWorks": "계정은 {brand} 및 모든 파트너 사이트에서 사용 가능합니다",
+    "createAccount": "계정 만들기",
+    "home": "홈",
+    "membersSave": "회원은 10% 이상 절약",
+    "membersSaveSubtitle": "로그인 시 선정 숙소 할인 적용",
+    "myTrips": "내 여행",
+    "openApp": "앱 열기",
+    "profile": "프로필",
+    "signIn": "로그인",
+    "signOut": "로그아웃",
+    "support": "고객지원",
+    "trips": "여행"
+  },
+  "popularDestinations": {
+    "subtitle": "아시아 태평양의 인기 명소를 둘러보세요 — 몇 초 만에 항공편과 호텔을 검색하세요.",
+    "title": "인기 여행지"
+  },
+  "propertyGallery": {
+    "alt": {
+      "galleryView": "갤러리 이미지 {number}",
+      "mainPropertyView": "숙소 메인 이미지",
+      "propertyView": "숙소 이미지",
+      "propertyViewNumbered": "숙소 이미지 {number}",
+      "thumbnail": "썸네일 {number}",
+      "view": "이미지 {number}"
+    },
+    "moreInfo": "추가 정보",
+    "morePhotos": "+{count}장의 사진",
+    "noImages": "이용 가능한 이미지가 없습니다",
+    "showAllPhotos": "모든 사진 보기",
+    "viewPhoto": "사진 보기"
+  },
+  "propertyNav": {
+    "amenities": "편의시설",
+    "location": "위치",
+    "overview": "개요",
+    "policies": "정책",
+    "reviews": "리뷰",
+    "rooms": "객실"
+  },
+  "propertyOverview": {
+    "aboutProperty": "숙소 소개",
+    "checkIn": "체크인",
+    "checkOut": "체크아웃",
+    "contactInfo": "연락처",
+    "importantInfo": "중요 안내",
+    "cleaningSafety": {
+      "description": "이 숙소는 비대면 체크인과 강화된 청소 절차 등 철저한 위생 관리를 시행하고 있습니다.",
+      "title": "청결 및 안전 수칙"
+    },
+    "popularAmenities": "인기 편의시설",
+    "readMore": "더 보기",
+    "seeAllAmenities": "편의시설 {count}개 모두 보기",
+    "showLess": "간략히 보기",
+    "showLessAmenities": "편의시설 간략히 보기",
+    "verifiedReview": "인증된 리뷰 {count}개",
+    "verifiedReviews": "인증된 리뷰 {count}개",
+    "amenityLabels": {
+      "Free WiFi": "무료 Wi-Fi",
+      "WiFi": "Wi-Fi",
+      "Internet": "인터넷",
+      "High-Speed Internet": "고속 인터넷",
+      "Free Parking": "무료 주차",
+      "Parking": "주차장",
+      "Valet Parking": "발레 파킹",
+      "Secure Parking": "보안 주차장",
+      "Underground Parking": "지하 주차장",
+      "Swimming Pool": "수영장",
+      "Indoor Pool": "실내 수영장",
+      "Outdoor Pool": "야외 수영장",
+      "Heated Pool": "온수 수영장",
+      "Rooftop Pool": "루프탑 수영장",
+      "Fitness Center": "피트니스 센터",
+      "Sauna": "사우나",
+      "Spa": "스파",
+      "Hot Tub": "자쿠지",
+      "Jacuzzi": "자쿠지",
+      "Steam Room": "스팀룸",
+      "Restaurant": "레스토랑",
+      "Bar": "바",
+      "Breakfast Available": "조식 제공",
+      "Breakfast Included": "조식 포함",
+      "Buffet Breakfast": "뷔페 조식",
+      "Room Service": "룸 서비스",
+      "Minibar": "미니바",
+      "Kitchen": "주방",
+      "Kitchenette": "간이 주방",
+      "Coffee Maker": "커피 메이커",
+      "Snack Bar": "스낵바",
+      "Air Conditioning": "에어컨",
+      "Heating": "난방",
+      "Balcony": "발코니",
+      "Terrace": "테라스",
+      "Sea View": "바다 전망",
+      "City View": "도시 전망",
+      "Garden View": "정원 전망",
+      "In-Room Safe": "객실 금고",
+      "TV": "TV",
+      "Flat-Screen TV": "평면 TV",
+      "Concierge": "컨시어지",
+      "24/7 Reception": "24시간 프런트",
+      "Laundry Service": "세탁 서비스",
+      "Dry Cleaning": "드라이클리닝",
+      "Luggage Storage": "수하물 보관",
+      "Airport Transfer": "공항 셔틀",
+      "Shuttle Service": "셔틀 서비스",
+      "Tour Desk": "투어 데스크",
+      "Daily Housekeeping": "매일 객실 청소",
+      "Business Center": "비즈니스 센터",
+      "Meeting Rooms": "회의실",
+      "Conference Facilities": "컨퍼런스 시설",
+      "Wheelchair Accessible": "휠체어 이용 가능",
+      "Disabled Facilities": "장애인 편의시설",
+      "Elevator": "엘리베이터",
+      "Non-Smoking Rooms": "금연 객실",
+      "Pet Friendly": "반려동물 동반 가능",
+      "Family Rooms": "패밀리룸",
+      "Smoke-Free Property": "금연 시설",
+      "Garden": "정원",
+      "BBQ Facilities": "바베큐 시설",
+      "Sun Terrace": "선 테라스",
+      "Beach Access": "해변 접근",
+      "Private Beach": "전용 해변",
+      "Express Check-in": "빠른 체크인",
+      "Early Check-in": "조기 체크인",
+      "Late Check-out": "늦은 체크아웃",
+      "Lockers": "사물함",
+      "ATM on Site": "현장 ATM",
+      "Gift Shop": "기프트샵",
+      "Newsstand": "신문 가판대",
+      "Multilingual Staff": "다국어 스태프",
+      "Smoking Areas": "흡연 구역",
+      "Security Guard": "경비원",
+      "Lobby TV": "로비 TV"
+    }
+  },
+  "pwa": {
+    "installPrompt": {
+      "body": "홈 화면에 추가하면 더 빠르게 이용할 수 있습니다.",
+      "dismiss": "나중에",
+      "install": "설치",
+      "title": "{brand} 앱 받기"
+    }
+  },
+  "search": {
+    "validation": {
+      "allHotelFieldsRequired": "호텔을 검색하려면 모든 필드를 입력해야 합니다",
+      "fieldList": "{fields} 및 {last}",
+      "fields": {
+        "checkInDate": "체크인 날짜",
+        "checkOutDate": "체크아웃 날짜",
+        "destination": "목적지"
+      },
+      "selectField": "{field}을(를) 선택해 주세요"
+    }
+  },
+  "seo": {
+    "faq": {
+      "a1": "{brand}는 여러 항공사와 글로벌 유통 시스템을 검색해 실시간으로 최저가를 찾아 한 곳에서 비교하고 예약할 수 있게 합니다.",
+      "a2": "네. {brand}는 항공권, 호텔, 아파트, 독특한 숙소까지 하나의 플랫폼에서 예약할 수 있습니다.",
+      "a3": "네, 가격 검색과 비교는 완전히 무료입니다. 예약할 때만 비용이 발생합니다.",
+      "a4": "{brand}는 다양한 통화를 지원하며 설정에 따라 자동으로 가격을 변환해 현지 통화로 확인할 수 있습니다.",
+      "q1": "{brand}는 어떻게 저렴한 항공권을 찾나요?",
+      "q2": "{brand}에서 항공권과 호텔을 모두 예약할 수 있나요?",
+      "q3": "{brand}는 무료로 사용할 수 있나요?",
+      "q4": "{brand}는 어떤 통화를 지원하나요?"
+    },
+    "orgDescription": "{brand}는 전 세계 최저가 항공권과 호텔을 찾는 현대적인 여행 예약 플랫폼입니다.",
+    "siteDescription": "전 세계 최고의 여행 상품을 발견하세요. {brand}와 함께 항공편과 호텔을 쉽게 계획하고, 비용을 절약하며, 세계를 여행하세요.",
+    "siteTagline": "전 세계 여행을 발견하고 예약하세요"
+  },
+  "theme": {
+    "contextError": "useTheme은 ThemeProvider 안에서 사용해야 합니다",
+    "switchToDark": "다크 모드로 전환",
+    "switchToLight": "라이트 모드로 전환"
+  },
+  "topCities": {
+    "exploreHotels": "호텔 찾아보기",
+    "headerHighlight": "전 세계",
+    "headerMain": "인기 도시",
+    "subtitle": "가장 인기 있는 여행지 · 즉시 호텔 검색"
+  },
+  "topDestinations": {
+    "findHotels": "호텔 찾기",
+    "headerHighlight": "전 세계",
+    "headerMain": "인기 여행지",
+    "subtitle": "세계 구석구석에서 선사하는 상징적인 경험"
+  },
+  "property": {
+    "addressNotAvailable": "주소를 이용할 수 없습니다",
+    "bookingWidget": {
+      "amenities": "편의시설",
+      "bookThisRoom": "이 객실 예약",
+      "description": "설명",
+      "guests": "{count}명",
+      "roomDetails": "객실 세부 정보",
+      "selectedRoom": "선택한 객실"
+    },
+    "breadcrumbHome": "홈",
+    "breadcrumbStaysIn": "{city} 숙소",
+    "bundleActive": "번들 할인 적용 중",
+    "bundleApplied": "번들 할인 적용됨 — {percent}% 절약 중",
+    "faq": {
+      "checkInAnswer": "체크인 시간은 {time}입니다",
+      "checkInQuestion": "이 숙소의 체크인 시간은 언제인가요?",
+      "checkOutAnswer": "체크아웃 시간은 {time}입니다",
+      "checkOutQuestion": "체크아웃 시간은 언제인가요?",
+      "fallbackCancellationAnswer": "취소 정책은 요금에 따라 다릅니다. 예약 전에 위의 객실 옵션에서 구체적인 취소 조건을 확인하세요.",
+      "fallbackCancellationQuestion": "{name}의 취소 정책은 무엇인가요?",
+      "fallbackModificationAnswer": "예약 후 받은 확인 이메일을 통해 예약을 관리할 수 있습니다. 긴급한 변경 사항은 숙소에 직접 문의하세요.",
+      "fallbackModificationQuestion": "예약을 변경하거나 취소하려면 어떻게 해야 하나요?",
+      "fallbackPaymentAnswer": "대부분의 주요 신용카드 및 체크카드를 사용할 수 있습니다. 수락 가능한 결제 방법을 확인하려면 숙소에 직접 문의하세요.",
+      "fallbackPaymentQuestion": "{name}에서 신용카드를 사용할 수 있나요?",
+      "importantQuestion": "예약 전에 알아야 할 중요한 사항이 있나요?",
+      "parkingAnswer": "네, 숙소에서 {facility}을(를) 제공합니다.",
+      "parkingQuestion": "{name}에 주차장이 있나요?",
+      "poolAnswer": "네, 숙소에 {facility}이(가) 있습니다.",
+      "poolQuestion": "{name}에 수영장이 있나요?",
+      "restaurantAnswer": "네, 숙소에 레스토랑이 있습니다.",
+      "restaurantQuestion": "{name}에 레스토랑이 있나요?",
+      "title": "자주 묻는 질문",
+      "wifiAnswer": "네, 숙소에서 WiFi를 이용할 수 있습니다.",
+      "wifiQuestion": "{name}에서 WiFi를 사용할 수 있나요?"
+    },
+    "locationLabel": "위치",
+    "locationTitle": "위치 안내",
+    "mobileCta": {
+      "checkRoomRates": "객실 요금 확인",
+      "from": "시작",
+      "perNight": "/박",
+      "viewRooms": "객실 보기"
+    },
+    "propertyNotFound": "숙소를 찾을 수 없습니다. (ID: {id})",
+    "rooms": {
+      "availableRooms": "예약 가능한 객실 ({count})",
+      "choose": "선택",
+      "chooseRoom": "객실 선택",
+      "filterAll": "전체",
+      "filterNonRefundable": "환불 불가",
+      "filterRefundable": "환불 가능",
+      "freeCancellation": "무료 취소",
+      "freeCancellationTick": "✓ 무료 취소",
+      "includesTaxes": "({nights}박, 1실 세금 포함)",
+      "noMeals": "식사 미포함",
+      "noNonRefundableRooms": "환불 불가 객실이 없습니다.",
+      "noRefundableRooms": "환불 가능한 객실이 없습니다.",
+      "changeDates": "날짜 변경",
+      "noRooms": "선택한 날짜에 이용 가능한 객실이 없습니다.",
+      "nonRefundable": "환불 불가",
+      "nonRefundablePill": "환불 불가",
+      "pageOf": "{current}/{total} 페이지",
+      "perNight": "/박",
+      "rateOptions": "{count}가지 요금 옵션",
+      "reserve": "예약",
+      "roomOnly": "객실만",
+      "showingRooms": "{total}개 객실 중 {start}–{end} 표시",
+      "sleeps": "최대 {count}인",
+      "standardRoom": "스탠다드 룸",
+      "total": "합계",
+      "hotelPhotoLabel": "호텔 사진",
+      "viewHotelPhotos": "호텔 사진 보기",
+      "viewRoomPhotos": "객실 사진 보기",
+      "etgNotice": {
+        "title": "온라인 예약이 아직 불가합니다",
+        "description": "이 숙소는 파트너 예약 시스템을 통해 운영됩니다. 아래 가격은 참고용입니다. 가용성 확인 및 예약 완료를 위해 문의해 주세요."
+      }
+    },
+    "savePercent": "{percent}% 절약",
+    "weather": {
+      "feelsLike": "체감 온도",
+      "forecast": "예보",
+      "humidity": "습도",
+      "nextHours": "다음 시간",
+      "poweredBy": "Google Weather 제공",
+      "today": "오늘",
+      "tomorrow": "내일",
+      "uv": {
+        "extreme": "매우 강함",
+        "high": "강함",
+        "low": "낮음",
+        "moderate": "보통",
+        "veryHigh": "높음"
+      },
+      "wind": "바람"
+    }
+  },
+  "reviewsSection": {
+    "aggregatedNote": "게스트 점수는 집계된 평점을 기반으로 합니다.",
+    "aggregatedScore": "집계된 게스트 점수",
+    "anonymous": "익명",
+    "basedOnReview": "{count}개의 리뷰를 기반으로",
+    "basedOnReviews": "{count}개의 리뷰를 기반으로",
+    "guestReviews": "게스트 리뷰",
+    "loadMore": "리뷰 더 보기",
+    "noReviews": "개별 리뷰가 없습니다.",
+    "noReviewsAvailable": "리뷰가 없습니다",
+    "showAllReviews": "모든 리뷰 {count}개 보기",
+    "showLess": "접기",
+    "showMore": "더 보기",
+    "showingCount": "전체 {total}개 중 {shown}개 표시",
+    "sort": {
+      "highestRated": "높은 평점순",
+      "lowestRated": "낮은 평점순",
+      "newestFirst": "최신순"
+    },
+    "travelerTypes": {
+      "business": "비즈니스",
+      "couple": "커플",
+      "family": "가족",
+      "friendsGroup": "친구/그룹",
+      "solo": "혼자"
+    },
+    "verifiedReviewCount": "{count, plural, other {인증된 리뷰 {count}개}}",
+    "whoStaysHere": "누가 머무나요"
+  },
+  "about": {
+    "heroLabel": "CheapestGo 소개",
+    "heroTitle": "시간과 비용을 존중하는 여행.",
+    "heroBody": "CheapestGo는 항공권과 호텔을 한 곳에서 발견하고, 비교하고, 예약할 수 있는 현대적인 여행 플랫폼입니다 — 실제로 믿을 수 있는 가격으로.",
+    "missionTitle": "우리의 미션",
+    "missionBody": "여행 예약은 간편해야 합니다. 많은 플랫폼들이 수수료를 숨기고 가격을 부풀려 모든 클릭을 의심하게 만듭니다. 저희는 CheapestGo를 반대 방향으로 구축했습니다: 최상의 실제 가격을 제시하고, 정확히 무엇을 지불하는지 보여주며, 주말 여행이든 평생의 여행이든 최소한의 단계로 예약을 완료할 수 있도록 합니다.",
+    "whatWeDoTitle": "저희가 하는 일",
+    "flightsTitle": "항공권",
+    "flightsBody": "항공사 파트너를 통해 전 세계 항공권을 검색하고 예약하세요 — 명확한 가격과 결제 시 예상치 못한 수수료 없음.",
+    "hotelsTitle": "호텔 & 숙소",
+    "hotelsBody": "세계 유수 공급업체의 수백만 개 호텔과 독특한 숙소 — 항상 실제 가용성과 요금을 확인하세요.",
+    "dealsTitle": "특가 & 패키지",
+    "dealsBody": "매일 업데이트되는 엄선된 주말 여행 및 여행 특가 — 최고의 가치를 가장 먼저 만나보세요.",
+    "valuesTitle": "저희가 다른 이유",
+    "transparentTitle": "투명한 가격",
+    "transparentBody": "단일하고 투명한 서비스 마크업을 적용하며, 이미 표시된 가격에 포함되어 있습니다. 숨겨진 수수료는 절대 없습니다.",
+    "secureTitle": "기본적으로 안전",
+    "secureBody": "결제는 Stripe에서 처리되며 카드 정보를 저장하지 않습니다. 데이터는 전송 중과 저장 중에 암호화됩니다.",
+    "builtTitle": "지역을 위해 만들어졌습니다",
+    "builtBody": "동남아시아 여행자에 집중합니다 — 현지 통화, 현지 맥락, 그리고 여행 방식을 이해하는 지원.",
+    "partnersTitle": "신뢰할 수 있는 파트너",
+    "partnersBody": "항공권, 호텔, 결제 인벤토리는 검증된 글로벌 공급업체에서 제공됩니다. 보이는 가용성과 요금은 실제이며 예약 가능합니다.",
+    "whoTitle": "CheapestGo 운영 주체",
+    "whoBody": "CheapestGo는 미국 뉴욕 NY 10005 월 스트리트 30번지 8층에 본사를 둔 FORHU Inc.가 운영합니다. 질문, 피드백, 파트너십 아이디어는 언제나 환영합니다.",
+    "contactUs": "문의하기",
+    "startExploring": "탐색 시작",
+    "terms": "이용약관",
+    "privacy": "개인정보처리방침",
+    "refund": "환불 정책"
+  }
 }

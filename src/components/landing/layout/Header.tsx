@@ -122,8 +122,10 @@ const HeaderContent = () => {
                 <button
                   className="flex items-center gap-1 h-6 px-1 text-xs font-medium leading-none text-slate-700 dark:text-slate-300 hover:bg-black/5 dark:hover:bg-white/5 rounded-lg transition-colors group cursor-pointer shrink-0"
                 >
-                  <span className="text-[9px] leading-none text-slate-400 font-bold uppercase">{LOCALE_COUNTRIES[locale]}</span>
-                  <span className="text-[11px] leading-none font-semibold">{locale.toUpperCase()}</span>
+                  <span className="flex items-baseline gap-[3px]">
+                    <span className="text-[9px] leading-none text-slate-400 font-bold uppercase">{LOCALE_COUNTRIES[locale]}</span>
+                    <span className="text-[11px] leading-none font-semibold">{locale.toUpperCase()}</span>
+                  </span>
                   <ChevronDown className="w-3 h-3 shrink-0 text-slate-400 transition-transform group-data-[state=open]:rotate-180" />
                 </button>
               </DropdownMenuTrigger>

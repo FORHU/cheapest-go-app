@@ -96,8 +96,10 @@ const CurrencySelector: React.FC<CurrencySelectorProps> = ({
                         className
                     )}
                 >
-                    <span className="text-[9px] leading-none text-slate-400 font-bold uppercase">{userCountry}</span>
-                    <span className="text-[11px] leading-none font-semibold">{userCurrency}</span>
+                    <span className="flex items-baseline gap-[3px]">
+                        <span className="text-[9px] leading-none text-slate-400 font-bold uppercase">{userCountry}</span>
+                        <span className="text-[11px] leading-none font-semibold">{userCurrency}</span>
+                    </span>
                     <ChevronDown className="w-3 h-3 shrink-0 text-slate-400 transition-transform group-data-[state=open]:rotate-180" />
                 </button>
             </DropdownMenuTrigger>

@@ -20,6 +20,7 @@ import {
     type ProfileInput,
 } from "@/lib/schemas/auth";
 import { RETURN_TO_PARAM, safeReturnTo } from "@/lib/auth/returnTo";
+import { useSearchStore } from "@/stores/searchStore";
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -150,6 +151,7 @@ export const useAuthStore = create<AuthState>((set, get) => {
             withLoading(async () => {
                 await apiFetch('/api/auth/logout', {});
                 set({ user: null });
+                useSearchStore.getState().clearRecentSearches();
             }),
 
         socialLogin: async (provider, returnTo) => {
