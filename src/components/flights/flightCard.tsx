@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plane, ArrowRight, Luggage, ChevronDown, ChevronUp, Shield, XCircle, BadgeDollarSign, Users } from 'lucide-react';
+import { Plane, ArrowRight, Luggage, ShoppingBag, ChevronDown, ChevronUp, Shield, XCircle, BadgeDollarSign, Users } from 'lucide-react';
 import type { FlightOffer, FlightSegmentDetail } from '@/types/flights';
 import { formatPrice } from '@/utils/flight-utils';
 import SaveButton from '@/components/common/SaveButton';
@@ -245,12 +245,26 @@ export const FlightCard: React.FC<FlightCardProps> = ({ offer, index = 0, onSele
 
                     {/* Tags */}
                     <div className="flex flex-wrap gap-0.5 lg:gap-1 mt-1 lg:mt-1.5 min-w-0 overflow-hidden">
-                        {offer.baggage && (
-                            <span className="inline-flex items-center gap-0.5 px-1 lg:px-2 py-px lg:py-0.5 rounded-full text-[8px] lg:text-xs bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300">
+                        {/* ─── Baggage allowance ───
+                            Rendered only when the airline actually stated an allowance.
+                            A count of 0 is a fact ("no free bag") and is shown muted;
+                            an absent count means unknown and shows nothing at all. */}
+                        {offer.baggage?.carryOnBags != null && (
+                            <span className={`inline-flex items-center gap-0.5 px-1 lg:px-2 py-px lg:py-0.5 rounded-full text-[8px] lg:text-xs border ${offer.baggage.carryOnBags > 0
+                                ? 'bg-emerald-50 dark:bg-emerald-500/10 border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-400'
+                                : 'bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400'
+                                }`}>
+                                <ShoppingBag className="w-2 h-2 lg:w-3 lg:h-3" />
+                                {t('carryOnBags', { count: offer.baggage.carryOnBags })}
+                            </span>
+                        )}
+                        {offer.baggage?.checkedBags != null && (
+                            <span className={`inline-flex items-center gap-0.5 px-1 lg:px-2 py-px lg:py-0.5 rounded-full text-[8px] lg:text-xs border ${offer.baggage.checkedBags > 0
+                                ? 'bg-emerald-50 dark:bg-emerald-500/10 border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-400'
+                                : 'bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400'
+                                }`}>
                                 <Luggage className="w-2 h-2 lg:w-3 lg:h-3" />
-                                {Number(offer.baggage.checkedBags || 0) > 0
-                                    ? t('bagsCount', { count: offer.baggage.checkedBags })
-                                    : t('noBag')}
+                                {t('checkedBags', { count: offer.baggage.checkedBags })}
                             </span>
                         )}
                         {/* ─── Tristate refundability badge (always visible) ─── */}
@@ -294,9 +308,6 @@ export const FlightCard: React.FC<FlightCardProps> = ({ offer, index = 0, onSele
                         })()}
                         <span className="inline-flex items-center px-1 lg:px-2 py-px lg:py-0.5 rounded-full text-[8px] lg:text-xs bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 capitalize">
                             {(primary.cabinClass || 'economy').replace('_', ' ')}
-                        </span>
-                        <span className="inline-flex items-center px-1 lg:px-2 py-px lg:py-0.5 rounded-full text-[8px] lg:text-xs bg-blue-50 dark:bg-blue-500/10 border border-blue-200 dark:border-blue-800 text-blue-600 dark:text-blue-400">
-                            {providerLabel(offer.provider)}
                         </span>
                         {offer.alternatives && offer.alternatives.length > 0 && (
                             <span className="inline-flex items-center gap-0.5 px-1 lg:px-2 py-px lg:py-0.5 rounded-full text-[9px] lg:text-xs bg-indigo-600 text-white font-normal animate-pulse shadow-sm shadow-indigo-500/50">

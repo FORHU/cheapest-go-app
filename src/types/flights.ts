@@ -97,7 +97,10 @@ export interface FlightOffer {
   refundable: boolean;
   farePolicy?: FarePolicy;
   baggage?: {
-    checkedBags: number;
+    /** Free checked bags included in the fare. 0 means none; absent means the airline did not say. */
+    checkedBags?: number;
+    /** Free carry-on bags included in the fare. 0 means none; absent means the airline did not say. */
+    carryOnBags?: number;
     weightPerBag?: number;
     cabinBag?: string;
   };

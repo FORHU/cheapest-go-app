@@ -889,6 +889,8 @@
             "bagsCount": "{count} bag(s)",
             "bestValue": "Best value",
             "brandsAvailable": "{count} brands available",
+            "carryOnBags": "{count, plural, =0 {No carry-on} one {Carry-on included} other {# carry-on bags}}",
+            "checkedBags": "{count, plural, =0 {No checked bag} one {1 checked bag} other {# checked bags}}",
             "compareOptions": "Compare {count} options",
             "currentlySelected": "Currently Selected",
             "direct": "Direct",
