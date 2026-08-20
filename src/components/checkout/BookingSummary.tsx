@@ -9,12 +9,6 @@ import type { AppliedVoucher } from '@/types/voucher';
 import { getCurrencySymbol } from '@/lib/currency';
 import { useCheckoutStore } from '@/stores/checkoutStore';
 
-interface Surcharge {
-    chargeType: string;
-    mandatory: boolean;
-    amount: number;
-}
-
 interface BookingSummaryProps {
     propertyName: string;
     propertyImage?: string;
@@ -28,7 +22,6 @@ interface BookingSummaryProps {
     adults: number;
     children: number;
     taxes: number;
-    surcharges?: Surcharge[];
     totalPrice: number;
     checkIn?: Date | null;
     checkOut?: Date | null;
@@ -36,9 +29,7 @@ interface BookingSummaryProps {
     cancellationPolicies?: CancellationPolicy;
     /** API source currency — used as fallback when policy entries have no currency field */
     sourceCurrency?: string;
-    /** Platform service fee (5% markup) to display before payment */
-    serviceFee?: number;
-    /** Actual amount charged (totalPrice + serviceFee) */
+    /** Actual amount charged (supplier total + platform markup) */
     chargedTotal?: number;
     /** Server-validated applied voucher (display only) */
     appliedVoucher?: AppliedVoucher | null;
@@ -68,13 +59,6 @@ function getRatingLabel(score: number, t: (key: string) => string): string {
     return t('pleasant');
 }
 
-function formatChargeType(chargeType: string): string {
-    return chargeType
-        .replace(/_/g, ' ')
-        .toLowerCase()
-        .replace(/\b\w/g, c => c.toUpperCase());
-}
-
 export function BookingSummary({
     propertyName,
     propertyImage,
@@ -88,7 +72,6 @@ export function BookingSummary({
     adults,
     children,
     taxes,
-    surcharges,
     totalPrice,
     checkIn,
     checkOut,
@@ -348,32 +331,23 @@ export function BookingSummary({
                                     )}
                                 </span>
                             </div>
-                            {surcharges && surcharges.length > 0 ? (
-                                surcharges.map((s, i) => (
-                                    <div key={i} className="flex justify-between text-[11px] lg:text-sm">
-                                        <span className="text-slate-600 dark:text-slate-400">{formatChargeType(s.chargeType)}</span>
-                                        <span className="font-medium text-slate-900 dark:text-white">
-                                            {isLoading ? (
-                                                <span className="h-4 w-12 bg-slate-100 dark:bg-slate-800 rounded animate-pulse inline-block" />
-                                            ) : (
-                                                <>{symbol}{s.amount.toLocaleString(undefined, { maximumFractionDigits: 2 })}</>
-                                            )}
-                                        </span>
-                                    </div>
-                                ))
-                            ) : taxes > 0 ? (
-                                <div className="flex justify-between text-[11px] lg:text-sm">
-                                    <span className="text-slate-500 dark:text-slate-500">{t('taxesAndFees')} ({t('included')})</span>
-                                    <span className="text-slate-500 dark:text-slate-500">
-                                        {isLoading ? (
-                                            <span className="h-4 w-12 bg-slate-100 dark:bg-slate-800 rounded animate-pulse inline-block" />
-                                        ) : (
-                                            <>{symbol}{taxes.toLocaleString(undefined, { maximumFractionDigits: 2 })}</>
-                                        )}
-                                    </span>
-                                </div>
-                            ) : null}
-
+                            {/* Tax row stays put whether or not the supplier itemises tax:
+                                rates that bake it into the price quote 0 here, and the row
+                                says so instead of vanishing once the room is confirmed. */}
+                            <div className="flex justify-between text-[11px] lg:text-sm">
+                                <span className="text-slate-500 dark:text-slate-500">
+                                    {taxes > 0 ? `${t('taxes')} (${t('included')})` : t('taxes')}
+                                </span>
+                                <span className="text-slate-500 dark:text-slate-500">
+                                    {isLoading ? (
+                                        <span className="h-4 w-12 bg-slate-100 dark:bg-slate-800 rounded animate-pulse inline-block" />
+                                    ) : taxes > 0 ? (
+                                        <>{symbol}{taxes.toLocaleString(undefined, { maximumFractionDigits: 2 })}</>
+                                    ) : (
+                                        t('includedInPrice')
+                                    )}
+                                </span>
+                            </div>
 
                             {/* Voucher discount line (server-calculated amount) */}
                             {appliedVoucher && (

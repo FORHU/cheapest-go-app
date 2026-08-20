@@ -1,7 +1,7 @@
 import { unstable_cache } from 'next/cache';
 import { extractCountryCode, COUNTRY_SEARCH_LIST } from '@/lib/constants/countries';
 import { getSqlAdmin } from '@/lib/db/postgres';
-import { CITY_ALIASES, resolveHotelDbCity } from '@/lib/constants/cityAliases';
+import { CITY_ALIASES, matchAliasQuery, resolveHotelDbCity } from '@/lib/constants/cityAliases';
 
 /** Where a searched place sits on the granularity ladder. See CONTEXT.md
  *  ("Destination granularity") and ADR-0006. Area rungs (country/province/city)
@@ -425,19 +425,121 @@ export function backgroundResolveDestCode(cityName: string, countryCode?: string
     return _fetchDestCodeRaw(cityName, countryCode);
 }
 
+/** Forward-geocode a canonical city name to its centre and bounds, scoped to one
+ *  country. Used to give query-side alias hits real geometry — the alias dict
+ *  stores names only. Returns null when Mapbox can't place the city either. */
+async function geocodeCanonicalCity(
+    name: string,
+    countryCode: string,
+): Promise<{ lat: number; lng: number; bbox?: [number, number, number, number]; placeName: string } | null> {
+    const token = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
+    if (!token || !name.trim()) return null;
+    const country = countryCode ? `&country=${countryCode.toLowerCase()}` : '';
+    const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(name)}.json`
+        + `?types=place,region,locality&limit=1&language=en${country}&access_token=${token}`;
+    try {
+        const res = await fetch(url, { next: { revalidate: 86_400 } });
+        if (!res.ok) return null;
+        const feature = ((await res.json()).features ?? [])[0];
+        if (!feature || !Array.isArray(feature.center)) return null;
+        return {
+            lng: feature.center[0],
+            lat: feature.center[1],
+            bbox: Array.isArray(feature.bbox) && feature.bbox.length === 4 ? feature.bbox : undefined,
+            placeName: feature.place_name ?? name,
+        };
+    } catch {
+        return null;
+    }
+}
+
+/** Title-case an alias key for display: 'clark freeport' → 'Clark Freeport'. */
+function titleCaseAlias(alias: string): string {
+    return alias.replace(/(^|[\s\-])([a-z])/g, (_m, sep, ch) => sep + ch.toUpperCase());
+}
+
+/**
+ * Suggestions derived from the alias dict by matching the *user's query*, for
+ * destinations Mapbox cannot return at all (e.g. "Clark" PH → Clark, New Jersey).
+ * `covered` maps country code → destination names Mapbox already produced, so we
+ * never emit a duplicate row for a place that resolved normally.
+ */
+async function fetchAliasSuggestions(
+    query: string,
+    covered: Map<string, string[]>,
+): Promise<AutocompleteResult[]> {
+    const matches = matchAliasQuery(query, 3).filter(m => {
+        const canonical = m.canonicalCity.toLowerCase();
+        // Suppress when Mapbox already covers this destination under a slightly
+        // different name — "Boracay" (Mapbox) vs "Boracay Island" (dict). Compared
+        // on whole leading words only, so "York" never swallows "New York".
+        return !(covered.get(m.countryCode) ?? []).some(name =>
+            name === canonical
+            || canonical.startsWith(name + ' ')
+            || name.startsWith(canonical + ' ')
+        );
+    });
+    // Cap the extra geocodes: this runs inside the 300s-cached autocomplete path,
+    // but an uncached keystroke shouldn't fan out into several Mapbox round-trips.
+    const geocoded = await Promise.all(
+        matches.slice(0, 2).map(async (m): Promise<AutocompleteResult | null> => {
+            const geo = await geocodeCanonicalCity(m.canonicalCity, m.countryCode);
+            if (!geo) return null;
+            const displayName = titleCaseAlias(m.alias);
+            const isSubArea = displayName.toLowerCase() !== m.canonicalCity.toLowerCase();
+            // place_name usually already leads with the canonical city ("Angeles,
+            // Philippines"), which alongside the alias title is signal enough that
+            // the search runs against Angeles. Only prepend when it doesn't.
+            const namesCanonical = geo.placeName.toLowerCase().startsWith(m.canonicalCity.toLowerCase());
+            return {
+                type: 'city' as const,
+                // Alias hits search the canonical city's inventory, matching how
+                // Mapbox-side alias remapping is rung'd in fetchCitiesFromMapbox.
+                rung: 'city' as const,
+                title: displayName,
+                subtitle: isSubArea && !namesCanonical ? `${m.canonicalCity} · ${geo.placeName}` : geo.placeName,
+                countryCode: m.countryCode,
+                lat: geo.lat,
+                lng: geo.lng,
+                // Deliberately the canonical city's own bounds, not a synthetic circle
+                // around the alias: we don't know where the alias sits, and guessing
+                // produces a bbox that filters out every hotel in the city.
+                bbox: geo.bbox,
+                districtName: isSubArea ? displayName : undefined,
+                canonicalCity: m.canonicalCity,
+            };
+        })
+    );
+    return geocoded.filter((r): r is AutocompleteResult => r !== null);
+}
+
 async function fetchAutocomplete(query: string, locale?: string): Promise<AutocompleteResult[]> {
     const countryResults = matchCountries(query);
 
     const cityResults = await fetchCitiesFromMapbox(query, locale);
-    if (!cityResults.length) return countryResults;
 
-    // Only show cities that have hotels in our TGX inventory (hotel_content).
-    // This prevents "No results found" after selecting a Mapbox city we don't cover.
-    // Sort: cities with hotels in our DB come first, others still shown below.
-    const citiesWithHotels = await filterCitiesWithHotels(cityResults);
+    // Fill gaps in Mapbox's index from the alias dict, matched against the raw
+    // query rather than Mapbox's output.
+    const covered = new Map<string, string[]>();
+    for (const c of cityResults) {
+        const names = covered.get(c.countryCode) ?? [];
+        names.push((c.canonicalCity ?? c.title).toLowerCase());
+        // Also index the display title: an alias may collide with the raw Mapbox
+        // name even when that result carries a different canonical city.
+        if (c.canonicalCity) names.push(c.title.toLowerCase());
+        covered.set(c.countryCode, names);
+    }
+    const aliasResults = await fetchAliasSuggestions(query, covered);
+
+    const allCities = [...cityResults, ...aliasResults];
+    if (!allCities.length) return countryResults;
+
+    // Sort cities with hotels in our TGX inventory (hotel_content) to the top.
+    // Cities we don't cover are still shown, below those we do.
+    const citiesWithHotels = await filterCitiesWithHotels(allCities);
     const sorted = [
-        ...cityResults.filter(c => citiesWithHotels.has((c.canonicalCity ?? c.title).toLowerCase())),
-        ...cityResults.filter(c => !citiesWithHotels.has((c.canonicalCity ?? c.title).toLowerCase())),
+        ...allCities.filter(c => citiesWithHotels.has((c.canonicalCity ?? c.title).toLowerCase())),
+        ...allCities.filter(c => !citiesWithHotels.has((c.canonicalCity ?? c.title).toLowerCase())),
     ];
 
     return [...countryResults, ...sorted];

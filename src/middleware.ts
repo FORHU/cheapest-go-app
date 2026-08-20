@@ -51,13 +51,21 @@ export function middleware(request: NextRequest): NextResponse {
 
     // 2. Protected route guard — cookie presence only (no DB call).
     //    Full Lucia session validation happens in the route/layout.
-    const PROTECTED_PREFIXES = ['/admin', '/checkout'];
+    //
+    //    /checkout is deliberately NOT listed. Checkout is browsable signed-out by
+    //    design: prebook needs no session, and the page gates at the payment step
+    //    itself (SubmitBookingButton shows "Sign in to complete", and
+    //    handleProceedToPayment opens the auth modal with a return path). The real
+    //    enforcement is server-side — /api/booking/create-payment 401s without a
+    //    session. Guarding the page here bounced signed-out users who clicked
+    //    "Choose room" to the landing page instead, discarding their query string.
+    const PROTECTED_PREFIXES = ['/admin'];
     if (PROTECTED_PREFIXES.some(prefix => pathname.startsWith(prefix))) {
         if (!request.cookies.has(SESSION_COOKIE)) {
-            const homeUrl = request.nextUrl.clone();
-            homeUrl.pathname = pathname.startsWith('/admin') ? '/login' : '/';
-            homeUrl.search = '';
-            return NextResponse.redirect(homeUrl);
+            const loginUrl = request.nextUrl.clone();
+            loginUrl.pathname = '/login';
+            loginUrl.search = '';
+            return NextResponse.redirect(loginUrl);
         }
     }
 

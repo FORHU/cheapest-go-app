@@ -3,7 +3,8 @@ import { MapPopup } from '@/components/map/MapPopup';
 import { MapMarker } from '@/components/map/MapMarker';
 import { MappableProperty } from '../utils/buildGeoJson';
 import { useUserCurrency } from '@/stores/searchStore';
-import { convertCurrency } from '@/lib/currency';
+import { useNights } from '@/hooks/useNights';
+import { toPerNight } from '@/lib/perNightPrice';
 
 interface SelectedPropertyPopupProps {
     selectedProperty: MappableProperty | null;
@@ -21,6 +22,7 @@ export const SelectedPropertyPopup = React.memo(({
     isMobile = false,
 }: SelectedPropertyPopupProps) => {
     const targetCurrency = useUserCurrency();
+    const nights = useNights();
 
     if (!selectedProperty) return null;
 
@@ -28,7 +30,7 @@ export const SelectedPropertyPopup = React.memo(({
         <>
             <MapMarker
                 property={selectedProperty}
-                displayPrice={convertCurrency(selectedProperty.price, selectedProperty.currency || 'USD', targetCurrency)}
+                displayPrice={toPerNight(selectedProperty.price, selectedProperty.currency, targetCurrency, nights)}
                 displayCurrency={targetCurrency}
                 isSelected={true}
                 isHovered={false}
