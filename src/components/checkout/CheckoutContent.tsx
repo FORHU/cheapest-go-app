@@ -265,7 +265,7 @@ export function CheckoutContent() {
     });
 
     // Pricing calculation hook
-    const { displayProperty, displayRoom, totalNights, roomPrice, taxes, totalPrice, serviceFee, chargedTotal, surcharges } = usePricingCalculation({
+    const { displayProperty, displayRoom, totalNights, roomPrice, taxes, totalPrice, chargedTotal } = usePricingCalculation({
         priceData,
     });
 
@@ -611,8 +611,10 @@ export function CheckoutContent() {
         }
     }, [selectedRoom, property, adults, children, router]);
 
-    // Price to show on submit button (server-calculated if voucher applied)
-    const displayTotalPrice = appliedVoucher ? appliedVoucher.finalPrice : totalPrice;
+    // Price to show on the submit button. Must be the same figure the summary's Total
+    // row renders — that is chargedTotal (supplier total + platform markup), which is what
+    // create-payment actually bills, not the pre-markup totalPrice sent as its drift hint.
+    const displayTotalPrice = appliedVoucher ? appliedVoucher.finalPrice : chargedTotal;
 
     // Success screen
     useEffect(() => {
@@ -952,9 +954,7 @@ export function CheckoutContent() {
                                 adults={adults}
                                 children={children}
                                 taxes={taxes}
-                                surcharges={surcharges}
                                 totalPrice={totalPrice}
-                                serviceFee={serviceFee}
                                 chargedTotal={chargedTotal}
                                 checkIn={checkIn}
                                 checkOut={checkOut}

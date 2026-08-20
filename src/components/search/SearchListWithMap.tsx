@@ -16,6 +16,9 @@ import { MapSearchOverlay } from '@/components/mapbox/components/MapSearchOverla
 import { MapPin, Layers } from 'lucide-react';
 import { MapDetailsPanel } from '@/components/mapbox/components/MapDetailsPanel';
 import { useMapDetails } from '@/components/mapbox/hooks/useMapDetails';
+import { useUserCurrency } from '@/stores/searchStore';
+import { useNights } from '@/hooks/useNights';
+import { toPerNight } from '@/lib/perNightPrice';
 
 interface SearchListWithMapProps {
     properties: Property[];
@@ -70,6 +73,18 @@ function SearchListWithMap({ properties, children }: SearchListWithMapProps) {
             ),
         [properties]
     );
+
+    // Markers here used to render property.price raw — the stay total, in the supplier's
+    // currency — while every card beside them showed a converted per-night figure.
+    const targetCurrency = useUserCurrency();
+    const nights = useNights();
+    const markerPrices = useMemo(() => {
+        const prices: Record<string, number> = {};
+        for (const p of mappableProperties) {
+            prices[p.id] = toPerNight(p.price, p.currency, targetCurrency, nights);
+        }
+        return prices;
+    }, [mappableProperties, targetCurrency, nights]);
 
     const bounds = useMemo(() => computeBounds(mappableProperties), [mappableProperties]);
 
@@ -210,6 +225,8 @@ function SearchListWithMap({ properties, children }: SearchListWithMapProps) {
                                 <MapMarker
                                     key={property.id}
                                     property={property}
+                                    displayPrice={markerPrices[property.id] ?? 0}
+                                    displayCurrency={targetCurrency}
                                     isSelected={selectedId === property.id}
                                     isHovered={hoveredId === property.id}
                                     onClick={handleMarkerClick}

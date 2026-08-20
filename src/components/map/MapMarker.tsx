@@ -6,8 +6,9 @@ import type { MappableProperty } from './types';
 
 interface MapMarkerProps {
     property: MappableProperty;
-    displayPrice?: number;
-    displayCurrency?: string;
+    /** Per-night amount, already converted to displayCurrency (see toPerNight). */
+    displayPrice: number;
+    displayCurrency: string;
     isSelected: boolean;
     isHovered: boolean;
     onClick: (id: string) => void;
@@ -75,7 +76,7 @@ const MapMarker = React.memo(function MapMarker({
                     <div className="pr-2 text-[11px] font-bold text-slate-800 dark:text-white whitespace-nowrap tracking-tight">
                         {(property as any).priceLoading
                             ? <span className="text-slate-400 tracking-widest">···</span>
-                            : formatCurrency(displayPrice ?? property.price, displayCurrency ?? property.currency)
+                            : formatCurrency(displayPrice, displayCurrency)
                         }
                     </div>
                 </div>

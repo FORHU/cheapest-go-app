@@ -3,7 +3,7 @@
 import React from 'react';
 import { useTranslations } from 'next-intl';
 import { Loader2, LogIn, AlertTriangle } from 'lucide-react';
-import { useUserCurrency } from '@/stores/searchStore';
+import { useCheckoutStore } from '@/stores/checkoutStore';
 import { getCurrencySymbol } from '@/lib/currency';
 
 interface SubmitBookingButtonProps {
@@ -28,7 +28,7 @@ export function SubmitBookingButton({
     onSubmit,
 }: SubmitBookingButtonProps) {
     const t = useTranslations('checkout');
-    const currency = useUserCurrency();
+    const currency = useCheckoutStore((state) => state.selectedCurrency);
     const symbol = getCurrencySymbol(currency);
     const isPriceVerifying = !!prebookId && !priceReady && !prebookError;
     const isDisabled = loading || (prebooking && !prebookId) || isPriceVerifying || !!prebookError;
@@ -106,7 +106,7 @@ export function SubmitBookingButton({
                         <span>{t('submit.signInToComplete')}</span>
                     </>
                 ) : (
-                    t('submit.continueToPayment', { amount: `${symbol}${(totalPrice || 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}` })
+                    t('submit.continueToPayment', { amount: `${symbol}${(totalPrice || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` })
                 )}
             </button>
 

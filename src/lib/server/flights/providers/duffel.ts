@@ -189,6 +189,8 @@ export function parseDuffelOffer(offer: any, cabinClassFallback?: string) {
     const refundPenalty = refundCond?.penalty_amount != null ? parseFloat(refundCond.penalty_amount) : null;
     const changePenalty = changeCond?.penalty_amount != null ? parseFloat(changeCond.penalty_amount) : null;
 
+    const baggage = extractBaggageAllowance(offer);
+
     const totalAmount = parseFloat(offer.total_amount);
     // Duffel total_amount covers all passengers. Divide by adult count for per-person display.
     const numAdults = (offer.passengers ?? []).filter((p: any) => p.type === 'adult').length || 1;
@@ -208,6 +210,7 @@ export function parseDuffelOffer(offer: any, cabinClassFallback?: string) {
         remaining_seats: offer.available_seats || null,
         segments: allSegments,
         refundable: isRefundable,
+        baggage,
         farePolicy: {
             isRefundable,
             isChangeable,
@@ -220,6 +223,47 @@ export function parseDuffelOffer(offer: any, cabinClassFallback?: string) {
         },
         raw: offer
     } as any;
+}
+
+/**
+ * Included baggage allowance for an offer, as carry-on and checked bag counts.
+ *
+ * Duffel reports the allowance per segment per passenger, and the segments of one
+ * offer do not have to agree — a fare can include a checked bag on the long leg and
+ * none on the connection. A traveller only actually has the smallest allowance on
+ * any leg, so we take the minimum across segments rather than reading the first one.
+ * Advertising a bag the second leg would refuse is worse than advertising none.
+ *
+ * Distinguishes "no free bag" (quantity 0 — a fact worth showing) from "the airline
+ * told us nothing" (returns undefined, and the badge is omitted rather than guessed).
+ */
+function extractBaggageAllowance(offer: any): { carryOnBags?: number; checkedBags?: number } | undefined {
+    let carryOn: number | null = null;
+    let checked: number | null = null;
+
+    for (const slice of offer.slices ?? []) {
+        for (const seg of slice.segments ?? []) {
+            const bags = seg.passengers?.[0]?.baggages;
+            if (!Array.isArray(bags)) continue;
+
+            let segCarryOn = 0;
+            let segChecked = 0;
+            for (const bag of bags) {
+                const qty = Number(bag?.quantity) || 0;
+                if (bag?.type === 'carry_on') segCarryOn += qty;
+                else if (bag?.type === 'checked') segChecked += qty;
+            }
+
+            carryOn = carryOn === null ? segCarryOn : Math.min(carryOn, segCarryOn);
+            checked = checked === null ? segChecked : Math.min(checked, segChecked);
+        }
+    }
+
+    if (carryOn === null && checked === null) return undefined;
+    return {
+        ...(carryOn !== null ? { carryOnBags: carryOn } : {}),
+        ...(checked !== null ? { checkedBags: checked } : {}),
+    };
 }
 
 /**

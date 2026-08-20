@@ -19,7 +19,8 @@ import type { NearbyPlace } from './useMapNearbyPlaces';
 import { computeBounds } from './types';
 import type { MappableProperty } from './types';
 import { useUserCurrency } from '@/stores/searchStore';
-import { convertCurrency } from '@/lib/currency';
+import { useNights } from '@/hooks/useNights';
+import { toPerNight } from '@/lib/perNightPrice';
 
 interface PropertyMapViewProps {
     properties: MappableProperty[];
@@ -217,13 +218,14 @@ const PropertyMapView = React.memo(function PropertyMapView({
         setSelectedNearbyPlace(null);
     }, [anchorProperty?.id]);
 
+    const nights = useNights();
     const markerPrices = useMemo(() => {
         const prices: Record<string, number> = {};
         for (const p of properties) {
-            prices[p.id] = convertCurrency(p.price, p.currency || 'USD', targetCurrency);
+            prices[p.id] = toPerNight(p.price, p.currency, targetCurrency, nights);
         }
         return prices;
-    }, [properties, targetCurrency]);
+    }, [properties, targetCurrency, nights]);
 
     const {
         mapType, setMapType,

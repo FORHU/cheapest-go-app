@@ -160,11 +160,13 @@ export function normalizedToFlightOffer(nf: any, tripType?: FlightOffer['tripTyp
             }
             return undefined;
         })(),
-        baggage: nf.checkedBags != null ? {
+        // Duffel emits a structured allowance (carry-on + checked); Mystifly and the
+        // legacy cache shape carry a flat checkedBags. Prefer the structured one.
+        baggage: nf.baggage ?? (nf.checkedBags != null ? {
             checkedBags: nf.checkedBags,
             weightPerBag: nf.weightPerBag,
             cabinBag: nf.cabinBag,
-        } : undefined,
+        } : undefined),
         seatsRemaining: nf.seatsRemaining ?? nf.remaining_seats ?? nf.raw?.seatsRemaining ?? nf.raw?.remaining_seats,
         brandedFare: (nf.brandName || nf.raw?.brandName) ? {
             brandName: nf.brandName ?? nf.raw?.brandName,

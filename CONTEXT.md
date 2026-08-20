@@ -64,6 +64,9 @@ _Avoid_: assuming every enum-like column uses the same mechanism, or converting 
 
 **Flight Provider** — Duffel (primary, active) or Mystifly (onboarding). Mystifly bookings currently disabled in the booking endpoint.
 
+**Home-Market Fare** — discounted inventory an airline sells only through the distribution channels of its own country (airline direct, plus local OTAs and consolidators), never releasing it to global distribution. Duffel reaches global distribution only, so on a sector priced this way it returns the airline's *published* fare and CheapestGo lands multiples above a local OTA — while the same carrier prices at parity on its international sectors. Measured 2026-08-17 on Korean Air: GMP–CJU round-trip ₩335,318 vs Trip.com ₩100,700 (+233%), ICN–NRT ₩405,740 vs ₩409,800 (−1%).
+_Avoid_: reading a domestic-sector gap as a CheapestGo markup or an FX fault — markup is applied at booking only, never in search, and the international sectors price at parity. _Avoid_: generalising from one carrier's international competitiveness to its domestic sectors, or the reverse.
+
 **Hotel Provider** — hotel availability is sourced from RateHawk, reached through two API paths:
 - **OTV** — RateHawk's name within the TravelGateX marketplace. Accessed via TGX GraphQL hub (Access `38327`). Primary search path.
 - **ETG** — the same RateHawk inventory accessed directly via `api.worldota.net`. Used as a reliability fallback when OTV/TGX returns no results, and for the nightly hotel-reviews sync. LiteAPI deprecated.

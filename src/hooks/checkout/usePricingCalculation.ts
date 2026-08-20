@@ -5,12 +5,6 @@ import { useProperty, useSelectedRoom, useBookingDates } from '@/stores/bookingS
 import { useCheckoutStore } from '@/stores/checkoutStore';
 import { convertCurrency } from '@/lib/currency';
 
-interface Surcharge {
-    chargeType: string;
-    mandatory: boolean;
-    price: { net: number; gross: number; currency: string };
-}
-
 /** Server-converted figures for the customer's currency, from /api/booking/prebook. */
 interface ServerDisplay {
     currency: string;
@@ -26,18 +20,11 @@ interface PriceData {
     tax?: number;
     total?: number;
     currency?: string;
-    surcharges?: Surcharge[];
     display?: ServerDisplay;
 }
 
 interface UsePricingCalculationOptions {
     priceData: PriceData | null;
-}
-
-interface ConvertedSurcharge {
-    chargeType: string;
-    mandatory: boolean;
-    amount: number;
 }
 
 interface UsePricingCalculationReturn {
@@ -51,7 +38,6 @@ interface UsePricingCalculationReturn {
     serviceFee: number;
     /** Actual amount charged to the customer (totalPrice + serviceFee) */
     chargedTotal: number;
-    surcharges: ConvertedSurcharge[];
 }
 
 /**
@@ -79,7 +65,11 @@ export function usePricingCalculation({
 
         // Raw values from the prebook response — always in the room's original search currency
         const rawRoomPrice = priceData?.price ?? (baseRoomPrice * totalNights);
-        const rawTaxes = priceData?.tax ?? (rawRoomPrice * 0.12);
+        // Search/room prices are gross (tax-inclusive), so there is nothing to add before
+        // prebook. Prebook then reports the supplier's own split, which is 0 for rates that
+        // bake tax into the rate — inventing 12% here made the tax line jump to "included"
+        // the moment a room was chosen.
+        const rawTaxes = priceData?.tax ?? 0;
         const rawTotal = priceData?.total ?? (rawRoomPrice + rawTaxes);
 
         // The currency the raw prices are denominated in.
@@ -107,14 +97,6 @@ export function usePricingCalculation({
             ? serverDisplay!.total
             : convertCurrency(rawTotal, sourceCurrency, selectedCurrency);
 
-        const surcharges: ConvertedSurcharge[] = (priceData?.surcharges ?? [])
-            .filter(s => s.chargeType?.toUpperCase() !== 'INCLUDE')
-            .map(s => ({
-                chargeType: s.chargeType,
-                mandatory: s.mandatory,
-                amount: Math.round(convertCurrency(s.price.gross, s.price.currency || sourceCurrency, selectedCurrency) * 100) / 100,
-            }));
-
         const roundedTotal = Math.round(totalPrice * 100) / 100;
         const serviceFee   = Math.round(roundedTotal * 0.05 * 100) / 100;
 
@@ -127,7 +109,6 @@ export function usePricingCalculation({
             totalPrice: roundedTotal,
             serviceFee,
             chargedTotal: Math.round((roundedTotal + serviceFee) * 100) / 100,
-            surcharges,
         };
     }, [property, selectedRoom, checkIn, checkOut, priceData, selectedCurrency]);
 }
