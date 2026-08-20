@@ -18,6 +18,10 @@ jobs:
   sync:
     runs-on: ubuntu-latest
     timeout-minutes: 360   # 6 hours — full dump can take a while
+    env:
+      DATABASE_URL:     ${{ secrets.DATABASE_URL }}
+      RATEHAWK_KEY_ID:  ${{ secrets.RATEHAWK_KEY_ID }}
+      RATEHAWK_API_KEY: ${{ secrets.RATEHAWK_API_KEY }}
 
     steps:
       - uses: actions/checkout@v4
@@ -31,10 +35,6 @@ jobs:
         run: npm ci
 
       - name: Run ETG dump sync
-        env:
-          DATABASE_URL:       ${{ secrets.DATABASE_URL }}
-          RATEHAWK_KEY_ID:    ${{ secrets.RATEHAWK_KEY_ID }}
-          RATEHAWK_API_KEY:   ${{ secrets.RATEHAWK_API_KEY }}
         run: |
           TYPE="${{ github.event.inputs.type || 'incremental' }}"
           FORCE_FLAG=""
