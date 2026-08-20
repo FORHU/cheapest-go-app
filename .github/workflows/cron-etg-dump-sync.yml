@@ -32,7 +32,9 @@ jobs:
 
       - name: Run ETG dump sync
         env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          DATABASE_URL:     ${{ secrets.DATABASE_URL }}
+          ETG_KEY_ID:       ${{ secrets.RATEHAWK_KEY_ID }}
+          ETG_API_KEY:      ${{ secrets.RATEHAWK_API_KEY }}
         run: |
           TYPE="${{ github.event.inputs.type || 'incremental' }}"
           FORCE_FLAG=""
