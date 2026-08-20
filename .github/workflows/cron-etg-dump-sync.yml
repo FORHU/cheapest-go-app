@@ -4,21 +4,37 @@ on:
   schedule:
     - cron: '0 3 * * *'   # daily at 03:00 UTC — incremental (changes since last run)
   workflow_dispatch:       # allow manual trigger from GitHub UI
+    inputs:
+      type:
+        description: 'full or incremental'
+        required: false
+        default: 'incremental'
+      force:
+        description: 'Force re-seed already seeded hotels (true/false)'
+        required: false
+        default: 'false'
 
 jobs:
   sync:
     runs-on: ubuntu-latest
+    timeout-minutes: 360   # 6 hours max — full dump needs time
+
     steps:
-      - name: Call ETG dump sync endpoint
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run ETG dump sync
         env:
-          SITE_URL: ${{ secrets.NEXT_PUBLIC_SITE_URL }}
-          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
         run: |
-          STATUS=$(curl -s -o /tmp/body.json -w "%{http_code}" \
-            -H "Authorization: Bearer $CRON_SECRET" \
-            "$SITE_URL/api/cron/etg-dump-sync?type=incremental")
-          cat /tmp/body.json
-          if [ "$STATUS" -ne 200 ]; then
-            echo "ETG dump sync failed with HTTP $STATUS"
-            exit 1
-          fi
+          TYPE="${{ github.event.inputs.type || 'incremental' }}"
+          FORCE_FLAG=""
+          [ "${{ github.event.inputs.force }}" = "true" ] && FORCE_FLAG="--force"
+          node scripts/etg-dump-sync.mjs --type "$TYPE" $FORCE_FLAG
