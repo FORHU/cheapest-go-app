@@ -11,6 +11,11 @@ export interface Room {
     price: number;
     currency?: string;
     description?: string;
+    /** null = unknown (TGX search couldn't determine), true = free cancel, false = non-refundable */
+    refundable?: boolean | null;
+    cancellationDeadline?: string;
+    bedType?: string;
+    roomSize?: string;
 }
 
 /** Room data from LiteAPI used for the room detail view */

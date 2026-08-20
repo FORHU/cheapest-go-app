@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { useTranslations } from 'next-intl';
-import { Calendar, Star, MapPin, Tag, Pencil, Check, X, ChevronDown } from 'lucide-react';
+import { Calendar, Star, MapPin, Tag, Pencil, Check, X, ChevronDown, CheckCircle, AlertCircle, HelpCircle } from 'lucide-react';
 import { CancellationPolicySection } from './CancellationPolicySection';
 import { CancellationPolicy } from '@/services/booking.service';
 import type { AppliedVoucher } from '@/types/voucher';
@@ -44,6 +44,11 @@ interface BookingSummaryProps {
     appliedVoucher?: AppliedVoucher | null;
     isLoading?: boolean;
     onDatesChange?: (checkIn: Date, checkOut: Date) => void;
+    /** Fallback refundability from room selection (shown while prebook is loading) */
+    refundable?: boolean | null;
+    cancellationDeadline?: string;
+    bedType?: string;
+    roomSize?: string;
 }
 
 function formatDate(date: Date): string {
@@ -94,6 +99,10 @@ export function BookingSummary({
     appliedVoucher,
     isLoading,
     onDatesChange,
+    refundable,
+    cancellationDeadline,
+    bedType,
+    roomSize,
 }: BookingSummaryProps) {
     const t = useTranslations('checkout.summary');
     const rt = useTranslations('checkout.rating');
@@ -247,7 +256,7 @@ export function BookingSummary({
                         </div>
                     )}
 
-                    {/* Cancellation Policy */}
+                    {/* Cancellation Policy — prebook result takes priority, fallback to room selection */}
                     {cancellationPolicies?.cancelPolicyInfos?.length ? (
                         <div className="border-t border-dashed border-slate-200 dark:border-white/10 pt-4">
                             <CancellationPolicySection
@@ -255,6 +264,29 @@ export function BookingSummary({
                                 totalPrice={totalPrice}
                                 currency={sourceCurrency}
                             />
+                        </div>
+                    ) : refundable !== undefined ? (
+                        <div className="border-t border-dashed border-slate-200 dark:border-white/10 pt-3 lg:pt-4">
+                            {refundable === true ? (
+                                <div className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400 text-[11px] lg:text-xs font-medium">
+                                    <CheckCircle size={13} />
+                                    <span>
+                                        {cancellationDeadline
+                                            ? `Free cancellation before ${new Date(cancellationDeadline).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`
+                                            : 'Free cancellation'}
+                                    </span>
+                                </div>
+                            ) : refundable === false ? (
+                                <div className="flex items-center gap-1.5 text-amber-600 dark:text-amber-400 text-[11px] lg:text-xs font-medium">
+                                    <AlertCircle size={13} />
+                                    <span>Non-refundable</span>
+                                </div>
+                            ) : (
+                                <div className="flex items-center gap-1.5 text-slate-400 dark:text-slate-500 text-[11px] lg:text-xs font-medium">
+                                    <HelpCircle size={13} />
+                                    <span>{prebookId ? 'Cancellation terms not provided by supplier — confirm with property before booking' : 'Fetching cancellation policy…'}</span>
+                                </div>
+                            )}
                         </div>
                     ) : null}
 
@@ -264,14 +296,19 @@ export function BookingSummary({
                         <div className="text-[11px] lg:text-sm font-bold text-slate-900 dark:text-white mb-1">
                             {roomTitle}
                         </div>
-                        <div className="text-[10px] lg:text-xs text-slate-500 dark:text-slate-400">
+                        {(bedType || roomSize) && (
+                            <div className="text-[10px] lg:text-xs text-slate-400 dark:text-slate-500 mt-0.5">
+                                {[bedType, roomSize].filter(Boolean).join(' · ')}
+                            </div>
+                        )}
+                        <div className="text-[10px] lg:text-xs text-slate-500 dark:text-slate-400 mt-0.5">
                             {adults} {t(adults === 1 ? 'adult' : 'adults')}{children > 0 ? ` + ${children} ${t(children === 1 ? 'child' : 'children')}` : ''}
                         </div>
                         <div className="text-[10px] lg:text-xs text-slate-500 dark:text-slate-400 mt-0.5 lg:mt-1">
                             {isLoading ? (
                                 <span className="animate-pulse">{t('calculatingPerNight')}</span>
                             ) : (
-                                <>{symbol}{perNightPrice.toLocaleString()} {t('averagePerNight')}</>
+                                <>{symbol}{perNightPrice.toLocaleString(undefined, { maximumFractionDigits: 2 })} {t('averagePerNight')}</>
                             )}
                         </div>
                         {prebookId && (
@@ -307,7 +344,7 @@ export function BookingSummary({
                                     {isLoading ? (
                                         <span className="h-4 w-16 bg-slate-100 dark:bg-slate-800 rounded animate-pulse inline-block" />
                                     ) : (
-                                        <>{symbol}{roomPrice.toLocaleString()}</>
+                                        <>{symbol}{roomPrice.toLocaleString(undefined, { maximumFractionDigits: 2 })}</>
                                     )}
                                 </span>
                             </div>
@@ -319,7 +356,7 @@ export function BookingSummary({
                                             {isLoading ? (
                                                 <span className="h-4 w-12 bg-slate-100 dark:bg-slate-800 rounded animate-pulse inline-block" />
                                             ) : (
-                                                <>{symbol}{s.amount.toLocaleString()}</>
+                                                <>{symbol}{s.amount.toLocaleString(undefined, { maximumFractionDigits: 2 })}</>
                                             )}
                                         </span>
                                     </div>
@@ -331,7 +368,7 @@ export function BookingSummary({
                                         {isLoading ? (
                                             <span className="h-4 w-12 bg-slate-100 dark:bg-slate-800 rounded animate-pulse inline-block" />
                                         ) : (
-                                            <>{symbol}{taxes.toLocaleString()}</>
+                                            <>{symbol}{taxes.toLocaleString(undefined, { maximumFractionDigits: 2 })}</>
                                         )}
                                     </span>
                                 </div>
@@ -346,7 +383,7 @@ export function BookingSummary({
                                         <span>{t('promoCode', { code: appliedVoucher.code })}</span>
                                     </span>
                                     <span className="font-semibold text-emerald-600 dark:text-emerald-400">
-                                        -{symbol}{appliedVoucher.discountAmount.toLocaleString()}
+                                        -{symbol}{appliedVoucher.discountAmount.toLocaleString(undefined, { maximumFractionDigits: 2 })}
                                     </span>
                                 </div>
                             )}
@@ -361,15 +398,15 @@ export function BookingSummary({
                                 ) : appliedVoucher ? (
                                     <>
                                         <span className="text-[12px] line-through text-slate-400 dark:text-slate-500 mr-2 font-normal">
-                                            {symbol}{(chargedTotal ?? totalPrice ?? 0).toLocaleString()}
+                                            {symbol}{(chargedTotal ?? totalPrice ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                         </span>
                                         <span className="text-emerald-600 dark:text-emerald-400">
-                                            {symbol}{appliedVoucher.finalPrice.toLocaleString()}
+                                            {symbol}{appliedVoucher.finalPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                         </span>
                                     </>
                                 ) : (
                                     <span className="text-slate-900 dark:text-white">
-                                        {symbol}{(chargedTotal ?? totalPrice ?? 0).toLocaleString()}
+                                        {symbol}{(chargedTotal ?? totalPrice ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                     </span>
                                 )}
                             </div>
@@ -379,7 +416,7 @@ export function BookingSummary({
                         {appliedVoucher && (
                             <div className="text-center pt-1">
                                 <span className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 px-2.5 py-1 rounded-full">
-                                    {t('youSave', { amount: `${symbol}${appliedVoucher.discountAmount.toLocaleString()}` })}
+                                    {t('youSave', { amount: `${symbol}${appliedVoucher.discountAmount.toLocaleString(undefined, { maximumFractionDigits: 2 })}` })}
                                 </span>
                             </div>
                         )}

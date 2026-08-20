@@ -8,7 +8,7 @@ import { MapPin, Star, Wifi, Car, Utensils, Coffee } from 'lucide-react';
 import { type Property } from '@/types';
 import { getCurrencySymbol, convertCurrency } from '@/lib/currency';
 import { buildPropertySlug } from '@/lib/utils';
-import { useUserCurrency } from '@/stores/searchStore';
+import { useUserCurrency, useDates } from '@/stores/searchStore';
 import SaveButton from '@/components/common/SaveButton';
 
 /**
@@ -313,14 +313,20 @@ const HorizontalCard: React.FC<PropertyCardProps> = ({
     const [mounted, setMounted] = useState(false);
     useEffect(() => setMounted(true), []);
     const targetCurrency = useUserCurrency();
+    const { checkIn, checkOut } = useDates();
     if (!property) return null;
+
+    const nights = (checkIn && checkOut)
+        ? Math.max(1, Math.round((checkOut.getTime() - checkIn.getTime()) / 86400000))
+        : 1;
 
     // Skip conversion until mounted — EXCHANGE_RATES may differ between server (static)
     // and client (live rates from a previous page visit), causing hydration mismatches.
+    // Divide by nights: TGX returns gross as a total-stay amount, not per-night.
     const sourceCurrency = property.currency || 'USD';
-    const displayPrice = mounted ? convertCurrency(property.price, sourceCurrency, targetCurrency) : property.price;
+    const displayPrice = mounted ? convertCurrency(property.price, sourceCurrency, targetCurrency) / nights : property.price;
     const displayOriginalPrice = property.originalPrice
-        ? (mounted ? convertCurrency(property.originalPrice, sourceCurrency, targetCurrency) : property.originalPrice)
+        ? (mounted ? convertCurrency(property.originalPrice, sourceCurrency, targetCurrency) / nights : property.originalPrice)
         : undefined;
     const symbol = getCurrencySymbol(mounted ? targetCurrency : sourceCurrency);
 
@@ -474,6 +480,9 @@ const HorizontalCard: React.FC<PropertyCardProps> = ({
                                     </div>
                                 )}
                                 <div className="flex items-baseline gap-1 md:gap-1.5">
+                                    <span className="text-[8px] landscape:text-[7px] lg:text-sm text-slate-500 dark:text-slate-400">
+                                        {tCard('from')}
+                                    </span>
                                     <span className="text-[12px] landscape:text-[11px] lg:text-2xl font-bold text-blue-600 dark:text-blue-400 leading-none">
                                         {symbol}{displayPrice.toLocaleString(undefined, { maximumFractionDigits: 0 })}
                                     </span>

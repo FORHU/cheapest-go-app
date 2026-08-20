@@ -7,6 +7,7 @@ import { useAuthStore } from '@/stores/authStore';
 import { clientFetch } from '@/lib/api/client';
 import { toast } from 'sonner';
 import { useTranslations } from 'next-intl';
+import { useRouter } from 'next/navigation';
 
 interface AccountMainContentProps {
     user: UserType;
@@ -16,6 +17,7 @@ interface AccountMainContentProps {
 export const AccountMainContent: React.FC<AccountMainContentProps> = ({ user, activeSection = 'profile' }) => {
     const { updateProfile, updatePassword } = useAuthStore();
     const t = useTranslations('account');
+    const router = useRouter();
 
     // Profile form state
     const [firstName, setFirstName] = useState(user.firstName || '');
@@ -96,6 +98,7 @@ export const AccountMainContent: React.FC<AccountMainContentProps> = ({ user, ac
             await updateProfile({ firstName: firstName.trim(), lastName: lastName.trim() });
             toast.success(t('profile.updateSuccess'));
             setIsEditingProfile(false);
+            router.refresh();
         } catch (error: any) {
             toast.error(error.message || t('profile.updateError'));
         } finally {

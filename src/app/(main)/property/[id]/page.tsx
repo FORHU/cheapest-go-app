@@ -169,12 +169,12 @@ export default async function PropertyPage({
             addressLocality: city,
             addressCountry: country,
         },
-        ...(property.rating && {
+        ...(property.rating && property.reviews && property.reviews > 0 && {
             aggregateRating: {
                 '@type': 'AggregateRating',
                 ratingValue: property.rating,
                 bestRating: 10,
-                reviewCount: property.reviews || 1,
+                reviewCount: property.reviews,
             },
         }),
         ...(property.coordinates?.lat && {
@@ -311,7 +311,7 @@ export default async function PropertyPage({
                         </FadeInUp>
                     </div>
 
-                    <div className="hidden lg:block lg:w-[45%] xl:w-[40%] shrink-0 sticky top-[80px]" id="location">
+                    <div className="hidden lg:block lg:w-[45%] xl:w-[40%] shrink-0 sticky top-[80px] self-start" id="location">
                         <div className="h-[calc(100vh-120px)] rounded-xl overflow-hidden shadow-sm border border-slate-200/60 dark:border-white/10">
                             <PropertyMapSidebar {...mapProps} />
                         </div>

@@ -6,10 +6,11 @@ import {
 } from '@/components/legal/content/legalSections';
 import type { Metadata } from 'next';
 import { getTranslations } from 'next-intl/server';
+import { hreflangAlternates } from '@/lib/seo/hreflang';
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations('legal.refundPolicy');
-  return { title: t('title'), description: t('description') };
+  return { title: t('title'), description: t('description'), alternates: hreflangAlternates('/refund-policy') };
 }
 
 export default async function RefundPolicyPage() {

@@ -15,6 +15,7 @@ import { PWAInstallProvider } from '@/contexts/PWAInstallContext';
 import InstallPWAPrompt from '@/components/pwa/InstallPWAPrompt';
 import PWAServiceWorkerRegistrar from '@/components/pwa/PWAServiceWorkerRegistrar';
 import { env } from '@/utils/env';
+import { hreflangAlternates } from '@/lib/seo/hreflang';
 import { ClientOnly } from '@/components/common/ClientOnly';
 import { MobileBottomNav } from '@/components/common/MobileBottomNav';
 import { ScrollToTop } from '@/components/common/ScrollToTop';
@@ -42,6 +43,7 @@ export async function generateMetadata(): Promise<Metadata> {
     metadataBase: new URL(SITE_URL),
     title,
     description,
+    alternates: hreflangAlternates('/'),
     icons: {
       icon: BRAND_FAVICON,
       apple: BRAND_FAVICON,

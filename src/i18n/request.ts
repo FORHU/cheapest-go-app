@@ -1,7 +1,6 @@
 import { getRequestConfig } from 'next-intl/server';
 import { cookies } from 'next/headers';
-
-const locales = ['en', 'ko', 'cn', 'ja'];
+import { routing } from './routing';
 
 function deepMerge<T extends Record<string, unknown>>(target: T, source: Partial<T>): T {
   const result = { ...target };
@@ -19,25 +18,36 @@ function deepMerge<T extends Record<string, unknown>>(target: T, source: Partial
   return result;
 }
 
-export default getRequestConfig(async () => {
-  const cookieStore = await cookies();
-  // A brand can LOCK the locale via NEXT_PUBLIC_LOCALE (e.g. GeomeeGo = 'ko', see
-  // ADR-0005). A locked locale wins over the cookie, and its switcher is hidden.
-  // Otherwise use the visitor's cookie, defaulting to English.
+export default getRequestConfig(async ({ requestLocale }) => {
+  // Priority: brand lock > URL-based locale (from middleware header) > cookie > default
   const locked = process.env.NEXT_PUBLIC_LOCALE;
-  const locale = locked || cookieStore.get('locale')?.value || 'en';
-  const validLocale = locales.includes(locale) ? locale : 'en';
+
+  let locale: string;
+  if (locked && routing.locales.includes(locked as typeof routing.locales[number])) {
+    locale = locked;
+  } else {
+    const fromMiddleware = await requestLocale;
+    if (fromMiddleware && routing.locales.includes(fromMiddleware as typeof routing.locales[number])) {
+      locale = fromMiddleware;
+    } else {
+      const cookieStore = await cookies();
+      const fromCookie = cookieStore.get('locale')?.value;
+      locale = (fromCookie && routing.locales.includes(fromCookie as typeof routing.locales[number]))
+        ? fromCookie
+        : 'en';
+    }
+  }
 
   const enMessages = (await import(`../locales/en.json`)).default;
 
-  if (validLocale === 'en') {
-    return { locale: validLocale, messages: enMessages };
+  if (locale === 'en') {
+    return { locale, messages: enMessages };
   }
 
-  const localeMessages = (await import(`../locales/${validLocale}.json`)).default;
+  const localeMessages = (await import(`../locales/${locale}.json`)).default;
 
   return {
-    locale: validLocale,
+    locale,
     messages: deepMerge(enMessages, localeMessages),
   };
 });

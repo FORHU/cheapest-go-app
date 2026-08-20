@@ -43,14 +43,18 @@ export function AccountContent({ initialUser }: AccountContentProps) {
         router.replace(`?${params.toString()}`);
     }, [router, searchParams]);
 
-    // Use store user if available (real-time), otherwise fall back to server-provided data
-    const user = storeUser || {
+    // Memoize the SSR fallback so its reference stays stable while storeUser is null
+    // (prevents the AccountMainContent useEffect from firing on every render during hydration)
+    const fallbackUser = useMemo(() => ({
         id: initialUser.id,
         email: initialUser.email,
         firstName: initialUser.user_metadata?.first_name || initialUser.user_metadata?.firstName || '',
         lastName: initialUser.user_metadata?.last_name || initialUser.user_metadata?.lastName || '',
         avatar: initialUser.user_metadata?.avatar_url || initialUser.user_metadata?.picture || '',
-    };
+    }), [initialUser]);
+
+    // Use store user if available (real-time), otherwise fall back to server-provided data
+    const user = storeUser || fallbackUser;
 
     // Sidebar items - memoized to avoid recreating on each render
     const sidebarItems = useMemo(() => [

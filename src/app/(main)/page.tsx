@@ -1,7 +1,6 @@
 export const revalidate = 300; // regenerate every 5 minutes
 
 import { Suspense } from "react";
-import Script from "next/script";
 import { Hero } from "@/components/landing/hero";
 import { RecentlyViewed, YourRecentSearches, TopCitiesSection, TopDestinationsSection } from "@/components/landing/sections";
 import { PopularDestinationsSection } from "@/components/landing/sections/PopularDestinationsSection";
@@ -15,14 +14,13 @@ import { getTranslations } from 'next-intl/server';
 export default async function Home() {
   const t = await getTranslations('seo');
   const brandName = process.env.NEXT_PUBLIC_BRAND_NAME ?? 'CheapestGo';
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://cheapestgo.com';
+  const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL ?? 'https://cheapestgo.com').replace(/\/$/, '');
   const organizationJsonLd = {
     '@context': 'https://schema.org',
     '@type': 'Organization',
     name: brandName,
     url: siteUrl,
     logo: `${siteUrl}/icon-192.png`,
-    sameAs: [],
     description: t('orgDescription', { brand: brandName }),
   };
 
@@ -38,16 +36,9 @@ export default async function Home() {
   };
   return (
     <main className="flex min-h-screen flex-col items-center">
-      <Script
-        id="organization-jsonld"
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationJsonLd) }}
-      />
-      <Script
-        id="faq-jsonld"
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }}
-      />
+      {/* Inline script ensures JSON-LD is in initial SSR HTML for crawlers */}
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationJsonLd) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }} />
       <Hero />
 
       <div className="w-full space-y-2 sm:space-y-4">

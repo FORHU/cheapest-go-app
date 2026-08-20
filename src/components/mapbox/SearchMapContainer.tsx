@@ -14,7 +14,7 @@ import { MapMarker } from '../map/MapMarker';
 import { MapPopup } from '../map/MapPopup';
 import { MapSearchOverlay } from './components/MapSearchOverlay';
 import { useRouter } from 'next/navigation';
-import { useUserCurrency } from '@/stores/searchStore';
+import { useUserCurrency, useDates } from '@/stores/searchStore';
 import { convertCurrency, getCurrencySymbol } from '@/lib/currency';
 import { useMapDetails } from './hooks/useMapDetails';
 import { MapDetailsPanel } from './components/MapDetailsPanel';
@@ -111,6 +111,11 @@ export const SearchMapContainer = React.memo(({
     const isMobile = useIsMobile();
     const router = useRouter();
     const targetCurrency = useUserCurrency();
+    const { checkIn, checkOut } = useDates();
+    const nights = useMemo(() => {
+        if (!checkIn || !checkOut) return 1;
+        return Math.max(1, Math.round((checkOut.getTime() - checkIn.getTime()) / 86400000));
+    }, [checkIn, checkOut]);
 
     // 3. Derived State & Currency Conversion
     const mappableProperties = useMemo(() => {
@@ -228,10 +233,10 @@ export const SearchMapContainer = React.memo(({
     const markerPrices = useMemo(() => {
         const prices: Record<string, number> = {};
         for (const p of mappableProperties) {
-            prices[p.id] = convertCurrency(p.price, p.currency || 'USD', targetCurrency);
+            prices[p.id] = convertCurrency(p.price, p.currency || 'USD', targetCurrency) / nights;
         }
         return prices;
-    }, [mappableProperties, targetCurrency]);
+    }, [mappableProperties, targetCurrency, nights]);
 
     const displayPrices = useMemo(() => {
         const formatted: Record<string, string> = {};

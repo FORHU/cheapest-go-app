@@ -701,6 +701,12 @@ function SearchMapView({
             params.delete('view');
             const prop = properties.find(p => p.id === id);
             if (prop?.rateId) params.set('rateId', prop.rateId);
+            // Pass the TGX token so the property page can offer the exact rate the map found.
+            if (prop?.offerId?.startsWith('TGX:')) {
+                params.set('offerId', prop.offerId);
+                if (prop.price > 0) params.set('mapPrice', String(Math.round(prop.price)));
+                if (prop.currency) params.set('mapCurrency', prop.currency);
+            }
 
             // Ensure dates are always forwarded. Landing-page clicks don't put dates in the URL,
             // so the property page would fall back to same-day defaults (near-zero OTV inventory).

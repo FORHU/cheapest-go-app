@@ -6,7 +6,7 @@ import { useTranslations } from 'next-intl';
 import { MapPin, Building2 } from 'lucide-react';
 import { formatCurrency, cn } from '@/lib/utils';
 import { convertCurrency } from '@/lib/currency';
-import { useUserCurrency } from '@/stores/searchStore';
+import { useUserCurrency, useDates } from '@/stores/searchStore';
 import type { MappableProperty } from './types';
 
 interface MapPropertyCardProps {
@@ -74,16 +74,21 @@ const MapPropertyCard = React.memo(function MapPropertyCard({
     const tRatings = useTranslations('hotels.ratings');
     const tCard = useTranslations('hotels.card');
     const targetCurrency = useUserCurrency();
+    const { checkIn, checkOut } = useDates();
     const sourceCurrency = property.currency || 'USD';
+    const nights = React.useMemo(() => {
+        if (!checkIn || !checkOut) return 1;
+        return Math.max(1, Math.round((checkOut.getTime() - checkIn.getTime()) / 86400000));
+    }, [checkIn, checkOut]);
     const displayPrice = React.useMemo(
-        () => convertCurrency(property.price, sourceCurrency, targetCurrency),
-        [property.price, sourceCurrency, targetCurrency]
+        () => convertCurrency(property.price, sourceCurrency, targetCurrency) / nights,
+        [property.price, sourceCurrency, targetCurrency, nights]
     );
     const displayOriginalPrice = React.useMemo(
         () => property.originalPrice
-            ? convertCurrency(property.originalPrice, sourceCurrency, targetCurrency)
+            ? convertCurrency(property.originalPrice, sourceCurrency, targetCurrency) / nights
             : undefined,
-        [property.originalPrice, sourceCurrency, targetCurrency]
+        [property.originalPrice, sourceCurrency, targetCurrency, nights]
     );
     const rating = property.rating ?? 0;
     const starRating = property.starRating ?? 0;
@@ -180,6 +185,7 @@ const MapPropertyCard = React.memo(function MapPropertyCard({
                                 </div>
                             ) : (
                                 <>
+                                    <span className="text-[8px] text-slate-400 shrink-0">{tCard('from')}</span>
                                     <span className="text-[13px] font-bold text-blue-600 dark:text-blue-400 truncate">
                                         {formatCurrency(displayPrice, targetCurrency)}
                                     </span>
@@ -283,6 +289,7 @@ const MapPropertyCard = React.memo(function MapPropertyCard({
                                             {formatCurrency(displayOriginalPrice, targetCurrency)}
                                         </span>
                                     )}
+                                    <span className="text-[10px] text-slate-400">{tCard('from')}</span>
                                     <span className="text-[clamp(0.6875rem,1.5vw,0.875rem)] font-bold text-blue-600 dark:text-blue-400">
                                         {formatCurrency(displayPrice, targetCurrency)}
                                     </span>

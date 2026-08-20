@@ -36,3 +36,6 @@ nul
 OTV_STATIC_DATA.csv
 *.csv
 *.csv
+
+# Claude Code internal worktrees
+.claude/worktrees/

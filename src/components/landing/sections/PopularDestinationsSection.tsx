@@ -7,9 +7,17 @@ import { POPULAR_DESTINATIONS } from '@/lib/constants/destinations';
 import { useDragScroll } from '@/hooks/useDragScroll';
 import { useTranslations } from 'next-intl';
 
+function localDate(offset: number): string {
+    const d = new Date();
+    d.setDate(d.getDate() + offset);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
 export function PopularDestinationsSection() {
     const { ref, dragProps } = useDragScroll<HTMLDivElement>();
     const t = useTranslations('popularDestinations');
+    const checkIn = localDate(0);
+    const checkOut = localDate(1);
 
     const scroll = (dir: 'left' | 'right') => {
         ref.current?.scrollBy({ left: dir === 'left' ? -480 : 480, behavior: 'smooth' });
@@ -53,7 +61,7 @@ export function PopularDestinationsSection() {
                 {POPULAR_DESTINATIONS.map((dest) => (
                     <Link
                         key={dest.id}
-                        href={`/?destination=${encodeURIComponent(dest.city)}&countryCode=${dest.countryCode}`}
+                        href={`/search?destination=${encodeURIComponent(dest.city)}&countryCode=${dest.countryCode}&checkIn=${checkIn}&checkOut=${checkOut}`}
                         className="group relative shrink-0 w-[160px] sm:w-[200px] md:w-[220px] aspect-3/4 rounded-2xl overflow-hidden block"
                         style={{ scrollSnapAlign: 'start' }}
                     >

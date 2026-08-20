@@ -81,6 +81,7 @@ export function CheckoutContent() {
         prebookError: prebookErrorObj,
         startPrebook,
         completeBooking,
+        refreshPrebook,
         reprebookWithVoucher,
         reprebookWithoutVoucher,
     } = useBookingFlow();
@@ -143,6 +144,7 @@ export function CheckoutContent() {
     // Booking confirmation progress overlay
     const [bookingStepIdx, setBookingStepIdx] = useState(0);
     const bookingStepTimer = useRef<ReturnType<typeof setInterval> | null>(null);
+    const prebookTimerStarted = useRef(false);
     const [showSuccess, setShowSuccess] = useState(false);
 
     const bookingSteps = [
@@ -184,6 +186,19 @@ export function CheckoutContent() {
             return () => clearTimeout(timer);
         }
     }, [isSuccess, bookingStepIdx]);
+
+    // Warn 5 min before the 30-min prebook quote expires
+    useEffect(() => {
+        if (!prebookId || prebookTimerStarted.current) return;
+        prebookTimerStarted.current = true;
+        const warnTimer = setTimeout(() => {
+            toast.warning(t('validation.quoteExpiringSoon'), {
+                id: 'quote-expiry-warn',
+                duration: 5 * 60 * 1000,
+            });
+        }, 25 * 60 * 1000);
+        return () => clearTimeout(warnTimer);
+    }, [prebookId, t]);
 
     // Global currency sync
     const globalCurrency = useUserCurrency();
@@ -373,7 +388,69 @@ export function CheckoutContent() {
                     return;
                 }
                 if (raw.code === 'QUOTE_EXPIRED' || raw.code === 'QUOTE_NOT_FOUND') {
-                    toast.error('error' in result ? result.error : t('validation.paymentSetupFailed'));
+                    if (!selectedRoom?.offerId) {
+                        toast.error(t('validation.sessionExpired'));
+                        return;
+                    }
+                    // Silently re-prebook so the user doesn't lose their filled-in form data.
+                    // Server charges from its own stored quote; totalPrice is a drift hint only —
+                    // PRICE_CHANGED fires if the new quote differs meaningfully.
+                    try {
+                        toast.loading(t('validation.refreshingSession'), { id: 'quote-refresh' });
+                        const fresh = await refreshPrebook(
+                            selectedRoom.offerId,
+                            selectedCurrency,
+                            appliedVoucher?.code
+                        );
+                        toast.dismiss('quote-refresh');
+
+                        if (!fresh?.prebookId) {
+                            toast.error(t('validation.sessionExpired'));
+                            return;
+                        }
+
+                        const chargeAmountRetry = appliedVoucher ? appliedVoucher.finalPrice : totalPrice;
+                        const retryResult = await apiFetch<{ clientSecret: string; paymentIntentId: string }>(
+                            '/api/booking/create-payment',
+                            {
+                                prebookId: fresh.prebookId,
+                                amount: chargeAmountRetry,
+                                currency: selectedCurrency,
+                                holderEmail: formData.email,
+                                propertyName: property?.name || 'Hotel',
+                                roomName: selectedRoom?.title || 'Room',
+                                checkIn: checkIn?.toISOString().slice(0, 10),
+                                checkOut: checkOut?.toISOString().slice(0, 10),
+                                ...(bundleFlightId ? { bundleFlightId } : {}),
+                            }
+                        );
+
+                        if (!retryResult.success) {
+                            const retryRaw = retryResult as unknown as Record<string, unknown>;
+                            if (retryRaw.code === 'PRICE_CHANGED' && typeof retryRaw.serverPrice === 'number') {
+                                setPriceChanged({ oldPrice: chargeAmountRetry, newPrice: retryRaw.serverPrice as number });
+                                return;
+                            }
+                            toast.error('error' in retryResult ? retryResult.error : t('validation.paymentSetupFailed'));
+                            return;
+                        }
+                        if (!retryResult.data?.clientSecret) throw new Error('Failed to create payment session');
+                        setClientSecret(retryResult.data.clientSecret);
+                        setStep('payment');
+                        if (typeof window !== 'undefined') {
+                            const guests = buildGuestPayload(formData, specialRequests);
+                            const holder = buildHolderPayload(formData);
+                            sessionStorage.setItem('hotelCheckoutSession', JSON.stringify({
+                                ts: Date.now(), holder, guests,
+                                specialRequests: specialRequests || '',
+                                currency: selectedCurrency,
+                            }));
+                        }
+                    } catch (refreshErr) {
+                        toast.dismiss('quote-refresh');
+                        const msg = refreshErr instanceof Error ? refreshErr.message : '';
+                        toast.error(isRoomUnavailableError(msg) ? t('submit.hotelUnavailableDesc') : t('validation.sessionExpired'));
+                    }
                     return;
                 }
                 throw new Error('error' in result ? result.error : 'Failed to create payment session');
@@ -677,7 +754,7 @@ export function CheckoutContent() {
                     >
                         {t('continue')}
                     </button>
-                    <button onClick={() => router.back()} className="w-full text-center text-sm text-slate-500 hover:text-slate-700 dark:hover:text-slate-300">
+                    <button onClick={() => window.history.length > 1 ? router.back() : router.push('/')} className="w-full text-center text-sm text-slate-500 hover:text-slate-700 dark:hover:text-slate-300">
                         {t('goBack')}
                     </button>
                 </div>
@@ -885,8 +962,12 @@ export function CheckoutContent() {
                                 cancellationPolicies={priceData?.cancellationPolicies}
                                 sourceCurrency={priceData?.currency}
                                 appliedVoucher={appliedVoucher}
-                                isLoading={prebooking}
+                                isLoading={prebooking && !roomPrice}
                                 onDatesChange={handleDatesChange}
+                                refundable={selectedRoom?.refundable}
+                                cancellationDeadline={selectedRoom?.cancellationDeadline}
+                                bedType={selectedRoom?.bedType}
+                                roomSize={selectedRoom?.roomSize}
                             />
 
                             {/* Mobile-only Submit Button — only on form step */}

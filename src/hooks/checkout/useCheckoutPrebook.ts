@@ -49,11 +49,12 @@ export function useCheckoutPrebook({
         }
     }, [selectedRoom?.offerId, selectedCurrency, startPrebook, adults, children]);
 
-    // Auto-retry prebook after auth — only for auth errors, never for unavailable rooms
+    // Auto-retry prebook after auth — only for auth errors, never for unavailable rooms or rate-limit errors
     useEffect(() => {
         const prebookKey = `${selectedRoom?.offerId}-${selectedCurrency}`;
         const isUnavailable = isRoomUnavailableError(prebookError);
-        if (user && prebookError && !isUnavailable && selectedRoom?.offerId && !isAuthModalOpen) {
+        const isRateLimit = !!prebookError && /too many requests/i.test(prebookError);
+        if (user && prebookError && !isUnavailable && !isRateLimit && selectedRoom?.offerId && !isAuthModalOpen) {
             prebookInitiatedRef.current = null;
             prebookFailedRef.current.delete(prebookKey);
             startPrebook(selectedRoom.offerId, selectedCurrency, undefined, adults, children, selectedRoom.title).catch(console.error);

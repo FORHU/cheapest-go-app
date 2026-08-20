@@ -33,14 +33,16 @@ describe('PopularDestinationsSection', () => {
         expect(container.textContent).not.toMatch(/USD|PHP|per night/i);
     });
 
-    it('each card links to /?destination=<city> with no date params', () => {
+    it('each card links to /search with destination, countryCode, checkIn, and checkOut params', () => {
         render(<PopularDestinationsSection />, { wrapper: Wrapper });
         const links = screen.getAllByRole('link');
         expect(links.length).toBeGreaterThanOrEqual(POPULAR_DESTINATIONS.length);
         for (const link of links) {
             const href = link.getAttribute('href') ?? '';
-            expect(href).toMatch(/^\/?(\?destination=|$)/);
-            expect(href).not.toMatch(/checkin|checkout|check_in|check_out/i);
+            expect(href).toMatch(/^\/search\?/);
+            expect(href).toMatch(/destination=/);
+            expect(href).toMatch(/checkIn=\d{4}-\d{2}-\d{2}/);
+            expect(href).toMatch(/checkOut=\d{4}-\d{2}-\d{2}/);
         }
     });
 

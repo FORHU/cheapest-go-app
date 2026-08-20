@@ -75,7 +75,7 @@ export async function GET(req: NextRequest) {
             failed++;
         }
 
-        await new Promise(r => setTimeout(r, 1100));
+        await new Promise(r => setTimeout(r, 2000));
     }
 
     const [{ remaining }] = await sql<{ remaining: string }[]>`

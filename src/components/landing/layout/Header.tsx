@@ -36,11 +36,11 @@ const LOCALE_FLAGS: Record<string, string> = {
 const LOCALE_NAMES: Record<string, string> = {
   en: 'EN',
   ko: '한국어',
-  cn: '中文',
+  zh: '中文',
   ja: '日本語',
 };
 
-const LOCALES = ['en', 'ko', 'cn', 'ja'] as const;
+const LOCALES = ['en', 'ko', 'zh', 'ja'] as const;
 type Locale = (typeof LOCALES)[number];
 
 const LOCALE_COOKIE = 'locale';
@@ -122,8 +122,10 @@ const HeaderContent = () => {
                 <button
                   className="flex items-center gap-1 h-6 px-1 text-xs font-medium leading-none text-slate-700 dark:text-slate-300 hover:bg-black/5 dark:hover:bg-white/5 rounded-lg transition-colors group cursor-pointer shrink-0"
                 >
-                  <span className="text-[9px] leading-none text-slate-400 font-bold uppercase">{LOCALE_COUNTRIES[locale]}</span>
-                  <span className="text-[11px] leading-none font-semibold">{locale.toUpperCase()}</span>
+                  <span className="flex items-baseline gap-[3px]">
+                    <span className="text-[9px] leading-none text-slate-400 font-bold uppercase">{LOCALE_COUNTRIES[locale]}</span>
+                    <span className="text-[11px] leading-none font-semibold">{locale.toUpperCase()}</span>
+                  </span>
                   <ChevronDown className="w-3 h-3 shrink-0 text-slate-400 transition-transform group-data-[state=open]:rotate-180" />
                 </button>
               </DropdownMenuTrigger>
@@ -151,10 +153,12 @@ const HeaderContent = () => {
             {!LOCKED_LOCALE && <CurrencySelector variant="header" className="shrink-0" />}
 
 
-            {/* Support (Hidden on very small mobile) */}
-            <a href="#" className="hidden xs:flex items-center gap-1 px-2 py-1 text-[10px] sm:text-xs font-normal text-slate-700 dark:text-slate-300 hover:bg-black/5 dark:hover:bg-white/5 rounded-lg transition-colors shrink-0">
-              {t('support')}
-            </a>
+            {/* Trips — only when logged in */}
+            {user && (
+              <Link href="/trips" className="hidden xs:flex items-center gap-1 px-2 py-1 text-[10px] sm:text-xs font-normal text-slate-700 dark:text-slate-300 hover:bg-black/5 dark:hover:bg-white/5 rounded-lg transition-colors shrink-0">
+                Trips
+              </Link>
+            )}
 
             {/* Theme Toggle */}
             <button

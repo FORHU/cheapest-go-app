@@ -177,7 +177,9 @@ export const useFlightSearch = (): UseFlightSearchReturn => {
             if (segment.date) {
                 const dateObj = segment.date instanceof Date ? segment.date : new Date(segment.date);
                 if (!isNaN(dateObj.getTime())) {
-                    dateStr = dateObj.toISOString();
+                    // Use local date parts — toISOString() shifts to UTC and loses the
+                    // user's date for timezones ahead of UTC (KST, JST, SGT, etc.)
+                    dateStr = `${dateObj.getFullYear()}-${String(dateObj.getMonth() + 1).padStart(2, '0')}-${String(dateObj.getDate()).padStart(2, '0')}`;
                 }
             }
             params.set(`date${index}`, dateStr);

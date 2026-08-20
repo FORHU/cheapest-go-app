@@ -50,10 +50,17 @@ const CityCard: React.FC<CityCardProps> = ({ city, index }) => {
   const setIsSearching = useSearchStore((s) => s.setIsSearching);
 
   function navigate() {
+    const localDate = (offset: number) => {
+      const d = new Date();
+      d.setDate(d.getDate() + offset);
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    };
     const p = new URLSearchParams({
       destination: city.searchQuery,
       destinationType: 'city',
       country: city.country,
+      checkIn: localDate(0),
+      checkOut: localDate(1),
     });
     setIsSearching(true);
     router.push(`/search?${p.toString()}`);

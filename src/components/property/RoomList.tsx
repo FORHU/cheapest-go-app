@@ -43,6 +43,14 @@ const RoomList: React.FC<RoomListProps> = ({ property, roomTypes, searchParams, 
     const [rateFilter, setRateFilter] = useState<RateFilter>('all');
     const [currentPage, setCurrentPage] = useState(1);
 
+    const nights = React.useMemo(() => {
+        if (!searchParams?.checkIn || !searchParams?.checkOut) return 1;
+        const diff = Math.round(
+            (new Date(searchParams.checkOut).getTime() - new Date(searchParams.checkIn).getTime()) / 86_400_000
+        );
+        return Math.max(1, diff);
+    }, [searchParams?.checkIn, searchParams?.checkOut]);
+
     const filteredRooms = rateFilter === 'all'
         ? groupedRooms
         : groupedRooms.filter(g =>
@@ -64,11 +72,22 @@ const RoomList: React.FC<RoomListProps> = ({ property, roomTypes, searchParams, 
 
     const targetCurrency = useUserCurrency();
 
-    const handleReserve = (roomTitle: string, price: number, roomCurrency?: string, offerId?: string) => {
+    const handleReserve = (
+        roomTitle: string,
+        price: number,
+        roomCurrency?: string,
+        offerId?: string,
+        refundable?: boolean | null,
+        cancellationDeadline?: string,
+        bedType?: string,
+        roomSize?: string,
+    ) => {
         const sourceCurrency = roomCurrency || searchParams?.currency || 'PHP';
 
-        // Convert to current user currency for the store
-        const convertedPrice = convertCurrency(price, sourceCurrency, targetCurrency);
+        // price is the total-stay amount from TGX/LiteAPI; divide by nights so
+        // usePricingCalculation's fallback (price × nights) reconstructs the total correctly.
+        const perNightPrice = price / Math.max(1, nights);
+        const convertedPrice = convertCurrency(perNightPrice, sourceCurrency, targetCurrency);
 
         setProperty(property);
         setSelectedRoom({
@@ -76,7 +95,11 @@ const RoomList: React.FC<RoomListProps> = ({ property, roomTypes, searchParams, 
             offerId,
             title: roomTitle,
             price: convertedPrice,
-            currency: targetCurrency
+            currency: targetCurrency,
+            refundable,
+            cancellationDeadline,
+            bedType,
+            roomSize,
         });
         if (searchParams?.checkIn && searchParams?.checkOut) {
             setDates(new Date(searchParams.checkIn), new Date(searchParams.checkOut));
@@ -138,6 +161,7 @@ const RoomList: React.FC<RoomListProps> = ({ property, roomTypes, searchParams, 
                                 title={groupedRoom.roomName}
                                 price={groupedRoom.lowestPrice}
                                 currency={groupedRoom.currency}
+                                nights={nights}
                                 maxOccupancy={groupedRoom.maxOccupancy}
                                 bedType={groupedRoom.bedType}
                                 roomSize={groupedRoom.roomSize}
@@ -154,7 +178,11 @@ const RoomList: React.FC<RoomListProps> = ({ property, roomTypes, searchParams, 
                                         groupedRoom.roomName,
                                         selectedRate?.price || groupedRoom.lowestPrice,
                                         selectedRate?.currency || groupedRoom.currency,
-                                        offerId || lowestRate?.offerId
+                                        offerId || lowestRate?.offerId,
+                                        selectedRate?.refundable,
+                                        selectedRate?.cancellationDeadline,
+                                        groupedRoom.bedType,
+                                        groupedRoom.roomSize,
                                     );
                                 }}
                             />

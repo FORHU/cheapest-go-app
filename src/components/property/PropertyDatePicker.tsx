@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
-import { ChevronLeft, ChevronRight, Moon, Users } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Moon, Users, Search } from 'lucide-react';
 import { useBookingDates, useBookingActions } from '@/stores/bookingStore';
 import { cn } from '@/lib/utils';
 import { useLocale, useTranslations } from 'next-intl';
@@ -272,7 +272,7 @@ export default function PropertyDatePicker({
     function fmtDisplay(iso: string) {
         if (!iso) return '';
         const [y, m, d] = iso.split('-').map(Number);
-        return new Date(y, m - 1, d).toLocaleDateString(locale, { month: 'short', day: 'numeric', year: 'numeric' });
+        return new Date(y, m - 1, d).toLocaleDateString(locale, { month: 'short', day: 'numeric' });
     }
 
     function openPicker(s: 'in' | 'out') {
@@ -309,57 +309,45 @@ export default function PropertyDatePicker({
                 {t('yourStay')}
             </p>
 
-            <div className="flex flex-col sm:flex-row gap-3 sm:items-end">
+            {/* 3-segment pill: [date range] | [guests] | [button] */}
+            <div className="flex items-stretch rounded-lg border border-slate-200 dark:border-slate-700 overflow-visible bg-white dark:bg-slate-800 divide-x divide-slate-200 dark:divide-slate-700">
 
-                {/* ── Dates ── */}
-                <div ref={containerRef} className="grid grid-cols-2 gap-2 flex-1 relative min-w-0">
-                    {/* Check-in */}
-                    <div className="min-w-0">
-                        <p className="text-xs text-slate-500 dark:text-slate-400 mb-1.5">{t('checkIn')}</p>
+                {/* Segment 1 — date range */}
+                <div ref={containerRef} className="relative flex-1 min-w-0">
+                    <div className="w-full h-full flex items-center">
+                        <span className="text-slate-400 shrink-0 pl-3">{calSvg}</span>
+                        {/* Check-in zone */}
                         <button
                             onClick={() => openPicker('in')}
                             className={cn(
-                                'w-full flex items-center gap-2 px-3 py-2.5 text-sm border rounded-lg transition-colors text-left whitespace-nowrap',
-                                open && step === 'in'
-                                    ? 'border-blue-500 ring-2 ring-blue-500/20 bg-white dark:bg-slate-800'
-                                    : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:border-slate-300 dark:hover:border-slate-600',
+                                'flex-1 flex flex-col justify-center px-2 py-2 h-full text-left transition-colors rounded-l-lg',
+                                open && step === 'in' ? 'bg-blue-50 dark:bg-blue-900/20' : 'hover:bg-slate-50 dark:hover:bg-slate-700/50',
                             )}
                         >
-                            <span className="text-slate-400 shrink-0">{calSvg}</span>
-                            <span className={checkIn ? 'text-slate-900 dark:text-white font-medium' : 'text-slate-400'}>
-                                {checkIn ? fmtDisplay(checkIn) : t('addDate')}
-                            </span>
+                            <p className="text-[9px] font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500 leading-none mb-0.5">{t('checkIn')}</p>
+                            <p className={cn('text-xs font-bold leading-none whitespace-nowrap', checkIn ? 'text-slate-900 dark:text-white' : 'text-slate-400')}>
+                                {checkIn ? fmtDisplay(checkIn) : '—'}
+                            </p>
                         </button>
-                    </div>
-
-                    {/* Check-out — nights shown in label */}
-                    <div className="min-w-0">
-                        <p className="text-xs text-slate-500 dark:text-slate-400 mb-1.5 flex items-center gap-1">
-                            {t('checkOut')}
-                            {nights > 0 && (
-                                <span className="flex items-center gap-0.5 text-slate-400">
-                                    <Moon size={10} />
-                                    {nights}n
-                                </span>
-                            )}
-                        </p>
+                        <ChevronRight size={11} className="text-slate-300 dark:text-slate-600 shrink-0" />
+                        {/* Check-out zone */}
                         <button
                             onClick={() => openPicker('out')}
                             className={cn(
-                                'w-full flex items-center gap-2 px-3 py-2.5 text-sm border rounded-lg transition-colors text-left whitespace-nowrap',
-                                open && step === 'out'
-                                    ? 'border-blue-500 ring-2 ring-blue-500/20 bg-white dark:bg-slate-800'
-                                    : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:border-slate-300 dark:hover:border-slate-600',
+                                'flex-1 flex flex-col justify-center px-2 py-2 h-full text-left transition-colors',
+                                open && step === 'out' ? 'bg-blue-50 dark:bg-blue-900/20' : 'hover:bg-slate-50 dark:hover:bg-slate-700/50',
                             )}
                         >
-                            <span className="text-slate-400 shrink-0">{calSvg}</span>
-                            <span className={checkOut ? 'text-slate-900 dark:text-white font-medium' : 'text-slate-400'}>
-                                {checkOut ? fmtDisplay(checkOut) : t('addDate')}
-                            </span>
+                            <p className="text-[9px] font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500 leading-none mb-0.5 flex items-center gap-0.5">
+                                {t('checkOut')}
+                                {nights > 0 && <span className="flex items-center gap-0.5 normal-case font-normal"><Moon size={8} />{nights}n</span>}
+                            </p>
+                            <p className={cn('text-xs font-bold leading-none whitespace-nowrap', checkOut ? 'text-slate-900 dark:text-white' : 'text-slate-400')}>
+                                {checkOut ? fmtDisplay(checkOut) : '—'}
+                            </p>
                         </button>
                     </div>
 
-                    {/* Calendar dropdown */}
                     {open && (
                         <CalendarPanel
                             checkIn={checkIn}
@@ -372,97 +360,61 @@ export default function PropertyDatePicker({
                     )}
                 </div>
 
-                {/* ── Guests picker ── */}
-                <div className="flex items-end gap-3">
-                    <div ref={guestRef} className="relative">
-                        <p className="text-xs text-slate-500 dark:text-slate-400 mb-1.5">{t('guests')}</p>
-                        <button
-                            onClick={() => setGuestOpen(v => !v)}
-                            className={cn(
-                                'flex items-center gap-1.5 px-3 py-2.5 text-sm border rounded-lg transition-colors whitespace-nowrap',
-                                guestOpen
-                                    ? 'border-blue-500 ring-2 ring-blue-500/20 bg-white dark:bg-slate-800'
-                                    : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:border-slate-300 dark:hover:border-slate-600',
-                            )}
-                        >
-                            <Users size={13} className="text-slate-400 shrink-0" />
-                            <span className="text-slate-900 dark:text-white font-medium whitespace-nowrap">
-                                {adultsLocal} {adultsLocal === 1 ? t('adult') : t('adults')}
-                                {childrenLocal > 0 && `, ${childrenLocal} ${childrenLocal === 1 ? t('child') : t('children')}`}
-                            </span>
-                        </button>
-
-                        {guestOpen && (
-                            <div className="absolute top-full right-0 mt-2 w-56 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-xl z-50 p-4 space-y-3">
-                                {/* Adults */}
-                                <div className="flex items-center justify-between">
-                                    <div>
-                                        <p className="text-xs font-medium text-slate-900 dark:text-white">{t('adultsLabel')}</p>
-                                    </div>
-                                    <div className="flex items-center gap-2">
-                                        <button
-                                            onClick={() => setAdultsLocal(v => Math.max(1, v - 1))}
-                                            disabled={adultsLocal <= 1}
-                                            className="w-7 h-7 rounded-full border border-slate-200 dark:border-slate-600 flex items-center justify-center text-slate-500 hover:border-blue-400 hover:text-blue-500 disabled:opacity-30 transition-colors"
-                                        >−</button>
-                                        <span className="w-4 text-center text-sm font-medium text-slate-900 dark:text-white">{adultsLocal}</span>
-                                        <button
-                                            onClick={() => setAdultsLocal(v => Math.min(10, v + 1))}
-                                            disabled={adultsLocal >= 10}
-                                            className="w-7 h-7 rounded-full border border-slate-200 dark:border-slate-600 flex items-center justify-center text-slate-500 hover:border-blue-400 hover:text-blue-500 disabled:opacity-30 transition-colors"
-                                        >+</button>
-                                    </div>
-                                </div>
-                                {/* Children */}
-                                <div className="flex items-center justify-between">
-                                    <div>
-                                        <p className="text-xs font-medium text-slate-900 dark:text-white">{t('childrenLabel')}</p>
-                                        <p className="text-[10px] text-slate-400">{t('childrenAges')}</p>
-                                    </div>
-                                    <div className="flex items-center gap-2">
-                                        <button
-                                            onClick={() => setChildrenLocal(v => Math.max(0, v - 1))}
-                                            disabled={childrenLocal <= 0}
-                                            className="w-7 h-7 rounded-full border border-slate-200 dark:border-slate-600 flex items-center justify-center text-slate-500 hover:border-blue-400 hover:text-blue-500 disabled:opacity-30 transition-colors"
-                                        >−</button>
-                                        <span className="w-4 text-center text-sm font-medium text-slate-900 dark:text-white">{childrenLocal}</span>
-                                        <button
-                                            onClick={() => setChildrenLocal(v => Math.min(6, v + 1))}
-                                            disabled={childrenLocal >= 6}
-                                            className="w-7 h-7 rounded-full border border-slate-200 dark:border-slate-600 flex items-center justify-center text-slate-500 hover:border-blue-400 hover:text-blue-500 disabled:opacity-30 transition-colors"
-                                        >+</button>
-                                    </div>
-                                </div>
-                                <button
-                                    onClick={() => setGuestOpen(false)}
-                                    className="w-full py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-lg transition-colors"
-                                >
-                                    {t('done')}
-                                </button>
-                            </div>
-                        )}
-                    </div>
-                    <div>
-                    <p className="text-xs text-transparent mb-1.5 select-none">·</p>
+                {/* Segment 2 — guests */}
+                <div ref={guestRef} className="relative shrink-0">
                     <button
-                        onClick={handleSearch}
-                        disabled={!canSearch || isPending}
-                        className="flex items-center gap-1.5 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-40 text-white text-sm font-semibold rounded-lg transition-colors shrink-0 min-w-[160px] justify-center"
-                    >
-                        {isPending ? (
-                            <>
-                                <span className="w-3.5 h-3.5 rounded-full border-2 border-white border-t-transparent animate-spin" />
-                                {t('searching')}
-                            </>
-                        ) : (
-                            <>
-                                {t('checkAvailability')}
-                                <ChevronRight size={14} />
-                            </>
+                        onClick={() => setGuestOpen(v => !v)}
+                        className={cn(
+                            'h-full flex items-center gap-1.5 px-3 py-2.5 transition-colors',
+                            guestOpen ? 'bg-blue-50 dark:bg-blue-900/20' : 'hover:bg-slate-50 dark:hover:bg-slate-700/50',
                         )}
+                    >
+                        <Users size={13} className="text-slate-400 shrink-0" />
+                        <span className="text-xs font-semibold text-slate-900 dark:text-white whitespace-nowrap">
+                            {adultsLocal} {adultsLocal === 1 ? t('adult') : t('adults')}
+                            {childrenLocal > 0 && `, ${childrenLocal}`}
+                        </span>
                     </button>
-                    </div>
+
+                    {guestOpen && (
+                        <div className="absolute top-full right-0 mt-2 w-56 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-xl z-50 p-4 space-y-3">
+                            <div className="flex items-center justify-between">
+                                <p className="text-xs font-medium text-slate-900 dark:text-white">{t('adultsLabel')}</p>
+                                <div className="flex items-center gap-2">
+                                    <button onClick={() => setAdultsLocal(v => Math.max(1, v - 1))} disabled={adultsLocal <= 1} className="w-7 h-7 rounded-full border border-slate-200 dark:border-slate-600 flex items-center justify-center text-slate-500 hover:border-blue-400 hover:text-blue-500 disabled:opacity-30 transition-colors">−</button>
+                                    <span className="w-4 text-center text-sm font-medium text-slate-900 dark:text-white">{adultsLocal}</span>
+                                    <button onClick={() => setAdultsLocal(v => Math.min(10, v + 1))} disabled={adultsLocal >= 10} className="w-7 h-7 rounded-full border border-slate-200 dark:border-slate-600 flex items-center justify-center text-slate-500 hover:border-blue-400 hover:text-blue-500 disabled:opacity-30 transition-colors">+</button>
+                                </div>
+                            </div>
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <p className="text-xs font-medium text-slate-900 dark:text-white">{t('childrenLabel')}</p>
+                                    <p className="text-[10px] text-slate-400">{t('childrenAges')}</p>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <button onClick={() => setChildrenLocal(v => Math.max(0, v - 1))} disabled={childrenLocal <= 0} className="w-7 h-7 rounded-full border border-slate-200 dark:border-slate-600 flex items-center justify-center text-slate-500 hover:border-blue-400 hover:text-blue-500 disabled:opacity-30 transition-colors">−</button>
+                                    <span className="w-4 text-center text-sm font-medium text-slate-900 dark:text-white">{childrenLocal}</span>
+                                    <button onClick={() => setChildrenLocal(v => Math.min(6, v + 1))} disabled={childrenLocal >= 6} className="w-7 h-7 rounded-full border border-slate-200 dark:border-slate-600 flex items-center justify-center text-slate-500 hover:border-blue-400 hover:text-blue-500 disabled:opacity-30 transition-colors">+</button>
+                                </div>
+                            </div>
+                            <button onClick={() => setGuestOpen(false)} className="w-full py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-lg transition-colors">{t('done')}</button>
+                        </div>
+                    )}
                 </div>
+
+                {/* Segment 3 — check availability */}
+                <button
+                    onClick={handleSearch}
+                    disabled={!canSearch || isPending}
+                    className="flex items-center justify-center w-10 bg-blue-600 hover:bg-blue-700 disabled:opacity-40 text-white rounded-r-lg transition-colors shrink-0"
+                    aria-label={t('checkAvailability')}
+                >
+                    {isPending ? (
+                        <span className="w-3.5 h-3.5 rounded-full border-2 border-white border-t-transparent animate-spin" />
+                    ) : (
+                        <Search size={15} />
+                    )}
+                </button>
             </div>
         </div>
     );

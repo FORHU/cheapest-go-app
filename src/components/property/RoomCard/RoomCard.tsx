@@ -30,6 +30,18 @@ function formatCancellationDeadline(deadline?: string): string | null {
     }
 }
 
+/** Compact date for rate picker rows — "Aug 22" */
+function formatCancelDeadlineShort(deadline?: string): string | null {
+    if (!deadline) return null;
+    try {
+        const date = new Date(deadline);
+        if (isNaN(date.getTime())) return null;
+        return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    } catch {
+        return null;
+    }
+}
+
 /** Rate option for a room */
 export interface RateOption {
     offerId: string;
@@ -37,17 +49,23 @@ export interface RateOption {
     currency: string;
     boardType?: string;
     boardName?: string;
-    refundable: boolean;
+    refundable: boolean | null;
     cancellationDeadline?: string;
+    /** 'Pay now' (MERCHANT) or 'Pay at hotel' (DIRECT) — only set when known */
+    paymentType?: string;
+    /** TGX parenthetical qualifier stripped from the room name, e.g. "smoking, extra bed not included" */
+    variantLabel?: string;
 }
 
 export interface RoomCardProps {
     /** Room title/name */
     title: string;
-    /** Price per night (lowest rate) */
+    /** Total stay price (all nights combined, from TGX/LiteAPI) */
     price: number;
     /** Currency code */
     currency?: string;
+    /** Number of nights in the stay — used to compute per-night display price */
+    nights?: number;
     /** Maximum occupancy */
     maxOccupancy?: number;
     /** Bed type description */
@@ -55,7 +73,7 @@ export interface RoomCardProps {
     /** Room size */
     roomSize?: string;
     /** Whether free cancellation is available (for primary rate) */
-    freeCancellation?: boolean;
+    freeCancellation?: boolean | null;
     /** Room image URL */
     roomImage?: string;
     /** Room description */
@@ -177,6 +195,7 @@ export const RoomCard: React.FC<RoomCardProps> = ({
     title,
     price,
     currency = 'PHP',
+    nights = 1,
     maxOccupancy,
     bedType,
     roomSize,
@@ -202,18 +221,6 @@ export const RoomCard: React.FC<RoomCardProps> = ({
     const hasRoomPhotos = roomPhotos.length > 0;
     const lightboxImages = hasRoomPhotos ? roomPhotos : (galleryImages?.filter(Boolean) ?? (roomImage ? [roomImage] : []));
     const displayImage = hasRoomPhotos ? (roomPhotos[carouselIndex] ?? roomImage) : roomImage;
-    const hasMultipleImages = roomPhotos.length > 1;
-
-    const carouselPrev = useCallback((e: React.MouseEvent) => {
-        e.stopPropagation();
-        setCarouselIndex(i => (i === 0 ? roomPhotos.length - 1 : i - 1));
-    }, [roomPhotos.length]);
-
-    const carouselNext = useCallback((e: React.MouseEvent) => {
-        e.stopPropagation();
-        setCarouselIndex(i => (i === roomPhotos.length - 1 ? 0 : i + 1));
-    }, [roomPhotos.length]);
-
     const openLightbox = (e: React.MouseEvent) => {
         e.stopPropagation();
         if (lightboxImages.length > 0) setLightboxIndex(carouselIndex);
@@ -223,15 +230,27 @@ export const RoomCard: React.FC<RoomCardProps> = ({
 
     const hasMultipleRates = rateOptions.length > 1;
     const selectedRate = rateOptions[selectedRateIdx];
+    // True when this card was formed by merging TGX room variants (e.g. smoking vs non-smoking)
+    const hasVariants = rateOptions.some(r => r.variantLabel);
+    // If every rate shares the same variant label, show it once as a card header instead of per-row
+    const uniqueVariantLabels = [...new Set(rateOptions.map(r => r.variantLabel ?? ''))];
+    const sharedVariantLabel = uniqueVariantLabels.length === 1 && uniqueVariantLabels[0] ? uniqueVariantLabels[0] : undefined;
+    const [ratesExpanded, setRatesExpanded] = useState(false);
+    const RATES_DEFAULT_VISIBLE = 2;
+    const visibleRates = ratesExpanded ? rateOptions : rateOptions.slice(0, RATES_DEFAULT_VISIBLE);
+    const hiddenCount = rateOptions.length - RATES_DEFAULT_VISIBLE;
 
+    const n = Math.max(1, nights);
     const basePriceConverted = mounted ? convertCurrency(price, sourceCurrency, targetCurrency) : price;
     const selectedRatePriceConverted = selectedRate
         ? (mounted ? convertCurrency(selectedRate.price, selectedRate.currency || sourceCurrency, targetCurrency) : selectedRate.price)
         : undefined;
 
-    const displayPrice = selectedRatePriceConverted ?? basePriceConverted;
+    // TGX/LiteAPI prices are total-stay amounts; divide by nights for per-night display.
+    const displayPrice = (selectedRatePriceConverted ?? basePriceConverted) / n;
     const currencySymbol = getCurrencySymbol(mounted ? targetCurrency : sourceCurrency);
-    const displayRefundable = selectedRate?.refundable ?? freeCancellation;
+    const displayRefundable: boolean | null | undefined =
+        selectedRate !== undefined ? selectedRate.refundable : (freeCancellation ?? null);
     const displayOfferId = selectedRate?.offerId;
 
     return (
@@ -245,68 +264,93 @@ export const RoomCard: React.FC<RoomCardProps> = ({
             />
         )}
         <div className="flex flex-row bg-white dark:bg-slate-900 rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-700 shadow-sm hover:shadow-lg transition-all group">
-            {/* Left: Image carousel */}
-            <div className="w-[110px] lg:w-[240px] relative h-auto p-2 lg:p-3 pr-0 lg:pr-0 shrink-0">
-                {/* Image */}
-                <div
-                    className={`w-full h-full rounded-xl overflow-hidden shadow-sm relative ${lightboxImages.length > 0 ? 'cursor-zoom-in' : ''}`}
-                    onClick={lightboxImages.length > 0 ? openLightbox : onViewDetails}
-                >
-                    {displayImage ? (
-                        <div
-                            className="w-full h-full bg-cover bg-center transition-all duration-300 group-hover:scale-105 rounded-xl"
-                            style={{ backgroundImage: `url(${displayImage})` }}
-                        />
-                    ) : (
-                        <div className="w-full h-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-300 dark:text-slate-600">
-                            <Bed size={32} />
-                        </div>
-                    )}
-
-                    {/* Hover hint */}
-                    {lightboxImages.length > 0 && (
-                        <div className="absolute inset-0 flex items-end justify-center pb-2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/10 rounded-xl pointer-events-none">
-                            <span className="text-white text-[9px] font-medium bg-black/50 px-1.5 py-0.5 rounded backdrop-blur-sm">
-                                {hasRoomPhotos ? t('viewRoomPhotos') : t('viewHotelPhotos')}
+            {/* Left: Photo grid */}
+            <div className="w-[100px] lg:w-[260px] shrink-0 relative self-stretch min-h-[140px] lg:min-h-[180px]">
+                {/* Mobile: single image */}
+                <div className="lg:hidden h-full relative overflow-hidden">
+                    <div
+                        className={`h-full bg-cover bg-center ${lightboxImages.length > 0 ? 'cursor-zoom-in' : ''}`}
+                        style={{ backgroundImage: displayImage ? `url(${displayImage})` : undefined }}
+                        onClick={lightboxImages.length > 0 ? openLightbox : undefined}
+                    >
+                        {!displayImage && (
+                            <div className="h-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-300">
+                                <Bed size={24} />
+                            </div>
+                        )}
+                    </div>
+                    {!hasRoomPhotos && displayImage && (
+                        <div className="absolute top-1.5 left-1.5 z-10">
+                            <span className="text-[7px] font-semibold text-white bg-black/55 px-1 py-0.5 rounded-full">
+                                {t('hotelPhotoLabel')}
                             </span>
                         </div>
                     )}
                 </div>
 
-                {/* Carousel prev/next — only when room-specific photos */}
-                {hasMultipleImages && (
-                    <>
-                        <button
-                            onClick={carouselPrev}
-                            className="absolute left-3 lg:left-4 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/80 text-white rounded-full p-0.5 lg:p-1 opacity-0 group-hover:opacity-100 transition-opacity z-10"
-                        >
-                            <ChevronLeft size={14} />
-                        </button>
-                        <button
-                            onClick={carouselNext}
-                            className="absolute right-1 lg:right-3 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/80 text-white rounded-full p-0.5 lg:p-1 opacity-0 group-hover:opacity-100 transition-opacity z-10"
-                        >
-                            <ChevronRight size={14} />
-                        </button>
-
-                        {/* Dots */}
-                        <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1 z-10">
-                            {roomPhotos.slice(0, 5).map((_, i) => (
-                                <button
-                                    key={i}
-                                    onClick={e => { e.stopPropagation(); setCarouselIndex(i); }}
-                                    className={`rounded-full transition-all ${i === carouselIndex ? 'bg-white w-3 h-1.5' : 'bg-white/60 w-1.5 h-1.5'}`}
+                {/* Desktop: main + 2 stacked thumbnails */}
+                <div className="hidden lg:flex h-full gap-0.5 p-2 pr-0">
+                    {/* Main photo */}
+                    <div
+                        className={`flex-1 relative rounded-l-xl overflow-hidden bg-slate-100 dark:bg-slate-800 ${lightboxImages.length > 0 ? 'cursor-zoom-in' : ''}`}
+                        onClick={lightboxImages.length > 0 ? openLightbox : undefined}
+                    >
+                        {displayImage ? (
+                            <div
+                                className="absolute inset-0 bg-cover bg-center transition-transform duration-300 group-hover:scale-105"
+                                style={{ backgroundImage: `url(${displayImage})` }}
+                            />
+                        ) : (
+                            <div className="absolute inset-0 flex items-center justify-center text-slate-300 dark:text-slate-600">
+                                <Bed size={32} />
+                            </div>
+                        )}
+                        {/* Hotel photo badge */}
+                        {!hasRoomPhotos && displayImage && (
+                            <div className="absolute top-2 left-2 z-10">
+                                <span className="text-[8px] font-semibold text-white bg-black/55 backdrop-blur-sm px-1.5 py-0.5 rounded-full">
+                                    {t('hotelPhotoLabel')}
+                                </span>
+                            </div>
+                        )}
+                        {/* Photo count badge */}
+                        {lightboxImages.length > 1 && (
+                            <div className="absolute bottom-2 left-2 z-10 bg-black/60 text-white text-[9px] px-1.5 py-0.5 rounded flex items-center gap-1 backdrop-blur-sm">
+                                <Images size={9} />
+                                <span>{lightboxImages.length}</span>
+                            </div>
+                        )}
+                    </div>
+                    {/* Stacked thumbnails — only when 3+ photos */}
+                    {roomPhotos.length >= 3 && (
+                        <div className="w-[52px] flex flex-col gap-0.5">
+                            <div
+                                className="flex-1 relative overflow-hidden rounded-tr-xl bg-slate-100 dark:bg-slate-800 cursor-zoom-in"
+                                onClick={() => setLightboxIndex(1)}
+                            >
+                                <div
+                                    className="absolute inset-0 bg-cover bg-center transition-transform duration-300 hover:scale-110"
+                                    style={{ backgroundImage: `url(${roomPhotos[1]})` }}
                                 />
-                            ))}
+                            </div>
+                            <div
+                                className="flex-1 relative overflow-hidden rounded-br-xl bg-slate-100 dark:bg-slate-800 cursor-zoom-in"
+                                onClick={() => setLightboxIndex(2)}
+                            >
+                                <div
+                                    className="absolute inset-0 bg-cover bg-center transition-transform duration-300 hover:scale-110"
+                                    style={{ backgroundImage: `url(${roomPhotos[2]})` }}
+                                />
+                                {/* "See all" overlay when more than 3 photos */}
+                                {lightboxImages.length > 3 && (
+                                    <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+                                        <span className="text-white text-[8px] font-semibold text-center leading-tight">+{lightboxImages.length - 3}<br/>more</span>
+                                    </div>
+                                )}
+                            </div>
                         </div>
-
-                        {/* Count badge */}
-                        <div className="absolute top-3 right-1 lg:right-3 bg-black/60 text-white text-[9px] px-1.5 py-0.5 rounded-md flex items-center gap-1 backdrop-blur-sm z-10">
-                            <Images size={9} />
-                            <span>{lightboxImages.length}</span>
-                        </div>
-                    </>
-                )}
+                    )}
+                </div>
             </div>
 
             {/* Middle: Info & Rate Options */}
@@ -314,6 +358,11 @@ export const RoomCard: React.FC<RoomCardProps> = ({
                 <div>
                     <h4 className="text-[13px] lg:text-lg font-bold text-slate-900 dark:text-white line-clamp-2 mb-0.5 lg:mb-1 group-hover:text-blue-600 transition-colors">
                         {title}
+                        {hasVariants && hasMultipleRates && (
+                            <span className="ml-1.5 text-[10px] lg:text-xs font-normal text-slate-400 dark:text-slate-500">
+                                · {rateOptions.length} options
+                            </span>
+                        )}
                     </h4>
 
                     {/* Compact Room Specs */}
@@ -325,64 +374,120 @@ export const RoomCard: React.FC<RoomCardProps> = ({
 
                     {/* Rate Options (if multiple) */}
                     {hasMultipleRates ? (
-                        <div className="space-y-1 mb-1 lg:mb-4">
-                            <div className="text-[9px] lg:text-xs font-bold text-slate-900 dark:text-white mb-0.5 mt-1.5 lg:mt-2">
-                                {t('rateOptions', { count: rateOptions.length })}
-                            </div>
-                            <div className="space-y-1 max-h-32 overflow-y-auto pr-1">
-                                {rateOptions.map((rate, idx) => (
+                        <div className="mb-1 lg:mb-4 mt-1 lg:mt-2">
+                            {/* Shared variant label — shown once above the rate table when all rates share the same qualifier */}
+                            {sharedVariantLabel && (
+                                <div className="text-[9px] lg:text-[11px] text-slate-500 dark:text-slate-400 mb-1 px-0.5">
+                                    {sharedVariantLabel}
+                                </div>
+                            )}
+                            {/* Rate table */}
+                            <div className="rounded-lg border border-slate-200 dark:border-slate-700 overflow-hidden">
+                                {visibleRates.map((rate, idx) => (
                                     <label
                                         key={rate.offerId}
-                                        className={`flex items-center justify-between p-1 LG:p-2 rounded-lg cursor-pointer border transition-all ${selectedRateIdx === idx
-                                            ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
-                                            : 'border-slate-200 dark:border-slate-700 hover:border-slate-300'
-                                            }`}
+                                        className={`flex items-center gap-2 lg:gap-3 px-2 lg:px-3 py-1.5 lg:py-2 cursor-pointer transition-all relative border-l-2 ${idx < visibleRates.length - 1 ? 'border-b border-b-slate-100 dark:border-b-slate-700/60' : ''} ${selectedRateIdx === idx ? 'border-l-blue-500 bg-blue-50/80 dark:bg-blue-900/20' : 'border-l-transparent hover:bg-slate-50 dark:hover:bg-slate-800/40'}`}
                                     >
-                                        <div className="flex items-center gap-1 min-w-0 flex-1">
-                                            <input
-                                                type="radio"
-                                                name={`rate-${title}`}
-                                                checked={selectedRateIdx === idx}
-                                                onChange={() => setSelectedRateIdx(idx)}
-                                                className="w-2.5 h-2.5 text-blue-600 cursor-pointer shrink-0"
-                                            />
-                                            <div className="min-w-0 flex-1">
-                                                <div className="text-[10px] lg:text-sm font-medium text-slate-800 dark:text-slate-200 truncate">
-                                                    {rate.boardName || t('roomOnly')}
-                                                </div>
-                                                <div className={`text-[8px] lg:text-[11px] font-medium leading-tight truncate ${rate.refundable ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'}`}>
-                                                    {rate.refundable ? t('freeCancellation') : t('nonRefundablePill')}
-                                                </div>
-                                            </div>
+                                        <input
+                                            type="radio"
+                                            name={`rate-${title}`}
+                                            checked={selectedRateIdx === idx}
+                                            onChange={() => setSelectedRateIdx(idx)}
+                                            className="sr-only"
+                                        />
+                                        {/* Selection dot */}
+                                        <div className={`shrink-0 w-3 h-3 rounded-full border-2 flex items-center justify-center transition-colors ${selectedRateIdx === idx ? 'border-blue-500' : 'border-slate-300 dark:border-slate-600'}`}>
+                                            {selectedRateIdx === idx && <div className="w-1.5 h-1.5 rounded-full bg-blue-500" />}
                                         </div>
-                                        <div className="text-[10px] lg:text-sm font-bold text-slate-900 dark:text-white ml-2 text-right shrink-0 whitespace-nowrap">
-                                            {currencySymbol}{mounted ? convertCurrency(rate.price, rate.currency || sourceCurrency, targetCurrency).toLocaleString('en-US', { maximumFractionDigits: 0 }) : rate.price.toLocaleString('en-US', { maximumFractionDigits: 0 })}
-                                            <div className="text-[8px] text-slate-500 font-normal">{t('perNight')}</div>
+                                        {/* Meal plan + variant (per-row variant only when rates differ) */}
+                                        <div className="flex-1 min-w-0">
+                                            {!sharedVariantLabel && rate.variantLabel && (
+                                                <div className="text-[8px] lg:text-[9px] text-slate-400 dark:text-slate-500 leading-tight mb-0.5 line-clamp-2">
+                                                    {rate.variantLabel}
+                                                </div>
+                                            )}
+                                            <div className="text-[10px] lg:text-[13px] font-medium text-slate-800 dark:text-slate-200 leading-tight">
+                                                {rate.boardName || t('roomOnly')}
+                                            </div>
+                                            {rate.paymentType && (
+                                                <div className="text-[8px] lg:text-[9px] text-slate-400 dark:text-slate-500 leading-tight">
+                                                    {rate.paymentType}
+                                                </div>
+                                            )}
+                                        </div>
+                                        {/* Cancel policy — hidden on mobile */}
+                                        <div className={`hidden lg:block text-[10px] shrink-0 text-right min-w-[110px] font-medium ${rate.refundable === true ? 'text-emerald-600 dark:text-emerald-400' : rate.refundable === false ? 'text-amber-600 dark:text-amber-400' : 'text-slate-400 dark:text-slate-500'}`}>
+                                            {rate.refundable === true
+                                                ? rate.cancellationDeadline
+                                                    ? `Free cancel · ${formatCancelDeadlineShort(rate.cancellationDeadline) ?? ''}`
+                                                    : t('freeCancellation')
+                                                : rate.refundable === false
+                                                    ? t('nonRefundablePill')
+                                                    : 'Check at checkout'
+                                            }
+                                        </div>
+                                        {/* Price */}
+                                        <div className="text-right shrink-0">
+                                            <div className="text-[11px] lg:text-[13px] font-bold text-slate-900 dark:text-white whitespace-nowrap">
+                                                {currencySymbol}{mounted ? (convertCurrency(rate.price, rate.currency || sourceCurrency, targetCurrency) / n).toLocaleString('en-US', { maximumFractionDigits: 0 }) : (rate.price / n).toLocaleString('en-US', { maximumFractionDigits: 0 })}
+                                            </div>
+                                            <div className="text-[8px] lg:text-[9px] text-slate-400 font-normal whitespace-nowrap">{t('perNight')}</div>
                                         </div>
                                     </label>
                                 ))}
                             </div>
+                            {hiddenCount > 0 && (
+                                <button
+                                    onClick={() => setRatesExpanded(e => !e)}
+                                    className="mt-1.5 text-[9px] lg:text-[11px] text-blue-600 dark:text-blue-400 hover:underline font-medium"
+                                >
+                                    {ratesExpanded ? '↑ Show less' : `↓ ${hiddenCount} more option${hiddenCount > 1 ? 's' : ''}`}
+                                </button>
+                            )}
                         </div>
                     ) : (
                         <div className="bg-slate-50 dark:bg-slate-800/50 rounded-lg p-2 lg:p-2.5 border border-slate-100 dark:border-slate-700">
+                            {rateOptions[0]?.variantLabel && (
+                                <div className="text-[8px] lg:text-[10px] font-medium text-slate-500 dark:text-slate-400 bg-slate-200 dark:bg-slate-600 rounded px-1 py-0.5 mb-1 inline-block">
+                                    {rateOptions[0].variantLabel}
+                                </div>
+                            )}
                             <div className="font-bold text-[10px] lg:text-sm text-slate-900 dark:text-white mb-0.5 lg:mb-1">
-                                {t('roomOnly')}
+                                {rateOptions[0]?.boardName || t('roomOnly')}
                             </div>
                             <div className="space-y-1">
-                                <div className="text-[9px] lg:text-xs text-slate-500 flex items-center gap-1.5">
-                                    <X size={10} className="text-slate-400" /> {t('noMeals')}
-                                </div>
-                                {displayRefundable ? (
-                                    <div className="text-[9px] lg:text-xs text-emerald-600 font-medium flex items-center gap-1.5">
-                                        <Check size={10} /> {t('freeCancellation')}
+                                {rateOptions[0]?.boardType && rateOptions[0].boardType !== 'RO' ? null : (
+                                    <div className="text-[9px] lg:text-xs text-slate-500 flex items-center gap-1.5">
+                                        <X size={10} className="text-slate-400" /> {t('noMeals')}
                                     </div>
-                                ) : (
+                                )}
+                                {displayRefundable === true ? (
+                                    <div className="text-[9px] lg:text-xs text-emerald-600 font-medium flex items-center gap-1.5">
+                                        <Check size={10} />
+                                        {rateOptions[0]?.cancellationDeadline
+                                            ? `Free cancel · ${formatCancelDeadlineShort(rateOptions[0].cancellationDeadline) ?? ''}`
+                                            : t('freeCancellation')
+                                        }
+                                    </div>
+                                ) : displayRefundable === false ? (
                                     <div className="text-[9px] lg:text-xs text-amber-600 dark:text-amber-400 font-medium flex items-center gap-1.5">
                                         <div className="w-2.5 h-2.5 rounded-full border border-amber-400 dark:border-amber-500 flex items-center justify-center text-[7px] text-amber-500">
                                             i
                                         </div>
                                         {t('nonRefundablePill')}
                                     </div>
+                                ) : (
+                                    <div className="text-[9px] lg:text-xs text-slate-400 dark:text-slate-500 font-medium flex items-center gap-1.5">
+                                        <div className="w-2.5 h-2.5 rounded-full border border-slate-300 dark:border-slate-600 flex items-center justify-center text-[7px] text-slate-400">
+                                            ?
+                                        </div>
+                                        Check at checkout
+                                    </div>
+                                )}
+                                {rateOptions[0]?.paymentType && (
+                                    <span className="inline-block mt-0.5 text-[8px] lg:text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400">
+                                        {rateOptions[0].paymentType}
+                                    </span>
                                 )}
                             </div>
                         </div>
@@ -424,7 +529,7 @@ export const RoomCard: React.FC<RoomCardProps> = ({
                         <span className="text-[12px] text-slate-500">{t('perNight')}</span>
                     </div>
                     <div className="text-[10px] text-slate-400 mt-2">
-                        {t('includesTaxes')}
+                        {t('includesTaxes', { nights: n })}
                     </div>
                 </div>
 

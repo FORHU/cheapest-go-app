@@ -4,7 +4,8 @@ import { getDashboardData } from '@/lib/server/admin';
 import AdminDashboardClient from './AdminDashboardClient';
 
 export const metadata = {
-    title: 'Admin Dashboard | Cheapest Go',
+    title: 'Admin Dashboard | CheapestGo',
+    robots: { index: false, follow: false },
 };
 
 export default async function OverviewPage() {

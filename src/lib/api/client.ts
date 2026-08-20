@@ -31,13 +31,15 @@ export function clientFetch(url: string, init: RequestInit = {}): Promise<Respon
 
 export async function apiFetch<T = any>(
     url: string,
-    body?: Record<string, unknown>
+    body?: Record<string, unknown>,
+    signal?: AbortSignal
 ): Promise<{ success: true; data: T } | { success: false; error: string; [key: string]: unknown }> {
     try {
         const res = await clientFetch(url, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(body || {}),
+            signal,
         });
 
         const json = await res.json();
