@@ -2,49 +2,23 @@ name: ETG Dump Sync
 
 on:
   schedule:
-    - cron: '0 2 * * *'   # daily at 02:00 UTC — incremental (fast, just changes)
-  workflow_dispatch:
-    inputs:
-      type:
-        description: 'Dump type (incremental or full)'
-        required: false
-        default: 'incremental'
-      force:
-        description: 'Force re-seed already seeded hotels (true/false)'
-        required: false
-        default: 'false'
+    - cron: '0 3 * * *'   # daily at 03:00 UTC — incremental (changes since last run)
+  workflow_dispatch:       # allow manual trigger from GitHub UI
 
 jobs:
   sync:
     runs-on: ubuntu-latest
-    timeout-minutes: 360   # 6 hours — full dump can take a while
-
     steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Debug secrets
-        run: |
-          echo "RATEHAWK_KEY_ID set: ${{ secrets.RATEHAWK_KEY_ID != '' }}"
-          echo "RATEHAWK_API_KEY set: ${{ secrets.RATEHAWK_API_KEY != '' }}"
-          echo "DATABASE_URL set: ${{ secrets.DATABASE_URL != '' }}"
-
-      - name: Run ETG dump sync
+      - name: Call ETG dump sync endpoint
         env:
-          ETG_KEY_ID:  ${{ secrets.RATEHAWK_KEY_ID }}
-          ETG_API_KEY: ${{ secrets.RATEHAWK_API_KEY }}
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          SITE_URL: ${{ secrets.NEXT_PUBLIC_SITE_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
         run: |
-          TYPE="${{ github.event.inputs.type || 'incremental' }}"
-          FORCE_FLAG=""
-          if [ "${{ github.event.inputs.force }}" = "true" ]; then
-            FORCE_FLAG="--force"
+          STATUS=$(curl -s -o /tmp/body.json -w "%{http_code}" \
+            -H "Authorization: Bearer $CRON_SECRET" \
+            "$SITE_URL/api/cron/etg-dump-sync?type=incremental")
+          cat /tmp/body.json
+          if [ "$STATUS" -ne 200 ]; then
+            echo "ETG dump sync failed with HTTP $STATUS"
+            exit 1
           fi
-          node scripts/etg-dump-sync.mjs --type "$TYPE" $FORCE_FLAG
