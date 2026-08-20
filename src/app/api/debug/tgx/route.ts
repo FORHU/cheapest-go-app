@@ -138,6 +138,38 @@ export async function GET(req: NextRequest) {
         return NextResponse.json({ ok: true, seeded: key, code: seedDestCode });
     }
 
+    // Show hotel_search_stats (top searched cities)
+    // Usage: GET /api/debug/tgx?searchStats=1  (top 50)
+    //        GET /api/debug/tgx?searchStats=paris  (filter by city_key prefix)
+    const searchStatsParam = searchParams.get('searchStats');
+    if (searchStatsParam !== null) {
+        const sql = getSqlAdmin();
+        const isFilter = searchStatsParam && searchStatsParam !== '1';
+        const rows = await sql<{ city_key: string; country_code: string; search_count: number; last_searched_at: string }[]>`
+            SELECT city_key, country_code, search_count, last_searched_at
+            FROM hotel_search_stats
+            ${isFilter ? sql`WHERE city_key ILIKE ${'%' + searchStatsParam.toLowerCase() + '%'}` : sql``}
+            ORDER BY search_count DESC
+            LIMIT 50
+        `;
+        return NextResponse.json({ count: rows.length, rows });
+    }
+
+    // Seed hotel_search_stats for a city (bootstrap cities never searched on live)
+    // Usage: GET /api/debug/tgx?seedStats=Paris,FR
+    const seedStatsParam = searchParams.get('seedStats');
+    if (seedStatsParam) {
+        const sql = getSqlAdmin();
+        const [cityName, countryCode = ''] = seedStatsParam.split(',').map(s => s.trim());
+        const key = cityName.toLowerCase();
+        await sql`
+            INSERT INTO hotel_search_stats (city_key, country_code, search_count, last_searched_at)
+            VALUES (${key}, ${countryCode.toUpperCase()}, 1, now())
+            ON CONFLICT (city_key) DO UPDATE SET last_searched_at = now()
+        `;
+        return NextResponse.json({ ok: true, seeded: key, country_code: countryCode.toUpperCase() });
+    }
+
     // Show tgx_destination_cache entries matching a prefix
     // Usage: GET /api/debug/tgx?destCache=seoul
     const destCacheQuery = searchParams.get('destCache');

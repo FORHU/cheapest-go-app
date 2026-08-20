@@ -453,13 +453,21 @@ function SearchMapView({
     const districtName = rawSearchParams?.districtName as string | undefined;
     const canonicalCity = rawSearchParams?.canonicalCity as string | undefined;
     const rawBbox = rawSearchParams?.bbox as string | undefined;
+    const rung = rawSearchParams?.rung as string | undefined;
     const districtBbox = React.useMemo<[number, number, number, number] | null>(() => {
         if (!rawBbox) return null;
+        // Only clip results/markers to bbox for sub-city searches (district/neighborhood/poi/locality).
+        // City/province/country searches pass a bbox for map positioning only — applying it
+        // as a hard filter would exclude valid hotels just outside the admin boundary
+        // (e.g. Lapu-Lapu/Mactan Island cut off from "Cebu City" province bbox,
+        //  or Bangkok suburbs cut off from a "Bangkok" city bbox).
+        const SUB_CITY_RUNGS = new Set(['district', 'neighborhood', 'poi', 'locality']);
+        if (rung && !SUB_CITY_RUNGS.has(rung)) return null;
         const parts = rawBbox.split(',').map(Number);
         return parts.length === 4 && parts.every(Number.isFinite)
             ? parts as [number, number, number, number]
             : null;
-    }, [rawBbox]);
+    }, [rawBbox, rung]);
     // City-center reference point for radius filtering.
     // Removes pins whose coordinates fall in a completely different city/area (wrong OTV data).
     // Only applied when the destination maps to a known city center.
