@@ -16,13 +16,14 @@
  */
 
 import { readFileSync, existsSync } from 'fs';
-import { createRequire } from 'module';
+import { fileURLToPath } from 'url';
+import path from 'path';
 
-const ROOT    = new URL('..', import.meta.url);
-const require = createRequire(import.meta.url);
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const ROOT      = path.join(__dirname, '..');
 
 // --- env: prefer process.env (GH Actions secrets), fall back to .env for local dev ---
-const envPath = new URL('.env', ROOT);
+const envPath = path.join(ROOT, '.env');
 if (existsSync(envPath)) {
   const envLines = readFileSync(envPath, 'utf-8').replace(/\r/g, '').split('\n');
   for (const line of envLines) {
@@ -33,6 +34,7 @@ if (existsSync(envPath)) {
       if (!process.env[k]) process.env[k] = v;   // don't overwrite GH secrets
     }
   }
+  console.log(`[etg-dump] Loaded .env from ${envPath}`);
 }
 
 const KEY_ID  = process.env.RATEHAWK_KEY_ID  || process.env.ETG_KEY_ID;
@@ -56,12 +58,11 @@ const LIMIT     = limitArg !== -1 ? parseInt(args[limitArg + 1], 10) : null;
 console.log(`[etg-dump] type=${DUMP_TYPE} force=${FORCE} dry_run=${DRY_RUN}${LIMIT ? ` limit=${LIMIT}` : ''}`);
 
 // --- DB ---
-const { default: postgres } = await import(new URL('node_modules/postgres/src/index.js', ROOT).href);
+const { default: postgres } = await import('postgres');
 const sql = postgres(DB_URL, { ssl: { rejectUnauthorized: false }, max: 5 });
 
 // --- fzstd ---
-const { Decompress } = await import(new URL('node_modules/fzstd/lib/index.js', ROOT).href)
-  .catch(() => import('fzstd'));
+const { Decompress } = await import('fzstd');
 
 // --- ETG dump URL ---
 const ENDPOINT = DUMP_TYPE === 'full'
