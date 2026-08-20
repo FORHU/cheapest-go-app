@@ -5,6 +5,7 @@ import {
     RoomType,
     GroupedRoom,
     groupRoomsByName,
+    mergeGroupsByPhotos,
     findRateByOfferId,
     getRoomImage,
 } from '@/lib/room';
@@ -42,7 +43,7 @@ export function useRoomGrouping({
     hotelImages = [],
 }: UseRoomGroupingOptions): UseRoomGroupingReturn {
     const groupedRooms = useMemo(
-        () => groupRoomsByName(roomTypes || []),
+        () => mergeGroupsByPhotos(groupRoomsByName(roomTypes || [])),
         [roomTypes]
     );
 

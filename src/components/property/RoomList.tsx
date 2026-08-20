@@ -175,7 +175,7 @@ const RoomList: React.FC<RoomListProps> = ({ property, roomTypes, searchParams, 
                                 onReserve={bookingDisabled ? () => {} : (offerId) => {
                                     const selectedRate = findRate(groupedRoom, offerId);
                                     handleReserve(
-                                        groupedRoom.roomName,
+                                        selectedRate?.sourceName || groupedRoom.roomName,
                                         selectedRate?.price || groupedRoom.lowestPrice,
                                         selectedRate?.currency || groupedRoom.currency,
                                         offerId || lowestRate?.offerId,

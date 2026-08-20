@@ -1,10 +1,8 @@
 /**
  * GET /api/cron/seed-room-groups
  *
- * Daily cron — fetches room-group photos from ETG (WorldOTA) for hotels
+ * Daily cron — fetches room-group photos/amenities from ETG (WorldOTA) for hotels
  * that have a ratehawk_hid mapping and stores them in hotel_content.room_groups.
- * These photos are used on the property page to show room-specific images instead
- * of cycling hotel-level photos.
  *
  * Process order:
  *   1. Hotels never seeded (room_groups = '[]' and ratehawk_hid set)
@@ -13,82 +11,38 @@
  * Auth: Bearer <CRON_SECRET>
  *
  * Query params:
- *   ?batch=N   max hotels to process this run (default 150, max 500)
+ *   ?batch=N      max hotels to process this run (default 150, max 500)
+ *   ?force=true   re-seed ALL hotels regardless of seeded_at age
  */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getSqlAdmin } from '@/lib/db/postgres';
+import { fetchEtgHotelInfo, parseRoomGroups, seedHotelRoomGroupsById } from '@/lib/server/stays/etg/roomGroups';
 
 export const dynamic = 'force-dynamic';
 
-const ETG_BASE = 'https://api.worldota.net/api/b2b/v3';
-const DELAY_MS = 1000;       // ~1 req/sec to stay within ETG rate limits
-const REFRESH_DAYS = 30;     // re-fetch room groups older than this many days
+const DELAY_MS = 1000;
+const REFRESH_DAYS = 30;
 
-function etgToken(): string {
-    const keyId  = process.env.RATEHAWK_KEY_ID  ?? process.env.ETG_KEY_ID  ?? '';
-    const apiKey = process.env.RATEHAWK_API_KEY ?? process.env.ETG_API_KEY ?? '';
-    return Buffer.from(`${keyId}:${apiKey}`).toString('base64');
-}
-
-function resolveImageUrl(url: unknown): string | null {
-    if (typeof url !== 'string') return null;
-    return url.replace(/\{size\}/g, '1024x768');
-}
-
-async function fetchEtgHotelInfo(hid: string): Promise<any | null> {
-    const res = await fetch(`${ETG_BASE}/hotel/info/`, {
-        method: 'POST',
-        headers: {
-            'Authorization': `Basic ${etgToken()}`,
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ id: hid, language: 'en' }),
-        signal: AbortSignal.timeout(12_000),
-    });
-    if (!res.ok) {
-        const status = res.status;
-        throw new Error(`HTTP ${status}`);
-    }
-    const json = await res.json();
-    return json?.data ?? null;
-}
-
-interface RoomGroupEntry { name: string; images: string[] }
-
-function parseRoomGroups(rawGroups: any[]): RoomGroupEntry[] {
-    return (rawGroups ?? [])
-        .map((rg: any) => ({
-            name: rg.name ?? '',
-            images: (rg.images ?? [])
-                .map((img: any) => resolveImageUrl(typeof img === 'string' ? img : (img?.url ?? img?.src)))
-                .filter((u: string | null): u is string => u !== null)
-                .slice(0, 10),
-        }))
-        .filter((rg: RoomGroupEntry) => rg.name);
-}
-
-async function runSeed(batchSize: number): Promise<{ seeded: number; skipped: number; errors: number }> {
+async function runSeed(batchSize: number, force = false): Promise<{ seeded: number; skipped: number; errors: number }> {
     const sql = getSqlAdmin();
     let seeded = 0, skipped = 0, errors = 0;
 
-    // Priority 1: never seeded (room_groups is still the default [])
-    // Priority 2: stale seeds older than REFRESH_DAYS
     const hotels = await sql<{ hotel_id: string; ratehawk_hid: string }[]>`
         SELECT hotel_id, ratehawk_hid
         FROM hotel_content
         WHERE ratehawk_hid IS NOT NULL AND ratehawk_hid != ''
-          AND (
+          ${force ? sql`` : sql`AND (
             room_groups = '[]'::jsonb
             OR room_groups_seeded_at < NOW() - INTERVAL '${sql.unsafe(String(REFRESH_DAYS))} days'
-          )
+          )`}
         ORDER BY
-            (room_groups = '[]'::jsonb) DESC,  -- unseen first
+            (room_groups = '[]'::jsonb) DESC,
             room_groups_seeded_at ASC NULLS FIRST
         LIMIT ${batchSize}
     `;
 
-    console.log(`[seed-room-groups] Processing ${hotels.length} hotels (batch=${batchSize})`);
+    console.log(`[seed-room-groups] Processing ${hotels.length} hotels (batch=${batchSize}, force=${force})`);
 
     const delay = (ms: number) => new Promise(r => setTimeout(r, ms));
 
@@ -98,10 +52,8 @@ async function runSeed(batchSize: number): Promise<{ seeded: number; skipped: nu
             if (!data) { errors++; await delay(DELAY_MS); continue; }
 
             const groups = parseRoomGroups(data.room_groups ?? []);
-            const hasPhotos = groups.some(g => g.images.length > 0);
 
-            if (!hasPhotos) {
-                // Mark as attempted so it isn't retried until REFRESH_DAYS pass
+            if (!groups.length) {
                 await sql`
                     UPDATE hotel_content
                     SET room_groups_seeded_at = NOW()
@@ -116,7 +68,8 @@ async function runSeed(batchSize: number): Promise<{ seeded: number; skipped: nu
                     WHERE hotel_id = ${hotel_id}
                 `;
                 seeded++;
-                console.log(`[seed-room-groups] ${ratehawk_hid}: ${groups.length} groups seeded`);
+                const photoCount = groups.filter(g => g.images.length > 0).length;
+                console.log(`[seed-room-groups] ${ratehawk_hid}: ${groups.length} groups (${photoCount} with photos)`);
             }
         } catch (e: any) {
             errors++;
@@ -138,12 +91,25 @@ export async function GET(req: NextRequest) {
     }
 
     const url = new URL(req.url);
-    const batchSize = Math.min(parseInt(url.searchParams.get('batch') ?? '150', 10), 500);
+    const hotelId = url.searchParams.get('hotel');
 
-    // Respond immediately — work runs in background (process stays alive on EC2)
-    runSeed(batchSize).catch(e =>
+    // Single-hotel reset+reseed — clears ETG cache, re-fetches ETG, evicts search cache
+    if (hotelId) {
+        const sql = getSqlAdmin();
+        await sql`UPDATE hotel_content SET room_groups = '[]'::jsonb, room_groups_seeded_at = NULL WHERE hotel_id = ${hotelId}`;
+        const groups = await seedHotelRoomGroupsById(hotelId);
+        // Evict all hotel_search_cache rows for this hotel so the next page load re-runs fetchTgxRoomCatalog
+        const evicted = await sql`DELETE FROM hotel_search_cache WHERE cache_key LIKE ${'hotel:' + hotelId + '|%'}`;
+        console.log(`[seed-room-groups] Evicted ${evicted.count} search cache rows for hotel ${hotelId}`);
+        return NextResponse.json({ ok: true, hotel_id: hotelId, groups: groups.length, photos: groups.filter((g: { images: string[] }) => g.images.length > 0).length, cache_evicted: evicted.count });
+    }
+
+    const batchSize = Math.min(parseInt(url.searchParams.get('batch') ?? '150', 10), 500);
+    const force = url.searchParams.get('force') === 'true';
+
+    runSeed(batchSize, force).catch(e =>
         console.error('[seed-room-groups] Background run failed:', e.message)
     );
 
-    return NextResponse.json({ ok: true, message: `Room group seed started (batch=${batchSize})` });
+    return NextResponse.json({ ok: true, message: `Room group seed started (batch=${batchSize}, force=${force})` });
 }

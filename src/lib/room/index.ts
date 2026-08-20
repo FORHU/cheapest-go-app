@@ -6,6 +6,7 @@ export {
     getRoomDisplayName,
     createRateOption,
     groupRoomsByName,
+    mergeGroupsByPhotos,
     findRateByOfferId,
     getRoomImage,
 } from './roomUtils';
