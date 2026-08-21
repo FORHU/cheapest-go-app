@@ -135,7 +135,33 @@ async function getInstantHotelCatalog(body: any): Promise<any[]> {
 
         let rows: any[];
 
-        if (centerLat && centerLng) {
+        // An area rung the user picked by name (a province) carries its real
+        // administrative extent in bbox — honour that instead of a circle. A 50km
+        // radius around La Union's centroid reaches ~38km inland to Baguio, whose
+        // 277 hotels then bury the ~66 actually in La Union. Only province does
+        // this: a city bbox is tighter than the city's real hotel spread (Jeju's
+        // excludes Seogwipo, 27km away), which is exactly what the radius is for.
+        // areaRung, not rung — the province→city downgrade above runs first.
+        const areaBbox: number[] | null =
+            body.areaRung === 'province' && Array.isArray(body.bbox) && body.bbox.length === 4
+                ? body.bbox as number[]
+                : null;
+
+        if (areaBbox) {
+            const [minLng, minLat, maxLng, maxLat] = areaBbox;
+            rows = await sql`
+                SELECT hotel_id, name, images, star_rating, lat, lng, address, city, country,
+                       description, amenities, review_rating, review_count
+                FROM hotel_content
+                WHERE lat BETWEEN ${minLat} AND ${maxLat}
+                  AND lng BETWEEN ${minLng} AND ${maxLng}
+                  AND lat != 0 AND lng != 0
+                  AND (hotel_id ~ '^[0-9]+$' OR hotel_id ~ '^[A-Z]{2}[0-9]+$')
+                  AND (content_source IS NULL OR content_source != 'etg')
+                ORDER BY review_count DESC NULLS LAST
+                LIMIT 1000
+            `;
+        } else if (centerLat && centerLng) {
             // Radius-based query — works correctly across admin boundaries (e.g. Jeju/Seogwipo)
             // without any city-name hardcoding. Bounding box pre-filters in SQL; haversine culls in JS.
             const RADIUS_KM = 50;
@@ -321,6 +347,10 @@ export async function POST(req: NextRequest) {
             body.cityName = stripped;
             if (body.destination) body.destination = stripped;
         }
+        // Remember what the user actually picked. The rung is forced to 'city' for
+        // TGX's benefit, but the catalog queries still need to know this was an
+        // administrative area so they can bound by its bbox instead of a radius.
+        body.areaRung = 'province';
         body.rung = 'city';
         delete body.destinationCode;
     }
