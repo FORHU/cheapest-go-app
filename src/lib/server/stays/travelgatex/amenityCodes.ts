@@ -340,6 +340,110 @@ export function otvCodeToLabel(code: string | null | undefined): string {
  * Reverses the fallback prettifier: strips accents, uppercases, replaces spaces
  * with underscores, then looks up in the map.
  */
+// ─── ETG room-level amenity slugs ─────────────────────────────────────────────
+
+/**
+ * Maps ETG (WorldOTA/RateHawk) room_amenities slug strings to user-facing labels.
+ * Slugs come from hotel/info room_groups[].room_amenities — lowercase hyphen-separated.
+ */
+export const ETG_ROOM_AMENITY_MAP: Record<string, string> = {
+    // Bathroom
+    'private-bathroom':     'Private Bathroom',
+    'shared-bathroom':      'Shared Bathroom',
+    'shower':               'Shower',
+    'bath':                 'Bathtub',
+    'bathtub':              'Bathtub',
+    'bidet':                'Bidet',
+    'jacuzzi':              'Jacuzzi',
+    'hot-tub':              'Hot Tub',
+
+    // Sleeping
+    'sofa-bed':             'Sofa Bed',
+    'extra-bed':            'Extra Bed',
+
+    // Climate
+    'air-conditioning':     'Air Conditioning',
+    'fan':                  'Fan',
+    'heating':              'Heating',
+    'fireplace':            'Fireplace',
+
+    // Entertainment
+    'tv':                   'TV',
+    'cable-tv':             'Cable TV',
+    'satellite-tv':         'Satellite TV',
+    'dvd-player':           'DVD Player',
+
+    // Connectivity
+    'wi-fi':                'WiFi',
+    'wifi':                 'WiFi',
+    'telephone':            'Telephone',
+
+    // Kitchen / Food
+    'kitchen':              'Kitchen',
+    'kitchenette':          'Kitchenette',
+    'fridge':               'Refrigerator',
+    'minibar':              'Minibar',
+    'microwave':            'Microwave',
+    'dishwasher':           'Dishwasher',
+    'washing-machine':      'Washing Machine',
+    'kettle':               'Kettle',
+    'coffee':               'Coffee Machine',
+    'coffee-machine':       'Coffee Machine',
+    'tea-or-coffee':        'Coffee & Tea',
+    'toaster':              'Toaster',
+    'oven':                 'Oven',
+    'stove':                'Stove',
+
+    // In-room items
+    'hairdryer':            'Hair Dryer',
+    'hair-dryer':           'Hair Dryer',
+    'iron':                 'Iron',
+    'ironing-board':        'Ironing Board',
+    'safe':                 'In-Room Safe',
+    'desk':                 'Work Desk',
+    'wardrobe':             'Wardrobe',
+    'mirror':               'Vanity Mirror',
+    'sofa':                 'Sofa',
+    'seating-area':         'Seating Area',
+    'dining-area':          'Dining Area',
+    'alarm-clock':          'Alarm Clock',
+
+    // Toiletries & linens
+    'toiletries':           'Toiletries',
+    'towels':               'Towels',
+    'slippers':             'Slippers',
+    'bathrobe':             'Bathrobe',
+    'linens':               'Bed Linen',
+
+    // Outdoor / view
+    'balcony':              'Balcony',
+    'terrace':              'Terrace',
+    'patio':                'Patio',
+    'garden-view':          'Garden View',
+    'city-view':            'City View',
+    'sea-view':             'Sea View',
+    'pool-view':            'Pool View',
+    'mountain-view':        'Mountain View',
+    'river-view':           'River View',
+
+    // Policy
+    'non-smoking':          'Non-Smoking',
+    'smoking':              'Smoking Allowed',
+    'pet-friendly':         'Pets Allowed',
+
+    // Accessibility
+    'wheelchair-accessible': 'Wheelchair Accessible',
+};
+
+/** Convert an ETG room amenity slug to a display label. Unknown slugs are prettified. */
+export function etgRoomAmenityToLabel(slug: string): string {
+    if (!slug) return '';
+    const mapped = ETG_ROOM_AMENITY_MAP[slug.toLowerCase()];
+    if (mapped) return mapped;
+    // Fallback: capitalize words, replace hyphens with spaces
+    return slug.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+}
+
 export function normalizeStoredAmenity(label: string): string {
     if (!label) return label;
     const asCode = label

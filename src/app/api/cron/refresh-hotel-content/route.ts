@@ -245,16 +245,24 @@ async function runRefresh(limit: number) {
     }
 
     const cityKeys = cities.map(r => r.city_key);
+    // Build lookup keys: prefer country-scoped keys (e.g. 'rome:it') over city-only ('rome')
+    // so TGX name collisions (Rome, Georgia vs Rome, Italy) resolve to the right destination.
+    const scopedKeys = cities
+        .filter(r => r.country_code)
+        .map(r => `${r.city_key}:${r.country_code.toLowerCase()}`);
+    const allKeys = [...new Set([...scopedKeys, ...cityKeys])];
     const destRows = await sql<{ city_key: string; destination_code: string }[]>`
         SELECT city_key, destination_code FROM tgx_destination_cache
-        WHERE city_key = ANY(${cityKeys})
+        WHERE city_key = ANY(${allKeys})
     `;
     const destCodeMap = new Map(destRows.map(r => [r.city_key, r.destination_code]));
 
     let totalUpdated = 0;
     for (const { city_key, country_code } of cities) {
-        const destCode = destCodeMap.get(city_key) ?? null;
-        console.log(`[refresh-hotel-content] Seeding "${city_key}" destCode=${destCode ?? 'none'}`);
+        // Prefer scoped key (city:cc) over city-only to avoid wrong-country collisions
+        const scopedKey = country_code ? `${city_key}:${country_code.toLowerCase()}` : null;
+        const destCode = (scopedKey && destCodeMap.get(scopedKey)) || destCodeMap.get(city_key) || null;
+        console.log(`[refresh-hotel-content] Seeding "${city_key}" destCode=${destCode ?? 'none'} (scopedKey=${scopedKey ?? 'none'}`);
         try {
             const saved = await fetchAndUpsertCity(sql, cfg, city_key, destCode, country_code);
             totalUpdated += saved;

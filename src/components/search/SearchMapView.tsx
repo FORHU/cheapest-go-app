@@ -453,13 +453,26 @@ function SearchMapView({
     const districtName = rawSearchParams?.districtName as string | undefined;
     const canonicalCity = rawSearchParams?.canonicalCity as string | undefined;
     const rawBbox = rawSearchParams?.bbox as string | undefined;
+    const rawLat = rawSearchParams?.lat ? Number(rawSearchParams.lat) : null;
+    const rawLng = rawSearchParams?.lng ? Number(rawSearchParams.lng) : null;
+    const rung = rawSearchParams?.rung as string | undefined;
     const districtBbox = React.useMemo<[number, number, number, number] | null>(() => {
         if (!rawBbox) return null;
+        // Clip results/markers to bbox for rungs with precise administrative boundaries.
+        // Province/state/county: hotels outside the boundary belong to a different jurisdiction
+        //   (e.g. Baguio City outside La Union province bbox should be excluded).
+        // Sub-city (district/neighborhood/poi/locality): narrow area precision.
+        // Do NOT clip for city/municipality — adjacent municipalities are valid
+        //   (e.g. Lapu-Lapu/Mactan Island is outside Cebu City's admin bbox but is a
+        //   legitimate result for "Cebu City" area searches).
+        // Do NOT clip for region/country — too broad to filter meaningfully.
+        const BBOX_CLIP_RUNGS = new Set(['province', 'state', 'county', 'district', 'neighborhood', 'poi', 'locality']);
+        if (rung && !BBOX_CLIP_RUNGS.has(rung)) return null;
         const parts = rawBbox.split(',').map(Number);
         return parts.length === 4 && parts.every(Number.isFinite)
             ? parts as [number, number, number, number]
             : null;
-    }, [rawBbox]);
+    }, [rawBbox, rung]);
     // City-center reference point for radius filtering.
     // Removes pins whose coordinates fall in a completely different city/area (wrong OTV data).
     // Only applied when the destination maps to a known city center.
@@ -494,8 +507,12 @@ function SearchMapView({
     const EXPAND_MARGIN = 1.5;
     const [mapZoom, setMapZoom] = React.useState<number>(Number.POSITIVE_INFINITY);
     const [showAllCityOverride, setShowAllCityOverride] = React.useState(false);
-    const showAllCity = showAllCityOverride
-        || (!!districtBbox && bboxFitZoom !== null && mapZoom < bboxFitZoom - EXPAND_MARGIN);
+    // showAllCity removes the bbox clip so users can see the wider area.
+    // Never auto-trigger for province/state/county: those boundaries are authoritative and
+    // zooming out from a province shouldn't leak hotels from a neighbouring province.
+    const PROVINCE_RUNGS = new Set(['province', 'state', 'county']);
+    const isProvinceRung = rung ? PROVINCE_RUNGS.has(rung) : false;
+    const showAllCity = !isProvinceRung && (showAllCityOverride || (!!districtBbox && mapZoom < DISTRICT_ZOOM_THRESHOLD));
 
     // Read and consume the map viewport that was saved just before navigating to a property page.
     // On back navigation the component remounts fresh — this lazy initializer runs synchronously
@@ -698,8 +715,13 @@ function SearchMapView({
     }, [districtBbox]);
 
     const fallbackCoords = useMemo(() => {
+        // URL lat/lng (from autocomplete) is the most accurate center — prefer it over
+        // the hardcoded CITY_COORDS list which only covers a small set of major cities.
+        if (rawLat && rawLng && Number.isFinite(rawLat) && Number.isFinite(rawLng)) {
+            return { lat: rawLat, lng: rawLng };
+        }
         return destination ? getDestinationCoords(destination) : null;
-    }, [destination]);
+    }, [destination, rawLat, rawLng]);
 
     // ── Handlers ────────────────────────────────────────────
 

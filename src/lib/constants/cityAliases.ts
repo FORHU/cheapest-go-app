@@ -328,7 +328,7 @@ export const CITY_ALIASES: Record<string, Record<string, string>> = {
         'princeton nj': 'Princeton', 'atlantic city': 'Atlantic City',
         'hoboken': 'Hoboken', 'jersey city': 'Jersey City',
         'buffalo ny': 'Buffalo', 'rochester ny': 'Rochester', 'syracuse ny': 'Syracuse',
-        'albany ny': 'Albany', 'ithaca ny': 'Cortland', 'saratoga springs': 'Saratoga Springs',
+        'albany ny': 'Albany', 'ithaca ny': 'Ithaca', 'saratoga springs': 'Saratoga Springs',
         'the hamptons': 'Southampton', 'southampton ny': 'Southampton', 'montauk': 'Montauk',
         'hudson ny': 'Hudson', 'woodstock ny': 'Woodstock',
     },
@@ -1333,7 +1333,7 @@ export const CITY_ALIASES: Record<string, Record<string, string>> = {
         'juderia cordoba': 'Córdoba', 'mezquita area': 'Córdoba',
         // Galicia / Camino de Santiago
         'santiago de compostela old town': 'Santiago de Compostela',
-        'a coruna city': 'Vigo', 'lugo city': 'Lugo', 'ourense city': 'Ourense',
+        'a coruna city': 'A Coruña', 'lugo city': 'Lugo', 'ourense city': 'Ourense',
         'vigo city': 'Vigo', 'pontevedra city': 'Pontevedra',
         'o grove': 'O Grove', 'illa de arousa': 'Vilagarcía de Arousa',
         // Navarra
@@ -5007,7 +5007,7 @@ export const CITY_ALIASES: Record<string, Record<string, string>> = {
         'thanjavur': 'Thanjavur', 'tanjore': 'Thanjavur', 'brihadeeswara': 'Thanjavur',
         'kanchipuram': 'Kanchipuram', 'mahabalipuram': 'Mahabalipuram', 'mammallapuram': 'Mahabalipuram',
         'rameswaram': 'Madurai', 'kanyakumari': 'Kanyakumari', 'tirunelveli': 'Tirunelveli',
-        'coimbatore': 'Coimbatore', 'tiruchirapalli': 'Madurai', 'trichy': 'Madurai',
+        'coimbatore': 'Coimbatore', 'tiruchirapalli': 'Trichy', 'trichy': 'Trichy',
         'tiruppur': 'Coimbatore', 'erode': 'Erode', 'salem': 'Salem', 'vellore': 'Vellore',
         'tiruvannamalai': 'Tiruvannamalai', 'chidambaram': 'Chidambaram',
         // Andhra Pradesh
@@ -5074,7 +5074,7 @@ export const CITY_ALIASES: Record<string, Record<string, string>> = {
         'guwahati': 'Guwahãti', 'dispur': 'Guwahãti', 'paltan bazaar': 'Guwahãti',
         'majuli': 'Jorhat', 'sivasagar': 'Jorhat', 'dibrugarh': 'Dibrugarh',
         'shillong city': 'Shillong', 'cherrapunji': 'Cherrapunji (Sohra)', 'mawlynnong': 'Cherrapunji (Sohra)',
-        'aizawl': 'Shillong', 'imphal': 'Shillong', 'kohima': 'Kohima',
+        'aizawl': 'Aizawl', 'imphal': 'Imphal', 'kohima': 'Kohima',
         'agartala': 'Agartala', 'itanagar': 'Itanagar',
         // Karnataka — more areas
         'chikmagalur': 'Hassan', 'sakleshpur': 'Hassan',
@@ -5823,8 +5823,10 @@ export const CITY_ALIASES: Record<string, Record<string, string>> = {
         // Cordillera — Ifugao / Kalinga / Mountain Province
         'banaue': 'Banaue', 'banaue rice terraces': 'Banaue', 'batad': 'Banaue',
         'hapao': 'Banaue', 'hungduan': 'Banaue', 'kiangan': 'Banaue',
-        'bontoc mountain province': 'Baguio',
-        'tinglayan': 'Baguio', 'kalinga tribe': 'Baguio',
+        // Mountain Province — capital is Bontoc, NOT Baguio
+        'bontoc mountain province': 'Bontoc',
+        // Kalinga Province — capital is Tabuk, NOT Baguio
+        'tinglayan': 'Tabuk', 'kalinga tribe': 'Tabuk',
         'bangued': 'Bangued', 'abra province': 'Bangued',
         // Aklan province
         'kalibo': 'Kalibo', 'ati-atihan': 'Kalibo', 'kalibo airport area': 'Kalibo',
@@ -5868,8 +5870,8 @@ export const CITY_ALIASES: Record<string, Record<string, string>> = {
         'mabinay': 'Dumaguete', 'mabinay caves': 'Dumaguete',
         'bayawan': 'Bayawan', 'guihulngan': 'Guihulngan',
         // Leyte / Samar extras
-        'maasin city': 'Ormoc', 'maasin southern leyte': 'Ormoc',
-        'baybay leyte': 'Baybay', 'hilongos leyte': 'Hilongos', 'sogod leyte': 'Ormoc',
+        'maasin city': 'Maasin', 'maasin southern leyte': 'Maasin',
+        'baybay leyte': 'Baybay', 'hilongos leyte': 'Hilongos', 'sogod leyte': 'Maasin',
         'catbalogan': 'Catbalogan', 'catbalogan city': 'Catbalogan',
         'calbayog': 'Calbayog', 'calbayog city': 'Calbayog',
         'borongan': 'Borongan', 'eastern samar': 'Borongan',
@@ -6030,7 +6032,7 @@ export const CITY_ALIASES: Record<string, Record<string, string>> = {
         'piddig ilocos norte': 'Laoag', 'solsona ilocos norte': 'Laoag',
         // Cagayan Valley
         'aparri cagayan': 'Aparri', 'abulug cagayan': 'Aparri',
-        'gonzaga cagayan': 'Aparri', 'sta teresita cagayan': 'Tagum',
+        'gonzaga cagayan': 'Aparri', 'sta teresita cagayan': 'Aparri',
         'lasam cagayan': 'Aparri', 'baggao cagayan': 'Aparri',
         'gattaran cagayan': 'Aparri', 'tuao cagayan': 'Tuguegarao',
         'ilagan isabela': 'Ilagan', 'cauayan isabela': 'Cauayan',
@@ -6042,11 +6044,11 @@ export const CITY_ALIASES: Record<string, Record<string, string>> = {
         // Iloilo extras
         'oton iloilo': 'Iloilo', 'pototan iloilo': 'Pototan',
         'duenas iloilo': 'Iloilo', 'barotac nuevo': 'Iloilo',
-        'barotac viejo': 'Iloilo', 'san enrique iloilo': 'Bacolod',
+        'barotac viejo': 'Iloilo', 'san enrique iloilo': 'Iloilo',
         'passi city': 'Iloilo', 'jordan guimaras': 'Jordan',
         'guimaras island': 'Jordan', 'buenavista guimaras': 'Buenavista',
         // Bacolod / Negros Occidental extras
-        'talisay city negros': 'Cebu', 'talisay negros occidental': 'Cebu',
+        'talisay city negros': 'Bacolod', 'talisay negros occidental': 'Bacolod',
         'silay city': 'Silay', 'victorias negros': 'Bacolod',
         'kabankalan city': 'Kabankalan', 'himamaylan city': 'Bacolod',
         'murcia negros': 'Murcia', 'la carlota': 'Bacolod',
@@ -6057,7 +6059,7 @@ export const CITY_ALIASES: Record<string, Record<string, string>> = {
         'impasugong': 'Malaybalay', 'dole pineapple bukidnon': 'Manolo Fortich',
         'manolo fortich': 'Manolo Fortich', 'del monte bukidnon': 'Manolo Fortich',
         'maramag bukidnon': 'Maramag', 'kibawe bukidnon': 'Malaybalay',
-        'don carlos bukidnon': 'Malaybalay', 'quezon bukidnon': 'Lucena',
+        'don carlos bukidnon': 'Malaybalay', 'quezon bukidnon': 'Malaybalay',
         // Misamis Occidental extras
         'tangub city': 'Ozamis City', 'jimenez misamis occidental': 'Oroquieta',
         'plaridel misamis occidental': 'Plaridel',
@@ -6160,21 +6162,21 @@ export const CITY_ALIASES: Record<string, Record<string, string>> = {
         // Ifugao extras (Cordillera)
         'lagawe ifugao': 'Banaue', 'lamut ifugao': 'Banaue',
         'hingyon ifugao': 'Banaue', 'aguinaldo ifugao': 'Banaue',
-        // Kalinga extras
-        'tabuk kalinga': 'Baguio', 'rizal kalinga': 'Antipolo',
-        'pinukpuk kalinga': 'Baguio',
-        // Mountain Province extras
-        'bontoc town': 'Baguio', 'besao mountain province': 'Baguio',
-        'sabangan mountain province': 'Baguio', 'tadian mountain province': 'Baguio',
+        // Kalinga extras — capital is Tabuk (NOT Baguio; different province)
+        'tabuk kalinga': 'Tabuk', 'rizal kalinga': 'Tabuk',
+        'pinukpuk kalinga': 'Tabuk',
+        // Mountain Province extras — capital is Bontoc (NOT Baguio; different province)
+        'bontoc town': 'Bontoc', 'besao mountain province': 'Bontoc',
+        'sabangan mountain province': 'Bontoc', 'tadian mountain province': 'Bontoc',
         // Benguet extras
         'tublay benguet': 'Baguio', 'kapangan benguet': 'Baguio',
         'kibungan benguet': 'Baguio', 'atok benguet': 'Baguio',
         'kabayan benguet': 'Baguio', 'buguias benguet': 'Baguio',
         // Apayao
-        'luna apayao': 'Laoag', 'kabugao apayao': 'Baguio',
+        'luna apayao': 'Laoag', 'kabugao apayao': 'Laoag',
         // Abra extras
-        'lagangilang abra': 'Bangued', 'tayum abra': 'Vigan',
-        'pidigan abra': 'Vigan', 'dolores abra': 'Dolores',
+        'lagangilang abra': 'Bangued', 'tayum abra': 'Bangued',
+        'pidigan abra': 'Bangued', 'dolores abra': 'Dolores',
         // More Mindanao barangays/areas
         'tamontaka cotabato': 'Cotabato', 'rosary heights cotabato': 'Cotabato',
         'kalanganan cotabato': 'Cotabato', 'poblacion cotabato': 'Cotabato',
@@ -6211,7 +6213,7 @@ export const CITY_ALIASES: Record<string, Record<string, string>> = {
         'narvacan ilocos sur alt': 'Vigan', 'bantay ilocos sur': 'Vigan',
         'sta catalina negros oriental': 'Santa Catalina',
         'sta barbara iloilo': 'Santa Barbara',
-        'mina iloilo': 'Iloilo', 'lemery iloilo': 'Batangas',
+        'mina iloilo': 'Iloilo', 'lemery iloilo': 'Iloilo',
         'tubungan iloilo': 'Iloilo', 'tigbauan iloilo': 'Iloilo',
         // Catanduanes Island (not previously covered)
         'virac': 'Virac', 'virac catanduanes': 'Virac', 'catanduanes island': 'Virac',
@@ -6222,7 +6224,7 @@ export const CITY_ALIASES: Record<string, Record<string, string>> = {
         'gota beach caramoan': 'Caramoan', 'lahos island': 'Caramoan',
         // Ticao Island (between Masbate and Sorsogon)
         'ticao island': 'San Jacinto', 'san jacinto masbate': 'San Jacinto',
-        'monreal masbate': 'Romblon',
+        'monreal masbate': 'Masbate',
         // Tawi-Tawi (southernmost province)
         'bongao': 'Zamboanga', 'bongao tawi-tawi': 'Zamboanga', 'tawi-tawi': 'Zamboanga',
         'sapa-sapa': 'Zamboanga', 'tandubas': 'Zamboanga',
@@ -6244,17 +6246,17 @@ export const CITY_ALIASES: Record<string, Record<string, string>> = {
         'nueva valencia guimaras': 'Nueva Valencia', 'san lorenzo guimaras': 'San Lorenzo',
         'sibunag guimaras': 'Sibunag',
         // Palawan extras
-        'narra palawan': 'Puerto Princesa', 'quezon palawan': 'Lucena',
+        'narra palawan': 'Puerto Princesa', 'quezon palawan': 'Puerto Princesa',
         'rio tuba': 'Puerto Princesa', 'bataraza palawan': 'Puerto Princesa',
         'brooke point': "Brooke's Point", 'sofronio espanola': 'Puerto Princesa',
         // More Davao del Sur
         'digos city extras': 'Digos', 'hagonoy davao del sur': 'Hagonoy',
         'padada davao del sur': 'Davao',
         // Lanao del Sur
-        'marawi city': 'Iligan', 'malabang lanao del sur': 'Pagadian',
+        'marawi city': 'Iligan', 'malabang lanao del sur': 'Iligan',
         'wao lanao del sur': 'Iligan', 'sultan naga dimaporo': 'Iligan',
         // More Zamboanga Sibugay
-        'kabasalan': 'Zamboanga', 'talusan zamboanga sibugay': 'Pagadian',
+        'kabasalan': 'Zamboanga', 'talusan zamboanga sibugay': 'Ipil',
         // More Aurora province
         'baler aurora': 'Baler', 'aurora province': 'Baler',
         'casiguran aurora': 'Casiguran', 'dinalungan aurora': 'Baler',
@@ -6267,9 +6269,9 @@ export const CITY_ALIASES: Record<string, Record<string, string>> = {
         'nueva era ilocos norte': 'Laoag',
         // More Ilocos Sur
         'santa maria ilocos sur': 'Santa Maria', 'santa maria church': 'Santa Maria',
-        // Kalinga extras
-        'balbalan kalinga': 'Baguio', 'lubuagan kalinga': 'Baguio',
-        'tanudan kalinga': 'Baguio',
+        // Kalinga extras — capital is Tabuk
+        'balbalan kalinga': 'Tabuk', 'lubuagan kalinga': 'Tabuk',
+        'tanudan kalinga': 'Tabuk',
         // Cebu City extras
         'talamban cebu': 'Cebu', 'banawa cebu': 'Cebu',
         'jaclian cebu': 'Cebu', 'inayawan cebu': 'Cebu',
@@ -8898,8 +8900,8 @@ export const CITY_ALIASES: Record<string, Record<string, string>> = {
         'playa el sunzal': 'La Libertad',
         'suchitoto': 'Suchitoto', 'lake suchitlan': 'Suchitoto',
         'santa ana sv': 'Santa Ana (und Umgebung)', 'chalchuapa': 'Santa Ana (und Umgebung)', 'tazumal ruins': 'Santa Ana (und Umgebung)',
-        'san miguel sv': 'Malolos', 'usulutan': 'Usulutan',
-        'playa el cuco': 'Malolos',
+        'san miguel sv': 'San Miguel', 'usulutan': 'Usulutan',
+        'playa el cuco': 'El Cuco',
         'el tunco surf': 'La Libertad', 'playa el zonte': 'La Libertad',
         // ── extended coverage ──
         'san salvador centro': 'San Salvador', 'escalon': 'San Salvador',
@@ -11984,6 +11986,12 @@ export const CITY_ALIASES: Record<string, Record<string, string>> = {
  */
 export const HOTEL_DB_CITY_MAP: Record<string, string> = {
     // ETG German localizations — "und Umgebung" = "and surroundings"
+    // Confirmed against live hotel_content: ETG/OTV (German OTA) stores these under German names.
+    'Tokyo|JP':                     'Tokio',       // 500 DB rows as "Tokio", 1 as "Tokyo"
+    'Beijing|CN':                   'Peking',      // 500 as "Peking", 2 as "Beijing"
+    'Cape Town|ZA':                 'Kapstadt',    // 500 as "Kapstadt", 1 as "Cape Town"
+    'New Delhi|IN':                 'Neu Delhi',   // 500 as "Neu Delhi", 1 as "New Delhi"
+    'Lviv|UA':                      'Lemberg',     // 86 as "Lemberg", 0 as "Lviv"
     'Rome|IT':                      'Rom',
     'Athens|GR':                    'Athen',
     'Prague|CZ':                    'Prag',
@@ -12010,6 +12018,10 @@ export const HOTEL_DB_CITY_MAP: Record<string, string> = {
     'Davao City|PH':                'Davao',
     'Iloilo City|PH':               'Iloilo',
     'Zamboanga City|PH':            'Zamboanga',
+    'Baguio City|PH':               'Baguio',
+    'Angeles City|PH':              'Angeles',
+    'Cagayan de Oro City|PH':       'Cagayan de Oro',
+    'General Santos City|PH':       'General Santos',
     'Santorini|GR':                 'Santorini Island',
     'Antigua|GT':                   'Antigua Guatemala',
     'Copan|HN':                     'Copan Ruinas',
@@ -12051,6 +12063,18 @@ export const HOTEL_DB_CITY_MAP: Record<string, string> = {
     'Tashkent|UZ':                  'Taschkent',
     'Macau|MO':                     'Macao',
     'Kathmandu|NP':                 'Katmandu',
+    // ── German names for Polish cities (ETG uses historical German names) ────
+    'Wroclaw|PL':                   'Breslau',     // 469 as "Breslau", 2 as "Wroclaw"
+    'Wrocław|PL':                   'Breslau',     // Polish spelling variant
+    'Poznan|PL':                    'Posen',       // 369 as "Posen", 0 as "Poznan"
+    'Poznań|PL':                    'Posen',       // Polish spelling variant
+    'Szczecin|PL':                  'Stettin',     // 219 as "Stettin", 15 as "Szczecin"
+    'Bydgoszcz|PL':                 'Bromberg',    // 162 as "Bromberg", 1 as "Bydgoszcz"
+    // ── Kazakhstan capital (ETG uses old name "Astana") ───────────────────
+    'Nur-Sultan|KZ':                'Astana',      // renamed back to Astana 2022; ETG still uses "Astana"
+    // ── Indian city alternate names ───────────────────────────────────────
+    'Trivandrum|IN':                'Thiruvananthapuram', // 211 as "Thiruvananthapuram", 0 as "Trivandrum"
+    'Calicut|IN':                   'Kozhikode',   // 89 as "Kozhikode", 0 as "Calicut"
     // ── German names for German cities ──────────────────────────────────────
     'Munich|DE':                    'München',
     'Cologne|DE':                   'Köln',
@@ -12124,7 +12148,7 @@ export const HOTEL_DB_CITY_MAP: Record<string, string> = {
     'Vung Tau|VN':                  'Vung Tàu',
     // ── Other name variants ──────────────────────────────────────────────────
     'Larnaca|CY':                   'Larnaka',
-    'Nicosia|CY':                   'North Nicosia',
+    'Nicosia|CY':                   'Nikosia',     // 118 as "Nikosia", 32 as "Nicosia", 27 as "North Nicosia"
     'St. Paul|MT':                  "St. Paul's Bay",
     'Parnu|EE':                     'Pärnu',
     'Reykjavik|IS':                 'Reykjavík',

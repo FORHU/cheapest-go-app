@@ -261,8 +261,8 @@ export function groupRoomsByName(roomTypes: RoomType[]): GroupedRoom[] {
                 existing.lowestPrice = priceInfo.amount;
             }
 
-            // Merge photos if new ones found
-            if (roomType.roomPhotos?.length && !existing.roomPhotos?.length) {
+            // Keep the richer photo set
+            if ((roomType.roomPhotos?.length ?? 0) > (existing.roomPhotos?.length ?? 0)) {
                 existing.roomPhotos = roomType.roomPhotos;
             }
         } else {
@@ -299,6 +299,103 @@ export function groupRoomsByName(roomTypes: RoomType[]): GroupedRoom[] {
     });
 
     return Array.from(groups.values());
+}
+
+const OCCUPANCY_MAP: Record<string, string> = {
+    single:    'Single · Sleeps 1',
+    double:    'Double · Sleeps 2',
+    triple:    'Triple · Sleeps 3',
+    quadruple: 'Quadruple · Sleeps 4',
+    quintuple: 'Quintuple · Sleeps 5',
+    sextuple:  'Sextuple · Sleeps 6',
+};
+
+/** Extract the words in fullName that are absent from baseName (case-insensitive).
+ *  Occupancy words (triple, quadruple…) are expanded to "Triple · Sleeps 3" labels. */
+function extractDifferentiator(fullName: string, baseName: string): string | undefined {
+    if (fullName === baseName) return undefined;
+    const norm = (s: string) => s.toLowerCase();
+    const baseWords = new Set(norm(baseName).split(/\s+/));
+    const extra = fullName.split(/\s+/).filter(w => !baseWords.has(norm(w)));
+    if (!extra.length) return undefined;
+    // If any extra word is an occupancy keyword, use its rich label
+    for (const w of extra) {
+        const rich = OCCUPANCY_MAP[norm(w)];
+        if (rich) return rich;
+    }
+    return extra.map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
+}
+
+/**
+ * Merge grouped rooms that share an identical photo URL set into a single card.
+ * Groups with no photos are never merged.
+ * The merged card uses the shortest room name as title and the richest amenity set.
+ * Each rate option gets a `roomDifferentiator` badge for the words that distinguish
+ * its source room from the base title (e.g. "Triple", "Quadruple").
+ */
+export function mergeGroupsByPhotos(groups: GroupedRoom[]): GroupedRoom[] {
+    if (!groups.length) return groups;
+
+    const photoGroups = new Map<string, GroupedRoom[]>();
+
+    for (const group of groups) {
+        const key = group.roomPhotos?.length
+            ? [...group.roomPhotos].sort().join('\x00')
+            : `\x01nophoto\x01${group.roomName}`;
+        const bucket = photoGroups.get(key) ?? [];
+        bucket.push(group);
+        photoGroups.set(key, bucket);
+    }
+
+    const result: GroupedRoom[] = [];
+
+    for (const bucket of photoGroups.values()) {
+        if (bucket.length === 1) {
+            result.push(bucket[0]);
+            continue;
+        }
+
+        // Base title = shortest room name in the bucket
+        const baseTitle = bucket.map(g => g.roomName).reduce((a, b) => a.length <= b.length ? a : b);
+
+        // Richest amenity set
+        const richestAmenities = bucket.map(g => g.amenities ?? []).reduce((a, b) => a.length >= b.length ? a : b);
+
+        // Collect all rates with differentiator badge + sourceName
+        const allRates: RateOption[] = [];
+        for (const group of bucket) {
+            const diff = extractDifferentiator(group.roomName, baseTitle);
+            for (const rate of group.rateOptions) {
+                allRates.push({ ...rate, roomDifferentiator: diff, sourceName: group.roomName });
+            }
+        }
+
+        // Sort cheapest first across all merged room types
+        allRates.sort((a, b) => a.price - b.price);
+
+        // Deduplicate: include roomDifferentiator so variants aren't collapsed into each other
+        const seen = new Set<string>();
+        const dedupedRates = allRates.filter(rate => {
+            const cancelCat = rate.refundable === true ? 'free' : rate.refundable === false ? 'nrfn' : 'check';
+            const k = `${rate.boardName || 'Room only'}|${cancelCat}|${rate.variantLabel || ''}|${rate.roomDifferentiator || ''}`;
+            if (seen.has(k)) return false;
+            seen.add(k);
+            return true;
+        });
+
+        const cheapest = dedupedRates[0];
+        result.push({
+            ...bucket[0],
+            roomName: baseTitle,
+            amenities: richestAmenities,
+            rateOptions: dedupedRates,
+            lowestPrice: cheapest?.price ?? 0,
+            currency: cheapest?.currency ?? bucket[0].currency,
+            roomTypes: bucket.flatMap(g => g.roomTypes),
+        });
+    }
+
+    return result;
 }
 
 /**

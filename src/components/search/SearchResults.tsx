@@ -64,14 +64,28 @@ const SearchResultsContent = ({ initialProperties = [], totalCount: initialTotal
     const districtName = rawSearchParams?.districtName as string | undefined;
     const canonicalCity = rawSearchParams?.canonicalCity as string | undefined;
     const rawBbox = rawSearchParams?.bbox as string | undefined;
+    const rung = rawSearchParams?.rung as string | undefined;
     const districtBbox = React.useMemo<[number, number, number, number] | null>(() => {
         if (!rawBbox) return null;
+        // Clip results to bbox for rungs with precise administrative boundaries.
+        // Province/state/county: hotels outside the boundary are a different jurisdiction
+        //   (e.g. Baguio City is outside La Union province and should be excluded).
+        // Sub-city (district/neighborhood/poi/locality): narrow area precision.
+        // Do NOT clip for city/municipality — adjacent municipalities are valid
+        //   (e.g. Lapu-Lapu/Mactan Island outside Cebu City admin bbox is still a valid result).
+        // Do NOT clip for region/country — too broad.
+        const BBOX_CLIP_RUNGS = new Set(['province', 'state', 'county', 'district', 'neighborhood', 'poi', 'locality']);
+        if (rung && !BBOX_CLIP_RUNGS.has(rung)) return null;
         const parts = rawBbox.split(',').map(Number);
         return parts.length === 4 && parts.every(Number.isFinite)
             ? parts as [number, number, number, number]
             : null;
-    }, [rawBbox]);
-    const [showAllCity, setShowAllCity] = React.useState(false);
+    }, [rawBbox, rung]);
+    // Province/state/county boundaries are authoritative — never allow expanding beyond them.
+    const PROVINCE_RUNGS = new Set(['province', 'state', 'county']);
+    const isProvinceRung = rung ? PROVINCE_RUNGS.has(rung) : false;
+    const [showAllCityState, setShowAllCity] = React.useState(false);
+    const showAllCity = isProvinceRung ? false : showAllCityState;
 
     // Reset to page 1 whenever filters change
     React.useEffect(() => { setPage(1); }, [propertyTypes, boardTypes, refundable]);
