@@ -472,12 +472,30 @@ function SearchMapView({
     // Sidebar list expansion: tracks desktop map zoom + manual button override.
     // The map handles its own marker filtering internally via currentZoom so
     // there is no feedback loop even when showAllCity expands the list.
-    // Threshold 11: fitBounds on a ~10km district in the split layout's narrow
-    // map column yields zoom ≈ 11.6, which is safely above 11 but below 12.
-    const DISTRICT_ZOOM_THRESHOLD = 11;
-    const [mapZoom, setMapZoom] = React.useState<number>(DISTRICT_ZOOM_THRESHOLD + 1);
+    //
+    // The threshold has to scale with the searched area. A fixed value tuned for
+    // ~10km districts (fitBounds yields zoom ≈ 11.6 in the split layout's narrow
+    // map column) treats every larger place as "already zoomed out": La Union is
+    // a province spanning ~89km, which fits at ≈ zoom 8, so a constant 11 switched
+    // the bbox filter off on first paint and let neighbouring Baguio back into the
+    // list. Deriving the fit zoom from the bbox keeps districts behaving exactly as
+    // before while letting an area rung hold its own boundary.
+    const bboxFitZoom = React.useMemo(() => {
+        if (!districtBbox) return null;
+        const [minLng, minLat, maxLng, maxLat] = districtBbox;
+        const span = Math.max(maxLng - minLng, maxLat - minLat);
+        if (!(span > 0)) return null;
+        // 360° of longitude spans one tile at z0; the -1 approximates the map
+        // column being roughly half the viewport width in the split layout.
+        return Math.log2(360 / span) - 1;
+    }, [districtBbox]);
+    // Expand only once the user has zoomed a stop and a half out from the fit —
+    // enough to be a deliberate "show me wider", not incidental framing slack.
+    const EXPAND_MARGIN = 1.5;
+    const [mapZoom, setMapZoom] = React.useState<number>(Number.POSITIVE_INFINITY);
     const [showAllCityOverride, setShowAllCityOverride] = React.useState(false);
-    const showAllCity = showAllCityOverride || (!!districtBbox && mapZoom < DISTRICT_ZOOM_THRESHOLD);
+    const showAllCity = showAllCityOverride
+        || (!!districtBbox && bboxFitZoom !== null && mapZoom < bboxFitZoom - EXPAND_MARGIN);
 
     // Read and consume the map viewport that was saved just before navigating to a property page.
     // On back navigation the component remounts fresh — this lazy initializer runs synchronously

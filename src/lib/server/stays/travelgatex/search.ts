@@ -1235,6 +1235,9 @@ export interface TgxSearchParams {
     rooms?: number;
     /** Granularity ladder rung — drives the resolution path. See ADR-0006. */
     rung?: DestinationRung;
+    /** The rung the user originally picked, preserved when the stream route forces
+     *  a province down to 'city' for TGX. Lets catalog queries bound by bbox. */
+    areaRung?: DestinationRung;
     /** Place centre (point rungs are searched around this via ETG serp/geo). */
     lat?: number;
     lng?: number;
@@ -1499,6 +1502,8 @@ async function runCityFallback(
     prefetchDestCode: Promise<string | undefined>,
     centerLat?: number,
     centerLng?: number,
+    rung?: DestinationRung,
+    areaBbox?: [number, number, number, number],
 ) {
     // Ensure the DB-persisted failed codes are loaded before we check the set.
     await loadFailedDestCodes();
@@ -1644,7 +1649,22 @@ async function runCityFallback(
             const sqlAdmin = getSqlAdmin();
             let catalogRows: { hotel_id: string; lat?: number; lng?: number }[];
 
-            if (centerLat && centerLng) {
+            // Province rungs bound the catalog by their real administrative extent
+            // rather than a circle — see getInstantHotelCatalog for why (La Union's
+            // 50km radius swallows Baguio). Both paths must agree or phase 1 and
+            // phase 2 return different hotel sets for the same search.
+            const provinceBbox = rung === 'province' && areaBbox?.length === 4 ? areaBbox : null;
+
+            if (provinceBbox) {
+                const [minLng, minLat, maxLng, maxLat] = provinceBbox;
+                catalogRows = await sqlAdmin<{ hotel_id: string; lat: number; lng: number }[]>`
+                    SELECT hotel_id, lat, lng FROM hotel_content
+                    WHERE lat BETWEEN ${minLat} AND ${maxLat}
+                      AND lng BETWEEN ${minLng} AND ${maxLng}
+                      AND lat != 0 AND lng != 0
+                      AND hotel_id ~ '^[0-9]+$'
+                    LIMIT 1000`;
+            } else if (centerLat && centerLng) {
                 // Radius-based lookup — covers cities that span admin boundaries without hardcoding.
                 const RADIUS_KM = 50;
                 const DEG = RADIUS_KM / 111;
@@ -1840,7 +1860,7 @@ async function _runTgxSearch(params: TgxSearchParams): Promise<any> {
             // Passing countryCode creates a different key ("seoul:kr") that misses cache, forces a
             // live TGX destinationSearcher call, and often returns undefined on production.
             resolveTgxDestinationCode(cityName, undefined).catch(() => undefined),
-            params.lat, params.lng,
+            params.lat, params.lng, params.areaRung, params.bbox,
         );
     } else {
         throw new Error('destinationCode, hotelCode, or cityName is required');
