@@ -1,8 +1,9 @@
 /**
  * GET /api/cron/etg-dump-sync
  *
- * Streams the ETG hotel content dump and upserts room_groups + ratehawk_hid
- * into hotel_content for every hotel whose numeric hid matches a row we have.
+ * Streams the ETG hotel content dump and upserts hotel_content with all static
+ * fields: room_groups, check_in/out_time, description, amenity_groups, images,
+ * serp_filters, metapolicy_struct, metapolicy_extra_info, ratehawk_hid.
  *
  * ETG dump format: JSONL compressed with Zstandard (.jsonl.zst)
  * Each line: { id: string (slug), hid: number, room_groups: [...], images: [...], ... }
@@ -49,7 +50,35 @@ async function getDumpUrl(type: 'full' | 'incremental'): Promise<string> {
     return url;
 }
 
-interface BatchRow { hid: string; slug: string; roomGroupsJson: string }
+function resolveImg(u: unknown): string | null {
+    return typeof u === 'string' ? u.replace(/\{size\}/g, '1024x768') : null;
+}
+
+function parseDescription(descStruct: unknown): string | null {
+    if (!Array.isArray(descStruct) || !descStruct.length) return null;
+    return (descStruct as any[])
+        .map((s: any) => s.paragraphs?.join(' ') ?? '')
+        .filter(Boolean)
+        .join('\n\n') || null;
+}
+
+function parseAmenityGroups(rawGroups: unknown): object[] {
+    if (!Array.isArray(rawGroups)) return [];
+    return (rawGroups as any[])
+        .map((g: any) => ({
+            group_name: g.group_name ?? '',
+            amenities: Array.isArray(g.amenities) ? g.amenities : [],
+            non_free_amenities: Array.isArray(g.non_free_amenities) ? g.non_free_amenities : [],
+        }))
+        .filter((g: any) => g.group_name);
+}
+
+function parseHotelImages(rawImages: unknown): string[] {
+    if (!Array.isArray(rawImages)) return [];
+    return (rawImages as unknown[]).map(resolveImg).filter((u): u is string => u !== null).slice(0, 20);
+}
+
+interface BatchRow { hid: string; slug: string; rg: string; x: string }
 interface Stats { linesRead: number; matched: number; withGroups: number; written: number; skipped: number; errors: number }
 
 async function flushBatch(sql: ReturnType<typeof getSqlAdmin>, batch: BatchRow[], stats: Stats) {
@@ -59,12 +88,23 @@ async function flushBatch(sql: ReturnType<typeof getSqlAdmin>, batch: BatchRow[]
             UPDATE hotel_content AS hc
             SET room_groups           = d.rg::jsonb,
                 ratehawk_hid          = COALESCE(hc.ratehawk_hid, d.slug),
-                room_groups_seeded_at = NOW()
+                room_groups_seeded_at = NOW(),
+                check_in_time         = COALESCE(NULLIF(d.x->>'ci', ''), hc.check_in_time),
+                check_out_time        = COALESCE(NULLIF(d.x->>'co', ''), hc.check_out_time),
+                description           = COALESCE(NULLIF(d.x->>'desc', ''), hc.description),
+                amenity_groups        = CASE WHEN jsonb_array_length(d.x->'ag') > 0 THEN d.x->'ag' ELSE hc.amenity_groups END,
+                images                = CASE WHEN jsonb_array_length(d.x->'imgs') > 0
+                                             THEN ARRAY(SELECT jsonb_array_elements_text(d.x->'imgs'))
+                                             ELSE hc.images END,
+                serp_filters          = ARRAY(SELECT jsonb_array_elements_text(d.x->'sf')),
+                metapolicy_struct     = CASE WHEN d.x->'mp' IS NOT NULL AND d.x->>'mp' != 'null' THEN d.x->'mp' ELSE hc.metapolicy_struct END,
+                metapolicy_extra_info = COALESCE(NULLIF(d.x->>'mpe', ''), hc.metapolicy_extra_info)
             FROM unnest(
                 ${sql.array(batch.map(r => r.hid))}::text[],
                 ${sql.array(batch.map(r => r.slug))}::text[],
-                ${sql.array(batch.map(r => r.roomGroupsJson))}::text[]
-            ) AS d(hotel_id, slug, rg)
+                ${sql.array(batch.map(r => r.rg))}::text[],
+                ${sql.array(batch.map(r => r.x))}::jsonb[]
+            ) AS d(hotel_id, slug, rg, x)
             WHERE hc.hotel_id = d.hotel_id
         `;
         stats.written += batch.length;
@@ -73,9 +113,19 @@ async function flushBatch(sql: ReturnType<typeof getSqlAdmin>, batch: BatchRow[]
             try {
                 await sql`
                     UPDATE hotel_content
-                    SET room_groups           = ${r.roomGroupsJson}::jsonb,
+                    SET room_groups           = ${r.rg}::jsonb,
                         ratehawk_hid          = COALESCE(ratehawk_hid, ${r.slug}),
-                        room_groups_seeded_at = NOW()
+                        room_groups_seeded_at = NOW(),
+                        check_in_time         = COALESCE(NULLIF(${r.x}::jsonb->>'ci', ''), check_in_time),
+                        check_out_time        = COALESCE(NULLIF(${r.x}::jsonb->>'co', ''), check_out_time),
+                        description           = COALESCE(NULLIF(${r.x}::jsonb->>'desc', ''), description),
+                        amenity_groups        = CASE WHEN jsonb_array_length(${r.x}::jsonb->'ag') > 0 THEN ${r.x}::jsonb->'ag' ELSE amenity_groups END,
+                        images                = CASE WHEN jsonb_array_length(${r.x}::jsonb->'imgs') > 0
+                                                     THEN ARRAY(SELECT jsonb_array_elements_text(${r.x}::jsonb->'imgs'))
+                                                     ELSE images END,
+                        serp_filters          = ARRAY(SELECT jsonb_array_elements_text(${r.x}::jsonb->'sf')),
+                        metapolicy_struct     = CASE WHEN ${r.x}::jsonb->'mp' IS NOT NULL AND ${r.x}::jsonb->>'mp' != 'null' THEN ${r.x}::jsonb->'mp' ELSE metapolicy_struct END,
+                        metapolicy_extra_info = COALESCE(NULLIF(${r.x}::jsonb->>'mpe', ''), metapolicy_extra_info)
                     WHERE hotel_id = ${r.hid}
                 `;
                 stats.written++;
@@ -150,7 +200,17 @@ async function processDump(dumpUrl: string, opts: { force: boolean; dryRun: bool
             if (groups.length > 0) stats.withGroups++;
 
             if (!opts.dryRun) {
-                batch.push({ hid, slug, roomGroupsJson: JSON.stringify(groups) });
+                const extra = {
+                    ci:   hotel.check_in_time  ?? null,
+                    co:   hotel.check_out_time ?? null,
+                    desc: parseDescription(hotel.description_struct) ?? hotel.description ?? null,
+                    ag:   parseAmenityGroups(hotel.amenity_groups),
+                    imgs: parseHotelImages(hotel.images),
+                    sf:   Array.isArray(hotel.serp_filters) ? hotel.serp_filters : [],
+                    mp:   hotel.metapolicy_struct ?? null,
+                    mpe:  hotel.metapolicy_extra_info ?? null,
+                };
+                batch.push({ hid, slug, rg: JSON.stringify(groups), x: JSON.stringify(extra) });
                 if (batch.length >= BATCH) await flushBatch(sql, batch, stats);
             }
         }

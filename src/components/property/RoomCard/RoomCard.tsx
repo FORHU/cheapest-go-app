@@ -2,7 +2,39 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
-import { Bed, X, ChevronLeft, ChevronRight } from 'lucide-react';
+import {
+    Bed, X, ChevronLeft, ChevronRight,
+    Bath, Droplets, Wifi, Wind, Thermometer, Tv, UtensilsCrossed,
+    Coffee, GlassWater, Lock, Ban, Waves, Eye, Flame, Phone, Laptop,
+    Check, Users, CreditCard, type LucideIcon,
+} from 'lucide-react';
+
+const AMENITY_ICON_PATTERNS: Array<[RegExp, LucideIcon]> = [
+    [/\bbath(room|tub)?\b|toilet\b/i, Bath],
+    [/\bshower\b|bidet\b/i, Droplets],
+    [/\bwi[-\s]?fi\b|internet\b|wireless\b/i, Wifi],
+    [/\bair.?con|heating\b|fan\b|hair.?dr/i, Wind],
+    [/\btherm|temperat/i, Thermometer],
+    [/\btv\b|television\b|screen\b|cable\b/i, Tv],
+    [/\bkitch/i, UtensilsCrossed],
+    [/\bcoffee\b|kettle\b|tea\b|microwave\b/i, Coffee],
+    [/\bminibar\b|fridge\b|refrig\b|water\b/i, GlassWater],
+    [/\bsafe\b|lock\b/i, Lock],
+    [/\bnon.?smok\b|no.?smok\b|smoking\b/i, Ban],
+    [/\bjacuzzi\b|hot.?tub\b|whirlpool\b|pool\b/i, Waves],
+    [/\bview\b|vista\b/i, Eye],
+    [/\bfire.?place\b|fireplace\b/i, Flame],
+    [/\bphone\b|telephone\b/i, Phone],
+    [/\bdesk\b|workspace\b|laptop\b/i, Laptop],
+    [/\bcredit|payment\b/i, CreditCard],
+];
+
+function getAmenityIcon(label: string): LucideIcon {
+    for (const [pattern, Icon] of AMENITY_ICON_PATTERNS) {
+        if (pattern.test(label)) return Icon;
+    }
+    return Check;
+}
 import Image from 'next/image';
 import { useTranslations } from 'next-intl';
 import { getCurrencySymbol, convertCurrency } from '@/lib/currency';
@@ -46,6 +78,8 @@ export interface RoomCardProps {
     maxOccupancy?: number;
     bedType?: string;
     roomSize?: string;
+    /** Occupancy label from name parsing, used when maxOccupancy isn't available (e.g. "Double · Sleeps 2") */
+    roomOccupancy?: string;
     freeCancellation?: boolean | null;
     roomImage?: string;
     description?: string;
@@ -151,6 +185,10 @@ export const RoomCard: React.FC<RoomCardProps> = ({
     price,
     currency = 'PHP',
     nights = 1,
+    maxOccupancy,
+    bedType,
+    roomSize,
+    roomOccupancy,
     freeCancellation,
     roomImage,
     amenities,
@@ -164,6 +202,7 @@ export const RoomCard: React.FC<RoomCardProps> = ({
     const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
     useEffect(() => setMounted(true), []);
 
+    const [showAllAmenities, setShowAllAmenities] = useState(false);
     const roomPhotos = roomImages?.filter(Boolean) ?? [];
     const hasRoomPhotos = roomPhotos.length > 0;
     const lightboxImages = hasRoomPhotos
@@ -316,29 +355,53 @@ export const RoomCard: React.FC<RoomCardProps> = ({
                 <div className="flex-1 flex flex-col p-3 lg:p-4 min-w-0">
 
                     {/* Room name */}
-                    <h4 className="text-[13px] lg:text-base font-bold text-slate-900 dark:text-white mb-2 lg:mb-3">
+                    <h4 className="text-[13px] lg:text-base font-bold text-slate-900 dark:text-white mb-1">
                         {title}
                     </h4>
 
-                    {/* Amenities */}
+                    {/* Room specs: size · occupancy · bed type (Agoda-style) */}
+                    {(roomSize || maxOccupancy || roomOccupancy || bedType) && (
+                        <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 mb-2 lg:mb-3 text-[9px] lg:text-[11px] text-slate-500 dark:text-slate-400">
+                            {roomSize && <span>{roomSize}</span>}
+                            {roomSize && (maxOccupancy || roomOccupancy || bedType) && <span>·</span>}
+                            {maxOccupancy
+                                ? <span>Max {maxOccupancy} adult{maxOccupancy > 1 ? 's' : ''}</span>
+                                : roomOccupancy && <span>{roomOccupancy}</span>
+                            }
+                            {(maxOccupancy || roomOccupancy) && bedType && <span>·</span>}
+                            {bedType && <span>{bedType}</span>}
+                        </div>
+                    )}
+
+                    {/* Amenities — icon + label grid */}
                     {amenities && amenities.length > 0 && (
                         <div className="mb-3 p-2.5 lg:p-3 rounded-xl border border-slate-100 dark:border-slate-700/60 bg-slate-50 dark:bg-slate-800/40">
-                            <div className="text-[8px] lg:text-[9px] font-semibold tracking-widest uppercase text-slate-400 dark:text-slate-500 mb-1.5">
+                            <div className="text-[8px] lg:text-[9px] font-semibold tracking-widest uppercase text-slate-400 dark:text-slate-500 mb-2">
                                 Amenities
                             </div>
-                            <div className="flex flex-wrap gap-1">
-                                {amenities.map((a, i) => {
+                            <div className="grid grid-cols-2 gap-x-3 gap-y-1.5">
+                                {(showAllAmenities ? amenities : amenities.slice(0, 8)).map((a, i) => {
                                     const label = typeof a === 'string' ? a : a.name;
+                                    const Icon = getAmenityIcon(label);
                                     return (
-                                        <span
-                                            key={i}
-                                            className="text-[8px] lg:text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-white dark:bg-slate-700 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-600"
-                                        >
-                                            {label}
-                                        </span>
+                                        <div key={i} className="flex items-center gap-1.5 min-w-0">
+                                            <Icon size={11} className="shrink-0 text-slate-400 dark:text-slate-500" />
+                                            <span className="text-[9px] lg:text-[10px] text-slate-600 dark:text-slate-300 truncate">
+                                                {label}
+                                            </span>
+                                        </div>
                                     );
                                 })}
                             </div>
+                            {amenities.length > 8 && (
+                                <button
+                                    type="button"
+                                    onClick={() => setShowAllAmenities(v => !v)}
+                                    className="mt-1.5 text-[8px] lg:text-[9px] text-blue-500 dark:text-blue-400 hover:underline"
+                                >
+                                    {showAllAmenities ? 'Show less' : `+${amenities.length - 8} more`}
+                                </button>
+                            )}
                         </div>
                     )}
 
@@ -364,24 +427,36 @@ export const RoomCard: React.FC<RoomCardProps> = ({
                                     key={rate.offerId || idx}
                                     className={`flex items-center gap-2 lg:gap-4 px-3 py-2.5 lg:py-3 ${idx < effectiveRates.length - 1 ? 'border-b border-slate-100 dark:border-slate-700/60' : ''}`}
                                 >
-                                    {/* Board + variant + payment */}
+                                    {/* Board + occupancy + payment type */}
                                     <div className="flex-1 min-w-0">
-                                        {rate.roomDifferentiator && (
-                                            <span className="inline-block mb-1 text-[8px] lg:text-[9px] font-semibold px-1.5 py-0.5 rounded-full bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-700">
-                                                {rate.roomDifferentiator}
-                                            </span>
-                                        )}
                                         <div className="text-[11px] lg:text-sm font-semibold text-slate-800 dark:text-slate-200 leading-tight">
                                             {rate.boardName || t('roomOnly')}
                                         </div>
-                                        {rate.variantLabel && (
-                                            <div className="text-[8px] lg:text-[10px] text-slate-400 dark:text-slate-500 mt-0.5 leading-tight">
-                                                {rate.variantLabel}
-                                            </div>
-                                        )}
+                                        <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 mt-0.5">
+                                            {maxOccupancy && (
+                                                <span className="flex items-center gap-0.5 text-[8px] lg:text-[9px] text-slate-400 dark:text-slate-500">
+                                                    <Users size={9} className="shrink-0" />
+                                                    {maxOccupancy} adult{maxOccupancy > 1 ? 's' : ''}
+                                                </span>
+                                            )}
+                                            {rate.paymentType && (
+                                                <span className="text-[8px] lg:text-[9px] text-slate-400 dark:text-slate-500">
+                                                    {rate.paymentType}
+                                                </span>
+                                            )}
+                                            {rate.variantLabel && (
+                                                <span className="text-[8px] lg:text-[9px] text-slate-400 dark:text-slate-500 leading-tight">
+                                                    {rate.variantLabel}
+                                                </span>
+                                            )}
+                                        </div>
+                                        {/* Cancellation — mobile only (shown inline below board name) */}
+                                        <div className={`lg:hidden text-[8px] font-medium mt-0.5 ${cancelColor}`}>
+                                            {cancelText}
+                                        </div>
                                     </div>
 
-                                    {/* Cancellation policy — desktop only */}
+                                    {/* Cancellation policy — desktop */}
                                     <div className={`hidden lg:block text-[10px] font-medium shrink-0 min-w-[140px] text-right ${cancelColor}`}>
                                         {cancelText}
                                     </div>

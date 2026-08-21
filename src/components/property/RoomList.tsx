@@ -165,6 +165,7 @@ const RoomList: React.FC<RoomListProps> = ({ property, roomTypes, searchParams, 
                                 maxOccupancy={groupedRoom.maxOccupancy}
                                 bedType={groupedRoom.bedType}
                                 roomSize={groupedRoom.roomSize}
+                                roomOccupancy={groupedRoom.roomOccupancy}
                                 freeCancellation={lowestRate?.refundable}
                                 roomImage={roomImage}
                                 roomImages={groupedRoom.roomPhotos}

@@ -81,6 +81,8 @@ export interface GroupedRoom {
     roomPhotos?: string[];
     roomDescription?: string;
     amenities?: (string | { name: string })[];
+    /** Occupancy label derived from room name when maxOccupancy isn't provided (e.g. "Double · Sleeps 2") */
+    roomOccupancy?: string;
 }
 
 /**
@@ -277,7 +279,8 @@ export function groupRoomsByName(roomTypes: RoomType[]): GroupedRoom[] {
                 roomSize: roomType.roomSize,
                 roomPhotos: roomType.roomPhotos,
                 roomDescription: roomType.roomDescription,
-                amenities: roomType.amenities
+                amenities: roomType.amenities,
+                roomOccupancy: extractOccupancyFromName(normalizedName),
             });
         }
     });
@@ -303,12 +306,21 @@ export function groupRoomsByName(roomTypes: RoomType[]): GroupedRoom[] {
 
 const OCCUPANCY_MAP: Record<string, string> = {
     single:    'Single · Sleeps 1',
+    twin:      'Twin · Sleeps 2',
     double:    'Double · Sleeps 2',
     triple:    'Triple · Sleeps 3',
     quadruple: 'Quadruple · Sleeps 4',
     quintuple: 'Quintuple · Sleeps 5',
     sextuple:  'Sextuple · Sleeps 6',
 };
+
+function extractOccupancyFromName(name: string): string | undefined {
+    const lower = name.toLowerCase();
+    for (const [key, label] of Object.entries(OCCUPANCY_MAP)) {
+        if (new RegExp(`\\b${key}\\b`).test(lower)) return label;
+    }
+    return undefined;
+}
 
 /** Extract the words in fullName that are absent from baseName (case-insensitive).
  *  Occupancy words (triple, quadruple…) are expanded to "Triple · Sleeps 3" labels. */

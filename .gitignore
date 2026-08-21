@@ -39,3 +39,7 @@ OTV_STATIC_DATA.csv
 
 # Claude Code internal worktrees
 .claude/worktrees/
+
+# ETG dump files
+*.zst
+hotel-dump.jsonl

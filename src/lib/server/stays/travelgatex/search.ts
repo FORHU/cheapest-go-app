@@ -282,7 +282,7 @@ query TgxHotelContent($criteria: HotelXHotelListInput!, $token: String) {
   }
 }`;
 
-/** Static rooms catalog query — returns room-level medias for given room codes. */
+/** Static rooms catalog query — returns room-level medias + amenities for given room codes. */
 const TGX_ROOMS_CATALOG_QUERY = `
 query TgxRoomsCatalog($criteria: HotelXRoomQueryInput!, $token: String) {
   hotelX {
@@ -293,6 +293,8 @@ query TgxRoomsCatalog($criteria: HotelXRoomQueryInput!, $token: String) {
           roomData {
             code
             medias { url type }
+            allAmenities { edges { node { amenityData { amenityCode type } } } }
+            area { size metric }
           }
         }
       }
@@ -520,8 +522,8 @@ async function fetchTgxRoomCatalog(
     hotelId: string,
     roomCodes: string[],
     descMap?: Map<string, string>,   // code → room description, used for ETG name matching
-): Promise<Map<string, { photos: string[]; amenities: string[] }>> {
-    const resultMap = new Map<string, { photos: string[]; amenities: string[] }>();
+): Promise<Map<string, { photos: string[]; amenities: string[]; roomSize?: string }>> {
+    const resultMap = new Map<string, { photos: string[]; amenities: string[]; roomSize?: string }>();
     if (!hotelId || !roomCodes.length) return resultMap;
 
     // 1. Check hotel_content.room_groups DB cache.
@@ -552,9 +554,21 @@ async function fetchTgxRoomCatalog(
                     }
                 }
                 console.log(`[tgx-rooms] Match results:\n${matchLog.join('\n')}`);
-                return resultMap;
+                if (resultMap.size > 0) return resultMap;
+                // ETG groups present but all had empty images — try live per-hotel API
+                console.log(`[tgx-rooms] ETG groups have no images for hotel ${hotelId} — fetching live ETG`);
+                const liveGroups = await seedHotelRoomGroupsById(hotelId);
+                if (liveGroups.length > 0 && descMap?.size) {
+                    for (const [code, desc] of descMap) {
+                        const match = matchEtgRoomGroup(desc, liveGroups);
+                        if (match.images.length || match.amenities.length) resultMap.set(code, { photos: match.images, amenities: match.amenities });
+                    }
+                    console.log(`[tgx-rooms] Live ETG match for hotel ${hotelId}: ${resultMap.size}/${descMap.size} rooms with photos`);
+                    if (resultMap.size > 0) return resultMap;
+                }
+                // Live ETG also had no room images — fall through to TGX catalog
             } else if (raw === null || (Array.isArray(raw) && raw.length === 0)) {
-                // Never ETG-seeded (null or empty []) — fetch live now and use immediately
+                // Never ETG-seeded — fetch live now and use immediately
                 console.log(`[tgx-rooms] No ETG groups for hotel ${hotelId} — fetching ETG inline`);
                 const groups = await seedHotelRoomGroupsById(hotelId);
                 if (groups.length > 0 && descMap?.size) {
@@ -568,13 +582,15 @@ async function fetchTgxRoomCatalog(
                 }
                 // ETG had nothing — fall through to TGX live catalog
             } else if (raw && typeof raw === 'object' && !Array.isArray(raw)) {
-                // TGX format: {roomCode: {photos: [...]}}
-                const groups = raw as Record<string, { photos?: string[] }>;
+                // TGX format: {roomCode: {photos: [...], amenities: [...]}}
+                const groups = raw as Record<string, { photos?: string[]; amenities?: string[] }>;
                 for (const code of roomCodes) {
                     const entry = groups[code];
-                    if (entry?.photos?.length) resultMap.set(code, { photos: entry.photos, amenities: [] });
+                    if (entry?.photos?.length || entry?.amenities?.length) {
+                        resultMap.set(code, { photos: entry.photos ?? [], amenities: entry.amenities ?? [] });
+                    }
                 }
-                if (resultMap.size) console.log(`[tgx-rooms] Cache hit for hotel ${hotelId}: ${resultMap.size}/${roomCodes.length} with photos`);
+                if (resultMap.size) console.log(`[tgx-rooms] Cache hit for hotel ${hotelId}: ${resultMap.size}/${roomCodes.length} with data`);
                 return resultMap;
             }
         }
@@ -584,7 +600,7 @@ async function fetchTgxRoomCatalog(
 
     // 2. Live TGX hotelX.rooms static catalog query
     const cfg = getTgxConfig();
-    const catalogData: Record<string, { photos: string[] }> = {};
+    const catalogData: Record<string, { photos: string[]; amenities: string[]; roomSize?: string }> = {};
     try {
         const result = await tgxGraphQL(TGX_ROOMS_CATALOG_QUERY, {
             criteria: { access: cfg.accessCode, roomCodes },
@@ -592,17 +608,28 @@ async function fetchTgxRoomCatalog(
         const edges: any[] = result?.data?.hotelX?.rooms?.edges ?? [];
         for (const edge of edges) {
             const rd = edge?.node?.roomData;
-            // roomData.roomCode is the supplier-level room code (matches search rooms[].code)
             const roomCode = rd?.roomCode || rd?.code || edge?.node?.code;
             if (!roomCode) continue;
             const photos = (rd?.medias ?? [])
                 .filter((m: any) => m?.url)
                 .map((m: any) => String(m.url))
                 .slice(0, 5);
-            catalogData[roomCode] = { photos };
-            if (photos.length) resultMap.set(roomCode, { photos, amenities: [] });
+            const amenities = (rd?.allAmenities?.edges ?? [])
+                .map((e: any) => otvCodeToLabel(e?.node?.amenityData?.amenityCode ?? ''))
+                .filter(Boolean) as string[];
+            const areaSize: number | null = rd?.area?.size ?? null;
+            const areaMetric: string | null = rd?.area?.metric ?? null;
+            const roomSize = areaSize
+                ? (areaMetric === 'SQUARE_FEET'
+                    ? `${Math.round(areaSize)} ft²`
+                    : `${Math.round(areaSize)} m²`)
+                : undefined;
+            catalogData[roomCode] = { photos, amenities, ...(roomSize ? { roomSize } : {}) };
+            if (photos.length || amenities.length || roomSize) {
+                resultMap.set(roomCode, { photos, amenities, roomSize });
+            }
         }
-        console.log(`[tgx-rooms] Fetched catalog for hotel ${hotelId}: ${edges.length} rooms, ${resultMap.size} with photos`);
+        console.log(`[tgx-rooms] Fetched catalog for hotel ${hotelId}: ${edges.length} rooms, ${resultMap.size} with data`);
     } catch (e: any) {
         console.warn('[tgx-rooms] hotelX.rooms query failed:', e.message?.slice(0, 100));
         return resultMap;
@@ -1269,6 +1296,9 @@ async function fetchHotelContent(hotelCodes: string[]) {
             review_count,
             check_in_time,
             check_out_time,
+            amenity_groups,
+            metapolicy_struct,
+            metapolicy_extra_info,
             ratehawk_hid
         FROM hotel_content
         WHERE hotel_id = ANY(${hotelCodes})
@@ -1992,6 +2022,7 @@ async function _runTgxSearch(params: TgxSearchParams): Promise<any> {
                 ...normalized,
                 ...(catalogEntry.photos.length ? { roomPhotos: catalogEntry.photos } : {}),
                 ...(catalogEntry.amenities.length ? { amenities: catalogEntry.amenities } : {}),
+                ...(catalogEntry.roomSize ? { roomSize: catalogEntry.roomSize } : {}),
             };
         });
 
@@ -2019,11 +2050,16 @@ async function _runTgxSearch(params: TgxSearchParams): Promise<any> {
                 address:     content?.address ?? '',
                 city:        content?.city ?? '',
                 country:     content?.country ?? '',
-                description: content?.description ?? '',
-                amenities:   content?.amenities ?? [],
-                starRating:  content?.star_rating ?? 0,
+                description:         content?.description ?? '',
+                amenities:           content?.amenities ?? [],
+                amenityGroups:       content?.amenity_groups ?? [],
+                starRating:          content?.star_rating ?? 0,
                 reviewRating,
-                reviewCount: reviews?.reviews_count ?? content?.review_count ?? 0,
+                reviewCount:         reviews?.reviews_count ?? content?.review_count ?? 0,
+                checkInTime:         content?.check_in_time ?? null,
+                checkOutTime:        content?.check_out_time ?? null,
+                metapolicyStruct:    content?.metapolicy_struct ?? null,
+                metapolicyExtraInfo: content?.metapolicy_extra_info ?? null,
             },
         };
     }
