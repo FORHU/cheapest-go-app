@@ -67,18 +67,25 @@ const SearchResultsContent = ({ initialProperties = [], totalCount: initialTotal
     const rung = rawSearchParams?.rung as string | undefined;
     const districtBbox = React.useMemo<[number, number, number, number] | null>(() => {
         if (!rawBbox) return null;
-        // Only clip results to bbox for sub-city searches (district/neighborhood/poi/locality).
-        // City/province/country searches pass a bbox for map positioning only — applying it
-        // as a hard filter would exclude valid hotels just outside the admin boundary
-        // (e.g. Lapu-Lapu/Mactan Island cut off from "Cebu City" province bbox).
-        const SUB_CITY_RUNGS = new Set(['district', 'neighborhood', 'poi', 'locality']);
-        if (rung && !SUB_CITY_RUNGS.has(rung)) return null;
+        // Clip results to bbox for rungs with precise administrative boundaries.
+        // Province/state/county: hotels outside the boundary are a different jurisdiction
+        //   (e.g. Baguio City is outside La Union province and should be excluded).
+        // Sub-city (district/neighborhood/poi/locality): narrow area precision.
+        // Do NOT clip for city/municipality — adjacent municipalities are valid
+        //   (e.g. Lapu-Lapu/Mactan Island outside Cebu City admin bbox is still a valid result).
+        // Do NOT clip for region/country — too broad.
+        const BBOX_CLIP_RUNGS = new Set(['province', 'state', 'county', 'district', 'neighborhood', 'poi', 'locality']);
+        if (rung && !BBOX_CLIP_RUNGS.has(rung)) return null;
         const parts = rawBbox.split(',').map(Number);
         return parts.length === 4 && parts.every(Number.isFinite)
             ? parts as [number, number, number, number]
             : null;
     }, [rawBbox, rung]);
-    const [showAllCity, setShowAllCity] = React.useState(false);
+    // Province/state/county boundaries are authoritative — never allow expanding beyond them.
+    const PROVINCE_RUNGS = new Set(['province', 'state', 'county']);
+    const isProvinceRung = rung ? PROVINCE_RUNGS.has(rung) : false;
+    const [showAllCityState, setShowAllCity] = React.useState(false);
+    const showAllCity = isProvinceRung ? false : showAllCityState;
 
     // Reset to page 1 whenever filters change
     React.useEffect(() => { setPage(1); }, [propertyTypes, boardTypes, refundable]);

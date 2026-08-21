@@ -261,8 +261,8 @@ export function groupRoomsByName(roomTypes: RoomType[]): GroupedRoom[] {
                 existing.lowestPrice = priceInfo.amount;
             }
 
-            // Merge photos if new ones found
-            if (roomType.roomPhotos?.length && !existing.roomPhotos?.length) {
+            // Keep the richer photo set
+            if ((roomType.roomPhotos?.length ?? 0) > (existing.roomPhotos?.length ?? 0)) {
                 existing.roomPhotos = roomType.roomPhotos;
             }
         } else {
