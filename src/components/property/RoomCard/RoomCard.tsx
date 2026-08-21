@@ -250,10 +250,10 @@ export const RoomCard: React.FC<RoomCardProps> = ({
                 />
             )}
 
-            <div className="flex flex-col lg:flex-row bg-white dark:bg-slate-900 rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-700 shadow-sm hover:shadow-md transition-shadow">
+            <div className="flex flex-col md:flex-row bg-white dark:bg-slate-900 rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-700 shadow-sm hover:shadow-md transition-shadow">
 
                 {/* ── MOBILE: Full-width photo ── */}
-                <div className="lg:hidden relative h-48 bg-slate-100 dark:bg-slate-800 shrink-0">
+                <div className="md:hidden relative h-48 bg-slate-100 dark:bg-slate-800 shrink-0">
                     {photo1 ? (
                         <div
                             className="absolute inset-0 bg-cover bg-center cursor-zoom-in"
@@ -277,22 +277,17 @@ export const RoomCard: React.FC<RoomCardProps> = ({
                     )}
                 </div>
 
-                {/* ── DESKTOP: Vertical photo gallery ── */}
-                <div className="hidden lg:flex w-[240px] shrink-0 flex-col gap-1 p-2 pr-0">
+                {/* ── DESKTOP: Vertical photo stack ── */}
+                <div className="hidden md:flex w-[220px] shrink-0 flex-col gap-1 p-2 pr-0">
                     {/* Slot 1: large */}
                     <div
                         className={`relative flex-[5] overflow-hidden rounded-xl bg-slate-100 dark:bg-slate-800 min-h-[140px] ${photo1 ? 'cursor-zoom-in' : ''}`}
                         onClick={photo1 ? () => openLightbox(0) : undefined}
                     >
                         {photo1 ? (
-                            <div
-                                className="absolute inset-0 bg-cover bg-center hover:scale-105 transition-transform duration-300"
-                                style={{ backgroundImage: `url(${photo1})` }}
-                            />
+                            <div className="absolute inset-0 bg-cover bg-center hover:scale-105 transition-transform duration-300" style={{ backgroundImage: `url(${photo1})` }} />
                         ) : (
-                            <div className="absolute inset-0 flex items-center justify-center text-slate-300 dark:text-slate-600">
-                                <Bed size={32} />
-                            </div>
+                            <div className="absolute inset-0 flex items-center justify-center text-slate-300 dark:text-slate-600"><Bed size={32} /></div>
                         )}
                         {!hasRoomPhotos && photo1 && (
                             <span className="absolute top-2 left-2 text-[8px] font-semibold text-white bg-black/55 backdrop-blur-sm px-1.5 py-0.5 rounded-full">
@@ -300,50 +295,23 @@ export const RoomCard: React.FC<RoomCardProps> = ({
                             </span>
                         )}
                     </div>
-
-                    {/* Slot 2: medium (show only if 2+ photos) */}
+                    {/* Slot 2 */}
                     {hasGallery && (
-                        <div
-                            className="relative flex-[3] overflow-hidden rounded-xl bg-slate-100 dark:bg-slate-800 min-h-[90px] cursor-zoom-in"
-                            onClick={() => openLightbox(1)}
-                        >
-                            {photo2 && (
-                                <div
-                                    className="absolute inset-0 bg-cover bg-center hover:scale-105 transition-transform duration-300"
-                                    style={{ backgroundImage: `url(${photo2})` }}
-                                />
-                            )}
+                        <div className="relative flex-[3] overflow-hidden rounded-xl bg-slate-100 dark:bg-slate-800 min-h-[90px] cursor-zoom-in" onClick={() => openLightbox(1)}>
+                            {photo2 && <div className="absolute inset-0 bg-cover bg-center hover:scale-105 transition-transform duration-300" style={{ backgroundImage: `url(${photo2})` }} />}
                         </div>
                     )}
-
-                    {/* Bottom row: slot 3 + show-more (show only if 3+ photos) */}
+                    {/* Slot 3 + show-more */}
                     {photo3 && (
                         <div className="flex gap-1 flex-[2] min-h-[70px]">
-                            <div
-                                className="flex-1 relative overflow-hidden rounded-xl bg-slate-100 dark:bg-slate-800 cursor-zoom-in"
-                                onClick={() => openLightbox(2)}
-                            >
-                                <div
-                                    className="absolute inset-0 bg-cover bg-center hover:scale-105 transition-transform duration-300"
-                                    style={{ backgroundImage: `url(${photo3})` }}
-                                />
+                            <div className="flex-1 relative overflow-hidden rounded-xl bg-slate-100 dark:bg-slate-800 cursor-zoom-in" onClick={() => openLightbox(2)}>
+                                <div className="absolute inset-0 bg-cover bg-center hover:scale-105 transition-transform duration-300" style={{ backgroundImage: `url(${photo3})` }} />
                             </div>
-                            {/* Show-more slot */}
-                            <div
-                                className="flex-1 relative overflow-hidden rounded-xl bg-slate-200 dark:bg-slate-700 cursor-zoom-in"
-                                onClick={() => openLightbox(3)}
-                            >
-                                {lightboxImages[3] && (
-                                    <div
-                                        className="absolute inset-0 bg-cover bg-center"
-                                        style={{ backgroundImage: `url(${lightboxImages[3]})` }}
-                                    />
-                                )}
+                            <div className="flex-1 relative overflow-hidden rounded-xl bg-slate-200 dark:bg-slate-700 cursor-zoom-in" onClick={() => openLightbox(3)}>
+                                {lightboxImages[3] && <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: `url(${lightboxImages[3]})` }} />}
                                 <div className="absolute inset-0 bg-black/45 flex items-center justify-center">
                                     <span className="text-white text-[10px] font-semibold text-center leading-tight">
-                                        {lightboxImages.length > 4
-                                            ? `+${lightboxImages.length - 3}\nmore`
-                                            : 'View\nall'}
+                                        {lightboxImages.length > 4 ? `+${lightboxImages.length - 3}\nmore` : 'View\nall'}
                                     </span>
                                 </div>
                             </div>
@@ -351,17 +319,17 @@ export const RoomCard: React.FC<RoomCardProps> = ({
                     )}
                 </div>
 
-                {/* ── Content: name + amenities + rate table ── */}
-                <div className="flex-1 flex flex-col p-3 lg:p-4 min-w-0">
+                {/* ── Content: name + specs + amenities + rate table ── */}
+                <div className="flex-1 flex flex-col md:self-start p-3 md:p-4 min-w-0">
 
                     {/* Room name */}
-                    <h4 className="text-[13px] lg:text-base font-bold text-slate-900 dark:text-white mb-1">
+                    <h4 className="text-[13px] md:text-base font-bold text-slate-900 dark:text-white mb-1">
                         {title}
                     </h4>
 
-                    {/* Room specs: size · occupancy · bed type (Agoda-style) */}
+                    {/* Specs bar */}
                     {(roomSize || maxOccupancy || roomOccupancy || bedType) && (
-                        <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 mb-2 lg:mb-3 text-[9px] lg:text-[11px] text-slate-500 dark:text-slate-400">
+                        <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 mb-2 md:mb-3 text-[9px] md:text-[11px] text-slate-500 dark:text-slate-400">
                             {roomSize && <span>{roomSize}</span>}
                             {roomSize && (maxOccupancy || roomOccupancy || bedType) && <span>·</span>}
                             {maxOccupancy
@@ -373,10 +341,10 @@ export const RoomCard: React.FC<RoomCardProps> = ({
                         </div>
                     )}
 
-                    {/* Amenities — icon + label grid */}
+                    {/* Amenities — icon + label 2-col grid */}
                     {amenities && amenities.length > 0 && (
-                        <div className="mb-3 p-2.5 lg:p-3 rounded-xl border border-slate-100 dark:border-slate-700/60 bg-slate-50 dark:bg-slate-800/40">
-                            <div className="text-[8px] lg:text-[9px] font-semibold tracking-widest uppercase text-slate-400 dark:text-slate-500 mb-2">
+                        <div className="mb-3 p-2.5 md:p-3 rounded-xl border border-slate-100 dark:border-slate-700/60 bg-slate-50 dark:bg-slate-800/40">
+                            <div className="text-[8px] md:text-[9px] font-semibold tracking-widest uppercase text-slate-400 dark:text-slate-500 mb-2">
                                 Amenities
                             </div>
                             <div className="grid grid-cols-2 gap-x-3 gap-y-1.5">
@@ -386,19 +354,13 @@ export const RoomCard: React.FC<RoomCardProps> = ({
                                     return (
                                         <div key={i} className="flex items-center gap-1.5 min-w-0">
                                             <Icon size={11} className="shrink-0 text-slate-400 dark:text-slate-500" />
-                                            <span className="text-[9px] lg:text-[10px] text-slate-600 dark:text-slate-300 truncate">
-                                                {label}
-                                            </span>
+                                            <span className="text-[9px] md:text-[10px] text-slate-600 dark:text-slate-300 truncate">{label}</span>
                                         </div>
                                     );
                                 })}
                             </div>
                             {amenities.length > 8 && (
-                                <button
-                                    type="button"
-                                    onClick={() => setShowAllAmenities(v => !v)}
-                                    className="mt-1.5 text-[8px] lg:text-[9px] text-blue-500 dark:text-blue-400 hover:underline"
-                                >
+                                <button type="button" onClick={() => setShowAllAmenities(v => !v)} className="mt-1.5 text-[8px] md:text-[9px] text-blue-500 dark:text-blue-400 hover:underline">
                                     {showAllAmenities ? 'Show less' : `+${amenities.length - 8} more`}
                                 </button>
                             )}
@@ -406,7 +368,7 @@ export const RoomCard: React.FC<RoomCardProps> = ({
                     )}
 
                     {/* Rate options table */}
-                    <div className="rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden mt-auto">
+                    <div className="rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
                         {effectiveRates.map((rate, idx) => {
                             const rowPrice = getDisplayPrice(rate);
                             const cancelText = rate.refundable === true
@@ -425,54 +387,54 @@ export const RoomCard: React.FC<RoomCardProps> = ({
                             return (
                                 <div
                                     key={rate.offerId || idx}
-                                    className={`flex items-center gap-2 lg:gap-4 px-3 py-2.5 lg:py-3 ${idx < effectiveRates.length - 1 ? 'border-b border-slate-100 dark:border-slate-700/60' : ''}`}
+                                    className={`flex items-center gap-2 md:gap-4 px-3 py-2.5 md:py-3 ${idx < effectiveRates.length - 1 ? 'border-b border-slate-100 dark:border-slate-700/60' : ''}`}
                                 >
                                     {/* Board + occupancy + payment type */}
                                     <div className="flex-1 min-w-0">
-                                        <div className="text-[11px] lg:text-sm font-semibold text-slate-800 dark:text-slate-200 leading-tight">
+                                        <div className="text-[11px] md:text-sm font-semibold text-slate-800 dark:text-slate-200 leading-tight">
                                             {rate.boardName || t('roomOnly')}
                                         </div>
                                         <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 mt-0.5">
                                             {maxOccupancy && (
-                                                <span className="flex items-center gap-0.5 text-[8px] lg:text-[9px] text-slate-400 dark:text-slate-500">
+                                                <span className="flex items-center gap-0.5 text-[8px] md:text-[9px] text-slate-400 dark:text-slate-500">
                                                     <Users size={9} className="shrink-0" />
                                                     {maxOccupancy} adult{maxOccupancy > 1 ? 's' : ''}
                                                 </span>
                                             )}
                                             {rate.paymentType && (
-                                                <span className="text-[8px] lg:text-[9px] text-slate-400 dark:text-slate-500">
+                                                <span className="text-[8px] md:text-[9px] text-slate-400 dark:text-slate-500">
                                                     {rate.paymentType}
                                                 </span>
                                             )}
-                                            {rate.variantLabel && (
-                                                <span className="text-[8px] lg:text-[9px] text-slate-400 dark:text-slate-500 leading-tight">
-                                                    {rate.variantLabel}
-                                                </span>
-                                            )}
                                         </div>
-                                        {/* Cancellation — mobile only (shown inline below board name) */}
-                                        <div className={`lg:hidden text-[8px] font-medium mt-0.5 ${cancelColor}`}>
+                                        {rate.variantLabel && (
+                                            <div className="text-[8px] md:text-[9px] text-slate-400 dark:text-slate-500 truncate mt-0.5">
+                                                {rate.variantLabel}
+                                            </div>
+                                        )}
+                                        {/* Cancellation — mobile only */}
+                                        <div className={`md:hidden text-[8px] font-medium mt-0.5 ${cancelColor}`}>
                                             {cancelText}
                                         </div>
                                     </div>
 
                                     {/* Cancellation policy — desktop */}
-                                    <div className={`hidden lg:block text-[10px] font-medium shrink-0 min-w-[140px] text-right ${cancelColor}`}>
+                                    <div className={`hidden md:block text-[10px] font-medium shrink-0 min-w-[140px] text-right ${cancelColor}`}>
                                         {cancelText}
                                     </div>
 
                                     {/* Price */}
                                     <div className="shrink-0 text-right">
-                                        <div className="text-[13px] lg:text-base font-bold text-slate-900 dark:text-white whitespace-nowrap">
+                                        <div className="text-[13px] md:text-base font-bold text-slate-900 dark:text-white whitespace-nowrap">
                                             {currencySymbol}{rowPrice.toLocaleString('en-US', { maximumFractionDigits: 0 })}
                                         </div>
-                                        <div className="text-[8px] lg:text-[9px] text-slate-400 whitespace-nowrap">{t('perNight')}</div>
+                                        <div className="text-[8px] md:text-[9px] text-slate-400 whitespace-nowrap">{t('perNight')}</div>
                                     </div>
 
                                     {/* SELECT */}
                                     <button
                                         onClick={() => onReserve(rate.offerId || undefined)}
-                                        className="shrink-0 px-3 py-1.5 lg:px-4 lg:py-2 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white text-[10px] lg:text-[11px] font-bold rounded-lg transition-colors shadow-sm"
+                                        className="shrink-0 px-3 py-1.5 md:px-4 md:py-2 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white text-[10px] md:text-[11px] font-bold rounded-lg transition-colors shadow-sm"
                                     >
                                         {t('select')}
                                     </button>
