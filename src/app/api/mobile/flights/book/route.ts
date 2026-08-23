@@ -8,9 +8,24 @@ import { rateLimit } from '@/lib/server/rate-limit';
 import { getMobileApiKey } from '@/lib/server/mobile-auth';
 import { placeDuffelOrder } from '@/lib/server/flights/place-duffel-order';
 import { duffelIdentityDocuments } from '@/lib/server/flights/duffel-identity-documents';
+import { findOrderFromTimedOutAttempt, toReconciledOrder } from '@/lib/server/flights/duffel-order-reconcile';
 
 export const maxDuration = 300;
 export const dynamic = 'force-dynamic';
+
+/**
+ * How long to wait on POST /air/orders before giving up.
+ *
+ * 130s is Duffel's documented client-timeout floor for order creation, not a
+ * generous margin. Aborting does NOT cancel the order — Duffel completes the
+ * airline booking regardless — so a shorter bound does not save the traveller
+ * from a slow airline, it just hides a real, paid PNR from this app. The web
+ * route learned this the expensive way (see ORDER_CREATE_TIMEOUT_MS in
+ * src/app/api/flights/book/route.ts); this one was still at 45s.
+ *
+ * maxDuration above must stay comfortably clear of this.
+ */
+const ORDER_TIMEOUT_MS = 130_000;
 
 /**
  * POST /api/mobile/flights/book
@@ -231,14 +246,12 @@ export async function POST(req: NextRequest) {
             'Idempotency-Key': idempotencyKey ?? crypto.randomUUID(),
         };
 
-        // 130s is Duffel's documented client-timeout floor for order creation, not a
-        // generous margin. Aborting does NOT cancel the order — Duffel completes the
-        // airline booking regardless — so a shorter bound does not save the traveller
-        // from a slow airline, it just hides a real, paid PNR from this app. The web
-        // route learned this the expensive way (see ORDER_CREATE_TIMEOUT_MS in
-        // src/app/api/flights/book/route.ts); this one was still at 45s.
         const orderAbort = new AbortController();
-        const orderTimeout = setTimeout(() => orderAbort.abort(), 130_000);
+        const orderTimeout = setTimeout(() => orderAbort.abort(), ORDER_TIMEOUT_MS);
+
+        // Stamped before the request so reconciliation can tell an order this attempt
+        // created from a pre-existing one for the same route and price.
+        const attemptStartedAt = new Date().toISOString();
 
         let duffelRes: Response;
         let duffelData: any;
@@ -267,23 +280,29 @@ export async function POST(req: NextRequest) {
                 const origin = rawOffer.slices?.[0]?.origin?.iata_code ?? flight.segments?.[0]?.origin ?? '';
                 const lastSlice = rawOffer.slices?.[rawOffer.slices.length - 1];
                 const destination = lastSlice?.destination?.iata_code ?? flight.segments?.[flight.segments.length - 1]?.destination ?? '';
-                const recovered = await findOrderFromTimedOutAttempt(duffelToken, {
+                // Returns the RAW Duffel order (or null), so it has to go through
+                // toReconciledOrder before the .orderId/.pnr/.tickets shape below is
+                // valid — reading those off the raw order yields undefined and would
+                // store a pre-order id of `undefined` against a real, paid ticket.
+                const rawRecovered = await findOrderFromTimedOutAttempt(duffelToken, {
                     sinceIso: attemptStartedAt,
                     origin,
                     destination,
                     totalAmount: orderTotal,
                     currency: orderCurrency,
                     familyName: orderPassengers?.[0]?.family_name,
-                }).catch((e: any) => {
-                    console.warn('[mobile/book] Reconciliation check failed:', e?.message);
-                    return null;
                 });
+                const recovered = rawRecovered ? toReconciledOrder(rawRecovered) : null;
                 if (recovered) {
                     console.warn(`[mobile/book] Timed-out attempt succeeded — adopting order ${recovered.orderId}`);
                     duffelData = {
                         data: {
                             id: recovered.orderId,
-                            booking_reference: recovered.pnr,
+                            // `||`, not `??`: toReconciledOrder yields '' for an order
+                            // with no booking reference yet, and an empty string passes
+                            // straight through the `??` fallback downstream — storing a
+                            // blank PNR against a live ticket.
+                            booking_reference: recovered.pnr || recovered.orderId,
                             documents: recovered.tickets.map((t: string) => ({ type: 'electronic_ticket', unique_identifier: t })),
                         },
                     };
