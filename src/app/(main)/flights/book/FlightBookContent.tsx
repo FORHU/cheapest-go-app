@@ -19,6 +19,7 @@ import SeatMapPanel from '@/components/flights/SeatMapPanel';
 import BagSelectionPanel from '@/components/flights/BagSelectionPanel';
 import DuffelFareConditions from '@/components/flights/DuffelFareConditions';
 import PriceCalendar from '@/components/flights/PriceCalendar';
+import DuplicateBookingModal from '@/components/flights/DuplicateBookingModal';
 import { Suspense, useMemo } from 'react';
 import { cn } from '@/lib/utils';
 import {
@@ -1454,36 +1455,11 @@ function BookingContent() {
                             </div>
                         )}
 
-                        {/* Duplicate booking warning */}
-                        {duplicateBookingData && (
-                            <div className="rounded-md border-2 border-red-300 dark:border-red-700 bg-red-50 dark:bg-red-900/20 p-3 lg:p-4 space-y-2.5">
-                                <div className="flex items-start gap-2">
-                                    <AlertTriangle className="w-4 h-4 text-red-600 dark:text-red-400 shrink-0 mt-0.5" />
-                                    <div>
-                                        <p className="text-[10px] lg:text-[13px] font-normal text-red-800 dark:text-red-300">{t('duplicate.title')}</p>
-                                        <p className="text-[10px] lg:text-[13px] text-red-700 dark:text-red-400 mt-0.5">
-                                            {t('duplicate.description', { route: duplicateBookingData.route, date: duplicateBookingData.departureDate })}
-                                        </p>
-                                    </div>
-                                </div>
-                                <div className="flex gap-2">
-                                    <button
-                                        type="button"
-                                        onClick={() => router.push(`/trips?highlight=${duplicateBookingData.existingBookingId}`)}
-                                        className="flex-1 py-2 rounded-md bg-red-600 hover:bg-red-700 text-white font-normal text-[10px] lg:text-[13px] transition-colors"
-                                    >
-                                        {t('duplicate.viewExisting')}
-                                    </button>
-                                    <button
-                                        type="button"
-                                        onClick={() => router.push('/')}
-                                        className="flex-1 py-2 rounded-md bg-white dark:bg-slate-800 border border-red-300 dark:border-red-700 text-red-700 dark:text-red-400 font-normal text-[10px] lg:text-[13px] transition-colors hover:bg-red-50 dark:hover:bg-red-900/30"
-                                    >
-                                        {t('duplicate.keepExisting')}
-                                    </button>
-                                </div>
-                            </div>
-                        )}
+                        {/* Duplicate booking — a modal, so the clash has to be resolved before the form is usable again */}
+                        <DuplicateBookingModal
+                            data={duplicateBookingData}
+                            onDismiss={dismissDuplicateWarning}
+                        />
 
                         {/* Status/Error Message */}
                         {errorMsg && (() => {

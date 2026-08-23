@@ -9,3 +9,7 @@ Sentry.init({
   // Don't send PII in breadcrumbs
   sendDefaultPii: false,
 });
+
+// Required by @sentry/nextjs to instrument client-side App Router navigations —
+// without it, route changes are not tied to a transaction and the SDK warns at startup.
+export const onRouterTransitionStart = Sentry.captureRouterTransitionStart;

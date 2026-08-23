@@ -511,10 +511,10 @@
     },
     "dontClosePage": "请不要关闭此页面",
     "duplicate": {
-      "description": "发现一个出发日期为 {route} 的活动预订，日期为 {date}。请先取消现有预订，或返回。",
+      "description": "发现 {date} 从 {route} 出发的有效预订。请先取消现有预订，或返回。",
       "keepExisting": "保留现有预订",
-      "title": "您已有一个当天的航班预订",
-      "viewExisting": "查看现有预订"
+      "title": "您已预订该日期的航班",
+      "viewExisting": "查看并取消现有预订"
     },
     "error": {
       "bookingFailed": "预订失败",
@@ -751,6 +751,8 @@
       "bagsCount": "{count} 件行李",
       "bestValue": "最佳价值",
       "brandsAvailable": "{count} 个品牌可选",
+      "carryOnBags": "{count, plural, =0 {无随身行李} other {随身行李 #件}}",
+      "checkedBags": "{count, plural, =0 {无托运行李} other {托运行李 #件}}",
       "compareOptions": "比较 {count} 个选项",
       "currentlySelected": "当前已选",
       "direct": "直飞",

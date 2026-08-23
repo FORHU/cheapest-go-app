@@ -8,6 +8,7 @@
 import { createHmac } from 'crypto';
 import { NextResponse } from 'next/server';
 import { RETURN_TO_PARAM, safeReturnTo } from '@/lib/auth/returnTo';
+import { getOAuthRedirectUri } from '@/lib/auth/oauthOrigin';
 
 export const dynamic = 'force-dynamic';
 
@@ -31,8 +32,9 @@ export async function GET(req: Request) {
     const sig = createHmac('sha256', secret).update(payloadB64).digest('base64url');
     const state = `${payloadB64}.${sig}`;
 
-    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
-    const redirectUri = `${siteUrl}/auth/callback`;
+    // Shared with /auth/callback — Google rejects the token exchange unless the
+    // two legs quote an identical redirect_uri.
+    const redirectUri = getOAuthRedirectUri(req);
 
     const params = new URLSearchParams({
         client_id:     clientId,

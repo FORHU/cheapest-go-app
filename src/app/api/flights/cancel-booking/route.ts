@@ -61,7 +61,7 @@ export async function POST(req: NextRequest) {
         // ── Step 1: Load booking ──────────────────────────────────────
         const { data: booking, error: fetchErr } = await supabase
             .from('flight_bookings')
-            .select('id, user_id, status, provider, pnr, payment_intent_id, created_at, cancellation_log, session_id, total_price, charged_price, payment_currency, refund_amount, refund_penalty_amount, refund_currency, supplier_currency')
+            .select('id, user_id, status, provider, pnr, payment_intent_id, created_at, cancellation_log, session_id, total_price, charged_price, payment_currency, refund_amount, refund_penalty_amount, refund_currency, supplier_currency, duffel_order_id')
             .eq('id', bookingId)
             .single();
 
@@ -595,10 +595,10 @@ async function cancelDuffel(booking: any, preQuotedCancellationId?: string): Pro
         return { success: false, error: 'DUFFEL_ACCESS_TOKEN not configured' };
     }
 
-    // duffel_pre_order_id (set by /api/flights/book) is the authoritative order ID.
-    // provider_order_id on the booking is also checked first.
-    // The flight JSONB in booking_sessions holds the original offer (off_...) — NOT the order ID.
-    let orderId: string | undefined = booking.provider_order_id;
+    // duffel_order_id on flight_bookings is set by create-booking and is the
+    // authoritative Duffel order ID. Fall back to the session's pre-order column
+    // only for legacy rows that predate the column (before create-booking wrote it).
+    let orderId: string | undefined = (booking as any).duffel_order_id || undefined;
 
     if (!orderId && booking.session_id) {
         const { data: session } = await supabase

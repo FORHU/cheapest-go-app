@@ -631,10 +631,10 @@
     },
     "dontClosePage": "이 페이지를 닫지 마세요",
     "duplicate": {
-      "description": "{route} 출발하는 활성 예약이 {date}에 발견되었습니다. 먼저 기존 예약을 취소하거나 뒤로 돌아가세요.",
+      "description": "{date}에 {route} 출발하는 활성 예약이 발견되었습니다. 기존 예약을 먼저 취소하거나 뒤로 가세요.",
       "keepExisting": "기존 예약 유지",
-      "title": "이미 해당 날짜의 항곸을 예약하셨습니다",
-      "viewExisting": "기존 예약 보기"
+      "title": "이미 해당 날짜에 예약된 항공편이 있습니다",
+      "viewExisting": "기존 예약 확인 및 취소"
     },
     "error": {
       "bookingFailed": "예약 실패",
@@ -863,6 +863,8 @@
       "bagsCount": "수하물 {count}개",
       "bestValue": "최고 가치",
       "brandsAvailable": "브랜드 {count}개 이용 가능",
+      "carryOnBags": "{count, plural, =0 {기내 수하물 없음} other {기내 수하물 #개}}",
+      "checkedBags": "{count, plural, =0 {위탁 수하물 없음} other {위탁 수하물 #개}}",
       "compareOptions": "{count}개 옵션 비교",
       "currentlySelected": "현재 선택됨",
       "direct": "직항",

@@ -6,7 +6,7 @@ import { flightBookingSchema } from '@/lib/schemas/flight';
 import { applyMarkup, toStripeAmount, FLIGHT_MARKUP } from '@/lib/pricing';
 import { rateLimit } from '@/lib/server/rate-limit';
 import { getMobileApiKey } from '@/lib/server/mobile-auth';
-import { placeDuffelOrder } from '@/lib/server/flights/place-duffel-order';
+import { findOrderFromTimedOutAttempt } from '@/lib/server/flights/duffel-order-reconcile';
 
 export const maxDuration = 120;
 export const dynamic = 'force-dynamic';
@@ -226,8 +226,13 @@ export async function POST(req: NextRequest) {
             'Idempotency-Key': idempotencyKey ?? crypto.randomUUID(),
         };
 
+        // Duffel requires at least 130s: order creation is synchronous through to
+        // the airline, and aborting does NOT cancel it — a shorter timeout orphans a
+        // real PNR without recording it.
+        const ORDER_TIMEOUT_MS = 130_000;
         const orderAbort = new AbortController();
-        const orderTimeout = setTimeout(() => orderAbort.abort(), 45_000);
+        const orderTimeout = setTimeout(() => orderAbort.abort(), ORDER_TIMEOUT_MS);
+        const attemptStartedAt = new Date().toISOString();
 
         let duffelRes: Response;
         let duffelData: any;
@@ -252,9 +257,37 @@ export async function POST(req: NextRequest) {
         } catch (fetchErr: any) {
             clearTimeout(orderTimeout);
             if (fetchErr?.name === 'AbortError') {
-                throw new Error('Airline booking system timed out. Please try again.');
+                console.error(`[mobile/book] Duffel order timed out after ${ORDER_TIMEOUT_MS / 1000}s — checking if it landed`);
+                const origin = rawOffer.slices?.[0]?.origin?.iata_code ?? flight.segments?.[0]?.origin ?? '';
+                const lastSlice = rawOffer.slices?.[rawOffer.slices.length - 1];
+                const destination = lastSlice?.destination?.iata_code ?? flight.segments?.[flight.segments.length - 1]?.destination ?? '';
+                const recovered = await findOrderFromTimedOutAttempt(duffelToken, {
+                    sinceIso: attemptStartedAt,
+                    origin,
+                    destination,
+                    totalAmount: orderTotal,
+                    currency: orderCurrency,
+                    familyName: orderPassengers?.[0]?.family_name,
+                }).catch((e: any) => {
+                    console.warn('[mobile/book] Reconciliation check failed:', e?.message);
+                    return null;
+                });
+                if (recovered) {
+                    console.warn(`[mobile/book] Timed-out attempt succeeded — adopting order ${recovered.orderId}`);
+                    duffelData = {
+                        data: {
+                            id: recovered.orderId,
+                            booking_reference: recovered.pnr,
+                            documents: recovered.tickets.map((t: string) => ({ type: 'electronic_ticket', unique_identifier: t })),
+                        },
+                    };
+                    duffelRes = new Response(null, { status: 200 });
+                } else {
+                    throw new Error('Airline booking system timed out. Please try again.');
+                }
+            } else {
+                throw fetchErr;
             }
-            throw fetchErr;
         }
         clearTimeout(orderTimeout);
 

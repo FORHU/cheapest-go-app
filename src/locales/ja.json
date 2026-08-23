@@ -510,10 +510,10 @@
     },
     "dontClosePage": "このページを閉じないでください",
     "duplicate": {
-      "description": "{route} 発のアクティブな予約が{date}に見つかりました。まず現有の予約をキャンセルするか、戻ってください。",
-      "keepExisting": "現有の予約を保持",
-      "title": "すでに同じ日の航空券を予約しています",
-      "viewExisting": "現有の予約を表示"
+      "description": "{date} に {route} 発のアクティブな予約が見つかりました。既存の予約をキャンセルするか、戻ってください。",
+      "keepExisting": "既存の予約を保持",
+      "title": "すでにこの日付の航空券を予約しています",
+      "viewExisting": "既存の予約を確認・キャンセル"
     },
     "error": {
       "bookingFailed": "予約失敗",
@@ -749,6 +749,8 @@
       "bagsCount": "手荷物 {count}個",
       "bestValue": "最高の価値",
       "brandsAvailable": "{count}件のブランドあり",
+      "carryOnBags": "{count, plural, =0 {持ち込み手荷物なし} other {持ち込み手荷物 #個}}",
+      "checkedBags": "{count, plural, =0 {受託手荷物なし} other {受託手荷物 #個}}",
       "compareOptions": "{count}件のオプションを比較",
       "currentlySelected": "現在選択中",
       "direct": "直行便",
