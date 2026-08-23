@@ -24,6 +24,29 @@ export interface IssueTicketResult {
     httpStatus?: number;
 }
 
+/**
+ * Walk the order's slices → segments → per-passenger seat assignments and return a map of
+ * Duffel passenger id → joined seat designators ("14A" for a one-way, "14A / 22C" for a
+ * round trip where the airline assigned both legs up front).
+ *
+ * Most LCCs don't assign seats at booking time, so the map is usually empty.
+ */
+export function buildSeatMap(order: any): Map<string, string> {
+    const map = new Map<string, string>();
+    for (const slice of order?.slices ?? []) {
+        for (const seg of slice.segments ?? []) {
+            for (const pax of seg.passengers ?? []) {
+                const designator: string | undefined = pax.seat?.designator;
+                if (designator && pax.passenger_id) {
+                    const prev = map.get(pax.passenger_id);
+                    map.set(pax.passenger_id, prev ? `${prev} / ${designator}` : designator);
+                }
+            }
+        }
+    }
+    return map;
+}
+
 export async function issueTicket(bookingId: string): Promise<IssueTicketResult> {
     if (!bookingId) {
         return { success: false, error: 'bookingId is required', httpStatus: 400 };
@@ -99,7 +122,11 @@ export async function issueTicket(bookingId: string): Promise<IssueTicketResult>
         const isTicketed = tickets.length > 0;
         const newStatus = isTicketed ? 'ticketed' : 'awaiting_ticket';
 
-        console.log(`[issue-ticket] Order ${orderId}: ${tickets.length} tickets — status → ${newStatus}`);
+        const seatMap = buildSeatMap(order);
+        const duffelPaxIds: string[] = (order.passengers ?? []).map((p: any) => p.id as string);
+        const seatsFound = seatMap.size;
+
+        console.log(`[issue-ticket] Order ${orderId}: ${tickets.length} tickets, ${seatsFound} seat(s) assigned — status → ${newStatus}`);
 
         // ── Update flight_bookings ───────────────────────────────────────
         await sql`
@@ -110,9 +137,8 @@ export async function issueTicket(bookingId: string): Promise<IssueTicketResult>
             WHERE id = ${bookingId}
         `;
 
-        // ── Update passenger ticket_numbers ──────────────────────────────
-        if (tickets.length > 0) {
-            // Fetch passengers in insertion order
+        // ── Update passenger ticket_numbers and seat assignments ─────────
+        if (tickets.length > 0 || seatsFound > 0) {
             const passengerRows = await sql`
                 SELECT id FROM passengers
                 WHERE booking_id = ${bookingId}
@@ -121,10 +147,14 @@ export async function issueTicket(bookingId: string): Promise<IssueTicketResult>
 
             for (let i = 0; i < passengerRows.length; i++) {
                 const ticketNum = tickets[i] ?? null;
-                if (ticketNum) {
+                const duffelPaxId = duffelPaxIds[i] ?? null;
+                const seatNum = duffelPaxId ? (seatMap.get(duffelPaxId) ?? null) : null;
+                if (ticketNum !== null || seatNum !== null) {
                     await sql`
                         UPDATE passengers
-                        SET ticket_number = ${ticketNum}
+                        SET
+                            ticket_number = COALESCE(${ticketNum}, ticket_number),
+                            seat_number   = COALESCE(${seatNum},   seat_number)
                         WHERE id = ${passengerRows[i].id}
                     `;
                 }
