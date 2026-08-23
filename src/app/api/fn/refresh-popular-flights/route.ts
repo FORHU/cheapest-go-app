@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSqlAdmin } from '@/lib/db/postgres';
+import { searchFlights, saveSearch } from '@/lib/server/flights/search-flights';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 120; // 2 minutes max
@@ -76,40 +77,27 @@ export async function POST(req: NextRequest) {
 
             try {
                 console.log(`[refresh-popular-flights] Triggering refresh for: ${route.origin} -> ${route.destination} on ${departureDate}`);
-                const refreshRes = await fetch(`${baseUrl}/api/internal/refresh-flights`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${internalSecret}`,
-                    },
-                    body: JSON.stringify({
-                        origin: route.origin.toUpperCase(),
-                        destination: route.destination.toUpperCase(),
-                        departureDate,
-                        cabinClass: 'economy',
-                    }),
+                // Direct calls rather than a loopback request to /api/internal/refresh-flights,
+                // whose entire body was these same two functions. See ADR-0012.
+                const params = {
+                    origin: route.origin.toUpperCase(),
+                    destination: route.destination.toUpperCase(),
+                    departureDate,
+                    adults: 1,
+                    children: 0,
+                    infants: 0,
+                    cabinClass: 'economy' as const,
+                };
+                const savedSearch = await saveSearch(params);
+                await searchFlights({ ...params, searchId: savedSearch.id });
+                results.push({
+                    origin: route.origin,
+                    destination: route.destination,
+                    success: true,
+                    searchId: savedSearch.id,
                 });
-
-                if (refreshRes.ok) {
-                    const data = await refreshRes.json();
-                    results.push({
-                        origin: route.origin,
-                        destination: route.destination,
-                        success: true,
-                        searchId: data?.searchId,
-                    });
-                } else {
-                    const errText = await refreshRes.text().catch(() => '');
-                    console.error(`[refresh-popular-flights] Failed to refresh route ${route.origin} -> ${route.destination}: ${refreshRes.status} ${errText}`);
-                    results.push({
-                        origin: route.origin,
-                        destination: route.destination,
-                        success: false,
-                        error: `HTTP ${refreshRes.status}: ${errText}`,
-                    });
-                }
             } catch (fetchErr: any) {
-                console.error(`[refresh-popular-flights] Fetch error refreshing route ${route.origin} -> ${route.destination}:`, fetchErr.message);
+                console.error(`[refresh-popular-flights] Error refreshing route ${route.origin} -> ${route.destination}:`, fetchErr.message);
                 results.push({
                     origin: route.origin,
                     destination: route.destination,

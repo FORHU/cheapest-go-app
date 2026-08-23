@@ -32,7 +32,8 @@ function applyServerFilters(offers: any[], filters?: ServerFilters): any[] {
 
     switch (filters.sortBy ?? 'price') {
         case 'duration':
-            results.sort((a, b) => (a.totalDuration ?? 0) - (b.totalDuration ?? 0));
+            // Rank on the slice the row actually shows, not on a sum of both directions.
+            results.sort((a, b) => (a.sliceDurations?.[0] ?? a.totalDuration ?? 0) - (b.sliceDurations?.[0] ?? b.totalDuration ?? 0));
             break;
         case 'departure':
             results.sort((a, b) => (a.segments?.[0]?.departure?.time ?? '').localeCompare(b.segments?.[0]?.departure?.time ?? ''));

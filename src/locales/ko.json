@@ -632,6 +632,7 @@
     "dontClosePage": "이 페이지를 닫지 마세요",
     "duplicate": {
       "description": "{date}에 {route} 출발하는 활성 예약이 발견되었습니다. 기존 예약을 먼저 취소하거나 뒤로 가세요.",
+      "bookAnyway": "그래도 예약하기",
       "keepExisting": "기존 예약 유지",
       "title": "이미 해당 날짜에 예약된 항공편이 있습니다",
       "viewExisting": "기존 예약 확인 및 취소"
@@ -873,6 +874,8 @@
       "includesTaxesFees": "세금 및 수수료 포함",
       "legLabel": "{number}번째 구간",
       "moreSegments": "+ {count} 더",
+      "operatedBy": "{airline} 운항",
+      "partiallyOperatedBy": "일부 구간 {airline} 운항",
       "noBag": "수하물 없음",
       "nonRefundable": "환불 불가",
       "nonstop": "직항",

@@ -44,16 +44,20 @@ function labelRoute(route: string): string {
 /**
  * The duplicate-booking guard's verdict, as a modal rather than a panel beside the form.
  *
- * Retrying the same offer would only trip the same guard, so the two ways forward —
- * cancel the clashing booking, or abandon this one — are the only useful actions on
- * screen, and the modal keeps them from being scrolled past.
+ * The clash is presented as a choice, not a refusal: same-day departures are ordinary
+ * (a positioning flight on a separate ticket, a booking made for someone else on a shared
+ * account), so alongside cancelling the existing booking or abandoning this one, the
+ * traveller can proceed knowingly. See ADR-0011.
  */
 export default function DuplicateBookingModal({
     data,
     onDismiss,
+    onProceed,
 }: {
     data: DuplicateBookingData | null;
     onDismiss: () => void;
+    /** Book anyway. Omit to present the clash as a refusal rather than a choice. */
+    onProceed?: () => void;
 }) {
     const t = useTranslations('flightBook');
     const router = useRouter();
@@ -80,6 +84,15 @@ export default function DuplicateBookingModal({
                                 date: shown.departureDate,
                             })}
                         </AlertDialogDescription>
+                        {onProceed && (
+                            <button
+                                type="button"
+                                onClick={() => onProceed()}
+                                className="mt-4 text-sm font-medium text-slate-600 dark:text-slate-400 underline underline-offset-4 hover:text-slate-900 dark:hover:text-white"
+                            >
+                                {t('duplicate.bookAnyway')}
+                            </button>
+                        )}
                         <AlertDialogFooter className="mt-5 flex flex-col sm:flex-row sm:justify-stretch gap-3">
                             <AlertDialogAction
                                 className="flex-1 h-10 px-4 rounded-md text-sm font-medium bg-red-600 hover:bg-red-700 shadow-none"

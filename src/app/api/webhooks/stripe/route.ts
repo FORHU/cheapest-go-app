@@ -4,6 +4,8 @@ import Stripe from 'stripe';
 import { sendFlightBookingConfirmationEmail } from '@/lib/server/email';
 import { createNotification } from '@/lib/server/admin/notify';
 import { env } from '@/utils/env';
+import { issueTicket } from '@/lib/server/flights/issue-ticket';
+import { createBooking } from '@/lib/server/flights/create-booking';
 
 export const maxDuration = 30;
 
@@ -72,11 +74,6 @@ export async function POST(req: NextRequest) {
         }
     }
 
-    const internalHeaders = {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${process.env.FUNCTIONS_SECRET}`,
-    };
-
     const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
 
     // Create supabase client once — used in both Mystifly and Duffel handlers
@@ -108,13 +105,8 @@ export async function POST(req: NextRequest) {
                 .eq('id', bookingSessionId)
                 .in('status', ['initiated', 'payment_initiated']);
 
-            const bookingRes = await fetch(`${siteUrl}/api/internal/create-booking`, {
-                method: 'POST',
-                headers: internalHeaders,
-                body: JSON.stringify({ sessionId: bookingSessionId }),
-            });
-
-            const bookingData = await bookingRes.json();
+            // Direct call rather than a loopback request — see ADR-0012.
+            const bookingData = await createBooking({ sessionId: bookingSessionId });
 
             if (bookingData.success) {
                 console.log(`[Webhook] Mystifly booking complete. PNR: ${bookingData.pnr} Status: ${bookingData.status}`);
@@ -179,13 +171,10 @@ export async function POST(req: NextRequest) {
             // which can be null if the Step 3a update in /api/flights/book failed silently
             // (e.g. column doesn't exist yet). This ensures flight_bookings always gets the
             // PI ID so cancel-booking can issue Stripe refunds correctly.
-            const bookingRes = await fetch(`${siteUrl}/api/internal/create-booking`, {
-                method: 'POST',
-                headers: internalHeaders,
-                body: JSON.stringify({ sessionId: bookingSessionId, paymentIntentId: pi.id }),
-            });
-
-            const bookingData = await bookingRes.json();
+            // Direct call rather than a loopback request. This is the one that mattered
+            // most: it is what creates the booking after the customer has paid, and it was
+            // reaching itself through whatever answered NEXT_PUBLIC_SITE_URL. See ADR-0012.
+            const bookingData = await createBooking({ sessionId: bookingSessionId, paymentIntentId: pi.id });
 
             if (!bookingData.success) {
                 throw new Error(bookingData.error || 'create-booking failed');
@@ -194,12 +183,10 @@ export async function POST(req: NextRequest) {
             // Auto-ticket Duffel orders
             if (bookingData.status !== 'ticketed' && !bookingData.alreadyBooked && bookingData.bookingId) {
                 console.log(`[Webhook] Auto-ticketing Duffel order: ${bookingData.bookingId}`);
-                const ticketRes = await fetch(`${siteUrl}/api/internal/issue-ticket`, {
-                    method: 'POST',
-                    headers: internalHeaders,
-                    body: JSON.stringify({ bookingId: bookingData.bookingId }),
-                });
-                const ticketData = await ticketRes.json();
+                // Direct call rather than a loopback request. This one mattered most: the
+                // webhook is what turns a paid booking into a ticketed one, and it was
+                // reaching itself through whatever answered NEXT_PUBLIC_SITE_URL. See ADR-0012.
+                const ticketData = await issueTicket(bookingData.bookingId);
                 console.log(ticketData.success
                     ? `[Webhook] Duffel ticketing OK`
                     : `[Webhook] Duffel ticketing failed: ${ticketData.error}`

@@ -306,7 +306,8 @@ export function SearchFetcher({
         if (filters.sortBy === 'price') {
             offers.sort((a, b) => a.price.total - b.price.total);
         } else if (filters.sortBy === 'duration') {
-            offers.sort((a, b) => (a.totalDuration ?? 0) - (b.totalDuration ?? 0));
+            // Rank on the slice the row actually shows, not on a sum of both directions.
+            offers.sort((a, b) => (a.sliceDurations?.[0] ?? a.totalDuration ?? 0) - (b.sliceDurations?.[0] ?? b.totalDuration ?? 0));
         } else if (filters.sortBy === 'departure') {
             offers.sort((a, b) =>
                 new Date(a.segments[0]?.departure?.time ?? 0).getTime() -

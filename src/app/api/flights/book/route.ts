@@ -22,6 +22,7 @@ import { cabinClassFromRawOffer } from '@/lib/server/flights/duffel-cabin';
 import { findOrderFromTimedOutAttempt } from '@/lib/server/flights/duffel-order-reconcile';
 import { findReusablePreOrder, REUSE_WINDOW_MS, type CandidateSession } from '@/lib/server/flights/preorder-reuse';
 import { normalizedToFlightOffer } from '@/utils/flight-utils';
+import { revalidateFlight } from '@/lib/server/flights/revalidate-flight';
 
 export const dynamic = 'force-dynamic';
 
@@ -181,7 +182,7 @@ export async function POST(req: NextRequest) {
     try {
 
         const body = await req.json();
-        const { provider, flight, passengers, contact, idempotencyKey, farePolicy, seatServiceIds, seatTotal, bagServiceIds, bagTotal, confirmedPrice, bundleHotelId, displayCurrency } = body as {
+        const { provider, flight, passengers, contact, idempotencyKey, farePolicy, seatServiceIds, seatTotal, bagServiceIds, bagTotal, confirmedPrice, bundleHotelId, displayCurrency, acknowledgeDuplicate } = body as {
             provider: string;
             flight: FlightOffer;
             passengers: any[];
@@ -195,6 +196,8 @@ export async function POST(req: NextRequest) {
             confirmedPrice?: number;
             bundleHotelId?: string;
             displayCurrency?: string;
+            /** Set by the client when the traveller has seen the duplicate warning and chosen to proceed. */
+            acknowledgeDuplicate?: boolean;
         };
 
         // Use server-verified user ID
@@ -280,6 +283,26 @@ export async function POST(req: NextRequest) {
             }, { status: 400 });
         }
 
+        // ── Settlement currency ──
+        //
+        // The amount charged is derived from the Duffel order, so it is denominated in the
+        // currency the SUPPLIER quotes and settles in — not in whatever `flight.price.currency`
+        // the browser sent. Per CONTEXT.md, the supplier's price is the only authoritative one
+        // and anything the browser computes is a display artefact; converting from the client's
+        // value would anchor a real charge to an untrusted field.
+        //
+        // Read from the raw offer, which exists BEFORE any order is placed, so the FX guard
+        // below can still probe the pair it will actually use.
+        const settlementCurrency = (
+            (flight as any)._rawOffer?.total_currency || flightCurrency
+        ).toLowerCase();
+
+        if (settlementCurrency !== flightCurrency) {
+            console.warn(
+                `[/book] Client-declared currency ${flightCurrency} differs from the supplier's ${settlementCurrency} — charging in the supplier's.`,
+            );
+        }
+
         // ── FX readiness guard ──
         //
         // Step 2 converts the charge into the customer's display currency. Do that
@@ -287,13 +310,13 @@ export async function POST(req: NextRequest) {
         // Step 1.5 would leave a real PNR bought with no payment against it. Failing
         // now costs the customer a retry; failing later costs us an orphaned ticket.
         const needsFxConversion =
-            !!displayCurrency && displayCurrency.toLowerCase() !== flightCurrency;
+            !!displayCurrency && displayCurrency.toLowerCase() !== settlementCurrency;
 
         if (needsFxConversion) {
             await refreshExchangeRates();
             try {
                 // Probe with the real pair — this throws on unknown currency or stale rates.
-                convertCurrencyStrict(1, flightCurrency, displayCurrency!);
+                convertCurrencyStrict(1, settlementCurrency, displayCurrency!);
             } catch (fxErr: any) {
                 console.error('[/book] FX guard rejected booking:', fxErr?.message);
                 return NextResponse.json({
@@ -311,44 +334,73 @@ export async function POST(req: NextRequest) {
 
         // ── Duplicate flight booking guard ──
         //
-        // One departure per traveller per calendar day. Route is deliberately NOT part
-        // of the match: nobody can be on two aircraft at once, so a second departure
-        // that day is a conflict wherever it happens to be going.
+        // One departure per traveller per calendar day, checked for EVERY slice. A return
+        // leg that clashes matters exactly as much as an outbound one, and reading only the
+        // first segment let half of every round trip through unexamined.
+        //
+        // Route is deliberately NOT part of the match: nobody can be on two aircraft at once,
+        // so a second departure that day is a conflict wherever it happens to be going.
+        //
+        // This WARNS; it does not refuse. A traveller who has seen the clash and still wants
+        // to book re-submits with `acknowledgeDuplicate`. Legitimate same-day departures are
+        // ordinary — a positioning flight on a separate ticket, a booking made for a family
+        // member on a shared account, a deliberate backup on a volatile fare — and refusing
+        // them outright was stricter than the industry it competes with. See ADR-0011.
         //
         // Provider-agnostic — it matches on the itinerary, not on who sold it, because
         // `flight_bookings` is filtered only by user and status.
-        //
-        // Duffel segments carry iata_code objects; other providers send plain strings.
         {
             const rawFlight = flight as any;
-            // Prefer raw Duffel slices (have departing_at); fall back to normalized segments
-            const firstSeg = rawFlight._rawOffer?.slices?.[0]?.segments?.[0]
-                ?? rawFlight.slices?.[0]?.segments?.[0]
-                ?? rawFlight.segments?.[0];
             const extractIata = (loc: any): string => {
                 if (!loc) return '';
                 if (typeof loc === 'string') return loc;
                 return loc.iata_code ?? loc.iataCode ?? loc.code ?? '';
             };
-            const origin = extractIata(firstSeg?.origin);
-            const destination = extractIata(firstSeg?.destination);
-            // Duffel raw: departing_at (string); normalized: departure.time or departure (string)
-            const departureVal = firstSeg?.departing_at ?? firstSeg?.departureTime ?? firstSeg?.departure;
-            const departureRaw: string = typeof departureVal === 'string' ? departureVal : (departureVal?.time ?? '');
-            const departureDate = departureRaw.slice(0, 10);
 
-            if (departureDate) {
+            // The first segment of each slice — that departure is what the day-rule is about.
+            // A connection later the same day is the same journey, not a second one.
+            const rawSlices: any[] = rawFlight._rawOffer?.slices ?? rawFlight.slices ?? [];
+            let sliceStarts: any[] = rawSlices.map((sl: any) => sl?.segments?.[0]).filter(Boolean);
+
+            if (sliceStarts.length === 0) {
+                // Normalised shape: a flat segment list where each segment carries its slice
+                // index. Take the first segment of each distinct slice.
+                const seen = new Set<number>();
+                sliceStarts = (rawFlight.segments ?? []).filter((seg: any) => {
+                    const idx = seg?.segmentIndex ?? seg?.itineraryIndex ?? 0;
+                    if (seen.has(idx)) return false;
+                    seen.add(idx);
+                    return true;
+                });
+            }
+
+            const sql = getSqlAdmin();
+
+            for (const seg of sliceStarts) {
+                const origin = extractIata(seg?.origin);
+                const destination = extractIata(seg?.destination);
+                // Duffel raw: departing_at (string); normalized: departure.time or departure.
+                const departureVal = seg?.departing_at ?? seg?.departureTime ?? seg?.departure;
+                const departureRaw: string = typeof departureVal === 'string' ? departureVal : (departureVal?.time ?? '');
+                const departureDate = departureRaw.slice(0, 10);
+                if (!departureDate) continue;
+
                 // `flight_segments.departure` is timestamptz — an instant in UTC — while
                 // `departureDate` is the LOCAL calendar day at the origin. Rather than
                 // converting each stored row back to a local date (which would need that
                 // row's own timezone), the traveller's local day is converted ONCE into the
                 // UTC interval it occupies and the query asks for departures inside it.
-                // Exact, and correct across origins in different zones.
                 const dayMs = 24 * 60 * 60 * 1000;
                 const instantMs = Date.parse(departureRaw);
                 const wallClockMs = Date.parse(`${departureRaw.slice(0, 19)}Z`);
-                // 0 when the string carries no offset — then local day == UTC day.
-                const offsetMs = Number.isFinite(instantMs) && Number.isFinite(wallClockMs)
+                // Test the STRING, not the parse. A date-time with no offset is parsed as
+                // local time by the runtime, so `wallClockMs - instantMs` silently returned
+                // the SERVER's own offset: a UTC host built a 00:00–24:00 UTC window while a
+                // UTC+8 developer machine built 16:00–16:00, and the guard blocked or missed
+                // different bookings in each. Duffel quotes departures with no offset, so
+                // this is the normal case, not the exotic one.
+                const hasExplicitOffset = /(?:Z|[+-]\d{2}:?\d{2})$/.test(departureRaw.trim());
+                const offsetMs = hasExplicitOffset && Number.isFinite(instantMs) && Number.isFinite(wallClockMs)
                     ? wallClockMs - instantMs
                     : 0;
 
@@ -357,15 +409,13 @@ export async function POST(req: NextRequest) {
                 const windowStart = new Date(localMidnightUtc).toISOString();
                 const windowEnd = new Date(localMidnightUtc + dayMs).toISOString();
 
-                // One round trip, not two. Previously this fetched every active booking id
-                // and then queried segments by that id list; the join does both at once and
-                // stops at the first conflict.
+                // One round trip, not two. The join finds the clashing booking and its route
+                // in a single query and stops at the first conflict.
                 //
                 // Only statuses where the ticket is genuinely gone count as released.
                 // `cancel_failed` and `cancel_requested` do not release anything — a failed
                 // cancellation means the airline still holds the booking — so excluding them
                 // let a traveller rebook a flight they were still holding, and pay twice.
-                const sql = getSqlAdmin();
                 let clash: { booking_id: string; origin: string; destination: string } | null = null;
                 try {
                     const rows = await sql`
@@ -386,13 +436,13 @@ export async function POST(req: NextRequest) {
                     console.error('[/book] duplicate guard lookup FAILED — duplicates cannot be detected:', guardErr?.message ?? guardErr);
                 }
 
+                const verdict = !clash ? 'allow' : (acknowledgeDuplicate ? 'ACKNOWLEDGED' : 'WARN');
                 console.log(
                     `[/book] duplicate guard: ${origin}->${destination} departing ${departureDate} ` +
-                    `(offset ${offsetMs / 3_600_000}h, UTC window ${windowStart}..${windowEnd}) — ` +
-                    `verdict=${clash ? 'BLOCK' : 'allow'}`,
+                    `(offset ${offsetMs / 3_600_000}h, UTC window ${windowStart}..${windowEnd}) — verdict=${verdict}`,
                 );
 
-                if (clash) {
+                if (clash && !acknowledgeDuplicate) {
                     return NextResponse.json({
                         success: false,
                         code: 'DUPLICATE_BOOKING',
@@ -402,7 +452,9 @@ export async function POST(req: NextRequest) {
                         // may well go somewhere else entirely.
                         route: `${clash.origin} → ${clash.destination}`,
                         departureDate,
-                        error: `You already have an active flight departing on ${departureDate} (${clash.origin} → ${clash.destination}). Only one departure per day can be booked.`,
+                        // The traveller may proceed: re-submit with acknowledgeDuplicate.
+                        canOverride: true,
+                        error: `You already have an active flight departing on ${departureDate} (${clash.origin} → ${clash.destination}).`,
                     }, { status: 409 });
                 }
             }
@@ -422,23 +474,22 @@ export async function POST(req: NextRequest) {
         }
 
         // ── SERVER-SIDE REVALIDATION & TTL GUARD ──
+        //
+        // A direct call, not a loopback HTTP request. This used to POST to
+        // `${siteUrl}/api/internal/revalidate-flight` — the same process, reached over the
+        // network — which cost a round trip on the path between quoting a fare and charging
+        // for it, and landed on whatever happened to be serving NEXT_PUBLIC_SITE_URL. See
+        // ADR-0012.
         const revalStart = Date.now();
-        const revalEndpoint = `${siteUrl}/api/internal/revalidate-flight`;
-        const revalRes = await fetch(revalEndpoint, {
-            method: 'POST',
-            headers: edgeFnHeaders,
-            body: JSON.stringify({
-                userId,
-                provider,
-                flightPayload: { ...flight, oldPrice: flightTotal },
-            }),
+        const revalData = await revalidateFlight({
+            userId,
+            provider,
+            flightPayload: { ...flight, oldPrice: flightTotal },
         });
-
-        const revalData = await revalRes.json();
         logApiCall({
-            provider, endpoint: revalEndpoint, durationMs: Date.now() - revalStart,
+            provider, endpoint: 'revalidateFlight (in-process)', durationMs: Date.now() - revalStart,
             requestParams: { origin: flight.segments?.[0]?.origin, destination: flight.segments?.[flight.segments.length - 1]?.destination, oldPrice: flightTotal },
-            responseStatus: revalRes.status, userId,
+            responseStatus: revalData.success ? 200 : (revalData.badRequest ? 400 : 409), userId,
             responseSummary: { seatsAvailable: revalData.seatsAvailable, priceChanged: revalData.priceChanged, newPrice: revalData.newPrice },
             errorMessage: !revalData.success ? (revalData.error || 'Revalidation failed') : undefined,
         });
@@ -450,21 +501,27 @@ export async function POST(req: NextRequest) {
             }, { status: 409 });
         }
 
+        // Revalidation omits `newPrice` entirely when it could not read one, rather than
+        // reporting 0. Collapsing both to 0 here is what makes the parse-failure branch
+        // below reachable — written against `=== 0`, it never once fired, because the
+        // field was absent in exactly the case it was meant to catch.
+        const revalNewPrice = revalData.newPrice ?? 0;
+
         // The revalidation gate applies getFlightPriceTolerance() — the same threshold
         // used at order time below — and only flags increases.
         // Guard: newPrice=0 means price extraction failed, not a real $0 fare.
-        if (revalData.priceChanged && revalData.newPrice > 0) {
+        if (revalData.priceChanged && revalNewPrice > 0) {
             return NextResponse.json({
                 success: false,
                 error: 'price_changed',
                 oldPrice: flightTotal,
-                newPrice: revalData.newPrice,
+                newPrice: revalNewPrice,
                 currency: (flight as any).currency || 'USD',
             }, { status: 409 });
         }
 
-        if (revalData.priceChanged && revalData.newPrice === 0) {
-            console.warn(`[/book] Revalidation reported priceChanged but newPrice=0 — likely a parse failure. Proceeding with original price: ${flightTotal}`);
+        if (revalData.priceChanged && revalNewPrice === 0) {
+            console.warn(`[/book] Revalidation reported priceChanged but no usable newPrice — likely a parse failure. Proceeding with original price: ${flightTotal}`);
         }
 
         // A fare that dropped never reaches the check above — there is nothing for the
@@ -473,9 +530,9 @@ export async function POST(req: NextRequest) {
         // difference. Duffel is charged from the real order total further down, so this
         // only matters for providers whose Stripe amount is derived from flightTotal.
         let effectiveFlightTotal = flightTotal;
-        if (revalData.newPrice > 0 && revalData.newPrice < flightTotal) {
-            console.log(`[/book] Fare dropped ${flightTotal} → ${revalData.newPrice} — adopting the lower price without prompting`);
-            effectiveFlightTotal = revalData.newPrice;
+        if (revalNewPrice > 0 && revalNewPrice < flightTotal) {
+            console.log(`[/book] Fare dropped ${flightTotal} → ${revalNewPrice} — adopting the lower price without prompting`);
+            effectiveFlightTotal = revalNewPrice;
         }
 
         const serverFarePolicy = revalData.farePolicy || farePolicy;
@@ -758,7 +815,7 @@ export async function POST(req: NextRequest) {
                 // it aborted healthy bookings mid-flight and reported a supplier
                 // outage. Aborting does NOT cancel the order at Duffel (see
                 // ORDER_CREATE_TIMEOUT_MS docs), so every premature abort risked an
-                // orphaned PNR. Sized against this route's own maxDuration of 120s.
+                // orphaned PNR. Sized against this route's own maxDuration of 300s.
                 const orderAbort = new AbortController();
                 const orderTimeout = setTimeout(() => orderAbort.abort(), ORDER_CREATE_TIMEOUT_MS);
 
@@ -1221,13 +1278,24 @@ export async function POST(req: NextRequest) {
 
         // Charge the customer in their selected display currency, not Duffel's USD.
         // This ensures the refund amount exactly matches what they paid — no FX drift.
-        const chargeInCurrency = (displayCurrency || flightCurrency).toLowerCase();
+        const chargeInCurrency = (displayCurrency || settlementCurrency).toLowerCase();
+        // `stripeBase` came out of the Duffel order, so it is denominated in that order's
+        // own currency. Normally identical to settlementCurrency (both originate in the same
+        // offer); if the order came back in something else, say so loudly — the FX guard
+        // above proved a different pair, and this is the one place where a surprise is
+        // expensive.
+        const chargeFromCurrency = (duffelPreOrder?.orderCurrency || settlementCurrency).toLowerCase();
+        if (chargeFromCurrency !== settlementCurrency) {
+            console.error(
+                `[/book] CURRENCY DRIFT: order settled in ${chargeFromCurrency} but FX was cleared for ${settlementCurrency}.`,
+            );
+        }
         // Strict conversion: a silent passthrough here would charge the fare's numeric
         // value in the customer's currency (e.g. 5800 PHP billed as 5800 USD). The FX
         // readiness guard near the top of this handler has already proven this pair
         // converts, so reaching the throw means rates went stale mid-request.
-        const chargePrice = chargeInCurrency !== flightCurrency
-            ? Math.round(convertCurrencyStrict(pricing.chargedPrice, flightCurrency, chargeInCurrency.toUpperCase()) * 100) / 100
+        const chargePrice = chargeInCurrency !== chargeFromCurrency
+            ? Math.round(convertCurrencyStrict(pricing.chargedPrice, chargeFromCurrency, chargeInCurrency.toUpperCase()) * 100) / 100
             : pricing.chargedPrice;
         const flightStripeAmount = toStripeAmount(chargePrice, chargeInCurrency);
 
@@ -1265,7 +1333,7 @@ export async function POST(req: NextRequest) {
         }, { idempotencyKey: piIdempotencyKey });
         logApiCall({
             provider: 'stripe', endpoint: 'paymentIntents.create', durationMs: Date.now() - stripeStart,
-            requestParams: { amount: flightStripeAmount, currency: flightCurrency, captureMethod: 'automatic', markupRate: pricing.markupRate },
+            requestParams: { amount: flightStripeAmount, currency: chargeInCurrency, captureMethod: 'automatic', markupRate: pricing.markupRate },
             responseStatus: 200, userId,
             responseSummary: { paymentIntentId: paymentIntent.id, sessionId, chargedPrice: pricing.chargedPrice },
         });
@@ -1287,7 +1355,8 @@ export async function POST(req: NextRequest) {
             .update({
                 payment_intent_id: paymentIntent.id,
                 status: 'payment_initiated',
-                currency: flightCurrency,
+                // Denominates original_price below, which came from the supplier's order.
+                currency: settlementCurrency,
                 original_price: pricing.originalPrice,
                 charged_price: chargePrice,
                 markup_pct: pricing.markupRate,

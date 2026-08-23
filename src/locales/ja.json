@@ -511,6 +511,7 @@
     "dontClosePage": "このページを閉じないでください",
     "duplicate": {
       "description": "{date} に {route} 発のアクティブな予約が見つかりました。既存の予約をキャンセルするか、戻ってください。",
+      "bookAnyway": "それでも予約する",
       "keepExisting": "既存の予約を保持",
       "title": "すでにこの日付の航空券を予約しています",
       "viewExisting": "既存の予約を確認・キャンセル"
@@ -759,6 +760,8 @@
       "includesTaxesFees": "税金・手数料込み",
       "legLabel": "区間 {number}",
       "moreSegments": "+ {count}件",
+      "operatedBy": "運航: {airline}",
+      "partiallyOperatedBy": "一部運航: {airline}",
       "noBag": "手荷物なし",
       "nonRefundable": "返金不可",
       "nonstop": "直行便",

@@ -154,10 +154,26 @@ export function parseDuffelOffer(offer: any, cabinClassFallback?: string) {
     
     offer.slices.forEach((slice: any, sliceIdx: number) => {
         slice.segments.forEach((seg: any) => {
+            const marketingCode = seg.marketing_carrier?.iata_code ?? '';
+            const operatingCode = seg.operating_carrier?.iata_code ?? '';
             allSegments.push({
                 segmentIndex: sliceIdx,
-                airline: seg.operating_carrier?.iata_code || seg.marketing_carrier?.iata_code,
-                airlineName: seg.operating_carrier?.name || seg.marketing_carrier?.name,
+                // The Marketing Carrier is the brand the seat was sold under — that is what
+                // the traveller booked. This used to read the operating carrier while the
+                // flight number below read the marketing one, so a codeshare showed the
+                // wrong airline's name beside the right airline's flight number.
+                airline: marketingCode || operatingCode,
+                airlineName: seg.marketing_carrier?.name || seg.operating_carrier?.name,
+                // Only present on a codeshare. Absent means the brand flies its own metal.
+                operatingAirline: operatingCode && operatingCode !== marketingCode
+                    ? {
+                        code: operatingCode,
+                        name: seg.operating_carrier?.name ?? '',
+                        flightNumber: seg.operating_carrier_flight_number
+                            ? `${operatingCode}${seg.operating_carrier_flight_number}`
+                            : '',
+                    }
+                    : undefined,
                 origin: seg.origin.iata_code,
                 destination: seg.destination.iata_code,
                 flightNumber: `${seg.marketing_carrier.iata_code}${seg.marketing_carrier_flight_number}`,
@@ -206,6 +222,9 @@ export function parseDuffelOffer(offer: any, cabinClassFallback?: string) {
         departure_time: firstSeg?.departure?.time,
         arrival_time: lastSeg?.arrival?.time,
         duration: offer.slices.reduce((acc: number, s: any) => acc + parseDuffelDuration(s.duration), 0),
+        // One elapsed time per slice, exactly as Duffel quotes it — connection time
+        // included, and correct across timezones in a way arrival-minus-departure is not.
+        sliceDurations: offer.slices.map((s: any) => parseDuffelDuration(s.duration)),
         stops: offer.slices.reduce((acc: number, s: any) => acc + (s.segments.length - 1), 0),
         remaining_seats: offer.available_seats || null,
         segments: allSegments,
@@ -267,10 +286,18 @@ function extractBaggageAllowance(offer: any): { carryOnBags?: number; checkedBag
 }
 
 /**
- * Parses ISO8601 duration (e.g. PT2H30M) into total minutes.
+ * Parses an ISO 8601 duration (e.g. `PT2H30M`) into total minutes.
+ *
+ * The `T` is optional, because Duffel really does send day-only durations: a slice of
+ * exactly one day comes back as `P1D`, with no time component at all. Requiring the `T`
+ * made that string unmatchable, so a 24-hour slice was read as zero minutes — invisible
+ * while slice durations were only ever summed, and a blank duration once each slice is
+ * shown on its own row. Anchored, so a malformed string fails outright rather than
+ * matching some prefix of itself.
  */
-function parseDuffelDuration(duration: string): number {
-    const matches = duration.match(/P(?:(\d+)D)?T(?:(\d+)H)?(?:(\d+)M)?/);
+export function parseDuffelDuration(duration: string): number {
+    if (!duration) return 0;
+    const matches = duration.match(/^P(?:(\d+)D)?(?:T(?:(\d+)H)?(?:(\d+)M)?(?:(?:\d+(?:\.\d+)?)S)?)?$/);
     if (!matches) return 0;
 
     const days = parseInt(matches[1] || '0');

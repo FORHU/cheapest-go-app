@@ -6,9 +6,70 @@
 import { AIRLINES, FlightSegmentDetail, FlightOffer, CabinClass } from '@/types/flights';
 import { convertCurrency, getCurrencySymbol } from '@/lib/currency';
 
+/**
+ * A departure or arrival in Local Airport Time, rendered for `locale`.
+ *
+ * Providers quote these with no UTC offset, so the string's own digits ARE the answer —
+ * the wall clock at that airport. They are read straight out of the string rather than
+ * through a Date, so no runtime timezone can shift them.
+ *
+ * The clock is chosen per locale, but the AM/PM marker is OUR string, not CLDR's. Intl
+ * was tried first and rejected: Node's ICU 78 renders Korean as "PM 2:42" rather than
+ * "오후 2:42", and any disagreement between the server's ICU and the viewer's browser
+ * shows up as a hydration mismatch on every flight time on the page.
+ */
+const CLOCK: Record<string, { hour12: boolean; am?: string; pm?: string; markerFirst?: boolean }> = {
+    en: { hour12: true, am: 'AM', pm: 'PM' },
+    ko: { hour12: true, am: '오전', pm: '오후', markerFirst: true },
+    ja: { hour12: false },
+    zh: { hour12: false },
+};
+
+export function formatTimeIn(iso: string | undefined, locale = 'en'): string {
+    if (!iso) return '--:--';
+    // The digits in the string ARE the answer — no Date is constructed, so no runtime
+    // timezone can shift them and an offset in the string cannot either.
+    const m = /T(\d{2}):(\d{2})/.exec(iso);
+    if (!m) return '--:--';
+    const minute = m[2];
+    const hour24 = Number(m[1]);
+    if (!Number.isFinite(hour24) || hour24 > 23) return '--:--';
+
+    const clock = CLOCK[locale.split('-')[0]] ?? CLOCK.en;
+    if (!clock.hour12) return `${String(hour24).padStart(2, '0')}:${minute}`;
+
+    const marker = hour24 < 12 ? clock.am : clock.pm;
+    const hour12 = hour24 % 12 || 12;
+    return clock.markerFirst ? `${marker} ${hour12}:${minute}` : `${hour12}:${minute} ${marker}`;
+}
+
 export function formatTime(iso: string): string {
-    const d = new Date(iso);
-    return d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
+    return formatTimeIn(iso);
+}
+
+/**
+ * Whole calendar days between two Local Airport Times — the `+1` on an arrival that
+ * lands the next day. Compares dates only, so it never depends on either zone.
+ */
+export function dayOffset(fromIso?: string, toIso?: string): number {
+    if (!fromIso || !toIso) return 0;
+    const from = Date.parse(`${fromIso.slice(0, 10)}T00:00:00Z`);
+    const to = Date.parse(`${toIso.slice(0, 10)}T00:00:00Z`);
+    if (!Number.isFinite(from) || !Number.isFinite(to)) return 0;
+    return Math.round((to - from) / 86_400_000);
+}
+
+/**
+ * Ground time between landing and the next departure. Both times are at the SAME
+ * airport, so their shared offset cancels and subtracting the wall clocks is exact —
+ * which is not true of any other pair of times in an itinerary.
+ */
+export function layoverMinutes(arrivalIso?: string, departureIso?: string): number {
+    if (!arrivalIso || !departureIso) return 0;
+    const arr = Date.parse(`${arrivalIso.slice(0, 19)}Z`);
+    const dep = Date.parse(`${departureIso.slice(0, 19)}Z`);
+    if (!Number.isFinite(arr) || !Number.isFinite(dep)) return 0;
+    return Math.max(0, Math.round((dep - arr) / 60_000));
 }
 
 export function formatDuration(minutes: number): string {
@@ -92,7 +153,11 @@ export function normalizedToFlightOffer(nf: any, tripType?: FlightOffer['tripTyp
         // Preserve the provider's slice-based grouping (e.g. Duffel sets sliceIdx so both
         // outbound segments share index 0 and return segments share index 1). Fall back to
         // flat array index only when the raw segment has no grouping info.
-        segmentIndex: seg.segmentIndex ?? idx,
+        // Falling back to the array position invented a slice boundary per segment: a
+        // 2-segment outbound became two one-segment slices, and Mystifly — which names this
+        // field itineraryIndex — had every segment split. 0 groups them into a single slice,
+        // which is wrong only in shape, never in count.
+        segmentIndex: seg.segmentIndex ?? (seg as any).itineraryIndex ?? 0,
         airline: {
             code: (() => {
                 const raw = typeof seg.airline === 'object' ? seg.airline?.code : seg.airline;
@@ -121,6 +186,7 @@ export function normalizedToFlightOffer(nf: any, tripType?: FlightOffer['tripTyp
             time: seg.arrival?.time ?? seg.arrivalTime ?? nf.arrival_time ?? '',
         },
         duration: seg.duration ?? nf.duration ?? 0,
+        operatingAirline: seg.operatingAirline,
         stops: 0,
         aircraft: seg.aircraft,
         cabinClass: (seg.cabinClass ?? nf.cabinClass ?? 'economy') as CabinClass,
@@ -137,6 +203,7 @@ export function normalizedToFlightOffer(nf: any, tripType?: FlightOffer['tripTyp
             pricePerAdult: nf.pricePerAdult ?? nf.price ?? 0,
         },
         segments,
+        sliceDurations: nf.sliceDurations ?? nf.raw?.sliceDurations,
         totalDuration: nf.durationMinutes ?? nf.duration ?? nf.raw?.durationMinutes ?? nf.raw?.duration ?? 0,
         totalStops: nf.stops ?? nf.raw?.stops ?? 0,
         refundable: nf.refundable ?? nf.raw?.refundable ?? false,

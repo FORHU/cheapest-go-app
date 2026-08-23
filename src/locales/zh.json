@@ -512,6 +512,7 @@
     "dontClosePage": "请不要关闭此页面",
     "duplicate": {
       "description": "发现 {date} 从 {route} 出发的有效预订。请先取消现有预订，或返回。",
+      "bookAnyway": "仍然预订",
       "keepExisting": "保留现有预订",
       "title": "您已预订该日期的航班",
       "viewExisting": "查看并取消现有预订"
@@ -761,6 +762,8 @@
       "includesTaxesFees": "含税费",
       "legLabel": "第{number}段",
       "moreSegments": "+ {count} 个",
+      "operatedBy": "由 {airline} 执飞",
+      "partiallyOperatedBy": "部分航段由 {airline} 执飞",
       "noBag": "无行李",
       "nonRefundable": "不可退款",
       "nonstop": "直飞",

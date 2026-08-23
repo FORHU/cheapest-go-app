@@ -4,28 +4,15 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Plane, ArrowRight, Luggage, ShoppingBag, ChevronDown, ChevronUp, Shield, XCircle, BadgeDollarSign, Users } from 'lucide-react';
 import type { FlightOffer, FlightSegmentDetail } from '@/types/flights';
-import { formatPrice } from '@/utils/flight-utils';
+import { formatPrice, formatDuration, formatTimeIn, dayOffset, layoverMinutes } from '@/utils/flight-utils';
 import SaveButton from '@/components/common/SaveButton';
-import { useTranslations } from 'next-intl';
+import { useTranslations, useLocale } from 'next-intl';
 
 import { useUserCurrency } from '@/stores/searchStore';
 
 type Translator = ReturnType<typeof useTranslations>;
 
 // ─── Helpers ─────────────────────────────────────────────────────────
-
-function formatTime(iso: string | undefined): string {
-    if (!iso) return '--:--';
-    const d = new Date(iso);
-    if (isNaN(d.getTime())) return '--:--';
-    return d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
-}
-
-function formatDuration(minutes: number): string {
-    const h = Math.floor(minutes / 60);
-    const m = minutes % 60;
-    return h > 0 ? `${h}h ${m}m` : `${m}m`;
-}
 
 function providerLabel(provider: string): string {
     if (provider === 'mystifly_v2' || provider === 'mystifly') return 'Mystifly';
@@ -70,7 +57,7 @@ function AirlineLogo({ code, name }: { code: string | undefined; name?: string }
 
 // ─── Segment Detail Row ──────────────────────────────────────────────
 
-function SegmentRow({ segment, t }: { segment: FlightSegmentDetail; t: Translator }) {
+function SegmentRow({ segment, t, locale }: { segment: FlightSegmentDetail; t: Translator; locale: string }) {
     return (
         <div className="flex items-center gap-2 lg:gap-4 py-1.5 lg:py-2.5 px-1">
             <AirlineLogo code={segment.airline.code} name={segment.airline.name} />
@@ -86,12 +73,19 @@ function SegmentRow({ segment, t }: { segment: FlightSegmentDetail; t: Translato
                             <span className="hidden sm:inline">{segment.aircraft}</span>
                         </>
                     )}
+                    {segment.operatingAirline?.name && (
+                        <span className="text-amber-700 dark:text-amber-500 truncate">
+                            {t('operatedBy', { airline: segment.operatingAirline.name })}
+                        </span>
+                    )}
                 </div>
 
                 <div className="flex items-center gap-1.5 lg:gap-3 mt-0.5 lg:mt-1.5">
                     <div className="text-center min-w-[40px] lg:min-w-[56px]">
-                        <div className="text-xs lg:text-base font-semibold text-slate-900 dark:text-white">{formatTime(segment.departure.time)}</div>
-                        <div className="text-[10px] lg:text-xs text-slate-500 dark:text-slate-400">{segment.departure.airport}</div>
+                        <div className="text-xs lg:text-base font-semibold text-slate-900 dark:text-white">{formatTimeIn(segment.departure.time, locale)}</div>
+                        <div className="text-[10px] lg:text-xs text-slate-500 dark:text-slate-400">
+                            {segment.departure.airport}{segment.departure.terminal ? ` T${segment.departure.terminal}` : ''}
+                        </div>
                     </div>
 
                     <div className="flex-1 flex flex-col items-center gap-0 lg:gap-0.5 min-w-[60px] lg:min-w-[90px]">
@@ -107,8 +101,17 @@ function SegmentRow({ segment, t }: { segment: FlightSegmentDetail; t: Translato
                     </div>
 
                     <div className="text-center min-w-[40px] lg:min-w-[56px]">
-                        <div className="text-xs lg:text-base font-semibold text-slate-900 dark:text-white">{formatTime(segment.arrival.time)}</div>
-                        <div className="text-[10px] lg:text-xs text-slate-500 dark:text-slate-400">{segment.arrival.airport}</div>
+                        <div className="text-xs lg:text-base font-semibold text-slate-900 dark:text-white">
+                            {formatTimeIn(segment.arrival.time, locale)}
+                            {dayOffset(segment.departure.time, segment.arrival.time) > 0 && (
+                                <sup className="text-[8px] lg:text-[10px] text-amber-600 dark:text-amber-400 ml-0.5">
+                                    +{dayOffset(segment.departure.time, segment.arrival.time)}
+                                </sup>
+                            )}
+                        </div>
+                        <div className="text-[10px] lg:text-xs text-slate-500 dark:text-slate-400">
+                            {segment.arrival.airport}{segment.arrival.terminal ? ` T${segment.arrival.terminal}` : ''}
+                        </div>
                     </div>
                 </div>
             </div>
@@ -131,12 +134,18 @@ export const FlightCard: React.FC<FlightCardProps> = ({ offer, index = 0, onSele
     const [expanded, setExpanded] = useState(false);
     const targetCurrency = useUserCurrency();
     const t = useTranslations('flights.card');
+    // Times are rendered per locale — 12-hour where the locale says so, 24-hour where it
+    // does not — without ever converting the wall clock. See formatTimeIn.
+    const locale = useLocale();
 
     // Group segments by their logical segment index (each search leg)
     const legGroups: { [key: number]: FlightSegmentDetail[] } = {};
     offer.segments.forEach((seg, i) => {
         // Fallback to array split if segmentIndex is mysteriously missing from older APIs
-        const groupIndex = seg.segmentIndex ?? (offer.segments.length > 1 && i >= Math.ceil(offer.segments.length / 2) ? 1 : 0);
+        // Splitting the array in half invented a return slice: a 1-stop one-way rendered as
+        // an "outbound" ending at the layover airport and a "return" that was really the
+        // second half of the same journey. Group into one slice instead of guessing.
+        const groupIndex = seg.segmentIndex ?? 0;
         if (!legGroups[groupIndex]) legGroups[groupIndex] = [];
         legGroups[groupIndex].push(seg);
     });
@@ -149,21 +158,29 @@ export const FlightCard: React.FC<FlightCardProps> = ({ offer, index = 0, onSele
     const outboundLeg = legGroups[0] ?? offer.segments;
     const outboundLast = outboundLeg[outboundLeg.length - 1];
     const outboundStops = Math.max(0, outboundLeg.length - 1);
-    // Stopover airports for the outbound leg (intermediate airports only)
-    const outboundLayoverAirports = outboundLeg.slice(0, -1).map(s => s.arrival.airport);
-    // Total outbound travel time = air time + layovers.
-    // We cannot subtract departure airport time from arrival airport time (different timezones,
-    // times stored as local-airport ISO strings without offset). Instead: sum segment durations
-    // (timezone-safe, stored in minutes) plus layover times between consecutive segments at the
-    // SAME airport (timezone cancels out since both times are in the same local timezone).
-    const outboundAirMins = outboundLeg.reduce((sum, s) => sum + (s.duration ?? 0), 0);
-    const outboundLayoverMins = outboundLeg.slice(0, -1).reduce((sum, s, i) => {
-        const arrT = s.arrival.time;
-        const depT = outboundLeg[i + 1]?.departure.time;
-        if (!arrT || !depT) return sum;
-        return sum + Math.max(0, Math.round((new Date(depT).getTime() - new Date(arrT).getTime()) / 60000));
-    }, 0);
-    const outboundDurationMins = (outboundAirMins + outboundLayoverMins) || offer.totalDuration;
+    // Everything below describes the OUTBOUND SLICE and nothing else. Mixing an
+    // offer-wide figure in here is what made a 2-segment outbound advertise "+ 3 more".
+    //
+    // The duration is the provider's own quoted elapsed time for this slice, never rebuilt
+    // from the timestamps: those carry no UTC offset, so subtracting them is wrong by the
+    // timezone gap between origin and destination. Absent means no provider quoted one, in
+    // which case nothing is shown rather than a guess.
+    const outboundDurationMins = offer.sliceDurations?.[routeIndices[0] ?? 0];
+    // Each connection: how long on the ground, and where. Both times are at the same
+    // airport, so their shared offset cancels and this subtraction is exact.
+    const outboundLayovers = outboundLeg.slice(0, -1).map((s, i) => ({
+        airport: s.arrival.airport,
+        minutes: layoverMinutes(s.arrival.time, outboundLeg[i + 1]?.departure.time),
+    }));
+    // Every flight number in this slice — the traveller boards each one of them.
+    const outboundFlightNumbers = outboundLeg.map(s => s.flightNumber).filter(Boolean).join(', ');
+    // Who actually flies, when that is not who sold the seat.
+    const operators = Array.from(
+        new Set(outboundLeg.map(s => s.operatingAirline?.name).filter(Boolean))
+    ) as string[];
+    const partiallyOperated = operators.length > 0 && outboundLeg.some(s => !s.operatingAirline);
+    // Calendar days between take-off and touchdown — the "+1" on an overnight arrival.
+    const outboundDayOffset = dayOffset(primary.departure.time, outboundLast?.arrival?.time);
 
     return (
         <motion.div
@@ -208,37 +225,57 @@ export const FlightCard: React.FC<FlightCardProps> = ({ offer, index = 0, onSele
                                 </span>
                             </div>
                             <div className="text-[10px] lg:text-xs text-slate-500 dark:text-slate-400">
-                                {primary.flightNumber}
-                                {offer.segments.length > 1 && ` ${t('moreSegments', { count: offer.segments.length - 1 })}`}
+                                {outboundFlightNumbers}
                             </div>
+                            {operators.length > 0 && (
+                                <div className="text-[9px] lg:text-[11px] text-amber-700 dark:text-amber-500 truncate">
+                                    {partiallyOperated
+                                        ? t('partiallyOperatedBy', { airline: operators.join(', ') })
+                                        : t('operatedBy', { airline: operators.join(', ') })}
+                                </div>
+                            )}
                         </div>
                     </div>
 
                     {/* Route timeline — outbound leg only */}
                     <div className="flex items-center gap-1.5 lg:gap-3 min-w-0 w-full">
                         <div className="text-center shrink-0">
-                            <div className="text-xs lg:text-base font-normal text-slate-900 dark:text-white leading-tight">{formatTime(primary.departure.time)}</div>
-                            <div className="text-[8px] lg:text-[10px] text-slate-500 dark:text-slate-400 font-normal">{primary.departure.airport}</div>
+                            <div className="text-xs lg:text-base font-normal text-slate-900 dark:text-white leading-tight">{formatTimeIn(primary.departure.time, locale)}</div>
+                            <div className="text-[8px] lg:text-[10px] text-slate-500 dark:text-slate-400 font-normal">
+                                {primary.departure.airport}{primary.departure.terminal ? ` T${primary.departure.terminal}` : ''}
+                            </div>
                         </div>
 
                         <div className="flex-1 flex flex-col items-center gap-0 min-w-0">
-                            <span className="text-[10px] lg:text-xs text-slate-400 dark:text-slate-500 font-normal">{formatDuration(outboundDurationMins)}</span>
+                            <span className="text-[10px] lg:text-xs text-slate-400 dark:text-slate-500 font-normal">
+                                {outboundDurationMins ? formatDuration(outboundDurationMins) : ''}
+                            </span>
                             <div className="w-full flex items-center gap-0.5">
                                 <div className="h-[1.5px] lg:h-[2px] flex-1 bg-gradient-to-r from-indigo-400 to-purple-400 rounded-full" />
                                 <Plane className="w-2.5 h-2.5 lg:w-4 lg:h-4 text-indigo-500 rotate-90" />
                             </div>
                             <span className={`text-[10px] lg:text-xs font-normal ${outboundStops === 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'}`}>
                                 {stopsLabel(outboundStops, t)}
-                                {outboundStops > 0 && outboundLayoverAirports.length > 0 && (
-                                    <span className="text-slate-400 dark:text-slate-500"> · {outboundLayoverAirports.join(' · ')}</span>
+                                {outboundLayovers.length > 0 && (
+                                    <span className="text-slate-400 dark:text-slate-500">
+                                        {' · '}
+                                        {outboundLayovers
+                                            .map(l => (l.minutes > 0 ? `${formatDuration(l.minutes)} ${l.airport}` : l.airport))
+                                            .join(' · ')}
+                                    </span>
                                 )}
                             </span>
                         </div>
 
                         <div className="text-center shrink-0">
-                            <div className="text-xs lg:text-base font-normal text-slate-900 dark:text-white leading-tight">{formatTime(outboundLast?.arrival?.time)}</div>
+                            <div className="text-xs lg:text-base font-normal text-slate-900 dark:text-white leading-tight">
+                                {formatTimeIn(outboundLast?.arrival?.time, locale)}
+                                {outboundDayOffset > 0 && (
+                                    <sup className="text-[8px] lg:text-[10px] text-amber-600 dark:text-amber-400 ml-0.5">+{outboundDayOffset}</sup>
+                                )}
+                            </div>
                             <div className="text-[8px] lg:text-[10px] text-slate-500 dark:text-slate-400 font-normal">
-                                {outboundLast?.arrival?.airport}
+                                {outboundLast?.arrival?.airport}{outboundLast?.arrival?.terminal ? ` T${outboundLast.arrival.terminal}` : ''}
                             </div>
                         </div>
                     </div>
@@ -434,7 +471,7 @@ export const FlightCard: React.FC<FlightCardProps> = ({ offer, index = 0, onSele
                                           <div className="text-[11px] font-normal text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">
                                               {label}
                                           </div>
-                                          {legSegments.map((seg, i) => <SegmentRow key={`${idx}-${i}`} segment={seg} t={t} />)}
+                                          {legSegments.map((seg, i) => <SegmentRow key={`${idx}-${i}`} segment={seg} t={t} locale={locale} />)}
                                       </div>
                                   );
                               })}

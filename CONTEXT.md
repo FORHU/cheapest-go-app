@@ -70,6 +70,12 @@ _Avoid_: reading a domestic-sector gap as a CheapestGo markup or an FX fault —
 **Pre-Order** — a real airline order placed with the provider before the customer has paid, created so that the amount charged is the amount the airline actually quoted rather than an estimate that can expire mid-checkout. Despite the name it is not provisional: for an instant-ticketing carrier it is already an issued ticket, and undoing one is a refund rather than a cancellation. See [ADR-0009](docs/adr/0009-airline-order-placed-before-payment.md).
 _Avoid_: hold, reservation, provisional booking — each implies something reversible at no cost, which a Pre-Order is not.
 
+**Duplicate Departure** — a traveller holding two active bookings that depart on the same calendar day, whatever their routes. Nobody can be on two aircraft at once, so the second is a clash wherever it is going — but it is a clash the traveller is told about and may accept, not one the platform refuses on their behalf. See [ADR-0011](docs/adr/0011-duplicate-departures-are-warned-not-refused.md).
+_Avoid_: treating it as fraud or error — a positioning flight on a separate ticket, a booking made for a family member on a shared account, and a deliberate backup on a volatile fare are all ordinary reasons to hold two.
+
+**Settlement Currency** — the **Supplier Currency** of the specific offer being bought, and the denomination of every figure derived from the supplier order. The currency a charge is converted *from*.
+_Avoid_: converting from the currency in the client’s booking payload — that is a **Display Currency** value and a display artefact, never the basis for an amount charged.
+
 **Orphaned Order** — a **Pre-Order** whose customer never completed payment, leaving airline inventory held against no sale. Reclaimed automatically only if the booking session recorded it; one that was created but never recorded is invisible to the platform and survives until the airline's own hold expires.
 _Avoid_: calling it a failed booking — the order succeeded, it is the payment that did not.
 
@@ -129,13 +135,22 @@ _Avoid_: leg, itinerary, journey — and note that the `segmentIndex` field on a
 
 **Segment** — a single flight number between two airports inside a **Slice**. A slice with two segments has one connection.
 
-**Slice Duration** — the elapsed time of a **Slice**, first departure to last arrival, connection time included. Quoted by the provider, never derived from the departure and arrival timestamps: those carry no UTC offset, so subtracting them is wrong by exactly the timezone gap (PUS→CRK reads 2h44m on the clock and is really 3h44m).
-_Avoid_: "trip duration" or a single duration for an offer — no provider quotes one, and a round trip has two Slice Durations. Where one number is unavoidable it is a **Total Transit Time**, never a "duration".
+**Local Airport Time** — the wall-clock time at the airport a segment departs from or arrives at. Every departure and arrival shown to a traveller is in Local Airport Time; none is ever restated in the viewer’s own timezone, which is why a 12:00 departure and an 18:45 arrival can be 5h 45m apart.
+_Avoid_: converting a flight time to the viewer’s timezone, or reading one as UTC — providers quote these with no offset attached, so both readings silently shift the clock.
 
-**Total Transit Time** — the sum of an offer’s **Slice Durations**, the figure "fastest first" ranks on. A derived ranking number, not a duration anyone experiences: it is shown only alongside every Slice Duration it was made from.
-_Avoid_: presenting it beside a single departure and arrival time — that reads as one impossible flight.
+**Slice Duration** — the elapsed time of a **Slice**, first departure to last arrival, connection time included. Quoted by the provider, never derived from the departure and arrival timestamps: those carry no UTC offset, so subtracting them is wrong by exactly the timezone gap (PUS→CRK reads 2h44m on the clock and is really 3h44m).
+_Avoid_: "trip duration" or a single duration for an offer — no provider quotes one, and a round trip has two Slice Durations. Under **Slice Selection** a traveller is never shown two slices at once, so there is no occasion to add them.
 
 **Segment Duration** — the air time of one **Segment**, connections excluded. Always less than the **Slice Duration** of a slice that has a connection.
+
+**Slice Selection** — the shopping model: a traveller chooses one **Slice** at a time, and the price is final only once every slice has been chosen. Follows from CheapestGo being the seller rather than a referrer. See [ADR-0010](docs/adr/0010-flights-are-shopped-one-slice-at-a-time.md).
+_Avoid_: presenting a round trip as a single choice with one price — that is the metasearch pattern, and it forces figures onto the screen that no provider quotes.
+
+**Layover** — the ground time between two consecutive **Segments** of a **Slice**, always spent at one airport. The figure that separates two slices with the same airline, endpoints and price: 1h 15m at TPE and 17h 30m at TPE are a 5h 45m journey and a 22h one.
+_Avoid_: "stopover" (a deliberate multi-day break — a different product), and "connection" when the airport is meant rather than the time spent there.
+
+**Marketing Carrier** — the airline whose code and flight number a seat is sold under, and the brand the traveller thinks they are flying. **Operating Carrier** — the airline that actually flies the aircraft. They differ on a codeshare, and it is the Operating Carrier the traveller meets at the gate.
+_Avoid_: collapsing the two into one "airline" — a seat sold as Cathay Pacific and flown by Hong Kong Express is something the traveller is owed before booking, not at the airport.
 
 ## Money
 

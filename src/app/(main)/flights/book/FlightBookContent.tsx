@@ -323,6 +323,7 @@ function BookingContent() {
         priceChangedData,
         duplicateBookingData,
         dismissDuplicateWarning,
+        proceedDespiteDuplicate,
         selectedSeats,
         setSelectedSeats,
         selectedBags,
@@ -1459,6 +1460,7 @@ function BookingContent() {
                         <DuplicateBookingModal
                             data={duplicateBookingData}
                             onDismiss={dismissDuplicateWarning}
+                            onProceed={proceedDespiteDuplicate}
                         />
 
                         {/* Status/Error Message */}

@@ -217,12 +217,21 @@ function mapCabinClass(code: string): string {
     return map[code?.toUpperCase()] || 'economy';
 }
 
+/**
+ * Elapsed minutes between two timestamps — but ONLY when both carry an explicit UTC
+ * offset. Flight times are local to their airport, so subtracting two offset-less strings
+ * is wrong by the timezone gap between origin and destination (PUS→CRK reads 2h44m and is
+ * really 3h44m). An unknown duration is reported as 0 and shown as nothing, rather than as
+ * a confident wrong number.
+ */
 function calculateDuration(dep: string, arr: string): number {
+    const OFFSET = /(?:Z|[+-]\d{2}:?\d{2})$/;
+    if (!OFFSET.test((dep ?? '').trim()) || !OFFSET.test((arr ?? '').trim())) return 0;
     try {
         const d = new Date(dep).getTime();
         const a = new Date(arr).getTime();
         if (isNaN(d) || isNaN(a)) return 0;
-        return Math.round((a - d) / 60000);
+        return Math.max(0, Math.round((a - d) / 60000));
     } catch { return 0; }
 }
 

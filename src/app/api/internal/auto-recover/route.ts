@@ -3,6 +3,7 @@ import { createAdminClient } from '@/utils/postgres/admin';
 import { stripe } from '@/lib/stripe/server';
 import { shouldRecoverSession } from '@/lib/server/flights/auto-recover-filter';
 import { env } from '@/utils/env';
+import { createBooking } from '@/lib/server/flights/create-booking';
 
 export const dynamic = 'force-dynamic';
 
@@ -92,17 +93,8 @@ export async function POST(req: Request) {
                     }
                 }
 
-                const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
-                const res = await fetch(`${siteUrl}/api/internal/create-booking`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${process.env.FUNCTIONS_SECRET}`,
-                    },
-                    body: JSON.stringify({ sessionId: session.id }),
-                });
-
-                const data = await res.json();
+                // Direct call rather than a loopback request — see ADR-0012.
+                const data = await createBooking({ sessionId: session.id });
 
                 if (data.success) {
                     recovered++;

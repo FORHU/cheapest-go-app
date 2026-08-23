@@ -92,6 +92,13 @@ export interface FlightOffer {
   provider: string;
   price: FlightPrice;
   segments: FlightSegmentDetail[];
+  /**
+   * One elapsed time per slice, in the provider's own terms (connection time included).
+   * Index matches the `segmentIndex` its segments carry. A row shows one slice, so this
+   * is what a duration is read from; `totalDuration` sums every slice and describes
+   * nothing a traveller experiences.
+   */
+  sliceDurations?: number[];
   totalDuration: number;
   totalStops: number;
   refundable: boolean;
@@ -132,7 +139,14 @@ export interface FlightPrice {
 }
 
 export interface FlightSegmentDetail {
+  /** Index of the SLICE this segment belongs to — not the segment's own position. */
   segmentIndex: number;
+  /** Present only on a codeshare: the airline actually flying, when it is not the one that sold the seat. */
+  operatingAirline?: {
+    code: string;
+    name: string;
+    flightNumber: string;
+  };
   airline: {
     code: string;
     name: string;

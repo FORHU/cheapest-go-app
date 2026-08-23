@@ -129,6 +129,10 @@ export function useFlightBooking() {
     };
 
     const idempotencyKeyRef = useRef<string>(generateId());
+    // Set only when the traveller has seen the duplicate warning and chosen to go ahead.
+    // Sent with the next submit and cleared afterwards, so an unrelated later booking
+    // is still checked.
+    const acknowledgeDuplicateRef = useRef(false);
     // Tracks the booking session ID after Stripe payment, for PNR confirmation
     const bookingSessionIdRef = useRef<string | null>(null);
 
@@ -503,6 +507,7 @@ export function useFlightBooking() {
                     passengers,
                     contact,
                     idempotencyKey: idempotencyKeyRef.current,
+                    ...(acknowledgeDuplicateRef.current ? { acknowledgeDuplicate: true } : {}),
                     farePolicy: offer.farePolicy,
                     ...(seatServiceIds.length > 0 ? { seatServiceIds, seatTotal } : {}),
                     ...(bagServiceIds.length > 0 ? { bagServiceIds, bagTotal } : {}),
@@ -557,6 +562,7 @@ export function useFlightBooking() {
             // Clear any panel from a previous attempt — the guard re-runs server-side
             // on every submit, so a stale warning would outlive the conflict.
             setDuplicateBookingData(null);
+            acknowledgeDuplicateRef.current = false;
         },
         onSuccess: (data) => {
             // If Stripe PaymentIntent client_secret is returned, transition to embedded payment UI
@@ -873,6 +879,18 @@ export function useFlightBooking() {
         priceChangedData,
         duplicateBookingData,
         dismissDuplicateWarning: () => setDuplicateBookingData(null),
+        /**
+         * Book despite the clash. The server re-checks and records the acknowledgement;
+         * this is a deliberate choice by the traveller, not a way around the guard.
+         */
+        proceedDespiteDuplicate: () => {
+            if (!offer) return;
+            acknowledgeDuplicateRef.current = true;
+            setDuplicateBookingData(null);
+            setErrorMsg('');
+            idempotencyKeyRef.current = generateId();
+            bookMutation.mutate({ offer, passengers, contact, seats: selectedSeats, bags: selectedBags });
+        },
         bookingResult,
         clientSecret,
         passengers,

@@ -7,6 +7,7 @@ import { applyMarkup, toStripeAmount, FLIGHT_MARKUP } from '@/lib/pricing';
 import { rateLimit } from '@/lib/server/rate-limit';
 import { getMobileApiKey } from '@/lib/server/mobile-auth';
 import { findOrderFromTimedOutAttempt } from '@/lib/server/flights/duffel-order-reconcile';
+import { revalidateFlight } from '@/lib/server/flights/revalidate-flight';
 
 export const maxDuration = 120;
 export const dynamic = 'force-dynamic';
@@ -105,12 +106,8 @@ export async function POST(req: NextRequest) {
         }
 
         // ── Step 1: Price revalidation ────────────────────────────────────
-        const revalRes = await fetch(`${siteUrl}/api/internal/revalidate-flight`, {
-            method: 'POST',
-            headers: edgeFnHeaders,
-            body: JSON.stringify({ userId, provider, flightPayload: { ...flight, oldPrice: flightTotal } }),
-        });
-        const revalData = await revalRes.json();
+        // Direct call rather than a loopback request — see ADR-0012.
+        const revalData = await revalidateFlight({ userId, provider, flightPayload: { ...flight, oldPrice: flightTotal } });
 
         if (!revalData.success || !revalData.seatsAvailable) {
             return NextResponse.json({
@@ -119,12 +116,14 @@ export async function POST(req: NextRequest) {
             }, { status: 409 });
         }
 
-        if (revalData.priceChanged && revalData.newPrice > 0) {
+        // Absent means revalidation could not read a price, not that the fare is free.
+        const revalNewPrice = revalData.newPrice ?? 0;
+        if (revalData.priceChanged && revalNewPrice > 0) {
             return NextResponse.json({
                 success: false,
-                error: `Flight price changed to ${revalData.newPrice}. Please restart booking.`,
+                error: `Flight price changed to ${revalNewPrice}. Please restart booking.`,
                 priceChanged: true,
-                newPrice: revalData.newPrice,
+                newPrice: revalNewPrice,
             }, { status: 409 });
         }
 

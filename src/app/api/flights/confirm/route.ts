@@ -6,6 +6,8 @@ import { sendFlightBookingConfirmationEmail, sendFlightAwaitingTicketEmail } fro
 import { rateLimit } from '@/lib/server/rate-limit';
 import { createNotification } from '@/lib/server/admin/notify';
 import { z } from 'zod';
+import { issueTicket } from '@/lib/server/flights/issue-ticket';
+import { createBooking } from '@/lib/server/flights/create-booking';
 
 export const maxDuration = 60;
 
@@ -138,56 +140,28 @@ export async function POST(req: NextRequest) {
         //   Duffel:   creates order (payment already captured)
         console.log('[/confirm] Booking not in DB, calling create-booking as fallback. Session:', sessionId);
 
-        const internalHeaders = {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${process.env.FUNCTIONS_SECRET}`,
-        };
-
         const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
 
-        const bookingAbort = new AbortController();
-        const bookingTimeout = setTimeout(() => bookingAbort.abort(), 120_000); // 2 min — AWS has no 60s function limit
-
-        let bookingRes: Response;
+        // Direct call rather than a loopback request — see ADR-0012. The AbortController
+        // that used to wrap this guarded a socket that no longer exists; the supplier calls
+        // inside createBooking carry their own timeouts.
+        let bookingData: any;
         try {
-            bookingRes = await fetch(`${siteUrl}/api/internal/create-booking`, {
-                method: 'POST',
-                headers: internalHeaders,
-                body: JSON.stringify({ sessionId }),
-                signal: bookingAbort.signal,
-            });
-        } catch (fetchErr: any) {
-            clearTimeout(bookingTimeout);
-            const isTimeout = fetchErr?.name === 'AbortError';
-            console.error('[/confirm] create-booking fetch error:', fetchErr.message);
+            bookingData = await createBooking({ sessionId });
+            console.log('[/confirm] createBooking result (status', bookingData.httpStatus, '):', JSON.stringify(bookingData));
+        } catch (bookingErr: any) {
+            console.error('[/confirm] createBooking threw:', bookingErr?.message ?? bookingErr);
             return NextResponse.json(
-                { success: false, error: isTimeout ? 'Booking timed out. Please check your trips page.' : `Booking service unreachable: ${fetchErr.message}` },
+                { success: false, error: `Booking could not be completed: ${bookingErr?.message ?? 'unknown error'}` },
                 { status: 502 },
             );
         }
-        clearTimeout(bookingTimeout);
-
-        const rawText = await bookingRes.text();
-        console.log('[/confirm] create-booking raw response (status', bookingRes.status, '):', rawText);
-
-        let bookingData: any;
-        try {
-            bookingData = JSON.parse(rawText);
-        } catch {
-            console.error('[/confirm] create-booking returned non-JSON:', rawText.slice(0, 500));
-            return NextResponse.json({ success: false, error: `Booking service error (HTTP ${bookingRes.status})` }, { status: 502 });
-        }
-
         if (bookingData.success) {
             // Duffel: auto-ticket if needed
             if (!isMystifly && bookingData.status !== 'ticketed' && !bookingData.alreadyBooked && bookingData.bookingId) {
                 console.log('[/confirm] Auto-ticketing Duffel order:', bookingData.bookingId);
-                const ticketRes = await fetch(`${siteUrl}/api/internal/issue-ticket`, {
-                    method: 'POST',
-                    headers: internalHeaders,
-                    body: JSON.stringify({ bookingId: bookingData.bookingId }),
-                });
-                const ticketData = await ticketRes.json();
+                // Direct call rather than a loopback request — see ADR-0012.
+                const ticketData = await issueTicket(bookingData.bookingId);
                 console.log(ticketData.success ? '[/confirm] Duffel ticketing OK' : `[/confirm] Duffel ticketing failed: ${ticketData.error}`);
             }
 

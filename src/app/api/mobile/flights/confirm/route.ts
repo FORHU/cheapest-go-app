@@ -4,6 +4,8 @@ import { createAdminClient } from '@/utils/postgres/admin';
 import { sendFlightBookingConfirmationEmail, sendFlightAwaitingTicketEmail } from '@/lib/server/email';
 import { rateLimit } from '@/lib/server/rate-limit';
 import { getMobileApiKey } from '@/lib/server/mobile-auth';
+import { issueTicket } from '@/lib/server/flights/issue-ticket';
+import { createBooking } from '@/lib/server/flights/create-booking';
 
 export const maxDuration = 60;
 export const dynamic = 'force-dynamic';
@@ -94,43 +96,23 @@ export async function POST(req: NextRequest) {
         }
 
         // ── Call create-booking as fallback ───────────────────────────────
-        const bookingAbort = new AbortController();
-        const bookingTimeout = setTimeout(() => bookingAbort.abort(), 55_000);
-
-        let bookingRes: Response;
-        try {
-            bookingRes = await fetch(`${siteUrl}/api/internal/create-booking`, {
-                method: 'POST',
-                headers: internalHeaders,
-                body: JSON.stringify({ sessionId }),
-                signal: bookingAbort.signal,
-            });
-        } catch (fetchErr: any) {
-            clearTimeout(bookingTimeout);
-            const isTimeout = fetchErr?.name === 'AbortError';
-            return NextResponse.json(
-                { success: false, error: isTimeout ? 'Booking timed out. Please check your trips page.' : `Booking service error: ${fetchErr.message}` },
-                { status: 502 },
-            );
-        }
-        clearTimeout(bookingTimeout);
-
+        // Direct call rather than a loopback request — see ADR-0012.
         let bookingData: any;
         try {
-            bookingData = await bookingRes.json();
-        } catch {
-            return NextResponse.json({ success: false, error: `Booking service error (HTTP ${bookingRes.status})` }, { status: 502 });
+            bookingData = await createBooking({ sessionId });
+        } catch (bookingErr: any) {
+            console.error('[mobile/confirm] createBooking threw:', bookingErr?.message ?? bookingErr);
+            return NextResponse.json(
+                { success: false, error: `Booking could not be completed: ${bookingErr?.message ?? 'unknown error'}` },
+                { status: 502 },
+            );
         }
 
         if (bookingData.success) {
             // Duffel: auto-ticket if needed
             if (bookingData.bookingId && bookingData.status !== 'ticketed' && !bookingData.alreadyBooked) {
-                const ticketRes = await fetch(`${siteUrl}/api/internal/issue-ticket`, {
-                    method: 'POST',
-                    headers: internalHeaders,
-                    body: JSON.stringify({ bookingId: bookingData.bookingId }),
-                });
-                const ticketData = await ticketRes.json().catch(() => ({}));
+                // Direct call rather than a loopback request — see ADR-0012.
+                const ticketData = await issueTicket(bookingData.bookingId);
                 console.log(`[mobile/confirm] Ticketing: ${ticketData.success ? 'OK' : ticketData.error}`);
             }
 

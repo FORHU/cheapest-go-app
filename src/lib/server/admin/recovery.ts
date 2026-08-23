@@ -3,6 +3,7 @@ import { stripe } from '@/lib/stripe/server';
 import { sendFlightCancellationEmail, sendFlightCancellationRefundEmail, sendHotelRefundEmail } from '@/lib/server/email';
 import { createNotification, logAdminAction } from './notify';
 import { RecoveryActionResult, MonitoringData } from '@/types/admin';
+import { createBooking } from '@/lib/server/flights/create-booking';
 
 // ============================================================================
 // Booking Recovery Tools
@@ -663,16 +664,8 @@ export async function adminRetryBooking(sessionId: string): Promise<RecoveryActi
         const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
         const functionsSecret = process.env.FUNCTIONS_SECRET;
 
-        const res = await fetch(`${siteUrl}/api/internal/create-booking`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${functionsSecret}`,
-            },
-            body: JSON.stringify({ sessionId }),
-        });
-
-        const data = await res.json();
+        // Direct call rather than a loopback request — see ADR-0012.
+        const data = await createBooking({ sessionId });
 
         if (data.success) {
             logAdminAction({

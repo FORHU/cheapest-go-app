@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSqlAdmin } from '@/lib/db/postgres';
 import { adminCancelAwaitingTicket } from '@/lib/server/admin/recovery';
+import { issueTicket } from '@/lib/server/flights/issue-ticket';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 300; // 5 minutes max
@@ -43,23 +44,16 @@ export async function POST(req: NextRequest) {
             // 1. If Duffel booking, verify/trigger ticket issuance
             if (booking.provider === 'duffel') {
                 try {
-                    const ticketRes = await fetch(`${baseUrl}/api/internal/issue-ticket`, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'Authorization': `Bearer ${functionsSecret}`,
-                        },
-                        body: JSON.stringify({ bookingId: booking.id }),
-                    });
+                    // Direct call rather than a loopback request — see ADR-0012.
+                    const ticketData = await issueTicket(booking.id);
 
-                    if (ticketRes.ok) {
-                        const ticketData = await ticketRes.json();
+                    if (ticketData.success) {
                         if (ticketData?.success && ticketData?.ticketStatus) {
                             currentStatus = ticketData.ticketStatus;
                             console.log(`[poll-pending-tickets] Duffel booking ${booking.id} status updated to: ${currentStatus}`);
                         }
                     } else {
-                        console.error(`[poll-pending-tickets] Failed calling /api/internal/issue-ticket for booking ${booking.id}: ${ticketRes.status}`);
+                        console.error(`[poll-pending-tickets] issueTicket failed for booking ${booking.id}: ${ticketData.error}`);
                     }
                 } catch (fetchErr: any) {
                     console.error(`[poll-pending-tickets] Error checking ticket status for Duffel booking ${booking.id}:`, fetchErr.message);
