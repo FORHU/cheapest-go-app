@@ -67,6 +67,12 @@ _Avoid_: assuming every enum-like column uses the same mechanism, or converting 
 **Home-Market Fare** — discounted inventory an airline sells only through the distribution channels of its own country (airline direct, plus local OTAs and consolidators), never releasing it to global distribution. Duffel reaches global distribution only, so on a sector priced this way it returns the airline's *published* fare and CheapestGo lands multiples above a local OTA — while the same carrier prices at parity on its international sectors. Measured 2026-08-17 on Korean Air: GMP–CJU round-trip ₩335,318 vs Trip.com ₩100,700 (+233%), ICN–NRT ₩405,740 vs ₩409,800 (−1%).
 _Avoid_: reading a domestic-sector gap as a CheapestGo markup or an FX fault — markup is applied at booking only, never in search, and the international sectors price at parity. _Avoid_: generalising from one carrier's international competitiveness to its domestic sectors, or the reverse.
 
+**Pre-Order** — a real airline order placed with the provider before the customer has paid, created so that the amount charged is the amount the airline actually quoted rather than an estimate that can expire mid-checkout. Despite the name it is not provisional: for an instant-ticketing carrier it is already an issued ticket, and undoing one is a refund rather than a cancellation. See [ADR-0009](docs/adr/0009-airline-order-placed-before-payment.md).
+_Avoid_: hold, reservation, provisional booking — each implies something reversible at no cost, which a Pre-Order is not.
+
+**Orphaned Order** — a **Pre-Order** whose customer never completed payment, leaving airline inventory held against no sale. Reclaimed automatically only if the booking session recorded it; one that was created but never recorded is invisible to the platform and survives until the airline's own hold expires.
+_Avoid_: calling it a failed booking — the order succeeded, it is the payment that did not.
+
 **Hotel Provider** — hotel availability is sourced from RateHawk, reached through two API paths:
 - **OTV** — RateHawk's name within the TravelGateX marketplace. Accessed via TGX GraphQL hub (Access `38327`). Primary search path.
 - **ETG** — the same RateHawk inventory accessed directly via `api.worldota.net`. Used as a reliability fallback when OTV/TGX returns no results, and for the nightly hotel-reviews sync. LiteAPI deprecated.
@@ -115,6 +121,21 @@ _Avoid_: treating an empty Quote `cancelPenalties` as definitive — always chec
 
 So four of the five rungs — everything except **City** — are served by **ETG alone**: ETG is the geographic search engine, and OTV/TravelGateX contributes only at the City rung. See [ADR-0006](docs/adr/0006-granularity-ladder-is-etg-driven.md). A whole-**Country** search is a real ETG country-region search — it no longer silently collapses to a single default city.
 _Avoid_: assuming OTV can service anything below City (province, district, landmark) — it cannot. _Avoid_: assuming a place the picker offers resolves identically on every channel. _Avoid_: calling a District or landmark search a "city search" — it is a point/geo search with its own radius. _Avoid_: reviving an OTV+ETG union to cover the sub-city rungs — that dedup problem was rejected in [ADR-0004](docs/adr/0004-province-search-is-etg-only.md) and stays rejected.
+
+## Flight Itinerary
+
+**Slice** — one directed journey within an offer (e.g. CRK→PUS), containing one or more **Segments**. Duffel's own word, adopted verbatim. A one-way offer has one slice; a round trip has two.
+_Avoid_: leg, itinerary, journey — and note that the `segmentIndex` field on a segment carries the *slice* index, not the segment's own position, which is what makes `?? idx` fallbacks split a connecting slice into two.
+
+**Segment** — a single flight number between two airports inside a **Slice**. A slice with two segments has one connection.
+
+**Slice Duration** — the elapsed time of a **Slice**, first departure to last arrival, connection time included. Quoted by the provider, never derived from the departure and arrival timestamps: those carry no UTC offset, so subtracting them is wrong by exactly the timezone gap (PUS→CRK reads 2h44m on the clock and is really 3h44m).
+_Avoid_: "trip duration" or a single duration for an offer — no provider quotes one, and a round trip has two Slice Durations. Where one number is unavoidable it is a **Total Transit Time**, never a "duration".
+
+**Total Transit Time** — the sum of an offer’s **Slice Durations**, the figure "fastest first" ranks on. A derived ranking number, not a duration anyone experiences: it is shown only alongside every Slice Duration it was made from.
+_Avoid_: presenting it beside a single departure and arrival time — that reads as one impossible flight.
+
+**Segment Duration** — the air time of one **Segment**, connections excluded. Always less than the **Slice Duration** of a slice that has a connection.
 
 ## Money
 

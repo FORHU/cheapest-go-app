@@ -21,9 +21,13 @@
  */
 
 import { cabinClassFromRawOffer } from './duffel-cabin';
+import { findOrderFromTimedOutAttempt } from './duffel-order-reconcile';
 
 const DUFFEL_ORDERS_URL = 'https://api.duffel.com/air/orders';
-const DEFAULT_ORDER_TIMEOUT_MS = 45_000;
+// Duffel's documented minimum: "You must set a HTTP client timeout of at least 130s".
+// Order creation runs synchronously through to the airline, aborting does NOT cancel it —
+// a shorter timeout orphans a real PNR without recording it.
+const DEFAULT_ORDER_TIMEOUT_MS = 130_000;
 const PRICE_ACTION_TIMEOUT_MS = 10_000;
 
 export interface PlaceDuffelOrderParams {
@@ -119,6 +123,10 @@ export async function placeDuffelOrder(params: PlaceDuffelOrderParams): Promise<
         const orderAbort = new AbortController();
         const orderTimeout = setTimeout(() => orderAbort.abort(), orderTimeoutMs);
 
+        // Stamped before the request so reconciliation can find orders created
+        // during this window even when the response never arrived.
+        const attemptStartedAt = new Date().toISOString();
+
         let res: Response;
         let data: any;
         try {
@@ -133,6 +141,38 @@ export async function placeDuffelOrder(params: PlaceDuffelOrderParams): Promise<
             clearTimeout(orderTimeout);
             if (fetchErr?.name === 'AbortError') {
                 console.error(`[placeDuffelOrder] order timed out after ${orderTimeoutMs}ms for offer ${offerId}`);
+
+                // Aborting does NOT cancel the booking at Duffel — the airline booking
+                // proceeds regardless. Check whether this attempt actually landed before
+                // reporting failure, which would invite the caller to retry and create a
+                // second paid ticket for the same trip.
+                const origin = rawOffer.slices?.[0]?.origin?.iata_code;
+                const lastSlice = rawOffer.slices?.[rawOffer.slices.length - 1];
+                const destination = lastSlice?.destination?.iata_code;
+                const recovered = await findOrderFromTimedOutAttempt(duffelToken, {
+                    sinceIso: attemptStartedAt,
+                    origin: origin ?? '',
+                    destination: destination ?? '',
+                    totalAmount: currentTotal,
+                    currency: currentCurrency,
+                    familyName: paxList?.[0]?.family_name,
+                }).catch((e: any) => {
+                    console.warn('[placeDuffelOrder] reconciliation check failed:', e?.message);
+                    return null;
+                });
+
+                if (recovered) {
+                    console.warn(`[placeDuffelOrder] Timed-out attempt succeeded — adopting order ${recovered.orderId} (${recovered.pnr})`);
+                    return {
+                        isPriceChangedError: false,
+                        isOfferUnavailable: false,
+                        res: new Response(null, { status: 200 }),
+                        data: { data: { id: recovered.orderId, booking_reference: recovered.pnr, documents: recovered.tickets.map((t: string) => ({ type: 'electronic_ticket', unique_identifier: t })) } },
+                        finalTotal: currentTotal,
+                        finalCurrency: currentCurrency,
+                    };
+                }
+
                 const syntheticRes = new Response(null, { status: 504 });
                 return {
                     isPriceChangedError: false,
@@ -203,8 +243,13 @@ export async function placeDuffelOrder(params: PlaceDuffelOrderParams): Promise<
             const freshBase = parseFloat(pricedOffer.total_amount ?? '0');
             const newTotalNum = freshBase + newSeatExtra + newBagExtra;
             const oldTotalNum = parseFloat(currentTotal);
-            const priceDelta = Math.abs(newTotalNum - oldTotalNum);
-            const priceAlreadyConfirmed = confirmedPrice !== undefined && newTotalNum <= confirmedPrice + priceTolerance;
+            // Signed, not absolute: only an increase is worth interrupting for.
+            // A cheaper fare is adopted silently below.
+            const priceDelta = newTotalNum - oldTotalNum;
+            // Compare bare fares only — newTotalNum includes ancillaries but
+            // confirmedPrice is the base fare the user approved, so total-vs-base
+            // would read every seat/bag selection as an unexplained increase.
+            const priceAlreadyConfirmed = confirmedPrice !== undefined && freshBase <= confirmedPrice + priceTolerance;
             currentCurrency = pricedOffer.total_currency ?? currentCurrency;
 
             if (priceDelta > priceTolerance && !priceAlreadyConfirmed) {
@@ -302,7 +347,8 @@ export async function placeDuffelOrder(params: PlaceDuffelOrderParams): Promise<
             const freshOffer = sortedPool[i];
             const freshBaseTotal = parseFloat(freshOffer.total_amount ?? '0');
             const oldPriceNum = parseFloat(rawOffer.total_amount ?? '0');
-            const priceDelta = Math.abs(freshBaseTotal - oldPriceNum);
+            // Signed: a refreshed offer that is cheaper needs no confirmation.
+            const priceDelta = freshBaseTotal - oldPriceNum;
             const priceAlreadyConfirmed = confirmedPrice !== undefined && freshBaseTotal <= confirmedPrice + priceTolerance;
 
             if (priceDelta > priceTolerance && !priceAlreadyConfirmed) {

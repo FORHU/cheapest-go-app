@@ -505,6 +505,9 @@ function SearchMapView({
     // Expand only once the user has zoomed a stop and a half out from the fit —
     // enough to be a deliberate "show me wider", not incidental framing slack.
     const EXPAND_MARGIN = 1.5;
+    // Zoom level below which a district search widens to the whole city. Declared here
+    // because mapZoom now starts at Infinity rather than being seeded from this value.
+    const DISTRICT_ZOOM_THRESHOLD = 11;
     const [mapZoom, setMapZoom] = React.useState<number>(Number.POSITIVE_INFINITY);
     const [showAllCityOverride, setShowAllCityOverride] = React.useState(false);
     // showAllCity removes the bbox clip so users can see the wider area.

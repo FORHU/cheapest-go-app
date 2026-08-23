@@ -655,10 +655,10 @@
     },
     "dontClosePage": "Please don't close this page",
     "duplicate": {
-      "description": "An active booking was found departing {route} on {date}. Cancel the existing booking first, or go back.",
+      "description": "An active booking was found departing {route} on {date}. Cancel existing booking first, or go back.",
       "keepExisting": "Keep existing booking",
-      "title": "You already have a flight booked on this day",
-      "viewExisting": "View existing booking"
+      "title": "You already have a flight booked on this date",
+      "viewExisting": "View and cancel existing booking"
     },
     "error": {
       "bookingFailed": "Booking Failed",

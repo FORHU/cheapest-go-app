@@ -12,14 +12,7 @@ import { NextResponse } from 'next/server';
 import { getSqlAdmin } from '@/lib/db/postgres';
 import { createUserSession } from '@/lib/auth/session';
 import { safeReturnTo } from '@/lib/auth/returnTo';
-
-function getOrigin(request: Request): string {
-    // Cloudflare can send comma-separated values — take the first only
-    const fwdHost = request.headers.get('x-forwarded-host')?.split(',')[0].trim();
-    const fwdProto = (request.headers.get('x-forwarded-proto') || 'https').split(',')[0].trim();
-    if (fwdHost) return `${fwdProto}://${fwdHost}`;
-    return process.env.NEXT_PUBLIC_SITE_URL || new URL(request.url).origin;
-}
+import { getOAuthOrigin, getOAuthRedirectUri } from '@/lib/auth/oauthOrigin';
 
 // ─── HMAC-signed state verification ─────────────────────────────────────────
 
@@ -134,7 +127,7 @@ async function findOrCreateGoogleUser(googleUser: {
 // ─── Handler ──────────────────────────────────────────────────────────────────
 
 export async function GET(request: Request) {
-    const origin = getOrigin(request);
+    const origin = getOAuthOrigin(request);
     const { searchParams } = new URL(request.url);
 
     // ── Password reset token ────────────────────────────────────────────────
@@ -161,7 +154,7 @@ export async function GET(request: Request) {
         }
 
         try {
-            const redirectUri = `${origin}/auth/callback`;
+            const redirectUri = getOAuthRedirectUri(request);
             const tokens      = await exchangeGoogleCode(code, redirectUri);
             const googleUser  = await getGoogleUser(tokens.access_token);
 
