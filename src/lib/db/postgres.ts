@@ -101,7 +101,12 @@ function ensureTablesOnce(sql: postgres.Sql): void {
     `).then(() => sql`
         ALTER TABLE hotel_content ADD COLUMN IF NOT EXISTS giata_id text
     `).then(() => {
-        console.log('[db] startup tables OK');
+        // Name the host. A local dev server and the RDS-backed container are otherwise
+        // indistinguishable from the outside, and picking the wrong one is how a test
+        // booking becomes a real airline order.
+        const dbHost = (process.env.DATABASE_URL ?? '').match(/@([^/:?]+)/)?.[1] ?? 'unknown';
+        const isLocal = /^(localhost|127\.0\.0\.1|\[::1\]|postgres)$/.test(dbHost);
+        console.log(`[db] startup tables OK — connected to ${dbHost} (${isLocal ? 'LOCAL' : 'REMOTE — bookings here are real'})`);
     }).catch((e: any) => {
         console.error('[db] ensureTables failed:', e.message);
         _ensureTablesRan = false; // allow retry on next request

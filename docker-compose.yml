@@ -23,8 +23,13 @@ services:
         - NEXT_PUBLIC_MAPBOX_TOKEN
         - NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
         - NEXT_PUBLIC_SITE_URL
+    # 3001, NOT 3000. This container talks to live RDS (below), while `npm run dev`
+    # reads .env and talks to local postgres on 5433. Both used to publish 3000, so
+    # http://localhost:3000 meant either "local database" or "live database" depending
+    # on which happened to be running — and a booking made against the wrong one issued
+    # a real airline order. Different ports, no ambiguity.
     ports:
-      - "3000:3000"
+      - "3001:3000"
     env_file:
       - .env
     environment:

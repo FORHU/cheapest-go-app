@@ -214,6 +214,15 @@ async function findLivePreOrderForOffer(args: {
 
 
 export async function POST(req: NextRequest) {
+    // Set the moment an airline order exists. Read only by the outermost catch, which is
+    // the last line of defence against leaving a paid-for order behind: everything from
+    // Stripe onwards can throw, and until this existed only ONE failure (the session
+    // UPDATE returning an error object) undid the order. Any thrown error — a Postgres
+    // error from a raw query, a Stripe outage, an FX failure — went to the generic
+    // handler, which logged a 500 and left a confirmed order against our balance that
+    // nothing in the system had recorded. See ADR-0009 and ADR-0013.
+    let placedOrderId: string | null = null;
+
     const csrfError = checkCsrf(req);
     if (csrfError) return csrfError;
 
@@ -721,6 +730,24 @@ export async function POST(req: NextRequest) {
 
             if (reused) {
                 console.warn(`[/book] Reusing pre-order ${reused.orderId} (${reused.pnr}) from session ${reused.sessionId} — this offer is already ticketed, not buying again`);
+                placedOrderId = reused.orderId;
+                // Stake a claim on the order before anything else can fail.
+                //
+                // The smallest possible write: one text column, no arrays, no jsonb. The
+                // full session update further down carries a dozen fields and any one of
+                // them can reject — and when it did, the order it was meant to record was
+                // left with nothing pointing at it, invisible even to the orphan sweep
+                // (which selects on this very column). Recording the id first means the
+                // worst case degrades from "invisible orphan" to "orphan the cron finds".
+                {
+                    const { error: claimErr } = await db
+                        .from('booking_sessions')
+                        .update({ duffel_pre_order_id: reused.orderId })
+                        .eq('id', sessionId);
+                    if (claimErr) {
+                        console.error(`[/book] Could not stake a claim on order ${reused.orderId} (reused order): ${claimErr.message} — the outermost catch is now the only thing that can undo it.`);
+                    }
+                }
                 duffelPreOrder = {
                     orderId: reused.orderId,
                     pnr: reused.pnr,
@@ -1386,6 +1413,24 @@ export async function POST(req: NextRequest) {
                 rawOrder: order,
             };
 
+            placedOrderId = duffelPreOrder.orderId;
+            // Stake a claim on the order before anything else can fail.
+            //
+            // The smallest possible write: one text column, no arrays, no jsonb. The
+            // full session update further down carries a dozen fields and any one of
+            // them can reject — and when it did, the order it was meant to record was
+            // left with nothing pointing at it, invisible even to the orphan sweep
+            // (which selects on this very column). Recording the id first means the
+            // worst case degrades from "invisible orphan" to "orphan the cron finds".
+            {
+                const { error: claimErr } = await db
+                    .from('booking_sessions')
+                    .update({ duffel_pre_order_id: duffelPreOrder.orderId })
+                    .eq('id', sessionId);
+                if (claimErr) {
+                    console.error(`[/book] Could not stake a claim on order ${duffelPreOrder.orderId} (fresh order): ${claimErr.message} — the outermost catch is now the only thing that can undo it.`);
+                }
+            }
             console.log(`[/book] Duffel pre-order created: orderId=${duffelPreOrder.orderId} pnr=${duffelPreOrder.pnr} tickets=${tickets.length}`);
         }
 
@@ -1454,6 +1499,16 @@ export async function POST(req: NextRequest) {
         console.log(`[/book] Pricing: original=${pricing.originalPrice} ${baseCurrency}, charged=${pricing.chargedPrice}, markup=${(pricing.markupRate * 100).toFixed(1)}%, markupAmount=${pricing.markupAmount}`);
         console.log(`[/book] Stripe charge: ${chargePrice} ${chargeInCurrency} (converted from ${pricing.chargedPrice} ${baseCurrency})`);
 
+        // Endpoints of the outbound slice only. Segments carry their slice index, so the
+        // outbound is every segment sharing the first one's index.
+        const outboundSliceIdx = (flight.segments?.[0] as any)?.segmentIndex ?? 0;
+        const outboundSegs = (flight.segments ?? []).filter(
+            (s: any) => (s?.segmentIndex ?? 0) === outboundSliceIdx,
+        );
+        const outboundOrigin = outboundSegs[0]?.origin ?? flight.segments?.[0]?.origin;
+        const outboundDestination = outboundSegs[outboundSegs.length - 1]?.destination
+            ?? flight.segments?.[flight.segments.length - 1]?.destination;
+
         // Idempotency key prevents duplicate charges if the client retries on network error.
         const piIdempotencyKey = `flight-pi-${userId}-${sessionId}`;
         const paymentIntent = await stripe.paymentIntents.create({
@@ -1481,7 +1536,10 @@ export async function POST(req: NextRequest) {
                 // Bundle link — hotel booking ID this flight is paired with
                 ...(bundleHotelId ? { bundleHotelId, type: 'flight_bundle' } : { type: 'flight' }),
             },
-            description: `CG: ${flight.segments[0]?.origin} → ${flight.segments[flight.segments.length - 1]?.destination}`,
+            // The OUTBOUND slice's endpoints. Reading the last segment of the whole offer
+            // gave `LHR → LHR` on every round trip, because the final leg lands where the
+            // trip began — the same offer-wide/slice-wide confusion as the search card.
+            description: `CG: ${outboundOrigin} → ${outboundDestination}`,
         }, { idempotencyKey: piIdempotencyKey });
         logApiCall({
             provider: 'stripe', endpoint: 'paymentIntents.create', durationMs: Date.now() - stripeStart,
@@ -1556,6 +1614,10 @@ export async function POST(req: NextRequest) {
             console.log(`[/book] Duffel pre-order stored in session ${sessionId}: orderId=${duffelPreOrder.orderId} pnr=${duffelPreOrder.pnr}`);
         }
 
+        // Recorded against a PaymentIntent and a session row, so the sweep can find it
+        // from here on. Nothing left for the catch to undo.
+        placedOrderId = null;
+
         return NextResponse.json({
             success: true,
             clientSecret: paymentIntent.client_secret,
@@ -1565,6 +1627,32 @@ export async function POST(req: NextRequest) {
 
     } catch (err: any) {
         console.error('[/book] Error:', err);
+
+        // An order exists and was never tied to a payment. Undo it — the traveller is
+        // being told the booking failed, and an uncancelled order holds real inventory
+        // bought with our balance. Best-effort: if this fails, the id is logged loudly
+        // because nothing else in the system knows the order exists.
+        if (placedOrderId) {
+            console.error(`[/book] ORPHAN RISK: order ${placedOrderId} exists but the booking failed — cancelling.`);
+            try {
+                const released = await cancelDuffelOrder(env.DUFFEL_TOKEN, placedOrderId, 'booking failed before payment was taken');
+                console.error(`[/book] Orphan cancel ${released ? 'succeeded' : 'did NOT succeed'} for ${placedOrderId}`);
+            } catch (cancelErr: any) {
+                console.error(`[/book] ORPHANED DUFFEL ORDER ${placedOrderId} — cancel threw: ${cancelErr?.message ?? cancelErr}. MANUAL CANCELLATION REQUIRED.`);
+            }
+        }
+
+        // A postgres.js error carries the statement and the bound parameters that failed.
+        // Without them a message like `malformed array literal: "[\"0797586589419\"]"` names
+        // the value but not the column, and the same booking cannot be reproduced from a
+        // different environment. Logged separately because the error's own toString drops them.
+        if (err?.code && (err?.query || err?.parameters)) {
+            console.error('[/book] Failing SQL:', err.query);
+            console.error('[/book] Bound parameters:', JSON.stringify(err.parameters, (_k, v) =>
+                typeof v === 'string' && v.length > 200 ? v.slice(0, 200) + '…' : v));
+            console.error(`[/book] Postgres code=${err.code} detail=${err.detail ?? '-'} table=${err.table_name ?? '-'} column=${err.column_name ?? '-'}`);
+        }
+
         const message = process.env.NODE_ENV === 'production'
             ? 'An unexpected error occurred. Please try again.'
             : (err.message || 'An unexpected error occurred');
