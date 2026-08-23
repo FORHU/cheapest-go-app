@@ -5,7 +5,7 @@ import { ArrowRight } from 'lucide-react';
 import { useFlightSearch } from '@/hooks/search/useFlightSearch';
 import { FlightLocationPicker } from './FlightLocationPicker';
 import { FlightTravelersPicker } from './FlightTravelersPicker';
-import { FlightDatePicker } from './FlightDatePicker';
+import { FlightDatePicker, FlightDateRange } from './FlightDatePicker';
 import { useTranslations } from 'next-intl';
 
 export const FlightSearchForm: React.FC = () => {
@@ -36,6 +36,18 @@ export const FlightSearchForm: React.FC = () => {
         if (!d) return null;
         if (d instanceof Date) return d;
         try { return new Date(d); } catch { return null; }
+    };
+
+    const departDate = ensureDate(firstSegment.date);
+    const returnDate = ensureDate(flights[1]?.date);
+
+    // Round trip runs one calendar over both legs, so the departure card can
+    // hand off to the return date without the user reopening a second picker.
+    const isRoundTrip = tripType === 'round-trip' && flights.length > 1;
+
+    const applyDateRange = ({ startDate, endDate }: FlightDateRange) => {
+        setFlightSegment(0, { date: startDate });
+        setFlightSegment(1, { date: endDate });
     };
 
 
@@ -69,10 +81,16 @@ export const FlightSearchForm: React.FC = () => {
             <div className="flex-1 min-w-0 bg-white dark:bg-slate-900 sm:bg-transparent rounded-2xl sm:rounded-none border border-slate-200 dark:border-slate-800 sm:border-0 shadow-sm sm:shadow-none">
                 <FlightDatePicker
                     label={t('depart')}
-                    date={ensureDate(firstSegment.date)}
+                    date={departDate}
                     onChange={(d) => updateFirstSegment({ date: d || null })}
                     isOpen={activeDropdown === 'flight-dates-depart'}
                     onToggle={(open) => setActiveDropdown(open ? 'flight-dates-depart' : null)}
+                    range={isRoundTrip ? {
+                        startDate: departDate,
+                        endDate: returnDate,
+                        editing: 'start',
+                        onChange: applyDateRange,
+                    } : undefined}
                 />
             </div>
 
@@ -80,11 +98,17 @@ export const FlightSearchForm: React.FC = () => {
                 <div className="flex-1 min-w-0 bg-white dark:bg-slate-900 sm:bg-transparent rounded-2xl sm:rounded-none border border-slate-200 dark:border-slate-800 sm:border-0 shadow-sm sm:shadow-none">
                     <FlightDatePicker
                         label={t('return')}
-                        date={ensureDate(flights[1]?.date)}
+                        date={returnDate}
                         onChange={(d) => setFlightSegment(1, { date: d || null })}
-                        minDate={ensureDate(firstSegment.date)}
+                        minDate={departDate}
                         isOpen={activeDropdown === 'flight-dates-return'}
                         onToggle={(open) => setActiveDropdown(open ? 'flight-dates-return' : null)}
+                        range={isRoundTrip ? {
+                            startDate: departDate,
+                            endDate: returnDate,
+                            editing: 'end',
+                            onChange: applyDateRange,
+                        } : undefined}
                     />
                 </div>
             )}

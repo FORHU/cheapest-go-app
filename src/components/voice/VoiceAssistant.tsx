@@ -3,6 +3,7 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { Mic, MicOff, Loader2, X } from 'lucide-react';
+import { getPositionIfPermitted, requestPosition } from '@/lib/geolocation';
 
 type Status = 'idle' | 'listening' | 'thinking' | 'speaking' | 'error';
 
@@ -24,27 +25,35 @@ export function VoiceAssistant() {
   const [mounted, setMounted] = useState(false);
   const locationRef = useRef<{ value: string }>({ value: '' });
 
+  const resolveCity = useCallback(async (pos: GeolocationPosition | null) => {
+    if (!pos) return;
+    const { latitude, longitude } = pos.coords;
+    try {
+      const res = await fetch(`/api/google/geocode?latlng=${latitude},${longitude}`);
+      const data = await res.json();
+      const city = data?.results?.[0]?.address_components?.find(
+        (c: { types: string[] }) => c.types.includes('locality')
+      )?.long_name;
+      if (city) locationRef.current.value = city;
+    } catch {}
+  }, []);
+
+  // This component is mounted by (main)/layout, so it runs on every page. It
+  // used to call getCurrentPosition right here, which meant a permission prompt
+  // on every page load with no user action behind it — enough dismissals and
+  // Chrome blocks geolocation for the origin outright. The mount path now only
+  // reads a position we already have permission for; the actual ask waits until
+  // the user opens the assistant, where location is what makes the answers local
+  // and the prompt has a gesture to explain it.
   useEffect(() => {
     setMounted(true);
-    if ('geolocation' in navigator) {
-      navigator.geolocation.getCurrentPosition(
-        async (pos) => {
-          const { latitude, longitude } = pos.coords;
-          try {
-            const res = await fetch(
-              `/api/google/geocode?latlng=${latitude},${longitude}`
-            );
-            const data = await res.json();
-            const city = data?.results?.[0]?.address_components?.find(
-              (c: { types: string[] }) => c.types.includes('locality')
-            )?.long_name;
-            if (city) locationRef.current.value = city;
-          } catch {}
-        },
-        () => {}
-      );
-    }
-  }, []);
+    getPositionIfPermitted().then(resolveCity);
+  }, [resolveCity]);
+
+  useEffect(() => {
+    if (!open || locationRef.current.value) return;
+    requestPosition().then(resolveCity);
+  }, [open, resolveCity]);
 
   const supported =
     mounted &&

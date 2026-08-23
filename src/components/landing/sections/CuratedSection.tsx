@@ -57,7 +57,7 @@ const StyleCardImpl: React.FC<StyleCardProps> = ({ style, index, variant = 'caro
               fill
               sizes="(max-width: 640px) 220px, (max-width: 768px) 240px, 260px"
               className="object-cover transition-transform duration-700 group-hover:scale-105"
-              priority={index === 0}
+              /* no priority: below the hero, so a head preload goes unused */
               loading={index === 0 ? undefined : 'lazy'}
             />
           ) : (

@@ -461,6 +461,14 @@ function buildMystiflyPassengers(passengers: any[]): any[] {
         };
         const paxType = typeMap[pax.type] ?? typeMap[pax.passengerType] ?? 'ADT';
 
+        // The form sends `passport` as a plain string alongside `passportExpiry` and
+        // `nationality`; older callers nested them in an object. Reading only the
+        // nested shape sent every field through as an empty string.
+        const isNested = pax.passport && typeof pax.passport === 'object';
+        const passportNumber = String((isNested ? pax.passport.number : pax.passport) ?? '').trim();
+        const passportExpiry = String((isNested ? pax.passport.expiryDate : pax.passportExpiry) ?? '').trim();
+        const passportCountry = String((isNested ? pax.passport.countryOfIssue : pax.nationality) ?? '').trim();
+
         return {
             Title: pax.title ?? (pax.gender?.toUpperCase() === 'M' ? 'MR' : 'MS'),
             Gender: pax.gender?.toUpperCase() === 'M' ? 'M' : 'F',
@@ -469,11 +477,11 @@ function buildMystiflyPassengers(passengers: any[]): any[] {
             FirstName: pax.firstName,
             LastName: pax.lastName,
             DateOfBirth: pax.birthDate ?? pax.dob ?? '',
-            PassportDetails: pax.passport ? {
-                PassportNumber: pax.passport.number ?? '',
-                ExpiryDate: pax.passport.expiryDate ?? '',
-                CountryOfIssue: pax.passport.countryOfIssue ?? '',
-                Nationality: pax.nationality ?? pax.passport.nationality ?? '',
+            PassportDetails: passportNumber ? {
+                PassportNumber: passportNumber,
+                ExpiryDate: passportExpiry,
+                CountryOfIssue: passportCountry,
+                Nationality: pax.nationality ?? (isNested ? pax.passport.nationality : '') ?? '',
             } : undefined,
         };
     });
@@ -559,6 +567,22 @@ async function insertPassengers(
         return map[raw ?? ''] ?? 'ADT';
     };
 
+    /**
+     * The passport number, whichever shape the caller used.
+     *
+     * The booking form sends `passport` as a plain string and always has. This
+     * read `pax.passport?.number`, which on a string is `undefined`, so the column
+     * was written NULL for every passenger ever booked — a number the traveller
+     * was required to enter and had validated, silently discarded on the way in.
+     */
+    const passportNumber = (pax: any): string | null => {
+        const raw = typeof pax?.passport === 'string'
+            ? pax.passport
+            : pax?.passport?.number ?? pax?.passportNumber ?? '';
+        const trimmed = String(raw ?? '').trim();
+        return trimmed.length > 0 ? trimmed : null;
+    };
+
     for (let i = 0; i < passengers.length; i++) {
         const pax = passengers[i];
         try {
@@ -574,7 +598,7 @@ async function insertPassengers(
                     ${pax.lastName ?? pax.last_name ?? ''},
                     ${normaliseType(pax.type ?? pax.passengerType)},
                     ${ticketNumbers[i] ?? null},
-                    ${pax.passport?.number ?? pax.passportNumber ?? null}
+                    ${passportNumber(pax)}
                 )
             `;
         } catch (paxErr: any) {

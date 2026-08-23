@@ -5,11 +5,16 @@ import { createAdminClient } from '@/utils/postgres/admin';
 import { sendFlightBookingConfirmationEmail, sendFlightAwaitingTicketEmail } from '@/lib/server/email';
 import { rateLimit } from '@/lib/server/rate-limit';
 import { createNotification } from '@/lib/server/admin/notify';
+import { awaitBookingRow } from '@/lib/server/flights/await-booking-row';
 import { z } from 'zod';
 import { issueTicket } from '@/lib/server/flights/issue-ticket';
 import { createBooking } from '@/lib/server/flights/create-booking';
 
-export const maxDuration = 60;
+// Must exceed the create-booking call this handler makes (aborted at 120s) plus
+// the concurrent-path wait below. At 60s the platform killed the request while
+// create-booking was still allowed to run, so the client saw a gateway error for
+// a booking that was still in progress.
+export const maxDuration = 180;
 
 const flightConfirmSchema = z.object({
     paymentIntentId: z.string().min(1, 'paymentIntentId is required'),
@@ -68,6 +73,20 @@ export async function POST(req: NextRequest) {
 
         // Validate this PaymentIntent belongs to this session
         if (paymentIntent.metadata?.bookingSessionId !== sessionId) {
+            return NextResponse.json({ success: false, error: 'Session/payment mismatch' }, { status: 403 });
+        }
+
+        // …and to this caller. The check above only proves the two ids go together,
+        // not that they are the requester's — so any signed-in user holding someone
+        // else's pair could read back their booking id and PNR, and drive their
+        // booking to completion. /api/flights/booking-status already scopes by
+        // user_id; this endpoint did not.
+        if (paymentIntent.metadata?.userId && paymentIntent.metadata.userId !== user.id) {
+            console.error('[/confirm] userId mismatch — refusing to act on another user\'s payment', {
+                sessionId,
+                owner: paymentIntent.metadata.userId,
+                caller: user.id,
+            });
             return NextResponse.json({ success: false, error: 'Session/payment mismatch' }, { status: 403 });
         }
 
@@ -191,11 +210,19 @@ export async function POST(req: NextRequest) {
         // create-booking returned failure — but the Stripe webhook may have run
         // concurrently and saved the booking while we were waiting. Do a final DB
         // check before surfacing the error to the user.
-        const { data: lateBooking } = await supabase
-            .from('flight_bookings')
-            .select('id, pnr, status, payment_intent_id')
-            .eq('session_id', sessionId)
-            .maybeSingle();
+        //
+        // `alreadyBooked` specifically means create-booking could not take the
+        // session lock, i.e. the webhook holds it and is mid-insert right now. A
+        // single read loses that race and told a traveller whose card HAD been
+        // charged that it had not — and the client stops polling on that answer, so
+        // the success landing a moment later was never seen. Wait it out.
+        const lateBooking = bookingData.alreadyBooked
+            ? await awaitBookingRow(supabase, sessionId)
+            : (await supabase
+                .from('flight_bookings')
+                .select('id, pnr, status, payment_intent_id')
+                .eq('session_id', sessionId)
+                .maybeSingle()).data;
 
         if (lateBooking?.pnr) {
             console.log('[/confirm] Late webhook booking found after create-booking failure. PNR:', lateBooking.pnr);
@@ -207,6 +234,28 @@ export async function POST(req: NextRequest) {
                 status: lateBooking.status,
                 source: 'late-webhook',
             });
+        }
+
+        // The concurrent path recorded a real failure (and refunded). Report that,
+        // not "pending" — the traveller needs to know the money is coming back.
+        if (lateBooking?.status === 'failed') {
+            return NextResponse.json({
+                success: false,
+                errorCode: 'booking_failed_refunded',
+                error: 'Booking failed — the flight offer was no longer available. Your payment has been automatically refunded.',
+            }, { status: 400 });
+        }
+
+        // Still nothing after waiting, but the other path never released the session
+        // either. The booking is genuinely in flight somewhere we cannot see — say so,
+        // rather than asserting a "not charged" the payment record contradicts.
+        if (bookingData.alreadyBooked) {
+            console.warn(`[/confirm] Session ${sessionId} is locked elsewhere and produced no booking row within the wait — reporting as pending`);
+            return NextResponse.json({
+                success: false,
+                errorCode: 'booking_pending',
+                error: 'Your payment went through and the booking is still completing. Check your trips page in a few minutes — do not pay again.',
+            }, { status: 202 });
         }
 
         // Booking explicitly failed

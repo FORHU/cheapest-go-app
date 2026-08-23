@@ -14,6 +14,15 @@ export const dynamic = 'force-dynamic';
  *
  * Body: { rawOffer: <Duffel raw offer object> }
  * Returns: { success, newOfferId, newOffer: <FlightOffer> }
+ *
+ * Refreshing is best-effort: the caller falls back to "this offer expired,
+ * search again" whenever `success` is false. So an upstream Duffel failure
+ * comes back as 200 + { success: false, reason }, not as an error status.
+ * Forwarding Duffel's status verbatim used to surface its account-level 429 as
+ * a 429 from our own origin, which says something quite different — that *this
+ * client* is being rate limited by us — and had Cloudflare and the browser
+ * treating a normal upstream hiccup as client abuse. Non-2xx is now reserved
+ * for faults in the request itself (400) and for us being misconfigured (503).
  */
 export async function POST(req: NextRequest) {
     const { rawOffer } = await req.json();
@@ -53,33 +62,61 @@ export async function POST(req: NextRequest) {
         ? `${targetAirlineCode}${rawOffer.slices[0]?.segments[0]?.marketing_carrier_flight_number ?? ''}`
         : null;
 
-    // Create new offer request
-    const offerRequestRes = await fetch('https://api.duffel.com/air/offer_requests', {
-        method: 'POST',
-        headers: {
-            'Authorization': `Bearer ${token}`,
-            'Duffel-Version': 'v2',
-            'Content-Type': 'application/json',
-            'Accept': 'application/json',
-        },
-        body: JSON.stringify({
-            data: { slices, passengers, cabin_class: cabinClass, return_offers: true },
-        }),
-        signal: AbortSignal.timeout(12000),
-    });
+    // Create new offer request. Duffel rate limits per account, so a burst of
+    // users hitting an expired offer at once earns a 429 that clears in a second
+    // or two — worth one honoured retry before giving up on the refresh.
+    const MAX_ATTEMPTS = 2;
+    let offerRequestRes: Response | null = null;
 
-    if (!offerRequestRes.ok) {
-        const err = await offerRequestRes.json().catch(() => ({}));
-        const msg = err?.errors?.[0]?.message ?? `Duffel offer_request error ${offerRequestRes.status}`;
+    for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+        offerRequestRes = await fetch('https://api.duffel.com/air/offer_requests', {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Duffel-Version': 'v2',
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+            },
+            body: JSON.stringify({
+                data: { slices, passengers, cabin_class: cabinClass, return_offers: true },
+            }),
+            signal: AbortSignal.timeout(12000),
+        });
+
+        const retryable = offerRequestRes.status === 429 || offerRequestRes.status >= 500;
+        if (!retryable || attempt === MAX_ATTEMPTS) break;
+
+        // Retry-After is seconds when Duffel sends it; cap it so we never sit on
+        // the request longer than the user will wait for the bags/seats step.
+        const retryAfter = Number(offerRequestRes.headers.get('retry-after'));
+        const waitMs = Number.isFinite(retryAfter) && retryAfter > 0
+            ? Math.min(retryAfter * 1000, 2000)
+            : 400 * attempt;
+        console.warn(`[offer-refresh] Duffel ${offerRequestRes.status}; retrying in ${waitMs}ms (attempt ${attempt}/${MAX_ATTEMPTS})`);
+        await new Promise(resolve => setTimeout(resolve, waitMs));
+    }
+
+    if (!offerRequestRes || !offerRequestRes.ok) {
+        const status = offerRequestRes?.status ?? 0;
+        const err = await offerRequestRes?.json().catch(() => ({}));
+        const msg = err?.errors?.[0]?.message ?? `Duffel offer_request error ${status}`;
         console.error('[offer-refresh] Duffel offer_request failed:', msg);
-        return NextResponse.json({ success: false, error: msg }, { status: offerRequestRes.status });
+        return NextResponse.json({
+            success: false,
+            reason: status === 429 ? 'upstream_rate_limited' : 'upstream_error',
+            error: msg,
+        });
     }
 
     const offerRequestJson = await offerRequestRes.json();
     const offers: any[] = offerRequestJson.data?.offers ?? [];
 
     if (offers.length === 0) {
-        return NextResponse.json({ success: false, error: 'No offers returned for this itinerary' }, { status: 404 });
+        return NextResponse.json({
+            success: false,
+            reason: 'no_offers',
+            error: 'No offers returned for this itinerary',
+        });
     }
 
     // Find best match: same airline + flight number → else cheapest

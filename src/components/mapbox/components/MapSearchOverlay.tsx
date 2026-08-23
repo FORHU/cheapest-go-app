@@ -5,6 +5,7 @@ import { Search, X, MapPin } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useMapboxSearch, type SearchResult } from '../hooks/useMapboxSearch';
 import { useTranslations } from 'next-intl';
+import { getPositionIfPermitted } from '@/lib/geolocation';
 
 interface MapSearchOverlayProps {
     onSelect: (result: SearchResult) => void;
@@ -15,18 +16,16 @@ export const MapSearchOverlay = ({ onSelect, className = 'absolute top-3 left-3 
     const t = useTranslations('hotels.mapSearch');
     const [userLocation, setUserLocation] = React.useState<{ lat: number; lng: number } | undefined>();
 
+    // Location only biases the place search towards you — never worth a
+    // permission prompt on mount. getPositionIfPermitted stays silent unless
+    // the user has already granted it elsewhere.
     React.useEffect(() => {
-        if (!navigator.geolocation) return;
-        navigator.geolocation.getCurrentPosition(
-            (pos) => {
-                setUserLocation({
-                    lat: pos.coords.latitude,
-                    lng: pos.coords.longitude,
-                });
-            },
-            (err) => console.warn('Geolocation failed:', err),
-            { enableHighAccuracy: false, timeout: 5000, maximumAge: 600000 }
-        );
+        let cancelled = false;
+        getPositionIfPermitted().then((pos) => {
+            if (cancelled || !pos) return;
+            setUserLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+        });
+        return () => { cancelled = true; };
     }, []);
 
     const {

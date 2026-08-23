@@ -1,6 +1,15 @@
 # cheapest-go cron schedule
 # All jobs hit the app container directly over the Docker network (no external roundtrip).
 # CRON_SECRET and APP_URL are injected from docker-compose environment.
+#
+# Every entry must name a route that exists under src/app/api/. `curl -sf` exits
+# non-zero on a 404 but prints nothing and the output is discarded, so a schedule
+# pointing at a route that was never built looks exactly like one that runs fine.
+# Three did: warm-hotel-cache, sync-hotel-deals, and duffel-balance-check — the
+# last of which was the only advance warning of the Duffel balance running dry,
+# which fails every flight booking at order creation. It is not rescheduled here
+# because Duffel exposes no balances endpoint to poll (see the note in
+# src/app/api/flights/book/route.ts); add it back with the route when they do.
 
 # ── High-frequency ────────────────────────────────────────────────────────────
 */5  * * * * curl -sf -X GET  $APP_URL/api/cron/poll-pending-tickets           -H "Authorization: Bearer $CRON_SECRET" -o /dev/null
@@ -10,8 +19,6 @@
 */30 * * * * curl -sf -X GET  $APP_URL/api/cron/refresh-popular-flights        -H "Authorization: Bearer $CRON_SECRET" -o /dev/null
 
 # ── Sub-daily ─────────────────────────────────────────────────────────────────
-0 */4  * * * curl -sf -X GET $APP_URL/api/cron/warm-hotel-cache    -H "Authorization: Bearer $CRON_SECRET" -o /dev/null
-0 */6  * * * curl -sf -X GET $APP_URL/api/cron/duffel-balance-check -H "Authorization: Bearer $CRON_SECRET" -o /dev/null
 0 */6  * * * curl -sf -X GET $APP_URL/api/cron/sync-flight-deals    -H "Authorization: Bearer $CRON_SECRET" -o /dev/null
 0 */12 * * * curl -sf -X GET $APP_URL/api/cron/otv-credit-check     -H "Authorization: Bearer $CRON_SECRET" -o /dev/null
 
@@ -22,5 +29,4 @@
 0 2 * * * curl -sf -X GET $APP_URL/api/cron/etg-reviews-sync   -H "Authorization: Bearer $CRON_SECRET" -o /dev/null
 0 3 * * * curl -sf -X GET $APP_URL/api/cron/cache-cleanup       -H "Authorization: Bearer $CRON_SECRET" -o /dev/null
 0 4 * * * curl -sf -X GET $APP_URL/api/cron/cleanup-sessions    -H "Authorization: Bearer $CRON_SECRET" -o /dev/null
-0 5 * * * curl -sf -X GET $APP_URL/api/cron/sync-hotel-deals    -H "Authorization: Bearer $CRON_SECRET" -o /dev/null
 0 6 * * * curl -sf -X GET $APP_URL/api/cron/check-price-alerts  -H "Authorization: Bearer $CRON_SECRET" -o /dev/null

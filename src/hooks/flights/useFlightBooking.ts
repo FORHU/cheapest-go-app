@@ -14,21 +14,47 @@ import { clientFetch } from '@/lib/api/client';
 export type BookingStep = 'form' | 'submitting' | 'payment' | 'success' | 'error';
 
 /**
- * Failures where the supplier order may exist despite the error.
+ * Failures that provably created nothing at the supplier, and are therefore the
+ * only ones safe to retry under a NEW idempotency key.
  *
- * A timeout or a 5xx tells us the request did not come back — not that it did
- * not happen. Duffel completes the airline booking regardless of whether we are
- * still listening, so these codes must keep the same idempotency key: a retry
- * has to be recognisable as the same booking rather than a new one.
+ * The rule is stated the other way round on purpose. A timeout or a 5xx tells us
+ * the request did not come back — not that it did not happen. Duffel completes
+ * the airline booking whether or not we are still listening, so a retry has to
+ * be recognisable to Duffel as the same booking rather than a new one.
  *
- * Everything else (price_changed, offer_expired, validation errors) is a
- * definitive rejection with no order created, and is safe to re-key.
+ * This used to be an allow-list of ambiguous codes instead, and it did not hold.
+ * It listed `timeout`, which nothing ever emits — the server maps supplier
+ * timeouts to `supplier_outage` — while the code a platform-level timeout
+ * actually produces, `booking_timeout` (see parseJsonResponse), was absent. So
+ * were `server_error` and every raw network failure. Each of those re-keyed and
+ * presented Duffel with what looked like a brand-new booking. That is how one
+ * failed CRK→NRT attempt became two paid EVA tickets 61 seconds apart.
+ *
+ * Anything not named here keeps its key. Unknown codes are treated as ambiguous
+ * because that is the direction whose worst case is a rejected retry rather than
+ * a second live ticket.
  */
-export const AMBIGUOUS_FAILURE_CODES = new Set([
-    'supplier_outage',
-    'timeout',
-    'booking_failed',
+export const DEFINITIVE_FAILURE_CODES = new Set([
+    // Rejected before any order was attempted — validation and guards.
+    'unauthenticated',
+    'duplicate_booking',
+    'passenger_type_mismatch',
+    'phone_number_invalid',
+    'validation_error',
+    // The supplier answered, and its answer was "no order was created".
+    'price_changed',
+    'offer_replaced',
+    'flight_unavailable',
+    'offer_expired',
+    'seats_unavailable',
+    'balance_insufficient',
+    'FX_UNAVAILABLE',
 ]);
+
+/** Should a retry present a fresh idempotency key? Only when nothing was created. */
+export function shouldRegenerateIdempotencyKey(code: string): boolean {
+    return DEFINITIVE_FAILURE_CODES.has(code);
+}
 
 /**
  * Scroll to and focus the first field that failed validation.
@@ -646,15 +672,10 @@ export function useFlightBooking() {
                 setStep('error');
 
                 // Only mint a fresh idempotency key when the failed attempt provably
-                // created nothing at the supplier. `supplier_outage` covers timeouts
-                // and 5xx — cases where the order may well exist and simply could not
-                // be read back — so reusing the key is the only thing standing between
-                // a retry and a second live ticket for the same trip.
-                //
-                // This is how one failed CRK→NRT attempt became two paid EVA tickets
-                // 61 seconds apart: the retry arrived with a brand-new key and Duffel
-                // had no way to tell it was the same booking.
-                if (!AMBIGUOUS_FAILURE_CODES.has(code)) {
+                // created nothing at the supplier — see DEFINITIVE_FAILURE_CODES.
+                // Anything else may have left a real order behind, and reusing the key
+                // is the only thing standing between a retry and a second live ticket.
+                if (shouldRegenerateIdempotencyKey(code)) {
                     idempotencyKeyRef.current = generateId();
                 }
             }
@@ -681,15 +702,20 @@ export function useFlightBooking() {
 
         setStep('submitting');
 
+        // Form state is finished with — the payment has been made, there is nothing
+        // left to re-submit. Safe to drop now.
         if (typeof window !== 'undefined') {
             sessionStorage.removeItem('flightPassengers');
             sessionStorage.removeItem('flightContact');
             sessionStorage.removeItem('flightSearchPassengers');
             sessionStorage.removeItem('selectedFlight');
-            sessionStorage.removeItem('flightBookingSessionId');
-            sessionStorage.removeItem('flightPaymentIntentId');
-            sessionStorage.removeItem('flightBookingTs');
         }
+
+        // The recovery keys are NOT dropped here. They are the only way back into a
+        // booking that is mid-flight, and this function can run for 45 seconds — so
+        // clearing them on entry meant a refresh anywhere in that window left a paid
+        // booking with no route to its own confirmation. They are cleared once the
+        // outcome is known instead, by clearRecovery() below.
 
         let resolved = false;
 
@@ -744,6 +770,20 @@ export function useFlightBooking() {
             setTimeout(tick, POLL_INTERVAL_MS); // first poll after 2s
         });
 
+        /**
+         * Retire the recovery keys.
+         *
+         * Called only once the booking has reached an outcome that a refresh cannot
+         * improve on. A still-pending booking deliberately keeps them, so reloading
+         * the page picks the poll back up rather than abandoning it.
+         */
+        const clearRecovery = () => {
+            if (typeof window === 'undefined') return;
+            sessionStorage.removeItem('flightBookingSessionId');
+            sessionStorage.removeItem('flightPaymentIntentId');
+            sessionStorage.removeItem('flightBookingTs');
+        };
+
         // ── Race: whichever resolves first wins ───────────────────────
         const winner = await Promise.race([pollPromise, confirmPromise]);
         resolved = true;
@@ -751,10 +791,12 @@ export function useFlightBooking() {
         if (winner.type === 'poll') {
             const d = winner.data;
             if (d.failed) {
+                clearRecovery();
                 setErrorMsg(d.errorCode ? 'CODE:' + d.errorCode : (d.error || 'CODE:booking_failed_refunded'));
                 setStep('error');
                 return;
             }
+            clearRecovery();
             if (d.pnr) setBookingResult(prev => ({ ...prev, bookingId: d.bookingId, pnr: d.pnr }));
             setStep('success');
             return;
@@ -764,15 +806,18 @@ export function useFlightBooking() {
         const { data, ok } = winner;
         if (!data || !ok || data.success === false) {
             const errMsg = data?.errorCode ? 'CODE:' + data.errorCode : (data?.error || 'CODE:booking_card_not_charged');
+
+            // `booking_pending` means the payment landed and the booking is still
+            // completing elsewhere. Keep the recovery keys: reloading should resume
+            // the poll, not strand a paid booking on a dead screen.
+            const stillRunning = data?.errorCode === 'booking_pending' || data?.errorCode === 'pending';
+            if (!stillRunning) clearRecovery();
+
             setErrorMsg(errMsg);
             setStep('error');
-            if (typeof window !== 'undefined') {
-                sessionStorage.removeItem('flightBookingSessionId');
-                sessionStorage.removeItem('flightPaymentIntentId');
-                sessionStorage.removeItem('flightBookingTs');
-            }
             return;
         }
+        clearRecovery();
         if (data.pnr) {
             setBookingResult(prev => ({ ...prev, bookingId: data.bookingId, pnr: data.pnr, tickets: data.tickets }));
         }

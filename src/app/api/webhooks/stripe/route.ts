@@ -3,11 +3,16 @@ import { NextRequest, NextResponse } from 'next/server';
 import Stripe from 'stripe';
 import { sendFlightBookingConfirmationEmail } from '@/lib/server/email';
 import { createNotification } from '@/lib/server/admin/notify';
+import { awaitBookingRow } from '@/lib/server/flights/await-booking-row';
 import { env } from '@/utils/env';
 import { issueTicket } from '@/lib/server/flights/issue-ticket';
 import { createBooking } from '@/lib/server/flights/create-booking';
 
-export const maxDuration = 30;
+// Must cover the whole chain this handler drives: create-booking (itself allowed
+// 120s) plus issue-ticket. At 30s the platform killed the request mid-booking,
+// and because the event had already been marked processed, Stripe's retry was
+// discarded as a duplicate and the booking was never completed by anyone.
+export const maxDuration = 180;
 
 // Lazy-initialize Stripe to avoid module-level crash during Vercel build
 // (env vars aren't available at build time when Next.js collects page data)
@@ -58,21 +63,51 @@ export async function POST(req: NextRequest) {
 
     console.log(`[Stripe Webhook] Event: ${event.type} id=${event.id}`);
 
-    // ── Idempotency: deduplicate processed events ────────────────────────────
+    // ── Idempotency: claim the event, and commit it only once it is done ─────
+    //
+    // The claim (this insert) stops two concurrent deliveries of the same event
+    // from both booking. The commit (`completed_at`, written at the end) is what
+    // makes a LATER delivery a no-op.
+    //
+    // These used to be the same act: the row was written before the work, so a
+    // delivery that died part-way — the platform killing a slow booking — left
+    // the event permanently marked processed, and Stripe's retry was discarded as
+    // a duplicate. The booking was then finished by nobody.
+    const dedupClient = createAdminClient();
     {
-        const dedupClient = createAdminClient();
         const { error: dedupError } = await dedupClient
             .from('stripe_processed_events')
             .insert({ event_id: event.id, event_type: event.type, processed_at: new Date().toISOString() });
 
         if (dedupError) {
             if (dedupError.code === '23505') {
-                console.log(`[Stripe Webhook] Duplicate event ${event.id} — skipping`);
-                return NextResponse.json({ received: true });
+                // Already claimed. Only skip if it also finished — otherwise this is a
+                // retry of a delivery that died, and it should run.
+                const { data: prior } = await dedupClient
+                    .from('stripe_processed_events')
+                    .select('completed_at')
+                    .eq('event_id', event.id)
+                    .maybeSingle();
+
+                if (prior?.completed_at) {
+                    console.log(`[Stripe Webhook] Duplicate event ${event.id} — already completed, skipping`);
+                    return NextResponse.json({ received: true });
+                }
+                console.warn(`[Stripe Webhook] Event ${event.id} was claimed but never completed — reprocessing. Downstream handlers are idempotent.`);
+            } else {
+                console.warn('[Stripe Webhook] Dedup insert error:', dedupError.message);
             }
-            console.warn('[Stripe Webhook] Dedup insert error:', dedupError.message);
         }
     }
+
+    /** Mark the claim finished so later deliveries of this event are skipped. */
+    const commitEvent = async () => {
+        const { error } = await dedupClient
+            .from('stripe_processed_events')
+            .update({ completed_at: new Date().toISOString() })
+            .eq('event_id', event.id);
+        if (error) console.warn(`[Stripe Webhook] Could not mark event ${event.id} complete:`, error.message);
+    };
 
     const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
 
@@ -86,11 +121,13 @@ export async function POST(req: NextRequest) {
 
         if (!bookingSessionId) {
             console.error('[Webhook] amount_capturable_updated missing bookingSessionId', pi.id);
+            await commitEvent();
             return NextResponse.json({ received: true });
         }
 
         if (provider !== 'mystifly_v2') {
             // Only Mystifly uses manual capture — ignore for other providers
+            await commitEvent();
             return NextResponse.json({ received: true });
         }
 
@@ -146,11 +183,13 @@ export async function POST(req: NextRequest) {
 
         if (!bookingSessionId) {
             console.error('[Webhook] payment_intent.succeeded missing bookingSessionId', pi.id);
+            await commitEvent();
             return NextResponse.json({ received: true });
         }
 
         // skip Mystifly here — it's handled by amount_capturable_updated above
         if (provider === 'mystifly_v2') {
+            await commitEvent();
             return NextResponse.json({ received: true });
         }
 
@@ -177,6 +216,47 @@ export async function POST(req: NextRequest) {
             const bookingData = await createBooking({ sessionId: bookingSessionId, paymentIntentId: pi.id });
 
             if (!bookingData.success) {
+                // `alreadyBooked` is not a failure. create-booking answers it when it
+                // could not take the session lock — which, by design, is exactly what
+                // happens when the /confirm fallback the client fires 3s after payment
+                // got there first and is mid-insert.
+                //
+                // Treating it as a failure fell straight into the catch below and
+                // REFUNDED a card whose ticket was being issued as we read. The Duffel
+                // order is bought from our balance before Stripe is ever charged, so
+                // that combination is a live ticket and a full refund.
+                //
+                // Wait out the other path before deciding anything.
+                if (bookingData.alreadyBooked) {
+                    const settled = await awaitBookingRow(supabase, bookingSessionId);
+                    if (settled?.pnr) {
+                        console.log(`[Webhook] Session ${bookingSessionId} was booked concurrently by /confirm. PNR: ${settled.pnr} — nothing to do`);
+                        await commitEvent();
+                        return NextResponse.json({ received: true });
+                    }
+                    if (settled?.status === 'failed') {
+                        console.error(`[Webhook] Session ${bookingSessionId} was recorded failed by the concurrent path — refunding`);
+                        throw new Error('Booking recorded as failed by concurrent path');
+                    }
+
+                    // Locked by someone, and still no row. This is NOT a refund: the
+                    // lock means another path owns this booking and may yet finish it,
+                    // and refunding a live Duffel ticket cannot be undone. Hand it to
+                    // auto-recover, which sweeps succeeded-PI sessions every 10 minutes
+                    // and is built for exactly this.
+                    console.error(
+                        `[Webhook] Session ${bookingSessionId} is locked elsewhere and produced no booking row — ` +
+                        `leaving it for auto-recover rather than refunding a possibly-live ticket. PI: ${pi.id}`,
+                    );
+                    createNotification(
+                        'Flight booking needs review',
+                        `Session ${bookingSessionId} (PI ${pi.id}) was paid but its booking row never appeared while the webhook waited. ` +
+                        `Not refunded — auto-recover will retry. Check for a live Duffel order before taking any manual action.`,
+                        'booking',
+                    );
+                    await commitEvent();
+                    return NextResponse.json({ received: true });
+                }
                 throw new Error(bookingData.error || 'create-booking failed');
             }
 
@@ -251,6 +331,7 @@ export async function POST(req: NextRequest) {
         const { bookingSessionId, duffelOrderId, provider } = pi.metadata ?? {};
 
         if (provider !== 'duffel' || !duffelOrderId) {
+            await commitEvent();
             return NextResponse.json({ received: true });
         }
 
@@ -260,6 +341,7 @@ export async function POST(req: NextRequest) {
             const duffelToken = process.env.DUFFEL_TOKEN;
             if (!duffelToken) {
                 console.error('[Stripe Webhook] DUFFEL_TOKEN not set — cannot cancel orphaned order');
+                await commitEvent();
                 return NextResponse.json({ received: true });
             }
 
@@ -356,6 +438,7 @@ export async function POST(req: NextRequest) {
         console.log(`[Stripe Webhook] Unhandled event type: ${event.type}`);
     }
 
+    await commitEvent();
     return NextResponse.json({ received: true });
 }
 

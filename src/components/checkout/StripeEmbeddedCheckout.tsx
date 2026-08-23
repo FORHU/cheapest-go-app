@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { loadStripe } from '@stripe/stripe-js';
 import { Elements, PaymentElement, useStripe, useElements } from '@stripe/react-stripe-js';
@@ -16,9 +16,10 @@ function getStripe() {
     return stripePromise;
 }
 
-function CheckoutForm({ clientSecret, onSuccess }: {
+function CheckoutForm({ clientSecret, onSuccess, returnUrl }: {
     clientSecret: string;
     onSuccess: (paymentIntentId: string) => void;
+    returnUrl?: string;
 }) {
     const stripe = useStripe();
     const elements = useElements();
@@ -36,10 +37,21 @@ function CheckoutForm({ clientSecret, onSuccess }: {
         setIsLoading(true);
         setSubmitted(true);
 
+        // Come back to the page that started this payment.
+        //
+        // This was hardcoded to `/checkout`, which is the HOTEL checkout — and this
+        // component is shared with flight booking. Any payment method that forces a
+        // full redirect (bank redirects, some 3DS challenges) therefore dropped flight
+        // customers onto the hotel page: no confirmation, no PNR, and the client-side
+        // poll that finalises the booking never ran.
+        const fallbackReturn = typeof window !== 'undefined'
+            ? `${window.location.origin}${window.location.pathname}${window.location.search}`
+            : undefined;
+
         const { error, paymentIntent } = await stripe.confirmPayment({
             elements,
             confirmParams: {
-                return_url: `${window.location.origin}/checkout`,
+                return_url: returnUrl ?? fallbackReturn,
             },
             redirect: 'if_required',
         });
@@ -47,14 +59,19 @@ function CheckoutForm({ clientSecret, onSuccess }: {
         if (error) {
             setMessage(error.message || t('stripe.unexpectedError'));
             setIsLoading(false);
+            setSubmitted(false);
         } else if (paymentIntent && (
             paymentIntent.status === 'succeeded' ||
             paymentIntent.status === 'requires_capture'
         )) {
             onSuccess(paymentIntent.id);
         } else {
+            // `processing` and friends: the payment is neither done nor refused. Do not
+            // leave the button disabled — that was a dead end with no way forward and
+            // no way to retry, on a page the customer had already paid from.
             setMessage(t('stripe.processing'));
             setIsLoading(false);
+            setSubmitted(false);
         }
     };
 
@@ -86,31 +103,34 @@ function CheckoutForm({ clientSecret, onSuccess }: {
     );
 }
 
-export default function StripeEmbeddedCheckout({ clientSecret, onSuccess }: {
+export default function StripeEmbeddedCheckout({ clientSecret, onSuccess, returnUrl }: {
     clientSecret: string;
     onSuccess: (paymentIntentId: string) => void;
+    /** Where Stripe should return to if the payment method forces a redirect.
+     *  Defaults to the current page, which is right for every caller. */
+    returnUrl?: string;
 }) {
-    // Remove Stripe's floating iframes from <body> on true unmount.
-    // Guard with a 300ms timer so React Strict Mode's synthetic first-mount cleanup
-    // (which runs synchronously before re-mount) doesn't yank iframes mid-init.
-    useEffect(() => {
-        let settled = false;
-        const timer = setTimeout(() => { settled = true; }, 300);
-        return () => {
-            clearTimeout(timer);
-            if (settled) {
-                document.querySelectorAll(
-                    'iframe[name*="privateStripe"], iframe[name*="__stripe"], div[class*="__PrivateStripeElement"]'
-                ).forEach(el => el.remove());
-            }
-        };
-    }, []);
+    // Stripe's controller iframes (__privateStripeController,
+    // __privateStripeMetricsController) are appended to <body> by Stripe.js and are
+    // meant to outlive any single Elements instance — it reuses them for the whole page
+    // and keeps posting to them after we unmount.
+    //
+    // This used to sweep them out of the DOM on unmount, which is what produced:
+    //
+    //   Failed to execute 'postMessage' on 'DOMWindow': The target origin provided
+    //   ('https://js.stripe.com') does not match the recipient window's origin
+    //   ('https://cheapestgo.com')
+    //
+    // Detaching an iframe swaps its contentWindow for a blank same-origin one, so
+    // Stripe's next message — addressed to js.stripe.com — lands on our own origin and
+    // throws. The iframes are 0x0 and invisible; leaving them alone is correct. The
+    // Element iframes we actually own live inside the React tree and unmount with it.
 
     if (!clientSecret) return null;
 
     return (
         <Elements options={{ clientSecret, appearance: { theme: 'stripe' } }} stripe={getStripe()}>
-            <CheckoutForm clientSecret={clientSecret} onSuccess={onSuccess} />
+            <CheckoutForm clientSecret={clientSecret} onSuccess={onSuccess} returnUrl={returnUrl} />
         </Elements>
     );
 }
