@@ -85,3 +85,54 @@ export function findReusablePreOrder(
     usable.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
     return usable[0];
 }
+
+// ─── Identity gates ───────────────────────────────────────────────────────────
+
+/** Compare names/dates the way an airline does: case- and padding-insensitive. */
+function normName(s: unknown): string {
+    return typeof s === 'string' ? s.trim().toLowerCase().replace(/\s+/g, ' ') : '';
+}
+
+/**
+ * The passenger a Duffel order was actually bought for, as submitted now.
+ *
+ * Matching on the offer id alone is not enough to adopt an order. The payment
+ * screen's "Back to details" exists so a traveller can FIX a misspelled name or
+ * a wrong date of birth, and re-submitting presents the very same offer id. A
+ * reuse that ignores those edits tickets the uncorrected name and records the
+ * corrected one — the traveller then discovers at check-in that their ticket
+ * does not match their passport, and the correction costs a reissue.
+ *
+ * Order-of-passengers is significant: Duffel maps each passenger to a specific
+ * offer passenger id, so passenger 1 on the order is passenger 1 here.
+ */
+export function samePassengerIdentity(
+    orderPassengers: Array<{ given_name?: string | null; family_name?: string | null; born_on?: string | null }> | null | undefined,
+    submitted: Array<{ firstName?: string; lastName?: string; birthDate?: string }> | null | undefined,
+): boolean {
+    const a = orderPassengers ?? [];
+    const b = submitted ?? [];
+    if (a.length === 0 || a.length !== b.length) return false;
+
+    for (let i = 0; i < a.length; i++) {
+        if (normName(a[i]?.given_name) !== normName(b[i]?.firstName)) return false;
+        if (normName(a[i]?.family_name) !== normName(b[i]?.lastName)) return false;
+        // born_on and birthDate are both YYYY-MM-DD.
+        if (normName(a[i]?.born_on) !== normName(b[i]?.birthDate)) return false;
+    }
+    return true;
+}
+
+/**
+ * Does the stored order cost what this attempt would cost?
+ *
+ * Stands in for comparing ancillaries directly: an order's service ids are its
+ * own, not the offer service ids the client selects from, so they cannot be
+ * compared. The total can. Adding or dropping a bag or a seat moves it, and a
+ * reuse would otherwise charge the old total and deliver the old ancillaries.
+ */
+export function sameOrderTotal(orderTotal: unknown, expectedTotal: unknown): boolean {
+    const x = Number(orderTotal);
+    const y = Number(expectedTotal);
+    return Number.isFinite(x) && Number.isFinite(y) && Math.abs(x - y) < 0.005;
+}

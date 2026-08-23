@@ -7,8 +7,9 @@ import { applyMarkup, toStripeAmount, FLIGHT_MARKUP } from '@/lib/pricing';
 import { rateLimit } from '@/lib/server/rate-limit';
 import { getMobileApiKey } from '@/lib/server/mobile-auth';
 import { placeDuffelOrder } from '@/lib/server/flights/place-duffel-order';
+import { duffelIdentityDocuments } from '@/lib/server/flights/duffel-identity-documents';
 
-export const maxDuration = 120;
+export const maxDuration = 300;
 export const dynamic = 'force-dynamic';
 
 /**
@@ -199,6 +200,10 @@ export async function POST(req: NextRequest) {
             email: contact.email,
             phone_number: e164Phone,
             gender: (pax.gender ?? '').toUpperCase() === 'M' ? 'm' : 'f',
+            // Passport details for the airline's APIS feed. Absent here for the same
+            // reason it was absent from the web route: collected, validated, and then
+            // never put in the order body.
+            ...duffelIdentityDocuments(rawOffer, pax),
         }));
 
         // Compute order total from rawOffer available_services (server-authoritative)
@@ -226,8 +231,14 @@ export async function POST(req: NextRequest) {
             'Idempotency-Key': idempotencyKey ?? crypto.randomUUID(),
         };
 
+        // 130s is Duffel's documented client-timeout floor for order creation, not a
+        // generous margin. Aborting does NOT cancel the order — Duffel completes the
+        // airline booking regardless — so a shorter bound does not save the traveller
+        // from a slow airline, it just hides a real, paid PNR from this app. The web
+        // route learned this the expensive way (see ORDER_CREATE_TIMEOUT_MS in
+        // src/app/api/flights/book/route.ts); this one was still at 45s.
         const orderAbort = new AbortController();
-        const orderTimeout = setTimeout(() => orderAbort.abort(), 45_000);
+        const orderTimeout = setTimeout(() => orderAbort.abort(), 130_000);
 
         let duffelRes: Response;
         let duffelData: any;

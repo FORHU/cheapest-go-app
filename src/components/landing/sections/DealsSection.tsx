@@ -131,7 +131,7 @@ const DealCardImpl: React.FC<DealCardProps> = ({ deal, index, variant = 'carouse
             ? <Image src={imageUrl} alt={deal.title} fill unoptimized
                 sizes="(max-width: 640px) 220px, (max-width: 768px) 240px, 260px"
                 className="object-cover transition-transform duration-700 group-hover:scale-105"
-                priority={index === 0} loading={index === 0 ? undefined : 'lazy'} />
+                /* no priority: below the hero, so a head preload goes unused */ loading={index === 0 ? undefined : 'lazy'} />
             : <div className="absolute inset-0 bg-linear-to-br from-blue-900 to-slate-900" />
           }
 

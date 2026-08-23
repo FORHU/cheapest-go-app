@@ -3,6 +3,8 @@ import {
     findReusablePreOrder,
     sessionOfferId,
     REUSE_WINDOW_MS,
+    samePassengerIdentity,
+    sameOrderTotal,
     type CandidateSession,
 } from './preorder-reuse';
 
@@ -105,5 +107,80 @@ describe('findReusablePreOrder — refuses anything it should not claim', () => 
 
     it('refuses to match when no offer id is supplied', () => {
         expect(findReusablePreOrder([session()], { ...opts, offerId: '' })).toBeNull();
+    });
+});
+
+// ─── Identity gates ───────────────────────────────────────────────────────────
+
+describe('samePassengerIdentity', () => {
+    const submitted = [
+        { firstName: 'Maria', lastName: 'Santos', birthDate: '1991-04-02' },
+        { firstName: 'Jose', lastName: 'Santos', birthDate: '2015-11-30' },
+    ];
+    const onOrder = [
+        { given_name: 'Maria', family_name: 'Santos', born_on: '1991-04-02' },
+        { given_name: 'Jose', family_name: 'Santos', born_on: '2015-11-30' },
+    ];
+
+    it('accepts an unchanged submission', () => {
+        expect(samePassengerIdentity(onOrder, submitted)).toBe(true);
+    });
+
+    it('ignores case and stray whitespace, as an airline would', () => {
+        expect(samePassengerIdentity(onOrder, [
+            { firstName: '  maria ', lastName: 'SANTOS', birthDate: '1991-04-02' },
+            { firstName: 'Jose', lastName: 'Santos', birthDate: '2015-11-30' },
+        ])).toBe(true);
+    });
+
+    it('rejects a corrected spelling — the whole point of "Back to details"', () => {
+        expect(samePassengerIdentity(onOrder, [
+            { firstName: 'Mario', lastName: 'Santos', birthDate: '1991-04-02' },
+            ...submitted.slice(1),
+        ])).toBe(false);
+    });
+
+    it('rejects a corrected date of birth', () => {
+        expect(samePassengerIdentity(onOrder, [
+            { ...submitted[0], birthDate: '1991-04-20' },
+            ...submitted.slice(1),
+        ])).toBe(false);
+    });
+
+    it('rejects a changed passenger count', () => {
+        expect(samePassengerIdentity(onOrder, submitted.slice(0, 1))).toBe(false);
+    });
+
+    it('rejects reordered passengers — Duffel binds each to an offer passenger id', () => {
+        expect(samePassengerIdentity(onOrder, [submitted[1], submitted[0]])).toBe(false);
+    });
+
+    it('refuses to match when either side is empty', () => {
+        expect(samePassengerIdentity([], submitted)).toBe(false);
+        expect(samePassengerIdentity(onOrder, [])).toBe(false);
+        expect(samePassengerIdentity(null, null)).toBe(false);
+    });
+
+    it('refuses to match blanks against blanks', () => {
+        expect(samePassengerIdentity(
+            [{ given_name: '', family_name: '', born_on: '' }],
+            [{ firstName: '', lastName: '', birthDate: '' }],
+        )).toBe(true);
+    });
+});
+
+describe('sameOrderTotal', () => {
+    it('treats trailing-zero variants as equal', () => {
+        expect(sameOrderTotal('929.0', '929.00')).toBe(true);
+        expect(sameOrderTotal(929, '929.00')).toBe(true);
+    });
+
+    it('rejects a total moved by an added bag', () => {
+        expect(sameOrderTotal('929.00', '974.00')).toBe(false);
+    });
+
+    it('rejects unparseable input rather than guessing', () => {
+        expect(sameOrderTotal('', '929.00')).toBe(false);
+        expect(sameOrderTotal(undefined, undefined)).toBe(false);
     });
 });

@@ -749,6 +749,8 @@
       "bagsCount": "手荷物 {count}個",
       "bestValue": "最高の価値",
       "brandsAvailable": "{count}件のブランドあり",
+      "carryOnBags": "{count, plural, =0 {機内持ち込みなし} other {機内持ち込み #個}}",
+      "checkedBags": "{count, plural, =0 {受託手荷物なし} other {受託手荷物 #個}}",
       "compareOptions": "{count}件のオプションを比較",
       "currentlySelected": "現在選択中",
       "direct": "直行便",

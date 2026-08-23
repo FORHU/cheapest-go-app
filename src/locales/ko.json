@@ -863,6 +863,8 @@
       "bagsCount": "수하물 {count}개",
       "bestValue": "최고 가치",
       "brandsAvailable": "브랜드 {count}개 이용 가능",
+      "carryOnBags": "{count, plural, =0 {기내 수하물 없음} other {기내 수하물 #개}}",
+      "checkedBags": "{count, plural, =0 {위탁 수하물 없음} other {위탁 수하물 #개}}",
       "compareOptions": "{count}개 옵션 비교",
       "currentlySelected": "현재 선택됨",
       "direct": "직항",

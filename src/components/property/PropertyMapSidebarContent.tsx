@@ -16,6 +16,7 @@ import Image from 'next/image';
 import { useWeather } from '@/hooks/useWeather';
 import { WeatherWidget } from './WeatherWidget';
 import { calculateHaversineDistance } from '@/utils/geo';
+import { getPositionIfPermitted, requestPosition } from '@/lib/geolocation';
 import { formatDuration } from '@/utils/format';
 import { 
     GOOGLE_MAPS_SEARCH_URL,
@@ -154,30 +155,27 @@ const PropertyMapSidebarContent = React.memo<PropertyMapSidebarProps>(
         });
 
         const handleLocateMe = async () => {
-            if (!navigator.geolocation) return;
             setIsLocating(true);
-            navigator.geolocation.getCurrentPosition(
-                async (pos) => {
-                    await reverseGeocode(pos.coords.latitude, pos.coords.longitude);
-                    setIsLocating(false);
-                },
-                (err) => {
-                    console.error('Locate Me failed:', err);
-                    setIsLocating(false);
-                },
-                { enableHighAccuracy: true, timeout: 5000 }
-            );
+            try {
+                const pos = await requestPosition({ enableHighAccuracy: true, timeout: 5000 });
+                if (pos) await reverseGeocode(pos.coords.latitude, pos.coords.longitude);
+            } finally {
+                setIsLocating(false);
+            }
         };
 
         const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | undefined>();
 
+        // Passive: this only biases the search box towards the user, so it must
+        // not prompt. The deliberate ask lives in handleLocateMe above, behind a
+        // button press.
         React.useEffect(() => {
-            if (!navigator.geolocation) return;
-            navigator.geolocation.getCurrentPosition(
-                (pos) => setUserLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
-                (err) => console.warn('Sidebar geolocation failed:', err),
-                { enableHighAccuracy: false, timeout: 5000, maximumAge: 600000 }
-            );
+            let cancelled = false;
+            getPositionIfPermitted().then((pos) => {
+                if (cancelled || !pos) return;
+                setUserLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+            });
+            return () => { cancelled = true; };
         }, []);
 
         const {

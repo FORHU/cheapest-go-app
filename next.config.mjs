@@ -66,12 +66,15 @@ const nextConfig = {
               // 'unsafe-inline' is still required because Next.js injects inline hydration scripts.
               // Removing it requires nonce-based CSP via middleware (tracked as future hardening).
               // 'unsafe-eval' is only included in development for React Fast Refresh (HMR).
-              `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ''} blob: https://js.stripe.com https://api.mapbox.com https://cdn.jsdelivr.net`,
+              // static.cloudflareinsights.com serves beacon.min.js, which Cloudflare
+              // injects itself when Web Analytics is on; it beacons back to
+              // cloudflareinsights.com/cdn-cgi/rum, hence the connect-src entry below.
+              `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ''} blob: https://js.stripe.com https://api.mapbox.com https://cdn.jsdelivr.net https://static.cloudflareinsights.com`,
               // 'unsafe-inline' is required for Tailwind/CSS-in-JS utility classes.
               "style-src 'self' 'unsafe-inline' https://api.mapbox.com",
               "img-src 'self' data: blob: https: http:",
               "font-src 'self' data:",
-              `connect-src 'self' ${isDev ? '*' : ''} https://*.supabase.co wss://*.supabase.co https://api.stripe.com https://q.stripe.com https://m.stripe.com https://b.stripecdn.com https://r.stripe.com https://api.mapbox.com https://events.mapbox.com`,
+              `connect-src 'self' ${isDev ? '*' : ''} https://*.supabase.co wss://*.supabase.co https://api.stripe.com https://q.stripe.com https://m.stripe.com https://b.stripecdn.com https://r.stripe.com https://api.mapbox.com https://events.mapbox.com https://cloudflareinsights.com`,
               "frame-src 'self' https://js.stripe.com https://hooks.stripe.com https://q.stripe.com",
               "worker-src 'self' blob:",
               "child-src 'self' blob:",

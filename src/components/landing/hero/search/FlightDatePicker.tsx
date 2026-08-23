@@ -6,6 +6,11 @@ import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, ChevronDown } from
 import { cn } from '@/lib/utils';
 import { useTranslations, useLocale } from 'next-intl';
 
+export interface FlightDateRange {
+    startDate: Date | null;
+    endDate: Date | null;
+}
+
 interface FlightDatePickerProps {
     date: Date | null;
     onChange: (date: Date | null) => void;
@@ -14,8 +19,21 @@ interface FlightDatePickerProps {
     isOpen: boolean;
     onToggle: (isOpen: boolean) => void;
     minDate?: Date | null;
+    /**
+     * Round-trip mode: one calendar edits both legs, so opening "Depart" rolls
+     * straight into picking the return without closing. `editing` is the leg the
+     * trigger starts on — 'start' for the depart card, 'end' for the return card.
+     */
+    range?: {
+        startDate: Date | null;
+        endDate: Date | null;
+        editing: 'start' | 'end';
+        onChange: (range: FlightDateRange) => void;
+    };
 }
 
+const isSameDay = (a: Date | null | undefined, b: Date | null | undefined) =>
+    !!a && !!b && a.toDateString() === b.toDateString();
 
 export const FlightDatePicker: React.FC<FlightDatePickerProps> = ({
     date,
@@ -24,7 +42,8 @@ export const FlightDatePicker: React.FC<FlightDatePickerProps> = ({
     description,
     isOpen,
     onToggle,
-    minDate
+    minDate,
+    range
 }) => {
     const t = useTranslations('landing.search');
     const locale = useLocale();
@@ -32,17 +51,34 @@ export const FlightDatePicker: React.FC<FlightDatePickerProps> = ({
     const MONTHS = t.raw('months') as string[];
     const DAYS = t.raw('days') as string[];
     const ref = useRef<HTMLDivElement>(null);
-    const [currentMonth, setCurrentMonth] = useState(date || new Date());
+    const [currentMonth, setCurrentMonth] = useState(date || range?.startDate || new Date());
     const [view, setView] = useState<'calendar' | 'month' | 'year'>('calendar');
     const [yearInput, setYearInput] = useState(currentMonth.getFullYear().toString());
+    // Which leg the next click fills, in round-trip mode
+    const [leg, setLeg] = useState<'start' | 'end'>(range?.editing ?? 'start');
+    const [hoverDate, setHoverDate] = useState<Date | null>(null);
+
+    const rangeStart = range?.startDate ?? null;
+    const rangeEnd = range?.endDate ?? null;
 
     useEffect(() => {
         setYearInput(currentMonth.getFullYear().toString());
     }, [currentMonth]);
 
-    // Reset view when closed
+    // Reset view when closed; pick up the right leg and month when opened
     useEffect(() => {
-        if (!isOpen) setView('calendar');
+        if (!isOpen) {
+            setView('calendar');
+            setHoverDate(null);
+            return;
+        }
+        if (!range) return;
+        // The return card can only edit the return once an outbound date exists
+        const nextLeg: 'start' | 'end' = range.editing === 'end' && rangeStart ? 'end' : 'start';
+        setLeg(nextLeg);
+        const focus = nextLeg === 'end' ? (rangeEnd ?? rangeStart) : rangeStart;
+        if (focus) setCurrentMonth(new Date(focus.getFullYear(), focus.getMonth(), 1));
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [isOpen]);
 
     useEffect(() => {
@@ -85,13 +121,40 @@ export const FlightDatePicker: React.FC<FlightDatePickerProps> = ({
     };
 
     const handleDateClick = (selectedDate: Date) => {
-        onChange(selectedDate);
+        if (!range) {
+            onChange(selectedDate);
+            return;
+        }
+
+        // A click fills the outbound leg when that's what we're editing, when
+        // nothing is set yet, or when it lands before the current outbound —
+        // that restarts the range instead of producing a return before depart.
+        const startsNewRange = leg === 'start' || !rangeStart || selectedDate < rangeStart;
+
+        if (startsNewRange) {
+            const keepReturn = rangeEnd && rangeEnd >= selectedDate ? rangeEnd : null;
+            range.onChange({ startDate: selectedDate, endDate: keepReturn });
+            setLeg('end');
+        } else {
+            range.onChange({ startDate: rangeStart, endDate: selectedDate });
+            setLeg('start');
+        }
+        setHoverDate(null);
     };
 
     const formatDate = (d: Date | null) => {
         if (!d) return <span className="text-slate-400 font-normal">{resolvedDescription}</span>;
         return d.toLocaleDateString(locale, { weekday: 'short', month: 'short', day: 'numeric' });
     };
+
+    const formatLegDate = (d: Date | null) =>
+        d ? d.toLocaleDateString(locale, { weekday: 'short', month: 'short', day: 'numeric' }) : resolvedDescription;
+
+    // Tentative return highlighted while the cursor moves across the calendar
+    const previewEnd = range && leg === 'end' && rangeStart && hoverDate && hoverDate > rangeStart
+        ? hoverDate
+        : null;
+    const effectiveEnd = previewEnd ?? rangeEnd;
 
     const renderCalendar = () => {
         const year = currentMonth.getFullYear();
@@ -111,8 +174,17 @@ export const FlightDatePicker: React.FC<FlightDatePickerProps> = ({
             const isToday = dateObj.toDateString() === today.toDateString();
             const isPast = dateObj < today;
             const isBeforeMin = minDate ? dateObj < minDate : false;
-            const isSelected = date && dateObj.toDateString() === date.toDateString();
-            const isDisabled = isPast || (isBeforeMin && !isSelected);
+
+            const isStart = range ? isSameDay(dateObj, rangeStart) : false;
+            const isEnd = range ? isSameDay(dateObj, effectiveEnd) : false;
+            const isInRange = !!(range && rangeStart && effectiveEnd && dateObj > rangeStart && dateObj < effectiveEnd);
+            const isSelected = range
+                ? (isStart || isEnd)
+                : !!(date && dateObj.toDateString() === date.toDateString());
+            // In range mode every future day stays clickable — picking an earlier
+            // day restarts the range rather than being blocked by the outbound date.
+            const isDisabled = range ? isPast : (isPast || (isBeforeMin && !isSelected));
+            const isPreviewEnd = isEnd && !isSameDay(dateObj, rangeEnd);
 
             days.push(
                 <button
@@ -124,6 +196,7 @@ export const FlightDatePicker: React.FC<FlightDatePickerProps> = ({
                         e.stopPropagation();
                         handleDateClick(dateObj);
                     }}
+                    onMouseEnter={() => { if (!isDisabled) setHoverDate(dateObj); }}
                     onMouseDown={(e) => e.stopPropagation()}
                     onTouchStart={(e) => e.stopPropagation()}
                     className={cn(
@@ -132,8 +205,12 @@ export const FlightDatePicker: React.FC<FlightDatePickerProps> = ({
                             ? "text-slate-300 dark:text-slate-600 cursor-not-allowed opacity-20"
                             : "cursor-pointer hover:bg-slate-100 dark:hover:bg-white/5",
                         isSelected
-                            ? "bg-blue-600 text-white z-10 shadow-lg shadow-blue-600/30"
-                            : "text-slate-700 dark:text-slate-300",
+                            ? isPreviewEnd
+                                ? "bg-blue-600/40 text-white z-10"
+                                : "bg-blue-600 text-white z-10 shadow-lg shadow-blue-600/30"
+                            : isInRange
+                                ? "bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400"
+                                : "text-slate-700 dark:text-slate-300",
                         isToday && !isSelected && "ring-1 ring-blue-500/30",
                         isPast && !isSelected && "opacity-30"
                     )}
@@ -179,6 +256,43 @@ export const FlightDatePicker: React.FC<FlightDatePickerProps> = ({
                         onTouchStart={(e) => e.stopPropagation()}
                     >
                         <div className="p-4 flex flex-col relative">
+                            {/* Depart / Return legs — round trip only */}
+                            {range && (
+                                <div className="flex items-stretch gap-2 mb-4">
+                                    {(['start', 'end'] as const).map((which) => {
+                                        const isActive = leg === which;
+                                        const value = which === 'start' ? rangeStart : rangeEnd;
+                                        return (
+                                            <button
+                                                key={which}
+                                                type="button"
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    setLeg(which);
+                                                    if (value) setCurrentMonth(new Date(value.getFullYear(), value.getMonth(), 1));
+                                                }}
+                                                className={cn(
+                                                    "flex-1 min-w-0 text-left px-3 py-2 rounded-xl border transition-all",
+                                                    isActive
+                                                        ? "border-blue-600 bg-blue-50/60 dark:border-blue-500/40 dark:bg-blue-500/10"
+                                                        : "border-slate-200 dark:border-white/10 hover:border-slate-300 dark:hover:border-white/20"
+                                                )}
+                                            >
+                                                <span className="block text-[10px] font-normal text-slate-400 uppercase tracking-widest">
+                                                    {which === 'start' ? t('depart') : t('return')}
+                                                </span>
+                                                <span className={cn(
+                                                    "block text-[11px] sm:text-sm font-normal truncate",
+                                                    value ? "text-blue-600 dark:text-blue-400" : "text-slate-400"
+                                                )}>
+                                                    {formatLegDate(value)}
+                                                </span>
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                            )}
+
                             {/* Header with month/year selectors */}
                             <div className="flex justify-between items-center mb-4">
                                 <div className="flex items-center gap-3">
@@ -306,21 +420,26 @@ export const FlightDatePicker: React.FC<FlightDatePickerProps> = ({
                                             <span key={i} className="text-[10px] font-normal text-slate-400 uppercase tracking-widest">{d}</span>
                                         ))}
                                     </div>
-                                    <div className="grid grid-cols-7 gap-1">
+                                    <div className="grid grid-cols-7 gap-1" onMouseLeave={() => setHoverDate(null)}>
                                         {renderCalendar()}
                                     </div>
                                 </div>
                             </div>
 
                             {/* Footer */}
-                            <div className="flex justify-end mt-4 pt-3 border-t border-slate-100 dark:border-white/5">
+                            <div className="flex justify-between items-center gap-3 mt-4 pt-3 border-t border-slate-100 dark:border-white/5">
+                                {range ? (
+                                    <span className="text-[11px] font-normal text-slate-400 truncate">
+                                        {leg === 'start' ? t('depart') : t('return')} · {resolvedDescription}
+                                    </span>
+                                ) : <span />}
                                 <button
                                     type="button"
                                     onClick={(e) => {
                                         e.stopPropagation();
                                         onToggle(false);
                                     }}
-                                    className="px-6 py-1.5 bg-blue-600 text-white rounded-xl font-bold text-sm hover:bg-blue-700 transition-all shadow-lg"
+                                    className="px-6 py-1.5 bg-blue-600 text-white rounded-xl font-bold text-sm hover:bg-blue-700 transition-all shadow-lg shrink-0"
                                 >
                                     {t('done')}
                                 </button>

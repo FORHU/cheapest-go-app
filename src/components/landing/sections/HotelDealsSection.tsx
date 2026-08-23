@@ -166,7 +166,7 @@ const HotelDealCardImpl: React.FC<HotelDealCardProps> = ({ deal, index, variant 
           <Image src={imageUrl} alt={deal.name} fill unoptimized
             sizes="(max-width: 640px) 220px, (max-width: 768px) 240px, 260px"
             className="object-cover transition-transform duration-700 group-hover:scale-105"
-            priority={index === 0} loading={index === 0 ? undefined : 'lazy'} />
+            /* no priority: below the hero, so a head preload goes unused */ loading={index === 0 ? undefined : 'lazy'} />
 
           {/* Gradient overlay */}
           <div className="absolute inset-0 bg-gradient-to-b from-black/5 via-transparent to-black/75" />

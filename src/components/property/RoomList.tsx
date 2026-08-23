@@ -42,6 +42,7 @@ const RoomList: React.FC<RoomListProps> = ({ property, roomTypes, searchParams, 
 
     const [rateFilter, setRateFilter] = useState<RateFilter>('all');
     const [currentPage, setCurrentPage] = useState(1);
+    const sectionRef = React.useRef<HTMLDivElement>(null);
 
     const nights = React.useMemo(() => {
         if (!searchParams?.checkIn || !searchParams?.checkOut) return 1;
@@ -64,6 +65,20 @@ const RoomList: React.FC<RoomListProps> = ({ property, roomTypes, searchParams, 
 
     const totalPages = Math.ceil(filteredRooms.length / ROOMS_PER_PAGE);
     const paginatedRooms = filteredRooms.slice((currentPage - 1) * ROOMS_PER_PAGE, currentPage * ROOMS_PER_PAGE);
+
+    // Paging swaps the cards without moving the viewport. The last page is rarely
+    // full, so the section collapses under the scroll position and leaves the
+    // reader stranded in the whitespace below it — pull the header back into view.
+    // Runs post-render so the incoming page's height is already settled; the mount
+    // pass is skipped so opening the property page doesn't jump down to the rooms.
+    const didMountRef = React.useRef(false);
+    React.useEffect(() => {
+        if (!didMountRef.current) {
+            didMountRef.current = true;
+            return;
+        }
+        sectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, [currentPage]);
 
     const handleFilterChange = (key: RateFilter) => {
         setRateFilter(key);
@@ -112,7 +127,7 @@ const RoomList: React.FC<RoomListProps> = ({ property, roomTypes, searchParams, 
     };
 
     return (
-        <div id="room-list-section" className="mt-6 lg:mt-8 scroll-mt-24">
+        <div ref={sectionRef} id="room-list-section" className="mt-6 lg:mt-8 scroll-mt-24 lg:scroll-mt-36">
             <h3 className="text-[14px] lg:text-xl font-display font-bold text-slate-900 dark:text-white mb-3 lg:mb-4">
                 {t('availableRooms', { count: filteredRooms.length })}
             </h3>

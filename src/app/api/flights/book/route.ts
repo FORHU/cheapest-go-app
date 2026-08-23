@@ -20,7 +20,17 @@ export const maxDuration = 300;
 import { parseDuffelOffer } from '@/lib/server/flights/providers/duffel';
 import { cabinClassFromRawOffer } from '@/lib/server/flights/duffel-cabin';
 import { findOrderFromTimedOutAttempt } from '@/lib/server/flights/duffel-order-reconcile';
-import { findReusablePreOrder, REUSE_WINDOW_MS, type CandidateSession } from '@/lib/server/flights/preorder-reuse';
+import {
+    findReusablePreOrder,
+    samePassengerIdentity,
+    sameOrderTotal,
+    REUSE_WINDOW_MS,
+    type CandidateSession,
+} from '@/lib/server/flights/preorder-reuse';
+import { sameItineraryOffers } from '@/lib/server/flights/offer-itinerary-match';
+import { cancelDuffelOrder } from '@/lib/server/flights/duffel-cancel';
+import { withBookedItinerary } from '@/lib/server/flights/duffel-order-segments';
+import { duffelIdentityDocuments } from '@/lib/server/flights/duffel-identity-documents';
 import { normalizedToFlightOffer } from '@/utils/flight-utils';
 
 export const dynamic = 'force-dynamic';
@@ -48,16 +58,58 @@ const ORDER_CREATE_TIMEOUT_MS = 130_000;
 const ORDER_RETRY_TIMEOUT_MS = 130_000;
 
 /**
+ * The amount to pay Duffel for an offer plus the selected ancillaries.
+ *
+ * Service prices always come from `available_services` on the offer itself,
+ * never from the client's `seatTotal`/`bagTotal` — Duffel validates
+ * `payments.amount` against its own arithmetic and rejects a mismatch.
+ */
+function computeOrderTotal(
+    rawOffer: any,
+    seatServiceIds: string[] | undefined,
+    bagServiceIds: string[] | undefined,
+    warn = false,
+): { total: string; base: number; seatExtra: number; bagExtra: number } {
+    const base = parseFloat(rawOffer?.total_amount ?? '0');
+    const availableSvcs: any[] = rawOffer?.available_services ?? [];
+
+    const sumFor = (ids: string[] | undefined, label: string) => {
+        let sum = 0;
+        for (const id of ids ?? []) {
+            const svc = availableSvcs.find((s: any) => s.id === id);
+            if (svc) sum += parseFloat(svc.total_amount ?? '0');
+            else if (warn) console.warn(`[/book] Duffel: ${label} service ${id} not in available_services — excluding from order`);
+        }
+        return sum;
+    };
+
+    const seatExtra = sumFor(seatServiceIds, 'seat');
+    const bagExtra = sumFor(bagServiceIds, 'bag');
+
+    return { total: (base + seatExtra + bagExtra).toFixed(2), base, seatExtra, bagExtra };
+}
+
+/**
  * Find a still-live, unpaid Duffel order a previous attempt bought for this same
  * offer, so a re-submit reuses that ticket instead of buying a second one.
  *
- * Two gates, because adopting the wrong order would attach a traveller to
- * someone else's trip: `findReusablePreOrder` matches on the Duffel offer id
- * within the session window, and then Duffel itself is asked whether that order
- * still exists and is uncancelled.
+ * Four gates, because adopting the wrong order would attach a traveller to the
+ * wrong trip — or to a ticket that no longer says what they asked it to say:
+ *
+ *   1. `findReusablePreOrder` matches on the Duffel offer id within the window;
+ *   2. Duffel itself is asked whether the order exists and is uncancelled;
+ *   3. the names and dates of birth on it match the ones submitted NOW;
+ *   4. its total matches what this attempt would pay.
+ *
+ * Gates 3 and 4 are what make "Back to details" safe. That button exists so a
+ * traveller can correct a misspelled name or add a bag, and re-submitting from
+ * it presents the same offer id — so an id-only match would adopt the old order,
+ * ticket the uncorrected name, and record the corrected one.
  *
  * Returns null on any doubt — including on its own failure. A booking must never
- * be blocked because this check could not run.
+ * be blocked because this check could not run. When the order is live but stale
+ * (gate 3 or 4), `supersededOrderId` names it so the caller can cancel it before
+ * buying the replacement.
  */
 async function findLivePreOrderForOffer(args: {
     db: any;
@@ -65,6 +117,8 @@ async function findLivePreOrderForOffer(args: {
     offerId: string;
     excludeSessionId: string;
     duffelToken: string;
+    passengers: any[];
+    expectedTotal: string;
 }): Promise<{
     sessionId: string;
     orderId: string;
@@ -74,8 +128,10 @@ async function findLivePreOrderForOffer(args: {
     orderTotal: string;
     orderCurrency: string;
     paymentIntentId: string | null;
-} | null> {
-    const { db, userId, offerId, excludeSessionId, duffelToken } = args;
+    rawOrder: any;
+    supersededOrderId?: undefined;
+} | { supersededOrderId: string; paymentIntentId: string | null } | null> {
+    const { db, userId, offerId, excludeSessionId, duffelToken, passengers, expectedTotal } = args;
     if (!userId || !offerId) return null;
 
     try {
@@ -116,6 +172,24 @@ async function findLivePreOrderForOffer(args: {
             return null;
         }
 
+        // Gate 3: is this order for the people being booked right now?
+        if (!samePassengerIdentity(order.passengers, passengers)) {
+            console.warn(
+                `[/book] Stored pre-order ${order.id} was bought for different passenger details ` +
+                `than this submission — superseding it rather than ticketing the stale names`,
+            );
+            return { supersededOrderId: order.id, paymentIntentId: candidate.payment_intent_id ?? null };
+        }
+
+        // Gate 4: does it cost what this attempt costs? (seats/bags changed)
+        if (!sameOrderTotal(order.total_amount, expectedTotal)) {
+            console.warn(
+                `[/book] Stored pre-order ${order.id} totals ${order.total_amount} but this attempt ` +
+                `expects ${expectedTotal} — ancillaries changed, superseding it`,
+            );
+            return { supersededOrderId: order.id, paymentIntentId: candidate.payment_intent_id ?? null };
+        }
+
         const tickets: string[] = (order.documents ?? [])
             .filter((d: any) => d.type === 'electronic_ticket')
             .map((d: any) => d.unique_identifier as string);
@@ -129,6 +203,7 @@ async function findLivePreOrderForOffer(args: {
             orderTotal: order.total_amount ?? '',
             orderCurrency: order.total_currency ?? '',
             paymentIntentId: candidate.payment_intent_id ?? null,
+            rawOrder: order,
         };
     } catch (err: any) {
         console.warn('[/book] pre-order reuse check failed:', err?.message ?? err);
@@ -533,6 +608,10 @@ export async function POST(req: NextRequest) {
             orderId: string; pnr: string;
             tickets: string[]; isTicketed: boolean;
             orderTotal: string; orderCurrency: string;
+            // The order exactly as Duffel returned it. Kept so the itinerary written
+            // to flight_segments comes from what was actually bought, rather than from
+            // the payload the browser posted.
+            rawOrder: any;
         } | null = null;
 
         // ── Step 1.4 (Duffel only): did a previous attempt already buy this? ──
@@ -545,13 +624,43 @@ export async function POST(req: NextRequest) {
         //
         // Leaving duffelPreOrder set here is what skips Step 1.5 entirely.
         if (provider === 'duffel' && (flight as any)._rawOffer?.id && env.DUFFEL_TOKEN) {
-            const reused = await findLivePreOrderForOffer({
+            const found = await findLivePreOrderForOffer({
                 db,
                 userId,
                 offerId: (flight as any)._rawOffer.id,
                 excludeSessionId: sessionId,
                 duffelToken: env.DUFFEL_TOKEN,
+                passengers,
+                expectedTotal: computeOrderTotal((flight as any)._rawOffer, seatServiceIds, bagServiceIds).total,
             });
+
+            // A live order that no longer describes this submission — the traveller
+            // corrected a name, or changed their bags. It can never be paid now, so
+            // release the seat and the balance before buying the replacement rather
+            // than leaving it for the 35-minute orphan sweep.
+            if (found && 'supersededOrderId' in found && found.supersededOrderId) {
+                const released = await cancelDuffelOrder(env.DUFFEL_TOKEN, found.supersededOrderId, 'superseded by corrected booking details');
+                if (found.paymentIntentId) {
+                    try {
+                        await stripe.paymentIntents.cancel(found.paymentIntentId);
+                        console.log(`[/book] Cancelled superseded PaymentIntent ${found.paymentIntentId}`);
+                    } catch (piErr: any) {
+                        console.warn(`[/book] Could not cancel superseded PaymentIntent ${found.paymentIntentId}: ${piErr?.message}`);
+                    }
+                }
+                // Retire the old session so it stops presenting itself as a reuse
+                // candidate. Without this every later attempt re-fetches the same dead
+                // order from Duffel just to be told it is cancelled. Only when the
+                // cancellation actually landed — otherwise the orphan sweep still needs
+                // to find it.
+                if (released) {
+                    await db.from('booking_sessions')
+                        .update({ status: 'expired' })
+                        .eq('duffel_pre_order_id', found.supersededOrderId);
+                }
+            }
+
+            const reused = found && !('supersededOrderId' in found) ? found : null;
 
             if (reused) {
                 console.warn(`[/book] Reusing pre-order ${reused.orderId} (${reused.pnr}) from session ${reused.sessionId} — this offer is already ticketed, not buying again`);
@@ -562,6 +671,7 @@ export async function POST(req: NextRequest) {
                     isTicketed: reused.isTicketed,
                     orderTotal: reused.orderTotal,
                     orderCurrency: reused.orderCurrency,
+                    rawOrder: reused.rawOrder,
                 };
 
                 // The superseded attempt's PaymentIntent can never be paid now —
@@ -676,28 +786,14 @@ export async function POST(req: NextRequest) {
                 email: contact.email,
                 phone_number: e164Phone,
                 gender: (pax.gender ?? '').toUpperCase() === 'M' ? 'm' : 'f',
+                // Passport details for the airline's APIS feed — see duffelIdentityDocuments.
+                ...duffelIdentityDocuments(rawOffer, pax),
             }));
-
-            const offerTotal = parseFloat(rawOffer.total_amount ?? '0');
 
             // Server-side: derive service prices from rawOffer.available_services.
             // Never use client-sent seatTotal/bagTotal for the Duffel order payment amount —
             // Duffel validates payments.amount and will reject if it doesn't match.
-            const availableSvcs: any[] = rawOffer.available_services ?? [];
-            let computedSeatExtra = 0;
-            let computedBagExtra = 0;
-            for (const id of (seatServiceIds ?? [])) {
-                const svc = availableSvcs.find((s: any) => s.id === id);
-                if (svc) computedSeatExtra += parseFloat(svc.total_amount ?? '0');
-                else console.warn(`[/book] Duffel: seat service ${id} not in available_services — excluding from order`);
-            }
-            for (const id of (bagServiceIds ?? [])) {
-                const svc = availableSvcs.find((s: any) => s.id === id);
-                if (svc) computedBagExtra += parseFloat(svc.total_amount ?? '0');
-                else console.warn(`[/book] Duffel: bag service ${id} not in available_services — excluding from order`);
-            }
-
-            const orderTotal = (offerTotal + computedSeatExtra + computedBagExtra).toFixed(2);
+            const { total: orderTotal, base: offerTotal } = computeOrderTotal(rawOffer, seatServiceIds, bagServiceIds, true);
 
             const getDuffelHeaders = (currKey: string) => ({
                 'Authorization': `Bearer ${duffelToken}`,
@@ -758,7 +854,8 @@ export async function POST(req: NextRequest) {
                 // it aborted healthy bookings mid-flight and reported a supplier
                 // outage. Aborting does NOT cancel the order at Duffel (see
                 // ORDER_CREATE_TIMEOUT_MS docs), so every premature abort risked an
-                // orphaned PNR. Sized against this route's own maxDuration of 120s.
+                // orphaned PNR. Sized against this route's own maxDuration (300s),
+                // which must stay above this bound plus one price-change retry.
                 const orderAbort = new AbortController();
                 const orderTimeout = setTimeout(() => orderAbort.abort(), ORDER_CREATE_TIMEOUT_MS);
 
@@ -924,6 +1021,32 @@ export async function POST(req: NextRequest) {
                     }
                 }
 
+                // Still a price_changed after the internal attempts are spent (or after
+                // a Price Action that could not be reached). Report it AS a price change
+                // so the traveller gets the confirm prompt. Falling through here handed
+                // the generic 4xx mapper a code it does not recognise, which answered 400
+                // with Duffel's raw wording and no way for the traveller to accept the
+                // new fare — a dead end on a fare that is still perfectly bookable.
+                //
+                // Only when a Price Action actually produced a new number: if it never
+                // ran (the request itself failed), `currentBase` is still the old fare
+                // and a prompt reading "500 changed to 500" is worse than none. That
+                // case falls through to the error mapper, which now recognises the code.
+                if (
+                    res.status === 422
+                    && data?.errors?.[0]?.code === 'price_changed'
+                    && Math.abs(currentBase - baseAmount) > 0.005
+                ) {
+                    console.warn(`[/book] price_changed still unresolved after ${internalAttempts} internal attempt(s) — surfacing to the traveller`);
+                    return {
+                        isPriceChangedError: true,
+                        isOfferUnavailable: false,
+                        oldPrice: baseAmount,
+                        newPrice: currentBase,
+                        newCurrency: currentCurrency,
+                    };
+                }
+
                 return { isPriceChangedError: false, isOfferUnavailable: false, res, data, finalTotal: currentTotal, finalCurrency: currentCurrency };
             };
 
@@ -1016,26 +1139,28 @@ export async function POST(req: NextRequest) {
 
                     if (offers.length === 0) throw new Error('No offers available for this route — flight may be fully booked or unavailable');
 
-                    const targetCarrier = rawOffer.validating_carrier_iata_code
-                        ?? rawOffer.slices?.[0]?.segments?.[0]?.operating_carrier?.iata_code
-                        ?? rawOffer.slices?.[0]?.segments?.[0]?.marketing_carrier?.iata_code;
-                    const targetTotal = parseFloat(rawOffer.total_amount ?? '0');
+                    // Only offers for the SAME journey — same marketing carrier, same
+                    // flight numbers, same departure instants, segment by segment.
+                    //
+                    // This used to filter on validating carrier and then sort by how
+                    // close the price was, which is not identity: a 06:00 and a 22:00
+                    // departure on one airline at the same fare are interchangeable to
+                    // that sort, so a traveller could be ticketed sixteen hours from the
+                    // flight they chose without ever being asked. Cheapest-first within
+                    // the true matches, since they are by definition the same product.
+                    const sortedPool = sameItineraryOffers(rawOffer, offers);
 
-                    // Filter matching offers by carrier
-                    const matchingOffers = targetCarrier
-                        ? offers.filter((o: any) => {
-                            const carrier = o.validating_carrier_iata_code
-                                ?? o.slices?.[0]?.segments?.[0]?.operating_carrier?.iata_code
-                                ?? o.slices?.[0]?.segments?.[0]?.marketing_carrier?.iata_code;
-                            return carrier === targetCarrier;
-                          })
-                        : offers;
+                    console.warn(
+                        `[/book] Refresh pool: ${offers.length} offer(s) returned, ` +
+                        `${sortedPool.length} match the selected itinerary exactly`,
+                    );
 
-                    const sortedPool = (matchingOffers.length > 0 ? matchingOffers : offers).sort((a: any, b: any) => {
-                        const diffA = Math.abs(parseFloat(a.total_amount) - targetTotal);
-                        const diffB = Math.abs(parseFloat(b.total_amount) - targetTotal);
-                        return diffA - diffB;
-                    });
+                    // Nothing that is actually this flight. Substituting a different one
+                    // is not a recovery — report it unavailable and let the traveller
+                    // choose for themselves.
+                    if (sortedPool.length === 0) {
+                        throw new Error('No offers available for this route — flight may be fully booked or unavailable');
+                    }
 
                     // ── Attempt 2: Loop through top matching offers ──
                     let attempt2Success = false;
@@ -1201,6 +1326,7 @@ export async function POST(req: NextRequest) {
                 isTicketed: tickets.length > 0,
                 orderTotal: activeTotal,
                 orderCurrency: finalOrderCurrency,
+                rawOrder: order,
             };
 
             console.log(`[/book] Duffel pre-order created: orderId=${duffelPreOrder.orderId} pnr=${duffelPreOrder.pnr} tickets=${tickets.length}`);
@@ -1219,20 +1345,49 @@ export async function POST(req: NextRequest) {
             : effectiveFlightTotal + Math.max(0, seatTotal ?? 0) + Math.max(0, bagTotal ?? 0);
         const pricing = applyMarkup(stripeBase, FLIGHT_MARKUP);
 
+        // The currency `stripeBase` is denominated in.
+        //
+        // It must come from the same place the amount does. `stripeBase` is the Duffel
+        // order's own total, so pairing it with `flightCurrency` — a label off the
+        // client payload — meant the amount and its unit had different authorities.
+        // They agree today because both derive from one offer, but a Duffel order that
+        // priced in a different currency would have been converted from the wrong one
+        // and charged the customer a wrong number with no guard to catch it.
+        const baseCurrency = (duffelPreOrder?.orderCurrency || flightCurrency).toLowerCase();
+
         // Charge the customer in their selected display currency, not Duffel's USD.
         // This ensures the refund amount exactly matches what they paid — no FX drift.
-        const chargeInCurrency = (displayCurrency || flightCurrency).toLowerCase();
+        const chargeInCurrency = (displayCurrency || baseCurrency).toLowerCase();
         // Strict conversion: a silent passthrough here would charge the fare's numeric
         // value in the customer's currency (e.g. 5800 PHP billed as 5800 USD). The FX
         // readiness guard near the top of this handler has already proven this pair
         // converts, so reaching the throw means rates went stale mid-request.
-        const chargePrice = chargeInCurrency !== flightCurrency
-            ? Math.round(convertCurrencyStrict(pricing.chargedPrice, flightCurrency, chargeInCurrency.toUpperCase()) * 100) / 100
-            : pricing.chargedPrice;
+        //
+        // Guarded, not thrown: the FX readiness check at the top of this handler probes
+        // `flightCurrency`, which is the best information available before an order
+        // exists. If the order came back priced in something else, this is the first
+        // moment the real pair is known — and by now a live ticket has been bought, so
+        // an uncaught throw here would land in the generic 500 handler and strand it.
+        let chargePrice: number;
+        try {
+            chargePrice = chargeInCurrency !== baseCurrency
+                ? Math.round(convertCurrencyStrict(pricing.chargedPrice, baseCurrency, chargeInCurrency.toUpperCase()) * 100) / 100
+                : pricing.chargedPrice;
+        } catch (fxErr: any) {
+            console.error(`[/book] FX conversion failed after the order was placed (${baseCurrency}→${chargeInCurrency}):`, fxErr?.message);
+            if (duffelPreOrder?.orderId) {
+                await cancelDuffelOrder(env.DUFFEL_TOKEN, duffelPreOrder.orderId, 'FX conversion unavailable before charging');
+            }
+            return NextResponse.json({
+                success: false,
+                error: 'Currency conversion is temporarily unavailable. Your card was not charged. Please try again shortly.',
+                code: 'FX_UNAVAILABLE',
+            }, { status: 503 });
+        }
         const flightStripeAmount = toStripeAmount(chargePrice, chargeInCurrency);
 
-        console.log(`[/book] Pricing: original=${pricing.originalPrice} ${flightCurrency}, charged=${pricing.chargedPrice}, markup=${(pricing.markupRate * 100).toFixed(1)}%, markupAmount=${pricing.markupAmount}`);
-        console.log(`[/book] Stripe charge: ${chargePrice} ${chargeInCurrency} (converted from ${pricing.chargedPrice} ${flightCurrency})`);
+        console.log(`[/book] Pricing: original=${pricing.originalPrice} ${baseCurrency}, charged=${pricing.chargedPrice}, markup=${(pricing.markupRate * 100).toFixed(1)}%, markupAmount=${pricing.markupAmount}`);
+        console.log(`[/book] Stripe charge: ${chargePrice} ${chargeInCurrency} (converted from ${pricing.chargedPrice} ${baseCurrency})`);
 
         // Idempotency key prevents duplicate charges if the client retries on network error.
         const piIdempotencyKey = `flight-pi-${userId}-${sessionId}`;
@@ -1287,7 +1442,7 @@ export async function POST(req: NextRequest) {
             .update({
                 payment_intent_id: paymentIntent.id,
                 status: 'payment_initiated',
-                currency: flightCurrency,
+                currency: baseCurrency,
                 original_price: pricing.originalPrice,
                 charged_price: chargePrice,
                 markup_pct: pricing.markupRate,
@@ -1297,6 +1452,13 @@ export async function POST(req: NextRequest) {
                     duffel_pre_order_pnr: duffelPreOrder.pnr,
                     duffel_pre_order_tickets: duffelPreOrder.tickets,
                     duffel_pre_order_ticketed: duffelPreOrder.isTicketed,
+                    // Correct the stored itinerary to the one actually ticketed.
+                    // create-booking writes flight_segments from this column, and it
+                    // arrived here as a client payload describing the offer the traveller
+                    // SELECTED. The expired-offer refresh path can book a different offer
+                    // object, so without this the confirmation email and trips page can
+                    // describe legs the PNR is not for.
+                    flight: withBookedItinerary(sanitizedFlight, duffelPreOrder.rawOrder),
                 } : {}),
             })
             .eq('id', sessionId);
@@ -1308,43 +1470,7 @@ export async function POST(req: NextRequest) {
             // real seat. If we only cancel Stripe and leave the Duffel order open, the seat
             // remains locked on our Duffel balance until the hold expires (5–30 min).
             if (duffelPreOrder?.orderId) {
-                try {
-                    const duffelToken = env.DUFFEL_TOKEN;
-                    // Step 1: create order cancellation (get refund quote)
-                    const cancelQuoteRes = await fetch('https://api.duffel.com/air/order_cancellations', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'Authorization': `Bearer ${duffelToken}`,
-                            'Duffel-Version': 'v2',
-                        },
-                        body: JSON.stringify({ data: { order_id: duffelPreOrder.orderId } }),
-                        signal: AbortSignal.timeout(8000),
-                    });
-                    if (cancelQuoteRes.ok) {
-                        const cancelQuote = await cancelQuoteRes.json();
-                        const cancellationId = cancelQuote?.data?.id;
-                        if (cancellationId) {
-                            // Step 2: confirm the cancellation
-                            await fetch(`https://api.duffel.com/air/order_cancellations/${cancellationId}/actions/confirm`, {
-                                method: 'POST',
-                                headers: {
-                                    'Content-Type': 'application/json',
-                                    'Authorization': `Bearer ${duffelToken}`,
-                                    'Duffel-Version': 'v2',
-                                },
-                                signal: AbortSignal.timeout(8000),
-                            });
-                            console.log(`[/book] Duffel order ${duffelPreOrder.orderId} cancelled (cancellation: ${cancellationId})`);
-                        }
-                    } else {
-                        const errBody = await cancelQuoteRes.text().catch(() => '');
-                        console.error(`[/book] Duffel cancellation quote failed (${cancelQuoteRes.status}): ${errBody} — order ${duffelPreOrder.orderId} may need manual cancellation`);
-                    }
-                } catch (duffelCancelErr: any) {
-                    // Log loudly — ops must manually cancel this order in the Duffel dashboard
-                    console.error(`[/book] ORPHANED DUFFEL ORDER: ${duffelPreOrder.orderId} — cancel failed: ${duffelCancelErr.message}. Manual cancellation required.`);
-                }
+                await cancelDuffelOrder(env.DUFFEL_TOKEN, duffelPreOrder.orderId, 'booking session update failed');
             }
 
             // Cancel the Stripe PaymentIntent so the customer is never charged
