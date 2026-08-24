@@ -280,12 +280,16 @@ export async function adminCancelBooking(bookingId: string): Promise<RecoveryAct
         });
 
         // Send cancellation/refund email for hotel bookings that have a guest email.
+        // booking.id is the DB UUID (this function looks bookings up by it); booking.booking_id
+        // is the human-readable reference customers see elsewhere — prefer that for display.
         if (sourceTable === 'bookings' && booking.holder_email) {
             sendHotelRefundEmail({
-                bookingId,
+                bookingId: booking.booking_id || bookingId,
+                dbId: booking.id,
                 email: booking.holder_email,
                 guestName: `${booking.holder_first_name || ''} ${booking.holder_last_name || ''}`.trim() || 'Guest',
                 hotelName: booking.property_name || 'your hotel',
+                propertyImage: booking.property_image ?? undefined,
                 roomName: booking.room_name || '',
                 checkIn: booking.check_in || '',
                 checkOut: booking.check_out || '',

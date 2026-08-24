@@ -46,10 +46,19 @@ export async function POST(req: Request) {
 
             sendHotelAmendmentEmail({
                 bookingId: body.bookingId,
+                dbId: data.data?.dbId,
                 email: body.email || user.email || '',
                 guestName: `${body.firstName || ''} ${body.lastName || ''}`.trim(),
                 hotelName: booking?.property_name || '',
+                propertyImage: data.data?.propertyImage,
+                roomName: data.data?.roomName,
+                checkIn: data.data?.checkIn,
+                checkOut: data.data?.checkOut,
+                adults: data.data?.adults,
+                children: data.data?.children,
+                remarks: body.remarks,
                 changes,
+                previous: data.data?.previous,
             }).catch(e => console.error('[amend] Email error:', e));
         }
 

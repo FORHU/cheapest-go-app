@@ -61,6 +61,8 @@ export interface CancelBookingResult {
             amount: number;
             currency: string;
             status: string;
+            /** Cancellation fee already netted out of the refund amount. */
+            penaltyAmount?: number;
         };
     };
     error?: string;
@@ -71,6 +73,21 @@ export interface AmendBookingResult {
     data?: {
         bookingId: string;
         status: string;
+        /** DB row UUID (bookings.id) — used to link the amendment email to /trips/{dbId}. */
+        dbId?: string;
+        propertyImage?: string;
+        roomName?: string;
+        checkIn?: string;
+        checkOut?: string;
+        adults?: number;
+        children?: number;
+        /** Field values as they were immediately before this amendment was applied. */
+        previous?: {
+            firstName: string;
+            lastName: string;
+            email: string;
+            remarks: string | null;
+        };
     };
     error?: string;
 }

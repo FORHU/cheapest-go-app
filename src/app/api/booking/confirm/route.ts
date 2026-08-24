@@ -126,6 +126,7 @@ export async function POST(req: NextRequest) {
             );
             sendBookingConfirmationEmail({
                 bookingId: result.data?.bookingId || '',
+                dbId: result.data?.dbId,
                 email: body.holder?.email || user.email || '',
                 guestName: `${body.holder?.firstName || ''} ${body.holder?.lastName || ''}`.trim(),
                 hotelName: body.propertyName || '',
@@ -134,6 +135,19 @@ export async function POST(req: NextRequest) {
                 checkOut: body.checkOut || '',
                 totalPrice: result.data?.totalPrice || 0,
                 currency: result.data?.currency || body.currency || 'USD',
+                propertyImage: body.propertyImage,
+                propertyAddress: result.data?.propertyAddress,
+                propertyCity: result.data?.propertyCity,
+                propertyCountry: result.data?.propertyCountry,
+                starRating: result.data?.starRating,
+                reviewRating: result.data?.reviewRating,
+                reviewCount: result.data?.reviewCount,
+                checkInTime: result.data?.checkInTime,
+                checkOutTime: result.data?.checkOutTime,
+                adults: body.adults,
+                children: body.children,
+                discountAmount: body.discountAmount,
+                cancellationPolicy: body.cancellationPolicies,
             }).catch(e => console.error('[confirm] Email failed:', e));
             return Response.json(result);
         }

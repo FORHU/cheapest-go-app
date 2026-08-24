@@ -32,6 +32,16 @@ export interface ConfirmAndSaveResult {
     policySummary: string;
     totalPrice?: number;
     currency?: string;
+    /** DB row UUID (bookings.id) — used to link to /trips/{dbId} for manage/receipt actions. */
+    dbId?: string;
+    propertyAddress?: string;
+    propertyCity?: string;
+    propertyCountry?: string;
+    starRating?: number;
+    reviewRating?: number;
+    reviewCount?: number;
+    checkInTime?: string;
+    checkOutTime?: string;
   };
   error?: string;
   errorCode?: string;
@@ -297,19 +307,30 @@ export async function confirmAndSaveTgxBooking(
     })),
   } : null);
 
-  // Look up stored coordinates from hotel_content — avoids client-side geocoding on /trips
+  // Look up stored coordinates + descriptive content from hotel_content — avoids
+  // client-side geocoding on /trips and gives the confirmation email real address/rating data.
+  interface HotelContentRow {
+    address: string | null; city: string | null; country: string | null;
+    star_rating: number | null; review_rating: number | null; review_count: number | null;
+    check_in_time: string | null; check_out_time: string | null;
+  }
   let property_lat = 0;
   let property_lng = 0;
+  let hotelContent: HotelContentRow | null = null;
   if (hotelCode) {
     try {
       const sql = getSqlAdmin();
       const rows = await sql`
-        SELECT lat, lng FROM hotel_content
-        WHERE hotel_id = ${hotelCode} AND lat != 0 AND lng != 0
+        SELECT lat, lng, address, city, country, star_rating, review_rating, review_count, check_in_time, check_out_time
+        FROM hotel_content
+        WHERE hotel_id = ${hotelCode}
         LIMIT 1
       `;
-      if (rows[0]) { property_lat = rows[0].lat; property_lng = rows[0].lng; }
-    } catch { /* non-fatal — map will fall back to geocoding */ }
+      if (rows[0]) {
+        if (rows[0].lat != 0 && rows[0].lng != 0) { property_lat = rows[0].lat; property_lng = rows[0].lng; }
+        hotelContent = rows[0] as unknown as HotelContentRow;
+      }
+    } catch { /* non-fatal — map will fall back to geocoding, email omits property details */ }
   }
 
   try {
@@ -322,7 +343,7 @@ export async function confirmAndSaveTgxBooking(
     // the RpcBuilder that caused booking_id to arrive as null on production.
     // Columns are limited to those in the base schema; newer optional columns are
     // patched afterwards so a missing migration on production can't block the booking.
-    await sql`
+    const insertRows = await sql`
       INSERT INTO bookings (
         booking_id, user_id, property_name, property_image, room_name,
         check_in, check_out, guests_adults, guests_children,
@@ -344,7 +365,9 @@ export async function confirmAndSaveTgxBooking(
         ${params.paymentIntentId ?? null},
         ${price}, ${totalPrice}
       )
+      RETURNING id
     `;
+    const dbId: string | undefined = insertRows[0]?.id;
 
     // Patch columns added by later migrations — non-fatal so a missing migration on
     // production doesn't roll back the booking we just confirmed with TGX.
@@ -417,7 +440,18 @@ export async function confirmAndSaveTgxBooking(
 
     return {
       success: true,
-      data: { bookingId, status: bookingStatus, policyType, policySummary: isRefundable ? 'Refundable rate' : 'Non-refundable rate', totalPrice, currency },
+      data: {
+        bookingId, status: bookingStatus, policyType, policySummary: isRefundable ? 'Refundable rate' : 'Non-refundable rate', totalPrice, currency,
+        dbId,
+        propertyAddress: hotelContent?.address ?? undefined,
+        propertyCity: hotelContent?.city ?? undefined,
+        propertyCountry: hotelContent?.country ?? undefined,
+        starRating: hotelContent?.star_rating ?? undefined,
+        reviewRating: hotelContent?.review_rating ?? undefined,
+        reviewCount: hotelContent?.review_count ?? undefined,
+        checkInTime: hotelContent?.check_in_time ?? undefined,
+        checkOutTime: hotelContent?.check_out_time ?? undefined,
+      },
     };
   } catch (error) {
     console.error('[confirmAndSaveTgxBooking] DB error after TGX confirmed — attempting emergency INSERT:', error);
@@ -425,7 +459,7 @@ export async function confirmAndSaveTgxBooking(
     try {
       const sqlEmergency = getSqlAdmin();
       const emergencyNote = [params.specialRequests, '[EMERGENCY_RECOVERY — exception during save]'].filter(Boolean).join(' | ');
-      await sqlEmergency`
+      const emergencyRows = await sqlEmergency`
         INSERT INTO bookings (
           booking_id, user_id, property_name, property_image, room_name,
           check_in, check_out, guests_adults, guests_children,
@@ -447,11 +481,23 @@ export async function confirmAndSaveTgxBooking(
           ${params.paymentIntentId ?? null},
           ${price}, ${totalPrice}
         )
+        RETURNING id
       `;
       console.warn('[confirmAndSaveTgxBooking] Emergency INSERT succeeded for', bookingId);
       return {
         success: true,
-        data: { bookingId, status: bookingStatus, policyType, policySummary: isRefundable ? 'Refundable' : 'Non-refundable', totalPrice, currency: storedCurrency },
+        data: {
+          bookingId, status: bookingStatus, policyType, policySummary: isRefundable ? 'Refundable' : 'Non-refundable', totalPrice, currency: storedCurrency,
+          dbId: emergencyRows[0]?.id,
+          propertyAddress: hotelContent?.address ?? undefined,
+          propertyCity: hotelContent?.city ?? undefined,
+          propertyCountry: hotelContent?.country ?? undefined,
+          starRating: hotelContent?.star_rating ?? undefined,
+          reviewRating: hotelContent?.review_rating ?? undefined,
+          reviewCount: hotelContent?.review_count ?? undefined,
+          checkInTime: hotelContent?.check_in_time ?? undefined,
+          checkOutTime: hotelContent?.check_out_time ?? undefined,
+        },
       };
     } catch (emergencyErr) {
       console.error('CRITICAL: Emergency INSERT also failed for', bookingId, ':', emergencyErr);
@@ -601,9 +647,12 @@ export async function cancelBooking(
 
       if (paymentIntentId) {
         try {
-          const pi = await stripe.paymentIntents.retrieve(paymentIntentId);
+          const pi = await stripe.paymentIntents.retrieve(paymentIntentId, { expand: ['payment_method'] });
           const piAmount = pi.amount;
           const piCurrency = pi.currency.toLowerCase();
+          const pm = pi.payment_method;
+          const cardBrand = typeof pm === 'object' && pm?.card ? pm.card.brand.charAt(0).toUpperCase() + pm.card.brand.slice(1) : undefined;
+          const cardLast4 = typeof pm === 'object' && pm?.card ? pm.card.last4 : undefined;
           const calcCurrency = calculation.currency.toLowerCase();
           let refundAmountCents: number;
 
@@ -654,22 +703,27 @@ export async function cancelBooking(
           // Fire refund receipt email (non-blocking)
           supabase
             .from('bookings')
-            .select('holder_email, holder_first_name, holder_last_name, property_name, room_name, check_in, check_out')
+            .select('id, holder_email, holder_first_name, holder_last_name, property_name, property_image, room_name, check_in, check_out')
             .eq('booking_id', bookingId)
             .single()
             .then(({ data: b }) => {
               if (!b?.holder_email) return;
               sendHotelRefundEmail({
                 bookingId,
+                dbId: b.id,
                 email: b.holder_email,
                 guestName: `${b.holder_first_name || ''} ${b.holder_last_name || ''}`.trim(),
                 hotelName: b.property_name || '',
+                propertyImage: b.property_image ?? undefined,
                 roomName: b.room_name || '',
                 checkIn: b.check_in || '',
                 checkOut: b.check_out || '',
                 refundAmount: calculation.refundAmount,
+                penaltyAmount: calculation.penaltyAmount,
                 currency: calculation.currency,
                 stripeRefundId,
+                cardBrand,
+                cardLast4,
               }).catch(e => console.error('[cancelBooking] Refund email failed:', e));
             });
         } catch (err: any) {
@@ -701,6 +755,7 @@ export async function cancelBooking(
             amount: calculation.refundAmount,
             currency: calculation.currency,
             status: refundSucceeded ? 'processed' : 'failed',
+            penaltyAmount: calculation.penaltyAmount,
           },
         },
       };
@@ -743,6 +798,14 @@ export async function amendBooking(
       return { success: false, error: ownerError || 'Not authorized to modify this booking' };
     }
 
+    // Snapshot pre-amendment values so the confirmation email can show a before/after diff,
+    // and grab the DB id + stay details so the email can link to /trips/{id} without a second round-trip.
+    const { data: before } = await supabase
+      .from('bookings')
+      .select('id, holder_first_name, holder_last_name, holder_email, special_requests, property_image, room_name, check_in, check_out, guests_adults, guests_children')
+      .eq('booking_id', validation.data.bookingId)
+      .single();
+
     // Update local database
     await supabase
       .from('bookings')
@@ -755,7 +818,26 @@ export async function amendBooking(
       })
       .eq('booking_id', validation.data.bookingId);
 
-    return { success: true, data: { bookingId: validation.data.bookingId, status: 'confirmed' } };
+    return {
+      success: true,
+      data: {
+        bookingId: validation.data.bookingId,
+        status: 'confirmed',
+        dbId: before?.id,
+        propertyImage: before?.property_image ?? undefined,
+        roomName: before?.room_name ?? undefined,
+        checkIn: before?.check_in ?? undefined,
+        checkOut: before?.check_out ?? undefined,
+        adults: before?.guests_adults ?? undefined,
+        children: before?.guests_children ?? undefined,
+        previous: before ? {
+          firstName: before.holder_first_name || '',
+          lastName: before.holder_last_name || '',
+          email: before.holder_email || '',
+          remarks: before.special_requests ?? null,
+        } : undefined,
+      },
+    };
   } catch (error) {
     console.error('[amendBooking] Error:', error);
     return {
