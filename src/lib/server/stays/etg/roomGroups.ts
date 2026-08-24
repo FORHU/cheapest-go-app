@@ -19,20 +19,43 @@ function resolveImageUrl(url: unknown): string | null {
     return url.replace(/\{size\}/g, '1024x768');
 }
 
-export interface RoomGroupEntry { name: string; images: string[]; amenities: string[] }
+export interface RoomGroupEntry {
+    name: string;
+    images: string[];
+    amenities: string[];
+    /** Stable ETG integer id for this room group within the hotel. */
+    roomGroupId?: number;
+    /** Human-readable bedding type from ETG name_struct.bedding_type, e.g. "twin beds", "double bed". */
+    beddingType?: string;
+    /** Structured attribute codes from rg_ext — used for structured matching before fuzzy name fallback. */
+    rgExt?: { bedding: number; capacity: number; quality: number; view: number; balcony: number };
+}
 
 export function parseRoomGroups(rawGroups: any[]): RoomGroupEntry[] {
     return (rawGroups ?? [])
-        .map((rg: any) => ({
-            name: rg.name ?? '',
-            images: (rg.images ?? [])
-                .map((img: any) => resolveImageUrl(typeof img === 'string' ? img : (img?.url ?? img?.src)))
-                .filter((u: string | null): u is string => u !== null)
-                .slice(0, 10),
-            amenities: Array.isArray(rg.room_amenities)
-                ? rg.room_amenities.map((s: string) => etgRoomAmenityToLabel(s)).filter(Boolean)
-                : [],
-        }))
+        .map((rg: any) => {
+            const entry: RoomGroupEntry = {
+                name: rg.name ?? '',
+                images: (rg.images ?? [])
+                    .map((img: any) => resolveImageUrl(typeof img === 'string' ? img : (img?.url ?? img?.src)))
+                    .filter((u: string | null): u is string => u !== null)
+                    .slice(0, 10),
+                amenities: Array.isArray(rg.room_amenities)
+                    ? rg.room_amenities.map((s: string) => etgRoomAmenityToLabel(s)).filter(Boolean)
+                    : [],
+            };
+            if (rg.room_group_id) entry.roomGroupId = rg.room_group_id;
+            const bedding = rg.name_struct?.bedding_type;
+            if (bedding) entry.beddingType = bedding;
+            if (rg.rg_ext) entry.rgExt = {
+                bedding:  rg.rg_ext.bedding  ?? 0,
+                capacity: rg.rg_ext.capacity ?? 0,
+                quality:  rg.rg_ext.quality  ?? 0,
+                view:     rg.rg_ext.view     ?? 0,
+                balcony:  rg.rg_ext.balcony  ?? 0,
+            };
+            return entry;
+        })
         .filter((rg: RoomGroupEntry) => rg.name);
 }
 

@@ -4,11 +4,11 @@
  */
 
 import { tgxGraphQL, getTgxSettings, getTgxConfig, getTgxFilterSearch, buildOccupancies, normalizeOption, type TgxOption } from './client';
-import { seedHotelRoomGroupsById } from '@/lib/server/stays/etg/roomGroups';
+import { seedHotelRoomGroupsById, parseRoomGroups } from '@/lib/server/stays/etg/roomGroups';
 import { getSqlAdmin } from '@/lib/db/postgres';
 import { resolveTgxDestinationCode, backgroundResolveDestCode } from '@/lib/server/search';
 import { resolveHotelDbCity } from '@/lib/constants/cityAliases';
-import { otvCodeToLabel, etgRoomAmenityToLabel } from './amenityCodes';
+import { otvCodeToLabel } from './amenityCodes';
 
 // ─── Country bounding boxes for geographic hotel filtering ───────────────────
 // Used to reject OTV portfolio hotels that are in the wrong country.
@@ -423,10 +423,12 @@ export async function fetchTgxHotelContent(hotelIds: string[]): Promise<Map<stri
 
 interface EtgRoomGroupMatch { images: string[]; amenities: string[]; matchedName: string }
 
+type EtgGroup = { name: string; images: string[]; amenities?: string[]; beddingType?: string; roomGroupId?: number };
+
 /** Match a TGX room description to a seeded ETG room group and return its photos + amenities. */
 function matchEtgRoomGroup(
     description: string,
-    groups: Array<{ name: string; images: string[]; amenities?: string[] }>,
+    groups: EtgGroup[],
 ): EtgRoomGroupMatch {
     const empty: EtgRoomGroupMatch = { images: [], amenities: [], matchedName: '' };
     const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
@@ -450,11 +452,11 @@ function matchEtgRoomGroup(
     const descFull     = norm(description.replace(/[()]/g, ' '));
     const descStripped = norm(description.replace(/\([^)]*\)/g, ''));
 
-    const richest = (candidates: typeof withPhotos) =>
+    const richest = (candidates: EtgGroup[]) =>
         candidates.reduce((a, b) => ((b.images?.length ?? 0) > (a.images?.length ?? 0) ? b : a));
-    const toMatch = (candidates: typeof deduped) =>
+    const toMatch = (candidates: EtgGroup[]) =>
         candidates.reduce((a, b) => ((b.images?.length ?? 0) >= (a.images?.length ?? 0) ? b : a));
-    const pickResult = (g: { name: string; images: string[]; amenities?: string[] }): EtgRoomGroupMatch =>
+    const pickResult = (g: EtgGroup): EtgRoomGroupMatch =>
         ({ images: g.images ?? [], amenities: g.amenities ?? [], matchedName: g.name });
 
     const exactMatches  = (desc: string) => deduped.filter(g => norm(g.name) === desc);
@@ -462,6 +464,31 @@ function matchEtgRoomGroup(
         const gn = norm(g.name);
         return gn !== desc && (desc.startsWith(gn) || gn.startsWith(desc));
     });
+
+    const BED_TYPES  = new Set(['twin', 'single', 'triple', 'quadruple', 'quintuple', 'sextuple', 'suite', 'villa', 'loft', 'cottage', 'bungalow', 'dormitory']);
+    const TIER_WORDS = new Set(['deluxe', 'standard', 'superior', 'executive', 'premium', 'premier', 'luxury']);
+    const words    = descFull.split(' ');
+    const bedWord  = words.find(w => BED_TYPES.has(w));
+    const tierWord = words.find(w => TIER_WORDS.has(w));
+
+    // Pass 0: structured bedding-type match using ETG name_struct.bedding_type.
+    // "Standard Double Room" → extract "double" → filter ETG groups where beddingType includes "double".
+    // This prevents tier-word ambiguity: "Standard Double" and "Standard Twin" can never cross-match
+    // because they differ in beddingType even when the name similarity score is equal.
+    // Only fires for rooms where ETG populated name_struct.bedding_type (roughly 30–50% of hotels).
+    const BEDDING_WORDS = new Set(['double', 'twin', 'king', 'queen', 'single']);
+    const beddingWord = words.find(w => BEDDING_WORDS.has(w));
+    if (beddingWord) {
+        const byBedding = withPhotos.filter(g => g.beddingType && norm(g.beddingType).includes(beddingWord));
+        if (byBedding.length === 1) return pickResult(byBedding[0]);
+        if (byBedding.length > 1) {
+            if (tierWord) {
+                const byBoth = byBedding.filter(g => norm(g.name).includes(tierWord));
+                if (byBoth.length) return pickResult(richest(byBoth));
+            }
+            return pickResult(richest(byBedding));
+        }
+    }
 
     // Pass 1: match using full description (parens flattened) — preserves bed type specificity.
     // Exact match always beats prefix match; only use richest-wins within the same tier.
@@ -488,12 +515,9 @@ function matchEtgRoomGroup(
         if (strPrefix.length)      return pickResult(toMatch(strPrefix));
     }
 
-    // Pass 3: bed-type keyword match using the stripped desc words
-    const BED_TYPES  = new Set(['twin', 'single', 'triple', 'quadruple', 'quintuple', 'sextuple', 'suite', 'villa', 'loft', 'cottage', 'bungalow', 'dormitory']);
-    const TIER_WORDS = new Set(['deluxe', 'standard', 'superior', 'executive', 'premium', 'premier', 'luxury']);
-    const words    = descFull.split(' ');
-    const bedWord  = words.find(w => BED_TYPES.has(w));
-    const tierWord = words.find(w => TIER_WORDS.has(w));
+    // Pass 3: bed-type keyword match — only on specific room-identity words (not tier words
+    // like "standard" or "deluxe", which are shared by many different room types and cause
+    // every "standard" room to receive the same photos regardless of bed type or size).
     if (bedWord) {
         const byBedPhoto = withPhotos.filter(g => norm(g.name).includes(bedWord));
         if (tierWord && byBedPhoto.length > 1) {
@@ -505,13 +529,10 @@ function matchEtgRoomGroup(
         if (byBedAny.length) return pickResult(toMatch(byBedAny));
     }
 
-    // Pass 4: tier-word broadest fallback
-    const keyWord = tierWord ?? words.find(w => w.length > 4) ?? words[0];
-    if (keyWord) {
-        const byKeyPhoto = withPhotos.filter(g => norm(g.name).includes(keyWord));
-        if (byKeyPhoto.length) return pickResult(richest(byKeyPhoto));
-    }
-
+    // No pass 4. A tier-word fallback ("standard", "deluxe") is too broad — it assigns
+    // the same ETG photos to every room sharing a tier label, regardless of bed type or
+    // size. Returning empty here lets the room fall back to the hotel-level image gallery,
+    // which is honest. Wrong photo > no photo is not the right trade-off here.
     return empty;
 }
 
@@ -540,8 +561,8 @@ async function fetchTgxRoomCatalog(
             const rawVal = rows[0]?.room_groups;
             const raw = typeof rawVal === 'string' ? JSON.parse(rawVal) : rawVal;
             if (Array.isArray(raw) && raw.length > 0 && descMap?.size) {
-                // ETG-seeded format: [{name, images, amenities?}] — match by room description
-                const etgGroups = raw as Array<{ name: string; images: string[]; amenities?: string[] }>;
+                // ETG-seeded format: [{name, images, amenities?, beddingType?, roomGroupId?}]
+                const etgGroups = raw as EtgGroup[];
                 console.log(`[tgx-rooms] ETG groups available for hotel ${hotelId}: [${etgGroups.map(g => `"${g.name}"(${g.images?.length ?? 0}px)`).join(', ')}]`);
                 const matchLog: string[] = [];
                 for (const [code, desc] of descMap) {
@@ -830,18 +851,7 @@ async function backgroundSeedEtgContent(hotelId: string, hotelName: string): Pro
             .filter((u: string | null): u is string => Boolean(u))
             .slice(0, 20);
 
-        const roomGroups = (data.room_groups ?? [])
-            .map((rg: any) => ({
-                name: rg.name ?? '',
-                images: (rg.images ?? [])
-                    .map((img: any) => resolveUrl(typeof img === 'string' ? img : (img?.url ?? img?.src)))
-                    .filter((u: string | null): u is string => Boolean(u))
-                    .slice(0, 10),
-                amenities: Array.isArray(rg.room_amenities)
-                    ? rg.room_amenities.map((s: string) => etgRoomAmenityToLabel(s)).filter(Boolean)
-                    : [],
-            }))
-            .filter((rg: { name: string; images: string[]; amenities: string[] }) => rg.name);
+        const roomGroups = parseRoomGroups(data.room_groups ?? []);
 
         // 3. Persist — images array stored as pg literal, room_groups as jsonb
         const sql = getSqlAdmin();
@@ -850,7 +860,7 @@ async function backgroundSeedEtgContent(hotelId: string, hotelName: string): Pro
             UPDATE hotel_content
             SET ratehawk_hid          = ${hid},
                 images                = ${imgLiteral}::text[],
-                room_groups           = ${sql.json(roomGroups)},
+                room_groups           = ${JSON.stringify(roomGroups)}::jsonb,
                 room_groups_seeded_at = NOW()
             WHERE hotel_id = ${hotelId}
               AND ratehawk_hid IS NULL
