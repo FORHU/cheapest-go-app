@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { searchTravelgateX } from '@/lib/server/travelgatex';
+import { runTgxSearch } from '@/lib/server/stays/travelgatex/search';
 import { getSqlAdmin } from '@/lib/db/postgres';
 import { tgxGraphQL, getTgxConfig, getTgxSettings } from '@/lib/server/stays/travelgatex/client';
 import { resolveTgxDestinationCode, setDestCodeCache } from '@/lib/server/search';
@@ -347,6 +348,42 @@ export async function GET(req: NextRequest) {
         }
     }
 
+    // TEMP (remove after use): app-normalized room offers (real offerId "TGX:...") for a single
+    // hotel code, via the exact runTgxSearch() the real prebook fallback path uses.
+    // Usage: GET /api/debug/tgx?roomOffers=6808729&checkin=2026-07-01&checkout=2026-07-05&adults=2&nationality=KR
+    const roomOffersHotelCode = searchParams.get('roomOffers');
+    if (roomOffersHotelCode) {
+        try {
+            const nationality = searchParams.get('nationality') || 'KR';
+            const currency = searchParams.get('currency') || 'USD';
+            const result = await runTgxSearch({
+                hotelCode: roomOffersHotelCode,
+                checkin,
+                checkout,
+                adults,
+                children: 0,
+                currency,
+                guest_nationality: nationality,
+                bypassCache: true,
+            });
+            const roomTypes: any[] = (result as any)?.data?.roomTypes ?? [];
+            return NextResponse.json({
+                hotelCode: roomOffersHotelCode, checkin, checkout, adults, nationality, currency,
+                count: roomTypes.length,
+                rooms: roomTypes.map((r: any) => ({
+                    offerId: r.offerId,
+                    roomName: r.roomName || r.roomType,
+                    paymentType: r.rates?.[0]?.paymentType,
+                    price: r.rates?.[0]?.price,
+                    refundable: r.cancelPolicy?.refundable,
+                    cancelPenalties: r.cancelPolicy?.cancelPenalties,
+                })),
+            });
+        } catch (e: any) {
+            return NextResponse.json({ error: String(e?.message ?? e), stack: e?.stack?.split('\n').slice(0, 6) }, { status: 500 });
+        }
+    }
+
     // ?testHotel=hotelCode[&noPlugin=1] — search TGX with a single hotel code, show ALL options
     const testHotelCode = searchParams.get('testHotel');
     if (testHotelCode) {
@@ -354,12 +391,13 @@ export async function GET(req: NextRequest) {
             const cfg = getTgxConfig();
             const usePlugin = !searchParams.get('noPlugin');
             const criteria = { checkIn: checkin, checkOut: checkout, occupancies: [{ paxes: [{ age: 30 }, { age: 30 }] }], nationality: 'KR', currency: 'USD', hotels: [testHotelCode] };
-            const result = await tgxGraphQL('query Search($criteria:HotelCriteriaSearchInput!,$settings:HotelSettingsInput){hotelX{search(criteria:$criteria,settings:$settings){options{hotelCode paymentType status price{gross net currency}}errors{code description}}}}', { criteria, settings: getTgxSettings(cfg, 18000, usePlugin) });
+            const result = await tgxGraphQL('query Search($criteria:HotelCriteriaSearchInput!,$settings:HotelSettingsInput){hotelX{search(criteria:$criteria,settings:$settings){options{hotelCode paymentType status price{gross net currency}}errors{code description}warnings{code type description}}}}', { criteria, settings: getTgxSettings(cfg, 18000, usePlugin) });
             const options = result?.data?.hotelX?.search?.options ?? [];
             const errors = result?.data?.hotelX?.search?.errors ?? [];
+            const warnings = result?.data?.hotelX?.search?.warnings ?? [];
             const byPayment: Record<string, number> = {};
             for (const o of options) { byPayment[o.paymentType] = (byPayment[o.paymentType] || 0) + 1; }
-            return NextResponse.json({ hotelCode: testHotelCode, usePlugin, totalOptions: options.length, byPaymentType: byPayment, sample: options.slice(0, 3), errors });
+            return NextResponse.json({ hotelCode: testHotelCode, usePlugin, totalOptions: options.length, byPaymentType: byPayment, sample: options.slice(0, 3), errors, warnings });
         } catch (e: any) {
             return NextResponse.json({ error: String(e?.message ?? e) }, { status: 500 });
         }

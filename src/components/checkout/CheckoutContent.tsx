@@ -269,26 +269,6 @@ export function CheckoutContent() {
         priceData,
     });
 
-    // Send confirmation email via API route
-    const sendConfirmationEmail = useCallback(async (bookingDetails: {
-        bookingId: string;
-        email: string;
-        guestName: string;
-        hotelName: string;
-        roomName: string;
-        checkIn: string;
-        checkOut: string;
-        totalPrice: number;
-        currency: string;
-    }) => {
-        try {
-            const result = await apiFetch('/api/email', bookingDetails);
-            if (result.success) setEmailSent(true);
-        } catch (err) {
-            console.error("Failed to send confirmation email:", err);
-        }
-    }, [setEmailSent]);
-
     // Validate a single field on blur and merge the result into formErrors.
     const handleFieldBlur = useCallback((field: string, value: string) => {
         const shape = userDetailsSchema.shape as Record<string, any>;
@@ -527,24 +507,15 @@ export function CheckoutContent() {
 
             const confirmedBookingId = useBookingStore.getState().bookingId;
 
-            const finalBookingPrice = appliedVoucher
-                ? appliedVoucher.finalPrice
-                : totalPrice;
+            // /api/booking/confirm already fires the confirmation email server-side (with the
+            // real charged total, discount, and property details) — no need to send a second one
+            // from the client. That used to happen here via /api/email, but it raced the server's
+            // send with a less-accurate pre-markup total and could occasionally slip past the
+            // dedup guard and double-send with mismatched numbers.
+            setEmailSent(true);
 
             // Fire-and-forget post-booking tasks
-            const postBookingTasks: Promise<unknown>[] = [
-                sendConfirmationEmail({
-                    bookingId: confirmedBookingId || 'N/A',
-                    email: formData.email,
-                    guestName: `${guests[0].firstName} ${guests[0].lastName}`,
-                    hotelName: property?.name || 'Hotel',
-                    roomName: selectedRoom?.title || 'Room',
-                    checkIn: checkIn?.toLocaleDateString() || '',
-                    checkOut: checkOut?.toLocaleDateString() || '',
-                    totalPrice: finalBookingPrice,
-                    currency: selectedCurrency,
-                }),
-            ];
+            const postBookingTasks: Promise<unknown>[] = [];
 
             if (user && confirmedBookingId) {
                 // /api/booking/confirm already persists the booking via confirmAndSaveTgxBooking —
@@ -596,7 +567,7 @@ export function CheckoutContent() {
             setStep('form');
             setClientSecret(null);
         }
-    }, [prebookId, selectedRoom, formData, bookingFor, specialRequests, completeBooking, setIsSuccess, setShowSuccess, sendConfirmationEmail, property, checkIn, checkOut, priceData, selectedCurrency, adults, children, user, totalPrice, appliedVoucher, openAuthModal]);
+    }, [prebookId, selectedRoom, formData, bookingFor, specialRequests, completeBooking, setIsSuccess, setShowSuccess, setEmailSent, property, checkIn, checkOut, priceData, selectedCurrency, adults, children, user, totalPrice, appliedVoucher, openAuthModal]);
 
     // When the user modifies check-in/check-out in BookingSummary:
     // - No room selected (deal flow): just update store dates, user then clicks "Search rooms"

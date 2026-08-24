@@ -146,7 +146,12 @@ export async function POST(req: NextRequest) {
                 checkOutTime: result.data?.checkOutTime,
                 adults: body.adults,
                 children: body.children,
-                discountAmount: body.discountAmount,
+                // Not body.discountAmount: that's unvalidated client input (bookingConfirmSchema
+                // doesn't even declare the field) and doesn't correspond to anything the server
+                // actually charged — resolveHotelChargeBase() prices purely off the prebook quote,
+                // with no voucher/discount factored in. Showing it here would print a fabricated
+                // "credit" line. Revisit once server-side voucher validation actually adjusts the
+                // charged amount and a trustworthy discount figure exists to show.
                 cancellationPolicy: body.cancellationPolicies,
             }).catch(e => console.error('[confirm] Email failed:', e));
             return Response.json(result);
