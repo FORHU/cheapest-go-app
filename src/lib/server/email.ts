@@ -34,12 +34,15 @@ export const FROM_ALERTS  = `${BRAND_NAME} Alerts <${BRAND_EMAIL}>`;
 
 // Small square mark (26x26 masthead icon) used by the redesigned hotel confirmation email —
 // distinct from BRAND_LOGO_URL above, which is the full wordmark used in the legacy header.
+// Deliberately a small pre-resized file (~2KB), not icon-512.png (203KB) — inlining the
+// full-resolution app icon as base64 for a 26x26 display size pushed emails over Gmail's
+// ~102KB clipping threshold, which silently truncates the message in the inbox.
 const BRAND_ICON_URL = (() => {
     try {
-        const data = fs.readFileSync(path.join(process.cwd(), 'public', 'icon-512.png'));
+        const data = fs.readFileSync(path.join(process.cwd(), 'public', 'icon-email-64.png'));
         return `data:image/png;base64,${data.toString('base64')}`;
     } catch {
-        return `${EMAIL_BASE_URL}/icon-512.png`;
+        return `${EMAIL_BASE_URL}/icon-email-64.png`;
     }
 })();
 
