@@ -51,7 +51,7 @@ export async function POST(req: Request) {
             // Send cancellation email to guest (fire-and-forget)
             const { data: booking } = await supabase
                 .from('bookings')
-                .select('property_name, property_image, provider_metadata, room_name, check_in, check_out, holder_email, holder_first_name, holder_last_name, total_price, currency')
+                .select('id, property_name, property_image, provider_metadata, room_name, check_in, check_out, holder_email, holder_first_name, holder_last_name, total_price, currency')
                 .eq('booking_id', bookingId)
                 .single();
 
@@ -87,6 +87,7 @@ export async function POST(req: Request) {
 
                 sendHotelCancellationEmail({
                     bookingId,
+                    dbId: booking.id,
                     email: booking.holder_email || user.email || '',
                     guestName: `${booking.holder_first_name || ''} ${booking.holder_last_name || ''}`.trim(),
                     hotelName: booking.property_name || '',
