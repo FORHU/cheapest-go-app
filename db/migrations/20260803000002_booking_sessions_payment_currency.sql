@@ -1,3 +1,4 @@
+-- migrate:up
 -- booking_sessions.payment_currency was written by /api/flights/book but never existed.
 --
 -- Postgres rejects the whole statement when one column is unknown, so the audit
@@ -9,3 +10,7 @@ ALTER TABLE booking_sessions
 
 COMMENT ON COLUMN booking_sessions.payment_currency IS
     'ISO currency the customer was actually charged in (may differ from the offer currency).';
+
+-- migrate:down
+ALTER TABLE booking_sessions
+    DROP COLUMN IF EXISTS payment_currency;

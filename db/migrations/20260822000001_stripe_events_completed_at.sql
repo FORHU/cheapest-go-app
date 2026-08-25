@@ -1,3 +1,4 @@
+-- migrate:up
 -- Claim-then-commit for Stripe webhook deduplication.
 --
 -- The handler inserted a row into stripe_processed_events BEFORE doing the work
@@ -17,3 +18,7 @@ ALTER TABLE public.stripe_processed_events
 UPDATE public.stripe_processed_events
 SET completed_at = processed_at
 WHERE completed_at IS NULL;
+
+-- migrate:down
+ALTER TABLE public.stripe_processed_events
+    DROP COLUMN IF EXISTS completed_at;
