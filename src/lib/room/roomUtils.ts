@@ -159,15 +159,43 @@ export function hasFreeCancellation(roomType?: RoomType | null, rates?: RoomRate
 }
 
 /**
+ * A stripped name this short is a supplier code, not a room type. "U" and "S" have
+ * both been seen on a live room card; a guest cannot book from that, so the name it
+ * came from is kept instead. Three characters keeps real names that are genuinely
+ * short — "Loft", "Twin" — while rejecting bare codes.
+ */
+const MIN_MEANINGFUL_ROOM_NAME = 3;
+
+/**
  * Normalize room name by removing rate-specific suffixes and TGX parenthetical qualifiers.
  * TGX names follow "Base type (qualifier1, qualifier2)" — everything in parens is a variant,
  * not a room identity. Stripping them lets same-type rooms collapse into one card.
+ *
+ * Stripping is skipped when it would leave nothing to read. A supplier that files a
+ * room as "U (Superior Double room)" has put the identity inside the parentheses, and
+ * removing them leaves a card titled "U". Better a long name than an unbookable one.
  */
 export function normalizeRoomName(roomName: string): string {
-    return roomName
+    const withoutRateSuffix = roomName
         .replace(/\s*-\s*(non[- ]?refundable|refundable|room only|breakfast included).*$/i, '')
+        .trim();
+
+    const withoutQualifiers = withoutRateSuffix
         .replace(/\s*\(.*$/, '')   // strip everything from first ( onward (TGX variant qualifiers)
         .trim();
+
+    return withoutQualifiers.length >= MIN_MEANINGFUL_ROOM_NAME
+        ? withoutQualifiers
+        : withoutRateSuffix;
+}
+
+/**
+ * Whether a room name says enough to choose a room by. Used when picking which of
+ * several names should title a merged card — the shortest is normally the most
+ * general, but not when it is a supplier code.
+ */
+export function isMeaningfulRoomName(name: string): boolean {
+    return name.trim().length >= MIN_MEANINGFUL_ROOM_NAME;
 }
 
 /**
@@ -367,8 +395,14 @@ export function mergeGroupsByPhotos(groups: GroupedRoom[]): GroupedRoom[] {
             continue;
         }
 
-        // Base title = shortest room name in the bucket
-        const baseTitle = bucket.map(g => g.roomName).reduce((a, b) => a.length <= b.length ? a : b);
+        // Base title = shortest room name in the bucket, since the shortest is normally
+        // the most general ("Deluxe Double room" over "Deluxe Double room, city view").
+        // A supplier code would win that contest outright though, and title the whole
+        // card "U", so codes are passed over unless every name in the bucket is one.
+        const names = bucket.map(g => g.roomName);
+        const shortest = (list: string[]) => list.reduce((a, b) => a.length <= b.length ? a : b);
+        const readable = names.filter(isMeaningfulRoomName);
+        const baseTitle = shortest(readable.length ? readable : names);
 
         // Richest amenity set
         const richestAmenities = bucket.map(g => g.amenities ?? []).reduce((a, b) => a.length >= b.length ? a : b);

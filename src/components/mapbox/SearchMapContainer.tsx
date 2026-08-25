@@ -155,12 +155,23 @@ export const SearchMapContainer = React.memo(({
         // Pad by 50% so markers just off-screen are pre-rendered and pop in smoothly.
         const padX = (b.getEast() - b.getWest()) * 0.5;
         const padY = (b.getNorth() - b.getSouth()) * 0.5;
-        setViewBounds({
+        const next = {
             minLng: b.getWest() - padX,
             maxLng: b.getEast() + padX,
             minLat: b.getSouth() - padY,
             maxLat: b.getNorth() + padY,
-        });
+        };
+
+        // Called on every idle as well as every moveend, so an unchanged viewport must
+        // not produce a new object — that would re-render the whole marker set for a
+        // map that has not moved.
+        setViewBounds(prev =>
+            prev
+            && prev.minLng === next.minLng && prev.maxLng === next.maxLng
+            && prev.minLat === next.minLat && prev.maxLat === next.maxLat
+                ? prev
+                : next,
+        );
     }, [mapRef]);
 
     // Supercluster does the viewport query itself, so the whole mappable set is what
@@ -383,7 +394,31 @@ export const SearchMapContainer = React.memo(({
         mapRef.current?.getMap()?.stop();
         mapRef.current?.jumpTo({ center: pendingRestore.center, zoom: pendingRestore.zoom });
         setPendingRestore(null);
+
+        // Markers are filtered against the viewport, so the viewport has to be re-read
+        // after moving there. `stop()` emits a moveend for the animation it aborts,
+        // which reports the position we are leaving, and the jump that follows need not
+        // emit another — leaving the bounds describing somewhere the map no longer is.
+        // Returning from a property page then showed an empty map until the next pan.
+        updateViewBounds();
+        setCurrentZoom(pendingRestore.zoom);
     }, [isMapLoaded, pendingRestore]); // eslint-disable-line react-hooks/exhaustive-deps
+
+    // Backstop for every other camera move the code makes on its own — fitBounds to a
+    // district, flyTo a selection, useMapViewport. `idle` fires once the map has
+    // finished settling from any of them, so no programmatic move can leave the marker
+    // set describing a viewport that has already been left behind.
+    React.useEffect(() => {
+        const map = mapRef.current?.getMap();
+        if (!isMapLoaded || !map) return;
+
+        const onIdle = () => {
+            updateViewBounds();
+            setCurrentZoom(map.getZoom());
+        };
+        map.on('idle', onIdle);
+        return () => { map.off('idle', onIdle); };
+    }, [isMapLoaded, updateViewBounds]); // eslint-disable-line react-hooks/exhaustive-deps
 
     // Wrap onViewDetails to save the viewport before navigating to a property page.
     // Uses the property's actual coordinates + target zoom rather than the map's
