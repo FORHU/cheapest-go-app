@@ -183,6 +183,42 @@ export function getDefaultDates() {
     return { checkIn: formatDateForApi(checkin), checkOut: formatDateForApi(checkout) };
 }
 
+/**
+ * Resolve the stay a property page is actually quoting for.
+ *
+ * The supplier is asked for a specific date range, and the price it returns covers
+ * that whole range. Anything that later restates that price per night has to divide
+ * by the same number of nights it was quoted for — so both must come from here.
+ *
+ * Deriving nights separately from the URL is what produced the doubled nightly rate:
+ * a request carrying `checkin` (lowercase) left the page's `checkIn` undefined, the
+ * quote silently fell back to Friday→Sunday, and the two-night total was rendered as
+ * "per night". Same inputs in, same stay out, for the quote and the display alike.
+ */
+export function resolveStayDates(searchParams: SearchParamsInput): {
+    checkIn: string;
+    checkOut: string;
+    nights: number;
+} {
+    const defaults = getDefaultDates();
+    let checkIn  = sanitizeDate(searchParams.checkIn  as string) || defaults.checkIn;
+    let checkOut = sanitizeDate(searchParams.checkOut as string) || defaults.checkOut;
+
+    // A stay that starts today or earlier can't be booked — fall back rather than
+    // quote a range the supplier will reject.
+    if (checkIn <= formatDateForApi(new Date())) {
+        checkIn = defaults.checkIn;
+        if (checkOut <= checkIn) checkOut = defaults.checkOut;
+    }
+
+    const nights = Math.max(
+        1,
+        Math.round((new Date(checkOut).getTime() - new Date(checkIn).getTime()) / 86_400_000)
+    );
+
+    return { checkIn, checkOut, nights };
+}
+
 // Collect room images from room types
 export function collectRoomImages(roomTypes: any[] | undefined): string[] {
     const images: string[] = [];
@@ -366,10 +402,7 @@ async function fetchETGPropertyData(
         if (!process.env.ETG_KEY_ID || !process.env.ETG_API_KEY) {
             return { property: null, fetchedDetails: null, preBookResult: null };
         }
-        const defaults = getDefaultDates();
-        let checkIn  = sanitizeDate(searchParams.checkIn  as string) || defaults.checkIn;
-        let checkOut = sanitizeDate(searchParams.checkOut as string) || defaults.checkOut;
-        if (checkIn <= formatDateForApi(new Date())) { checkIn = defaults.checkIn; if (checkOut <= checkIn) checkOut = defaults.checkOut; }
+        const { checkIn, checkOut } = resolveStayDates(searchParams);
 
         // Pull static content from hotel_content (name/images/coords for display).
         const sql = getSqlAdmin();
@@ -560,10 +593,7 @@ export async function fetchTGXPropertyData(
     searchParams: SearchParamsInput
 ): Promise<FetchPropertyResult> {
     try {
-        const defaults = getDefaultDates();
-        let checkIn  = sanitizeDate(searchParams.checkIn  as string) || defaults.checkIn;
-        let checkOut = sanitizeDate(searchParams.checkOut as string) || defaults.checkOut;
-        if (checkIn <= formatDateForApi(new Date())) { checkIn = defaults.checkIn; if (checkOut <= checkIn) checkOut = defaults.checkOut; }
+        const { checkIn, checkOut } = resolveStayDates(searchParams);
 
         // Call runTgxSearch in-process — the same function the search page uses.
         // (Previously an HTTP self-call to /api/fn/travelgatex-search, which broke

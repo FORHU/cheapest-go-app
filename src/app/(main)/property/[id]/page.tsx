@@ -81,8 +81,18 @@ export default async function PropertyPage({
     searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }) {
     const { id: rawSlug } = await params;
-    const searchParamsResult = await searchParams;
+    const rawSearchParams = await searchParams;
     const { id, nameSlug } = parsePropertySlug(rawSlug);
+
+    // Links into this page arrive with either spelling of the dates — the results list
+    // carries `checkIn`/`checkOut`, the map view writes `checkin`/`checkout`. Accept both
+    // so a stay is never silently dropped on the way in; everything downstream reads the
+    // camelCase form only.
+    const searchParamsResult: { [key: string]: string | string[] | undefined } = {
+        ...rawSearchParams,
+        checkIn:  rawSearchParams.checkIn  ?? rawSearchParams.checkin,
+        checkOut: rawSearchParams.checkOut ?? rawSearchParams.checkout,
+    };
     const t = await getTranslations('property');
 
     // Phase 1: fast DB fetch + reviews (~10ms total)

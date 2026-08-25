@@ -204,8 +204,12 @@ function SearchRefinementBar({ rawSearchParams }: { rawSearchParams: Record<stri
     function handleSearch() {
         if (!checkin || !checkout) return;
         const params = new URLSearchParams(searchParams?.toString() || '');
-        params.set('checkin', checkin);
-        params.set('checkout', checkout);
+        // camelCase to match every other link builder — the property page reads the
+        // dates back out to work out how many nights a rate covers.
+        params.set('checkIn', checkin);
+        params.set('checkOut', checkout);
+        params.delete('checkin');
+        params.delete('checkout');
         params.set('adults', String(adults));
         params.set('children', String(children));
         router.push(`/search?${params.toString()}`);

@@ -1,6 +1,7 @@
 import { getRequestConfig } from 'next-intl/server';
 import { cookies } from 'next/headers';
 import { routing } from './routing';
+import { applyBrand } from './applyBrand';
 
 function deepMerge<T extends Record<string, unknown>>(target: T, source: Partial<T>): T {
   const result = { ...target };
@@ -41,13 +42,15 @@ export default getRequestConfig(async ({ requestLocale }) => {
   const enMessages = (await import(`../locales/en.json`)).default;
 
   if (locale === 'en') {
-    return { locale, messages: enMessages };
+    return { locale, messages: applyBrand(enMessages) };
   }
 
   const localeMessages = (await import(`../locales/${locale}.json`)).default;
 
+  // Brand after merging, so keys a locale hasn't translated yet inherit the English
+  // string and get branded too rather than falling back to the wrong name.
   return {
     locale,
-    messages: deepMerge(enMessages, localeMessages),
+    messages: applyBrand(deepMerge(enMessages, localeMessages)),
   };
 });

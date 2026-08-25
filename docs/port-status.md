@@ -185,7 +185,26 @@ quote, prebook, create-payment, confirm, cancel, amend, save — plus policy nor
 
 **v2 target:** `src/services/bookings.service.ts`, `src/routes/bookings.route.ts`, `src/routes/webhooks.route.ts`, `src/lib/policies/normalizer.ts`, `src/lib/pricing.ts`
 
-**Gaps:** `booking/save` is absent. `policy-normalizer`, `cancellation-engine` and `refunds` predate the port window (May to June 2026) — take v1's current state, not a delta.
+**Gaps (measured 2026-08-25).** The routes all exist in api-v2 — `/prebook`, `/create-payment`, `/confirm`, `/cancel`, `/amend`, the Stripe webhook. What is missing is the money logic *inside* them, so this slice is a set of rules to port, not endpoints to build.
+
+| Capability | v1 | api-v2 | Note |
+|---|---|---|---|
+| Policy normaliser | 463 ln | 361 ln | **api-v2 is ahead.** It already exports `calculateCancellationFee`, `isCurrentlyFreeCancellation`, `normalizeTgxCancelPolicy`; v1 exports nothing api-v2 lacks. No port needed. |
+| Charge base (`hotelChargeBase`) | 109 ln, 2 refs | absent | **api-v2 trusts the client's `amount`.** `createPayment` applies markup straight to `params.amount`; `hotel_prebook_quotes` is read 3x in v1 and 0x in api-v2. |
+| FX lock (ADR-0008) | `lockFx`, 3 call sites | absent | No write to `usd_amount` / `fx_rate` / `fx_captured_at` / `fx_source` anywhere in api-v2. |
+| Cancellation engine | 331 ln, 4 refs | folded into normaliser | Confirm the folded version covers the same cases before dropping the line item. |
+| Metapolicy | 2 refs | absent | |
+| `booking/save` | present | absent | |
+
+`policy-normalizer`, `cancellation-engine` and `refunds` predate the port window (May to June 2026) — take v1's current state, not a delta.
+
+### Checkpoints
+
+- **C2a — Charge base.** ✅ Done — the Stripe base now comes from the recorded prebook quote ([ADR-0021](adr/0021-the-stripe-base-comes-from-the-prebook-quote.md)). Prebook persists `optionQuote.price` to `hotel_prebook_quotes`; `createPayment` reads it, converts with a strict converter that throws rather than degrades, and applies the markup to the server's figure — never the client's. 16 new tests in `src/__tests__/chargeBase.test.ts`.
+- **C2b — FX lock.** ✅ Done — `src/lib/payments/fxLock.ts` ported; every path that creates a booking now records `usd_amount`, `fx_rate`, `fx_captured_at`, `fx_source` and `source_brand` ([ADR-0008](adr/0008-fx-locked-at-booking-in-usd.md)). Three call sites, matching v1: hotel confirm, Duffel and Mystifly. It runs after the money has moved, never throws, and on the hotel path patches the row *after* the insert so a rates outage leaves the columns null for a backfill rather than costing the booking. 8 tests in `src/__tests__/fxLock.test.ts`.
+- **C2c — Cancel and refund.** Verify the folded cancellation engine against v1's cases; port `refunds` and metapolicy handling.
+- **C2d — Amend and save.** `booking/amend` parity plus the missing `booking/save`.
+- **C2e — Prices carry their stay.** api-v2 should return a **Nightly Rate** and a **Stay Total** already computed, so app-v2 never divides a price by a night count it derived itself ([ADR-0020](adr/0020-a-hotel-price-carries-the-stay-it-was-quoted-for.md)). v1 shipped the narrow fix; v2 should not inherit the split.
 
 **Schema is ready** (checked 2026-08-25). This slice was recorded as blocked because `hotel_prebook_quotes` and `booking_fx_lock` appeared in neither repo's `schema.prisma`. Both were genuinely unapplied; `dbmate up` brought 5433 current — 13 pending migrations, 8 of which needed `-- migrate:up`/`-- migrate:down` markers added — and 5434 was rebuilt from it. Verified present: the `hotel_prebook_quotes` table, `unified_bookings.fx_rate`, and `stripe_processed_events.completed_at`.
 

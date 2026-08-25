@@ -1,6 +1,6 @@
 import React from 'react';
 import { getTranslations } from 'next-intl/server';
-import { fetchRoomAvailability, type PropertyData, type SearchParamsInput } from '@/lib/property/fetchPropertyData';
+import { fetchRoomAvailability, resolveStayDates, type PropertyData, type SearchParamsInput } from '@/lib/property/fetchPropertyData';
 import RoomList from './RoomList';
 import PoliciesSection from './PoliciesSection';
 import FAQSection from './FAQSection';
@@ -19,6 +19,12 @@ export default async function RoomsAvailabilitySection({ hotelId, property, sear
 
     const isEtgHotel = fetchedDetails?.provider === 'etg';
 
+    // The stay the rates below were actually quoted for. Taken from the same resolver
+    // the availability call used, not from the URL — a request that omits the dates, or
+    // spells them `checkin`/`checkout`, still gets priced for a default Friday→Sunday
+    // stay, and the cards have to divide by those nights rather than assume one.
+    const stay = resolveStayDates(searchParams);
+
     return (
         <>
             {isEtgHotel ? (
@@ -34,8 +40,8 @@ export default async function RoomsAvailabilitySection({ hotelId, property, sear
                         roomTypes={fetchedDetails?.roomTypes}
                         hotelImages={property.images}
                         searchParams={{
-                            checkIn:  searchParams.checkIn  as string,
-                            checkOut: searchParams.checkOut as string,
+                            checkIn:  stay.checkIn,
+                            checkOut: stay.checkOut,
                             adults:   Number(searchParams.adults   || 2),
                             children: Number(searchParams.children || 0),
                             rooms:    Number(searchParams.rooms    || 1),
@@ -49,8 +55,8 @@ export default async function RoomsAvailabilitySection({ hotelId, property, sear
                 roomTypes={fetchedDetails?.roomTypes}
                 hotelImages={property.images}
                 searchParams={{
-                    checkIn:  searchParams.checkIn  as string,
-                    checkOut: searchParams.checkOut as string,
+                    checkIn:  stay.checkIn,
+                    checkOut: stay.checkOut,
                     adults:   Number(searchParams.adults   || 2),
                     children: Number(searchParams.children || 0),
                     rooms:    Number(searchParams.rooms    || 1),
