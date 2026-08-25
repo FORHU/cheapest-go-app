@@ -4,6 +4,7 @@ import { getAuthenticatedUser } from '@/lib/server/auth';
 import { createAdminClient } from '@/utils/postgres/admin';
 import { getSqlAdmin } from '@/lib/db/postgres';
 import { formatCurrency, calculateNights } from '@/lib/utils';
+import { formatDuration, getAirlineName } from '@/utils/flight-utils';
 import {
     ArrowLeft, Calendar, Users, MapPin, Plane, FileText,
     CheckCircle, XCircle, Clock, AlertTriangle, RotateCcw,
@@ -202,6 +203,34 @@ function FlightDetail({ booking, t }: { booking: any; t: TFunc }) {
     const destination = segments[segments.length - 1]?.destination ?? '—';
     const departDate = segments[0]?.departure ? fmtDate(segments[0].departure) : '—';
 
+    // Segments grouped by leg (outbound/return/multi-city) so a layover is never
+    // confused with the days-long gap between an outbound arrival and a return
+    // departure. segment_index is what insertFlightSegments() actually sets per leg;
+    // itinerary_index is a legacy column the current insert path never writes, so it's
+    // 0 on every row and can't be trusted alone — a gap over 24h is also a leg boundary.
+    const itineraryLegs: { label: string | null; segments: any[] }[] = (() => {
+        if (segments.length === 0) return [];
+        const legIndex = (seg: any) => seg.segment_index ?? seg.itinerary_index;
+        const sorted = [...segments].sort((a, b) => new Date(a.departure).getTime() - new Date(b.departure).getTime());
+        const legs: any[][] = [[sorted[0]]];
+        for (let i = 1; i < sorted.length; i++) {
+            const prev = sorted[i - 1];
+            const cur = sorted[i];
+            const indexChanged = legIndex(cur) !== legIndex(prev);
+            const gapHours = (new Date(cur.departure).getTime() - new Date(prev.arrival).getTime()) / 3_600_000;
+            if (indexChanged || gapHours > 24) legs.push([cur]);
+            else legs[legs.length - 1].push(cur);
+        }
+        return legs.map((legSegments, i) => ({
+            label: legs.length > 1
+                ? (i === 0 ? t('flightBookingCard.tripLegs.outbound')
+                    : i === 1 ? t('flightBookingCard.tripLegs.return')
+                    : t('flightBookingCard.tripLegs.leg', { number: i + 1 }))
+                : null,
+            segments: legSegments,
+        }));
+    })();
+
     return (
         <div className="space-y-4">
             {/* Hero */}
@@ -225,27 +254,52 @@ function FlightDetail({ booking, t }: { booking: any; t: TFunc }) {
 
             {/* Itinerary */}
             <Section title={t('sections.itinerary')} icon={<Plane size={15} />}>
-                <div className="py-2 space-y-0">
-                    {segments.map((seg: any, i: number) => (
-                        <div key={i} className="flex gap-4 py-3 border-b border-slate-100 dark:border-slate-800 last:border-0">
-                            <div className="flex flex-col items-center pt-1">
-                                <div className="w-2 h-2 rounded-full bg-blue-500 shrink-0" />
-                                {i < segments.length - 1 && <div className="w-px flex-1 bg-slate-200 dark:bg-slate-700 my-1" />}
-                            </div>
-                            <div className="flex-1 min-w-0">
-                                <div className="flex items-center justify-between gap-2 mb-0.5">
-                                    <span className="text-sm font-semibold text-slate-900 dark:text-white">
-                                        {seg.origin} → {seg.destination}
-                                    </span>
-                                    <span className="text-xs font-mono text-slate-500 shrink-0">
-                                        {seg.airline} {seg.flight_number}
-                                    </span>
-                                </div>
-                                <div className="flex items-center gap-2 text-xs text-slate-500">
-                                    {seg.departure && <span>{fmtDate(seg.departure)} · {fmtTime(seg.departure)}</span>}
-                                    {seg.arrival && <><span>→</span><span>{fmtTime(seg.arrival)}</span></>}
-                                </div>
-                            </div>
+                <div className="py-2 space-y-3">
+                    {itineraryLegs.map((leg, legIdx) => (
+                        <div key={legIdx}>
+                            {leg.label && (
+                                <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">{leg.label}</div>
+                            )}
+                            {leg.segments.map((seg: any, i: number) => {
+                                const next = leg.segments[i + 1];
+                                const layoverMins = next && seg.arrival && next.departure
+                                    ? Math.round((new Date(next.departure).getTime() - new Date(seg.arrival).getTime()) / 60000)
+                                    : 0;
+                                return (
+                                    <div key={seg.id ?? i} className="flex gap-4 py-3 border-b border-slate-100 dark:border-slate-800 last:border-0">
+                                        <div className="flex flex-col items-center pt-1">
+                                            <div className="w-2 h-2 rounded-full bg-blue-500 shrink-0" />
+                                            {i < leg.segments.length - 1 && <div className="w-px flex-1 bg-slate-200 dark:bg-slate-700 my-1" />}
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                            <div className="flex items-center justify-between gap-2 mb-0.5">
+                                                <span className="text-sm font-semibold text-slate-900 dark:text-white">
+                                                    {seg.origin} → {seg.destination}
+                                                </span>
+                                                <span className="text-xs font-mono text-slate-500 shrink-0">
+                                                    {seg.airline} {seg.flight_number}
+                                                </span>
+                                            </div>
+                                            <div className="flex items-center gap-2 text-xs text-slate-500">
+                                                {seg.departure && <span>{fmtDate(seg.departure)} · {fmtTime(seg.departure)}</span>}
+                                                {seg.arrival && <><span>→</span><span>{fmtTime(seg.arrival)}</span></>}
+                                            </div>
+                                            <div className="flex items-center gap-1 text-xs text-slate-400 mt-0.5">
+                                                <span>{getAirlineName(seg.airline)}</span>
+                                                {seg.departure && seg.arrival && (() => {
+                                                    const mins = Math.round((new Date(seg.arrival).getTime() - new Date(seg.departure).getTime()) / 60000);
+                                                    return mins > 0 ? <span>· {formatDuration(mins)}</span> : null;
+                                                })()}
+                                            </div>
+                                            {next && layoverMins > 0 && (
+                                                <div className="text-xs text-amber-600 dark:text-amber-400 mt-1.5 font-medium">
+                                                    {t('flightBookingCard.layover', { duration: formatDuration(layoverMins), airport: seg.destination })}
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                );
+                            })}
                         </div>
                     ))}
                     {segments.length === 0 && (

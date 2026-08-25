@@ -2451,11 +2451,14 @@
         "refundable": "Refundable"
       },
       "flightBooking": "Flight Booking",
+      "flightItinerary": "Flight itinerary",
       "hideChangeFlight": "Hide change flight",
       "hideDetails": "Hide details",
+      "hideFlightItinerary": "Hide flight itinerary",
       "hideRefundQuote": "Hide refund quote",
       "hideVoidQuote": "Hide void quote",
       "issuedTickets": "Issued Tickets",
+      "layover": "{duration} layover in {airport}",
       "loadingTripDetails": "Loading airline details…",
       "networkError": "Network error. Please try again.",
       "noRefund": "No refund issued",
@@ -2499,6 +2502,11 @@
       },
       "totalPaid": "Total paid",
       "totalRefund": "Total Refund",
+      "tripLegs": {
+        "leg": "Leg {number}",
+        "outbound": "Outbound",
+        "return": "Return"
+      },
       "tripTypes": {
         "multiCity": "Multi-city",
         "oneWay": "One-way",

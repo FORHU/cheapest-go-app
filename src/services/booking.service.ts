@@ -255,7 +255,10 @@ export interface FlightSegmentRecord {
   destination: string;
   departure: string;
   arrival: string;
+  /** Legacy column — the booking insert path never writes it, so it is 0 on every row. Use segment_index. */
   itinerary_index: number;
+  /** What actually distinguishes legs (outbound=0, return=1, ...) — set by insertFlightSegments(). */
+  segment_index?: number;
 }
 
 /**

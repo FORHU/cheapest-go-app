@@ -4,6 +4,7 @@ import fs from 'fs';
 import path from 'path';
 import { calculateNights } from '@/lib/utils';
 import { derivePolicyType, getFreeCancelDeadline, formatPolicyDescription } from '@/lib/policy-formatter';
+import { getAirlineName } from '@/types/flights';
 
 // ─── Sending addresses ────────────────────────────────────────────────
 // Verified domain: mail.cheapestgo.com (Resend, ap-northeast-1)
@@ -1319,6 +1320,40 @@ export interface SendFlightBookingEmailResult {
     error?: string;
 }
 
+/**
+ * Normalises a raw `flight_segments` row (snake_case, from Postgres) or an
+ * already-camelCase segment (from a booking_sessions.flight payload) into the
+ * shape every flight email template renders.
+ *
+ * Centralised here because six call sites across the booking/webhook/admin
+ * routes each hand-rolled this mapping and every one of them dropped
+ * `airlineName` — so every flight email has been showing a bare IATA code
+ * ("PR") instead of an airline name ("Philippine Airlines"). `getAirlineName`
+ * fills that in from the stored carrier code when the caller has no better
+ * name on hand.
+ */
+export function mapFlightSegmentsForEmail(rows: any[] | null | undefined): FlightSegmentEmail[] {
+    return (rows ?? []).map((s: any) => {
+        const airline = s.airline ?? '';
+        return {
+            airline,
+            airlineName: s.airlineName || s.airline_name || getAirlineName(airline),
+            flightNumber: s.flightNumber ?? s.flight_number ?? '',
+            origin: s.origin ?? '',
+            destination: s.destination ?? '',
+            departureTime: s.departureTime ?? s.departure ?? '',
+            arrivalTime: s.arrivalTime ?? s.arrival ?? '',
+            // segment_index/segmentIndex is what actually distinguishes outbound vs.
+            // return — itinerary_index is a legacy column the booking insert path never
+            // writes, so every row has it stuck at its default of 0. Reading that instead
+            // would make every leg look like the same slice and turn the days-long gap
+            // between an outbound arrival and a return departure into a "layover".
+            itineraryIndex: s.segmentIndex ?? s.segment_index,
+            cabinClass: s.cabinClass ?? s.cabin_class,
+        };
+    });
+}
+
 /** Groups a flat segment list into slices (outbound/return legs) for the itinerary panel. */
 function groupFlightSlices(segments: FlightSegmentEmail[]): FlightSegmentEmail[][] {
     if (segments.length === 0) return [];
@@ -1344,6 +1379,12 @@ function formatDurationMinutes(totalMinutes: number): string {
     const h = Math.floor(totalMinutes / 60);
     const m = totalMinutes % 60;
     return `${h}h ${m}m`;
+}
+
+/** In-air time for one segment — arrival minus departure, floored at 0 for bad data. */
+function segmentDurationMinutes(seg: FlightSegmentEmail): number {
+    const mins = Math.round((new Date(seg.arrivalTime).getTime() - new Date(seg.departureTime).getTime()) / 60000);
+    return Number.isFinite(mins) && mins > 0 ? mins : 0;
 }
 
 /** Single-line route summary — "MNL ⇄ ICN" for a round trip, "MNL → ICN" otherwise. */
@@ -1422,9 +1463,11 @@ export function buildFlightConfirmationEmailHtml(params: SendFlightBookingEmailP
     const itineraryPanels = slices.map((slice, sliceIdx) => {
         const first = slice[0];
         const last = slice[slice.length - 1];
+        const firstFlightMins = segmentDurationMinutes(first);
         const connections = slice.slice(0, -1).map((seg, i) => {
             const next = slice[i + 1];
             const layoverMins = Math.round((new Date(next.departureTime).getTime() - new Date(seg.arrivalTime).getTime()) / 60000);
+            const nextFlightMins = segmentDurationMinutes(next);
             return `
               <tr>
                 <td width="26" style="width:26px;vertical-align:top;padding:0;border-left:2px dotted #cbd5e1;">&nbsp;</td>
@@ -1441,6 +1484,8 @@ export function buildFlightConfirmationEmailHtml(params: SendFlightBookingEmailP
                   </table>
                   <div style="height:8px;line-height:8px;">&nbsp;</div>
                   <div style="font-size:12px;color:#94a3b8;">${formatDurationMinutes(layoverMins)} layover in ${escapeHtml(seg.destination)}</div>
+                  <div style="height:4px;line-height:4px;">&nbsp;</div>
+                  <div style="font-size:12px;color:#64748b;">${escapeHtml(next.airlineName || next.airline)}${nextFlightMins ? ` · ${formatDurationMinutes(nextFlightMins)} to ${escapeHtml(next.destination)}` : ''}</div>
                 </td>
               </tr>`;
         }).join('');
@@ -1481,7 +1526,7 @@ ${sliceLabel}
               <div style="height:4px;line-height:4px;">&nbsp;</div>
               <div style="font-family:'Courier New',Courier,monospace;font-size:14px;font-weight:bold;color:#0f172a;">${fmtTime(first.departureTime)} ${escapeHtml(fmtDayDate(first.departureTime))} · ${escapeHtml(first.flightNumber)}</div>
               <div style="height:2px;line-height:2px;">&nbsp;</div>
-              <div style="font-size:13px;color:#64748b;">${escapeHtml(first.airlineName || first.airline)}</div>
+              <div style="font-size:13px;color:#64748b;">${escapeHtml(first.airlineName || first.airline)}${firstFlightMins ? ` · ${formatDurationMinutes(firstFlightMins)} flight` : ''}</div>
             </td>
           </tr>
 ${connections}

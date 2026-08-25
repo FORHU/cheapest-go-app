@@ -5,7 +5,8 @@ import {
     sendFlightAwaitingTicketEmail,
     sendFlightRefundEmail,
     sendFlightCancellationEmail,
-    sendFlightCancellationRefundEmail
+    sendFlightCancellationRefundEmail,
+    mapFlightSegmentsForEmail
 } from '@/lib/server/email';
 
 export interface EmailLog {
@@ -151,15 +152,7 @@ export async function retryEmailLog(logId: string) {
                     pnr: flight.pnr || '',
                     email,
                     passengerName,
-                    segments: flight.flight_segments?.map((s: any) => ({
-                        airline: s.airline || '',
-                        airlineName: s.airline_name || s.airline || '',
-                        flightNumber: s.flight_number || '',
-                        origin: s.origin || '',
-                        destination: s.destination || '',
-                        departureTime: s.departure || '',
-                        arrivalTime: s.arrival || ''
-                    })) || [],
+                    segments: mapFlightSegmentsForEmail(flight.flight_segments),
                     totalPrice: Number(flight.total_price),
                     currency: flight.currency || 'USD',
                     provider: flight.provider || 'Mystifly'
@@ -170,15 +163,7 @@ export async function retryEmailLog(logId: string) {
                     pnr: flight.pnr || '',
                     email,
                     passengerName,
-                    segments: flight.flight_segments?.map((s: any) => ({
-                        airline: s.airline || '',
-                        airlineName: s.airline_name || s.airline || '',
-                        flightNumber: s.flight_number || '',
-                        origin: s.origin || '',
-                        destination: s.destination || '',
-                        departureTime: s.departure || '',
-                        arrivalTime: s.arrival || ''
-                    })) || [],
+                    segments: mapFlightSegmentsForEmail(flight.flight_segments),
                     totalPrice: Number(flight.total_price),
                     currency: flight.currency || 'USD'
                 });
@@ -254,15 +239,7 @@ export async function resendBookingEmail(bookingId: string) {
                 pnr: flight.pnr || '',
                 email,
                 passengerName,
-                segments: flight.flight_segments?.map((s: any) => ({
-                    airline: s.airline || '',
-                    airlineName: s.airline_name || s.airline || '',
-                    flightNumber: s.flight_number || '',
-                    origin: s.origin || '',
-                    destination: s.destination || '',
-                    departureTime: s.departure || '',
-                    arrivalTime: s.arrival || ''
-                })) || [],
+                segments: mapFlightSegmentsForEmail(flight.flight_segments),
                 totalPrice: Number(flight.total_price),
                 currency: flight.currency || 'USD',
                 provider: flight.provider || 'Mystifly'
@@ -329,15 +306,7 @@ export async function resendBookingEmail(bookingId: string) {
             pnr: meta?.pnr || unified.external_id || '',
             email: targetEmail,
             passengerName,
-            segments: (meta?.segments || meta?.flight_segments || []).map((s: any) => ({
-                airline: s.airline || '',
-                airlineName: s.airlineName || s.airline_name || s.airline || '',
-                flightNumber: s.flightNumber || s.flight_number || '',
-                origin: s.origin || '',
-                destination: s.destination || '',
-                departureTime: s.departureTime || s.departure || '',
-                arrivalTime: s.arrivalTime || s.arrival || ''
-            })),
+            segments: mapFlightSegmentsForEmail(meta?.segments || meta?.flight_segments),
             totalPrice: Number(unified.total_price),
             currency: unified.currency,
             provider: unified.provider
