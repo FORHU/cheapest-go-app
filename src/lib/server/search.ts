@@ -1,7 +1,7 @@
 import { unstable_cache } from 'next/cache';
 import { extractCountryCode, COUNTRY_SEARCH_LIST } from '@/lib/constants/countries';
 import { getSqlAdmin } from '@/lib/db/postgres';
-import { CITY_ALIASES, matchAliasQuery, resolveHotelDbCity } from '@/lib/constants/cityAliases';
+import { CITY_ALIASES, matchAliasQuery, resolveHotelDbCities } from '@/lib/constants/cityAliases';
 
 /** Where a searched place sits on the granularity ladder. See CONTEXT.md
  *  ("Destination granularity") and ADR-0006. Area rungs (country/province/city)
@@ -215,7 +215,13 @@ async function fetchCitiesFromMapbox(query: string, locale?: string): Promise<Au
  * (e.g. "Jeju, Ethiopia" matching our "Jeju, South Korea" hotels).
  */
 async function filterCitiesWithHotels(
-    cities: Array<{ title: string; countryCode: string; canonicalCity?: string }>
+    cities: Array<{
+        title: string;
+        countryCode: string;
+        canonicalCity?: string;
+        rung?: DestinationRung;
+        bbox?: [number, number, number, number];
+    }>
 ): Promise<Set<string>> {
     if (!cities.length) return new Set();
     try {
@@ -228,10 +234,14 @@ async function filterCitiesWithHotels(
         // "Athen") so resolveHotelDbCity maps canonical → DB before querying.
         const pairs = cities.map(c => {
             const canonical = (c.canonicalCity ?? c.title).toLowerCase();
-            const dbCity = resolveHotelDbCity(c.canonicalCity ?? c.title, c.countryCode).toLowerCase();
-            return { canonical, dbCity, country: c.countryCode.toLowerCase() };
+            // A city can be filed under several spellings at once — Seoul is both
+            // "Seoul" and "Seúl" — so every one has to be searched or the coverage
+            // check reports no hotels for a city we stock thousands in.
+            const dbCities: string[] = resolveHotelDbCities(c.canonicalCity ?? c.title, c.countryCode)
+                .map((n: string) => n.toLowerCase());
+            return { canonical, dbCities, country: c.countryCode.toLowerCase() };
         });
-        const cityNames = pairs.map(p => p.dbCity);
+        const cityNames = [...new Set(pairs.flatMap(p => p.dbCities))];
         const rows = await sql`
             SELECT DISTINCT LOWER(city) AS city, LOWER(country) AS country
             FROM hotel_content
@@ -242,7 +252,8 @@ async function filterCitiesWithHotels(
         // Return canonical names (what callers look up) for cities that matched
         const result = new Set<string>();
         for (const p of pairs) {
-            if (matched.has(`${p.dbCity}|${p.country}`)) {
+            // Any one spelling having hotels means we cover the city.
+            if (p.dbCities.some(n => matched.has(`${n}|${p.country}`))) {
                 result.add(p.canonical);
             }
         }
@@ -250,8 +261,34 @@ async function filterCitiesWithHotels(
         if (result.size === 0) {
             const cityOnlyMatched = new Set(rows.map((r: any) => r.city as string));
             for (const p of pairs) {
-                if (cityOnlyMatched.has(p.dbCity)) result.add(p.canonical);
+                if (p.dbCities.some(n => cityOnlyMatched.has(n))) result.add(p.canonical);
             }
+        }
+
+        // An area rung has no hotel_content row under its own name — Palawan's
+        // hotels are filed as El Nido, Coron and Puerto Princesa — so the name
+        // check above always calls it uncovered, and it sorts below any city that
+        // merely resembles the query. Typing "palawan" offered "Palayan", a
+        // different city 600km away, ahead of it. Ask geographically instead.
+        const areas = cities.filter(c =>
+            (c.rung === 'province' || c.rung === 'country')
+            && Array.isArray(c.bbox)
+            && !result.has((c.canonicalCity ?? c.title).toLowerCase())
+        );
+        for (const area of areas) {
+            const [minLng, minLat, maxLng, maxLat] = area.bbox!;
+            try {
+                const [row] = await sql<{ present: boolean }[]>`
+                    SELECT EXISTS (
+                        SELECT 1 FROM hotel_content
+                        WHERE lat BETWEEN ${minLat} AND ${maxLat}
+                          AND lng BETWEEN ${minLng} AND ${maxLng}
+                          AND lat != 0 AND lng != 0
+                          AND LOWER(country) = LOWER(${area.countryCode})
+                    ) AS present
+                `;
+                if (row?.present) result.add((area.canonicalCity ?? area.title).toLowerCase());
+            } catch { /* coverage is a ranking signal; a failed probe just leaves it unranked */ }
         }
         return result;
     } catch {

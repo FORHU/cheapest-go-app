@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import { createAdminClient } from '@/utils/postgres/admin';
-import { notFound, redirect } from 'next/navigation';
+import { notFound } from 'next/navigation';
 import { getAuthenticatedUser } from '@/lib/server/auth';
 import { formatCurrency, calculateNights } from '@/lib/utils';
 import { PrintButton } from './PrintButton';
@@ -19,11 +19,12 @@ export default async function InvoicePage({ params, searchParams }: PageProps) {
     const { id } = await params;
     const { type } = await searchParams;
 
-    const { user, error: authError } = await getAuthenticatedUser();
+    // Receipt pages are public — the UUID in the URL is the credential (122 bits of entropy,
+    // shared only via the confirmation email). No login required, matching industry standard
+    // (Stripe, Booking.com, etc.). We still read the session to expose admin controls when present.
+    const { user } = await getAuthenticatedUser().catch(() => ({ user: null, error: null }));
     const t = await getTranslations('invoice');
-    if (authError || !user) redirect('/login');
 
-    const isAdmin = user.role === 'admin';
     const db = createAdminClient();
 
     const isHotel = type === 'hotel';
@@ -32,30 +33,21 @@ export default async function InvoicePage({ params, searchParams }: PageProps) {
 
     if (isHotel) {
         // Hotels: id param may be DB UUID or external booking_id
-        let query = db.from('bookings').select('*').eq('id', id);
-        if (!isAdmin) query = query.eq('user_id', user.id);
-        const { data: byUuid } = await query.single();
-
+        const { data: byUuid } = await db.from('bookings').select('*').eq('id', id).single();
         if (byUuid) {
             booking = byUuid;
         } else {
-            let fallbackQuery = db.from('bookings').select('*').eq('booking_id', id);
-            if (!isAdmin) fallbackQuery = fallbackQuery.eq('user_id', user.id);
-            const { data: byBookingId } = await fallbackQuery.single();
+            const { data: byBookingId } = await db.from('bookings').select('*').eq('booking_id', id).single();
             booking = byBookingId;
         }
     } else {
-        let query = db.from('flight_bookings').select('*, flight_segments(*), passengers(*)').eq('id', id);
-        if (!isAdmin) query = query.eq('user_id', user.id);
-        const { data } = await query.single();
+        const { data } = await db.from('flight_bookings').select('*, flight_segments(*), passengers(*)').eq('id', id).single();
         booking = data;
     }
 
     // Fallback: check unified_bookings (newer bookings live here)
     if (!booking) {
-        let uQuery = db.from('unified_bookings').select('*').eq('id', id);
-        if (!isAdmin) uQuery = uQuery.eq('user_id', user.id);
-        const { data: unified } = await uQuery.single();
+        const { data: unified } = await db.from('unified_bookings').select('*').eq('id', id).single();
 
         if (unified) {
             const meta = unified.metadata as any;
@@ -121,10 +113,10 @@ export default async function InvoicePage({ params, searchParams }: PageProps) {
     const currency = booking.payment_currency || booking.currency || 'PHP';
     const totalPrice = booking.charged_price ?? booking.total_price;
 
-    // Resolve customer email for the "Billed to" section
-    // For hotels it comes from the booking record; for flights we need the booking owner's email
-    let customerEmail = user.email;
-    if (isAdmin && !isHotel && booking.user_id) {
+    // Resolve customer email for the "Billed to" section.
+    // Always look up the booking owner's profile; fall back to the viewer's session email.
+    let customerEmail: string | null = user?.email ?? null;
+    if (!isHotel && booking.user_id) {
         const { data: ownerProfile } = await db
             .from('profiles')
             .select('email')

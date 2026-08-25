@@ -4,3 +4,8 @@ ALTER TABLE public.hotel_content
 
 CREATE INDEX IF NOT EXISTS hotel_content_serp_filters_gin
     ON public.hotel_content USING gin (serp_filters);
+
+-- migrate:down
+DROP INDEX IF EXISTS hotel_content_serp_filters_gin;
+ALTER TABLE public.hotel_content
+    DROP COLUMN IF EXISTS serp_filters;

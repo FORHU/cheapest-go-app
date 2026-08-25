@@ -2,7 +2,7 @@ import { NextRequest } from 'next/server';
 import { runTgxSearch } from '@/lib/server/stays/travelgatex/search';
 import { getSqlAdmin } from '@/lib/db/postgres';
 import { tgxGraphQL, getTgxConfig } from '@/lib/server/stays/travelgatex/client';
-import { CITY_ALIASES, resolveHotelDbCity } from '@/lib/constants/cityAliases';
+import { CITY_ALIASES, resolveHotelDbCities } from '@/lib/constants/cityAliases';
 
 const COUNTRY_NAME_TO_ISO: Record<string, string> = {
     'indonesia': 'ID', 'france': 'FR', 'italy': 'IT', 'spain': 'ES', 'germany': 'DE',
@@ -192,15 +192,17 @@ async function getInstantHotelCatalog(body: any): Promise<any[]> {
             const cityOnly = cityName.split(',')[0].trim();
             const normalized = cityOnly.replace(/-(si|do|gu|gun|eup)$/i, '').trim();
             const isoCode = resolveIsoCode(countryCode);
-            const dbCity = resolveHotelDbCity(normalized, isoCode ?? countryCode);
-            const pattern = `%${dbCity}%`;
+            // One city can be filed under several spellings ("Seoul" and "Seúl"),
+            // so match any of them rather than picking one and losing the rest.
+            const patterns = resolveHotelDbCities(normalized, isoCode ?? countryCode)
+                .map((c: string) => `%${c}%`);
 
             rows = isoCode
                 ? await sql`
                     SELECT hotel_id, name, images, star_rating, lat, lng, address, city, country,
                            description, amenities, review_rating, review_count
                     FROM hotel_content
-                    WHERE city ILIKE ${pattern}
+                    WHERE city ILIKE ANY(${patterns})
                       AND LOWER(country) = LOWER(${isoCode})
                       AND (hotel_id ~ '^[0-9]+$' OR hotel_id ~ '^[A-Z]{2}[0-9]+$')
                       AND (content_source IS NULL OR content_source != 'etg')
@@ -211,7 +213,7 @@ async function getInstantHotelCatalog(body: any): Promise<any[]> {
                     SELECT hotel_id, name, images, star_rating, lat, lng, address, city, country,
                            description, amenities, review_rating, review_count
                     FROM hotel_content
-                    WHERE city ILIKE ${pattern}
+                    WHERE city ILIKE ANY(${patterns})
                       AND (hotel_id ~ '^[0-9]+$' OR hotel_id ~ '^[A-Z]{2}[0-9]+$')
                       AND (content_source IS NULL OR content_source != 'etg')
                     ORDER BY review_count DESC NULLS LAST

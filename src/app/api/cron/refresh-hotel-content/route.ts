@@ -19,6 +19,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getSqlAdmin } from '@/lib/db/postgres';
 import { tgxGraphQL, getTgxConfig } from '@/lib/server/stays/travelgatex/client';
 import { otvCodeToLabel } from '@/lib/server/stays/travelgatex/amenityCodes';
+import { resolveCanonicalCity } from '@/lib/constants/cityAliases';
+import { resolveIsoCode } from '@/lib/constants/countries';
 
 export const dynamic = 'force-dynamic';
 
@@ -233,16 +235,52 @@ async function runRefresh(limit: number) {
     const cfg = getTgxConfig();
     const t0  = Date.now();
 
-    const cities = await sql<{ city_key: string; country_code: string }[]>`
-        SELECT city_key, country_code FROM hotel_search_stats
+    // `hotel_search_stats` records what the visitor typed, not what it resolved
+    // to, so the raw top-N is full of districts, provinces and duplicates of
+    // entries already in the list. On production it was spending about a third of
+    // its budget on: "(unknown)" (11 hits), "gangnam" and "gangnam district"
+    // (both Seoul, already number one), "manhattan" (New York, also listed),
+    // "jeju-do" duplicating "jeju", "cebu city" duplicating "cebu", and
+    // "paris, france" with country_code "FRANCE" duplicating "paris" under FR.
+    // Every wasted slot is a genuinely popular city further down that never gets
+    // refreshed at all.
+    //
+    // So: read wider than needed, resolve each key the way a search would, merge
+    // the demand onto the canonical city, and only then take the top N.
+    const raw = await sql<{ city_key: string; country_code: string; search_count: number }[]>`
+        SELECT city_key, country_code, search_count FROM hotel_search_stats
         ORDER BY search_count DESC
-        LIMIT ${limit}
+        LIMIT ${Math.max(limit * 5, 100)}
     `;
+
+    const merged = new Map<string, { city_key: string; country_code: string; demand: number }>();
+    for (const row of raw) {
+        // The stats key is the raw destination string: "paris, france" as well as
+        // "paris". Country codes arrive as ISO or as a country name.
+        const cityOnly = row.city_key.split(',')[0].trim();
+        if (!cityOnly || cityOnly === '(unknown)') continue;
+
+        const iso = resolveIsoCode(row.country_code) ?? '';
+        // A district resolves to the city whose inventory it actually sits in, so
+        // "gangnam" and "gangnam district" both fold into Seoul's demand.
+        const canonical = iso ? resolveCanonicalCity(cityOnly, iso) : cityOnly;
+
+        const key = `${canonical.toLowerCase()}|${iso}`;
+        const hit = merged.get(key);
+        if (hit) hit.demand += Number(row.search_count ?? 0);
+        else merged.set(key, { city_key: canonical, country_code: iso, demand: Number(row.search_count ?? 0) });
+    }
+
+    const cities = [...merged.values()]
+        .sort((a, b) => b.demand - a.demand)
+        .slice(0, limit)
+        .map(c => ({ city_key: c.city_key, country_code: c.country_code }));
 
     if (cities.length === 0) {
         console.log('[refresh-hotel-content] No cities in hotel_search_stats — skipping');
         return;
     }
+    console.log(`[refresh-hotel-content] ${raw.length} raw keys merged to ${merged.size} cities; refreshing top ${cities.length}`);
 
     const cityKeys = cities.map(r => r.city_key);
     // Build lookup keys: prefer country-scoped keys (e.g. 'rome:it') over city-only ('rome')

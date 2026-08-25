@@ -4,15 +4,28 @@
 
 **v1 (Monolith)** — the active, deployable system. Next.js app in `cheapest-go-app`. Owns both the frontend and all API routes. This is what is live and being deployed to EC2 + RDS.
 
-**v2 (Separate FE/BE)** — in active development in parallel. Express API in `cheapestgo-api-v2`, Next.js 15 frontend in `cheapestgo-app-v2`. Code-complete but not yet deployed. v1 stays live until v2 is deployed and traffic is cut over.
+**v2 (Separate FE/BE)** — in active development in parallel. Express API in `cheapestgo-api-v2`, Next.js 15 frontend in `cheapestgo-app-v2`. Not code-complete: v2 trails v1, and the gap is closed by the **Feature Port** below. v1 stays live until v2 is deployed and traffic is cut over.
+_Avoid_: describing v2 as "code-complete" — it was not true as of 2026-08-24, when v2's last commit was five days and 68 v1 commits behind.
+
+**Feature Port** — the work of bringing v2 to **Functional Parity** with v1: every capability v1 has, behaving the same way, regardless of when v1 built it. Proceeds one **Slice** at a time, each re-implemented in v2's own idioms and tested before the next starts. Design does not cross — v2 owns its own ([ADR-0016](docs/adr/0016-parity-is-functional-not-visual.md)) — so v1's components are read as specifications of behaviour, never copied as markup.
+_Avoid_: "cherry-pick", "merge v1 into v2", "sync" — the two repos have incompatible file structures and no commit crosses between them. _Avoid_: "UI migration" — it is not one. Progress, the capability map and each slice's watermark live in [docs/port-status.md](docs/port-status.md).
+
+**Slice** — one capability in the Feature Port, spanning whatever parts of api-v2 and app-v2 it needs, including its own locale keys. A slice is **done** when both repos typecheck, their tests pass, its **Watermark** delta is empty, and it has survived a **Side-by-side Check**. Only then does the next slice begin.
+_Avoid_: cutting slices along v1's file paths — they describe v1's design, which is not being ported. _Avoid_: calling a slice done on a green test run alone.
+
+**Watermark** — the v1 commit a slice is level with, recorded per slice. v1 is not frozen during the port, so the delta (`git log <watermark>..HEAD -- <slice paths>`) is re-run before a slice is called done and the watermark advances only when it passes.
+_Avoid_: a single global baseline — v1 moves under some slices and not others.
+
+**Side-by-side Check** — the acceptance test for a slice, in two parts. **Responses:** the same request is issued to v1's route (on 5433) and to api-v2's endpoint (on 5434, freshly rebuilt from 5433 so the rows match), and the JSON is diffed — ids, prices, ordering, fields. v1 is the reference implementation, so a difference here is a porting defect, not a matter of judgement. **Walkthrough:** one human pass through the v2 UI asking whether the task can be completed.
+_Avoid_: comparing rendered pages — v2 owns its design, so screen differences are expected and tell you nothing. _Avoid_: comparing v2 against a description of what v1 does — compare against v1 actually running.
 
 **API base URL (v2)** — `NEXT_PUBLIC_API_URL` must include the `/api/v2` suffix (e.g. `http://localhost:4000/api/v2`). All `http.*` calls in app-v2 use paths relative to this base with no `/api/` prefix (e.g. `/auth/me`, `/flights/book`).
-_Avoid_: adding `/api/` prefix to paths in app-v2 — it creates a double-prefix (`/api/v2/api/...`) that 404s.
+_Avoid_: adding `/api/` prefix to paths in app-v2 — it creates a double-prefix (`/api/v2/api/...`) that 404s. _Avoid_: `fetch('/api/...')` against app-v2's own route handlers — api-v2 owns all domain logic ([ADR-0017](docs/adr/0017-api-v2-owns-all-domain-logic.md)), and app-v2's server code is limited to SSR fetches, key-hiding proxies and cookie forwarding.
 
 **Google OAuth flow (v2)** — server-side. `GET /api/auth/google` redirects to Google with `redirect_uri = API_URL/api/auth/google/callback`. Google calls the API directly. The API exchanges the code, sets a JWT cookie, and redirects the browser to `SITE_URL`. No frontend callback page needed.
 _Avoid_: setting `redirect_uri` to the frontend URL — Google would land on a page with no handler.
 
-**Cutover** — the moment traffic switches from v1 to v2. Has not happened yet.
+**Cutover** — the moment traffic switches from v1 to v2. Has not happened yet. Until it does, v2 runs on its own database and never writes a migration — dbmate in v1 stays the sole author of schema, and v2's database is rebuilt from v1's. See [ADR-0018](docs/adr/0018-v2-has-its-own-database.md).
 
 **GeomeeGo** — a white-label deployment of CheapestGo targeting Korean users, served at `geomeego.com`. It is the same codebase, same database, and same feature set as CheapestGo — not a separate product. It differs only in brand name, logo, favicon, email sender, and locale (locked to Korean, no language switcher). Runs as a second EC2 instance pointing at the same repo and the same `DATABASE_URL`. See [ADR-0005](docs/adr/0005-geomeego-white-label-deployment.md).
 _Avoid_: treating GeomeeGo as a separate product or separate codebase — it shares all suppliers, inventory, users, and admin with CheapestGo. _Avoid_: adding Korean-specific features or business logic to the codebase without making them brand-configurable.
@@ -24,7 +37,7 @@ _Avoid_: reading `req.headers.host` to decide which brand to render — all bran
 
 **AWS EC2** — the Next.js app runs as a persistent Node.js process on EC2. Not serverless. Connection pools are shared across requests within one process. Each brand deployment (CheapestGo, GeomeeGo) is a separate EC2 instance with its own env vars pointing at the same RDS database.
 
-**Dev environment** — Docker Compose with PostgreSQL 17 + pgAdmin 4. Local only. pgAdmin available at `http://localhost:5050` (admin@cheapestgo.local / cheapestgo).
+**Dev environment** — Docker Compose with PostgreSQL 17 + pgAdmin 4. One port means one thing: v1 dev on **3000**, the v1 container (live RDS) on **3001**, app-v2 on **3002**, api-v2 on **4000**. v1's Postgres is **5433**; v2's is **5434** ([ADR-0018](docs/adr/0018-v2-has-its-own-database.md)), with Redis on 6380. Local only. pgAdmin available at `http://localhost:5050` (admin@cheapestgo.local / cheapestgo).
 
 **Production database** — AWS RDS PostgreSQL (provisioning in progress). Connect via `DATABASE_URL` env var.
 
@@ -165,6 +178,12 @@ _Avoid_: treating a converted display price as a quote.
 
 **Display Currency** — what a price is *shown* in across the storefront. Converted server-side, so the figure on screen is the same one that will be charged; the browser renders prices, it does not compute them.
 _Avoid_: converting prices in the browser — two independent conversions drift apart and put the customer in front of a price-changed prompt. _Avoid_: using the admin's own currency selector (a per-viewer display preference) as if it were the **Reporting Currency**.
+
+**Nightly Rate** — a room's price for one night. What the storefront advertises and what a guest compares between hotels, so it is the figure on a search card and on a room card. Always derived, never quoted: suppliers price stays, not nights.
+_Avoid_: showing a **Stay Total** with a "per night" label — the same number means something different to a supplier and to a guest, and the guest reads it as the cheaper of the two.
+
+**Stay Total** — what a room costs for the whole date range asked about. This is what OTV/TGX actually quotes and what prebook confirms, so it is the only hotel price the platform receives directly and the basis of every charge.
+_Avoid_: passing one as a bare number. A price and the stay it covers travel together; a figure that has lost its night count cannot be restated per night by whoever renders it next, only guessed at.
 
 **Booked Amount** — a payment restated into the **Reporting Currency** using the rate in force at the moment it was taken. Fixed permanently at that instant, so a report for a past period returns the same figure however long afterwards it is run.
 _Avoid_: recomputing a past period at today's rate — a closed month never moves.

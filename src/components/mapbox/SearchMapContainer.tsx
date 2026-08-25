@@ -11,6 +11,9 @@ import { Source, Layer } from 'react-map-gl/mapbox';
 
 import { PoiPopup } from './components/PoiPopup';
 import { MapMarker } from '../map/MapMarker';
+import { ClusterMarker } from '../map/ClusterMarker';
+import { MapPropertyCarousel } from '../map/MapPropertyCarousel';
+import { useHotelClusters, isCluster } from '../map/useHotelClusters';
 import { MapPopup } from '../map/MapPopup';
 import { MapSearchOverlay } from './components/MapSearchOverlay';
 import { useRouter } from 'next/navigation';
@@ -125,13 +128,16 @@ export const SearchMapContainer = React.memo(({
     }, [properties]);
 
     // ── Viewport marker culling ──────────────────────────────────────────────
-    // Rendering one HTML <Marker> per hotel (up to ~300) is the dominant source
-    // of pan/zoom lag: Mapbox re-transforms every marker DOM node each frame.
-    // Instead we render only the markers inside the current view (+ margin),
-    // recomputed when movement stops (onMoveEnd), and hard-capped so a zoomed-out
-    // "all results" view can never mount hundreds at once. Zoomed into a
-    // neighbourhood this is ~10-30 markers instead of 300.
-    const MAX_VISIBLE_MARKERS = 100;
+    // Rendering one HTML <Marker> per hotel is the dominant source of pan/zoom lag:
+    // Mapbox re-transforms every marker DOM node each frame, and a city search hands
+    // us ~1,000 of them. We render only what is inside the current view (+ margin),
+    // recomputed when movement stops (onMoveEnd), and hand that set to supercluster
+    // so anything still too dense is folded into a cluster rather than dropped.
+    //
+    // This replaced a hard `.slice(0, 100)`. The cap held the frame rate but silently
+    // discarded hotels that were inside the viewport and inside the user's filters —
+    // they were simply absent from the map with nothing to say so. Clustering bounds
+    // the marker count without hiding anything: see useHotelClusters.
     // At this zoom level and above, only show markers inside the district bbox.
     // Below it, show all-city markers so clusters reveal when the user zooms out.
     // 11 chosen because fitBounds on the Gangnam bbox (~10km wide) in the split
@@ -157,19 +163,9 @@ export const SearchMapContainer = React.memo(({
         });
     }, [mapRef]);
 
-    const visibleProperties = useMemo(() => {
-        if (viewBounds) {
-            const filtered = mappableProperties.filter((p) => {
-                const { lat, lng } = p.coordinates;
-                return lng >= viewBounds.minLng && lng <= viewBounds.maxLng
-                    && lat >= viewBounds.minLat && lat <= viewBounds.maxLat;
-            });
-            return filtered.length > MAX_VISIBLE_MARKERS ? filtered.slice(0, MAX_VISIBLE_MARKERS) : filtered;
-        }
-        // Cheapest-first order is preserved (the incoming order), so when capped the
-        // most relevant hotels are the ones shown; zooming in reveals the rest.
-        return mappableProperties.length > MAX_VISIBLE_MARKERS ? mappableProperties.slice(0, MAX_VISIBLE_MARKERS) : mappableProperties;
-    }, [mappableProperties, viewBounds]);
+    // Supercluster does the viewport query itself, so the whole mappable set is what
+    // gets indexed; `viewBounds` is passed to the hook rather than pre-filtering here.
+    const visibleProperties = mappableProperties;
 
     // Seed the visible set once the map is ready; onMoveEnd keeps it fresh after.
     React.useEffect(() => {
@@ -234,6 +230,43 @@ export const SearchMapContainer = React.memo(({
         }
         return prices;
     }, [mappableProperties, targetCurrency, nights]);
+
+    // Clusters carry only ids, so rendering a lone hotel needs its property back.
+    const propertyById = useMemo(() => {
+        const map: Record<string, MappableProperty> = {};
+        for (const p of markerProperties) map[p.id] = p;
+        return map;
+    }, [markerProperties]);
+
+    // ── Clustering ───────────────────────────────────────────────────────────
+    // Folds dense areas into one marker instead of dropping the surplus. Prices are
+    // passed in so a cluster can advertise the cheapest hotel it stands for.
+    const { clusters, getExpansionZoom, getLeaves } = useHotelClusters(
+        markerProperties,
+        viewBounds,
+        currentZoom,
+        markerPrices,
+    );
+
+    // Hotels of a cluster that cannot be zoomed apart, shown as a list instead.
+    const [clusterList, setClusterList] = React.useState<MappableProperty[] | null>(null);
+
+    // Any change of result set or viewport makes an open stack list stale.
+    React.useEffect(() => { setClusterList(null); }, [mappableProperties]);
+
+    const handleClusterClick = useCallback((clusterId: number, lng: number, lat: number) => {
+        const expansionZoom = getExpansionZoom(clusterId);
+
+        // null means every hotel in this cluster shares one coordinate — zooming would
+        // just walk to max zoom and leave the cluster intact, so show them instead.
+        if (expansionZoom === null) {
+            setClusterList(getLeaves(clusterId));
+            return;
+        }
+
+        setClusterList(null);
+        mapRef.current?.easeTo({ center: [lng, lat], zoom: expansionZoom, duration: 500 });
+    }, [getExpansionZoom, getLeaves, mapRef]);
 
     const displayPrices = useMemo(() => {
         const formatted: Record<string, string> = {};
@@ -609,24 +642,47 @@ export const SearchMapContainer = React.memo(({
 
                 {isMapLoaded && (
                     <>
-                        {/* All hotel markers — always visible.
-                            The selected hotel's marker is skipped here; SelectedPropertyPopup re-renders
-                            it with isSelected=true and attaches the popup card. Other markers stay visible
-                            so the user can see all hotels while a selection is active. */}
-                        {markerProperties.map((p) => (
-                            selectedId === p.id && selectedProperty ? null :
-                            <MapMarker
-                                key={`marker-${p.id}`}
-                                property={p}
-                                displayPrice={markerPrices[p.id] ?? 0}
-                                displayCurrency={targetCurrency}
-                                isSelected={false}
-                                isHovered={p.id === hoveredId}
-                                onClick={onSelectId}
-                                onHover={onHoverId}
-                                index={propertyIndexMap[p.id]}
-                            />
-                        ))}
+                        {/* Hotel markers for the current viewport, dense areas folded
+                            into clusters. The selected hotel's marker is skipped here;
+                            SelectedPropertyPopup re-renders it with isSelected=true and
+                            attaches the popup card. Other markers stay visible so the
+                            user can see all hotels while a selection is active. */}
+                        {clusters.map((feature) => {
+                            const [lng, lat] = feature.geometry.coordinates;
+
+                            if (isCluster(feature)) {
+                                const { cluster_id, point_count, price } = feature.properties;
+                                return (
+                                    <ClusterMarker
+                                        key={`cluster-${cluster_id}`}
+                                        latitude={lat}
+                                        longitude={lng}
+                                        count={point_count}
+                                        minPrice={price}
+                                        currency={targetCurrency}
+                                        onClick={() => handleClusterClick(cluster_id, lng, lat)}
+                                    />
+                                );
+                            }
+
+                            const p = propertyById[feature.properties.propertyId];
+                            if (!p) return null;
+                            if (selectedId === p.id && selectedProperty) return null;
+
+                            return (
+                                <MapMarker
+                                    key={`marker-${p.id}`}
+                                    property={p}
+                                    displayPrice={markerPrices[p.id] ?? 0}
+                                    displayCurrency={targetCurrency}
+                                    isSelected={false}
+                                    isHovered={p.id === hoveredId}
+                                    onClick={onSelectId}
+                                    onHover={onHoverId}
+                                    index={propertyIndexMap[p.id]}
+                                />
+                            );
+                        })}
 
                         {/* Radius circle around selected hotel */}
                         {radiusCircleGeoJSON && (
@@ -782,6 +838,34 @@ export const SearchMapContainer = React.memo(({
                         </div>
                     )}
                 </>
+            )}
+
+            {/* ── Hotels stacked on one coordinate ──
+                A cluster whose members share a coordinate cannot be zoomed apart, so
+                clicking it lists them here instead of walking the map to max zoom and
+                leaving the cluster intact. Rare but real: 11 such stacks in a Seoul
+                search, 24 in Athens. */}
+            {clusterList && clusterList.length > 0 && (
+                <div className="absolute bottom-0 left-0 right-0 z-40">
+                    <div className="flex items-center justify-between px-4 pb-1">
+                        <span className="text-[11px] font-semibold text-white drop-shadow-md">
+                            {clusterList.length} hotels at this address
+                        </span>
+                        <button
+                            type="button"
+                            onClick={() => setClusterList(null)}
+                            className="rounded-full bg-white/95 dark:bg-slate-900/95 backdrop-blur-md px-3 py-1 text-[11px] font-semibold text-slate-700 dark:text-slate-300 shadow-lg border border-slate-200 dark:border-slate-700"
+                        >
+                            Close
+                        </button>
+                    </div>
+                    <MapPropertyCarousel
+                        properties={clusterList}
+                        selectedId={selectedId}
+                        onSelectId={onSelectId}
+                        onViewDetails={handleViewDetailsWithViewportSave}
+                    />
+                </div>
             )}
 
             {/* ── Price-fetching pill — centered below search bar ── */}
