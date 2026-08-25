@@ -154,7 +154,7 @@ export async function POST(req: NextRequest) {
 async function fireBookingEmail(
     supabase: any,
     sessionId: string,
-    bookingData: { bookingId?: string; pnr?: string; status?: string },
+    bookingData: { bookingId?: string; pnr?: string; status?: string; confirmedPrice?: number; confirmedCurrency?: string },
     provider: string,
 ) {
     const [{ data: session }, { data: segments }] = await Promise.all([
@@ -176,9 +176,12 @@ async function fireBookingEmail(
         arrivalTime: s.arrival,
     }));
 
+    const totalPrice = bookingData.confirmedPrice ?? 0;
+    const currency = bookingData.confirmedCurrency ?? 'USD';
+
     if (bookingData.status === 'awaiting_ticket') {
-        await sendFlightAwaitingTicketEmail({ bookingId: bookingData.bookingId!, pnr: bookingData.pnr!, email, passengerName, segments: mappedSegments, totalPrice: 0, currency: 'USD' });
+        await sendFlightAwaitingTicketEmail({ bookingId: bookingData.bookingId!, pnr: bookingData.pnr!, email, passengerName, segments: mappedSegments, totalPrice, currency });
     } else {
-        await sendFlightBookingConfirmationEmail({ bookingId: bookingData.bookingId!, pnr: bookingData.pnr!, email, passengerName, provider, segments: mappedSegments, totalPrice: 0, currency: 'USD' });
+        await sendFlightBookingConfirmationEmail({ bookingId: bookingData.bookingId!, pnr: bookingData.pnr!, email, passengerName, provider, segments: mappedSegments, totalPrice, currency });
     }
 }

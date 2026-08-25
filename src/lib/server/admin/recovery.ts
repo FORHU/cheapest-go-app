@@ -1,6 +1,6 @@
 import { createAdminClient } from '@/utils/postgres/admin';
 import { stripe } from '@/lib/stripe/server';
-import { sendFlightCancellationEmail, sendFlightCancellationRefundEmail, sendHotelRefundEmail } from '@/lib/server/email';
+import { sendFlightCancellationEmail, sendFlightCancellationRefundEmail } from '@/lib/server/email';
 import { createNotification, logAdminAction } from './notify';
 import { RecoveryActionResult, MonitoringData } from '@/types/admin';
 import { createBooking } from '@/lib/server/flights/create-booking';
@@ -279,24 +279,11 @@ export async function adminCancelBooking(bookingId: string): Promise<RecoveryAct
             triggeredBy: 'admin',
         });
 
-        // Send cancellation/refund email for hotel bookings that have a guest email.
-        // booking.id is the DB UUID (this function looks bookings up by it); booking.booking_id
-        // is the human-readable reference customers see elsewhere — prefer that for display.
-        if (sourceTable === 'bookings' && booking.holder_email) {
-            sendHotelRefundEmail({
-                bookingId: booking.booking_id || bookingId,
-                dbId: booking.id,
-                email: booking.holder_email,
-                guestName: `${booking.holder_first_name || ''} ${booking.holder_last_name || ''}`.trim() || 'Guest',
-                hotelName: booking.property_name || 'your hotel',
-                propertyImage: booking.property_image ?? undefined,
-                roomName: booking.room_name || '',
-                checkIn: booking.check_in || '',
-                checkOut: booking.check_out || '',
-                refundAmount: booking.total_price ?? 0,
-                currency: booking.currency || 'USD',
-            }).catch(e => console.error('[adminCancelBooking] Cancellation email failed:', e));
-        }
+        // Deliberately no customer email here, matching adminForceRefund's pattern below:
+        // this only flips the DB status — no Stripe refund is ever issued by this action, so
+        // sendHotelRefundEmail ("we've sent money back to your card") would tell the guest
+        // something false. The createNotification above alerts ops; if the guest needs to be
+        // told, that's a manual step alongside actually processing the refund.
 
         return {
             success: true,
