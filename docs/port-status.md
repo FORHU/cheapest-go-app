@@ -19,8 +19,8 @@ Empty means level. Anything listed must be ported before the watermark advances.
 | # | Slice | Watermark | Done |
 |---|-------|-----------|------|
 | C0a | Backend consolidation | `12f2af3` | 2026-08-24 |
-| C0b | Locale + SEO shell | `6b0ced4` | not started |
-| C1 | Hotel search | `6b0ced4` | not started |
+| C0b | Locale + SEO shell | `791d4e2` | 2026-08-25 |
+| C1 | Hotel search | `791d4e2` | 2026-08-25 |
 | C2 | Hotel booking | `6b0ced4` | not started |
 | C3 | Flights | `6b0ced4` | not started |
 | C4 | Account | `6b0ced4` | not started |
@@ -77,9 +77,22 @@ Multi-language is a feature; the pages it wraps are not. app-v2 today has `src/i
 
 **v1 reference:** `src/middleware.ts`, `src/i18n/`, `src/lib/seo/hreflang.ts`, `src/app/robots.ts`, `src/app/sitemap.ts`, `src/locales/`
 
-**Gaps:** `middleware.ts`, `routing.ts`, `robots.ts`, `sitemap.ts`, hreflang — all absent. Rename `cn.json` to `zh.json`. app-v2's locale files hold roughly 10% of v1's strings (12 KB against 116 KB), but strings arrive with the slice that uses them, not here.
+### Done (2026-08-25, uncommitted)
 
-**Check:** `/ko/...` and `/ja/...` resolve to the right pages, `hreflang` and `sitemap.xml` emit all four locales, and an English URL is unprefixed.
+v2 did **not** copy v1's mechanism here, and that was a deliberate choice — see the new section in [ADR-0015](adr/0015-locale-lives-in-the-url.md). v1 rewrites `/ko/search` to `/search` and carries the language in a cookie, so internal links drop the prefix and the language ends up belonging to the visitor rather than the link. v2 uses an `app/[locale]` segment, so the prefix survives navigation, no cookie is involved, and pages prerender per locale.
+
+- `i18n/routing.ts` (`en`, `ko`, `ja`, `zh`, default `en`, `as-needed`), `i18n/navigation.ts` (locale-aware `Link`, `useRouter`, `usePathname`, `redirect`), and `i18n/request.ts` rewritten to read the segment. The request chain is brand lock → segment → default, with **no cookie**: one that outranked the URL would make a shared `/ko/...` link render in the recipient's language.
+- **42 route files moved** under `app/[locale]/`; `/admin` deliberately left outside it.
+- **~40 files had navigation imports swapped.** `useSearchParams`, `useParams` and `notFound` are not locale-aware and stayed on `next/navigation`, so the swap split mixed imports rather than rewriting whole lines. No call site changed — the wrappers share the originals' API.
+- `middleware.ts` combines next-intl's middleware with the `/admin` guard, now on api-v2's JWT `access_token` rather than v1's Lucia `cg-session`.
+- `shared/lib/seo.ts` (hreflang + canonical), `app/robots.ts`, `app/sitemap.ts`. The sitemap uses **v2's** route names — `/terms`, not v1's `/terms-of-service`.
+- `cn.json` renamed to `zh.json`, and the two components that offered `cn` as a language now offer `zh`. `LocaleSelector` switches the URL through `router.replace(pathname, { locale })` instead of writing a cookie.
+
+**Verified:** build clean and every route prerenders per locale (`/en`, `/ko`, `/ja`, `/zh`); `/`, `/ko`, `/ja/search`, `/zh/terms` all 200; `/de/deals` 404s; `<html lang>` tracks the URL; `/ko` renders Korean; `/admin` 307s to `/login` without a session and 200s with one; `/ko/admin` 404s; `robots.txt` disallows private paths under every prefix; `sitemap.xml` emits 104 URLs. Typecheck clean, 66/66 tests pass.
+
+**One bug found by the smoke test:** `robots.txt` and `sitemap.xml` are routes, not files, so the locale middleware was rewriting them into the segment and serving the rendered homepage to anything asking for `/robots.txt`. Both are now excluded from the matcher.
+
+**Debt:** some components still hold hardcoded English (`Sign in` renders untranslated on `/ko`). The locale files themselves are at 100% parity between `en` and `ko` — 248 keys each — so this is components not reaching for the keys, and it is fixed per slice as each one is touched.
 
 ## C1 — Hotel search
 
@@ -91,6 +104,79 @@ TravelgateX client and search, ETG room-group seeding, city aliases and the dist
 
 **Gaps:** `search/more` and `google/search` are absent. Everything else exists and is behind.
 
+C1 is too large for one pass — api-v2's hotels module is roughly 1,400 lines behind across 30 v1 commits — so it runs as four checkpoints, each ending in its own Side-by-side Check.
+
+| | Checkpoint | State |
+|---|---|---|
+| C1a | Amenity vocabulary | 2026-08-25 |
+| C1b | ETG content fetch and persistence | 2026-08-25 |
+| C1c | Room groups, room catalog, the photo matcher | 2026-08-25 |
+| C1d | Retire the duplicate Google Places autocomplete | 2026-08-25 |
+
+### C1a — Amenity vocabulary (2026-08-25, uncommitted)
+
+api-v2 held **91 of v1's 234** OTV amenity codes and **none** of the 65 ETG room slugs, and was missing `ETG_ROOM_AMENITY_MAP`, `etgRoomAmenityToLabel` and `normalizeStoredAmenity` entirely. Anything unmapped falls through a prettifier, so a supplier's non-English label reached an English page untouched — the defect v1 fixed in `ec05bf5` ("fix Russian amenities display").
+
+`amenityCodes.ts` was ported whole (456 lines, one importer, so a wholesale replace was safe) and gained `normalizeAmenityList`, which handles what `hotel_content.amenities` actually stores: plain strings prettified from non-English codes alongside `{ code }` objects from TGX. It is now applied where api-v2 previously returned the column raw — `getProperty` in the service, and the instant catalog in `lib/hotels/search.ts`.
+
+**Verified:** 19 of 258 distinct stored amenity strings are re-mapped, affecting **4,195 of 31,860** hotel-amenity rows — `Gym` → `Fitness Center`, `Laundry` → `Laundry Service`, `Breakfast` → `Breakfast Available`, plus casing canonicalisation. A property returns the same count it stores (41 in, 41 out — nothing dropped), and search results carry normalised amenities through the catalog path. 14 new tests; api-v2 57 tests, typecheck and build clean.
+
+**Not fixed, and deliberately:** some supplier labels contain homoglyphs — `Golf сourse` has a Cyrillic `с`. Those pass through unchanged, which is right: the mapper canonicalises known vocabulary, it does not repair corrupt input.
+
+### C1b — ETG content fetch and persistence (2026-08-25, uncommitted)
+
+**96.9% of the catalog had no description** — 1,105,424 of 1,140,510 rows — so property pages rendered with no prose. ETG returns one in the very same `hotel/info` response api-v2 was already calling for amenities, and it was being discarded.
+
+New `lib/hotels/etg.ts`: `parseEtgHotel` takes name, description and amenities from one hotel object, preferring `amenity_groups` where ETG provides them and falling back to `serp_filters` (its own facet vocabulary, which covers hotels the groups miss). `fetchEtgHotelContent` batches slug ids in 500s. `HotelsRepository.upsertEtgContent` persists per hotel, writing each field only where the existing row has nothing better — a richer TGX name or description is never replaced by an ETG one — and one row failing cannot cost the batch.
+
+**A wrong turn worth recording.** The obvious wiring was the slug-id branch, which is where `fetchEtgAmenitiesBatch` lived. Then a catalog check showed **every `hotel_id` is numeric — zero slug ids** — so that branch never executes and the change would have done nothing. The description extraction had to go on the *hid* path, which is why the parser is shared rather than living inside one fetcher.
+
+**Verified end to end against a live search.** Cebu had 0 of 385 descriptions. One search produced `ETG hid lookup: 30 with amenities, 30 with description, of 72` → `upserted 30 hotels`, leaving **30 of 385** — with real prose, and `content_source` still `tgx`, confirming the upsert added the description without overwriting existing fields. 14 new tests; api-v2 71 tests, typecheck and build clean.
+
+`fetchEtgAmenitiesBatch` was left orphaned by the change and deleted.
+
+### C1c — Room catalog and the photo matcher (2026-08-25, uncommitted)
+
+api-v2's property endpoint returned `rooms: 0` and had no room-level content of any kind — no `roomPhotos`, no `matchEtgRoomGroup`, no `room_groups` handling. This is the capability the room-photo fix made in v1 needed before it could be ported.
+
+- **`lib/hotels/roomMatch.ts`** — the matcher, kept pure so it is testable without a supplier. TGX names a room one way and ETG files its photos under another, so the link is text alone: a cascade of bedding-type match, exact name, prefix, parenthesis-stripped, then bed-type keyword. It deliberately has no tier-word fallback — matching on "deluxe" hands the same photos to every room of that grade, and on a page someone books from a wrong photo is worse than none.
+- **`lib/hotels/roomGroups.ts`** — ETG `room_groups` parsing, including the `{size}` placeholder in image URLs and `name_struct.bedding_type`.
+- **`repositories`** — `findRoomGroups` / `saveRoomGroups`.
+- **`services/roomCatalog.service.ts`** — stored catalog first, live ETG seed otherwise, result stored either way.
+- **`orderRoomPhotosByDistinctiveness`**, the v1 fix, now applied in `getProperty`.
+
+**A real bug found by testing rather than reading.** `room_groups` defaults to `[]`, so an untouched row is indistinguishable from one that was seeded and genuinely came back empty — and treating empty as final meant **no hotel with the default value ever got seeded**. `room_groups_seeded_at` is the discriminator, and the repository now returns it.
+
+**Verified end to end.** Ml Suites (`10569363`): before, `rooms: 1` with `photos: 0`. After, **`photos: 8`, `amenities: 10`**, with 14 ETG groups persisted and a seed timestamp written; a second request serves from the stored catalog. 15 new tests including the Hotel Naru pair, which must never collide. api-v2 86 tests, typecheck and build clean.
+
+**Two things worth knowing.** Hotel Naru Seoul itself returns `rooms: 0` for the dates tried — TGX answers with GraphQL errors, meaning no availability, which is supplier-side and not a defect here. And `hotel_search_cache` will serve a stale empty result for a hotel+date pair, so clear the row when testing a change to this path.
+
+#### Audit of the mapping, across every seeded hotel
+
+`src/scripts/room-match-audit.ts` in api-v2 runs the matcher over all 959 hotels with seeded groups (38,811 room descriptions) and answers three questions.
+
+| | |
+|---|---|
+| Collisions between **differently named** rooms | **1 hotel (0.1%), 3 descriptions (0.0%)** |
+| Group pairs sharing at least one photo | **531,895 of 1,082,580 — 49.1%** |
+| Mean overlap where photos are shared | **65.7%** |
+
+The matcher is sound: essentially nothing collides. The single case is `"economy single room"` and `"standard single room"` both landing on `"Standard Single room (single bed)"` — Economy has no ETG group of its own, so it falls through to a bed-type match. Both are single rooms, so it is defensible, but Economy does show Standard's photos.
+
+**The important number is the overlap.** Half of all room-group pairs at a hotel share photos, and where they do it averages two thirds. Hotel Naru was not an unlucky hotel — it is the normal shape of this data, which is what makes `orderRoomPhotosByDistinctiveness` a catalog-wide fix rather than a patch for one complaint.
+
+A first version of the audit reported 47.5% of hotels colliding. That was measuring ETG's own duplicate group names collapsing onto the first occurrence, which is the dedup working as designed. Counting only distinct names gives the 0.1% above.
+
+### C1d — One destination autocomplete (2026-08-25, uncommitted)
+
+api-v2 carried two: the ported Mapbox-plus-alias one behind `GET /hotels/destinations`, and an older Google Places one behind `GET /hotels/suggest`, `POST /hotels/autocomplete` and `POST /hotels/autocomplete/resolve`.
+
+**A correction to what C0a recorded.** That note said nothing in app-v2 used them. `/hotels/suggest` was in fact called from two places — `app/[locale]/search/page.tsx` and `features/search/components/search-view.tsx` — to resolve a destination string to coordinates when the URL carries none. Both now call `/hotels/destinations`, which returns the same coordinates but resolved through the city-alias dictionary and ranked by whether we stock the place.
+
+The three routes, their controller handlers, and the whole Google Places autocomplete block in `lib/google/places.ts` — `autocompleteDestinations` plus the four helpers only it used — are removed. Confirmed unused first by api-v2's own mobile route, by every internal caller, and by the Postman collection.
+
+**Verified:** the three endpoints 404, `/hotels/destinations` still answers, both repos typecheck, api-v2 86 tests, app-v2 66 tests, both builds clean.
+
 ## C2 — Hotel booking
 
 quote, prebook, create-payment, confirm, cancel, amend, save — plus policy normalisation, the cancellation engine, the Stripe webhook, and FX locked at booking in USD ([ADR-0008](adr/0008-fx-locked-at-booking-in-usd.md)).
@@ -101,7 +187,7 @@ quote, prebook, create-payment, confirm, cancel, amend, save — plus policy nor
 
 **Gaps:** `booking/save` is absent. `policy-normalizer`, `cancellation-engine` and `refunds` predate the port window (May to June 2026) — take v1's current state, not a delta.
 
-**Blocked on:** `20260816000001_hotel_prebook_quotes.sql` and `20260816000002_booking_fx_lock.sql` appear in neither repo's `schema.prisma`, which means they are probably unapplied. Verify against the live 5433 database before starting.
+**Schema is ready** (checked 2026-08-25). This slice was recorded as blocked because `hotel_prebook_quotes` and `booking_fx_lock` appeared in neither repo's `schema.prisma`. Both were genuinely unapplied; `dbmate up` brought 5433 current — 13 pending migrations, 8 of which needed `-- migrate:up`/`-- migrate:down` markers added — and 5434 was rebuilt from it. Verified present: the `hotel_prebook_quotes` table, `unified_bookings.fx_rate`, and `stripe_processed_events.completed_at`.
 
 ## C3 — Flights
 

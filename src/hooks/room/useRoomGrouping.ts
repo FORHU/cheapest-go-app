@@ -5,6 +5,7 @@ import {
     RoomType,
     GroupedRoom,
     groupRoomsByName,
+    orderPhotosByDistinctiveness,
     findRateByOfferId,
     getRoomImage,
 } from '@/lib/room';
@@ -42,7 +43,9 @@ export function useRoomGrouping({
     hotelImages = [],
 }: UseRoomGroupingOptions): UseRoomGroupingReturn {
     const groupedRooms = useMemo(
-        () => groupRoomsByName(roomTypes || []),
+        // Distinctiveness ordering runs last, and needs every group at once:
+        // whether a photo is distinctive is a fact about the page, not the room.
+        () => orderPhotosByDistinctiveness(groupRoomsByName(roomTypes || [])),
         [roomTypes]
     );
 

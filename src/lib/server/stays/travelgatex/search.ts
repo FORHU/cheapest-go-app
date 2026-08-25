@@ -7,7 +7,7 @@ import { tgxGraphQL, getTgxSettings, getTgxConfig, getTgxFilterSearch, buildOccu
 import { seedHotelRoomGroupsById, parseRoomGroups } from '@/lib/server/stays/etg/roomGroups';
 import { getSqlAdmin } from '@/lib/db/postgres';
 import { resolveTgxDestinationCode, backgroundResolveDestCode } from '@/lib/server/search';
-import { resolveHotelDbCity } from '@/lib/constants/cityAliases';
+import { resolveHotelDbCities } from '@/lib/constants/cityAliases';
 import { otvCodeToLabel } from './amenityCodes';
 
 // ─── Country bounding boxes for geographic hotel filtering ───────────────────
@@ -283,6 +283,16 @@ query TgxHotelContent($criteria: HotelXHotelListInput!, $token: String) {
 }`;
 
 /** Static rooms catalog query — returns room-level medias + amenities for given room codes. */
+// `area` is a SCALAR — TGX describes it as "Area(m²) International System of
+// Units", so it returns a bare number and the unit is implicit. It used to be an
+// object and this query still asked for `area { size metric }`, which TGX rejects
+// outright: "Field \"area\" must not have a selection since type \"Area\" has no
+// subfields." That error failed the *whole* query, so every call to this returned
+// nothing. It went unnoticed because the outcome matched reality — OTV publishes
+// no room-level static content, confirmed by querying it directly with real room
+// codes and with no filter at all, and it answers `roomData: null` either way.
+// Room photos therefore come from ETG (see stays/etg/roomGroups.ts). This query is
+// kept working for the suppliers coming next, which may well populate it.
 const TGX_ROOMS_CATALOG_QUERY = `
 query TgxRoomsCatalog($criteria: HotelXRoomQueryInput!, $token: String) {
   hotelX {
@@ -294,7 +304,7 @@ query TgxRoomsCatalog($criteria: HotelXRoomQueryInput!, $token: String) {
             code
             medias { url type }
             allAmenities { edges { node { amenityData { amenityCode type } } } }
-            area { size metric }
+            area
           }
         }
       }
@@ -638,13 +648,13 @@ async function fetchTgxRoomCatalog(
             const amenities = (rd?.allAmenities?.edges ?? [])
                 .map((e: any) => otvCodeToLabel(e?.node?.amenityData?.amenityCode ?? ''))
                 .filter(Boolean) as string[];
-            const areaSize: number | null = rd?.area?.size ?? null;
-            const areaMetric: string | null = rd?.area?.metric ?? null;
-            const roomSize = areaSize
-                ? (areaMetric === 'SQUARE_FEET'
-                    ? `${Math.round(areaSize)} ft²`
-                    : `${Math.round(areaSize)} m²`)
-                : undefined;
+            // `area` is a scalar in square metres now, not an object carrying its
+            // own unit — so there is no longer a square-feet case to handle. The
+            // object form is still read as a fallback in case a supplier or a
+            // future schema hands one back.
+            const areaSize: number | null =
+                typeof rd?.area === 'number' ? rd.area : (rd?.area?.size ?? null);
+            const roomSize = areaSize ? `${Math.round(areaSize)} m²` : undefined;
             catalogData[roomCode] = { photos, amenities, ...(roomSize ? { roomSize } : {}) };
             if (photos.length || amenities.length || roomSize) {
                 resultMap.set(roomCode, { photos, amenities, roomSize });
@@ -1800,21 +1810,23 @@ async function runCityFallback(
                     return 6371 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)) <= RADIUS_KM;
                 });
             } else {
-                // resolveHotelDbCity maps canonical names to DB-stored values
-                // (e.g. "Cebu City" → "Cebu", "Rome" → "Rom", "Athens" → "Athen")
-                // so the query matches how ETG/OTV seeded hotel_content.
-                const cityOnly = resolveHotelDbCity(cityName.split(',')[0].trim(), countryCode ?? '');
+                // resolveHotelDbCities maps a canonical name to every DB-stored
+                // spelling (e.g. "Rome" → "Rom", "Seoul" → "Seoul" and "Seúl") so
+                // the query matches however ETG/OTV seeded hotel_content. A city
+                // filed under two spellings needs both, or half its hotels vanish.
+                const cityNames = resolveHotelDbCities(cityName.split(',')[0].trim(), countryCode ?? '')
+                    .map((c: string) => c.toLowerCase());
                 catalogRows = countryCode
                     ? await sqlAdmin<{ hotel_id: string }[]>`
                         SELECT hotel_id FROM hotel_content
-                        WHERE LOWER(TRIM(city)) = LOWER(${cityOnly})
+                        WHERE LOWER(TRIM(city)) = ANY(${cityNames})
                           AND LOWER(country) = LOWER(${countryCode})
                           AND hotel_id ~ '^[0-9]+$'
                           AND lat != 0 AND lng != 0
                         LIMIT 300`
                     : await sqlAdmin<{ hotel_id: string }[]>`
                         SELECT hotel_id FROM hotel_content
-                        WHERE LOWER(TRIM(city)) = LOWER(${cityOnly})
+                        WHERE LOWER(TRIM(city)) = ANY(${cityNames})
                           AND hotel_id ~ '^[0-9]+$'
                           AND lat != 0 AND lng != 0
                         LIMIT 300`;

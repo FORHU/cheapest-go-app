@@ -422,6 +422,47 @@ export function findRateByOfferId(
 }
 
 /**
+ * Reorder each room's photos so the ones unique to it come first.
+ *
+ * Suppliers routinely give two rooms overlapping photo sets. Hotel Naru Seoul is
+ * typical: "Deluxe Double room with river view" and "Premier Double room with
+ * river view" are matched to their own ETG groups correctly, and those groups
+ * still share 7 of their 10 photos. A card shows the first three, so both rooms
+ * lead with the same shared shots and read as identical — the guest concludes
+ * the site is broken, when every step upstream did its job.
+ *
+ * The shared photos are genuine pictures of both rooms, so they are kept; they
+ * just should not lead. Ordering is stable within each part, so a room whose
+ * photos are entirely shared is left exactly as it was.
+ *
+ * Only meaningful across the whole page, which is why this takes every group
+ * rather than being a property of one.
+ */
+export function orderPhotosByDistinctiveness(groups: GroupedRoom[]): GroupedRoom[] {
+    if (groups.length < 2) return groups;
+
+    // How many rooms each photo appears in.
+    const usage = new Map<string, number>();
+    for (const group of groups) {
+        for (const url of new Set(group.roomPhotos ?? [])) {
+            usage.set(url, (usage.get(url) ?? 0) + 1);
+        }
+    }
+
+    return groups.map(group => {
+        const photos = group.roomPhotos;
+        if (!photos?.length) return group;
+
+        const unique = photos.filter(url => (usage.get(url) ?? 0) === 1);
+        // Nothing to promote, or nothing but unique photos: leave the supplier's order alone.
+        if (!unique.length || unique.length === photos.length) return group;
+
+        const shared = photos.filter(url => (usage.get(url) ?? 0) > 1);
+        return { ...group, roomPhotos: [...unique, ...shared] };
+    });
+}
+
+/**
  * Get the room image with fallback to hotel images
  */
 export function getRoomImage(
