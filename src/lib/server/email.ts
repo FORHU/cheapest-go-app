@@ -32,19 +32,14 @@ const BRAND_LOGO_URL = (() => {
 export const FROM_NOREPLY = `${BRAND_NAME} <${BRAND_EMAIL}>`;
 export const FROM_ALERTS  = `${BRAND_NAME} Alerts <${BRAND_EMAIL}>`;
 
-// Small square mark (26x26 masthead icon) used by the redesigned hotel confirmation email —
+// Small square mark (26x26 masthead icon) used by the redesigned hotel/flight emails —
 // distinct from BRAND_LOGO_URL above, which is the full wordmark used in the legacy header.
-// Deliberately a small pre-resized file (~2KB), not icon-512.png (203KB) — inlining the
-// full-resolution app icon as base64 for a 26x26 display size pushed emails over Gmail's
-// ~102KB clipping threshold, which silently truncates the message in the inbox.
-const BRAND_ICON_URL = (() => {
-    try {
-        const data = fs.readFileSync(path.join(process.cwd(), 'public', 'icon-email-64.png'));
-        return `data:image/png;base64,${data.toString('base64')}`;
-    } catch {
-        return `${EMAIL_BASE_URL}/icon-email-64.png`;
-    }
-})();
+// Deliberately a plain hosted URL, not an inlined data: URI: Gmail's web and app clients
+// don't render base64 data: URIs in HTML email at all (they show a broken-image glyph,
+// regardless of size or correctness) — Apple Mail/Outlook desktop do, which is why this
+// bug wasn't caught by non-Gmail testing. A real URL also avoids re-litigating the earlier
+// issue where inlining a large icon pushed emails over Gmail's ~102KB clipping threshold.
+const BRAND_ICON_URL = `${EMAIL_BASE_URL}/cheapestgo-favico.png`;
 
 // Fallback thumbnail when a booking has no property image on file.
 const PROPERTY_PLACEHOLDER_URL = (() => {
@@ -259,6 +254,12 @@ export function buildHotelConfirmationEmailHtml(params: SendBookingEmailParams):
     const siteUrl = env.SITE_URL;
     const receiptUrl = dbId ? `${siteUrl}/trips/invoice/${dbId}?type=hotel` : null;
     const manageUrl = dbId ? `${siteUrl}/trips/${dbId}` : null;
+    const shareUrl = dbId ? `${siteUrl}/trips/${dbId}/share` : null;
+    const requestsUrl = dbId ? `${siteUrl}/trips/${dbId}/requests` : null;
+    // The cancel action itself lives on the trips list page (each card's own cancel button/modal),
+    // not on the read-only /trips/{id} detail page — link there so "Cancel booking" is a real,
+    // reachable action rather than a page with no cancel control on it.
+    const cancelUrl = `${siteUrl}/trips`;
 
     const nights = Math.max(1, calculateNights(checkIn, checkOut));
         const firstName = escapeHtml((guestName || '').trim().split(/\s+/)[0] || 'there');
@@ -458,17 +459,30 @@ export function buildHotelConfirmationEmailHtml(params: SendBookingEmailParams):
   <tr><td style="padding:0 0 12px 0;">
     <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color:#ffffff;border:1px solid #e2e8f0;border-radius:18px;">
       <tr><td class="px" style="padding:24px 28px 0 28px;font-family:Arial,Helvetica,sans-serif;font-size:11px;font-weight:bold;letter-spacing:1.2px;text-transform:uppercase;color:#0f172a;">Manage my booking</td></tr>
-      <tr><td class="px" style="padding:14px 28px 0 28px;font-family:Arial,Helvetica,sans-serif;font-size:13px;line-height:21px;color:#64748b;">Sign in any time to get a receipt or cancel your booking.</td></tr>
+      <tr><td class="px" style="padding:14px 28px 0 28px;font-family:Arial,Helvetica,sans-serif;font-size:13px;line-height:21px;color:#64748b;">Using our convenient self-service, you can sign into your account any time to send confirmations, get a receipt, make requests, or cancel your booking.</td></tr>
       <tr><td class="px" style="padding:22px 28px 26px 28px;">
         <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="font-family:Arial,Helvetica,sans-serif;">
           <tr>
-            <td width="50%" class="col2" style="width:50%;padding-right:16px;vertical-align:top;">
+            <td width="50%" class="col2" style="width:50%;padding-right:16px;padding-bottom:20px;vertical-align:top;">
+              <a href="${shareUrl}" style="font-size:13px;font-weight:bold;color:#2563eb;text-decoration:none;">Share booking confirmation</a>
+              <div style="height:6px;line-height:6px;">&nbsp;</div>
+              <div style="font-size:12px;line-height:18px;color:#94a3b8;">Resend your booking confirmation to yourself or others.</div>
+            </td>
+            <td width="50%" class="col2" style="width:50%;padding-bottom:20px;vertical-align:top;">
               <a href="${receiptUrl}" style="font-size:13px;font-weight:bold;color:#2563eb;text-decoration:none;">Download a receipt</a>
               <div style="height:6px;line-height:6px;">&nbsp;</div>
               <div style="font-size:12px;line-height:18px;color:#94a3b8;">Get a receipt sent to you for business use.</div>
             </td>
+          </tr>
+          <tr><td colspan="2" style="padding:0 0 20px 0;"><div style="height:1px;line-height:1px;background-color:#eef2f7;">&nbsp;</div></td></tr>
+          <tr>
+            <td width="50%" class="col2" style="width:50%;padding-right:16px;vertical-align:top;">
+              <a href="${requestsUrl}" style="font-size:13px;font-weight:bold;color:#2563eb;text-decoration:none;">Special requests</a>
+              <div style="height:6px;line-height:6px;">&nbsp;</div>
+              <div style="font-size:12px;line-height:18px;color:#94a3b8;">Ask the property to add extra beds, breakfast, or amenities.</div>
+            </td>
             <td width="50%" class="col2" style="width:50%;vertical-align:top;">
-              <a href="${manageUrl}" style="font-size:13px;font-weight:bold;color:#e11d48;text-decoration:none;">Cancel booking</a>
+              <a href="${cancelUrl}" style="font-size:13px;font-weight:bold;color:#e11d48;text-decoration:none;">Cancel booking</a>
               <div style="height:6px;line-height:6px;">&nbsp;</div>
               <div style="font-size:12px;line-height:18px;color:#94a3b8;">Cancel your booking online easily.</div>
             </td>
@@ -618,7 +632,7 @@ export async function sendBookingConfirmationEmail(
 
 export interface SendHotelCancellationEmailParams {
     bookingId: string;
-    dbId?: string; // DB UUID — reserved for parity with the other emails (no booking-specific CTA needs it today)
+    dbId?: string; // DB UUID — used for the receipt link in the Manage My Booking panel
     email: string;
     guestName: string;
     hotelName: string;
@@ -649,11 +663,12 @@ export interface SendHotelCancellationEmailParams {
  */
 export function buildHotelCancellationEmailHtml(params: SendHotelCancellationEmailParams): string {
     const {
-        bookingId, guestName, hotelName, propertyImage, propertyCity, propertyCountry,
+        bookingId, dbId, guestName, hotelName, propertyImage, propertyCity, propertyCountry,
         starRating, reviewRating, reviewCount, roomName, checkIn, checkOut, totalPrice,
         refundAmount, penaltyAmount, currency = 'PHP', refundStatus, cancellationRef,
     } = params;
     const siteUrl = env.SITE_URL;
+    const receiptUrl = dbId ? `${siteUrl}/trips/invoice/${dbId}?type=hotel` : null;
 
     const firstName = escapeHtml((guestName || '').trim().split(/\s+/)[0] || 'there');
     const nights = Math.max(1, calculateNights(checkIn, checkOut));
@@ -854,6 +869,19 @@ export function buildHotelCancellationEmailHtml(params: SendHotelCancellationEma
     </table>
   </td></tr>
 ${refundPanel}
+  ${receiptUrl ? `
+  <!-- Panel: manage my booking -->
+  <tr><td style="padding:0 0 12px 0;">
+    <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color:#ffffff;border:1px solid #e2e8f0;border-radius:18px;">
+      <tr><td class="px" style="padding:24px 28px 0 28px;font-family:Arial,Helvetica,sans-serif;font-size:11px;font-weight:bold;letter-spacing:1.2px;text-transform:uppercase;color:#0f172a;">Manage my booking</td></tr>
+      <tr><td class="px" style="padding:14px 28px 0 28px;font-family:Arial,Helvetica,sans-serif;font-size:13px;line-height:21px;color:#64748b;">Sign into your account any time to get a copy of this cancellation for your records.</td></tr>
+      <tr><td class="px" style="padding:22px 28px 26px 28px;">
+        <a href="${receiptUrl}" style="font-size:13px;font-weight:bold;color:#2563eb;text-decoration:none;">Download a receipt</a>
+        <div style="height:6px;line-height:6px;">&nbsp;</div>
+        <div style="font-size:12px;line-height:18px;color:#94a3b8;">Get a receipt sent to you for business use.</div>
+      </td></tr>
+    </table>
+  </td></tr>` : ''}
   <!-- Footer -->
   <tr><td class="px" style="padding:16px 8px 8px 8px;font-family:Arial,Helvetica,sans-serif;font-size:12px;line-height:19px;color:#94a3b8;">
     This is a transactional message about booking ${escapeHtml(bookingId)}.<br>
@@ -962,6 +990,9 @@ export function buildHotelAmendmentEmailHtml(params: SendHotelAmendmentEmailPara
     const siteUrl = env.SITE_URL;
     const receiptUrl = dbId ? `${siteUrl}/trips/invoice/${dbId}?type=hotel` : null;
     const manageUrl = dbId ? `${siteUrl}/trips/${dbId}` : null;
+    const shareUrl = dbId ? `${siteUrl}/trips/${dbId}/share` : null;
+    const requestsUrl = dbId ? `${siteUrl}/trips/${dbId}/requests` : null;
+    const cancelUrl = `${siteUrl}/trips`;
 
     const firstName = escapeHtml((guestName || '').trim().split(/\s+/)[0] || 'there');
 
@@ -1139,17 +1170,30 @@ export function buildHotelAmendmentEmailHtml(params: SendHotelAmendmentEmailPara
   <tr><td style="padding:0 0 12px 0;">
     <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color:#ffffff;border:1px solid #e2e8f0;border-radius:18px;">
       <tr><td class="px" style="padding:24px 28px 0 28px;font-family:Arial,Helvetica,sans-serif;font-size:11px;font-weight:bold;letter-spacing:1.2px;text-transform:uppercase;color:#0f172a;">Manage my booking</td></tr>
-      <tr><td class="px" style="padding:14px 28px 0 28px;font-family:Arial,Helvetica,sans-serif;font-size:13px;line-height:21px;color:#64748b;">Sign in any time to get a receipt or cancel your booking.</td></tr>
+      <tr><td class="px" style="padding:14px 28px 0 28px;font-family:Arial,Helvetica,sans-serif;font-size:13px;line-height:21px;color:#64748b;">Sign into your account any time to send confirmations, get a receipt, make requests, or cancel your booking.</td></tr>
       <tr><td class="px" style="padding:22px 28px 26px 28px;">
         <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="font-family:Arial,Helvetica,sans-serif;">
           <tr>
-            <td width="50%" class="col2" style="width:50%;padding-right:16px;vertical-align:top;">
+            <td width="50%" class="col2" style="width:50%;padding-right:16px;padding-bottom:20px;vertical-align:top;">
+              <a href="${shareUrl}" style="font-size:13px;font-weight:bold;color:#2563eb;text-decoration:none;">Share booking confirmation</a>
+              <div style="height:6px;line-height:6px;">&nbsp;</div>
+              <div style="font-size:12px;line-height:18px;color:#94a3b8;">Resend your updated confirmation to yourself or others.</div>
+            </td>
+            <td width="50%" class="col2" style="width:50%;padding-bottom:20px;vertical-align:top;">
               <a href="${receiptUrl}" style="font-size:13px;font-weight:bold;color:#2563eb;text-decoration:none;">Download a receipt</a>
               <div style="height:6px;line-height:6px;">&nbsp;</div>
               <div style="font-size:12px;line-height:18px;color:#94a3b8;">Get a receipt sent to you for business use.</div>
             </td>
+          </tr>
+          <tr><td colspan="2" style="padding:0 0 20px 0;"><div style="height:1px;line-height:1px;background-color:#eef2f7;">&nbsp;</div></td></tr>
+          <tr>
+            <td width="50%" class="col2" style="width:50%;padding-right:16px;vertical-align:top;">
+              <a href="${requestsUrl}" style="font-size:13px;font-weight:bold;color:#2563eb;text-decoration:none;">Special requests</a>
+              <div style="height:6px;line-height:6px;">&nbsp;</div>
+              <div style="font-size:12px;line-height:18px;color:#94a3b8;">Ask the property to add extra beds, breakfast, or amenities.</div>
+            </td>
             <td width="50%" class="col2" style="width:50%;vertical-align:top;">
-              <a href="${manageUrl}" style="font-size:13px;font-weight:bold;color:#e11d48;text-decoration:none;">Cancel booking</a>
+              <a href="${cancelUrl}" style="font-size:13px;font-weight:bold;color:#e11d48;text-decoration:none;">Cancel booking</a>
               <div style="height:6px;line-height:6px;">&nbsp;</div>
               <div style="font-size:12px;line-height:18px;color:#94a3b8;">Cancel your booking online easily.</div>
             </td>
@@ -1300,6 +1344,47 @@ function formatDurationMinutes(totalMinutes: number): string {
     const h = Math.floor(totalMinutes / 60);
     const m = totalMinutes % 60;
     return `${h}h ${m}m`;
+}
+
+/** Single-line route summary — "MNL ⇄ ICN" for a round trip, "MNL → ICN" otherwise. */
+function flightRouteSummary(segments: FlightSegmentEmail[]): { route: string; isRoundTrip: boolean } {
+    const first = segments[0];
+    const last = segments[segments.length - 1];
+    const isRoundTrip = !!(first && last && first.origin === last.destination && segments.length > 1);
+    const route = first && last
+        ? isRoundTrip ? `${first.origin} ⇄ ${first.destination}` : `${first.origin} → ${last.destination}`
+        : 'N/A';
+    return { route, isRoundTrip };
+}
+
+function fmtFlightDayDate(iso: string): string {
+    try {
+        return new Date(iso).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
+    } catch {
+        return iso;
+    }
+}
+
+/**
+ * Compact "Outbound"/"Return" rows for a flight itinerary — used by the cancellation,
+ * refund, and amendment emails, which show the itinerary as reference detail rather
+ * than the full airport-code hero treatment used in the confirmation email.
+ */
+function renderFlightItineraryRows(segments: FlightSegmentEmail[]): string {
+    const slices = groupFlightSlices(segments);
+    return slices.map((slice, i) => {
+        const first = slice[0];
+        const last = slice[slice.length - 1];
+        const label = slices.length > 1 ? (i === 0 ? 'Outbound' : 'Return') : 'Route';
+        return `
+          <tr>
+            <td style="padding:14px 0;border-top:1px solid #eef2f7;color:#64748b;vertical-align:top;">${label}</td>
+            <td align="right" style="padding:14px 0;border-top:1px solid #eef2f7;color:#0f172a;">
+              <div style="font-weight:bold;">${escapeHtml(first.origin)} → ${escapeHtml(last.destination)}</div>
+              <div style="font-size:12px;color:#94a3b8;margin-top:3px;">${escapeHtml(fmtFlightDayDate(first.departureTime))} · ${escapeHtml(first.flightNumber)}${first.airlineName ? ` · ${escapeHtml(first.airlineName)}` : ''}</div>
+            </td>
+          </tr>`;
+    }).join('');
 }
 
 /**
@@ -1703,6 +1788,231 @@ export async function sendFlightBookingConfirmationEmail(
 }
 
 // ═════════════════════════════════════════════════════════════════════
+//  FLIGHT AMENDMENT EMAIL  (updated confirmation — passenger/seat/remarks changed)
+// ═════════════════════════════════════════════════════════════════════
+
+export interface SendFlightAmendmentEmailParams {
+    bookingId: string;
+    pnr: string;
+    email: string; // recipient — the (possibly new) email on the booking
+    passengerName: string; // the (possibly new) passenger name
+    segments: FlightSegmentEmail[];
+    seatNumber?: string; // the (possibly new) seat
+    remarks?: string | null;
+    /** Fallback summary used in the subject line, e.g. "Passenger name, seat". */
+    changes: string;
+    /** Field values as they were immediately before this amendment. Enables an exact before/after diff. */
+    previous?: {
+        passengerName?: string;
+        seatNumber?: string;
+        remarks?: string | null;
+    };
+}
+
+/**
+ * Pure render of the flight amendment email — no I/O, no side effects.
+ * Split out so it can be unit-previewed (e.g. via /api/test-email?debug=html) without
+ * touching the DB or Resend.
+ */
+export function buildFlightAmendmentEmailHtml(params: SendFlightAmendmentEmailParams): string {
+    const { bookingId, pnr, passengerName, segments, seatNumber, remarks, changes, previous } = params;
+    const flightReceiptUrl = `${env.SITE_URL}/trips/invoice/${bookingId}?type=flight`;
+
+    const firstName = escapeHtml((passengerName || '').trim().split(/\s+/)[0] || 'there');
+    const { route } = flightRouteSummary(segments);
+    const savedLabel = new Date().toLocaleString('en-GB', {
+        day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false,
+    });
+
+    // Before/after diff — only rows that actually changed.
+    const diffRows: { label: string; before: string; after: string }[] = [];
+    if (previous) {
+        if (previous.passengerName && previous.passengerName !== passengerName) {
+            diffRows.push({ label: 'Passenger', before: previous.passengerName, after: passengerName });
+        }
+        const prevSeat = previous.seatNumber?.trim() || 'Not selected';
+        const newSeat = seatNumber?.trim() || 'Not selected';
+        if (prevSeat !== newSeat) diffRows.push({ label: 'Seat', before: prevSeat, after: newSeat });
+        const prevRemarks = previous.remarks?.trim() || '—';
+        const newRemarks = remarks?.trim() || '—';
+        if (prevRemarks !== newRemarks) diffRows.push({ label: 'Remarks', before: prevRemarks, after: newRemarks });
+    }
+
+    const itineraryRows = renderFlightItineraryRows(segments);
+    const preheader = escapeHtml(`Booking ${pnr} updated — ${changes || 'details changed'}.`);
+
+    return `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light">
+<meta name="supported-color-schemes" content="light">
+<title>Your flight booking has been updated</title>
+<style>
+  @media only screen and (max-width: 620px) {
+    .container { width: 100% !important; }
+    .px { padding-left: 20px !important; padding-right: 20px !important; }
+    .stack { display: block !important; width: 100% !important; }
+  }
+</style>
+</head>
+<body style="margin:0;padding:0;background-color:#eef2f7;">
+<span style="display:none;font-size:1px;color:#eef2f7;line-height:1px;max-height:0;max-width:0;opacity:0;overflow:hidden;">${preheader}</span>
+
+<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color:#eef2f7;">
+<tr><td align="center" style="padding:20px 12px 32px 12px;">
+
+<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="600" class="container" style="width:600px;max-width:600px;">
+
+  <!-- Masthead -->
+  <tr><td class="px" style="padding:8px 4px 14px 4px;font-family:Arial,Helvetica,sans-serif;">
+    <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
+      <tr>
+        <td align="left">
+          <table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr>
+            <td style="padding-right:9px;line-height:0;"><img src="${BRAND_ICON_URL}" width="26" height="26" alt="${BRAND_NAME}" style="display:block;width:26px;height:26px;border:0;border-radius:13px;"></td>
+            <td style="font-family:Arial,Helvetica,sans-serif;font-size:18px;font-weight:bold;color:#0f172a;letter-spacing:-0.4px;">cheapest<span style="color:#2563eb;">Go</span></td>
+          </tr></table>
+        </td>
+        <td align="right" style="font-size:15px;font-weight:bold;color:#0f172a;letter-spacing:-0.2px;">Hello, ${firstName}</td>
+      </tr>
+    </table>
+  </td></tr>
+
+  <!-- Panel: amendment + CTA -->
+  <tr><td style="padding:0 0 12px 0;">
+    <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color:#ffffff;border:1px solid #e2e8f0;border-radius:18px;">
+      <tr><td class="px" style="padding:28px 28px 26px 28px;font-family:Arial,Helvetica,sans-serif;">
+        <div style="font-size:20px;line-height:26px;font-weight:bold;color:#0f172a;letter-spacing:-0.4px;">Your flight booking has been updated</div>
+        <div style="height:12px;line-height:12px;">&nbsp;</div>
+        <div style="font-size:14px;line-height:22px;color:#475569;">The changes you requested to booking <span style="font-family:'Courier New',Courier,monospace;font-weight:bold;color:#0f172a;">${escapeHtml(pnr)}</span> (${escapeHtml(route)}) were saved on <strong style="color:#0f172a;">${savedLabel}</strong>. Your PNR has not changed.</div>
+        <div style="height:22px;line-height:22px;">&nbsp;</div>
+        <table role="presentation" cellpadding="0" cellspacing="0" border="0" align="center">
+          <tr><td align="center" bgcolor="#2563eb" style="border-radius:14px;">
+            <a href="${flightReceiptUrl}" style="display:block;padding:14px 34px;font-family:Arial,Helvetica,sans-serif;font-size:14px;font-weight:bold;color:#ffffff;text-decoration:none;border-radius:14px;mso-line-height-rule:exactly;line-height:18px;">Download updated receipt</a>
+          </td></tr>
+        </table>
+      </td></tr>
+    </table>
+  </td></tr>
+
+  <!-- Panel: what changed -->
+  <tr><td style="padding:0 0 12px 0;">
+    <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color:#ffffff;border:1px solid #e2e8f0;border-radius:18px;">
+      <tr><td class="px" style="padding:24px 28px 0 28px;font-family:Arial,Helvetica,sans-serif;font-size:15px;font-weight:bold;color:#2563eb;">What changed</td></tr>
+      ${diffRows.length > 0 ? `
+      <tr><td class="px" style="padding:16px 28px 22px 28px;">
+        <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="font-family:Arial,Helvetica,sans-serif;font-size:14px;">
+          <tr>
+            <td width="34%" style="padding:0 0 8px 0;font-size:10px;font-weight:bold;letter-spacing:1.2px;text-transform:uppercase;color:#94a3b8;">Item</td>
+            <td width="33%" style="padding:0 0 8px 0;font-size:10px;font-weight:bold;letter-spacing:1.2px;text-transform:uppercase;color:#94a3b8;">Previously</td>
+            <td width="33%" style="padding:0 0 8px 0;font-size:10px;font-weight:bold;letter-spacing:1.2px;text-transform:uppercase;color:#94a3b8;">Now</td>
+          </tr>
+          ${diffRows.map(row => `
+          <tr>
+            <td style="padding:13px 10px 13px 0;border-top:1px solid #eef2f7;color:#64748b;">${escapeHtml(row.label)}</td>
+            <td style="padding:13px 10px 13px 0;border-top:1px solid #eef2f7;color:#94a3b8;text-decoration:line-through;">${escapeHtml(row.before)}</td>
+            <td style="padding:13px 0;border-top:1px solid #eef2f7;color:#0f172a;font-weight:bold;">${escapeHtml(row.after)}</td>
+          </tr>`).join('')}
+        </table>
+      </td></tr>` : `
+      <tr><td class="px" style="padding:10px 28px 22px 28px;font-family:Arial,Helvetica,sans-serif;font-size:13px;line-height:21px;color:#64748b;">${escapeHtml(changes || 'Your booking details were updated.')}</td></tr>`}
+    </table>
+  </td></tr>
+
+  <!-- Panel: itinerary -->
+  <tr><td style="padding:0 0 12px 0;">
+    <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color:#ffffff;border:1px solid #e2e8f0;border-radius:18px;">
+      <tr><td class="px" style="padding:24px 28px 0 28px;font-family:Arial,Helvetica,sans-serif;font-size:11px;font-weight:bold;letter-spacing:1.2px;text-transform:uppercase;color:#0f172a;">Itinerary</td></tr>
+      <tr><td class="px" style="padding:6px 28px 10px 28px;">
+        <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="font-family:Arial,Helvetica,sans-serif;font-size:14px;">
+          <tr>
+            <td style="padding:14px 0;color:#64748b;">Passenger</td>
+            <td align="right" style="padding:14px 0;color:#0f172a;font-weight:bold;">${escapeHtml(passengerName)}</td>
+          </tr>
+          <tr>
+            <td style="padding:14px 0;border-top:1px solid #eef2f7;color:#64748b;">PNR</td>
+            <td align="right" style="padding:14px 0;border-top:1px solid #eef2f7;font-family:'Courier New',Courier,monospace;color:#0f172a;font-weight:bold;">${escapeHtml(pnr)}</td>
+          </tr>
+          <tr>
+            <td style="padding:14px 0;border-top:1px solid #eef2f7;color:#64748b;">Seat</td>
+            <td align="right" style="padding:14px 0;border-top:1px solid #eef2f7;color:#0f172a;font-weight:bold;">${seatNumber ? escapeHtml(seatNumber) : 'Not selected'}</td>
+          </tr>
+${itineraryRows}
+        </table>
+      </td></tr>
+    </table>
+  </td></tr>
+
+  <!-- Footer -->
+  <tr><td class="px" style="padding:16px 8px 8px 8px;font-family:Arial,Helvetica,sans-serif;font-size:12px;line-height:19px;color:#94a3b8;">
+    This is a transactional message about booking ${escapeHtml(pnr)}.<br>
+    &copy; ${new Date().getFullYear()} ${escapeHtml(BRAND_NAME)}. All rights reserved.<br>
+    <a href="${env.SITE_URL}/account" style="color:#64748b;text-decoration:underline;">Email preferences</a>
+  </td></tr>
+
+</table>
+
+</td></tr>
+</table>
+</body>
+</html>`;
+}
+
+export async function sendFlightAmendmentEmail(
+    params: SendFlightAmendmentEmailParams
+): Promise<SendFlightBookingEmailResult> {
+    const { bookingId, pnr, email, segments } = params;
+    if (!email || !bookingId) {
+        return { success: false, error: 'Missing required fields' };
+    }
+
+    try {
+        const emailHtml = buildFlightAmendmentEmailHtml(params);
+        const { route } = flightRouteSummary(segments);
+        const resendApiKey = env.RESEND_API_KEY;
+        const subject = `Booking Updated – PNR ${pnr} (${route})`;
+
+        if (resendApiKey) {
+            try {
+                const resendResponse = await fetch('https://api.resend.com/emails', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${resendApiKey}`,
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        from: FROM_NOREPLY,
+                        to: [email],
+                        subject,
+                        html: emailHtml,
+                    }),
+                });
+
+                if (resendResponse.ok) {
+                    await logEmail({ bookingId, recipient: email, subject, emailType: 'confirmation', status: 'sent' });
+                    return { success: true };
+                }
+                const errorText = await resendResponse.text();
+                await logEmail({ bookingId, recipient: email, subject, emailType: 'confirmation', status: 'failed', errorMessage: errorText, htmlBody: emailHtml });
+                return { success: false, error: `Resend ${resendResponse.status}: ${errorText}` };
+            } catch (resendError) {
+                console.error('[sendFlightAmendmentEmail] Resend failed:', resendError);
+                await logEmail({ bookingId, recipient: email, subject, emailType: 'confirmation', status: 'failed', errorMessage: resendError instanceof Error ? resendError.message : 'Unknown error', htmlBody: emailHtml });
+                return { success: false, error: resendError instanceof Error ? resendError.message : 'Unknown error' };
+            }
+        }
+
+        await logEmail({ bookingId, recipient: email, subject, emailType: 'confirmation', status: 'queued', htmlBody: emailHtml });
+        return { success: false, error: 'RESEND_API_KEY not configured' };
+    } catch (error) {
+        console.error('[sendFlightAmendmentEmail] Error:', error);
+        return { success: false, error: error instanceof Error ? error.message : 'Failed to send email' };
+    }
+}
+
+// ═════════════════════════════════════════════════════════════════════
 //  FLIGHT AWAITING TICKET EMAIL  (Email 1 for pending Mystifly bookings)
 // ═════════════════════════════════════════════════════════════════════
 
@@ -1716,56 +2026,161 @@ export interface SendFlightAwaitingTicketEmailParams {
     currency: string;
 }
 
+/**
+ * Pure render of the flight awaiting-ticket email (Email 1 — payment captured, seat
+ * held, e-ticket still processing) — no I/O, no side effects. Same design concept as
+ * the flight confirmation, cancellation, refund, and amendment emails: masthead, card
+ * panels, compact itinerary rows, and a status pill — here amber for "in progress"
+ * rather than the confirmed/cancelled/refunded palette used elsewhere.
+ */
+export function buildFlightAwaitingTicketEmailHtml(params: SendFlightAwaitingTicketEmailParams): string {
+    const { bookingId, pnr, passengerName, segments, totalPrice, currency } = params;
+    const siteUrl = env.SITE_URL;
+    const flightReceiptUrl = `${siteUrl}/trips/invoice/${bookingId}?type=flight`;
+
+    const firstName = escapeHtml((passengerName || '').trim().split(/\s+/)[0] || 'there');
+    const { route } = flightRouteSummary(segments);
+    const fmtMoney = (n: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: currency || 'USD' }).format(n);
+    const formattedPrice = fmtMoney(totalPrice);
+    const itineraryRows = renderFlightItineraryRows(segments);
+
+    const preheader = escapeHtml(`Booking ${pnr} is confirmed — ${route}. Your e-ticket is being processed.`);
+
+    return `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light">
+<meta name="supported-color-schemes" content="light">
+<title>Your booking is confirmed</title>
+<style>
+  @media only screen and (max-width: 620px) {
+    .container { width: 100% !important; }
+    .px { padding-left: 20px !important; padding-right: 20px !important; }
+  }
+</style>
+</head>
+<body style="margin:0;padding:0;background-color:#eef2f7;">
+<span style="display:none;font-size:1px;color:#eef2f7;line-height:1px;max-height:0;max-width:0;opacity:0;overflow:hidden;">${preheader}</span>
+
+<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color:#eef2f7;">
+<tr><td align="center" style="padding:20px 12px 32px 12px;">
+
+<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="600" class="container" style="width:600px;max-width:600px;">
+
+  <!-- Masthead -->
+  <tr><td class="px" style="padding:8px 4px 14px 4px;font-family:Arial,Helvetica,sans-serif;">
+    <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
+      <tr>
+        <td align="left">
+          <table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr>
+            <td style="padding-right:9px;line-height:0;"><img src="${BRAND_ICON_URL}" width="26" height="26" alt="${BRAND_NAME}" style="display:block;width:26px;height:26px;border:0;border-radius:13px;"></td>
+            <td style="font-family:Arial,Helvetica,sans-serif;font-size:18px;font-weight:bold;color:#0f172a;letter-spacing:-0.4px;">cheapest<span style="color:#2563eb;">Go</span></td>
+          </tr></table>
+        </td>
+        <td align="right" style="font-size:15px;font-weight:bold;color:#0f172a;letter-spacing:-0.2px;">Hello, ${firstName}</td>
+      </tr>
+    </table>
+  </td></tr>
+
+  <!-- Panel: confirmed + CTA -->
+  <tr><td style="padding:0 0 12px 0;">
+    <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color:#ffffff;border:1px solid #e2e8f0;border-radius:18px;">
+      <tr><td class="px" style="padding:28px 28px 26px 28px;font-family:Arial,Helvetica,sans-serif;">
+        <div style="font-size:20px;line-height:26px;font-weight:bold;color:#0f172a;letter-spacing:-0.4px;">Your booking is confirmed</div>
+        <div style="height:12px;line-height:12px;">&nbsp;</div>
+        <div style="font-size:14px;line-height:22px;color:#475569;">Your seat for ${escapeHtml(route)} is held and your payment of <strong style="color:#0f172a;">${formattedPrice}</strong> has been captured. The airline is finalizing your e-ticket — this usually takes a few minutes to a few hours. We'll email you again the moment it's issued.</div>
+      </td></tr>
+    </table>
+  </td></tr>
+
+  <!-- Panel: booking reference -->
+  <tr><td style="padding:0 0 12px 0;">
+    <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color:#ffffff;border:1px solid #e2e8f0;border-radius:18px;">
+      <tr><td class="px" style="padding:20px 28px 4px 28px;">
+        <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="font-family:Arial,Helvetica,sans-serif;font-size:14px;">
+          <tr>
+            <td style="padding:14px 0;color:#64748b;">Passenger</td>
+            <td align="right" style="padding:14px 0;color:#0f172a;font-weight:bold;">${escapeHtml(passengerName)}</td>
+          </tr>
+          <tr>
+            <td style="padding:14px 0;border-top:1px solid #eef2f7;color:#64748b;">PNR</td>
+            <td align="right" style="padding:14px 0;border-top:1px solid #eef2f7;font-family:'Courier New',Courier,monospace;color:#0f172a;font-weight:bold;">${escapeHtml(pnr)}</td>
+          </tr>
+${itineraryRows}
+          <tr>
+            <td style="padding:14px 0;border-top:1px solid #eef2f7;color:#64748b;">Status</td>
+            <td align="right" style="padding:14px 0;border-top:1px solid #eef2f7;">
+              <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin-left:auto;">
+                <tr><td bgcolor="#fffbeb" style="border-radius:999px;padding:5px 11px;font-family:Arial,Helvetica,sans-serif;font-size:10px;font-weight:bold;letter-spacing:1px;text-transform:uppercase;color:#b45309;">E-ticket pending</td></tr>
+              </table>
+            </td>
+          </tr>
+        </table>
+      </td></tr>
+    </table>
+  </td></tr>
+
+  <!-- Panel: payment -->
+  <tr><td style="padding:0 0 12px 0;">
+    <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color:#ffffff;border:1px solid #e2e8f0;border-radius:18px;">
+      <tr><td class="px" style="padding:24px 28px 8px 28px;font-family:Arial,Helvetica,sans-serif;font-size:15px;font-weight:bold;color:#2563eb;">Your payment has been captured</td></tr>
+      <tr><td class="px" style="padding:8px 28px 4px 28px;">
+        <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="font-family:Arial,Helvetica,sans-serif;font-size:14px;">
+          <tr>
+            <td style="padding:14px 0;font-size:15px;font-weight:bold;color:#0f172a;">Total charged</td>
+            <td align="right" style="padding:14px 0;font-family:'Courier New',Courier,monospace;font-size:17px;font-weight:bold;color:#0f172a;">${formattedPrice}</td>
+          </tr>
+        </table>
+      </td></tr>
+      <tr><td class="px" style="padding:0 28px 24px 28px;font-family:Arial,Helvetica,sans-serif;">
+        <div style="height:1px;line-height:1px;background-color:#eef2f7;">&nbsp;</div>
+        <div style="height:18px;line-height:18px;">&nbsp;</div>
+        <div style="font-size:14px;font-weight:bold;color:#0f172a;">What happens next</div>
+        <div style="height:8px;line-height:8px;">&nbsp;</div>
+        <div style="font-size:13px;line-height:21px;color:#64748b;">Your PNR <span style="font-family:'Courier New',Courier,monospace;font-weight:bold;color:#0f172a;">${escapeHtml(pnr)}</span> is your booking reference. You'll receive a second email with your e-ticket number once the airline finishes ticketing. If ticketing fails for any reason, you'll be fully refunded automatically — no action is needed from you.</div>
+      </td></tr>
+    </table>
+  </td></tr>
+
+  <!-- Panel: manage my booking -->
+  <tr><td style="padding:0 0 12px 0;">
+    <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color:#ffffff;border:1px solid #e2e8f0;border-radius:18px;">
+      <tr><td class="px" style="padding:24px 28px 0 28px;font-family:Arial,Helvetica,sans-serif;font-size:11px;font-weight:bold;letter-spacing:1.2px;text-transform:uppercase;color:#0f172a;">Manage my booking</td></tr>
+      <tr><td class="px" style="padding:14px 28px 0 28px;font-family:Arial,Helvetica,sans-serif;font-size:13px;line-height:21px;color:#64748b;">Sign in any time to resend this confirmation or download a receipt.</td></tr>
+      <tr><td class="px" style="padding:22px 28px 26px 28px;">
+        <a href="${flightReceiptUrl}" style="font-size:13px;font-weight:bold;color:#2563eb;text-decoration:none;">Download a receipt</a>
+        <div style="height:6px;line-height:6px;">&nbsp;</div>
+        <div style="font-size:12px;line-height:18px;color:#94a3b8;">A PDF itinerary and receipt for expenses.</div>
+      </td></tr>
+    </table>
+  </td></tr>
+
+  <!-- Footer -->
+  <tr><td class="px" style="padding:16px 8px 8px 8px;font-family:Arial,Helvetica,sans-serif;font-size:12px;line-height:19px;color:#94a3b8;">
+    This is a transactional message about booking ${escapeHtml(pnr)}.<br>
+    &copy; ${new Date().getFullYear()} ${escapeHtml(BRAND_NAME)}. All rights reserved.<br>
+    <a href="${siteUrl}/account" style="color:#64748b;text-decoration:underline;">Email preferences</a>
+  </td></tr>
+
+</table>
+
+</td></tr>
+</table>
+</body>
+</html>`;
+}
+
 export async function sendFlightAwaitingTicketEmail(
     params: SendFlightAwaitingTicketEmailParams,
 ): Promise<SendFlightBookingEmailResult> {
-    const { bookingId, pnr, email, passengerName, segments, totalPrice, currency } = params;
+    const { bookingId, pnr, email, segments } = params;
     if (!email || !bookingId) return { success: false, error: 'Missing required fields' };
 
     try {
-        const formattedPrice = new Intl.NumberFormat('en-US', { style: 'currency', currency: currency || 'USD' }).format(totalPrice);
-        const firstSeg = segments[0];
-        const lastSeg = segments[segments.length - 1];
-        const route = firstSeg && lastSeg ? `${firstSeg.origin} → ${lastSeg.destination}` : 'N/A';
-
-        const segmentRows = segments.map((seg) => {
-            const depStr = new Date(seg.departureTime).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false });
-            const arrStr = new Date(seg.arrivalTime).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false });
-            return `
-            <tr>
-                <td style="padding:10px;border-bottom:1px solid #e5e7eb;"><strong>${escapeHtml(seg.airlineName || seg.airline)}</strong><br><span style="color:#6b7280;font-size:13px;">${escapeHtml(seg.flightNumber)}</span></td>
-                <td style="padding:10px;border-bottom:1px solid #e5e7eb;"><strong>${escapeHtml(seg.origin)}</strong><br><span style="color:#6b7280;font-size:13px;">${escapeHtml(depStr)}</span></td>
-                <td style="padding:10px;border-bottom:1px solid #e5e7eb;text-align:center;color:#9ca3af;">→</td>
-                <td style="padding:10px;border-bottom:1px solid #e5e7eb;"><strong>${escapeHtml(seg.destination)}</strong><br><span style="color:#6b7280;font-size:13px;">${escapeHtml(arrStr)}</span></td>
-            </tr>`;
-        }).join('');
-
-        const emailHtml = `${emailOpen('linear-gradient(135deg,#d97706 0%,#b45309 100%)', 'Booking Confirmed', `E-Ticket Pending — ${escapeHtml(route)}`)}
-        <p style="margin:0 0 20px 0;">Dear <strong>${escapeHtml(passengerName)}</strong>,</p>
-        <p style="margin:0 0 20px 0;">Your seat is reserved and your payment of <strong>${formattedPrice}</strong> has been captured. The airline is currently processing your e-ticket — this usually takes a few minutes to a few hours.</p>
-        <p style="margin:0 0 20px 0;">We'll send you another email as soon as your e-ticket number is issued. No action is needed from you.</p>
-
-        <div style="background:#f9fafb;padding:20px;border-radius:8px;margin:20px 0;">
-            <h2 style="margin:0 0 15px 0;font-size:18px;color:#374151;">Booking Reference</h2>
-            <table style="width:100%;border-collapse:collapse;">
-                <tr><td style="padding:8px 0;color:#6b7280;">PNR:</td><td style="padding:8px 0;font-weight:700;font-family:monospace;font-size:18px;color:#d97706;">${escapeHtml(pnr)}</td></tr>
-                <tr><td style="padding:8px 0;color:#6b7280;">Booking ID:</td><td style="padding:8px 0;font-family:monospace;font-size:13px;">${escapeHtml(bookingId)}</td></tr>
-                <tr style="border-top:1px solid #e5e7eb;"><td style="padding:12px 0 8px 0;color:#6b7280;font-weight:600;">Total Charged:</td><td style="padding:12px 0 8px 0;font-weight:700;font-size:18px;color:#059669;">${formattedPrice}</td></tr>
-            </table>
-        </div>
-
-        <div style="margin:20px 0;">
-            <h3 style="margin:0 0 10px 0;font-size:16px;color:#374151;">Flight Itinerary</h3>
-            <table style="width:100%;border-collapse:collapse;">${segmentRows}</table>
-        </div>
-
-        <div style="background:#fffbeb;padding:15px;border-radius:8px;margin:20px 0;border-left:4px solid #d97706;">
-            <p style="margin:0;color:#92400e;font-size:14px;">
-                <strong>What happens next?</strong><br>
-                Your PNR (<strong>${escapeHtml(pnr)}</strong>) is your booking reference. The airline is finalizing ticketing. You'll receive a second email with your e-ticket number once it's issued. If ticketing fails for any reason, you will be fully refunded automatically.
-            </p>
-        </div>
-${emailClose()}`;
+        const { route } = flightRouteSummary(segments);
+        const emailHtml = buildFlightAwaitingTicketEmailHtml(params);
 
         const resendApiKey = env.RESEND_API_KEY;
         const subject = `Booking Received – PNR ${pnr} (${route}) — E-Ticket Pending`;
@@ -1836,42 +2251,170 @@ export interface SendFlightRefundEmailParams {
     refundId?: string;
 }
 
+/**
+ * Pure render of the flight refund email (Email 2B — ticketing failed, full refund
+ * initiated) — no I/O, no side effects. Split out so it can be unit-previewed
+ * (e.g. via /api/test-email?debug=html) without touching the DB or Resend.
+ */
+export function buildFlightRefundEmailHtml(params: SendFlightRefundEmailParams): string {
+    const { bookingId, pnr, passengerName, segments, totalPrice, currency, refundId } = params;
+    const siteUrl = env.SITE_URL;
+    const searchUrl = `${siteUrl}/search`;
+
+    const firstName = escapeHtml((passengerName || '').trim().split(/\s+/)[0] || 'there');
+    const { route } = flightRouteSummary(segments);
+    const fmtMoney = (n: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: currency || 'USD' }).format(n);
+    const formattedRefund = fmtMoney(totalPrice);
+
+    const issuedLabel = new Date().toLocaleString('en-GB', {
+        day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false,
+    });
+
+    const itineraryRows = renderFlightItineraryRows(segments);
+    const preheader = escapeHtml(`Refund of ${formattedRefund} issued for booking ${pnr} — ${route}. Ticketing was unsuccessful.`);
+
+    return `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light">
+<meta name="supported-color-schemes" content="light">
+<title>Your flight refund has been issued</title>
+<style>
+  @media only screen and (max-width: 620px) {
+    .container { width: 100% !important; }
+    .px { padding-left: 20px !important; padding-right: 20px !important; }
+  }
+</style>
+</head>
+<body style="margin:0;padding:0;background-color:#eef2f7;">
+<span style="display:none;font-size:1px;color:#eef2f7;line-height:1px;max-height:0;max-width:0;opacity:0;overflow:hidden;">${preheader}</span>
+
+<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color:#eef2f7;">
+<tr><td align="center" style="padding:20px 12px 32px 12px;">
+
+<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="600" class="container" style="width:600px;max-width:600px;">
+
+  <!-- Masthead -->
+  <tr><td class="px" style="padding:8px 4px 14px 4px;font-family:Arial,Helvetica,sans-serif;">
+    <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
+      <tr>
+        <td align="left">
+          <table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr>
+            <td style="padding-right:9px;line-height:0;"><img src="${BRAND_ICON_URL}" width="26" height="26" alt="${BRAND_NAME}" style="display:block;width:26px;height:26px;border:0;border-radius:13px;"></td>
+            <td style="font-family:Arial,Helvetica,sans-serif;font-size:18px;font-weight:bold;color:#0f172a;letter-spacing:-0.4px;">cheapest<span style="color:#2563eb;">Go</span></td>
+          </tr></table>
+        </td>
+        <td align="right" style="font-size:15px;font-weight:bold;color:#0f172a;letter-spacing:-0.2px;">Hello, ${firstName}</td>
+      </tr>
+    </table>
+  </td></tr>
+
+  <!-- Panel: refund issued -->
+  <tr><td style="padding:0 0 12px 0;">
+    <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color:#ffffff;border:1px solid #e2e8f0;border-radius:18px;">
+      <tr><td class="px" style="padding:28px 28px 26px 28px;font-family:Arial,Helvetica,sans-serif;">
+        <div style="font-size:20px;line-height:26px;font-weight:bold;color:#0f172a;letter-spacing:-0.4px;">Your flight refund has been issued</div>
+        <div style="height:12px;line-height:12px;">&nbsp;</div>
+        <div style="font-size:14px;line-height:22px;color:#475569;">The airline wasn't able to confirm the e-ticket for booking <span style="font-family:'Courier New',Courier,monospace;font-weight:bold;color:#0f172a;">${escapeHtml(pnr)}</span> (${escapeHtml(route)}) — this can happen occasionally due to seat availability changes after reservation. We've sent a full refund of <strong style="color:#0f172a;">${formattedRefund}</strong> back to your original payment method.</div>
+        <div style="height:22px;line-height:22px;">&nbsp;</div>
+        <table role="presentation" cellpadding="0" cellspacing="0" border="0" align="center">
+          <tr><td align="center" bgcolor="#2563eb" style="border-radius:14px;">
+            <a href="${searchUrl}" style="display:block;padding:14px 34px;font-family:Arial,Helvetica,sans-serif;font-size:14px;font-weight:bold;color:#ffffff;text-decoration:none;border-radius:14px;mso-line-height-rule:exactly;line-height:18px;">Search flights again</a>
+          </td></tr>
+        </table>
+      </td></tr>
+    </table>
+  </td></tr>
+
+  <!-- Panel: refund summary -->
+  <tr><td style="padding:0 0 12px 0;">
+    <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color:#ffffff;border:1px solid #e2e8f0;border-radius:18px;">
+      <tr><td class="px" style="padding:24px 28px 8px 28px;font-family:Arial,Helvetica,sans-serif;font-size:15px;font-weight:bold;color:#2563eb;">Refund summary</td></tr>
+      <tr><td class="px" style="padding:8px 28px 4px 28px;">
+        <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="font-family:Arial,Helvetica,sans-serif;font-size:14px;">
+          <tr>
+            <td style="padding:14px 0;font-size:15px;font-weight:bold;color:#0f172a;">Refunded to your card</td>
+            <td align="right" style="padding:14px 0;font-family:'Courier New',Courier,monospace;font-size:17px;font-weight:bold;color:#16a34a;">${formattedRefund}</td>
+          </tr>
+        </table>
+      </td></tr>
+      <tr><td class="px" style="padding:0 28px 24px 28px;">
+        <div style="height:1px;line-height:1px;background-color:#eef2f7;">&nbsp;</div>
+        <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="font-family:Arial,Helvetica,sans-serif;font-size:14px;">
+          ${refundId ? `
+          <tr>
+            <td style="padding:16px 0 6px 0;color:#64748b;">Refund reference</td>
+            <td align="right" style="padding:16px 0 6px 0;font-family:'Courier New',Courier,monospace;color:#0f172a;font-weight:bold;">${escapeHtml(refundId)}</td>
+          </tr>` : ''}
+          <tr>
+            <td style="padding:6px 0;color:#64748b;">Issued</td>
+            <td align="right" style="padding:6px 0;color:#0f172a;font-weight:bold;">${issuedLabel}</td>
+          </tr>
+        </table>
+      </td></tr>
+      <tr><td class="px" style="padding:0 28px 24px 28px;font-family:Arial,Helvetica,sans-serif;">
+        <div style="height:1px;line-height:1px;background-color:#eef2f7;">&nbsp;</div>
+        <div style="height:18px;line-height:18px;">&nbsp;</div>
+        <div style="font-size:14px;font-weight:bold;color:#0f172a;">When you'll see it</div>
+        <div style="height:8px;line-height:8px;">&nbsp;</div>
+        <div style="font-size:13px;line-height:21px;color:#64748b;">Refunds typically appear on your statement within 5–10 business days, depending on your bank or card issuer.${refundId ? ` If you haven't received it after 10 days, contact your bank with reference <span style="font-family:'Courier New',Courier,monospace;font-weight:bold;color:#0f172a;">${escapeHtml(refundId)}</span>.` : ''}</div>
+      </td></tr>
+    </table>
+  </td></tr>
+
+  <!-- Panel: what was booked -->
+  <tr><td style="padding:0 0 12px 0;">
+    <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color:#ffffff;border:1px solid #e2e8f0;border-radius:18px;">
+      <tr><td class="px" style="padding:20px 28px 4px 28px;">
+        <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="font-family:Arial,Helvetica,sans-serif;font-size:14px;">
+          <tr>
+            <td style="padding:14px 0;color:#64748b;">Passenger</td>
+            <td align="right" style="padding:14px 0;color:#0f172a;font-weight:bold;">${escapeHtml(passengerName)}</td>
+          </tr>
+          <tr>
+            <td style="padding:14px 0;border-top:1px solid #eef2f7;color:#64748b;">PNR</td>
+            <td align="right" style="padding:14px 0;border-top:1px solid #eef2f7;font-family:'Courier New',Courier,monospace;color:#0f172a;font-weight:bold;">${escapeHtml(pnr)}</td>
+          </tr>
+${itineraryRows}
+          <tr>
+            <td style="padding:14px 0;border-top:1px solid #eef2f7;color:#64748b;">Status</td>
+            <td align="right" style="padding:14px 0;border-top:1px solid #eef2f7;">
+              <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin-left:auto;">
+                <tr><td bgcolor="#fff1f2" style="border-radius:999px;padding:5px 11px;font-family:Arial,Helvetica,sans-serif;font-size:10px;font-weight:bold;letter-spacing:1px;text-transform:uppercase;color:#e11d48;">Refunded</td></tr>
+              </table>
+            </td>
+          </tr>
+        </table>
+      </td></tr>
+    </table>
+  </td></tr>
+
+  <!-- Footer -->
+  <tr><td class="px" style="padding:16px 8px 8px 8px;font-family:Arial,Helvetica,sans-serif;font-size:12px;line-height:19px;color:#94a3b8;">
+    This is a transactional message about booking ${escapeHtml(bookingId)}.<br>
+    &copy; ${new Date().getFullYear()} ${escapeHtml(BRAND_NAME)}. All rights reserved.<br>
+    <a href="${siteUrl}/account" style="color:#64748b;text-decoration:underline;">Email preferences</a>
+  </td></tr>
+
+</table>
+
+</td></tr>
+</table>
+</body>
+</html>`;
+}
+
 export async function sendFlightRefundEmail(
     params: SendFlightRefundEmailParams,
 ): Promise<SendFlightBookingEmailResult> {
-    const { bookingId, pnr, email, passengerName, segments, totalPrice, currency, refundId } = params;
+    const { bookingId, pnr, email, segments } = params;
     if (!email || !bookingId) return { success: false, error: 'Missing required fields' };
 
     try {
-        const formattedPrice = new Intl.NumberFormat('en-US', { style: 'currency', currency: currency || 'USD' }).format(totalPrice);
-        const firstSeg = segments[0];
-        const lastSeg = segments[segments.length - 1];
-        const route = firstSeg && lastSeg ? `${firstSeg.origin} → ${lastSeg.destination}` : 'N/A';
-
-        const emailHtml = `${emailOpen('linear-gradient(135deg,#475569 0%,#334155 100%)', 'Booking Update', `Refund Initiated — ${escapeHtml(route)}`)}
-        <p style="margin:0 0 20px 0;">Dear <strong>${escapeHtml(passengerName)}</strong>,</p>
-        <p style="margin:0 0 20px 0;">We're sorry to inform you that the airline was unable to confirm the e-ticket for your booking <strong>${escapeHtml(pnr)}</strong> (${escapeHtml(route)}). This can happen occasionally due to seat availability changes after reservation.</p>
-        <p style="margin:0 0 20px 0;">A <strong>full refund of ${formattedPrice}</strong> has been initiated to your original payment method.</p>
-
-        <div style="background:#f9fafb;padding:20px;border-radius:8px;margin:20px 0;">
-            <h2 style="margin:0 0 15px 0;font-size:18px;color:#374151;">Refund Details</h2>
-            <table style="width:100%;border-collapse:collapse;">
-                <tr><td style="padding:8px 0;color:#6b7280;">PNR:</td><td style="padding:8px 0;font-weight:700;font-family:monospace;">${escapeHtml(pnr)}</td></tr>
-                <tr><td style="padding:8px 0;color:#6b7280;">Booking ID:</td><td style="padding:8px 0;font-family:monospace;font-size:13px;">${escapeHtml(bookingId)}</td></tr>
-                ${refundId ? `<tr><td style="padding:8px 0;color:#6b7280;">Refund ID:</td><td style="padding:8px 0;font-family:monospace;font-size:13px;">${escapeHtml(refundId)}</td></tr>` : ''}
-                <tr style="border-top:1px solid #e5e7eb;"><td style="padding:12px 0 8px 0;color:#6b7280;font-weight:600;">Refund Amount:</td><td style="padding:12px 0 8px 0;font-weight:700;font-size:18px;color:#4f46e5;">${formattedPrice}</td></tr>
-            </table>
-        </div>
-
-        <div style="background:#fef2f2;padding:15px;border-radius:8px;margin:20px 0;border-left:4px solid #ef4444;">
-            <p style="margin:0;color:#991b1b;font-size:14px;">
-                <strong>When will I see my refund?</strong><br>
-                Refunds typically appear on your statement within <strong>5–10 business days</strong>, depending on your bank or card issuer. If you haven't received it after 10 days, please contact your bank with the Refund ID above.
-            </p>
-        </div>
-
-        <p style="margin:20px 0 0 0;color:#6b7280;font-size:14px;">We apologize for the inconvenience. You're welcome to search for alternative flights at any time.</p>
-${emailClose()}`;
+        const { route } = flightRouteSummary(segments);
+        const emailHtml = buildFlightRefundEmailHtml(params);
 
         const resendApiKey = env.RESEND_API_KEY;
         const subject = `Refund Initiated – ${route} (PNR ${pnr})`;
@@ -1942,72 +2485,175 @@ export interface SendFlightCancellationEmailParams {
     currency: string;
 }
 
+/**
+ * Pure render of the flight cancellation email — no I/O, no side effects.
+ * Split out so it can be unit-previewed (e.g. via /api/test-email?debug=html) without
+ * touching the DB or Resend.
+ */
+export function buildFlightCancellationEmailHtml(params: SendFlightCancellationEmailParams): string {
+    const { bookingId, pnr, passengerName, segments, totalPaid, refundAmount, penaltyAmount, currency } = params;
+    const siteUrl = env.SITE_URL;
+    const searchUrl = `${siteUrl}/search`;
+
+    const firstName = escapeHtml((passengerName || '').trim().split(/\s+/)[0] || 'there');
+    const { route } = flightRouteSummary(segments);
+    const fmtMoney = (n: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: currency || 'USD' }).format(n);
+
+    const cancelledLabel = new Date().toLocaleString('en-GB', {
+        day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false,
+    });
+
+    const isRefundable = refundAmount > 0;
+    const hasCharge = !!penaltyAmount && penaltyAmount > 0;
+    const itineraryRows = renderFlightItineraryRows(segments);
+
+    const refundPanel = isRefundable ? `
+  <!-- Panel: refund -->
+  <tr><td style="padding:0 0 12px 0;">
+    <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color:#ffffff;border:1px solid #e2e8f0;border-radius:18px;">
+      <tr><td class="px" style="padding:24px 28px 8px 28px;font-family:Arial,Helvetica,sans-serif;font-size:15px;font-weight:bold;color:#2563eb;">Your refund is on the way</td></tr>
+      <tr><td class="px" style="padding:8px 28px 4px 28px;">
+        <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="font-family:Arial,Helvetica,sans-serif;font-size:14px;">
+          ${hasCharge ? `
+          <tr>
+            <td style="padding:12px 0;border-top:1px solid #eef2f7;color:#64748b;">Total paid</td>
+            <td align="right" style="padding:12px 0;border-top:1px solid #eef2f7;font-family:'Courier New',Courier,monospace;color:#0f172a;">${fmtMoney(totalPaid)}</td>
+          </tr>
+          <tr>
+            <td style="padding:12px 0;border-top:1px solid #eef2f7;color:#64748b;">Cancellation fee</td>
+            <td align="right" style="padding:12px 0;border-top:1px solid #eef2f7;font-family:'Courier New',Courier,monospace;color:#e11d48;">− ${fmtMoney(penaltyAmount)}</td>
+          </tr>` : ''}
+          <tr>
+            <td style="padding:14px 0;${hasCharge ? 'border-top:1px solid #e2e8f0;' : ''}font-size:15px;font-weight:bold;color:#0f172a;">Total refund</td>
+            <td align="right" style="padding:14px 0;${hasCharge ? 'border-top:1px solid #e2e8f0;' : ''}font-family:'Courier New',Courier,monospace;font-size:17px;font-weight:bold;color:#16a34a;">${fmtMoney(refundAmount)}</td>
+          </tr>
+        </table>
+      </td></tr>
+      <tr><td class="px" style="padding:0 28px 24px 28px;font-family:Arial,Helvetica,sans-serif;">
+        <div style="height:1px;line-height:1px;background-color:#eef2f7;">&nbsp;</div>
+        <div style="height:18px;line-height:18px;">&nbsp;</div>
+        <div style="font-size:14px;font-weight:bold;color:#0f172a;">When you'll see it</div>
+        <div style="height:8px;line-height:8px;">&nbsp;</div>
+        <div style="font-size:13px;line-height:21px;color:#64748b;">Refunds usually appear within 5–10 business days, depending on your bank. We'll email you again once it's confirmed.</div>
+      </td></tr>
+    </table>
+  </td></tr>` : `
+  <!-- Panel: refund -->
+  <tr><td style="padding:0 0 12px 0;">
+    <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color:#ffffff;border:1px solid #e2e8f0;border-radius:18px;">
+      <tr><td class="px" style="padding:24px 28px 8px 28px;font-family:Arial,Helvetica,sans-serif;font-size:15px;font-weight:bold;color:#0f172a;">This fare was non-refundable</td></tr>
+      <tr><td class="px" style="padding:8px 28px 24px 28px;font-family:Arial,Helvetica,sans-serif;font-size:13px;line-height:21px;color:#64748b;">No refund was issued per the fare's ticket conditions. Total charged: <strong style="color:#0f172a;">${fmtMoney(totalPaid)}</strong>.</td></tr>
+    </table>
+  </td></tr>`;
+
+    const preheader = escapeHtml(`Booking ${pnr} is cancelled — ${route}.${isRefundable ? ` Refund of ${fmtMoney(refundAmount)} is on the way.` : ''}`);
+
+    return `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light">
+<meta name="supported-color-schemes" content="light">
+<title>Your flight has been cancelled</title>
+<style>
+  @media only screen and (max-width: 620px) {
+    .container { width: 100% !important; }
+    .px { padding-left: 20px !important; padding-right: 20px !important; }
+  }
+</style>
+</head>
+<body style="margin:0;padding:0;background-color:#eef2f7;">
+<span style="display:none;font-size:1px;color:#eef2f7;line-height:1px;max-height:0;max-width:0;opacity:0;overflow:hidden;">${preheader}</span>
+
+<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color:#eef2f7;">
+<tr><td align="center" style="padding:20px 12px 32px 12px;">
+
+<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="600" class="container" style="width:600px;max-width:600px;">
+
+  <!-- Masthead -->
+  <tr><td class="px" style="padding:8px 4px 14px 4px;font-family:Arial,Helvetica,sans-serif;">
+    <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
+      <tr>
+        <td align="left">
+          <table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr>
+            <td style="padding-right:9px;line-height:0;"><img src="${BRAND_ICON_URL}" width="26" height="26" alt="${BRAND_NAME}" style="display:block;width:26px;height:26px;border:0;border-radius:13px;"></td>
+            <td style="font-family:Arial,Helvetica,sans-serif;font-size:18px;font-weight:bold;color:#0f172a;letter-spacing:-0.4px;">cheapest<span style="color:#2563eb;">Go</span></td>
+          </tr></table>
+        </td>
+        <td align="right" style="font-size:15px;font-weight:bold;color:#0f172a;letter-spacing:-0.2px;">Hello, ${firstName}</td>
+      </tr>
+    </table>
+  </td></tr>
+
+  <!-- Panel: cancellation + CTA -->
+  <tr><td style="padding:0 0 12px 0;">
+    <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color:#ffffff;border:1px solid #e2e8f0;border-radius:18px;">
+      <tr><td class="px" style="padding:28px 28px 26px 28px;font-family:Arial,Helvetica,sans-serif;">
+        <div style="font-size:20px;line-height:26px;font-weight:bold;color:#0f172a;letter-spacing:-0.4px;">Your flight has been cancelled</div>
+        <div style="height:12px;line-height:12px;">&nbsp;</div>
+        <div style="font-size:14px;line-height:22px;color:#475569;">Booking <span style="font-family:'Courier New',Courier,monospace;font-weight:bold;color:#0f172a;">${escapeHtml(pnr)}</span> for ${escapeHtml(route)} was cancelled on <strong style="color:#0f172a;">${cancelledLabel}</strong>. Your seat has been released.</div>
+        <div style="height:22px;line-height:22px;">&nbsp;</div>
+        <table role="presentation" cellpadding="0" cellspacing="0" border="0" align="center">
+          <tr><td align="center" bgcolor="#2563eb" style="border-radius:14px;">
+            <a href="${searchUrl}" style="display:block;padding:14px 34px;font-family:Arial,Helvetica,sans-serif;font-size:14px;font-weight:bold;color:#ffffff;text-decoration:none;border-radius:14px;mso-line-height-rule:exactly;line-height:18px;">Search flights again</a>
+          </td></tr>
+        </table>
+      </td></tr>
+    </table>
+  </td></tr>
+
+  <!-- Panel: cancelled itinerary -->
+  <tr><td style="padding:0 0 12px 0;">
+    <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color:#ffffff;border:1px solid #e2e8f0;border-radius:18px;">
+      <tr><td class="px" style="padding:20px 28px 4px 28px;">
+        <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="font-family:Arial,Helvetica,sans-serif;font-size:14px;">
+          <tr>
+            <td style="padding:14px 0;color:#64748b;">Passenger</td>
+            <td align="right" style="padding:14px 0;color:#0f172a;font-weight:bold;">${escapeHtml(passengerName)}</td>
+          </tr>
+          <tr>
+            <td style="padding:14px 0;border-top:1px solid #eef2f7;color:#64748b;">PNR</td>
+            <td align="right" style="padding:14px 0;border-top:1px solid #eef2f7;font-family:'Courier New',Courier,monospace;color:#0f172a;font-weight:bold;">${escapeHtml(pnr)}</td>
+          </tr>
+${itineraryRows}
+          <tr>
+            <td style="padding:14px 0;border-top:1px solid #eef2f7;color:#64748b;">Status</td>
+            <td align="right" style="padding:14px 0;border-top:1px solid #eef2f7;">
+              <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin-left:auto;">
+                <tr><td bgcolor="#fff1f2" style="border-radius:999px;padding:5px 11px;font-family:Arial,Helvetica,sans-serif;font-size:10px;font-weight:bold;letter-spacing:1px;text-transform:uppercase;color:#e11d48;">Cancelled</td></tr>
+              </table>
+            </td>
+          </tr>
+        </table>
+      </td></tr>
+    </table>
+  </td></tr>
+${refundPanel}
+  <!-- Footer -->
+  <tr><td class="px" style="padding:16px 8px 8px 8px;font-family:Arial,Helvetica,sans-serif;font-size:12px;line-height:19px;color:#94a3b8;">
+    This is a transactional message about booking ${escapeHtml(bookingId)}.<br>
+    &copy; ${new Date().getFullYear()} ${escapeHtml(BRAND_NAME)}. All rights reserved.<br>
+    <a href="${siteUrl}/account" style="color:#64748b;text-decoration:underline;">Email preferences</a>
+  </td></tr>
+
+</table>
+
+</td></tr>
+</table>
+</body>
+</html>`;
+}
+
 export async function sendFlightCancellationEmail(
     params: SendFlightCancellationEmailParams,
 ): Promise<SendFlightBookingEmailResult> {
-    const { bookingId, pnr, email, passengerName, segments, totalPaid, refundAmount, penaltyAmount, currency } = params;
+    const { bookingId, pnr, email, segments } = params;
     if (!email || !bookingId) return { success: false, error: 'Missing required fields' };
 
     try {
-        const fmt = (n: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: currency || 'USD' }).format(n);
-        const firstSeg = segments[0];
-        const lastSeg = segments[segments.length - 1];
-        const isRoundTrip = firstSeg && lastSeg && firstSeg.origin === lastSeg.destination && segments.length > 1;
-        const route = firstSeg && lastSeg
-            ? isRoundTrip ? `${firstSeg.origin} ⇄ ${firstSeg.destination}` : `${firstSeg.origin} → ${lastSeg.destination}`
-            : 'N/A';
-
-        const isRefundable = refundAmount > 0;
-        const refundBanner = isRefundable
-            ? `<div style="background:#f0fdf4;padding:15px;border-radius:8px;margin:20px 0;border-left:4px solid #22c55e;">
-                <p style="margin:0;color:#15803d;font-size:14px;">
-                  <strong>Refund of ${fmt(refundAmount)} is being processed.</strong><br>
-                  ${penaltyAmount > 0 ? `A cancellation fee of ${fmt(penaltyAmount)} was applied per the airline's fare rules.<br>` : ''}
-                  Please allow <strong>5–10 business days</strong> for the refund to appear on your statement.
-                </p>
-              </div>`
-            : `<div style="background:#fef2f2;padding:15px;border-radius:8px;margin:20px 0;border-left:4px solid #ef4444;">
-                <p style="margin:0;color:#991b1b;font-size:14px;">
-                  <strong>This fare is non-refundable.</strong><br>
-                  No refund will be issued per the airline's fare rules.
-                </p>
-              </div>`;
-
-        const segmentRows = segments.map((seg) => {
-            const depStr = new Date(seg.departureTime).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false });
-            const arrStr = new Date(seg.arrivalTime).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false });
-            return `<tr>
-                <td style="padding:10px;border-bottom:1px solid #e5e7eb;"><strong>${escapeHtml(seg.airlineName || seg.airline)}</strong><br><span style="color:#6b7280;font-size:13px;">${escapeHtml(seg.flightNumber)}</span></td>
-                <td style="padding:10px;border-bottom:1px solid #e5e7eb;"><strong>${escapeHtml(seg.origin)}</strong><br><span style="color:#6b7280;font-size:13px;">${escapeHtml(depStr)}</span></td>
-                <td style="padding:10px;border-bottom:1px solid #e5e7eb;text-align:center;color:#9ca3af;">→</td>
-                <td style="padding:10px;border-bottom:1px solid #e5e7eb;"><strong>${escapeHtml(seg.destination)}</strong><br><span style="color:#6b7280;font-size:13px;">${escapeHtml(arrStr)}</span></td>
-            </tr>`;
-        }).join('');
-
-        const emailHtml = `${emailOpen('linear-gradient(135deg,#64748b 0%,#475569 100%)', 'Booking Cancelled', escapeHtml(route))}
-    <p style="margin:0 0 20px 0;">Dear <strong>${escapeHtml(passengerName)}</strong>,</p>
-    <p style="margin:0 0 20px 0;">Your booking for <strong>${escapeHtml(route)}</strong> (PNR: <strong style="font-family:monospace;">${escapeHtml(pnr)}</strong>) has been successfully cancelled.</p>
-
-    <div style="background:#f9fafb;padding:20px;border-radius:8px;margin:20px 0;">
-      <h2 style="margin:0 0 15px 0;font-size:18px;color:#374151;">Cancellation Summary</h2>
-      <table style="width:100%;border-collapse:collapse;">
-        <tr><td style="padding:8px 0;color:#6b7280;">PNR:</td><td style="padding:8px 0;font-weight:700;font-family:monospace;">${escapeHtml(pnr)}</td></tr>
-        <tr><td style="padding:8px 0;color:#6b7280;">Booking ID:</td><td style="padding:8px 0;font-family:monospace;font-size:13px;">${escapeHtml(bookingId)}</td></tr>
-        <tr style="border-top:1px solid #e5e7eb;"><td style="padding:8px 0;color:#6b7280;">Total Paid:</td><td style="padding:8px 0;font-weight:600;">${fmt(totalPaid)}</td></tr>
-        ${penaltyAmount > 0 ? `<tr><td style="padding:8px 0;color:#6b7280;">Cancellation Fee:</td><td style="padding:8px 0;color:#ef4444;font-weight:600;">-${fmt(penaltyAmount)}</td></tr>` : ''}
-        <tr><td style="padding:8px 0;color:#6b7280;font-weight:600;">Refund Amount:</td><td style="padding:8px 0;font-weight:700;font-size:16px;color:${isRefundable ? '#059669' : '#ef4444'};">${isRefundable ? fmt(refundAmount) : 'Non-refundable'}</td></tr>
-      </table>
-    </div>
-
-    <div style="margin:20px 0;">
-      <h3 style="margin:0 0 10px 0;font-size:16px;color:#374151;">Cancelled Itinerary</h3>
-      <table style="width:100%;border-collapse:collapse;">${segmentRows}</table>
-    </div>
-
-    ${refundBanner}
-
-    <p style="margin:20px 0 0 0;color:#6b7280;font-size:14px;">If you have any questions about your cancellation or refund, please contact our support team.</p>
-${emailClose()}`;
+        const { route } = flightRouteSummary(segments);
+        const emailHtml = buildFlightCancellationEmailHtml(params);
 
         const resendApiKey = env.RESEND_API_KEY;
         const subject = `Booking Cancelled – PNR ${pnr} (${route})`;
@@ -2077,38 +2723,140 @@ export interface SendFlightCancellationRefundEmailParams {
     stripeRefundId?: string;
 }
 
+/**
+ * Pure render of the flight cancellation-refund-confirmed email — no I/O, no side
+ * effects. Split out so it can be unit-previewed (e.g. via /api/test-email?debug=html)
+ * without touching the DB or Resend. Unlike buildFlightRefundEmailHtml (ticketing
+ * failure, full itinerary available), this fires after a user-initiated cancellation
+ * where only a route summary string is on hand — no per-segment dates/flight numbers.
+ */
+export function buildFlightCancellationRefundEmailHtml(params: SendFlightCancellationRefundEmailParams): string {
+    const { bookingId, pnr, passengerName, route, refundAmount, currency, stripeRefundId } = params;
+    const siteUrl = env.SITE_URL;
+
+    const firstName = escapeHtml((passengerName || '').trim().split(/\s+/)[0] || 'there');
+    const fmtMoney = (n: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: currency || 'USD' }).format(n);
+    const formattedRefund = fmtMoney(refundAmount);
+
+    const issuedLabel = new Date().toLocaleString('en-GB', {
+        day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false,
+    });
+
+    const preheader = escapeHtml(`Refund of ${formattedRefund} confirmed for booking ${pnr} — ${route}.`);
+
+    return `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light">
+<meta name="supported-color-schemes" content="light">
+<title>Your flight refund has been confirmed</title>
+<style>
+  @media only screen and (max-width: 620px) {
+    .container { width: 100% !important; }
+    .px { padding-left: 20px !important; padding-right: 20px !important; }
+  }
+</style>
+</head>
+<body style="margin:0;padding:0;background-color:#eef2f7;">
+<span style="display:none;font-size:1px;color:#eef2f7;line-height:1px;max-height:0;max-width:0;opacity:0;overflow:hidden;">${preheader}</span>
+
+<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color:#eef2f7;">
+<tr><td align="center" style="padding:20px 12px 32px 12px;">
+
+<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="600" class="container" style="width:600px;max-width:600px;">
+
+  <!-- Masthead -->
+  <tr><td class="px" style="padding:8px 4px 14px 4px;font-family:Arial,Helvetica,sans-serif;">
+    <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
+      <tr>
+        <td align="left">
+          <table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr>
+            <td style="padding-right:9px;line-height:0;"><img src="${BRAND_ICON_URL}" width="26" height="26" alt="${BRAND_NAME}" style="display:block;width:26px;height:26px;border:0;border-radius:13px;"></td>
+            <td style="font-family:Arial,Helvetica,sans-serif;font-size:18px;font-weight:bold;color:#0f172a;letter-spacing:-0.4px;">cheapest<span style="color:#2563eb;">Go</span></td>
+          </tr></table>
+        </td>
+        <td align="right" style="font-size:15px;font-weight:bold;color:#0f172a;letter-spacing:-0.2px;">Hello, ${firstName}</td>
+      </tr>
+    </table>
+  </td></tr>
+
+  <!-- Panel: refund confirmed -->
+  <tr><td style="padding:0 0 12px 0;">
+    <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color:#ffffff;border:1px solid #e2e8f0;border-radius:18px;">
+      <tr><td class="px" style="padding:28px 28px 26px 28px;font-family:Arial,Helvetica,sans-serif;">
+        <div style="font-size:20px;line-height:26px;font-weight:bold;color:#0f172a;letter-spacing:-0.4px;">Your flight refund has been confirmed</div>
+        <div style="height:12px;line-height:12px;">&nbsp;</div>
+        <div style="font-size:14px;line-height:22px;color:#475569;">Your refund of <strong style="color:#0f172a;">${formattedRefund}</strong> for cancelled booking <span style="font-family:'Courier New',Courier,monospace;font-weight:bold;color:#0f172a;">${escapeHtml(pnr)}</span> (${escapeHtml(route)}) has been processed and is on its way back to your original payment method.</div>
+      </td></tr>
+    </table>
+  </td></tr>
+
+  <!-- Panel: refund summary -->
+  <tr><td style="padding:0 0 12px 0;">
+    <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color:#ffffff;border:1px solid #e2e8f0;border-radius:18px;">
+      <tr><td class="px" style="padding:24px 28px 8px 28px;font-family:Arial,Helvetica,sans-serif;font-size:15px;font-weight:bold;color:#2563eb;">Refund summary</td></tr>
+      <tr><td class="px" style="padding:8px 28px 4px 28px;">
+        <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="font-family:Arial,Helvetica,sans-serif;font-size:14px;">
+          <tr>
+            <td style="padding:14px 0;color:#64748b;">Route</td>
+            <td align="right" style="padding:14px 0;color:#0f172a;font-weight:bold;">${escapeHtml(route)}</td>
+          </tr>
+          <tr>
+            <td style="padding:14px 0;font-size:15px;font-weight:bold;color:#0f172a;border-top:1px solid #eef2f7;">Refunded to your card</td>
+            <td align="right" style="padding:14px 0;font-family:'Courier New',Courier,monospace;font-size:17px;font-weight:bold;color:#16a34a;border-top:1px solid #eef2f7;">${formattedRefund}</td>
+          </tr>
+        </table>
+      </td></tr>
+      <tr><td class="px" style="padding:0 28px 24px 28px;">
+        <div style="height:1px;line-height:1px;background-color:#eef2f7;">&nbsp;</div>
+        <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="font-family:Arial,Helvetica,sans-serif;font-size:14px;">
+          ${stripeRefundId ? `
+          <tr>
+            <td style="padding:16px 0 6px 0;color:#64748b;">Refund reference</td>
+            <td align="right" style="padding:16px 0 6px 0;font-family:'Courier New',Courier,monospace;color:#0f172a;font-weight:bold;">${escapeHtml(stripeRefundId)}</td>
+          </tr>` : ''}
+          <tr>
+            <td style="padding:6px 0;color:#64748b;">Issued</td>
+            <td align="right" style="padding:6px 0;color:#0f172a;font-weight:bold;">${issuedLabel}</td>
+          </tr>
+        </table>
+      </td></tr>
+      <tr><td class="px" style="padding:0 28px 24px 28px;font-family:Arial,Helvetica,sans-serif;">
+        <div style="height:1px;line-height:1px;background-color:#eef2f7;">&nbsp;</div>
+        <div style="height:18px;line-height:18px;">&nbsp;</div>
+        <div style="font-size:14px;font-weight:bold;color:#0f172a;">When you'll see it</div>
+        <div style="height:8px;line-height:8px;">&nbsp;</div>
+        <div style="font-size:13px;line-height:21px;color:#64748b;">Refunds typically appear on your statement within 3–5 business days for credit cards, or up to 10 business days for debit cards, depending on your bank.${stripeRefundId ? ` If you haven't received it after 10 days, contact your bank with reference <span style="font-family:'Courier New',Courier,monospace;font-weight:bold;color:#0f172a;">${escapeHtml(stripeRefundId)}</span>.` : ''}</div>
+      </td></tr>
+    </table>
+  </td></tr>
+
+  <!-- Footer -->
+  <tr><td class="px" style="padding:16px 8px 8px 8px;font-family:Arial,Helvetica,sans-serif;font-size:12px;line-height:19px;color:#94a3b8;">
+    This is a transactional message about booking ${escapeHtml(bookingId)}.<br>
+    &copy; ${new Date().getFullYear()} ${escapeHtml(BRAND_NAME)}. All rights reserved.<br>
+    <a href="${siteUrl}/account" style="color:#64748b;text-decoration:underline;">Email preferences</a>
+  </td></tr>
+
+</table>
+
+</td></tr>
+</table>
+</body>
+</html>`;
+}
+
 export async function sendFlightCancellationRefundEmail(
     params: SendFlightCancellationRefundEmailParams,
 ): Promise<SendFlightBookingEmailResult> {
-    const { bookingId, pnr, email, passengerName, route, refundAmount, currency, stripeRefundId } = params;
+    const { bookingId, pnr, email, refundAmount, currency } = params;
     if (!email || !bookingId) return { success: false, error: 'Missing required fields' };
 
     try {
         const fmt = (n: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: currency || 'USD' }).format(n);
-
-        const emailHtml = `${emailOpen('linear-gradient(135deg,#059669 0%,#047857 100%)', 'Refund Confirmed', escapeHtml(route))}
-    <p style="margin:0 0 20px 0;">Dear <strong>${escapeHtml(passengerName)}</strong>,</p>
-    <p style="margin:0 0 20px 0;">Great news — your refund of <strong>${fmt(refundAmount)}</strong> for booking <strong style="font-family:monospace;">${escapeHtml(pnr)}</strong> has been successfully processed and is on its way back to your original payment method.</p>
-
-    <div style="background:#f9fafb;padding:20px;border-radius:8px;margin:20px 0;">
-      <h2 style="margin:0 0 15px 0;font-size:18px;color:#374151;">Refund Details</h2>
-      <table style="width:100%;border-collapse:collapse;">
-        <tr><td style="padding:8px 0;color:#6b7280;">PNR:</td><td style="padding:8px 0;font-weight:700;font-family:monospace;">${escapeHtml(pnr)}</td></tr>
-        <tr><td style="padding:8px 0;color:#6b7280;">Booking ID:</td><td style="padding:8px 0;font-family:monospace;font-size:13px;">${escapeHtml(bookingId)}</td></tr>
-        ${stripeRefundId ? `<tr><td style="padding:8px 0;color:#6b7280;">Refund Reference:</td><td style="padding:8px 0;font-family:monospace;font-size:13px;">${escapeHtml(stripeRefundId)}</td></tr>` : ''}
-        <tr style="border-top:1px solid #e5e7eb;"><td style="padding:12px 0 8px 0;color:#6b7280;font-weight:600;">Refund Amount:</td><td style="padding:12px 0 8px 0;font-weight:700;font-size:20px;color:#059669;">${fmt(refundAmount)}</td></tr>
-      </table>
-    </div>
-
-    <div style="background:#f0fdf4;padding:15px;border-radius:8px;margin:20px 0;border-left:4px solid #22c55e;">
-      <p style="margin:0;color:#15803d;font-size:14px;">
-        <strong>When will I see it?</strong><br>
-        Refunds typically appear on your statement within <strong>3–5 business days</strong> for credit cards, or up to 10 business days for debit cards, depending on your bank. If you haven't received it after 10 days, please contact your bank with the Refund Reference above.
-      </p>
-    </div>
-
-    <p style="margin:20px 0 0 0;color:#6b7280;font-size:14px;">Thank you for choosing ${BRAND_NAME}. We hope to serve you again soon.</p>
-${emailClose()}`;
+        const emailHtml = buildFlightCancellationRefundEmailHtml(params);
 
         const resendApiKey = env.RESEND_API_KEY;
         const subject = `Refund Confirmed – ${fmt(refundAmount)} for PNR ${pnr}`;

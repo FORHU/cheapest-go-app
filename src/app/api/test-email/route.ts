@@ -5,11 +5,21 @@ import {
     sendHotelAmendmentEmail,
     sendHotelRefundEmail,
     sendFlightBookingConfirmationEmail,
+    sendFlightAwaitingTicketEmail,
+    sendFlightCancellationEmail,
+    sendFlightRefundEmail,
+    sendFlightCancellationRefundEmail,
+    sendFlightAmendmentEmail,
     buildHotelConfirmationEmailHtml,
     buildHotelRefundEmailHtml,
     buildHotelAmendmentEmailHtml,
     buildHotelCancellationEmailHtml,
     buildFlightConfirmationEmailHtml,
+    buildFlightAwaitingTicketEmailHtml,
+    buildFlightCancellationEmailHtml,
+    buildFlightRefundEmailHtml,
+    buildFlightCancellationRefundEmailHtml,
+    buildFlightAmendmentEmailHtml,
     type FlightSegmentEmail
 } from '@/lib/server/email';
 
@@ -36,27 +46,35 @@ export async function GET(req: Request) {
         }, { status: 400 });
     }
 
-    // Sample booking data
+    // Real hotel data, pulled directly from the ETG (worldota.net) B2B API via curl:
+    //   curl -X POST https://api.worldota.net/api/b2b/v3/hotel/info/ \
+    //     -H "Authorization: Basic <base64(ETG_KEY_ID:ETG_API_KEY)>" \
+    //     -d '{"id":"inter_city_seoul","language":"en"}'
+    //   curl -X POST https://api.worldota.net/api/b2b/v3/search/serp/hotels/ \
+    //     -H "Authorization: Basic <base64(ETG_KEY_ID:ETG_API_KEY)>" \
+    //     -d '{"ids":["inter_city_seoul"],"checkin":"2026-10-15","checkout":"2026-10-18","guests":[{"adults":2}],"currency":"USD","language":"en","residency":"us"}'
+    // Hotel: Inter City Seoul (ETG id "inter_city_seoul", hid 8479183), 4-star, real
+    // address/image/room name/price from that response — baked in as a static sample so
+    // this endpoint doesn't depend on a live TGX/ETG call or local hotel_content cache at
+    // request time.
     const sampleBooking = {
         bookingId: 'TEST-' + Date.now(),
-        propertyName: 'Grand Manila Hotel',
-        propertyImage: 'https://static.cupid.travel/hotel-placeholder.jpg',
-        propertyAddress: '123 Makati Avenue, San Antonio',
-        propertyCity: 'Makati City',
-        propertyCountry: 'Philippines',
+        propertyName: 'Inter City Seoul',
+        propertyImage: 'https://cdn.worldota.net/t/1024x768/content/98/f8/98f8cc66f065e824c7c600a4488b660f4a8882c9.jpeg',
+        propertyAddress: '76-3, Magokjungang 6-ro, Seoul',
+        propertyCity: 'Seoul',
+        propertyCountry: 'South Korea',
         starRating: 4,
-        reviewRating: 4.6,
-        reviewCount: 812,
-        checkInTime: '15:00',
+        checkInTime: '14:00',
         checkOutTime: '12:00',
-        roomName: 'Deluxe Suite with City View',
-        checkIn: '2026-05-15',
-        checkOut: '2026-05-18',
+        roomName: 'Deluxe Double Room with Kitchen',
+        checkIn: '2026-10-15',
+        checkOut: '2026-10-18',
         adults: 2,
-        children: 1,
-        totalPrice: 15000,
-        discountAmount: 500,
-        currency: 'PHP',
+        children: 0,
+        totalPrice: 438,
+        discountAmount: 20,
+        currency: 'USD',
         holderFirstName: 'Test',
         holderLastName: 'User',
         holderEmail: recipient,
@@ -65,9 +83,15 @@ export async function GET(req: Request) {
             refundableTag: 'RFN',
             cancelPolicyInfos: [
                 {
-                    cancelTime: '2026-05-10T00:00:00Z',
+                    cancelTime: '2026-10-10T15:00:00Z',
                     amount: 0,
-                    currency: 'PHP',
+                    currency: 'USD',
+                    type: 'AMOUNT'
+                },
+                {
+                    cancelTime: '2026-10-12T15:00:00Z',
+                    amount: 438,
+                    currency: 'USD',
                     type: 'AMOUNT'
                 }
             ]
@@ -90,8 +114,6 @@ export async function GET(req: Request) {
         propertyCity: sampleBooking.propertyCity,
         propertyCountry: sampleBooking.propertyCountry,
         starRating: sampleBooking.starRating,
-        reviewRating: sampleBooking.reviewRating,
-        reviewCount: sampleBooking.reviewCount,
         checkInTime: sampleBooking.checkInTime,
         checkOutTime: sampleBooking.checkOutTime,
         adults: sampleBooking.adults,
@@ -110,8 +132,8 @@ export async function GET(req: Request) {
         roomName: sampleBooking.roomName,
         checkIn: sampleBooking.checkIn,
         checkOut: sampleBooking.checkOut,
-        refundAmount: sampleBooking.totalPrice - 750,
-        penaltyAmount: 750,
+        refundAmount: sampleBooking.totalPrice - 50,
+        penaltyAmount: 50,
         currency: sampleBooking.currency,
         stripeRefundId: 're_3TestRefund00000001',
         cardBrand: 'Visa',
@@ -145,6 +167,7 @@ export async function GET(req: Request) {
     const cancellationRefundStatus = searchParams.get('refundStatus') || 'processed';
     const cancellationParams = {
         bookingId: sampleBooking.bookingId,
+        dbId: searchParams.get('dbId') || undefined,
         email: recipient,
         guestName: `${sampleBooking.holderFirstName} ${sampleBooking.holderLastName}`,
         hotelName: sampleBooking.propertyName,
@@ -152,14 +175,12 @@ export async function GET(req: Request) {
         propertyCity: sampleBooking.propertyCity,
         propertyCountry: sampleBooking.propertyCountry,
         starRating: sampleBooking.starRating,
-        reviewRating: sampleBooking.reviewRating,
-        reviewCount: sampleBooking.reviewCount,
         roomName: sampleBooking.roomName,
         checkIn: sampleBooking.checkIn,
         checkOut: sampleBooking.checkOut,
         totalPrice: sampleBooking.totalPrice,
-        refundAmount: cancellationRefundStatus === 'non_refundable' ? undefined : sampleBooking.totalPrice - 750,
-        penaltyAmount: cancellationRefundStatus === 'non_refundable' ? undefined : 750,
+        refundAmount: cancellationRefundStatus === 'non_refundable' ? undefined : sampleBooking.totalPrice - 50,
+        penaltyAmount: cancellationRefundStatus === 'non_refundable' ? undefined : 50,
         currency: sampleBooking.currency,
         refundStatus: cancellationRefundStatus,
         cancellationRef: 'a1b2c3d4-e5f6-4789-a012-3456789abcde',
@@ -212,6 +233,72 @@ export async function GET(req: Request) {
         },
     };
 
+    const flightAwaitingTicketParams = {
+        bookingId: flightConfirmationParams.bookingId,
+        pnr: flightConfirmationParams.pnr,
+        email: recipient,
+        passengerName: flightConfirmationParams.passengerName,
+        segments: flightConfirmationParams.segments,
+        totalPrice: flightConfirmationParams.totalPrice,
+        currency: flightConfirmationParams.currency,
+    };
+
+    // flightRefundStatus overridable via query param to preview both cancellation-refund
+    // panel variants: ?flightRefundStatus=refundable (default) | non_refundable
+    const flightRefundStatus = searchParams.get('flightRefundStatus') || 'refundable';
+    const flightPenalty = 3400; // matches farePolicy.changePenaltyAmount above, for a consistent story
+    const flightCancellationParams = {
+        bookingId: flightConfirmationParams.bookingId,
+        pnr: flightConfirmationParams.pnr,
+        email: recipient,
+        passengerName: flightConfirmationParams.passengerName,
+        segments: flightConfirmationParams.segments,
+        totalPaid: flightConfirmationParams.totalPrice,
+        refundAmount: flightRefundStatus === 'non_refundable' ? 0 : flightConfirmationParams.totalPrice - flightPenalty,
+        penaltyAmount: flightRefundStatus === 'non_refundable' ? 0 : flightPenalty,
+        currency: flightConfirmationParams.currency,
+    };
+
+    const flightRefundParams = {
+        bookingId: flightConfirmationParams.bookingId,
+        pnr: flightConfirmationParams.pnr,
+        email: recipient,
+        passengerName: flightConfirmationParams.passengerName,
+        segments: flightConfirmationParams.segments,
+        totalPrice: flightConfirmationParams.totalPrice,
+        currency: flightConfirmationParams.currency,
+        refundId: 're_3TestFlightRefund0001',
+    };
+
+    const flightCancellationRefundParams = {
+        bookingId: flightConfirmationParams.bookingId,
+        pnr: flightConfirmationParams.pnr,
+        email: recipient,
+        passengerName: flightConfirmationParams.passengerName,
+        route: flightConfirmationParams.segments[0] && flightConfirmationParams.segments[flightConfirmationParams.segments.length - 1]
+            ? `${flightConfirmationParams.segments[0].origin} → ${flightConfirmationParams.segments[flightConfirmationParams.segments.length - 1].destination}`
+            : 'N/A',
+        refundAmount: flightConfirmationParams.totalPrice - flightPenalty,
+        currency: flightConfirmationParams.currency,
+        stripeRefundId: 're_3TestFlightCancelRefund0001',
+    };
+
+    const flightAmendmentParams = {
+        bookingId: flightConfirmationParams.bookingId,
+        pnr: flightConfirmationParams.pnr,
+        email: recipient,
+        passengerName: flightConfirmationParams.passengerName,
+        segments: flightConfirmationParams.segments,
+        seatNumber: searchParams.get('seat') || '14C',
+        remarks: 'Vegetarian meal requested',
+        changes: 'Passenger name, seat',
+        previous: {
+            passengerName: 'Maria S. Reyez',
+            seatNumber: undefined,
+            remarks: null,
+        },
+    };
+
     // Render-only mode: returns the generated HTML directly for visual inspection in a
     // browser, without touching the DB or Resend. GET /api/test-email?debug=html&type=confirmation
     if (searchParams.get('debug') === 'html' && type === 'confirmation') {
@@ -236,6 +323,31 @@ export async function GET(req: Request) {
     }
     if (searchParams.get('debug') === 'html' && type === 'flight') {
         return new NextResponse(buildFlightConfirmationEmailHtml(flightConfirmationParams), {
+            headers: { 'Content-Type': 'text/html; charset=utf-8' },
+        });
+    }
+    if (searchParams.get('debug') === 'html' && type === 'flight-awaiting-ticket') {
+        return new NextResponse(buildFlightAwaitingTicketEmailHtml(flightAwaitingTicketParams), {
+            headers: { 'Content-Type': 'text/html; charset=utf-8' },
+        });
+    }
+    if (searchParams.get('debug') === 'html' && type === 'flight-cancellation') {
+        return new NextResponse(buildFlightCancellationEmailHtml(flightCancellationParams), {
+            headers: { 'Content-Type': 'text/html; charset=utf-8' },
+        });
+    }
+    if (searchParams.get('debug') === 'html' && type === 'flight-refund') {
+        return new NextResponse(buildFlightRefundEmailHtml(flightRefundParams), {
+            headers: { 'Content-Type': 'text/html; charset=utf-8' },
+        });
+    }
+    if (searchParams.get('debug') === 'html' && type === 'flight-cancellation-refund') {
+        return new NextResponse(buildFlightCancellationRefundEmailHtml(flightCancellationRefundParams), {
+            headers: { 'Content-Type': 'text/html; charset=utf-8' },
+        });
+    }
+    if (searchParams.get('debug') === 'html' && type === 'flight-amendment') {
+        return new NextResponse(buildFlightAmendmentEmailHtml(flightAmendmentParams), {
             headers: { 'Content-Type': 'text/html; charset=utf-8' },
         });
     }
@@ -264,10 +376,33 @@ export async function GET(req: Request) {
                 result = await sendFlightBookingConfirmationEmail(flightConfirmationParams);
                 break;
 
+            case 'flight-awaiting-ticket':
+                result = await sendFlightAwaitingTicketEmail(flightAwaitingTicketParams);
+                break;
+
+            case 'flight-cancellation':
+                result = await sendFlightCancellationEmail(flightCancellationParams);
+                break;
+
+            case 'flight-refund':
+                result = await sendFlightRefundEmail(flightRefundParams);
+                break;
+
+            case 'flight-cancellation-refund':
+                result = await sendFlightCancellationRefundEmail(flightCancellationRefundParams);
+                break;
+
+            case 'flight-amendment':
+                result = await sendFlightAmendmentEmail(flightAmendmentParams);
+                break;
+
             default:
                 return NextResponse.json({
                     error: 'Invalid type',
-                    validTypes: ['confirmation', 'cancellation', 'amendment', 'refund', 'flight']
+                    validTypes: [
+                        'confirmation', 'cancellation', 'amendment', 'refund', 'flight', 'flight-awaiting-ticket',
+                        'flight-cancellation', 'flight-refund', 'flight-cancellation-refund', 'flight-amendment',
+                    ]
                 }, { status: 400 });
         }
 
