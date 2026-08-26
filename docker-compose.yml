@@ -33,8 +33,17 @@ services:
     env_file:
       - .env
     environment:
-      DATABASE_URL: postgresql://styleosmirror_admin:FixedPass2026!@forhu-staging-style-os-mirror-postgres.cd6imo04om4m.ap-southeast-1.rds.amazonaws.com:5432/cheapestgo?sslmode=require
-      DATABASE_URL_UNPOOLED: postgresql://styleosmirror_admin:FixedPass2026!@forhu-staging-style-os-mirror-postgres.cd6imo04om4m.ap-southeast-1.rds.amazonaws.com:5432/cheapestgo?sslmode=require
+      # Deliberately overrides the DATABASE_URL that env_file loaded: .env points at
+      # local postgres for `npm run dev`, this container points at live RDS. Separate
+      # variable names keep both in .env at once without one shadowing the other.
+      #
+      # These were inline connection strings until the repository was found to be
+      # public, so the credential must be rotated and is now read from .env — which is
+      # gitignored — rather than committed. Nothing here may hold a secret value.
+      # `:?` fails the container at startup rather than silently falling back to the
+      # local database, which is the mistake the port split above exists to prevent.
+      DATABASE_URL: ${RDS_DATABASE_URL:?set RDS_DATABASE_URL in .env — see .env.example}
+      DATABASE_URL_UNPOOLED: ${RDS_DATABASE_URL_UNPOOLED:-${RDS_DATABASE_URL}}
       DATABASE_SSL: "require"
     depends_on:
       postgres:
@@ -56,8 +65,10 @@ services:
     image: dpage/pgadmin4:latest
     restart: unless-stopped
     environment:
-      PGADMIN_DEFAULT_EMAIL: admin@cheapestgo.com
-      PGADMIN_DEFAULT_PASSWORD: cheapestgo
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_EMAIL:-admin@cheapestgo.com}
+      # Publishes on 5051 and can reach the databases above, so it does not get a
+      # committed password either — even a weak one, and even bound to localhost.
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD:?set PGADMIN_PASSWORD in .env}
     ports:
       - "5051:80"
     volumes:

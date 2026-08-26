@@ -206,54 +206,6 @@ export async function GET(req: Request) {
         currency: 'PHP',
     };
 
-    const flightRefundParams = {
-        bookingId: sampleBooking.bookingId,
-        pnr: 'CG-6500500050',
-        email: recipient,
-        passengerName: 'Maria S. Reyes',
-        segments: [
-            {
-                airline: 'PR', airlineName: 'Philippine Airlines', flightNumber: 'PR 424',
-                origin: 'MNL', destination: 'ICN',
-                departureTime: '2026-09-10T21:36:00Z', arrivalTime: '2026-09-11T01:15:00Z',
-                itineraryIndex: 0, cabinClass: 'economy',
-            },
-        ],
-        totalPrice: 22502.40,
-        currency: 'PHP',
-        refundId: 're_3TestFlightRefund001',
-    };
-
-    const flightCancellationParams = {
-        bookingId: sampleBooking.bookingId,
-        pnr: 'CG-6500500050',
-        email: recipient,
-        passengerName: 'Maria S. Reyes',
-        segments: [
-            {
-                airline: 'PR', airlineName: 'Philippine Airlines', flightNumber: 'PR 424',
-                origin: 'MNL', destination: 'ICN',
-                departureTime: '2026-09-10T21:36:00Z', arrivalTime: '2026-09-11T01:15:00Z',
-                itineraryIndex: 0, cabinClass: 'economy',
-            },
-        ],
-        totalPaid: 22502.40,
-        refundAmount: 18002.40,
-        penaltyAmount: 4500,
-        currency: 'PHP',
-    };
-
-    const flightCancellationRefundParams = {
-        bookingId: sampleBooking.bookingId,
-        pnr: 'CG-6500500050',
-        email: recipient,
-        passengerName: 'Maria S. Reyes',
-        route: 'MNL → ICN',
-        refundAmount: 18002.40,
-        currency: 'PHP',
-        stripeRefundId: 're_3TestFlightRefund001',
-    };
-
     const priceAlertConfirmationParams = {
         email: recipient,
         origin: 'MNL',
@@ -474,16 +426,20 @@ export async function GET(req: Request) {
                 result = await sendFlightAwaitingTicketEmail(flightAwaitingParams);
                 break;
 
+            // Sent and previewed from the same objects. `sendFlightRefundEmail` and
+            // friends take exactly the type their `build…Html` counterpart takes — the
+            // sender calls the builder — so a second near-identical set of params only
+            // made the preview show something other than what was actually sent.
             case 'flight-refund':
-                result = await sendFlightRefundEmail(flightRefundParams);
+                result = await sendFlightRefundEmail(flightRefundHtmlParams);
                 break;
 
             case 'flight-cancellation':
-                result = await sendFlightCancellationEmail(flightCancellationParams);
+                result = await sendFlightCancellationEmail(flightCancellationHtmlParams);
                 break;
 
             case 'flight-cancellation-refund':
-                result = await sendFlightCancellationRefundEmail(flightCancellationRefundParams);
+                result = await sendFlightCancellationRefundEmail(flightCancellationRefundHtmlParams);
                 break;
 
             case 'price-alert-confirmation':

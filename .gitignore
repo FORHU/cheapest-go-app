@@ -30,6 +30,10 @@ nul
 .env
 .env.local
 .env.teammate
+# Every .env variant, so a copy, backup or export cannot slip in untracked.
+# .env.example is the one file that must stay tracked — it holds names only.
+.env.*
+!.env.example
 
 /src/generated/prisma
 *.tsbuildinfo
