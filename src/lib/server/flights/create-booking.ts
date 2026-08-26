@@ -523,12 +523,18 @@ async function insertFlightSegments(
                 ?? seg.operating_carrier?.iata_code
                 ?? seg.marketing_carrier?.iata_code
                 ?? '';
+            // Duffel's normalised StoredSegment uses originTerminal/destinationTerminal;
+            // the raw order shape uses origin_terminal/destination_terminal; Mystifly's
+            // search-result shape uses terminal/arrivalTerminal.
+            const originTerminal = seg.originTerminal ?? seg.origin_terminal ?? seg.terminal ?? null;
+            const destinationTerminal = seg.destinationTerminal ?? seg.destination_terminal ?? seg.arrivalTerminal ?? null;
 
             await sql`
                 INSERT INTO flight_segments (
                     booking_id, airline, flight_number,
                     origin, destination, departure, arrival,
-                    cabin_class, segment_index
+                    cabin_class, segment_index,
+                    origin_terminal, destination_terminal
                 ) VALUES (
                     ${bookingId},
                     ${airline},
@@ -538,7 +544,9 @@ async function insertFlightSegments(
                     ${depTime},
                     ${arrTime},
                     ${seg.cabinClass ?? seg.cabin_class ?? 'economy'},
-                    ${seg.segmentIndex ?? seg.itineraryIndex ?? 0}
+                    ${seg.segmentIndex ?? seg.itineraryIndex ?? 0},
+                    ${originTerminal},
+                    ${destinationTerminal}
                 )
             `;
         } catch (segErr: any) {

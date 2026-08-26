@@ -288,12 +288,14 @@ export async function GET(req: Request) {
             origin: 'MNL', destination: 'ICN',
             departureTime: '2026-09-10T21:36:00Z', arrivalTime: '2026-09-11T01:15:00Z',
             itineraryIndex: 0, cabinClass: 'economy',
+            originTerminal: '2', destinationTerminal: '1',
         },
         {
             airline: 'KE', airlineName: 'Korean Air', flightNumber: 'KE 705',
             origin: 'ICN', destination: 'NRT',
             departureTime: '2026-09-11T04:05:00Z', arrivalTime: '2026-09-11T06:25:00Z',
             itineraryIndex: 0, cabinClass: 'economy',
+            originTerminal: '2', destinationTerminal: '1',
         },
     ];
     const returnSegments: FlightSegmentEmail[] = [
@@ -302,6 +304,7 @@ export async function GET(req: Request) {
             origin: 'NRT', destination: 'MNL',
             departureTime: '2026-09-18T08:40:00Z', arrivalTime: '2026-09-18T12:55:00Z',
             itineraryIndex: 1, cabinClass: 'economy',
+            originTerminal: '1', destinationTerminal: '2',
         },
     ];
     const flightConfirmationParams = {

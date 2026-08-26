@@ -11,6 +11,8 @@ const order = {
                 marketing_carrier_flight_number: '271',
                 origin: { iata_code: 'CRK' },
                 destination: { iata_code: 'TPE' },
+                origin_terminal: '1',
+                destination_terminal: '2',
                 departing_at: '2026-09-14T06:05:00',
                 arriving_at: '2026-09-14T08:30:00',
                 passengers: [{ cabin_class: 'business' }],
@@ -64,6 +66,15 @@ describe('segmentsFromDuffelOrder', () => {
     it('defaults cabin rather than emitting undefined into the column', () => {
         const bare = { slices: [{ segments: [{ origin: {}, destination: {} }] }] };
         expect(segmentsFromDuffelOrder(bare)[0].cabinClass).toBe('economy');
+    });
+
+    it('carries the origin/destination terminal through when Duffel reports one', () => {
+        const [outbound, ret] = segmentsFromDuffelOrder(order);
+        expect(outbound.originTerminal).toBe('1');
+        expect(outbound.destinationTerminal).toBe('2');
+        // Second slice's segment has no terminal fields — falls back to null, not undefined.
+        expect(ret.originTerminal).toBeNull();
+        expect(ret.destinationTerminal).toBeNull();
     });
 });
 

@@ -410,6 +410,8 @@ model flight_segments {
   itinerary_index Int             @default(0)
   cabin_class     String          @default("economy")
   segment_index   Int             @default(0)
+  origin_terminal      String?
+  destination_terminal String?
   flight_bookings flight_bookings @relation(fields: [booking_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@index([booking_id], map: "idx_flight_segments_booking_id")

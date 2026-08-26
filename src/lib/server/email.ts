@@ -1288,6 +1288,9 @@ export interface FlightSegmentEmail {
     itineraryIndex?: number;
     /** e.g. 'economy' | 'premium_economy' | 'business' | 'first' */
     cabinClass?: string;
+    /** Departure/arrival terminal, when the provider reports one (not every airport has multiple). */
+    originTerminal?: string | null;
+    destinationTerminal?: string | null;
 }
 
 export interface FlightFarePolicyEmail {
@@ -1350,6 +1353,8 @@ export function mapFlightSegmentsForEmail(rows: any[] | null | undefined): Fligh
             // between an outbound arrival and a return departure into a "layover".
             itineraryIndex: s.segmentIndex ?? s.segment_index,
             cabinClass: s.cabinClass ?? s.cabin_class,
+            originTerminal: s.originTerminal ?? s.origin_terminal ?? null,
+            destinationTerminal: s.destinationTerminal ?? s.destination_terminal ?? null,
         };
     });
 }
@@ -1417,11 +1422,13 @@ function renderFlightItineraryRows(segments: FlightSegmentEmail[]): string {
         const first = slice[0];
         const last = slice[slice.length - 1];
         const label = slices.length > 1 ? (i === 0 ? 'Outbound' : 'Return') : 'Route';
+        const originLabel = `${escapeHtml(first.origin)}${first.originTerminal ? ` (T${escapeHtml(first.originTerminal)})` : ''}`;
+        const destinationLabel = `${escapeHtml(last.destination)}${last.destinationTerminal ? ` (T${escapeHtml(last.destinationTerminal)})` : ''}`;
         return `
           <tr>
             <td style="padding:14px 0;border-top:1px solid #eef2f7;color:#64748b;vertical-align:top;">${label}</td>
             <td align="right" style="padding:14px 0;border-top:1px solid #eef2f7;color:#0f172a;">
-              <div style="font-weight:bold;">${escapeHtml(first.origin)} → ${escapeHtml(last.destination)}</div>
+              <div style="font-weight:bold;">${originLabel} → ${destinationLabel}</div>
               <div style="font-size:12px;color:#94a3b8;margin-top:3px;">${escapeHtml(fmtFlightDayDate(first.departureTime))} · ${escapeHtml(first.flightNumber)}${first.airlineName ? ` · ${escapeHtml(first.airlineName)}` : ''}</div>
             </td>
           </tr>`;
@@ -1475,11 +1482,11 @@ export function buildFlightConfirmationEmailHtml(params: SendFlightBookingEmailP
                   <table role="presentation" cellpadding="0" cellspacing="0" border="0">
                     <tr>
                       <td style="padding:0 10px 6px 0;font-family:Arial,Helvetica,sans-serif;font-size:14px;font-weight:bold;color:#0f172a;">${escapeHtml(seg.destination)}</td>
-                      <td style="padding:0 0 6px 0;font-family:'Courier New',Courier,monospace;font-size:14px;color:#64748b;">${fmtTime(seg.arrivalTime)} arrive · ${escapeHtml(seg.flightNumber)}</td>
+                      <td style="padding:0 0 6px 0;font-family:'Courier New',Courier,monospace;font-size:14px;color:#64748b;">${fmtTime(seg.arrivalTime)} arrive · ${escapeHtml(seg.flightNumber)}${seg.destinationTerminal ? ` · Terminal ${escapeHtml(seg.destinationTerminal)}` : ''}</td>
                     </tr>
                     <tr>
                       <td style="padding:0 10px 0 0;font-family:Arial,Helvetica,sans-serif;font-size:14px;font-weight:bold;color:#0f172a;">${escapeHtml(next.origin)}</td>
-                      <td style="font-family:'Courier New',Courier,monospace;font-size:14px;color:#64748b;">${fmtTime(next.departureTime)} depart · ${escapeHtml(next.flightNumber)}</td>
+                      <td style="font-family:'Courier New',Courier,monospace;font-size:14px;color:#64748b;">${fmtTime(next.departureTime)} depart · ${escapeHtml(next.flightNumber)}${next.originTerminal ? ` · Terminal ${escapeHtml(next.originTerminal)}` : ''}</td>
                     </tr>
                   </table>
                   <div style="height:8px;line-height:8px;">&nbsp;</div>
@@ -1523,6 +1530,7 @@ ${sliceLabel}
               <div style="font-size:11px;font-weight:bold;letter-spacing:1.4px;text-transform:uppercase;color:#64748b;">Departure</div>
               <div style="height:4px;line-height:4px;">&nbsp;</div>
               <div class="iata" style="font-size:56px;line-height:60px;font-weight:bold;color:#0f172a;letter-spacing:-2px;">${escapeHtml(first.origin)}</div>
+              ${first.originTerminal ? `<div style="font-size:12px;color:#94a3b8;margin-top:2px;">Terminal ${escapeHtml(first.originTerminal)}</div>` : ''}
               <div style="height:4px;line-height:4px;">&nbsp;</div>
               <div style="font-family:'Courier New',Courier,monospace;font-size:14px;font-weight:bold;color:#0f172a;">${fmtTime(first.departureTime)} ${escapeHtml(fmtDayDate(first.departureTime))} · ${escapeHtml(first.flightNumber)}</div>
               <div style="height:2px;line-height:2px;">&nbsp;</div>
@@ -1538,6 +1546,7 @@ ${connections}
               <div style="font-size:11px;font-weight:bold;letter-spacing:1.4px;text-transform:uppercase;color:#64748b;">Destination</div>
               <div style="height:4px;line-height:4px;">&nbsp;</div>
               <div class="iata" style="font-size:56px;line-height:60px;font-weight:bold;color:#0f172a;letter-spacing:-2px;">${escapeHtml(last.destination)}</div>
+              ${last.destinationTerminal ? `<div style="font-size:12px;color:#94a3b8;margin-top:2px;">Terminal ${escapeHtml(last.destinationTerminal)}</div>` : ''}
               <div style="height:4px;line-height:4px;">&nbsp;</div>
               <div style="font-family:'Courier New',Courier,monospace;font-size:14px;font-weight:bold;color:#0f172a;">${fmtTime(last.arrivalTime)} ${escapeHtml(fmtDayDate(last.arrivalTime))}</div>
               <div style="height:2px;line-height:2px;">&nbsp;</div>

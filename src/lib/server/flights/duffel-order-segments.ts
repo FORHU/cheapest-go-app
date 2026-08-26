@@ -22,6 +22,8 @@ export interface StoredSegment {
     departureTime: string | null;
     arrivalTime: string | null;
     cabinClass: string;
+    originTerminal: string | null;
+    destinationTerminal: string | null;
 }
 
 /**
@@ -57,6 +59,8 @@ export function segmentsFromDuffelOrder(order: any): StoredSegment[] {
                 departureTime: seg?.departing_at ?? null,
                 arrivalTime: seg?.arriving_at ?? null,
                 cabinClass: cabinFor(seg),
+                originTerminal: seg?.origin_terminal ?? null,
+                destinationTerminal: seg?.destination_terminal ?? null,
             });
         }
     });
