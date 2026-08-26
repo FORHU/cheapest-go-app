@@ -1,7 +1,7 @@
 import { createAdminClient } from '@/utils/postgres/admin';
 import { NextRequest, NextResponse } from 'next/server';
 import Stripe from 'stripe';
-import { sendFlightBookingConfirmationEmail } from '@/lib/server/email';
+import { sendFlightBookingConfirmationEmail, mapFlightSegmentsForEmail } from '@/lib/server/email';
 import { createNotification } from '@/lib/server/admin/notify';
 import { awaitBookingRow } from '@/lib/server/flights/await-booking-row';
 import { env } from '@/utils/env';
@@ -507,18 +507,7 @@ async function fireBookingConfirmationEmail(
         passengerType,
         seatNumber,
         provider,
-        segments: ((segments as any[]) ?? []).map((s: any) => ({
-            airline: s.airline,
-            flightNumber: s.flight_number,
-            origin: s.origin,
-            destination: s.destination,
-            departureTime: s.departure,
-            arrivalTime: s.arrival,
-            // segment_index is what insertFlightSegments() actually populates per leg;
-            // itinerary_index is an older column the current insert path never writes.
-            itineraryIndex: s.segment_index,
-            cabinClass: s.cabin_class,
-        })),
+        segments: mapFlightSegmentsForEmail(segments as any[]),
         tickets: tickets.length > 0 ? tickets : undefined,
         totalPrice: bookingData.confirmedPrice ?? 0,
         currency: bookingData.confirmedCurrency ?? 'USD',

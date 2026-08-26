@@ -103,6 +103,20 @@ const CITY_COORDS: Record<string, [number, number]> = {
     cebu: [123.8854, 10.3157],
 };
 
+// Scroll `card` into view within `container` only — unlike Element.scrollIntoView(),
+// this never bubbles the scroll up to ancestor containers (e.g. the page/window),
+// so it can't drag the viewport down past the list and into the footer below it.
+function scrollCardIntoContainer(container: HTMLElement, card: HTMLElement, align: 'start' | 'center') {
+    const containerRect = container.getBoundingClientRect();
+    const cardRect = card.getBoundingClientRect();
+    const offset = cardRect.top - containerRect.top + container.scrollTop;
+    const target = align === 'center'
+        ? offset - (container.clientHeight - card.clientHeight) / 2
+        : offset;
+    const maxScroll = Math.max(container.scrollHeight - container.clientHeight, 0);
+    container.scrollTo({ top: Math.min(Math.max(target, 0), maxScroll), behavior: 'smooth' });
+}
+
 function getDestinationCoords(destination: string): { lng: number; lat: number } | null {
     const key = destination.toLowerCase().trim();
     if (CITY_COORDS[key]) {
@@ -542,6 +556,7 @@ function SearchMapView({
     const [selectedId, setSelectedId] = useState<string | null>(null);
     const [hoveredId, setHoveredId] = useState<string | null>(null);
     const cardRefs = React.useRef<Map<string, HTMLDivElement>>(new Map());
+    const listContainerRef = React.useRef<HTMLDivElement | null>(null);
     const lastScrolledIdRef = React.useRef<string | null>(null);
     const [sortBy, setSortBy] = useState<SortValue>('recommended');
     const [showMobileMap, setShowMobileMap] = useState(true);
@@ -708,7 +723,8 @@ function SearchMapView({
         const firstNew = sortedProperties[idx];
         if (!firstNew) return;
         const card = cardRefs.current.get(firstNew.id);
-        if (card) card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        const container = listContainerRef.current;
+        if (card && container) scrollCardIntoContainer(container, card, 'start');
     }, [visibleProperties]); // eslint-disable-line react-hooks/exhaustive-deps
 
     // Prefer the district bbox centre so the map starts at the right location
@@ -790,9 +806,10 @@ function SearchMapView({
         }
         if (lastScrolledIdRef.current === selectedId) return;
         const card = cardRefs.current.get(selectedId);
-        if (card) {
+        const container = listContainerRef.current;
+        if (card && container) {
             lastScrolledIdRef.current = selectedId;
-            card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            scrollCardIntoContainer(container, card, 'center');
         } else {
             // Card not rendered yet — expand the visible list to include it
             const idx = sortedProperties.findIndex((p: any) => p.id === selectedId);
@@ -1027,7 +1044,10 @@ function SearchMapView({
                                 </div>
                             )}
                             {/* Scrollable hotel cards — scrollbar hidden so it doesn't steal width from cards */}
-                            <div className="flex-1 overflow-y-auto overscroll-contain [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] scrollbar-none">
+                            <div
+                                ref={listContainerRef}
+                                className="flex-1 overflow-y-auto overscroll-contain [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] scrollbar-none"
+                            >
                                 {visibleProperties.map((property, idx) => (
                                     <div
                                         key={property.id}

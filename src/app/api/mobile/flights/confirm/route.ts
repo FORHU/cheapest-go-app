@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { stripe } from '@/lib/stripe/server';
 import { createAdminClient } from '@/utils/postgres/admin';
-import { sendFlightBookingConfirmationEmail, sendFlightAwaitingTicketEmail } from '@/lib/server/email';
+import { sendFlightBookingConfirmationEmail, sendFlightAwaitingTicketEmail, mapFlightSegmentsForEmail } from '@/lib/server/email';
 import { rateLimit } from '@/lib/server/rate-limit';
 import { getMobileApiKey } from '@/lib/server/mobile-auth';
 import { issueTicket } from '@/lib/server/flights/issue-ticket';
@@ -167,14 +167,7 @@ async function fireBookingEmail(
 
     const pax0 = (session as any)?.passengers?.[0];
     const passengerName = pax0 ? `${pax0.firstName} ${pax0.lastName}` : 'Traveler';
-    const mappedSegments = ((segments as any[]) ?? []).map((s: any) => ({
-        airline: s.airline,
-        flightNumber: s.flight_number,
-        origin: s.origin,
-        destination: s.destination,
-        departureTime: s.departure,
-        arrivalTime: s.arrival,
-    }));
+    const mappedSegments = mapFlightSegmentsForEmail(segments as any[]);
 
     const totalPrice = bookingData.confirmedPrice ?? 0;
     const currency = bookingData.confirmedCurrency ?? 'USD';

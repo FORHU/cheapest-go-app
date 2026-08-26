@@ -7,6 +7,7 @@ import { useTranslations } from 'next-intl';
 import { Calendar, Clock, Users, CheckCircle, XCircle, AlertTriangle, Loader2, RefreshCw, RotateCcw, ChevronDown, ChevronUp, Plane, Receipt, ArrowLeftRight, ChevronRight } from 'lucide-react';
 import type { FlightBookingRecord } from '@/services/booking.service';
 import { formatDate, formatCurrency } from '@/lib/utils';
+import { formatDuration, getAirlineName } from '@/utils/flight-utils';
 import { convertCurrency } from '@/lib/currency';
 import { useUserCurrency } from '@/stores/searchStore';
 import { FormDatePicker } from '@/components/common/FormDatePicker';
@@ -261,6 +262,7 @@ export default function FlightBookingCard({ booking, onCancelled }: FlightBookin
     const [cancelSuccessStatus, setCancelSuccessStatus] = useState<string | null>(null);
     const [localRefundAmount, setLocalRefundAmount] = useState<number | null>(null);
     const [localRefundCurrency, setLocalRefundCurrency] = useState<string | null>(null);
+    const [showFlightItinerary, setShowFlightItinerary] = useState(false);
     const [showTripDetails, setShowTripDetails] = useState(false);
     const [tripDetails, setTripDetails] = useState<any>(null);
     const [loadingTripDetails, setLoadingTripDetails] = useState(false);
@@ -446,6 +448,39 @@ export default function FlightBookingCard({ booking, onCancelled }: FlightBookin
     const fmtTime = (iso: string) =>
         formatDate(new Date(iso), { hour: '2-digit', minute: '2-digit', hour12: false }, 'en-US').split(', ')[1]
         || new Date(iso).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
+    const segMinutes = (dep: string, arr: string) =>
+        Math.round((new Date(arr).getTime() - new Date(dep).getTime()) / 60000);
+
+    // Segments grouped by leg (outbound/return/multi-city) for the itinerary panel —
+    // each leg's own hops stay together so a layover is never confused with the
+    // days-long gap between an outbound arrival and a return departure.
+    //
+    // segment_index is what insertFlightSegments() actually sets per leg; itinerary_index
+    // is a legacy column the current insert path never writes, so it's 0 on every row and
+    // can't be trusted alone. A gap over 24h is also treated as a leg boundary, mirroring
+    // the same heuristic the confirmation email's groupFlightSlices() uses.
+    const itineraryLegs = (() => {
+        if (segments.length === 0) return [];
+        const legIndex = (seg: (typeof segments)[number]) => seg.segment_index ?? seg.itinerary_index;
+        const sorted = [...segments].sort((a, b) => new Date(a.departure).getTime() - new Date(b.departure).getTime());
+        const legs: (typeof segments)[] = [[sorted[0]]];
+        for (let i = 1; i < sorted.length; i++) {
+            const prev = sorted[i - 1];
+            const cur = sorted[i];
+            const indexChanged = legIndex(cur) !== legIndex(prev);
+            const gapHours = (new Date(cur.departure).getTime() - new Date(prev.arrival).getTime()) / 3_600_000;
+            if (indexChanged || gapHours > 24) legs.push([cur]);
+            else legs[legs.length - 1].push(cur);
+        }
+        return legs.map((legSegments, i) => ({
+            label: legs.length > 1
+                ? (i === 0 ? t('flightBookingCard.tripLegs.outbound')
+                    : i === 1 ? t('flightBookingCard.tripLegs.return')
+                    : t('flightBookingCard.tripLegs.leg', { number: i + 1 }))
+                : null,
+            segments: legSegments,
+        }));
+    })();
 
     // ── Cancel handler ──────────────────────────────────────────────
     const handleCancelConfirm = async (cancellationId?: string) => {
@@ -1526,6 +1561,60 @@ export default function FlightBookingCard({ booking, onCancelled }: FlightBookin
                     </div>
                     </div>
                 </div>
+
+                {/* ── Flight itinerary toggle (shared mobile + desktop, all providers) ── */}
+                {segments.length > 0 && (
+                    <button
+                        onClick={() => setShowFlightItinerary(v => !v)}
+                        className="w-full flex items-center justify-between px-3 lg:px-5 py-2 text-[10px] md:text-[11px] font-medium text-blue-600 dark:text-blue-400 hover:bg-slate-50 dark:hover:bg-slate-800 border-t border-slate-100 dark:border-slate-800 transition-colors"
+                    >
+                        <span className="flex items-center gap-1"><Plane className="w-3 h-3" /> {showFlightItinerary ? t('flightBookingCard.hideFlightItinerary') : t('flightBookingCard.flightItinerary')}</span>
+                        {showFlightItinerary ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                    </button>
+                )}
+                {showFlightItinerary && (
+                    <div className="border-t border-slate-100 dark:border-slate-800 px-3 lg:px-5 py-3 space-y-4">
+                        {itineraryLegs.map((leg, legIdx) => (
+                            <div key={legIdx}>
+                                {leg.label && (
+                                    <div className="text-[9px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-1.5">{leg.label}</div>
+                                )}
+                                {leg.segments.map((seg, i) => {
+                                    const flightMins = segMinutes(seg.departure, seg.arrival);
+                                    const next = leg.segments[i + 1];
+                                    const layoverMins = next ? segMinutes(seg.arrival, next.departure) : 0;
+                                    return (
+                                        <div key={seg.id ?? i} className="flex items-start gap-2.5">
+                                            <div className="flex flex-col items-center pt-1 shrink-0">
+                                                <div className="w-1.5 h-1.5 rounded-full bg-blue-500" />
+                                                {i < leg.segments.length - 1 && <div className="w-px flex-1 bg-slate-200 dark:bg-slate-700 my-1 min-h-[20px]" />}
+                                            </div>
+                                            <div className="flex-1 min-w-0 pb-2.5">
+                                                <div className="flex items-center justify-between gap-2">
+                                                    <span className="text-xs font-bold text-slate-900 dark:text-white">{seg.origin} → {seg.destination}</span>
+                                                    <span className="text-[10px] font-mono text-slate-500 dark:text-slate-400 shrink-0">{seg.airline} {seg.flight_number}</span>
+                                                </div>
+                                                <div className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">
+                                                    {fmtDate(seg.departure)} · {fmtTime(seg.departure)} → {fmtTime(seg.arrival)}
+                                                </div>
+                                                <div className="text-[10px] text-slate-400 dark:text-slate-500 mt-0.5 flex items-center gap-1">
+                                                    <Plane className="w-2.5 h-2.5 shrink-0" />
+                                                    <span className="truncate">{getAirlineName(seg.airline)}</span>
+                                                    {flightMins > 0 && <span className="shrink-0">· {formatDuration(flightMins)}</span>}
+                                                </div>
+                                                {next && layoverMins > 0 && (
+                                                    <div className="text-[10px] text-amber-600 dark:text-amber-400 mt-1.5 font-medium">
+                                                        {t('flightBookingCard.layover', { duration: formatDuration(layoverMins), airport: seg.destination })}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        ))}
+                    </div>
+                )}
 
                 {/* ── Trip Details Panel (shared mobile + desktop) ── */}
                 {showTripDetails && (

@@ -290,7 +290,7 @@ export async function GET(req: Request) {
     // panel variants: ?flightRefundStatus=refundable (default) | non_refundable
     const flightRefundStatus = searchParams.get('flightRefundStatus') || 'refundable';
     const flightPenalty = 3400; // matches farePolicy.changePenaltyAmount above, for a consistent story
-    const flightCancellationParams = {
+    const flightCancellationHtmlParams = {
         bookingId: flightConfirmationParams.bookingId,
         pnr: flightConfirmationParams.pnr,
         email: recipient,
@@ -302,7 +302,7 @@ export async function GET(req: Request) {
         currency: flightConfirmationParams.currency,
     };
 
-    const flightRefundParams = {
+    const flightRefundHtmlParams = {
         bookingId: flightConfirmationParams.bookingId,
         pnr: flightConfirmationParams.pnr,
         email: recipient,
@@ -313,7 +313,7 @@ export async function GET(req: Request) {
         refundId: 're_3TestFlightRefund0001',
     };
 
-    const flightCancellationRefundParams = {
+    const flightCancellationRefundHtmlParams = {
         bookingId: flightConfirmationParams.bookingId,
         pnr: flightConfirmationParams.pnr,
         email: recipient,
@@ -375,17 +375,17 @@ export async function GET(req: Request) {
         });
     }
     if (searchParams.get('debug') === 'html' && type === 'flight-cancellation') {
-        return new NextResponse(buildFlightCancellationEmailHtml(flightCancellationParams), {
+        return new NextResponse(buildFlightCancellationEmailHtml(flightCancellationHtmlParams), {
             headers: { 'Content-Type': 'text/html; charset=utf-8' },
         });
     }
     if (searchParams.get('debug') === 'html' && type === 'flight-refund') {
-        return new NextResponse(buildFlightRefundEmailHtml(flightRefundParams), {
+        return new NextResponse(buildFlightRefundEmailHtml(flightRefundHtmlParams), {
             headers: { 'Content-Type': 'text/html; charset=utf-8' },
         });
     }
     if (searchParams.get('debug') === 'html' && type === 'flight-cancellation-refund') {
-        return new NextResponse(buildFlightCancellationRefundEmailHtml(flightCancellationRefundParams), {
+        return new NextResponse(buildFlightCancellationRefundEmailHtml(flightCancellationRefundHtmlParams), {
             headers: { 'Content-Type': 'text/html; charset=utf-8' },
         });
     }

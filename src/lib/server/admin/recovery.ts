@@ -1,6 +1,6 @@
 import { createAdminClient } from '@/utils/postgres/admin';
 import { stripe } from '@/lib/stripe/server';
-import { sendFlightCancellationEmail, sendFlightCancellationRefundEmail } from '@/lib/server/email';
+import { sendFlightCancellationEmail, sendFlightCancellationRefundEmail, mapFlightSegmentsForEmail } from '@/lib/server/email';
 import { createNotification, logAdminAction } from './notify';
 import { RecoveryActionResult, MonitoringData } from '@/types/admin';
 import { createBooking } from '@/lib/server/flights/create-booking';
@@ -801,14 +801,7 @@ export async function adminCancelAwaitingTicket(bookingId: string): Promise<Reco
                 const passengerName = pax0 ? `${pax0.firstName} ${pax0.lastName}` : 'Traveler';
 
                 const segments = booking.flight_segments || [];
-                const mappedSegments = segments.map((s: any) => ({
-                    airline: s.airline,
-                    flightNumber: s.flight_number,
-                    origin: s.origin,
-                    destination: s.destination,
-                    departureTime: s.departure,
-                    arrivalTime: s.arrival,
-                }));
+                const mappedSegments = mapFlightSegmentsForEmail(segments);
 
                 const firstSeg = mappedSegments[0];
                 const lastSeg = mappedSegments[mappedSegments.length - 1];

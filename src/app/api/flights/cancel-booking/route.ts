@@ -10,7 +10,7 @@ const cancelFlightSchema = z.object({
 });
 import { createAdminClient } from '@/utils/postgres/admin';
 import { stripe } from '@/lib/stripe/server';
-import { sendFlightCancellationEmail, sendFlightCancellationRefundEmail } from '@/lib/server/email';
+import { sendFlightCancellationEmail, sendFlightCancellationRefundEmail, mapFlightSegmentsForEmail } from '@/lib/server/email';
 import { checkCsrf } from '@/lib/server/csrf';
 import { createNotification } from '@/lib/server/admin/notify';
 
@@ -783,14 +783,7 @@ async function fireCancellationEmails(
         const pax0 = (session as any)?.passengers?.[0];
         const passengerName = pax0 ? `${pax0.firstName} ${pax0.lastName}` : 'Traveler';
 
-        const mappedSegments = ((segments as any[]) ?? []).map((s: any) => ({
-            airline: s.airline,
-            flightNumber: s.flight_number,
-            origin: s.origin,
-            destination: s.destination,
-            departureTime: s.departure,
-            arrivalTime: s.arrival,
-        }));
+        const mappedSegments = mapFlightSegmentsForEmail(segments as any[]);
 
         // Email 1: Cancellation Confirmed
         await sendFlightCancellationEmail({
