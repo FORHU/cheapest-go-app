@@ -423,16 +423,20 @@ export async function GET(req: Request) {
                 result = await sendFlightAwaitingTicketEmail(flightAwaitingParams);
                 break;
 
+            // Sent and previewed from the same objects. `sendFlightRefundEmail` and
+            // friends take exactly the type their `build…Html` counterpart takes — the
+            // sender calls the builder — so a second near-identical set of params only
+            // made the preview show something other than what was actually sent.
             case 'flight-refund':
-                result = await sendFlightRefundEmail(flightRefundParams);
+                result = await sendFlightRefundEmail(flightRefundHtmlParams);
                 break;
 
             case 'flight-cancellation':
-                result = await sendFlightCancellationEmail(flightCancellationParams);
+                result = await sendFlightCancellationEmail(flightCancellationHtmlParams);
                 break;
 
             case 'flight-cancellation-refund':
-                result = await sendFlightCancellationRefundEmail(flightCancellationRefundParams);
+                result = await sendFlightCancellationRefundEmail(flightCancellationRefundHtmlParams);
                 break;
 
             case 'price-alert-confirmation':
