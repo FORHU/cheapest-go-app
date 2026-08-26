@@ -1,6 +1,14 @@
 import { Decompress } from 'fzstd';
 
-const URL = 'https://int-partner-feedora.s3.eu-central-1.amazonaws.com/feed/partner_feed_en_v3.jsonl.zst?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=AKIA4ONZC7PJGJAEYGMK%2F20260821%2Feu-central-1%2Fs3%2Faws4_request&X-Amz-Date=20260821T064337Z&X-Amz-Expires=3600&X-Amz-SignedHeaders=host&X-Amz-Signature=b979a7d472f43e33f6db5eaded252f01f9175bfa61cb8d9cee679e885f4568f5';
+// The feed URL is a presigned S3 link: it carries an AWS credential scope and a
+// signature, expires an hour after it is issued, and so is passed in rather than
+// committed. A previous hard-coded one sat in this public repo until it expired.
+//   PARTNER_FEED_URL='<presigned url>' node scripts/peek-dump.mjs
+const URL = process.env.PARTNER_FEED_URL;
+if (!URL) {
+    console.error('Set PARTNER_FEED_URL to a presigned feed URL.');
+    process.exit(1);
+}
 
 const res = await fetch(URL);
 if (!res.ok || !res.body) throw new Error(`HTTP ${res.status}`);

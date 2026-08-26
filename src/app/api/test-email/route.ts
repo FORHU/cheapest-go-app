@@ -206,54 +206,6 @@ export async function GET(req: Request) {
         currency: 'PHP',
     };
 
-    const flightRefundParams = {
-        bookingId: sampleBooking.bookingId,
-        pnr: 'CG-6500500050',
-        email: recipient,
-        passengerName: 'Maria S. Reyes',
-        segments: [
-            {
-                airline: 'PR', airlineName: 'Philippine Airlines', flightNumber: 'PR 424',
-                origin: 'MNL', destination: 'ICN',
-                departureTime: '2026-09-10T21:36:00Z', arrivalTime: '2026-09-11T01:15:00Z',
-                itineraryIndex: 0, cabinClass: 'economy',
-            },
-        ],
-        totalPrice: 22502.40,
-        currency: 'PHP',
-        refundId: 're_3TestFlightRefund001',
-    };
-
-    const flightCancellationParams = {
-        bookingId: sampleBooking.bookingId,
-        pnr: 'CG-6500500050',
-        email: recipient,
-        passengerName: 'Maria S. Reyes',
-        segments: [
-            {
-                airline: 'PR', airlineName: 'Philippine Airlines', flightNumber: 'PR 424',
-                origin: 'MNL', destination: 'ICN',
-                departureTime: '2026-09-10T21:36:00Z', arrivalTime: '2026-09-11T01:15:00Z',
-                itineraryIndex: 0, cabinClass: 'economy',
-            },
-        ],
-        totalPaid: 22502.40,
-        refundAmount: 18002.40,
-        penaltyAmount: 4500,
-        currency: 'PHP',
-    };
-
-    const flightCancellationRefundParams = {
-        bookingId: sampleBooking.bookingId,
-        pnr: 'CG-6500500050',
-        email: recipient,
-        passengerName: 'Maria S. Reyes',
-        route: 'MNL → ICN',
-        refundAmount: 18002.40,
-        currency: 'PHP',
-        stripeRefundId: 're_3TestFlightRefund001',
-    };
-
     const priceAlertConfirmationParams = {
         email: recipient,
         origin: 'MNL',
