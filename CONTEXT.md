@@ -73,7 +73,13 @@ _Avoid_: assuming every enum-like column uses the same mechanism, or converting 
 
 **Edge Function** → **API Route** — all 47 Deno functions formerly hosted on Supabase Edge Functions have been converted or deleted. All active endpoints are Next.js API routes.
 
-**Cron jobs** — 8 HTTP cron routes under `/api/cron/*`. Must be called on a schedule by an external scheduler (e.g. Coolify cron, system cron, or pg_cron on RDS). Secured by `CRON_SECRET` header.
+**Cron Job** — an HTTP route under `/api/cron/*` (15 of them) or `/api/internal/*` that does nothing on its own: it runs only when a **Scheduler** calls it, and is secured by a `CRON_SECRET` bearer header. A route with no scheduler pointing at it is dead code that still looks alive.
+_Avoid_: assuming a route runs because it exists — `geocode-hotels` has never been scheduled anywhere.
+
+**Scheduler** — the thing that actually calls a Cron Job. Two exist, and which one owns a job is a real distinction, not an accident:
+- **Cron Sidecar** — a container defined alongside the app that curls the app over the internal network. Owns the operational jobs: ticket polling, order cleanup, email retries, session and cache expiry, deal refreshes. It reaches routes that must not be public.
+- **Workflow Cron** — a GitHub Actions schedule that either curls the public site or connects straight to the database. Owns the long-running content jobs, because they need more time and more memory than a request should hold.
+_Avoid_: treating the Cron Sidecar as part of the deployment — the production deploy starts the app container alone, so the sidecar survives only as state someone created on the box by hand. _Avoid_: pointing a schedule at a route that does not exist: `curl -sf` prints nothing and discards its output, so a 404 is indistinguishable from a job that ran.
 
 **Flight Provider** — Duffel (primary, active) or Mystifly (onboarding). Mystifly bookings currently disabled in the booking endpoint.
 

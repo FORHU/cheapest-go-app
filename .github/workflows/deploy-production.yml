@@ -52,6 +52,26 @@ jobs:
           docker push $REGISTRY/$REPOSITORY:$SHA
           docker push $REGISTRY/$REPOSITORY:latest
 
+      # The cron sidecar runs the 12 operational jobs in docker/cron/crontab —
+      # ticket polling, orphaned-order cleanup, email retries, session and cache
+      # expiry, deal refreshes. docker-compose starts it locally, but the
+      # production deploy used to start the app alone, so on production it only
+      # ever existed as state someone created on the box by hand: a reboot or a
+      # fresh instance would have silently lost every one of those jobs.
+      # Same ECR repository, distinct tag — no second repo or secret needed.
+      - name: Build and push cron sidecar to ECR
+        env:
+          REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          REPOSITORY: ${{ secrets.ECR_REPOSITORY }}
+          SHA: ${{ github.sha }}
+        run: |
+          docker build \
+            -t $REGISTRY/$REPOSITORY:cron-$SHA \
+            -t $REGISTRY/$REPOSITORY:cron-latest \
+            ./docker/cron
+          docker push $REGISTRY/$REPOSITORY:cron-$SHA
+          docker push $REGISTRY/$REPOSITORY:cron-latest
+
       - name: Setup SSH
         run: |
           mkdir -p ~/.ssh
@@ -171,6 +191,7 @@ jobs:
         run: |
           ECR_PASSWORD=$(aws ecr get-login-password --region "$REGION")
           IMAGE="$REGISTRY/$REPOSITORY:latest"
+          CRON_IMAGE="$REGISTRY/$REPOSITORY:cron-latest"
 
           ssh -i ~/.ssh/id_rsa "$USER@$HOST" bash -s << EOF
             echo "$ECR_PASSWORD" | docker login --username AWS --password-stdin $REGISTRY
@@ -183,5 +204,27 @@ jobs:
               -p 3000:3000 \
               --env-file ~/.env \
               $IMAGE
+
+            # Cron sidecar. Recreated on every deploy so the schedule on the box is
+            # always the crontab in this commit — the app container is replaced above
+            # and a sidecar left running would keep curling a container that no
+            # longer exists.
+            #
+            # Host networking, not a shared bridge: the app publishes 3000 on the
+            # host, so localhost:3000 reaches it without changing the app's own run
+            # command. Routes under /api/internal/* are not meant to be called from
+            # outside the box, so this deliberately does not go via the public URL.
+            # CRON_SECRET is already in ~/.env; APP_URL is the only override.
+            docker pull $CRON_IMAGE
+            docker stop cheapestgo-cron 2>/dev/null || true
+            docker rm   cheapestgo-cron 2>/dev/null || true
+            docker run -d \
+              --name cheapestgo-cron \
+              --restart=always \
+              --network host \
+              --env-file ~/.env \
+              -e APP_URL=http://localhost:3000 \
+              $CRON_IMAGE
+
             docker image prune -f
           EOF

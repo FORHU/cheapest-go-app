@@ -8,8 +8,16 @@ export const maxDuration = 300;
  * GET /api/cron/geocode-hotels?batch=50
  *
  * Geocodes hotels with a null osm_geocoded_at using the free Nominatim API
- * (OpenStreetMap). Updates hotel_content.lat + lng with precise coordinates.
+ * (OpenStreetMap). Updates hotel_content.lat + lng.
  * Safe to restart — already-processed hotels are skipped via osm_geocoded_at.
+ *
+ * DELIBERATELY NOT SCHEDULED — do not wire this into the cron sidecar or a
+ * workflow. Measured on 2026-08-27, Nominatim's coordinates are *less* precise
+ * than the supplier's: 9.3% of the 239,764 rows it has already rewritten share
+ * an exact coordinate with another hotel, against 4.0% of the 898,630 it has
+ * not touched. Only 2 hotels in the whole catalogue lack coordinates, so there
+ * is no gap to fill. Kept for ad-hoc use on those.
+ * See docs/adr/0024-supplier-coordinates-are-not-improved-by-geocoding.md
  */
 export async function GET(req: NextRequest) {
     const authHeader = req.headers.get('authorization');
