@@ -32,6 +32,33 @@ function StreamingBanner({ count, pricingMode }: { count: number; pricingMode?: 
     );
 }
 
+/**
+ * Shown when the supplier never answered (see CONTEXT.md, "Unanswered Search").
+ * The catalog stays on the map because nothing has been learned about availability,
+ * but every card is priceless — say so rather than letting them read as free.
+ *
+ * Takes the same floating slot as StreamingBanner, but is persistent and clickable:
+ * StreamingBanner reports progress, this reports a dead end the user can retry out of.
+ */
+function PricesUnavailableBanner({ destination }: { destination?: string }) {
+    return (
+        <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-50">
+            <div className="flex items-center gap-3 rounded-full border border-amber-200 bg-amber-50 px-4 py-2 text-xs shadow-lg dark:border-amber-800 dark:bg-amber-900/90">
+                <span className="text-amber-800 dark:text-amber-200">
+                    <strong>Live prices didn&apos;t load.</strong>{' '}
+                    Showing hotels in {destination || 'this area'} without availability.
+                </span>
+                <button
+                    onClick={() => window.location.reload()}
+                    className="shrink-0 rounded-full bg-amber-600 px-3 py-1 text-[11px] font-semibold text-white transition-colors hover:bg-amber-700 cursor-pointer"
+                >
+                    Retry
+                </button>
+            </div>
+        </div>
+    );
+}
+
 export function MapResultsClient({ searchParams, destination, onSwitchView }: MapResultsClientProps) {
     const t = useTranslations('hotels.searchResults');
     const setIsSearching = useSearchStore(s => s.setIsSearching);
@@ -50,6 +77,8 @@ export function MapResultsClient({ searchParams, destination, onSwitchView }: Ma
     const [queryParams, setQueryParams] = useState<Record<string, any>>(cached?.queryParams ?? searchParams);
     // Only true when TGX returned real availability — guards the cache write below.
     const [tgxSucceeded, setTgxSucceeded] = useState(!!cached);
+    // Supplier never answered — catalog stays, but the cards carry no price.
+    const [pricesUnavailable, setPricesUnavailable] = useState(false);
 
     const searchKey = JSON.stringify(searchParams);
 
@@ -70,6 +99,7 @@ export function MapResultsClient({ searchParams, destination, onSwitchView }: Ma
         setProperties([]);
         setTotalCount(0);
         setAllMappable([]);
+        setPricesUnavailable(false);
 
         const normalize = (h: any) => ({ ...h, id: h.id ?? h.hotelId, image: h.thumbnailUrl || h.image || '' });
 
@@ -230,8 +260,10 @@ export function MapResultsClient({ searchParams, destination, onSwitchView }: Ma
                                 });
                                 setAllMappable(prev => prev.filter((h: any) => !h.priceLoading));
                             } else if ((chunk as any).tgxFailed) {
-                                // TGX timed out / errored — keep catalog visible so users see something
-                                // rather than an empty page from a transient failure.
+                                // Unanswered Search — keep catalog visible so users see something
+                                // rather than an empty page from a transient failure, and flag the
+                                // missing prices so priceless cards don't read as free.
+                                setPricesUnavailable(true);
                                 setProperties(prev => prev.map(h => (h as any).priceLoading ? { ...h as any, priceLoading: false, _catalogOnly: true } : h));
                                 setAllMappable(prev => prev.map(h => (h as any).priceLoading ? { ...h as any, priceLoading: false, _catalogOnly: true } : h));
                             } else {
@@ -298,6 +330,7 @@ export function MapResultsClient({ searchParams, destination, onSwitchView }: Ma
         <div className="relative h-full w-full">
             {isPricingLoading && <StreamingBanner count={totalCount} pricingMode />}
             {!isPricingLoading && status === 'streaming' && <StreamingBanner count={totalCount} />}
+            {pricesUnavailable && properties.length > 0 && <PricesUnavailableBanner destination={destination} />}
             <LazySearchMapView
                 properties={properties}
                 totalCount={totalCount}
