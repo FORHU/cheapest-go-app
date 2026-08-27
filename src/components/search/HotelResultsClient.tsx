@@ -61,6 +61,10 @@ export function HotelResultsClient({ searchParams, onSwitchView }: HotelResultsC
     const [totalCount, setTotalCount] = useState(cached?.totalCount ?? 0);
     const [elapsed, setElapsed] = useState(0);
     const [slowEmpty, setSlowEmpty] = useState(false);
+    // The supplier never answered (see CONTEXT.md, "Unanswered Search"). The catalog
+    // stays on screen — nothing has been learned about availability — but the cards
+    // carry no price, so say so rather than letting them read as free.
+    const [pricesUnavailable, setPricesUnavailable] = useState(false);
 
     const destination = searchParams.destination || '';
     const searchKey = JSON.stringify(searchParams);
@@ -73,6 +77,7 @@ export function HotelResultsClient({ searchParams, onSwitchView }: HotelResultsC
         setStatus('loading');
         setElapsed(0);
         setProperties([]);
+        setPricesUnavailable(false);
 
         const timer = setInterval(() => setElapsed(e => e + 1), 1000);
 
@@ -230,7 +235,11 @@ export function HotelResultsClient({ searchParams, onSwitchView }: HotelResultsC
                                     const withImgAfter = accumulated.filter((h: any) => !!(h as any).image).length;
                                     console.log(`[done] after prune: acc=${accumulated.length}, withImage=${withImgAfter}`);
                                 } else if ((msg as any).tgxFailed) {
-                                    // TGX timed out / errored — keep catalog hotels but clear priceLoading.
+                                    // Unanswered Search — the supplier never answered, so these
+                                    // hotels have NOT been shown to lack availability. Keep them
+                                    // and flag the missing prices; wiping them here is what made
+                                    // a cold city read as "no hotels found" until the user retried.
+                                    if (!cancelled) setPricesUnavailable(true);
                                     let changed = false;
                                     for (let i = 0; i < accumulated.length; i++) {
                                         if ((accumulated[i] as any).priceLoading) {
@@ -318,6 +327,20 @@ export function HotelResultsClient({ searchParams, onSwitchView }: HotelResultsC
                 <ResponsiveSearchHeader />
             </Suspense>
             <CountryCityPicker searchParams={searchParams} />
+            {pricesUnavailable && properties.length > 0 && (
+                <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-800 dark:bg-amber-900/20 dark:text-amber-300">
+                    <span>
+                        <strong>Live prices didn&apos;t load.</strong> These hotels are in {destination || 'this destination'},
+                        but we couldn&apos;t reach the supplier for availability — try again for prices.
+                    </span>
+                    <button
+                        onClick={() => window.location.reload()}
+                        className="shrink-0 rounded-full bg-amber-600 px-4 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-amber-700 cursor-pointer"
+                    >
+                        Retry
+                    </button>
+                </div>
+            )}
             {(searchParams.destinationType === 'district' || searchParams.destinationType === 'poi') && (
                 <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-800 dark:bg-amber-900/20 dark:text-amber-300">
                     <strong>Neighborhood search</strong> — prices shown are for browsing only. To book a hotel, search by city name (e.g. Seoul, Bangkok).

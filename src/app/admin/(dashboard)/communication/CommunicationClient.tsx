@@ -22,7 +22,8 @@ import { toast } from 'sonner';
 
 export interface EmailLog {
     id: string;
-    booking_id: string;
+    /** Null for mail that is not about a booking, e.g. a price alert. */
+    booking_id: string | null;
     recipient: string;
     subject: string;
     email_type: string;
@@ -203,14 +204,21 @@ export function CommunicationClient({ data }: CommunicationClientProps) {
                                         </div>
                                     </TableCell>
                                     <TableCell>
-                                        <div className="flex items-center group">
-                                            <code className="text-xs bg-slate-100 dark:bg-white/5 px-1.5 py-0.5 rounded text-indigo-600 dark:text-indigo-400">
-                                                {log.booking_id.slice(0, 8).toUpperCase()}
-                                            </code>
-                                            <Button variant="ghost" size="icon" className="w-6 h-6 ml-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                <ArrowUpRight className="w-3 h-3" />
-                                            </Button>
-                                        </div>
+                                        {/* Not every email is about a booking. A price alert watches a
+                                            route, so its booking_id is null — the column read it as a
+                                            string and took the whole admin page down on .slice(). */}
+                                        {log.booking_id ? (
+                                            <div className="flex items-center group">
+                                                <code className="text-xs bg-slate-100 dark:bg-white/5 px-1.5 py-0.5 rounded text-indigo-600 dark:text-indigo-400">
+                                                    {log.booking_id.slice(0, 8).toUpperCase()}
+                                                </code>
+                                                <Button variant="ghost" size="icon" className="w-6 h-6 ml-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                    <ArrowUpRight className="w-3 h-3" />
+                                                </Button>
+                                            </div>
+                                        ) : (
+                                            <span className="text-xs text-slate-400" title="This email is not tied to a booking">—</span>
+                                        )}
                                     </TableCell>
                                     <TableCell>
                                         <span className="text-sm font-medium">{getTypeLabel(log.email_type)}</span>

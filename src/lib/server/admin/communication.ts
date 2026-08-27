@@ -11,10 +11,12 @@ import {
 
 export interface EmailLog {
     id: string;
-    booking_id: string;
+    /** Null for mail that is not about a booking — a price alert watches a route. */
+    booking_id: string | null;
     recipient: string;
     subject: string;
-    email_type: 'confirmation' | 'ticketed' | 'refund' | 'cancellation' | 'awaiting_ticket';
+    /** Present in email_logs today: confirmation, cancellation, refund, price_alert, awaiting_ticket. */
+    email_type: 'confirmation' | 'ticketed' | 'refund' | 'cancellation' | 'awaiting_ticket' | 'price_alert';
     status: 'queued' | 'sent' | 'failed';
     error_message?: string;
     metadata: any;

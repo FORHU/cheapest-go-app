@@ -381,6 +381,76 @@ export function BookingDetailsDialog({ booking, onClose }: BookingDetailsDialogP
                             )}
                         </div>
 
+                        {/* ── What was actually booked ──
+                            This dialog described the money and the recovery options but
+                            never the trip: no property, no room, no dates, no airline,
+                            no route. An agent could see a booking made ₱X of profit on
+                            Mystifly without seeing where the traveller was going. */}
+                        {booking.itinerary && (booking.itinerary.propertyName || booking.itinerary.segments) && (
+                            <div className="space-y-4 pt-4 border-t border-slate-100 dark:border-white/5">
+                                <h3 className="text-[10px] font-bold uppercase tracking-widest text-slate-400/80">Itinerary</h3>
+
+                                {booking.itinerary.propertyName && (
+                                    <div className="grid grid-cols-2 gap-y-6 gap-x-6">
+                                        <InfoItem label="Property" value={booking.itinerary.propertyName} />
+                                        <InfoItem label="Room" value={booking.itinerary.roomName || '—'} />
+                                        <InfoItem label="Check-in" value={booking.itinerary.checkIn || '—'} />
+                                        <InfoItem label="Check-out" value={booking.itinerary.checkOut || '—'} />
+                                        <InfoItem
+                                            label="Guests"
+                                            value={`${booking.itinerary.adults ?? 1} adult${(booking.itinerary.adults ?? 1) === 1 ? '' : 's'}`
+                                                + (booking.itinerary.children ? `, ${booking.itinerary.children} child${booking.itinerary.children === 1 ? '' : 'ren'}` : '')}
+                                        />
+                                    </div>
+                                )}
+
+                                {booking.itinerary.segments?.map((seg, i) => (
+                                    <div
+                                        key={`${seg.flightNumber}-${i}`}
+                                        className="flex items-baseline justify-between gap-4 rounded-xl bg-slate-50 dark:bg-white/5 px-4 py-3 border border-slate-200/50 dark:border-white/5"
+                                    >
+                                        <div className="flex flex-col">
+                                            {/* The operating airline — distinct from `supplier`, which is
+                                                the ticketing partner that issued it. */}
+                                            <span className="font-mono text-xs font-semibold text-slate-800 dark:text-white">
+                                                {[seg.airline, seg.flightNumber].filter(Boolean).join(' ') || 'Flight'}
+                                            </span>
+                                            {seg.cabinClass && (
+                                                <span className="text-[10px] uppercase tracking-wide text-slate-400">{seg.cabinClass}</span>
+                                            )}
+                                        </div>
+                                        <div className="flex flex-col items-end">
+                                            <span className="text-sm font-medium text-slate-900 dark:text-white">
+                                                {seg.origin} → {seg.destination}
+                                            </span>
+                                            <span className="text-xs text-slate-500">
+                                                {seg.departure ? new Date(seg.departure).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : '—'}
+                                                {seg.arrival ? ` → ${new Date(seg.arrival).toLocaleString('en-GB', { hour: '2-digit', minute: '2-digit' })}` : ''}
+                                            </span>
+                                        </div>
+                                    </div>
+                                ))}
+
+                                {booking.itinerary.passengers && booking.itinerary.passengers.length > 0 && (
+                                    <div className="space-y-2">
+                                        <h4 className="text-[10px] font-bold uppercase tracking-widest text-slate-400/80">Passengers</h4>
+                                        {booking.itinerary.passengers.map((p, i) => (
+                                            <div key={`${p.name}-${i}`} className="flex items-baseline justify-between gap-4 text-xs">
+                                                <span className="font-medium text-slate-800 dark:text-white capitalize">
+                                                    {p.name.toLowerCase() || 'Unnamed passenger'}
+                                                    {p.type && <span className="ml-2 text-slate-400 uppercase">{p.type}</span>}
+                                                </span>
+                                                <span className="font-mono text-slate-500">
+                                                    {p.ticketNumber || 'no ticket'}
+                                                    {p.seatNumber ? ` · ${p.seatNumber}` : ''}
+                                                </span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
                         {/* Hotel Specific Details (Phase 3) */}
                         {booking.type === 'hotel' && (
                             <div className="space-y-4 pt-4 border-t border-slate-100 dark:border-white/5">

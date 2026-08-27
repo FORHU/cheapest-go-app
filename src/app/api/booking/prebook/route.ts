@@ -7,7 +7,12 @@ import { createAdminClient } from '@/utils/postgres/admin';
 import { PREBOOK_QUOTE_TTL_MS } from '@/lib/pricing';
 import { convertCurrencyStrict, refreshExchangeRates } from '@/lib/currency';
 
-export const maxDuration = 60;
+// Worst case is the fresh hotel search (13 s HTTP abort) + OTV's 1.5 s valuation
+// settle + a Quote that runs OTV's full stated 55 s budget (57 s abort) ≈ 72 s.
+// 60 understated that from the moment the Quote timeout was corrected upward.
+// Inert on EC2 — the app runs as a persistent Node process, not a serverless
+// function — but it must not claim a ceiling the route can legitimately exceed.
+export const maxDuration = 90;
 
 /**
  * Convert TGX cancel policy → app-standard CancellationPolicy shape.

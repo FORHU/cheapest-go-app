@@ -1,3 +1,50 @@
+/**
+ * What was actually booked, as opposed to what it cost.
+ *
+ * The admin list and detail dialog were built around money and recovery — supplier
+ * cost, markup, profit, PNR, ticket status — and carried nothing describing the trip.
+ * An agent taking a call about "the Hilton on the 9th" could match the caller only by
+ * name, email or booking reference, because the hotel, the room, the dates, the
+ * airline and the route were all absent from the admin view even though every one of
+ * them is stored.
+ */
+export interface FlightSegmentSummary {
+    airline: string;
+    flightNumber: string;
+    origin: string;
+    destination: string;
+    departure: string;
+    arrival?: string;
+    cabinClass?: string;
+}
+
+export interface PassengerSummary {
+    name: string;
+    type?: string;
+    ticketNumber?: string;
+    seatNumber?: string;
+}
+
+export interface BookingItinerary {
+    /** Hotel: which property, which room, which nights. */
+    propertyName?: string;
+    roomName?: string;
+    checkIn?: string;
+    checkOut?: string;
+    adults?: number;
+    children?: number;
+
+    /** Flight: the legs, in order, and who is travelling on them. */
+    segments?: FlightSegmentSummary[];
+    passengers?: PassengerSummary[];
+
+    /**
+     * One line naming the booking, for the list. "Hilton Cebu · 9–11 Oct" or
+     * "PR 431 MNL→NRT · 9 Oct" — enough to match a caller without opening the row.
+     */
+    summary: string;
+}
+
 export interface DashboardStats {
     totalBookings: number;
     revenue: number;
@@ -115,6 +162,12 @@ export interface Booking {
     isRefundable: boolean;
     markup_pct?: number;
     metadata?: Record<string, any>;
+    /**
+     * `supplier` above is the ticketing partner — Duffel, Mystifly, TravelgateX —
+     * which is who issued the booking, not who operates it. The airline lives on each
+     * segment here. Both matter to an agent and they are not the same thing.
+     */
+    itinerary?: BookingItinerary;
 }
 
 export interface Customer {

@@ -29,11 +29,18 @@ query TgxQuote($criteria: HotelCriteriaQuoteInput!, $settings: HotelSettingsInpu
 }`;
 
 async function callTgxQuoteDirect(token: string) {
-    const settings = getTgxSettings();
+    // OTV's stated Quote timeout is 55,000 ms — this must match, or a quote the
+    // supplier is still legitimately working on gets aborted and the customer is
+    // told the room is unavailable. This used to call getTgxSettings() with no
+    // arguments and silently inherit the 18,000 ms default: under a third of the
+    // budget, and out of step with /api/fn/travelgatex-quote, which had 55,000 ms
+    // all along. HTTP abort sits 2 s above the supplier timeout so TGX gets to
+    // return its own error rather than us hanging up first.
+    const settings = getTgxSettings(undefined, 55_000);
     const result = await tgxGraphQL(TGX_QUOTE_QUERY, {
         criteria: { optionRefId: token },
         settings,
-    });
+    }, 57_000);
     const quote = result?.data?.hotelX?.quote?.optionQuote;
     const errors: any[] = result?.data?.hotelX?.quote?.errors || [];
     if (errors.length) {

@@ -39,9 +39,13 @@ import { Customer } from '@/types/admin';
 interface CustomersClientProps {
     initialCustomers: Customer[];
     defaultCurrency?: string;
+    /** Server-side page, so the list is never the whole customer table. */
+    page?: number;
+    totalPages?: number;
+    total?: number;
 }
 
-export function CustomersClient({ initialCustomers, defaultCurrency = 'USD' }: CustomersClientProps) {
+export function CustomersClient({ initialCustomers, defaultCurrency = 'USD', page = 1, totalPages = 1, total = 0 }: CustomersClientProps) {
     const [customers, setCustomers] = useState(initialCustomers);
     const [searchTerm, setSearchTerm] = useState('');
     const [statusFilter, setStatusFilter] = useState('all');
@@ -580,6 +584,37 @@ export function CustomersClient({ initialCustomers, defaultCurrency = 'USD' }: C
             </Dialog>
 
             {/* ── Toast ── */}
+
+            {totalPages > 1 && (
+                <div className="flex items-center justify-between pt-4 text-sm">
+                    <span className="text-slate-500">
+                        Page {page} of {totalPages} · {total.toLocaleString()} customers
+                    </span>
+                    <div className="flex gap-2">
+                        <a
+                            href={`?page=${Math.max(1, page - 1)}`}
+                            aria-disabled={page <= 1}
+                            className={cn(
+                                'px-3 py-1.5 rounded-lg border border-slate-200 dark:border-white/10',
+                                page <= 1 && 'pointer-events-none opacity-40'
+                            )}
+                        >
+                            Previous
+                        </a>
+                        <a
+                            href={`?page=${Math.min(totalPages, page + 1)}`}
+                            aria-disabled={page >= totalPages}
+                            className={cn(
+                                'px-3 py-1.5 rounded-lg border border-slate-200 dark:border-white/10',
+                                page >= totalPages && 'pointer-events-none opacity-40'
+                            )}
+                        >
+                            Next
+                        </a>
+                    </div>
+                </div>
+            )}
+
             {toast && (
                 <motion.div
                     initial={{ opacity: 0, y: 20 }}

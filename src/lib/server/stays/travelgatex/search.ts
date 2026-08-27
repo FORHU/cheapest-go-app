@@ -1346,6 +1346,28 @@ async function fetchHotelReviews(hotelCodes: string[]) {
 
 export type DestinationRung = 'country' | 'province' | 'city' | 'district' | 'poi';
 
+/**
+ * Thrown when a city search ended without the supplier ever giving a usable answer —
+ * a TGX timeout, a 513 handler overload, a destination code that never resolved, or
+ * no catalog codes to fall back on. See CONTEXT.md, "Unanswered Search".
+ *
+ * Distinct from a clean empty result, where TGX *did* answer and reported no
+ * inventory: that is a No-Availability result and the Phase 1 catalog is correctly
+ * pruned. An Unanswered Search has learned nothing about availability, so the
+ * catalog must stay on screen.
+ *
+ * Thrown rather than returned so `runTgxSearch`'s `.then(cache)` is skipped and an
+ * unanswered search can never be written to `hotel_search_cache`.
+ */
+export class UnansweredSearchError extends Error {
+    readonly cityName: string;
+    constructor(cityName: string, detail: string) {
+        super(`Unanswered search for "${cityName}": ${detail}`);
+        this.name = 'UnansweredSearchError';
+        this.cityName = cityName;
+    }
+}
+
 export interface TgxSearchParams {
     checkin: string;
     checkout: string;
@@ -1631,6 +1653,12 @@ async function runCityFallback(
     rung?: DestinationRung,
     areaBbox?: [number, number, number, number],
 ) {
+    // Records every path that failed to complete rather than answering. If we reach the
+    // end with no results AND something in here, the search is Unanswered, not empty —
+    // see UnansweredSearchError. A path that answered cleanly with zero options never
+    // lands here, so a genuine No-Availability result still returns normally.
+    const unansweredReasons: string[] = [];
+
     // Ensure the DB-persisted failed codes are loaded before we check the set.
     await loadFailedDestCodes();
 
@@ -1646,22 +1674,27 @@ async function runCityFallback(
         } else {
             const __t0 = Date.now();
             let destResult: any;
-            // TGX docs: max Search timeout = 25,000ms; HUB timeout ≥ supplier + 300ms.
-            // Supplier timeout=15,000ms + HTTP abort=25,000ms (10s buffer). See the direct
-            // destinationCode path above for full rationale — same constraints apply here.
+            // OTV's stated Search timeout is 12,000ms — waiting 15,000ms bought nothing
+            // but three seconds of dead time on every call OTV was never going to answer,
+            // and runCityFallback can chain this with the hotel-code fallback below.
+            // HTTP abort stays generous (10s buffer) because it covers response transfer,
+            // not supplier wait — measured round-trip was 17.3s against a 15s budget, so
+            // TGX overhead is ~2.3s on top. See the direct destinationCode path for the
+            // rest of the rationale — same constraints apply here.
             const _cfg = getTgxConfig();
-            const settingsDestCode = getTgxSettings(_cfg, 15_000, true, 'USD');
+            const settingsDestCode = getTgxSettings(_cfg, 12_000, true, 'USD');
             const filterSearchDest = getTgxFilterSearch(_cfg);
             try {
                 destResult = await tgxGraphQL(CITY_SEARCH_QUERY, {
                     criteria: { ...baseCriteria, destinations: [resolvedCode] },
                     settings: settingsDestCode,
                     filterSearch: filterSearchDest,
-                }, 25_000);
+                }, 22_000);
             } catch (destErr: any) {
                 // 513 = TGX handler timeout (dest code returns too many results) — fall through to hotel-code path
                 console.warn(`[tgx-search] Dest code "${resolvedCode}" search failed (${destErr.message?.slice(0, 80)}) — falling back to hotel-code search`);
                 destResult = null;
+                unansweredReasons.push(`dest-code ${resolvedCode} threw (${destErr.message?.slice(0, 60)})`);
             }
             if (!destResult) {
                 console.log(`[tgx-search][TIMING] dest-code attempt for "${resolvedCode}" failed after ${Date.now() - __t0}ms`);
@@ -1709,6 +1742,10 @@ async function runCityFallback(
                 // per TGX docs: "retry; connection timeout is transient." Blacklisting on
                 // transient errors would permanently skip a valid destination code.
                 console.warn(`[tgx-search] Dest code "${resolvedCode}" transient failure (${destErrors[0]?.code ?? 'empty'}) — not recorded as OTV miss`);
+                // The same reasoning that keeps this out of the blacklist keeps it out of
+                // a No-Availability verdict: OTV either timed out or was never called, so
+                // nothing has been learned about inventory.
+                unansweredReasons.push(`dest-code ${resolvedCode} transient (${destErrors[0]?.code ?? 'empty hotels'})`);
             } else {
                 persistFailedDestCode(resolvedCode, cityName);
                 if (destErrors.length) {
@@ -1730,7 +1767,15 @@ async function runCityFallback(
             const cityKey = cityName?.toLowerCase().trim() ?? '';
             const scopedKey = countryCode ? `${cityKey}:${countryCode.toLowerCase()}` : null;
             const keys = scopedKey ? [cityKey, scopedKey] : [cityKey];
-            const noneRows = await _sql`SELECT 1 FROM tgx_destination_cache WHERE city_key = ANY(${keys}) AND destination_code = 'NONE' LIMIT 1`;
+            // Only a NONE Sentinel written in the last 7 days may short-circuit the search.
+            // An older one is more likely to be a scar from a transient TGX 5xx than a real
+            // coverage gap — the same window tgx_failed_dest_codes already applies above.
+            const noneRows = await _sql`
+                SELECT 1 FROM tgx_destination_cache
+                WHERE city_key = ANY(${keys})
+                  AND destination_code = 'NONE'
+                  AND created_at > now() - INTERVAL '7 days'
+                LIMIT 1`;
             if (noneRows.length > 0) isNoneSentinel = true;
         } catch { /* non-fatal — treat as timeout */ }
 
@@ -1763,7 +1808,12 @@ async function runCityFallback(
                 }
             } catch (e: any) {
                 console.warn(`[tgx-search] Extended dest-code search failed: ${e.message?.slice(0, 80)}`);
+                unansweredReasons.push(`extended dest-code ${bgCode} threw (${e.message?.slice(0, 60)})`);
             }
+        } else if (!bgCode) {
+            // 18s race lost and 12s more wasn't enough — destinationSearcher never
+            // answered, so no destination has been ruled out.
+            unansweredReasons.push('dest-code resolution timed out');
         }
         } // end !isNoneSentinel
     }
@@ -1834,24 +1884,75 @@ async function runCityFallback(
 
             const catalogIds = catalogRows.map(r => r.hotel_id);
             if (catalogIds.length > 0) {
-                console.log(`[tgx-search] Hotel-code fallback: querying TGX with ${catalogIds.length} IDs for "${cityName}"`);
                 const _cfg = getTgxConfig();
-                const hotelResult = await tgxGraphQL(CITY_SEARCH_QUERY, {
-                    criteria: { ...baseCriteria, hotels: catalogIds },
-                    settings: getTgxSettings(_cfg, 15_000, true, 'USD'),
-                    filterSearch: getTgxFilterSearch(_cfg),
-                }, 25_000).catch(() => null);
-                const merchant = ((hotelResult?.data?.hotelX?.search?.options) ?? []).filter(
-                    (o: any) => o.paymentType === 'MERCHANT' && (o.status === 'AVAILABLE' || o.status === 'OK')
+                // Batched in groups of ≤200, sent in parallel — the design CONTEXT.md has
+                // always described for this path. It is what makes OTV's stated 12,000ms
+                // Search timeout viable: a single call carrying ~1,000 hotel codes cannot
+                // be priced inside 12s, and OTV returns a clean empty rather than an error,
+                // so it reads as "no availability" (measured: Bangkok, 994 codes → 0 hotels
+                // at 12s, 153 at 15s). Five parallel 200-code calls each fit the budget
+                // comfortably, and the whole batch still costs one round-trip of wall time.
+                const BATCH = 200;
+                const batches: string[][] = [];
+                for (let i = 0; i < catalogIds.length; i += BATCH) batches.push(catalogIds.slice(i, i + BATCH));
+                console.log(`[tgx-search] Hotel-code fallback: querying TGX with ${catalogIds.length} IDs for "${cityName}" in ${batches.length} batch(es) of ≤${BATCH}`);
+
+                const settled = await Promise.all(batches.map(ids =>
+                    tgxGraphQL(CITY_SEARCH_QUERY, {
+                        criteria: { ...baseCriteria, hotels: ids },
+                        settings: getTgxSettings(_cfg, 12_000, true, 'USD'),
+                        filterSearch: getTgxFilterSearch(_cfg),
+                    }, 22_000).catch((e: any) => {
+                        console.warn(`[tgx-search] Hotel-code batch of ${ids.length} failed: ${e?.message?.slice(0, 60)}`);
+                        return null;
+                    }),
+                ));
+
+                // A batch that answered — even with zero options — has ruled its hotels out.
+                // Only a batch that never answered leaves anything unknown.
+                const answered = settled.filter(Boolean);
+                if (answered.length < batches.length) {
+                    // An abort here used to be indistinguishable from "OTV has nothing" —
+                    // the null fell through and the client wiped a screen full of hotels.
+                    unansweredReasons.push(`${batches.length - answered.length}/${batches.length} hotel-code batches did not answer`);
+                }
+
+                const merchant = answered.flatMap((r: any) =>
+                    ((r?.data?.hotelX?.search?.options) ?? []).filter(
+                        (o: any) => o.paymentType === 'MERCHANT' && (o.status === 'AVAILABLE' || o.status === 'OK')
+                    ),
                 );
                 if (merchant.length > 0) {
                     console.log(`[tgx-search] Hotel-code fallback: ${merchant.length} options for "${cityName}"`);
                     return buildCityResults(merchant, cityName, countryCode);
                 }
+                if (answered.length === batches.length) {
+                    // Every batch completed, all with zero options. Coverage here is a
+                    // bounded subset, but that subset IS the Phase 1 catalog — so every
+                    // hotel the user can currently see has been asked about and answered
+                    // for. That makes this a No-Availability result, not an Unanswered
+                    // one, even if the destination-code path failed earlier.
+                    //
+                    // Requires ALL batches: if any batch went unanswered, part of the
+                    // catalog was never priced and must not be pruned on its behalf.
+                    unansweredReasons.length = 0;
+                }
+            } else if (unansweredReasons.length > 0) {
+                // Nothing to ask TGX about and no path answered — the destination was
+                // never actually searched. (An empty catalog on its own is not enough:
+                // a dest-code search that answered cleanly has still ruled the city out.)
+                unansweredReasons.push('no catalog hotel codes to fall back on');
             }
         } catch (e: any) {
             console.warn(`[tgx-search] Hotel-code fallback failed for "${cityName}": ${e.message?.slice(0, 80)}`);
+            unansweredReasons.push(`hotel-code fallback errored (${e.message?.slice(0, 60)})`);
         }
+    }
+
+    // Nothing bookable. Distinguish "the supplier answered and had nothing" from
+    // "we never got an answer" — only the former is a real empty result.
+    if (unansweredReasons.length > 0) {
+        throw new UnansweredSearchError(cityName, unansweredReasons.join('; '));
     }
 
     // Destination-code search returned no bookable results.
@@ -2012,15 +2113,17 @@ async function _runTgxSearch(params: TgxSearchParams): Promise<any> {
     // to try at TGX Quote (cheapest_price would leave only 1 token with no fallback).
     //
     // filterSearch.access.includes routes the request to our OTV access code per TGX docs.
-    // TGX docs: max Search timeout = 25,000ms (higher values are clamped).
-    // Destination: supplier=15,000ms + HTTP abort=25,000ms.  Hotel: 12,000ms + 13,000ms.
+    // Supplier timeout is OTV's stated Search limit of 12,000ms on both paths — TGX caps
+    // Search at 25,000ms, but sending more than the supplier will ever use just buys dead
+    // time. The HTTP aborts differ because they cover response transfer, not supplier wait:
+    // destination responses are larger, so 22,000ms; a single hotel needs only 13,000ms.
     const cfg = getTgxConfig();
     const searchSettings = destinations
-        ? getTgxSettings(cfg, 15_000, true, 'USD')
+        ? getTgxSettings(cfg, 12_000, true, 'USD')
         : getTgxSettings(cfg, 12_000, false, 'USD');
     const filterSearch = getTgxFilterSearch(cfg);
 
-    const result = await tgxGraphQL(gqlQuery, { criteria, settings: searchSettings, filterSearch }, destinations ? 25_000 : 13_000);
+    const result = await tgxGraphQL(gqlQuery, { criteria, settings: searchSettings, filterSearch }, destinations ? 22_000 : 13_000);
 
     const options: TgxOption[] = result?.data?.hotelX?.search?.options || [];
     const gqlErrors = result?.data?.hotelX?.search?.errors || [];

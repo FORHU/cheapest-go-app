@@ -330,23 +330,41 @@ export async function resolveTgxDestinationCode(cityName: string, countryCode?: 
     const cityOnlyKey = cityName.toLowerCase().trim();
     try {
         const sql = getSqlAdmin();
-        const rows = await sql`SELECT destination_code FROM tgx_destination_cache WHERE city_key = ${key} LIMIT 1`;
-        if (rows.length > 0) {
-            const code = rows[0].destination_code as string;
-            if (code === 'NONE') { _destCodeCache.set(key, 'NONE'); return undefined; }
-            _destCodeCache.set(key, code);
-            return code;
-        }
+
+        // A real destination code never expires — TGX's city→code mapping is stable and
+        // re-resolving costs an 18s round-trip. A NONE Sentinel does: it records only that
+        // one destinationSearcher call failed, and it is written on any TGX 5xx including
+        // a transient one. Left permanent, a single outage silently routes a city to
+        // Hotel-Code Fallback forever at roughly half the inventory (measured: Seoul, 89
+        // hotels against 185 via code 3124, after a 5xx burst pinned 3,828 cities at once).
+        // 7 days mirrors tgx_failed_dest_codes, which already expires for the same reason.
+        const NONE_TTL_DAYS = 7;
+        const isLiveNone = (row: { destination_code: string; created_at: Date | string }) =>
+            row.destination_code === 'NONE' &&
+            Date.now() - new Date(row.created_at).getTime() < NONE_TTL_DAYS * 86_400_000;
+
+        type DestRow = { destination_code: string; created_at: Date | string };
+        const readKey = async (k: string): Promise<string | undefined | null> => {
+            const rows = await sql<DestRow[]>`
+                SELECT destination_code, created_at FROM tgx_destination_cache
+                WHERE city_key = ${k} LIMIT 1`;
+            if (rows.length === 0) return null;                       // no row — keep looking
+            const row = rows[0];
+            if (row.destination_code === 'NONE') {
+                if (isLiveNone(row)) { _destCodeCache.set(key, 'NONE'); return undefined; }
+                return null;                                          // stale NONE — re-ask TGX
+            }
+            _destCodeCache.set(key, row.destination_code);
+            return row.destination_code;
+        };
+
+        const hit = await readKey(key);
+        if (hit !== null) return hit;
         // Fallback: sync-dest-cache stores codes without the ":countryCode" suffix.
         // When the scoped key misses, check the city-only key so we don't re-hit TGX.
         if (key !== cityOnlyKey) {
-            const cityRows = await sql`SELECT destination_code FROM tgx_destination_cache WHERE city_key = ${cityOnlyKey} LIMIT 1`;
-            if (cityRows.length > 0) {
-                const code = cityRows[0].destination_code as string;
-                if (code === 'NONE') { _destCodeCache.set(key, 'NONE'); return undefined; }
-                _destCodeCache.set(key, code);
-                return code;
-            }
+            const cityHit = await readKey(cityOnlyKey);
+            if (cityHit !== null) return cityHit;
         }
     } catch { /* non-fatal — fall through to TGX */ }
     // 3. TGX API — share the raw fetch with backgroundResolveDestCode so both
@@ -430,10 +448,17 @@ function _fetchDestCodeRaw(cityName: string, countryCode?: string): Promise<stri
                     const sql = getSqlAdmin();
                     await sql`INSERT INTO tgx_destination_cache (city_key, destination_code, dest_type)
                         VALUES (${key}, ${code}, ${dest_type ?? 'CITY'})
+                        -- A fresh NONE Sentinel is still protected: it was written
+                        -- deliberately and should stand for its 7 days. A stale one must be
+                        -- overwritable, or a city whose sentinel the readers now ignore would
+                        -- re-resolve from scratch on every single search — an 18s round-trip
+                        -- each time, because the real code could never be written back.
                         ON CONFLICT (city_key) DO UPDATE SET
                             destination_code = EXCLUDED.destination_code,
-                            dest_type        = EXCLUDED.dest_type
-                        WHERE tgx_destination_cache.destination_code != 'NONE'`;
+                            dest_type        = EXCLUDED.dest_type,
+                            created_at       = now()
+                        WHERE tgx_destination_cache.destination_code != 'NONE'
+                           OR tgx_destination_cache.created_at <= now() - INTERVAL '7 days'`;
                     console.log(`[dest-resolve] Resolved "${cityName}" → ${code} (${dest_type ?? 'CITY'})`);
                 } catch { /* non-fatal */ }
             } else {

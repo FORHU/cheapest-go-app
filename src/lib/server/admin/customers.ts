@@ -2,26 +2,57 @@ import { createAdminClient } from '@/utils/postgres/admin';
 import { Customer } from '@/types/admin';
 import { applyBrandFilter, getAdminBrand } from './brand-filter';
 
-export async function getCustomersList(): Promise<Customer[]> {
+/** Customers per page. Bounds every query below, since each is scoped to the page. */
+const CUSTOMERS_PAGE_SIZE = 50;
+
+export interface CustomersPage {
+    customers: Customer[];
+    total: number;
+    page: number;
+    pageSize: number;
+    totalPages: number;
+}
+
+/**
+ * A page of customers, with lifetime spend for each.
+ *
+ * Every query here is scoped to the customers on the page rather than capped at some
+ * row count. That distinction matters: this figure is a per-customer lifetime total,
+ * so reading only "the most recent N bookings" would not lose rows at the tail the way
+ * a capped list does — it would report the wrong amount for a real customer, silently
+ * and plausibly. Bounded by whose bookings are fetched, never by how many.
+ */
+export async function getCustomersList(params: { page?: number; pageSize?: number } = {}): Promise<CustomersPage> {
+    const page     = Math.max(1, params.page ?? 1);
+    const pageSize = params.pageSize ?? CUSTOMERS_PAGE_SIZE;
+    const from     = (page - 1) * pageSize;
+
     const supabase = createAdminClient();
     const brand = await getAdminBrand();
 
-    // 1. Fetch all user profiles
-    const { data: profiles } = await supabase
+    // 1. One page of user profiles, newest first
+    const { data: profiles, count } = await supabase
         .from('profiles')
-        .select('*')
+        .select('*', { count: 'exact' })
         .eq('role', 'user')
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .range(from, from + pageSize - 1);
 
-    if (!profiles) return [];
+    const total      = count ?? 0;
+    const totalPages = Math.max(1, Math.ceil(total / pageSize));
 
-    // 2. Fetch all bookings to calculate spend & counts
-    // For hotels, we want holder names as fallback
-    // For flights, we need to join with passengers
+    if (!profiles || profiles.length === 0) {
+        return { customers: [], total, page, pageSize, totalPages };
+    }
+
+    // 2. Every booking belonging to those customers — all of them, so the spend is
+    //    right, but only for the fifty on this page.
+    const pageUserIds = profiles.map((p: any) => p.id).filter(Boolean);
+
     const [unified, hotels, flights] = await Promise.all([
-        applyBrandFilter(supabase.from('unified_bookings').select('user_id, total_price, usd_amount, created_at, status, metadata'), brand),
-        applyBrandFilter(supabase.from('bookings').select('user_id, total_price, usd_amount, created_at, status, holder_first_name, holder_last_name'), brand),
-        applyBrandFilter(supabase.from('flight_bookings').select('id, user_id, total_price, usd_amount, created_at, status'), brand),
+        applyBrandFilter(supabase.from('unified_bookings').select('user_id, total_price, usd_amount, created_at, status, metadata'), brand).in('user_id', pageUserIds),
+        applyBrandFilter(supabase.from('bookings').select('user_id, total_price, usd_amount, created_at, status, holder_first_name, holder_last_name'), brand).in('user_id', pageUserIds),
+        applyBrandFilter(supabase.from('flight_bookings').select('id, user_id, total_price, usd_amount, created_at, status'), brand).in('user_id', pageUserIds),
     ]);
 
     // Fetch passengers for these flights to get names
@@ -40,7 +71,7 @@ export async function getCustomersList(): Promise<Customer[]> {
     ];
 
     // 3. Map profiles to Customer data
-    return profiles.map((profile: any) => {
+    const customers = profiles.map((profile: any) => {
         const userBookings = allBookings.filter(b => b.user_id === profile.id);
         const totalBookings = userBookings.length;
         // Spend is in USD, from each booking's locked rate (ADR-0008). This previously
@@ -105,4 +136,6 @@ export async function getCustomersList(): Promise<Customer[]> {
             lastBooking: lastBookingDate ? lastBookingDate.toISOString() : 'N/A'
         };
     });
+
+    return { customers, total, page, pageSize, totalPages };
 }

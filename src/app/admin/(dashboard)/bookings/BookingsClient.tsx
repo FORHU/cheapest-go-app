@@ -119,6 +119,7 @@ export function BookingsClient({ data, searchParams }: BookingsClientProps) {
 
     const [visibleColumns, setVisibleColumns] = useState<Set<string>>(new Set([
         'bookingRef',
+        'itinerary',
         'customer',
         'ticketId',
         'status',
@@ -140,6 +141,7 @@ export function BookingsClient({ data, searchParams }: BookingsClientProps) {
 
     const COLUMNS = [
         { id: 'bookingRef', label: 'Ref / PNR' },
+        { id: 'itinerary', label: 'Booked' },
         { id: 'customer', label: 'Customer' },
         { id: 'ticketId', label: 'Ticket ID' },
         { id: 'ticketStatus', label: 'Tkt Status' },
@@ -499,6 +501,7 @@ export function BookingsClient({ data, searchParams }: BookingsClientProps) {
                                             <TableHeader>
                                                 <TableRow className="hover:bg-transparent">
                                                     {visibleColumns.has('bookingRef') && <TableHead>Ref / PNR</TableHead>}
+                                                    {visibleColumns.has('itinerary') && <TableHead>Booked</TableHead>}
                                                     {visibleColumns.has('customer') && <TableHead>Customer</TableHead>}
                                                     {visibleColumns.has('ticketId') && <TableHead>Ticket ID</TableHead>}
                                                     {visibleColumns.has('ticketStatus') && <TableHead>Tkt Status</TableHead>}
@@ -521,6 +524,25 @@ export function BookingsClient({ data, searchParams }: BookingsClientProps) {
                                                                     <span>{booking.bookingRef}</span>
                                                                     {booking.pnr && booking.pnr !== booking.bookingRef && (
                                                                         <span className="text-slate-400 text-[10px] uppercase">PNR: {booking.pnr}</span>
+                                                                    )}
+                                                                </div>
+                                                            </TableCell>
+                                                        )}
+                                                        {visibleColumns.has('itinerary') && (
+                                                            <TableCell>
+                                                                <div className="flex flex-col max-w-[16rem]">
+                                                                    <span className="text-sm font-medium text-slate-900 dark:text-white truncate" title={booking.itinerary?.summary}>
+                                                                        {booking.itinerary?.summary || '—'}
+                                                                    </span>
+                                                                    {/* The airline, which `supplier` does not give: that names the
+                                                                        ticketing partner. Room does the same job for a hotel. */}
+                                                                    {booking.itinerary?.roomName && (
+                                                                        <span className="text-xs text-slate-500 truncate">{booking.itinerary.roomName}</span>
+                                                                    )}
+                                                                    {booking.itinerary?.segments && booking.itinerary.segments.length > 1 && (
+                                                                        <span className="text-xs text-slate-500">
+                                                                            {booking.itinerary.segments.length} segments
+                                                                        </span>
                                                                     )}
                                                                 </div>
                                                             </TableCell>

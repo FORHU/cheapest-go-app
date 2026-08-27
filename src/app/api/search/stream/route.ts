@@ -564,9 +564,14 @@ export async function POST(req: NextRequest) {
 
                 let tgxFailed = false;
                 const tgxResult = await runTgxSearch(body).catch((tgxErr: any) => {
+                    // tgxFailed is what stops the client pruning the Phase 1 catalog. An
+                    // UnansweredSearchError means the supplier never answered, so nothing is
+                    // known about availability and the catalog must stay on screen — see
+                    // CONTEXT.md, "Unanswered Search".
                     tgxFailed = true;
+                    const isUnanswered = tgxErr?.name === 'UnansweredSearchError';
                     const isTimeout = tgxErr?.name === 'TimeoutError' || tgxErr?.message?.includes('timeout') || tgxErr?.message?.includes('aborted');
-                    console.warn(`[stream] phase2 TGX ${isTimeout ? 'timed out' : 'failed'} for "${city}": ${tgxErr.message}`);
+                    console.warn(`[stream] phase2 TGX ${isUnanswered ? 'unanswered' : isTimeout ? 'timed out' : 'failed'} for "${city}": ${tgxErr.message}`);
                     return { data: [] as any[], allMappable: [] as any[] };
                 });
 
