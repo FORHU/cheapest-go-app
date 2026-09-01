@@ -94,6 +94,30 @@ async function fetchHotelContentPatches(hotelIds: string[], timeoutMs = 30_000):
     }
 }
 
+/**
+ * Reduce hotels to what the map actually plots.
+ *
+ * `done.allMappable` re-serialises hotels the client already received in the `hotels`
+ * messages — 209–468 KB of pure duplication on a large city. SearchMapView keeps only
+ * these fields anyway when it builds its own objects, and explicitly blanks description
+ * and amenities, so sending anything more is waste on both ends.
+ */
+function toMapPins(hotels: any[]): any[] {
+    return hotels.map((h: any) => ({
+        id:          h.id ?? h.hotelId,
+        hotelId:     h.hotelId ?? h.id,
+        name:        h.name,
+        price:       h.price,
+        currency:    h.currency,
+        image:       h.image ?? '',
+        lat:         h.lat,
+        lng:         h.lng,
+        coordinates: h.coordinates ?? { lat: h.lat, lng: h.lng },
+        rating:      h.rating ?? h.reviewRating ?? 0,
+        starRating:  h.starRating ?? 0,
+    }));
+}
+
 function resolveIsoCode(raw: string): string | null {
     if (!raw) return null;
     if (/^[A-Za-z]{2}$/.test(raw)) return raw.toUpperCase();
@@ -150,8 +174,8 @@ async function getInstantHotelCatalog(body: any): Promise<any[]> {
         if (areaBbox) {
             const [minLng, minLat, maxLng, maxLat] = areaBbox;
             rows = await sql`
-                SELECT hotel_id, name, images, star_rating, lat, lng, address, city, country,
-                       description, amenities, review_rating, review_count
+                SELECT hotel_id, name, images[1] AS image, star_rating, lat, lng, address, city, country,
+                       review_rating, review_count
                 FROM hotel_content
                 WHERE lat BETWEEN ${minLat} AND ${maxLat}
                   AND lng BETWEEN ${minLng} AND ${maxLng}
@@ -169,8 +193,8 @@ async function getInstantHotelCatalog(body: any): Promise<any[]> {
             const minLat = centerLat - DEG, maxLat = centerLat + DEG;
             const minLng = centerLng - DEG, maxLng = centerLng + DEG;
             rows = await sql`
-                SELECT hotel_id, name, images, star_rating, lat, lng, address, city, country,
-                       description, amenities, review_rating, review_count
+                SELECT hotel_id, name, images[1] AS image, star_rating, lat, lng, address, city, country,
+                       review_rating, review_count
                 FROM hotel_content
                 WHERE lat BETWEEN ${minLat} AND ${maxLat}
                   AND lng BETWEEN ${minLng} AND ${maxLng}
@@ -199,8 +223,8 @@ async function getInstantHotelCatalog(body: any): Promise<any[]> {
 
             rows = isoCode
                 ? await sql`
-                    SELECT hotel_id, name, images, star_rating, lat, lng, address, city, country,
-                           description, amenities, review_rating, review_count
+                    SELECT hotel_id, name, images[1] AS image, star_rating, lat, lng, address, city, country,
+                           review_rating, review_count
                     FROM hotel_content
                     WHERE city ILIKE ANY(${patterns})
                       AND LOWER(country) = LOWER(${isoCode})
@@ -210,8 +234,8 @@ async function getInstantHotelCatalog(body: any): Promise<any[]> {
                     LIMIT 300
                   `
                 : await sql`
-                    SELECT hotel_id, name, images, star_rating, lat, lng, address, city, country,
-                           description, amenities, review_rating, review_count
+                    SELECT hotel_id, name, images[1] AS image, star_rating, lat, lng, address, city, country,
+                           review_rating, review_count
                     FROM hotel_content
                     WHERE city ILIKE ANY(${patterns})
                       AND (hotel_id ~ '^[0-9]+$' OR hotel_id ~ '^[A-Z]{2}[0-9]+$')
@@ -231,8 +255,15 @@ async function getInstantHotelCatalog(body: any): Promise<any[]> {
             name:         r.name || r.hotel_id,
             price:        0,
             currency:     'USD',
-            images:       r.images ?? [],
-            image:        (r.images as string[] | null)?.[0] ?? '',
+            // Only the first image is ever rendered — the card reads `image`, the map
+            // rebuilds `images` from it, and there is no carousel. Selecting the whole
+            // array cost ~164 KB a search for URLs nothing displayed.
+            //
+            // `images` starts empty rather than echoing `image`: the client only ever
+            // reads it from an incoming content patch, so seeding it here shipped the
+            // same URL twice — 82 KB a search to say what `image` already said.
+            images:       [],
+            image:        (r.image as string | null) ?? '',
             starRating:   r.star_rating ?? 0,
             reviewRating: Number(r.review_rating ?? 0),
             rating:       Number(r.review_rating ?? 0),
@@ -241,12 +272,19 @@ async function getInstantHotelCatalog(body: any): Promise<any[]> {
             lat:          Number(r.lat ?? 0),
             lng:          Number(r.lng ?? 0),
             coordinates:  { lat: Number(r.lat ?? 0), lng: Number(r.lng ?? 0) },
-            address:      r.address ?? '',
+            // Same string under two keys. The card renders `location`; nothing in the
+            // search UI reads `address` at all, so it was 42 KB a search of duplicate.
+            address:      '',
             location:     r.address ?? '',
             city:         r.city ?? cityName,
             country:      r.country ?? '',
-            description:  r.description ?? '',
-            amenities:    r.amenities ?? [],
+            // Not selected. Nothing in the search UI reads either: the card renders
+            // neither, the amenities filter is a URL param re-queried server-side, and
+            // SearchMapView overwrites both with empty values when it builds its own
+            // objects. Together they were 65% of this payload. The property page fetches
+            // its own copy. Kept as empty fields so the Property shape is unchanged.
+            description:  '',
+            amenities:    [],
             type:         'hotel',
             boardTypes:   [],
             provider:     'travelgatex',
@@ -648,7 +686,10 @@ export async function POST(req: NextRequest) {
                 // Send done — client can render immediately without waiting for TGX images.
                 const finalCount = tgxHotels.length > 0 ? tgxHotels.length : catalogHotels.length;
                 console.log(`[stream] done — total ${finalCount} hotels, ${elapsed()} wall time`);
-                send({ type: 'done', totalCount: finalCount, tgxCount: tgxHotels.length, tgxFailed, allMappable: tgxMappable.length > 0 ? tgxMappable : catalogHotels.filter((h: any) => h.lat && h.lng) });
+                send({
+                    type: 'done', totalCount: finalCount, tgxCount: tgxHotels.length, tgxFailed,
+                    allMappable: toMapPins(tgxMappable.length > 0 ? tgxMappable : catalogHotels.filter((h: any) => h.lat && h.lng)),
+                });
 
                 // Phase B: fetch images for new TGX hotels (not in catalog) — post-done.
                 // Client processes this type:'content' message to add images to visible cards.
@@ -697,7 +738,7 @@ export async function POST(req: NextRequest) {
                 console.error(`[stream] ${isTimeout ? 'timeout' : 'fatal error'} for "${city}" at ${elapsed()}:`, e.message);
                 if (catalogHotels.length > 0) {
                     // Catalog already sent — just close cleanly; don't flash an error over real results
-                    send({ type: 'done', totalCount: catalogHotels.length, tgxCount: 0, allMappable: catalogHotels.filter((h: any) => h.lat && h.lng) });
+                    send({ type: 'done', totalCount: catalogHotels.length, tgxCount: 0, allMappable: toMapPins(catalogHotels.filter((h: any) => h.lat && h.lng)) });
                 } else if (!isTimeout) {
                     // Only surface non-timeout errors to the client
                     send({ type: 'error', message: e.message });

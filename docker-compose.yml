@@ -51,6 +51,21 @@ services:
     restart: always
 
   cron:
+    # Opt-in: `docker compose --profile cron up -d`. Deliberately NOT started by a
+    # plain `docker compose up`.
+    #
+    # This sidecar curls the app service, and the app service talks to live RDS (see
+    # the comment above it). So bringing it up runs all 12 production jobs — ticket
+    # polling, orphaned-order cleanup, email retries, refunds — from a laptop, in
+    # parallel with the sidecar production already runs. Wanting to look at live data
+    # and wanting to drive production's schedule are different intentions, and
+    # without this profile the first silently implied the second.
+    #
+    # Nothing was harmed by the period when it did: auto-refunds carry a Stripe
+    # idempotency key (`refund-awaiting-<bookingId>`) and order cleanup tolerates
+    # `already_cancelled`. That is one good key, not a design — do not rely on the
+    # next job inheriting it. Start this profile only to exercise a specific job.
+    profiles: ["cron"]
     build:
       context: ./docker/cron
     restart: unless-stopped

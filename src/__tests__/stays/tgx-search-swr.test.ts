@@ -18,7 +18,8 @@ vi.mock('@/lib/server/stays/travelgatex/client', () => ({
     getTgxConfig:         vi.fn().mockReturnValue({ accessCode: 'test', context: 'OTV', client: 'test', supplier: 'OTV' }),
     getTgxFilterSearch:   vi.fn().mockReturnValue({}),
     buildOccupancies:     vi.fn().mockReturnValue([{ occupancyRefId: 1, paxes: [] }]),
-    normalizeOption:      vi.fn().mockImplementation((o: any) => o),
+    normalizeOption:    vi.fn().mockImplementation((o: any) => o),
+    toRefundableTag:    vi.fn().mockImplementation((r: any) => (r ? 'RFN' : 'NRFN')),
 }));
 
 vi.mock('@/lib/server/search', () => ({

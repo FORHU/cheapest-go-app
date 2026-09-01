@@ -3,7 +3,7 @@
  * Called directly by server routes to avoid HTTP self-call overhead.
  */
 
-import { tgxGraphQL, getTgxSettings, getTgxConfig, getTgxFilterSearch, buildOccupancies, normalizeOption, type TgxOption } from './client';
+import { tgxGraphQL, getTgxSettings, getTgxConfig, getTgxFilterSearch, buildOccupancies, normalizeOption, toRefundableTag, type TgxOption } from './client';
 import { seedHotelRoomGroupsById, parseRoomGroups } from '@/lib/server/stays/etg/roomGroups';
 import { getSqlAdmin } from '@/lib/db/postgres';
 import { resolveTgxDestinationCode, backgroundResolveDestCode } from '@/lib/server/search';
@@ -1067,7 +1067,7 @@ async function buildEtgResults(
     const allIds = hotels.map((h: any) => h.id as string);
 
     // Use any pre-existing hotel_content data
-    const existingContent = await fetchHotelContent(allIds);
+    const existingContent = await fetchHotelContent(allIds, true); // only .name is read below
     const needInfo = hotels.filter((h: any) => !existingContent.get(h.id)?.name);
 
     // Parallel info fetch for hotels missing names (cap at 15 to stay within rate limit)
@@ -1294,9 +1294,32 @@ query TgxHotelSearch($criteria: HotelCriteriaSearchInput!, $settings: HotelSetti
 
 // ─── DB enrichment ────────────────────────────────────────────────────────────
 
-async function fetchHotelContent(hotelCodes: string[]) {
+/**
+ * @param slim  Select only what a search card needs. `description`, `amenities` and
+ *   `amenity_groups` are large TOASTed columns that a city search never renders — on a
+ *   300-hotel result they were the majority of the payload and of the query's cost — and
+ *   only the first image is ever shown. The single-hotel path feeds the property page and
+ *   must stay full. Defaults to full so a new caller cannot silently lose fields.
+ */
+async function fetchHotelContent(hotelCodes: string[], slim = false) {
     if (!hotelCodes.length) return new Map<string, any>();
     const sql = getSqlAdmin();
+    if (slim) {
+        const slimRows = await sql`
+            SELECT
+                hotel_id,
+                COALESCE(NULLIF(TRIM(name), ''), hotel_id) AS name,
+                images[1] AS image,
+                star_rating, lat, lng, address, city, country,
+                review_rating, review_count
+            FROM hotel_content
+            WHERE hotel_id = ANY(${hotelCodes})
+        `;
+        const slimMap = new Map<string, any>();
+        // Re-expose as `images` so callers keep one shape whichever mode they asked for.
+        for (const row of slimRows) slimMap.set(row.hotel_id, { ...row, images: row.image ? [row.image] : [] });
+        return slimMap;
+    }
     // LEFT JOIN tgx_hotel_static so static CSV data fills in slug names, missing
     // coordinates, and star ratings that hotel_content doesn't have yet.
     const rows = await sql`
@@ -2238,7 +2261,7 @@ async function buildCityResults(
         .slice(0, 300)
         .map(([code]) => code);
     const [contentMap, reviewMap] = await Promise.all([
-        fetchHotelContent(hotelCodes),
+        fetchHotelContent(hotelCodes, true), // search cards only — see fetchHotelContent
         fetchHotelReviews(hotelCodes),
     ]);
 
@@ -2301,7 +2324,7 @@ async function buildCityResults(
             price:        opt.price.gross || opt.price.net,
             currency:     opt.price.currency,
             offerId:      `TGX:${tokenId}`,
-            refundableTag: opt.cancelPolicy?.refundable ? 'REFUNDABLE' : 'NON_REFUNDABLE',
+            refundableTag: toRefundableTag(opt.cancelPolicy?.refundable),
             starRating:   content?.star_rating ?? 0,
             images:       imageList,
             image:        imageList[0] ?? '',
@@ -2321,7 +2344,12 @@ async function buildCityResults(
             checkInTime:  content?.check_in_time ?? null,
             checkOutTime: content?.check_out_time ?? null,
             boardCode:    opt.boardCode,
-            roomTypes:    [normalizeOption(opt)],
+            // A city result carries no rooms. Nothing on the client reads roomTypes here
+            // — the card shows a price, and clicking through refetches the property — but
+            // it was 223 KB on a Bangkok search. Booking is unaffected: prebook works from
+            // `offerId` and runs its own single-hotel search for fresh tokens.
+            // The single-hotel branch above still returns real roomTypes.
+            roomTypes:    [],
             _tgxToken:    opt.token,
         };
     });

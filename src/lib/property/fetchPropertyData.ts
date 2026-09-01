@@ -7,6 +7,7 @@ import { cache } from 'react';
 import { preBook } from '@/utils/postgres/functions';
 import { runTgxSearch, fetchTgxHotelContent } from '@/lib/server/stays/travelgatex/search';
 import { otvCodeToLabel, normalizeStoredAmenity } from '@/lib/server/stays/travelgatex/amenityCodes';
+import { toRefundableTag } from '@/lib/server/stays/travelgatex/client';
 import { type Property } from '@/types';
 import { getSqlAdmin } from '@/lib/db/postgres';
 export type PropertyData = Property;
@@ -37,7 +38,19 @@ export async function fetchHotelStatic(id: string): Promise<StaticHotelResult | 
         const city = r.city || '';
         const country = r.country || '';
         const address = r.address || '';
-        const rawAmenities = Array.isArray(r.amenities) ? r.amenities : [];
+        // hotel_content.amenities is jsonb in two shapes: a real array, and — for every
+        // row that actually has amenities — a JSON *string* containing the array, written
+        // double-encoded. `Array.isArray` was false for exactly the rows with data, so
+        // this list came out empty and the code below silently fell back to un-normalised
+        // live TGX amenities. That fallback is how untranslated supplier text reached the
+        // page. Accept both shapes.
+        const rawAmenities: any[] = Array.isArray(r.amenities)
+            ? r.amenities
+            : (() => {
+                if (typeof r.amenities !== 'string') return [];
+                try { const p = JSON.parse(r.amenities); return Array.isArray(p) ? p : []; }
+                catch { return []; }
+            })();
         const amenities: string[] = rawAmenities.flatMap((a: any) =>
             typeof a === 'string' ? [normalizeStoredAmenity(a)] : a?.code ? [otvCodeToLabel(a.code)] : []
         ).filter(Boolean);
@@ -541,14 +554,14 @@ async function fetchETGPropertyData(
                 gross:        price,
                 currency,
                 refundable,
-                refundableTag: refundable ? 'REFUNDABLE' : 'NON_REFUNDABLE',
+                refundableTag: toRefundableTag(refundable),
                 cancelPolicy:  null,
                 rates: [{
                     retailRate: {
                         total: [{ amount: price, currency }],
                         currency,
                     },
-                    refundableTag: refundable ? 'REFUNDABLE' : 'NON_REFUNDABLE',
+                    refundableTag: toRefundableTag(refundable),
                     cancellationPolicies: [],
                     _etg: { matchHash: rate?.match_hash, meal: rate?.meal },
                 }],
@@ -627,14 +640,14 @@ export async function fetchTGXPropertyData(
                 gross:         mapPrice,
                 currency:      mapCurrency,
                 refundable:    false,
-                refundableTag: 'NON_REFUNDABLE' as const,
+                refundableTag: 'NRFN' as const,
                 cancelPolicy:  null,
                 rates: [{
                     retailRate: {
                         total:    [{ amount: mapPrice, currency: mapCurrency }],
                         currency: mapCurrency,
                     },
-                    refundableTag:        'NON_REFUNDABLE' as const,
+                    refundableTag:        'NRFN' as const,
                     cancellationPolicies: [],
                     _tgx: { token, id: token, boardCode: null, paymentType: 'MERCHANT', cancelPolicy: null },
                 }],

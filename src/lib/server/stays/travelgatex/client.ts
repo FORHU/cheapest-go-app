@@ -194,6 +194,24 @@ export interface TgxOption {
     surcharges?: Array<{ chargeType: string; mandatory: boolean; price: { net: number; gross: number; currency: string } }>;
 }
 
+/**
+ * Supplier refundability → the app's canonical `RFN` / `NRFN`.
+ *
+ * Convert here, at the boundary, so only one vocabulary ever leaves the server. TGX's
+ * own `REFUNDABLE`/`NON_REFUNDABLE` used to travel all the way to the browser, where the
+ * search UI tests `=== 'RFN'` — so "Free cancellation only" filtered every hotel away and
+ * the free-cancellation badge never rendered. Checkout, the policy formatter and the
+ * cancellation engine had each grown their own `||` chain accepting both spellings (and
+ * `NON-REFUNDABLE` with a hyphen); the search UI was the one place that had not, and it
+ * failed silently because an empty filter result looks like "nothing matched".
+ *
+ * Those tolerant chains downstream are left alone as belt-and-braces — data written
+ * before this normalisation still carries the old spellings.
+ */
+export function toRefundableTag(refundable: boolean | null | undefined): 'RFN' | 'NRFN' {
+    return refundable ? 'RFN' : 'NRFN';
+}
+
 export function normalizeOption(opt: TgxOption) {
     // TGX docs: id is the canonical option identifier that must be passed to Quote.
     // token is the supplier-native token; keep it in _tgx for parsing (hotel code/dates).
@@ -208,7 +226,7 @@ export function normalizeOption(opt: TgxOption) {
         gross: opt.price.gross,
         currency: opt.price.currency,
         refundable: opt.cancelPolicy?.refundable ?? false,
-        refundableTag: opt.cancelPolicy?.refundable ? 'REFUNDABLE' : 'NON_REFUNDABLE',
+        refundableTag: toRefundableTag(opt.cancelPolicy?.refundable),
         cancelPolicy: opt.cancelPolicy,
         rates: [{
             retailRate: {
@@ -217,7 +235,7 @@ export function normalizeOption(opt: TgxOption) {
             },
             boardType: opt.boardCode,
             boardName: BOARD_CODE_LABELS[opt.boardCode] ?? opt.boardCode ?? 'Room only',
-            refundableTag: opt.cancelPolicy?.refundable ? 'REFUNDABLE' : 'NON_REFUNDABLE',
+            refundableTag: toRefundableTag(opt.cancelPolicy?.refundable),
             cancellationPolicies: opt.cancelPolicy?.cancelPenalties || [],
             _tgx: {
                 token: opt.token,
