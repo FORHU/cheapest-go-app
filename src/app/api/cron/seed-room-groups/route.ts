@@ -63,7 +63,11 @@ async function runSeed(batchSize: number, force = false): Promise<{ seeded: numb
             } else {
                 await sql`
                     UPDATE hotel_content
-                    SET room_groups          = ${JSON.stringify(groups)}::jsonb,
+                    // sql.json, not JSON.stringify + ::jsonb — postgres.js JSON-encodes a
+                    // parameter it infers as jsonb, so the latter double-encodes and stores
+                    // a jsonb string. Cast because sql.json's JSONValue rejects a typed
+                    // array of objects on its index signature, which is a typing quirk only.
+                    SET room_groups          = ${sql.json(groups as unknown as Record<string, never>[])},
                         room_groups_seeded_at = NOW()
                     WHERE hotel_id = ${hotel_id}
                 `;

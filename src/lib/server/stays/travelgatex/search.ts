@@ -770,7 +770,7 @@ export async function updateEtgContentInDb(etgMap: Map<string, EtgHotelContent>)
                 VALUES (
                     ${hotelId}, ${content.name ?? null}, '{}',
                     ${content.description ?? null},
-                    ${content.amenities ? JSON.stringify(content.amenities) : '[]'}::jsonb,
+                    ${sql.json(content.amenities ?? [])},
                     'etg', now()
                 )
                 ON CONFLICT (hotel_id) DO UPDATE SET
@@ -1554,11 +1554,11 @@ async function backfillHotelContent(contentMap: Map<string, any>): Promise<void>
                     ${r.hotel_id}, ${r.name}, ${sql.array(r.images)},
                     ${r.lat}, ${r.lng}, ${r.address}, ${r.city}, ${r.country},
                     ${r.description}, ${r.star_rating},
-                    ${JSON.stringify(r.amenities ?? [])}::jsonb,
-                    ${r.amenity_groups ? JSON.stringify(r.amenity_groups) : null}::jsonb,
+                    ${sql.json(r.amenities ?? [])},
+                    ${r.amenity_groups ? sql.json(r.amenity_groups) : null},
                     ${r.check_in_time ?? null}, ${r.check_out_time ?? null},
                     ${r.important_information ?? null},
-                    ${r.contact_info ? JSON.stringify(r.contact_info) : null}::jsonb,
+                    ${r.contact_info ? sql.json(r.contact_info) : null},
                     ${r.chain_code ?? null}, ${r.giata_id ?? null},
                     'tgx', now()
                 )

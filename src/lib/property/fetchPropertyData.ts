@@ -83,12 +83,12 @@ export async function fetchHotelStatic(id: string): Promise<StaticHotelResult | 
                             UPDATE hotel_content SET
                                 description           = COALESCE(description, ${tgx.description}),
                                 amenities             = CASE WHEN (amenities IS NULL OR jsonb_typeof(amenities) != 'array' OR jsonb_array_length(amenities) = 0)
-                                                        THEN ${JSON.stringify(tgx.amenities)}::jsonb ELSE amenities END,
-                                amenity_groups        = COALESCE(amenity_groups, ${tgx.amenity_groups ? JSON.stringify(tgx.amenity_groups) : null}::jsonb),
+                                                        THEN ${sql.json(tgx.amenities)} ELSE amenities END,
+                                amenity_groups        = COALESCE(amenity_groups, ${tgx.amenity_groups ? sql.json(tgx.amenity_groups) : null}),
                                 check_in_time         = COALESCE(check_in_time,  ${tgx.check_in_time}),
                                 check_out_time        = COALESCE(check_out_time, ${tgx.check_out_time}),
                                 important_information = COALESCE(important_information, ${tgx.important_information}),
-                                contact_info          = COALESCE(contact_info, ${tgx.contact_info ? JSON.stringify(tgx.contact_info) : null}::jsonb),
+                                contact_info          = COALESCE(contact_info, ${tgx.contact_info ? sql.json(tgx.contact_info) : null}),
                                 chain_code            = COALESCE(chain_code, ${tgx.chain_code}),
                                 giata_id              = COALESCE(giata_id,   ${tgx.giata_id}),
                                 fetched_at            = now()
