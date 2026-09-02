@@ -172,7 +172,12 @@ export function normalizedToFlightOffer(nf: any, tripType?: FlightOffer['tripTyp
         flightNumber: seg.flightNumber ?? nf.flightNumber ?? '',
         departure: {
             airport: seg.origin ?? nf.origin ?? '',
-            terminal: seg.terminal,
+            // Nested first, for the same reason as the time below: parseDuffelOffer emits
+            // departure.terminal, so reading only the flat seg.terminal dropped every
+            // Duffel terminal here — the one place the whole app gets its segments. It
+            // never reached the client, the book payload or flight_segments, which is why
+            // both the confirmation email and admin rendered no terminal on any booking.
+            terminal: seg.departure?.terminal ?? seg.terminal ?? seg.originTerminal,
             // Nested shape first: parseDuffelOffer emits departure.time / arrival.time,
             // while Mystifly and the synthetic fallback use the flat departureTime.
             // Reading only the flat form left Duffel segments undefined, so every leg
@@ -182,7 +187,7 @@ export function normalizedToFlightOffer(nf: any, tripType?: FlightOffer['tripTyp
         },
         arrival: {
             airport: seg.destination ?? nf.destination ?? '',
-            terminal: seg.arrivalTerminal,
+            terminal: seg.arrival?.terminal ?? seg.arrivalTerminal ?? seg.destinationTerminal,
             time: seg.arrival?.time ?? seg.arrivalTime ?? nf.arrival_time ?? '',
         },
         duration: seg.duration ?? nf.duration ?? 0,

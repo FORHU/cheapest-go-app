@@ -22,7 +22,7 @@ import { formatCurrency, formatDate, cn, formatStatus } from '@/lib/utils';
 import { statusBadgeClass } from './bookingStatus';
 import { getAirlineName, formatDuration } from '@/utils/flight-utils';
 import { TabList } from '@/components/ui/TabList';
-import { Booking, BookingRawData, RecoveryActionResult } from '@/types/admin';
+import { Booking, BookingRawData, FlightSegmentSummary, RecoveryActionResult } from '@/types/admin';
 import { toast } from 'sonner';
 // Removed server actions import
 import { useRouter } from 'next/navigation';
@@ -69,14 +69,20 @@ function legDuration(departure?: string, arrival?: string): string {
 }
 
 /**
- * The gap between landing on one leg and departing on the next. Returned only for a real
- * connection: a negative or absent gap means the legs are separate journeys (an outbound
- * and a return, say), not a layover, and labelling that as a connection would be wrong.
+ * The gap between landing on one leg and departing on the next, labelled only when the two
+ * really are one journey. `sliceIndex` is what decides that: segments of one slice
+ * share a slice, an outbound and a return do not. Where it is absent — older rows, or a
+ * supplier that never gave one — we fall back to the same 24-hour heuristic the
+ * confirmation email uses, which is weaker: it reads a same-day return as a layover.
  */
-function layoverLabel(prevArrival?: string, nextDeparture?: string): string {
-    const mins = minutesBetween(prevArrival, nextDeparture);
-    if (mins === null || mins > 24 * 60) return '';
-    return `${formatDuration(mins)} connection`;
+function layoverLabel(prev?: FlightSegmentSummary, next?: FlightSegmentSummary): string {
+    if (!prev || !next) return '';
+    const slicesKnown = prev.sliceIndex !== undefined && next.sliceIndex !== undefined;
+    if (slicesKnown && prev.sliceIndex !== next.sliceIndex) return '';
+    const mins = minutesBetween(prev.arrival, next.departure);
+    if (mins === null) return '';
+    if (!slicesKnown && mins > 24 * 60) return '';
+    return `${formatDuration(mins)} layover`;
 }
 
 interface BookingDetailsDialogProps {
@@ -434,7 +440,7 @@ export function BookingDetailsDialog({ booking, onClose }: BookingDetailsDialogP
 
                                 {booking.itinerary.segments?.map((seg, i) => {
                                     const prev = i > 0 ? booking.itinerary!.segments![i - 1] : undefined;
-                                    const connection = layoverLabel(prev?.arrival, seg.departure);
+                                    const connection = layoverLabel(prev, seg);
                                     return (
                                         <React.Fragment key={`${seg.flightNumber}-${i}`}>
                                             {/* Between legs, not on them: the wait at the connecting
@@ -444,7 +450,7 @@ export function BookingDetailsDialog({ booking, onClose }: BookingDetailsDialogP
                                                 <div className="flex items-center gap-3 px-1 py-0.5">
                                                     <span className="h-px flex-1 bg-slate-200 dark:bg-white/10" />
                                                     <span className="text-[10px] uppercase tracking-wide text-slate-400">
-                                                        {connection} in {prev?.destination}
+                                                        {connection} at {prev?.destination}
                                                     </span>
                                                     <span className="h-px flex-1 bg-slate-200 dark:bg-white/10" />
                                                 </div>

@@ -3,6 +3,7 @@ import { NextRequest } from 'next/server';
 import { getAuthenticatedUser } from '@/lib/server/auth';
 import { confirmAndSaveTgxBooking } from '@/lib/server/bookings';
 import { stripe } from '@/lib/stripe/server';
+import { isBookingReference } from '@/lib/bookingReference';
 import { createNotification } from '@/lib/server/admin/notify';
 
 export const maxDuration = 120;
@@ -47,9 +48,17 @@ export async function POST(req: NextRequest) {
             );
         }
 
+        // The reference was minted before the charge and lives on the PaymentIntent. Read it
+        // back from Stripe rather than accepting it from the request body — the client must
+        // not be able to choose the identifier a payment is filed under.
+        let bookingReference: string | undefined;
+
         // ── Stripe payment verification (when paymentIntentId is present) ──
         if (body.paymentIntentId) {
             const pi = await stripe.paymentIntents.retrieve(body.paymentIntentId);
+            bookingReference = isBookingReference(pi.metadata?.bookingReference)
+                ? pi.metadata.bookingReference
+                : undefined;
 
             if (pi.status !== 'succeeded') {
                 return Response.json(
@@ -111,6 +120,7 @@ export async function POST(req: NextRequest) {
             currency: body.currency || 'USD',
             specialRequests: body.specialRequests,
             paymentIntentId: body.paymentIntentId,
+            bookingReference,
             voucherCode: body.voucherCode,
             discountAmount: body.discountAmount,
             cancellationPolicies: body.cancellationPolicies,

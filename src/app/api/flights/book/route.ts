@@ -32,6 +32,7 @@ import { cancelDuffelOrder } from '@/lib/server/flights/duffel-cancel';
 import { withBookedItinerary } from '@/lib/server/flights/duffel-order-segments';
 import { duffelIdentityDocuments } from '@/lib/server/flights/duffel-identity-documents';
 import { normalizedToFlightOffer } from '@/utils/flight-utils';
+import { mintBookingReference } from '@/lib/bookingReference';
 import { revalidateFlight } from '@/lib/server/flights/revalidate-flight';
 
 export const dynamic = 'force-dynamic';
@@ -626,11 +627,19 @@ export async function POST(req: NextRequest) {
         const sessionStart = Date.now();
         const expiresAt = new Date(Date.now() + 30 * 60 * 1000).toISOString();
 
+        // Minted here, before the charge, and carried on the session so the flight_bookings
+        // row written after payment is filed under the same identifier the PaymentIntent
+        // carries. Flights had no reference of ours at all until now — admin showed the
+        // airline's PNR, which the airline owns and we cannot make unique to this platform.
+        const brand = process.env.NEXT_PUBLIC_BRAND_NAME ?? 'CheapestGo';
+        const bookingReference = mintBookingReference(brand);
+
         const { data: sessionRow, error: sessionError } = await db
             .from('booking_sessions')
             .insert({
                 user_id: userId,
                 provider,
+                booking_reference: bookingReference,
                 flight: sanitizedFlight as any,
                 passengers: passengers as any,
                 contact: contact as any,
@@ -1518,6 +1527,11 @@ export async function POST(req: NextRequest) {
             // charge, so there is nothing to hold funds for — capture immediately.
             capture_method: 'automatic',
             metadata: {
+                // FORHU Inc settles several products into this one Stripe account and one
+                // pooled daily payout, so the bank cannot tell them apart. These two fields
+                // are what make a charge attributable to this platform inside Stripe.
+                bookingReference,
+                brand,
                 bookingSessionId: sessionId,
                 provider: provider,
                 userId: userId,
@@ -1539,7 +1553,7 @@ export async function POST(req: NextRequest) {
             // The OUTBOUND slice's endpoints. Reading the last segment of the whole offer
             // gave `LHR → LHR` on every round trip, because the final leg lands where the
             // trip began — the same offer-wide/slice-wide confusion as the search card.
-            description: `CG: ${outboundOrigin} → ${outboundDestination}`,
+            description: `${bookingReference} · ${outboundOrigin} → ${outboundDestination}`,
         }, { idempotencyKey: piIdempotencyKey });
         logApiCall({
             provider: 'stripe', endpoint: 'paymentIntents.create', durationMs: Date.now() - stripeStart,

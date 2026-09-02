@@ -21,6 +21,13 @@ export interface FlightSegmentSummary {
      *  shows them when present rather than rendering a placeholder on every leg. */
     originTerminal?: string;
     destinationTerminal?: string;
+    /**
+     * Which leg of the trip this segment belongs to — 0 outbound, 1 return. It comes
+     * from the `segment_index` column, which despite the name stores the *slice* index
+     * (`segmentIndex: sliceIdx` in the Duffel normaliser), so two segments of one
+     * connection share a value. Without it a same-day return reads as a long layover.
+     */
+    sliceIndex?: number;
 }
 
 export interface PassengerSummary {

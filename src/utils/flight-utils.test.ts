@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { formatTimeIn, formatDuration, dayOffset, layoverMinutes } from './flight-utils';
+import { formatTimeIn, formatDuration, dayOffset, layoverMinutes, normalizedToFlightOffer } from './flight-utils';
 
 // Values taken from the CRK–TPE–ICN offer in the search results.
 const DEP = '2026-08-26T12:00:00';
@@ -56,5 +56,50 @@ describe('slice row display', () => {
         expect(formatTimeIn('not-a-date', 'en')).toBe('--:--');
         expect(layoverMinutes(undefined, TPE_OUT)).toBe(0);
         expect(dayOffset(DEP, undefined)).toBe(0);
+    });
+});
+
+/**
+ * Duffel returns origin_terminal/destination_terminal on most CRK–ICN segments (15 of 17
+ * on a live sample), and parseDuffelOffer nests them as departure.terminal. This transform
+ * read the flat seg.terminal instead, so the terminal was discarded here — before the
+ * client, before the book payload, before flight_segments. Every downstream surface then
+ * correctly rendered nothing, which read as "the supplier doesn't send terminals".
+ */
+describe('normalizedToFlightOffer terminals', () => {
+    const duffelSegment = {
+        segmentIndex: 0,
+        airline: '7C', flightNumber: '7C2108',
+        origin: 'CRK', destination: 'ICN',
+        departure: { airport: 'CRK', terminal: '2', time: '2026-11-15T10:50:00' },
+        arrival: { airport: 'ICN', terminal: '1', time: '2026-11-15T15:48:00' },
+        duration: 178, cabinClass: 'economy',
+    };
+
+    it('keeps the terminal parseDuffelOffer nested under departure/arrival', () => {
+        const offer = normalizedToFlightOffer({ id: 'off_1', segments: [duffelSegment] } as any, 'one-way');
+        expect(offer.segments[0].departure.terminal).toBe('2');
+        expect(offer.segments[0].arrival.terminal).toBe('1');
+    });
+
+    it('still reads Mystifly\'s flat shape', () => {
+        const offer = normalizedToFlightOffer({
+            id: 'off_2',
+            segments: [{ ...duffelSegment, departure: { airport: 'CRK', time: '2026-11-15T10:50:00' },
+                         arrival: { airport: 'ICN', time: '2026-11-15T15:48:00' },
+                         terminal: '3', arrivalTerminal: '4' }],
+        } as any, 'one-way');
+        expect(offer.segments[0].departure.terminal).toBe('3');
+        expect(offer.segments[0].arrival.terminal).toBe('4');
+    });
+
+    it('leaves the terminal undefined when no shape carries one', () => {
+        const offer = normalizedToFlightOffer({
+            id: 'off_3',
+            segments: [{ ...duffelSegment, departure: { airport: 'CRK', time: '2026-11-15T10:50:00' },
+                         arrival: { airport: 'ICN', time: '2026-11-15T15:48:00' } }],
+        } as any, 'one-way');
+        expect(offer.segments[0].departure.terminal).toBeUndefined();
+        expect(offer.segments[0].arrival.terminal).toBeUndefined();
     });
 });

@@ -8,6 +8,7 @@ import { convertCurrencyStrict, refreshExchangeRates } from '@/lib/currency';
 import { resolveHotelChargeBase } from '@/lib/bookings/hotelChargeBase';
 import { createAdminClient } from '@/utils/postgres/admin';
 import { env } from '@/utils/env';
+import { mintBookingReference } from '@/lib/bookingReference';
 import { createHash } from 'crypto';
 
 export const dynamic = 'force-dynamic';
@@ -167,11 +168,24 @@ export async function POST(req: NextRequest) {
             .digest('hex')
             .slice(0, 40);
         const idempotencyKey = `hotel-pi-${user.id}-${prebookHash}`;
+        // Minted here rather than at confirmation, so it exists before the charge does.
+        // A charge whose booking later fails still took the customer's money and still has
+        // to be attributed — those are the hardest rows to trace, and giving them no
+        // reference would leave exactly the wrong gap. The confirm route reads this back
+        // off the PaymentIntent it already retrieves, so the client never carries it.
+        const brand = process.env.NEXT_PUBLIC_BRAND_NAME ?? 'CheapestGo';
+        const bookingReference = mintBookingReference(brand);
+
         const paymentIntent = await stripe.paymentIntents.create({
             amount: stripeAmount,
             currency: currency.toLowerCase(),
             capture_method: 'automatic',
             metadata: {
+                // FORHU Inc settles several products into this one Stripe account and one
+                // pooled daily payout, so the bank cannot tell them apart. These two fields
+                // are what make a charge attributable to this platform inside Stripe.
+                bookingReference,
+                brand,
                 prebookId: prebookId.slice(0, 490),
                 userId: user.id,
                 holderEmail: holderEmail || '',
@@ -181,7 +195,7 @@ export async function POST(req: NextRequest) {
                 markupRate: String(markupRate),
                 markupAmount: String(pricing.markupAmount),
             },
-            description: `CG: ${propertyName || 'Hotel'} — ${roomName || 'Room'}`,
+            description: `${bookingReference} · ${propertyName || 'Hotel'} — ${roomName || 'Room'}`,
         }, { idempotencyKey });
 
         return NextResponse.json({

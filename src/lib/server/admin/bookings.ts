@@ -127,8 +127,13 @@ export async function getBookingsList(params: BookingsListParams = {}): Promise<
             .from('flight_segments')
             .select('booking_id, airline, flight_number, origin, destination, departure, arrival, cabin_class, segment_index, itinerary_index, origin_terminal, destination_terminal')
             .in('booking_id', flightBookingIds)
-            .order('itinerary_index', { ascending: true })
+            // itinerary_index is legacy — the insert path never writes it, so every row
+            // sits at its default of 0 and sorting by it does nothing. segment_index
+            // holds the slice, and departure orders the legs within a slice; without
+            // that tiebreak the two halves of a connection came back in whatever order
+            // the planner chose.
             .order('segment_index', { ascending: true })
+            .order('departure', { ascending: true })
         : { data: [] };
 
     const segmentMap = (segments || []).reduce((acc: Record<string, FlightSegmentSummary[]>, s: any) => {
@@ -140,6 +145,7 @@ export async function getBookingsList(params: BookingsListParams = {}): Promise<
             departure:    s.departure || '',
             ...(s.arrival    ? { arrival: s.arrival } : {}),
             ...(s.cabin_class ? { cabinClass: s.cabin_class } : {}),
+            ...(s.segment_index != null ? { sliceIndex: Number(s.segment_index) } : {}),
             // Omitted rather than set to '' when absent, so the dialog can tell "the
             // supplier gave us no terminal" from "the terminal is blank".
             ...(s.origin_terminal      ? { originTerminal: s.origin_terminal } : {}),
@@ -180,7 +186,9 @@ export async function getBookingsList(params: BookingsListParams = {}): Promise<
 
             return {
                 id: item.id,
-                bookingRef: item.external_id || item.id.slice(0, 8).toUpperCase(),
+                // Ours first. external_id is the supplier's id and id.slice(0,8) is a
+                // fragment of a uuid — neither says which platform took the money.
+                bookingRef: item.booking_reference || item.external_id || item.id.slice(0, 8).toUpperCase(),
                 type: item.type as "flight" | "hotel",
                 supplier: item.provider,
                 customerName: name.trim() || 'Anonymous User',
@@ -235,7 +243,7 @@ export async function getBookingsList(params: BookingsListParams = {}): Promise<
         }),
         ...(legacyHotelRes.data || []).map((item: any) => ({
             id: item.id,
-            bookingRef: item.booking_id,
+            bookingRef: item.booking_reference || item.booking_id,
             type: 'hotel' as const,
             supplier: 'legacy',
             customerName: `${item.holder_first_name || ''} ${item.holder_last_name || ''}`.trim() || 'Anonymous User',
@@ -270,7 +278,7 @@ export async function getBookingsList(params: BookingsListParams = {}): Promise<
         })),
         ...(legacyFlightRes.data || []).map((item: any) => ({
             id: item.id,
-            bookingRef: item.pnr,
+            bookingRef: item.booking_reference || item.pnr,
             type: 'flight' as const,
             supplier: item.provider,
             customerName: passengerMap[item.id]?.name || 'Anonymous User',

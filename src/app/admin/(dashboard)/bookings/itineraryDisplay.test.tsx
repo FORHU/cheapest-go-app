@@ -45,18 +45,40 @@ describe('admin itinerary detail', () => {
             leg({ flightNumber: '7C2110', origin: 'ICN', destination: 'NRT',
                   departure: '2026-08-26T16:00:00Z', arrival: '2026-08-26T18:30:00Z' }),
         ])} onClose={() => {}} />);
-        expect(screen.getByText(/2h 30m connection in ICN/)).toBeTruthy();
+        expect(screen.getByText(/2h 30m layover at ICN/)).toBeTruthy();
     });
 
-    it('does not call a return flight a connection', () => {
+    it('does not call a return flight a layover', () => {
         // Outbound on the 26th, return on the 29th. A three-day gap is a separate
-        // journey; labelling it "70h connection" would be nonsense.
+        // journey; labelling it a "70h layover" would be nonsense.
         render(<BookingDetailsDialog booking={booking([
             leg(),
             leg({ flightNumber: '7C2107', origin: 'ICN', destination: 'CRK',
                   departure: '2026-08-29T05:35:00Z', arrival: '2026-08-29T08:40:00Z' }),
         ])} onClose={() => {}} />);
-        expect(screen.queryByText(/connection/)).toBeNull();
+        expect(screen.queryByText(/layover/)).toBeNull();
+    });
+
+    it('does not call a same-day return a layover', () => {
+        // The case the elapsed-time rule cannot see: out at 09:40, back at 19:00 the same
+        // day. Under 24 hours, so the gap alone reads as a layover; only the slice says
+        // otherwise. sliceIndex comes from flight_segments.segment_index, which stores the
+        // slice — 0 outbound, 1 return — not a running count of segments.
+        render(<BookingDetailsDialog booking={booking([
+            leg({ sliceIndex: 0 }),
+            leg({ flightNumber: '7C2107', origin: 'ICN', destination: 'CRK', sliceIndex: 1,
+                  departure: '2026-08-26T19:00:00Z', arrival: '2026-08-26T22:05:00Z' }),
+        ])} onClose={() => {}} />);
+        expect(screen.queryByText(/layover/)).toBeNull();
+    });
+
+    it('still labels a genuine layover when both legs share a slice', () => {
+        render(<BookingDetailsDialog booking={booking([
+            leg({ sliceIndex: 0 }),
+            leg({ flightNumber: '7C2110', origin: 'ICN', destination: 'NRT', sliceIndex: 0,
+                  departure: '2026-08-26T16:00:00Z', arrival: '2026-08-26T18:30:00Z' }),
+        ])} onClose={() => {}} />);
+        expect(screen.getByText(/2h 30m layover at ICN/)).toBeTruthy();
     });
 
     it('shows terminals when the supplier gave them', () => {

@@ -1,5 +1,6 @@
 import type { DbClient } from '@/lib/db/query-builder';
 import type { User } from '@/types/auth';
+import { mintBookingReference } from '@/lib/bookingReference';
 import {
   amendBookingSchema,
   saveBookingSchema,
@@ -162,13 +163,25 @@ export interface TgxConfirmInput {
   cancellationPolicies?: any;
   /** Price shown to the user at prebook/quote time (booking currency, before service fee). Used to detect price increases at book time. */
   quotedPrice?: number;
+  /**
+   * The reference minted before the charge and read back off the PaymentIntent, so the
+   * booking is filed under the same identifier the payment carries. Absent only on a
+   * booking made without a payment intent, which then falls back to a freshly minted one.
+   */
+  bookingReference?: string;
 }
 
 export async function confirmAndSaveTgxBooking(
   params: TgxConfirmInput,
   user: User,
 ): Promise<ConfirmAndSaveResult> {
-  const clientReference = `FORHU-${Date.now()}-${Math.random().toString(36).substring(2, 7).toUpperCase()}`;
+  // Was `FORHU-<millis>-<rand>`. FORHU Inc owns the Stripe account every FORHU product
+  // settles into, so that prefix named the one thing all of them share and could never
+  // answer "which project did this money come from". The reference now names the platform,
+  // and normally arrives from the PaymentIntent so the booking and the charge agree; a
+  // booking made with no payment intent still needs one, hence the fallback.
+  const clientReference = params.bookingReference
+    ?? mintBookingReference(process.env.NEXT_PUBLIC_BRAND_NAME ?? 'CheapestGo');
 
   // Parse authoritative dates from the TGX token — the client-provided checkIn/checkOut
   // may be stale (e.g. from a previous session in localStorage). Token dates are canonical.
@@ -380,6 +393,10 @@ export async function confirmAndSaveTgxBooking(
         UPDATE bookings
         SET property_lat = ${property_lat}, property_lng = ${property_lng},
             source_brand = ${process.env.NEXT_PUBLIC_BRAND_NAME ?? 'CheapestGo'},
+            -- Duplicates booking_id for hotels, where the two are the same string. Stored
+            -- anyway so all three booking tables answer "which platform" from one column
+            -- name — flights and unified rows have no equivalent of booking_id.
+            booking_reference = ${bookingId},
             usd_amount = ${fx.usd_amount}, fx_rate = ${fx.fx_rate},
             fx_captured_at = ${fx.fx_captured_at}, fx_source = ${fx.fx_source}
         WHERE booking_id = ${bookingId}

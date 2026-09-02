@@ -97,6 +97,7 @@ async function createBookingResponse(input: CreateBookingInput): Promise<NextRes
                 duffel_pre_order_ticketed,
                 currency,
                 original_price,
+                booking_reference,
                 charged_price
         `;
 
@@ -256,7 +257,7 @@ async function handleMystifly(ctx: {
             user_id, session_id, provider, pnr, status,
             total_price, currency,
             payment_intent_id, confirmed_price, confirmed_currency,
-            raw_provider_response, source_brand,
+            raw_provider_response, source_brand, booking_reference,
             usd_amount, fx_rate, fx_captured_at, fx_source
         ) VALUES (
             ${session.user_id},
@@ -271,6 +272,7 @@ async function handleMystifly(ctx: {
             ${confirmedCurrency},
             ${JSON.stringify(bookData)},
             ${process.env.NEXT_PUBLIC_BRAND_NAME ?? 'CheapestGo'},
+            ${session.booking_reference ?? null},
             ${fx.usd_amount},
             ${fx.fx_rate},
             ${fx.fx_captured_at},
@@ -360,7 +362,7 @@ async function handleDuffel(ctx: {
             payment_intent_id, confirmed_price, confirmed_currency,
             charged_price, supplier_cost,
             duffel_order_id, ticket_numbers,
-            fare_policy, trip_type, source_brand,
+            fare_policy, trip_type, source_brand, booking_reference,
             usd_amount, fx_rate, fx_captured_at, fx_source
         ) VALUES (
             ${session.user_id},
@@ -380,6 +382,7 @@ async function handleDuffel(ctx: {
             ${farePolicy ? sql.json(farePolicy) : null},
             ${tripType},
             ${process.env.NEXT_PUBLIC_BRAND_NAME ?? 'CheapestGo'},
+            ${session.booking_reference ?? null},
             ${fx.usd_amount},
             ${fx.fx_rate},
             ${fx.fx_captured_at},
@@ -437,13 +440,17 @@ async function markFailed(
     try {
         await sql`
             INSERT INTO flight_bookings (
-                session_id, provider, status, payment_intent_id
+                session_id, provider, status, payment_intent_id, booking_reference
             )
             SELECT
                 bs.id,
                 bs.provider,
                 'failed',
-                ${paymentIntentId || null}
+                ${paymentIntentId || null},
+                -- A booking that failed after the customer was charged is the row that most
+                -- needs attributing: the money reached the pooled payout regardless, and
+                -- without the reference there is nothing tying it back to this platform.
+                bs.booking_reference
             FROM booking_sessions bs
             WHERE bs.id = ${sessionId}
             ON CONFLICT DO NOTHING
@@ -525,9 +532,15 @@ async function insertFlightSegments(
                 ?? '';
             // Duffel's normalised StoredSegment uses originTerminal/destinationTerminal;
             // the raw order shape uses origin_terminal/destination_terminal; Mystifly's
-            // search-result shape uses terminal/arrivalTerminal.
-            const originTerminal = seg.originTerminal ?? seg.origin_terminal ?? seg.terminal ?? null;
-            const destinationTerminal = seg.destinationTerminal ?? seg.destination_terminal ?? seg.arrivalTerminal ?? null;
+            // search-result shape uses terminal/arrivalTerminal. The provider normaliser
+            // nests it beside the time instead — seg.departure.terminal — and that is the
+            // shape that actually arrives here: depTime above reads seg.departure.time off
+            // this very object. Missing that branch wrote NULL on every Duffel booking, so
+            // both the confirmation email and the admin itinerary had nothing to render.
+            const originTerminal = seg.originTerminal ?? seg.origin_terminal
+                ?? seg.departure?.terminal ?? seg.terminal ?? null;
+            const destinationTerminal = seg.destinationTerminal ?? seg.destination_terminal
+                ?? seg.arrival?.terminal ?? seg.arrivalTerminal ?? null;
 
             await sql`
                 INSERT INTO flight_segments (

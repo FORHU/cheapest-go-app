@@ -71,6 +71,14 @@ _Avoid_: assuming every enum-like column uses the same mechanism, or converting 
 
 ## Booking
 
+**Booking Reference** — the identifier CheapestGo puts on a **sale**, `CG-XXXXXX` for CheapestGo and `GG-XXXXXX` for GeomeeGo. Minted before the charge and written onto the PaymentIntent, so it exists even where a booking was never confirmed — a payment that took money and then failed still has to be attributable. The prefix is derived from **Source Brand** at mint time rather than stored beside it, so the two cannot disagree.
+_Avoid_: calling a **PNR** a reference, and reading a `CG` prefix as ours without the hyphen — `CG2MTN` is an airline PNR that begins with those letters by coincidence. The retired `FORHU-` prefix named FORHU Inc, the company every project shares, and so identified nothing.
+
+**PNR** — the airline's own record locator for a booking, six characters, assigned by the carrier. The traveller needs it at the airport and the airline will not recognise anything else, so it is displayed alongside the **Booking Reference**, never in place of it. Not unique to this platform and not ours to change.
+
+**Source Brand** — which storefront made the sale: `CheapestGo` or `GeomeeGo`. Stored on every booking table and the authority on brand; the **Booking Reference** prefix is a second representation of it, never an independent one.
+_Avoid_: treating brand as the same thing as project — FORHU Inc runs products beyond this platform, and they share one Stripe account and one pooled payout.
+
 **Edge Function** → **API Route** — all 47 Deno functions formerly hosted on Supabase Edge Functions have been converted or deleted. All active endpoints are Next.js API routes.
 
 **Cron Job** — an HTTP route under `/api/cron/*` (15 of them) or `/api/internal/*` that does nothing on its own: it runs only when a **Scheduler** calls it, and is secured by a `CRON_SECRET` bearer header. A route with no scheduler pointing at it is dead code that still looks alive.
@@ -162,7 +170,7 @@ _Avoid_: assuming OTV can service anything below City (province, district, landm
 ## Flight Itinerary
 
 **Slice** — one directed journey within an offer (e.g. CRK→PUS), containing one or more **Segments**. Duffel's own word, adopted verbatim. A one-way offer has one slice; a round trip has two.
-_Avoid_: leg, itinerary, journey — and note that the `segmentIndex` field on a segment carries the *slice* index, not the segment's own position, which is what makes `?? idx` fallbacks split a connecting slice into two.
+_Avoid_: leg, itinerary, journey — and note that the `segmentIndex` field on a segment carries the *slice* index, not the segment's own position, which is what makes `?? idx` fallbacks split a connecting slice into two. It persists under the same misleading name as `flight_segments.segment_index`; the neighbouring `itinerary_index` is legacy and permanently 0, so ordering or grouping by it does nothing.
 
 **Segment** — a single flight number between two airports inside a **Slice**. A slice with two segments has one connection.
 
