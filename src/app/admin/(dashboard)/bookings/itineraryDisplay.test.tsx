@@ -88,6 +88,22 @@ describe('admin itinerary detail', () => {
         expect(screen.getByText(/Terminal 2\s*→\s*Terminal 1/)).toBeTruthy();
     });
 
+    it('shows the terminal it knows when the supplier gave only one side', () => {
+        // Not an edge case. Measured on live Duffel 2026-09-02, LHR→JFK returned 31/31
+        // segments with a terminal but in shapes 2/null, null/1 and null/2 as well as
+        // 2/1 — one-sided is ordinary. Hiding the known half would discard real
+        // information; a dash on the unknown half says which one we do not have.
+        render(<BookingDetailsDialog booking={booking([leg({ originTerminal: '2' })])} onClose={() => {}} />);
+        expect(document.body.textContent).toContain('Terminal 2');
+        expect(document.body.textContent).toContain('Terminal —');
+    });
+
+    it('shows an arrival-only terminal too', () => {
+        render(<BookingDetailsDialog booking={booking([leg({ destinationTerminal: '1' })])} onClose={() => {}} />);
+        expect(document.body.textContent).toContain('Terminal 1');
+        expect(document.body.textContent).toContain('Terminal —');
+    });
+
     it('omits the terminal line entirely when the supplier gave none', () => {
         // Every existing segment is in this state — the columns reached production on
         // 2026-09-01 with no booking since. A dash on every leg would read as a fault.

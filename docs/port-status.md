@@ -232,7 +232,7 @@ Also in the diff: `cityAliases.ts` +153, `src/lib/server/search.ts` +108, `roomU
 
 - **Cancellation terms now reach the property payload.** `getProperty` mapped `refundableTag` but dropped `cancelPolicy`, although `r.cancelPolicy` was on the source object and **app-v2's `RoomOption` had declared the field all along** — the client was typed for data the API never sent, so a room could say "refundable" but not by when or for what fee. `toClientCancelPolicy` in `lib/hotels/travelgatex.ts` does the renaming at the supplier boundary, the same reason `toRefundableTag` lives there: TGX calls the figure `value`, the client's shape calls it `amount`, and `penaltyType` travels with it because without it a 20% penalty and a 20-unit one are the same number. 4 tests.
 
-api-v2: 175 tests, typecheck clean. app-v2: 99 tests, typecheck clean.
+api-v2: 175 tests, typecheck clean. app-v2: 147 tests, typecheck clean — the suite went green on 2026-09-02 once the room-selection and property-description tests were re-pointed at the redesign they had fallen behind (see "Stale tests, not bugs" below).
 
 **app-v2's build is red, and was before this work.** `next build` exits 1 on 29 ESLint errors — unused imports and `any` — none introduced here. **17 of app-v2's 28 `features/**/*-view.tsx` have zero importers**: the feature-based split was half-adopted, so for those pages the code lives in `app/[locale]/…/page.tsx` and a stale duplicate sits beside it. Six of the nine files failing the build are among the dead ones. This is why `search-view.tsx` carries its own copy of the stream reader and did not get the banner. Deciding it is a slice-sized call, not a side effect of this catch-up.
 
@@ -240,7 +240,7 @@ api-v2: 175 tests, typecheck clean. app-v2: 99 tests, typecheck clean.
 
 **Already level, no work needed.** `cityAliases.ts` in full — `HOTEL_DB_CITY_SYNONYMS`, `DB_CITY_INDEX` and its case-insensitive lookup, `resolveCanonicalCity`, `resolveHotelDbCities`. Also `orderRoomPhotosByDistinctiveness`. The watermark is a floor, so it over-reports; re-checking was cheap, exactly as intended.
 
-**Still owed on C1: the 5434 rebuild.** Everything else in the delta has landed — SWR was already present and gained the Unanswered Search distinction, `fetchPropertyData`'s read fix went in at `normalizeAmenityList`, the payload trim was re-measured against app-v2, and the map work turned out to be level apart from the unavailability banner.
+**C1 database step: done (2026-09-02).** 5434 rebuilt from 5433 — 35 migrations, 0 double-encoded rows, `flight_segments` terminals present. Everything else in the delta has landed — SWR was already present and gained the Unanswered Search distinction, `fetchPropertyData`'s read fix went in at `normalizeAmenityList`, the payload trim was re-measured against app-v2, and the map work turned out to be level apart from the unavailability banner.
 
 Measured 2026-09-02: **5433 is itself one migration behind** (`20260901000001_fix_double_encoded_jsonb` is pending there, not just on 5434), and 5434 is three behind. The double-encoding is live in both — **34,432 rows on 5433, 25,660 on 5434** — which is what `normalizeAmenityList`'s string branch is currently absorbing. The two databases have also drifted apart on row count (5433: 1,140,514; 5434: 1,140,979), so the Side-by-side Check's premise that 5434 is "freshly rebuilt from 5433 so the rows match" does not hold today.
 
@@ -362,3 +362,19 @@ No TGX-backed cron is in scope at all — TravelgateX prohibits scheduled calls 
 - `api/debug/tgx`, `api/test-email`, `internal/setup-staging-schema` — development-only.
 - `api/fn/[name]` — generic function runner, deliberately replaced by admin actions.
 - All of v1's design: components, styling, layout, landing sections, legal-page markup.
+
+## Stale tests, not bugs — app-v2, resolved 2026-09-02
+
+Eight app-v2 tests arrived red with the teammate's UI pull and stayed red through the rebase. None of them was a defect. Both components had been deliberately redesigned and their tests had not followed, so every failure read as "Unable to find an element with the text …" — the components render something coherent, just not what the old assertions described.
+
+**`property-description.tsx`.** The panel no longer holds amenities behind a "See all amenities" disclosure. It now picks the *near-universal comforts* out of the whole amenity set with `GENERAL_AMENITY` — Wi-Fi, air conditioning, a bathroom with toiletries — caps them at five, and passes `disclosure={false}`. A hotel's more particular facilities (a pool, a gym, a ski room) belong to the room-detail modal. The group is also relabelled: `Amenities` → `General Amenities`, `Policies & rules` → `Rules & Policies`. The `COLLAPSED_AMENITIES` machinery still exists inside `ChipGroup` for other callers; this panel simply stopped asking for it.
+
+**`room-selection.tsx`.** Amenities left the card face. A card now draws only its structural rows — bed, occupancy, board — under "Room Details", and everything else is behind "View more", which opens a dialog rather than expanding in place. Board wording changed too: `RO` reads "Room Only" on both the row and the pill, not "No Breakfast Included". The pill deliberately runs a size shorter than the filter chip ("Breakfast" vs "Breakfast Included") so the two fit different places.
+
+**Layout.** The check-in/check-out hours and the amenity chips are no longer two cells of one grid. The hours sit in the head row beside the price and rating; the chips are a row of their own beneath. The goal is unchanged — a long amenity row must not drag `IN` and `OUT` down with it — but it is now met by separating the rows rather than by pinning the hours to the top of a shared cell.
+
+**What was changed.** Only the two test files; no component was touched. Each test kept its original intent and was re-pointed at where the behaviour now lives — the amenity-fallback and rate-owns-its-own-list tests read through the modal, and `offers View more only once the features outrun the card` became `keeps the amenities off the card face, behind View more`, since "View more" is now unconditional on a column that has rows.
+
+**Two tests were passing vacuously.** `draws no policies group when the hotel states none` queried the old `Policies & rules` label, which no longer exists under any condition — it has been re-pointed at `Rules & Policies` and is a real check again. `offers no amenities link when they all fit` queries a `See all amenities` button the panel can no longer render at all; it is left in place but is worth deleting when that component is next touched.
+
+**Correction to an earlier reading in this document's history.** The `.slice(0, 5)` in `property-description.tsx` was at one point suspected of defeating the disclosure. It does not — the cap is the design, and the disclosure is switched off independently. The board field was likewise suspected of a room/rate shape mismatch; `ratesOf` maps `boardCode: room.boardType`, so that path is sound.
