@@ -104,6 +104,9 @@ _Avoid_: calling it a failed booking — the order succeeded, it is the payment 
 OTV and ETG are the **same underlying supplier** (RateHawk) through two different API doors — not two suppliers with different hotel sets. Running both simultaneously yields duplicate results, not broader coverage. The ETG fallback is a reliability hedge, not a coverage expansion.
 _Avoid_: assuming OTV and ETG cover different hotels; treating ETG as a separate supplier with distinct inventory; calling ETG "RateHawk" in code (codebase name is `ETG`/`_etg`).
 
+**LiteAPI** — a retired hotel supplier. The *integration* is gone: no client, no credentials, nothing calls it, and it supplies no inventory. Its *vocabulary* is not gone, and the difference matters when reading the code. `raw_liteapi_response` is a live column in the schema, LiteAPI's room-and-offer shape is still what v1's room types are modelled on, and v1's rate builder reads that shape before it reads the one OTV actually sends. api-v2 carries a smaller residue that nothing calls at all.
+_Avoid_: reading a LiteAPI name as evidence of a live supplier — every occurrence is either a column name, a type shape, or dead code. _Avoid_: the reverse error of assuming the names are cosmetic and safe to strip — the column is `NOT NULL` and a stored function reads it. _Avoid_: adding new code in LiteAPI's shape because the surrounding code is written that way.
+
 **TGX Static Data** — a bulk hotel registry downloaded from TravelGateX, stored in `tgx_hotel_static`. Contains each hotel's TGX code, name, address, coordinates, and FastX mapping. Downloaded as part of TGX onboarding. Cross-supplier dedup via FastX has no active use case today (OTV is the only TGX supplier); the table is dormant until a second TGX supplier with distinct inventory is added.
 _Avoid_: using `tgx_hotel_static` as a geo-to-code lookup or as the primary source of display content.
 

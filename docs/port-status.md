@@ -16,17 +16,21 @@ git -C cheapest-go-app log <watermark>..HEAD --oneline -- <that slice's v1 paths
 
 Empty means level. Anything listed must be ported before the watermark advances. A gap marked "absent" means the capability does not exist in v2 at all, so there is no delta to take — port v1's current state whole.
 
-| # | Slice | Watermark | Done |
-|---|-------|-----------|------|
-| C0a | Backend consolidation | `12f2af3` | 2026-08-24 |
-| C0b | Locale + SEO shell | `791d4e2` | 2026-08-25 |
-| C1 | Hotel search | `791d4e2` | 2026-08-25 |
-| C2 | Hotel booking | `6b0ced4` | not started |
-| C3 | Flights | `6b0ced4` | not started |
-| C4 | Account | `6b0ced4` | not started |
-| C5 | Admin | `6b0ced4` | not started |
-| C6 | Ops | `6b0ced4` | not started |
-| C7 | Mobile and misc | `6b0ced4` | not started |
+**Path lists include v1's frontend.** A Slice spans both repos, so a slice that cannot see `src/components/` cannot see its own behaviour changing. Measured 2026-09-02: five commits and ~400 insertions of v1 frontend behaviour — including MapResultsClient's streaming prices and unavailability banners — were tracked by no watermark at all. Design does not cross ([ADR-0016](adr/0016-parity-is-functional-not-visual.md)), so a commit in these paths that only moves markup or styling is noted and skipped rather than ported. That filter is a judgement call per commit, not something the delta decides.
+
+| # | Slice | Watermark | Delta (re-run 2026-09-02) | State |
+|---|-------|-----------|---------------------------|-------|
+| C0a | Backend consolidation | `12f2af3` | empty | level |
+| C0b | Locale + SEO shell | `791d4e2` | **2 commits** | drifted — see Catch-up |
+| C1 | Hotel search | `791d4e2` | **6 commits, +1418/−125** | drifted — see Catch-up |
+| C2 | Hotel booking | `6b0ced4` | not measured | **in progress** — C2a/C2b done, C2c partly |
+| C3 | Flights | `6b0ced4` | not measured | audited 2026-08-26, not ported |
+| C4 | Account | `6b0ced4` | not measured | not started |
+| C5 | Admin | `6b0ced4` | not measured | not started |
+| C6 | Ops | `6b0ced4` | not measured | not started |
+| C7 | Mobile and misc | `6b0ced4` | not measured | not started |
+
+A slice's watermark advances only when its delta is empty, so a slice marked done can **drift back out of done** when v1 moves under it. That is not a regression in v2 — it is the measurement working. C0b and C1 are both in that state today.
 
 A slice is **done** when both v2 repos typecheck, their tests pass, its delta is empty, it honours api-v2's **Layer Contract** (`Route → Controller → Service → Repository`, see [api-v2/CONTEXT.md](../../cheapestgo-api-v2/CONTEXT.md)), and it has survived a Side-by-side Check against v1 running on the same 5433 database.
 
@@ -46,7 +50,7 @@ app-v2 carries 23 files under `src/server/` and 20 of its own API routes reimple
 
 **Check:** log in through api-v2, call an authed endpoint from app-v2 and get a 200; confirm no app-v2 route reaches TravelgateX or Postgres; confirm app-v2 boots with no `DATABASE_URL`.
 
-### Done so far (2026-08-24, uncommitted)
+### Done so far (2026-08-24)
 
 - api-v2 gained `GET /hotels/count` through all four layers — repository `countHotelContentByCity`, service `countByCity`, controller `count`, route. It was the only app-v2 route with no api-v2 equivalent that had a live caller.
 - `api-v2/prisma/migrations/` deleted per [ADR-0014](adr/0014-v2-reads-v1s-schema-until-cutover.md).
@@ -77,7 +81,7 @@ Multi-language is a feature; the pages it wraps are not. app-v2 today has `src/i
 
 **v1 reference:** `src/middleware.ts`, `src/i18n/`, `src/lib/seo/hreflang.ts`, `src/app/robots.ts`, `src/app/sitemap.ts`, `src/locales/`
 
-### Done (2026-08-25, uncommitted)
+### Done (2026-08-25)
 
 v2 did **not** copy v1's mechanism here, and that was a deliberate choice — see the new section in [ADR-0015](adr/0015-locale-lives-in-the-url.md). v1 rewrites `/ko/search` to `/search` and carries the language in a cookie, so internal links drop the prefix and the language ends up belonging to the visitor rather than the link. v2 uses an `app/[locale]` segment, so the prefix survives navigation, no cookie is involved, and pages prerender per locale.
 
@@ -98,9 +102,9 @@ v2 did **not** copy v1's mechanism here, and that was a deliberate choice — se
 
 TravelgateX client and search, ETG room-group seeding, city aliases and the district-to-city remap, country bounding-box filtering, the granularity ladder ([ADR-0006](adr/0006-granularity-ladder-is-etg-driven.md)), optimistic catalog display ([ADR-0007](adr/0007-optimistic-catalog-display.md)), province search ([ADR-0004](adr/0004-province-search-is-etg-only.md)).
 
-**v1 reference:** `src/lib/server/stays/`, `src/lib/server/search.ts`, `src/lib/search/`, `src/lib/constants/cityAliases.ts`, `src/lib/geolocation.ts`, `src/lib/property/`, `src/lib/room/`, `src/lib/destination-images.ts`, `src/app/api/search/`, `src/app/api/autocomplete/`, `src/app/api/stays/`, `src/__tests__/stays/`
+**v1 reference:** `src/lib/server/stays/`, `src/lib/server/search.ts`, `src/lib/search/`, `src/lib/constants/cityAliases.ts`, `src/lib/geolocation.ts`, `src/lib/property/`, `src/lib/room/`, `src/lib/destination-images.ts`, `src/app/api/search/`, `src/app/api/autocomplete/`, `src/app/api/stays/`, `src/__tests__/stays/`, `src/components/search/`, `src/components/property/`, `src/stores/searchStore.ts`, `src/hooks/`
 
-**v2 target:** `src/lib/hotels/`, `src/services/hotels.service.ts`, `src/routes/hotels.route.ts`
+**v2 target:** `src/lib/hotels/`, `src/services/hotels.service.ts`, `src/routes/hotels.route.ts`, and app-v2's `features/search/`, `features/property/`
 
 **Gaps:** `search/more` and `google/search` are absent. Everything else exists and is behind.
 
@@ -113,7 +117,7 @@ C1 is too large for one pass — api-v2's hotels module is roughly 1,400 lines b
 | C1c | Room groups, room catalog, the photo matcher | 2026-08-25 |
 | C1d | Retire the duplicate Google Places autocomplete | 2026-08-25 |
 
-### C1a — Amenity vocabulary (2026-08-25, uncommitted)
+### C1a — Amenity vocabulary (2026-08-25)
 
 api-v2 held **91 of v1's 234** OTV amenity codes and **none** of the 65 ETG room slugs, and was missing `ETG_ROOM_AMENITY_MAP`, `etgRoomAmenityToLabel` and `normalizeStoredAmenity` entirely. Anything unmapped falls through a prettifier, so a supplier's non-English label reached an English page untouched — the defect v1 fixed in `ec05bf5` ("fix Russian amenities display").
 
@@ -123,7 +127,7 @@ api-v2 held **91 of v1's 234** OTV amenity codes and **none** of the 65 ETG room
 
 **Not fixed, and deliberately:** some supplier labels contain homoglyphs — `Golf сourse` has a Cyrillic `с`. Those pass through unchanged, which is right: the mapper canonicalises known vocabulary, it does not repair corrupt input.
 
-### C1b — ETG content fetch and persistence (2026-08-25, uncommitted)
+### C1b — ETG content fetch and persistence (2026-08-25)
 
 **96.9% of the catalog had no description** — 1,105,424 of 1,140,510 rows — so property pages rendered with no prose. ETG returns one in the very same `hotel/info` response api-v2 was already calling for amenities, and it was being discarded.
 
@@ -135,7 +139,7 @@ New `lib/hotels/etg.ts`: `parseEtgHotel` takes name, description and amenities f
 
 `fetchEtgAmenitiesBatch` was left orphaned by the change and deleted.
 
-### C1c — Room catalog and the photo matcher (2026-08-25, uncommitted)
+### C1c — Room catalog and the photo matcher (2026-08-25)
 
 api-v2's property endpoint returned `rooms: 0` and had no room-level content of any kind — no `roomPhotos`, no `matchEtgRoomGroup`, no `room_groups` handling. This is the capability the room-photo fix made in v1 needed before it could be ported.
 
@@ -167,7 +171,7 @@ The matcher is sound: essentially nothing collides. The single case is `"economy
 
 A first version of the audit reported 47.5% of hotels colliding. That was measuring ETG's own duplicate group names collapsing onto the first occurrence, which is the dedup working as designed. Counting only distinct names gives the 0.1% above.
 
-### C1d — One destination autocomplete (2026-08-25, uncommitted)
+### C1d — One destination autocomplete (2026-08-25)
 
 api-v2 carried two: the ported Mapbox-plus-alias one behind `GET /hotels/destinations`, and an older Google Places one behind `GET /hotels/suggest`, `POST /hotels/autocomplete` and `POST /hotels/autocomplete/resolve`.
 
@@ -176,6 +180,76 @@ api-v2 carried two: the ported Mapbox-plus-alias one behind `GET /hotels/destina
 The three routes, their controller handlers, and the whole Google Places autocomplete block in `lib/google/places.ts` — `autocompleteDestinations` plus the four helpers only it used — are removed. Confirmed unused first by api-v2's own mobile route, by every internal caller, and by the Postman collection.
 
 **Verified:** the three endpoints 404, `/hotels/destinations` still answers, both repos typecheck, api-v2 86 tests, app-v2 66 tests, both builds clean.
+
+## Catch-up — deltas re-run 2026-09-02
+
+v1 moved under C0b and C1 after both were called done. Neither is a defect in what was ported; the watermark simply is no longer current. Measured with the command at the top of this file.
+
+**Why this is not "port last week's commits."** The week window and the deltas do not agree in either direction. Three of C1's six owed commits (`1cff91c`, `715bb89`, `176b03d`) are dated 2026-08-25 and fall *before* a seven-day window — a week-shaped port drops them. And three commits *inside* that window belong to slices not yet started: `3c6192a` and `1810da2` are flights (C3), `33fd107` is mostly the admin dashboard (C5). Time is not the unit of work here; the slice is.
+
+### C0b delta — 2 commits
+
+- `80cd47b` — 8 keys added to `src/locales/en.json`.
+- `715bb89` — `src/i18n/applyBrand.ts` (+35) and its test (+73), plus a change to `request.ts`. Brand lock is the first link in C0b's own documented request chain (brand lock → segment → default), so v2 is behind on the step that decides locale before the URL segment is read.
+
+### C1 delta — 6 commits, 14 files, +1418/−125
+
+| Commit | Brings |
+|---|---|
+| `a0016bd` | Stale-while-revalidate search, TGX client changes, **+170 lines to `amenityCodes.ts`** |
+| `897efed` | Daily hotel content sync; double-encoded JSONB fix; `fetchPropertyData`; TGX search |
+| `33fd107` | `tgx-timeout-budgets` (+119) and `tgx-unanswered-search` (+285) tests |
+| `1cff91c` | Room photo prioritisation and name normalisation |
+| `715bb89` | Interactive map search view with clustering ([ADR-0022](adr/0022-dense-map-markers-are-clustered-never-truncated.md)) |
+| `176b03d` | Room utilities and search-processing constants |
+
+Also in the diff: `cityAliases.ts` +153, `src/lib/server/search.ts` +108, `roomUtils.ts` +81, and new tests `resolveStayDates.test.ts` (+53) and `roomUtils.test.ts` (+154).
+
+**C1a is stale, and that is the honest reading.** It records `amenityCodes.ts` as "ported whole (456 lines)" on 2026-08-25; `a0016bd` then added 170 lines to that file. The port was correct when made — v1 moved.
+
+**Watch the C6 overlap.** `897efed` touches `cron/seed-room-groups` and `cron/refresh-hotel-content`. C6 already flags `seed-room-groups` as moving into C1 if the catalog is not seeded. Check 5433's catalog before treating these as C6's.
+
+### Done in this catch-up (2026-09-02)
+
+- **C0b — `applyBrand`.** app-v2 had the brand-lock chain but not the message rewriting, so all 13 CheapestGo strings in `en.json` — the sign-in prompt, the footer, the FAQ, the privacy policy naming who collects the reader's data — rendered wrong on GeomeeGo ([ADR-0005](adr/0005-geomeego-white-label-deployment.md)). Ported to `app-v2/src/i18n/applyBrand.ts`, applied after the locale merge so untranslated keys inherit the English string and get branded too. 7 tests; app-v2 99 tests, typecheck clean. The 8 locale keys in `80cd47b` are **flight** keys and belong to C3, not here.
+- **C1a — amenity vocabulary back to level.** The +170: 153 German/Spanish/Italian/Dutch entries, and underneath them `toAmenityKey`, the one key shape both lookup directions now share. They disagreed, so a supplier sending `Aria Condizionata` missed a map that already held `ARIA_CONDIZIONATA`. Also fixed the prettifier's `\b\w`, which read an accented letter as a word boundary and capitalised the character after it — the origin of "GepäCklagerung". 9 tests.
+- **Room-name rules.** api-v2 displayed and deduplicated on TGX's raw name, so the rate leaked into card titles and a supplier code could title a card. `lib/hotels/roomNames.ts` now holds `normalizeRoomName`, `isMeaningfulRoomName`, `extractRoomVariantLabel` and `pickBaseTitle`, typed on TGX rather than copied from v1's LiteAPI-shaped `roomUtils` — see [ADR-0025](adr/0025-a-port-carries-v1s-rules-not-v1s-supplier-shapes.md). Dedup still keys on the raw name so no bookable variant is lost; the variant is surfaced beside the title instead. 14 tests.
+- **Dead LiteAPI branch removed from api-v2** — `normalizeLiteApiPolicy` (zero callers), `NormalizedPolicy`, and `rawLiteapiResponse` from both copies of `BookingPolicySnapshot`. The column stays. See the C2c note above for what this surfaced.
+- **Refundable Tag canonicalised — api-v2 had v1's bug, live.** Three sites emitted `REFUNDABLE`/`NON_REFUNDABLE` (`travelgatex.ts` twice, `search.ts` once) while every consumer tested `'RFN'` — `normalizer.ts:266` and `:298`, and the free-cancellation filter. A test that never matches does not error; the filter returns nothing, which on screen is a search with no results. `toRefundableTag()` now converts at the supplier boundary, as v1 does. The defensive `|| === 'REFUNDABLE'` at `hotels.service.ts:847` is left in place for rows written before the fix. `search.ts:748` still emits `'UNKNOWN'` on the ETG fallback path — that is honest rather than wrong (ETG does not return refundability there) and is left alone. 4 tests.
+
+- **Unanswered Search ported.** api-v2 already had stale-while-revalidate in full — cache key, effective TTL, stale serve, background refresh, inflight guards, on `hotel_search_cache`. What it lacked was the distinction that decides what the user sees. `runCityFallback` had **five paths that returned an empty result on failure**: an unresolved destination code, a known-miss skip, a hotel-code batch that threw, a partial batch failure, and an empty catalog. Only an uncaught throw set `tgxFailed`, and the `remove` emit is guarded on it — so on any of those five the whole Phase 1 catalog was wiped and the user read "no hotels found" for a city that has hotels. `UnansweredSearchError` now accumulates reasons across the fallback chain and throws, so the catalog stays and `done` carries `tgxUnanswered`. Thrown rather than returned, so the cache write is skipped.
+- **`ALL_PROCESSES_FAILED` no longer blacklists a destination code.** api-v2 tested only `hasEmptyHotelsError`, so every OTV connection timing out — which TGX documents as transient — was recorded as a permanent OTV miss. Nothing expires those. This is the failure that takes Seoul from 185 hotels to 89.
+- **The NONE Sentinel was being sent to TGX as a destination.** `resolveTgxDestinationCode` tested `if (row?.destination_code)`, and `'NONE'` is truthy, so the literal string went into the criteria as a destination code. v1 writes those rows and v2 reads the same schema ([ADR-0014](adr/0014-v2-reads-v1s-schema-until-cutover.md)), so they are present regardless of whether v2 ever writes one. Now returns undefined and falls through to Hotel-Code Fallback, skipping the 18-second round-trip the sentinel exists to avoid.
+- **Hotel-code batches no longer lose the chunks that answered.** `Promise.all` rejected a whole batch on one chunk timing out, turning a partial answer into an empty one. Now `allSettled`, with the non-answering count feeding the unanswered reasons.
+
+- **Double-encoded amenities are read again.** `normalizeAmenityList` opened with `if (!Array.isArray(raw)) return []`, and `hotel_content.amenities` is jsonb in two shapes — a real array, and a JSON *string* of the array for rows written double-encoded. The guard was false for exactly the rows that had data, so the list came back empty and the caller fell through to un-normalised live supplier text. That fallback is how untranslated German and Italian reached the page while the amenity map had known those words all along. Fixed at api-v2's chokepoint rather than v1's call site, since one normaliser serves both `getProperty` and the catalog. Migration `20260901000001` repaired the stored rows; this stops a survivor reopening the hole. 3 tests.
+- **Payload trim, shaped for app-v2 rather than copied from v1.** `allMappable` rode along in every `hotels` emit as a filtered copy of `data` — the whole hotel array a second time in the same message — and **app-v2 never reads it**: its stream reader takes `chunk.data` alone and maps it through `toMappable`. Dropped from all three emits. Also dropped `description`, `amenities` and the duplicate `address` from the instant catalog, and capped `images` to the one element a card renders. **`location` was kept**, which is where this departs from v1: v1 removed it as having "no reader at all", but `MappableProperty` reads it and every card shows it. v2 owns its design ([ADR-0016](adr/0016-parity-is-functional-not-visual.md)), so v1's measurement of what is unread does not transfer — it had to be re-measured against app-v2.
+- **`resolveStayDates` deliberately not ported.** v1 extracted it so the quote and the per-night display resolve one stay; api-v2 never defaults dates (`getProperty` requires both), and app-v2 already routes all 20 nights call sites through one `nightsBetween` in `shared/lib/stay.ts`. Porting it would add an unused helper to api-v2 and a duplicate to app-v2. The concern it addresses ([ADR-0020](adr/0020-a-hotel-price-carries-the-stay-it-was-quoted-for.md)) is already C2e's, and C2e already records v2 as not having v1's bug.
+
+- **Unavailability banner ported (`6f2fe32`).** Closes the loop on `tgxUnanswered`: when the supplier never answered, the catalog stays on the map and a persistent pill says live prices did not load, with a retry. Built on app-v2's own chrome palette in the streaming toast's slot rather than copied from v1's markup ([ADR-0016](adr/0016-parity-is-functional-not-visual.md)) — the two never coexist, since this is set when the stream ends and that only shows while it runs. **Placement is not visually verified**; it reuses the toast's `top-[68px] md:top-[80px]` offset, so it should sit where the toast does.
+- **Map clustering was already level.** `715bb89`'s work is present as `useHotelClusters.ts` + `ClusterPin.tsx` with tests, honouring [ADR-0022](adr/0022-dense-map-markers-are-clustered-never-truncated.md). No port needed.
+- **11 broken internal links fixed across 9 files.** app-v2's footer linked `/terms-of-service`, `/privacy-policy`, `/cookie-policy` and `/hotels/search`; v2's routes are `/terms`, `/privacy`, `/cookies` and `/search`. **Every legal link in the footer 404'd**, and the register form's two did the same. All were raw `<a>`, which also drops the locale prefix ([ADR-0015](adr/0015-locale-lives-in-the-url.md)), so even the correct ones left Korean. Now locale-aware `Link` under `[locale]` and plain `next/link` under `/admin`, per the rule `src/i18n/navigation.ts` already documents.
+
+api-v2: 171 tests, typecheck clean. app-v2: 99 tests, typecheck clean.
+
+**app-v2's build is red, and was before this work.** `next build` exits 1 on 29 ESLint errors — unused imports and `any` — none introduced here. **17 of app-v2's 28 `features/**/*-view.tsx` have zero importers**: the feature-based split was half-adopted, so for those pages the code lives in `app/[locale]/…/page.tsx` and a stale duplicate sits beside it. Six of the nine files failing the build are among the dead ones. This is why `search-view.tsx` carries its own copy of the stream reader and did not get the banner. Deciding it is a slice-sized call, not a side effect of this catch-up.
+
+**Small follow-up:** `allMappable` is still built and bbox-filtered inside `HotelSearchResult` although nothing emits or reads it now. Removing it touches the type and six return sites — worth doing, not worth doing at the tail of another change.
+
+**Already level, no work needed.** `cityAliases.ts` in full — `HOTEL_DB_CITY_SYNONYMS`, `DB_CITY_INDEX` and its case-insensitive lookup, `resolveCanonicalCity`, `resolveHotelDbCities`. Also `orderRoomPhotosByDistinctiveness`. The watermark is a floor, so it over-reports; re-checking was cheap, exactly as intended.
+
+**Still owed on C1:** stale-while-revalidate search (`+229` in TGX `search.ts`, `+90` in the stream route), `fetchPropertyData` `+75`, the frontend map work now in scope, and the 5434 rebuild for the three migrations.
+
+### Not in this catch-up, deliberately
+
+- **Flights** (`3c6192a`, `1810da2`) — adds `origin_terminal`/`destination_terminal` to flight segments and the email templates. api-v2 has no ported flight booking, so there is no delta to take; this is C3 whole.
+- **Admin dashboard** (`33fd107`, minus its TGX tests) — customers, bookings and communication panels. C5 whole.
+- **`8003216`** — moves an RDS credential out of `docker-compose.yml` into `.env`. v1 infrastructure. v2 has its own compose and its own database ([ADR-0018](adr/0018-v2-has-its-own-database.md)); mirror the practice, do not port the files.
+- **`aa3eb8e`'s `deploy-production.yml`** — v1's EC2 deploy. v2 is not deployed.
+
+### Schema
+
+Three migrations landed in v1: `20260826000001_flight_segments_terminals`, `20260827000001_clear_stale_none_dest_codes`, `20260901000001_fix_double_encoded_jsonb`. v2 never authors a migration ([ADR-0014](adr/0014-v2-reads-v1s-schema-until-cutover.md)) — 5434 is rebuilt from 5433 ([ADR-0018](adr/0018-v2-has-its-own-database.md)). The JSONB fix matters most: it repairs double-encoded columns C1's search path reads.
 
 ## C2 — Hotel booking
 
@@ -202,7 +276,7 @@ quote, prebook, create-payment, confirm, cancel, amend, save — plus policy nor
 
 - **C2a — Charge base.** ✅ Done — the Stripe base now comes from the recorded prebook quote ([ADR-0021](adr/0021-the-stripe-base-comes-from-the-prebook-quote.md)). Prebook persists `optionQuote.price` to `hotel_prebook_quotes`; `createPayment` reads it, converts with a strict converter that throws rather than degrades, and applies the markup to the server's figure — never the client's. 16 new tests in `src/__tests__/chargeBase.test.ts`.
 - **C2b — FX lock.** ✅ Done — `src/lib/payments/fxLock.ts` ported; every path that creates a booking now records `usd_amount`, `fx_rate`, `fx_captured_at`, `fx_source` and `source_brand` ([ADR-0008](adr/0008-fx-locked-at-booking-in-usd.md)). Three call sites, matching v1: hotel confirm, Duffel and Mystifly. It runs after the money has moved, never throws, and on the hotel path patches the row *after* the insert so a rates outage leaves the columns null for a backfill rather than costing the booking. 8 tests in `src/__tests__/fxLock.test.ts`.
-- **C2c — Cancel and refund.** ✅ Partly done — the refund now follows the recorded terms instead of returning the full charge ([ADR-0023](adr/0023-a-cancellation-refunds-what-the-recorded-terms-allow.md)). Confirm writes `booking_policy_snapshots` + `policy_tiers` (all three tables existed, none was written) and no longer collapses a tiered rate to `free_cancellation`; cancel reads them through `src/lib/policies/cancellationEngine.ts` and scales the Stripe amount by a refund ratio. 12 engine tests plus 4 service-level ones. **Still to port:** `refund_logs` (v1's `createRefundRequest`/`processRefund`) and metapolicy handling; existing bookings have no snapshot and need backfilling from `bookings.cancellation_policy`.
+- **C2c — Cancel and refund.** ✅ Partly done — the refund now follows the recorded terms instead of returning the full charge ([ADR-0023](adr/0023-a-cancellation-refunds-what-the-recorded-terms-allow.md)). Confirm writes `booking_policy_snapshots` + `policy_tiers` (all three tables existed, none was written) and no longer collapses a tiered rate to `free_cancellation`; cancel reads them through `src/lib/policies/cancellationEngine.ts` and scales the Stripe amount by a refund ratio. 12 engine tests plus 4 service-level ones. **Still to port:** `refund_logs` (v1's `createRefundRequest`/`processRefund`) and metapolicy handling; existing bookings have no snapshot and need backfilling from `bookings.cancellation_policy`. **Also unwired (found 2026-09-02):** api-v2's snapshot write sets `policy_type`, `summary`, `refundable_tag`, `free_cancel_deadline` and `raw_provider_response`, but never `no_show_penalty` or `early_departure_fee`, which v1 records. The logic for both is already ported — `detectNoShowPenalty` and `detectEarlyDepartureFee` in `lib/policies/normalizer.ts` — and lost its only caller when the dead LiteAPI path was removed. It needs a caller on the TGX path, not a re-port. Do not delete them as orphans.
 - **C2d — Amend and save.** Re-checked 2026-08-26: **both already exist in api-v2**, contrary to what this line said before. `/api/v2/bookings/amend` is `bookings.route.ts:21` (57 lines against v1's 72 — close enough that the open question is behavioural parity, not existence), and saved trips are served twice over: `bookings.route.ts:87-89` for the account page and `saved-trips.route.ts` mounted at `/saved-trips` for the flights SaveButton. Both are reachable and in use. **Remaining work is a parity read of `/amend` against v1's route, plus deciding whether two saved-trips implementations should stay two.**
 - **C2e — Prices carry their stay.** Hardening, not a fix — re-checked 2026-08-26. app-v2 does **not** have v1's doubled-price bug: api-v2's `getProperty` only fetches rooms when both dates are present, so a request without them returns no rooms rather than a default-date quote, and app-v2 reads and writes `checkIn`/`checkOut` consistently with nothing emitting the lowercase form. What remains is latent duplication — roughly ten places divide by `nights` and seven derive `nights` independently — which is the shape that produced the v1 bug ([ADR-0020](adr/0020-a-hotel-price-carries-the-stay-it-was-quoted-for.md)). Worth doing, but as prevention rather than repair.
 

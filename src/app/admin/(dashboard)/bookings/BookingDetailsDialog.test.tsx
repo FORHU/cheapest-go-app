@@ -98,7 +98,11 @@ describe('BookingDetailsDialog itinerary', () => {
 
         expect(screen.getByText('Hilton Cebu')).toBeTruthy();
         expect(screen.getByText('Deluxe Twin')).toBeTruthy();
-        expect(screen.getByText('2026-09-09')).toBeTruthy();
+        // Rendered through formatDate rather than raw: a stored timestamp is unreadable,
+        // and passing the value straight to JSX is what threw "Objects are not valid as a
+        // React child" once the driver started handing back Date objects. Matched loosely
+        // because the exact day depends on the runner's timezone.
+        expect(screen.getAllByText(/Sep \d+, 2026/)).toHaveLength(2); // check-in and check-out
         expect(screen.getByText('2 adults, 1 child')).toBeTruthy();
     });
 

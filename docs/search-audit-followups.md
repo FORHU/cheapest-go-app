@@ -7,48 +7,60 @@ its parents; the reasoning behind the decisions already taken is in
 `Unanswered Search`, `NONE Sentinel`, `Cron Job` and `Scheduler` entries in
 [CONTEXT.md](../CONTEXT.md).
 
-Database observations are as of 2026-08-27 and were not re-verified when this list was
-written on 2026-08-31.
+Section 0 records what has since been closed. Everything after it is still open.
+
+Database observations were re-verified on 2026-09-01 against live RDS.
 
 ---
 
-## 1. Payload trim — the largest remaining win
+## 0. Closed since this list was written (2026-09-01)
 
-**The original complaint was "search takes 40 seconds". This is the part of it that is
-still unaddressed.** Server time was improved; the bytes were not.
+**Payload trim — done.** Every field measured as dead weight is gone from the wire.
+`getInstantHotelCatalog` selects `images[1]` instead of the whole array and no longer
+selects `description` or `amenities`; `fetchHotelContent` gained a `slim` mode, defaulting
+to full so a new caller cannot silently lose fields; city results carry `roomTypes: []`;
+and `done.allMappable` goes through `toMapPins()`, which keeps the ten fields the map
+plots instead of re-serialising every hotel a second time. Two pure duplications went with
+them — `images` echoed `image`, and `address` echoed `location` with no reader at all.
 
-A production search ships **5–7 MB to display ~100 hotels** (Gangnam measured at 6.82 MB
-post-deploy). Roughly 86% of it is never read by anything:
+| City | Before | After | Per hotel shown |
+| --- | --- | --- | --- |
+| Gangnam | 6.82 MB | 2.28 MB | 53.7 KB → 8.9 KB |
+| Jeju | 5.59 MB | 1.55 MB | 86 KB → 17 KB |
+| Cebu City | 3.22 MB | 1.37 MB | 169 KB → 8.1 KB |
+| Seongnam | 4.64 MB | 1.31 MB | — |
 
-| Field | Share of Phase 1 payload | Read by |
-| --- | --- | --- |
-| `description` | 34.8% | nothing |
-| `amenities` | 30.3% | nothing — the amenities filter is a URL param, not client-side |
-| `images[1..n]` | ~20% | nothing — the card renders `image` only, there is no carousel |
-| `roomTypes` | 223 KB on a Bangkok search | nothing on the client |
-| `done.allMappable` | 209–468 KB | duplicates hotels already sent in `hotels` messages |
+`done` alone went from 209–468 KB to 34 KB. What remains is mostly the 1,000-row catalog
+at roughly 1.3 KB each; the only lever left there is the display `LIMIT`, which is a UX
+call about how many placeholder cards to show and is deliberately untouched.
 
-The card reads exactly eleven fields: `currency, id, image, location, name,
-originalPrice, price, priceLoading, rating, refundableTag, reviews`. The list adds
-`coordinates`, `type`, `boardTypes`. `SearchMapView` explicitly overwrites `description`
-and `amenities` with empty values when it builds its own objects.
+**Refundable Tag canonicalised — done.** The server emitted `REFUNDABLE`/`NON_REFUNDABLE`
+while the search UI tested `=== 'RFN'` in four places, so **"Free cancellation only"
+silently returned zero hotels and the free-cancellation badge never rendered**. Checkout,
+the policy formatter and the cancellation engine had each grown their own `||` chain
+accepting both spellings; the search UI was the one place that had not, and an empty
+filter result looks exactly like "nothing matched". `toRefundableTag()` now converts at the
+supplier boundary. Measured after: `{RFN: 79, NRFN: 89}` — 79 hotels match the filter.
+See the **Refundable Tag** entry in CONTEXT.md.
 
-**Decision already taken:** trim at the DB query, not the response boundary — it saves
-the read, the detoast, the ~85 KB average `hotel_search_cache` rows and the
-serialisation, not just the network.
+**Amenity language — done, and it was not what it looked like.** Customers saw Italian and
+German on the property page. The map already contained those words; two bugs stopped it
+being consulted. `otvCodeToLabel` did not collapse spaces before lookup while
+`normalizeStoredAmenity` did, so a supplier code arriving as spaced text missed an entry
+the map already held — both now share one `toAmenityKey()`. And the property page's
+`Array.isArray(r.amenities)` was false for exactly the rows that had data, so it silently
+fell back to raw supplier text. ~110 genuinely new German, Dutch, Spanish and Italian
+entries were added on top (91.7% coverage of 177,682 non-English occurrences), plus a fix
+for the prettifier capitalising the letter after every accent (`GepäCklagerung`).
 
-**Two `LIMIT 1000`s exist and only one is free to shrink.** `getInstantHotelCatalog` in
-the stream route is display-only — shrinking it costs zero priced results. The one in
-`runCityFallback` decides how many hotel codes TGX is asked about, and shrinking that
-trades coverage for speed.
-
-Measured on the production radius query: fat `LIMIT 1000` **22.9 s**, slim `LIMIT 1000`
-**3.9 s**, slim `LIMIT 300` **2.1 s**. Container timings over a home link, so the
-absolute numbers are inflated; the ratio is not.
-
-`fetchHotelContent` is shared with the single-hotel path, which *does* need
-`description`/`amenities` for the property page — it needs a slim/full mode, and the
-property page needs a test.
+**jsonb double-encoding — writers fixed and backfilled.** `${JSON.stringify(x)}::jsonb`
+double-encodes under postgres.js: it infers the parameter as jsonb and JSON-encodes it, so
+the cast lands on an already-encoded string. Verified directly against this database —
+that form yields `string`, `${sql.json(x)}` yields `array`. Every `hotel_content` writer
+now uses `sql.json()`, and migration `20260901000001` repaired ~77,000 rows across
+`amenities`, `amenity_groups`, `contact_info` and `room_groups`. All four columns now
+report zero `string` rows. The defensive parse in `fetchPropertyData` is kept as
+belt-and-braces for anything historical.
 
 ## 2. Verification gaps
 
@@ -103,6 +115,20 @@ property page needs a test.
 - **Orphaned Duffel order `ord_0000B9eW4pEUTDvzh27YXo` / `C2IWPF` still needs cancelling.**
   `cleanup-orphaned-duffel-orders` runs every 10 minutes from the sidecar and has not
   resolved it, which is worth understanding on its own.
+- **The booking tables are still double-encoded, and one of them reaches refunds.**
+  `hotel_content` was repaired by migration `20260901000001`, but the same
+  `${JSON.stringify(x)}::jsonb` pattern lives at ~8 further call sites in `bookings.ts`,
+  and the damage is already stored: `bookings.cancellation_policy` is **8 string / 1
+  object**, `booking_policy_snapshots.raw_liteapi_response` is **9 string**. At
+  `bookings.ts:881` the read is `const stored = bookingRow.cancellation_policy as any` —
+  a jsonb string is truthy, so it is returned in place of the fallback object and
+  `cancelPolicyInfos` arrives `undefined` in the refund path. Nothing is broken today:
+  there are 8 bookings and 6 are already refunded. Deliberately left alone — it touches
+  money and wants its own decision, not a side effect of a search audit.
+- **`hotel_search_cache` is never purged.** 233 rows, oldest 2026-08-21. Reads check the
+  row's age so a stale entry is never served, but nothing deletes it; the table grows
+  without bound. `cache-cleanup` looks like the owner and is not — it targets
+  `search_results_cache`, a different table.
 
 ## 4. Loose ends in the code
 
@@ -141,11 +167,21 @@ property page needs a test.
 
 ## Suggested order
 
-1. **Payload trim** — the only item that addresses the original complaint, and it shrinks
-   the content-API call and cache rows as a side effect.
-2. **Confirm the cron sidecar** — cheap, and silent failure means ticket polling and
-   refund checks stop with nothing to flag it.
-3. **RDS migration tracking** — the root cause of three production bugs; until it is
-   fixed, the next missed migration is found by accident again.
+1. **The booking-path double-encoding** — the only open item that touches money.
+   `cancellation_policy` is stored as a string on 8 of 9 bookings and is read straight into
+   the refund path. Harmless while the booking count is tiny; the cost of finding out later
+   is not.
+2. **Confirm the cron sidecar** — one SSH command. Silent failure means ticket polling and
+   refund checks stop with nothing to flag it, and the usual signal is no longer trustworthy.
+3. **RDS migration tracking** — the root cause of three production bugs in one afternoon;
+   until it is fixed, the next missed migration is found by accident again.
 4. **Render the banners** — small, but two pieces of user-facing code have shipped unseen.
+   Everything about them is verified except the pixels.
 5. Everything else.
+
+A note on order, from the shape of this audit: every item here was found by measuring
+rather than reasoning, and the obvious answer was wrong more often than not. The missing
+index mattered far less than dead columns. Aligning timeouts to the supplier's own spec
+broke a city until batching was added. "Production is broken" turned out to be an artefact
+of testing on far-future dates. The Italian amenities were not a missing translation but a
+lookup key that did not match. Prefer measuring the next item over reasoning about it.

@@ -394,8 +394,13 @@ export function BookingDetailsDialog({ booking, onClose }: BookingDetailsDialogP
                                     <div className="grid grid-cols-2 gap-y-6 gap-x-6">
                                         <InfoItem label="Property" value={booking.itinerary.propertyName} />
                                         <InfoItem label="Room" value={booking.itinerary.roomName || '—'} />
-                                        <InfoItem label="Check-in" value={booking.itinerary.checkIn || '—'} />
-                                        <InfoItem label="Check-out" value={booking.itinerary.checkOut || '—'} />
+                                        {/* formatDate, not the raw value: these arrive as
+                                            timestamps and a bare one is unreadable — and if a
+                                            Date object ever reaches JSX again it throws
+                                            "Objects are not valid as a React child" and takes
+                                            the whole dialog down. */}
+                                        <InfoItem label="Check-in" value={booking.itinerary.checkIn ? formatDate(booking.itinerary.checkIn) : '—'} />
+                                        <InfoItem label="Check-out" value={booking.itinerary.checkOut ? formatDate(booking.itinerary.checkOut) : '—'} />
                                         <InfoItem
                                             label="Guests"
                                             value={`${booking.itinerary.adults ?? 1} adult${(booking.itinerary.adults ?? 1) === 1 ? '' : 's'}`

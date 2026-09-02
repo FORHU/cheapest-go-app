@@ -11,8 +11,8 @@ import type { BookingItinerary, FlightSegmentSummary, PassengerSummary } from '@
  */
 
 /** "9 Sep – 11 Sep", or a single date when there is only one to show. */
-export function dateRange(from?: string | null, to?: string | null): string {
-    const fmt = (d: string) => {
+export function dateRange(from?: string | Date | null, to?: string | Date | null): string {
+    const fmt = (d: string | Date) => {
         const parsed = new Date(d);
         return isNaN(parsed.getTime())
             ? ''
@@ -25,11 +25,25 @@ export function dateRange(from?: string | null, to?: string | null): string {
     return end ? `${start} – ${end}` : start;
 }
 
+/**
+ * Postgres `date`/`timestamp` columns arrive from postgres.js as `Date` objects, not
+ * strings, and callers pass the row through as `any` so the declared `string | null`
+ * never gets checked. A `Date` that reaches JSX throws "Objects are not valid as a React
+ * child" — which is exactly what opening any hotel booking in the admin detail dialog
+ * did. Normalise here so `BookingItinerary` genuinely holds strings, whatever the driver
+ * hands back.
+ */
+function isoOrUndefined(v: string | Date | null | undefined): string | undefined {
+    if (!v) return undefined;
+    if (v instanceof Date) return isNaN(v.getTime()) ? undefined : v.toISOString();
+    return v;
+}
+
 export function hotelItinerary(row: {
     property_name?: string | null;
     room_name?: string | null;
-    check_in?: string | null;
-    check_out?: string | null;
+    check_in?: string | Date | null;
+    check_out?: string | Date | null;
     guests_adults?: number | null;
     guests_children?: number | null;
 }): BookingItinerary {
@@ -37,8 +51,8 @@ export function hotelItinerary(row: {
     return {
         propertyName: row.property_name || undefined,
         roomName:     row.room_name || undefined,
-        checkIn:      row.check_in || undefined,
-        checkOut:     row.check_out || undefined,
+        checkIn:      isoOrUndefined(row.check_in),
+        checkOut:     isoOrUndefined(row.check_out),
         adults:       row.guests_adults ?? undefined,
         children:     row.guests_children ?? undefined,
         // Falls back to the room, then to a plain label, so the column is never blank —
