@@ -19,6 +19,8 @@ import {
     Input,
 } from '@/components/ui';
 import { formatCurrency, formatDate, cn, formatStatus } from '@/lib/utils';
+import { statusBadgeClass } from './bookingStatus';
+import { getAirlineName, formatDuration } from '@/utils/flight-utils';
 import { TabList } from '@/components/ui/TabList';
 import { Booking, BookingRawData, RecoveryActionResult } from '@/types/admin';
 import { toast } from 'sonner';
@@ -50,6 +52,32 @@ import {
     Clock,
     AlertCircle,
 } from 'lucide-react';
+
+/** Minutes between two timestamps, or null if either is missing or unparseable. */
+function minutesBetween(from?: string, to?: string): number | null {
+    if (!from || !to) return null;
+    const a = new Date(from).getTime();
+    const b = new Date(to).getTime();
+    if (isNaN(a) || isNaN(b) || b <= a) return null;
+    return Math.round((b - a) / 60000);
+}
+
+/** How long the traveller is in the air on this leg. Derived — no supplier sends it. */
+function legDuration(departure?: string, arrival?: string): string {
+    const mins = minutesBetween(departure, arrival);
+    return mins === null ? '' : formatDuration(mins);
+}
+
+/**
+ * The gap between landing on one leg and departing on the next. Returned only for a real
+ * connection: a negative or absent gap means the legs are separate journeys (an outbound
+ * and a return, say), not a layover, and labelling that as a connection would be wrong.
+ */
+function layoverLabel(prevArrival?: string, nextDeparture?: string): string {
+    const mins = minutesBetween(prevArrival, nextDeparture);
+    if (mins === null || mins > 24 * 60) return '';
+    return `${formatDuration(mins)} connection`;
+}
 
 interface BookingDetailsDialogProps {
     booking: Booking | null;
@@ -323,14 +351,9 @@ export function BookingDetailsDialog({ booking, onClose }: BookingDetailsDialogP
                             <div className="space-y-1.5">
                                 <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400/80">Current Status</span>
                                 <div>
-                                    <Badge className={`w-32 justify-center text-center whitespace-nowrap font-bold text-[10px] px-3 py-1 rounded-lg border-none ${booking.status.toLowerCase().includes('confirm') || booking.status.toLowerCase().includes('ticket')
-                                        ? 'bg-blue-500/10 text-blue-600'
-                                        : booking.status.toLowerCase().includes('pend')
-                                            ? 'bg-amber-500/10 text-amber-600'
-                                            : booking.status.toLowerCase().includes('refund')
-                                                ? 'bg-violet-500/10 text-violet-600'
-                                                : 'bg-rose-500/10 text-rose-600'
-                                        }`}>
+                                    {/* Same helper the list uses, so a status can never read
+                                        as one thing in the table and another here. */}
+                                    <Badge className={cn(statusBadgeClass(booking.status), 'rounded-lg px-3 py-1 font-bold')}>
                                         {formatStatus(booking.status)}
                                     </Badge>
                                 </div>
@@ -409,32 +432,62 @@ export function BookingDetailsDialog({ booking, onClose }: BookingDetailsDialogP
                                     </div>
                                 )}
 
-                                {booking.itinerary.segments?.map((seg, i) => (
-                                    <div
-                                        key={`${seg.flightNumber}-${i}`}
-                                        className="flex items-baseline justify-between gap-4 rounded-xl bg-slate-50 dark:bg-white/5 px-4 py-3 border border-slate-200/50 dark:border-white/5"
-                                    >
-                                        <div className="flex flex-col">
-                                            {/* The operating airline — distinct from `supplier`, which is
-                                                the ticketing partner that issued it. */}
-                                            <span className="font-mono text-xs font-semibold text-slate-800 dark:text-white">
-                                                {[seg.airline, seg.flightNumber].filter(Boolean).join(' ') || 'Flight'}
-                                            </span>
-                                            {seg.cabinClass && (
-                                                <span className="text-[10px] uppercase tracking-wide text-slate-400">{seg.cabinClass}</span>
+                                {booking.itinerary.segments?.map((seg, i) => {
+                                    const prev = i > 0 ? booking.itinerary!.segments![i - 1] : undefined;
+                                    const connection = layoverLabel(prev?.arrival, seg.departure);
+                                    return (
+                                        <React.Fragment key={`${seg.flightNumber}-${i}`}>
+                                            {/* Between legs, not on them: the wait at the connecting
+                                                airport is the thing a caller asks about, and it belongs
+                                                to neither flight. */}
+                                            {connection && (
+                                                <div className="flex items-center gap-3 px-1 py-0.5">
+                                                    <span className="h-px flex-1 bg-slate-200 dark:bg-white/10" />
+                                                    <span className="text-[10px] uppercase tracking-wide text-slate-400">
+                                                        {connection} in {prev?.destination}
+                                                    </span>
+                                                    <span className="h-px flex-1 bg-slate-200 dark:bg-white/10" />
+                                                </div>
                                             )}
-                                        </div>
-                                        <div className="flex flex-col items-end">
-                                            <span className="text-sm font-medium text-slate-900 dark:text-white">
-                                                {seg.origin} → {seg.destination}
-                                            </span>
-                                            <span className="text-xs text-slate-500">
-                                                {seg.departure ? new Date(seg.departure).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : '—'}
-                                                {seg.arrival ? ` → ${new Date(seg.arrival).toLocaleString('en-GB', { hour: '2-digit', minute: '2-digit' })}` : ''}
-                                            </span>
-                                        </div>
-                                    </div>
-                                ))}
+                                            <div className="flex items-baseline justify-between gap-4 rounded-xl bg-slate-50 dark:bg-white/5 px-4 py-3 border border-slate-200/50 dark:border-white/5">
+                                                <div className="flex flex-col">
+                                                    {/* The operating airline — distinct from `supplier`, which is
+                                                        the ticketing partner that issued it. Named, not just the
+                                                        IATA code: an agent on a call should not have to know that
+                                                        7C is Jeju Air. */}
+                                                    <span className="text-xs font-semibold text-slate-800 dark:text-white">
+                                                        {getAirlineName(seg.airline) || 'Flight'}
+                                                    </span>
+                                                    <span className="font-mono text-[10px] text-slate-500">
+                                                        {[seg.airline, seg.flightNumber].filter(Boolean).join(' ')}
+                                                    </span>
+                                                    <span className="text-[10px] uppercase tracking-wide text-slate-400">
+                                                        {[seg.cabinClass, legDuration(seg.departure, seg.arrival)].filter(Boolean).join(' · ')}
+                                                    </span>
+                                                </div>
+                                                <div className="flex flex-col items-end">
+                                                    <span className="text-sm font-medium text-slate-900 dark:text-white">
+                                                        {seg.origin} → {seg.destination}
+                                                    </span>
+                                                    <span className="text-xs text-slate-500">
+                                                        {seg.departure ? new Date(seg.departure).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : '—'}
+                                                        {seg.arrival ? ` → ${new Date(seg.arrival).toLocaleString('en-GB', { hour: '2-digit', minute: '2-digit' })}` : ''}
+                                                    </span>
+                                                    {/* Only when the supplier actually gave one. A "Terminal —"
+                                                        on every leg would read as a broken field rather than as
+                                                        an airline that does not publish it. */}
+                                                    {(seg.originTerminal || seg.destinationTerminal) && (
+                                                        <span className="text-[10px] text-slate-400">
+                                                            {seg.originTerminal ? `Terminal ${seg.originTerminal}` : 'Terminal —'}
+                                                            {' → '}
+                                                            {seg.destinationTerminal ? `Terminal ${seg.destinationTerminal}` : 'Terminal —'}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        </React.Fragment>
+                                    );
+                                })}
 
                                 {booking.itinerary.passengers && booking.itinerary.passengers.length > 0 && (
                                     <div className="space-y-2">

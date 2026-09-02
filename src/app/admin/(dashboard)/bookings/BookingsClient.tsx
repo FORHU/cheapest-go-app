@@ -30,6 +30,7 @@ import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import { PaginatedBookings } from '@/lib/server/admin';
 import { MonitoringData, Booking } from '@/types/admin';
 import { BookingDetailsDialog } from './BookingDetailsDialog';
+import { statusBadgeClass } from './bookingStatus';
 import { toast } from 'sonner';
 import { DataTableFacetedFilter } from './DataTableFacetedFilter';
 
@@ -604,11 +605,7 @@ export function BookingsClient({ data, searchParams }: BookingsClientProps) {
                                                             <TableCell>
                                                                 <Badge
                                                                     variant={getStatusVariant(booking.status) as any}
-                                                                    className={`w-32 justify-center text-center whitespace-nowrap font-medium text-[10px] px-2 py-0.5 rounded border-none ${booking.status.toLowerCase().includes('confirm') || booking.status.toLowerCase().includes('ticket') ? 'bg-blue-500/10 text-blue-600' :
-                                                                        booking.status.toLowerCase().includes('pend') ? 'bg-amber-500/10 text-amber-600' :
-                                                                            booking.status.toLowerCase().includes('refund') ? 'bg-violet-500/10 text-violet-600' :
-                                                                                'bg-rose-500/10 text-rose-600'
-                                                                        }`}
+                                                                    className={statusBadgeClass(booking.status)}
                                                                 >
                                                                     {formatStatus(booking.status)}
                                                                 </Badge>

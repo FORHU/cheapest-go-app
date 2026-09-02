@@ -16,6 +16,11 @@ export interface FlightSegmentSummary {
     departure: string;
     arrival?: string;
     cabinClass?: string;
+    /** Terminal to depart from / arrive at, when the supplier reports one. Frequently
+     *  absent — the columns were only added to production on 2026-09-01 — so the UI
+     *  shows them when present rather than rendering a placeholder on every leg. */
+    originTerminal?: string;
+    destinationTerminal?: string;
 }
 
 export interface PassengerSummary {

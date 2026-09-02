@@ -125,7 +125,7 @@ export async function getBookingsList(params: BookingsListParams = {}): Promise<
     const { data: segments } = flightBookingIds.length > 0
         ? await supabase
             .from('flight_segments')
-            .select('booking_id, airline, flight_number, origin, destination, departure, arrival, cabin_class, segment_index, itinerary_index')
+            .select('booking_id, airline, flight_number, origin, destination, departure, arrival, cabin_class, segment_index, itinerary_index, origin_terminal, destination_terminal')
             .in('booking_id', flightBookingIds)
             .order('itinerary_index', { ascending: true })
             .order('segment_index', { ascending: true })
@@ -140,6 +140,10 @@ export async function getBookingsList(params: BookingsListParams = {}): Promise<
             departure:    s.departure || '',
             ...(s.arrival    ? { arrival: s.arrival } : {}),
             ...(s.cabin_class ? { cabinClass: s.cabin_class } : {}),
+            // Omitted rather than set to '' when absent, so the dialog can tell "the
+            // supplier gave us no terminal" from "the terminal is blank".
+            ...(s.origin_terminal      ? { originTerminal: s.origin_terminal } : {}),
+            ...(s.destination_terminal ? { destinationTerminal: s.destination_terminal } : {}),
         });
         return acc;
     }, {});

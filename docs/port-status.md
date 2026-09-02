@@ -238,7 +238,9 @@ api-v2: 171 tests, typecheck clean. app-v2: 99 tests, typecheck clean.
 
 **Already level, no work needed.** `cityAliases.ts` in full — `HOTEL_DB_CITY_SYNONYMS`, `DB_CITY_INDEX` and its case-insensitive lookup, `resolveCanonicalCity`, `resolveHotelDbCities`. Also `orderRoomPhotosByDistinctiveness`. The watermark is a floor, so it over-reports; re-checking was cheap, exactly as intended.
 
-**Still owed on C1:** stale-while-revalidate search (`+229` in TGX `search.ts`, `+90` in the stream route), `fetchPropertyData` `+75`, the frontend map work now in scope, and the 5434 rebuild for the three migrations.
+**Still owed on C1: the 5434 rebuild.** Everything else in the delta has landed — SWR was already present and gained the Unanswered Search distinction, `fetchPropertyData`'s read fix went in at `normalizeAmenityList`, the payload trim was re-measured against app-v2, and the map work turned out to be level apart from the unavailability banner.
+
+Measured 2026-09-02: **5433 is itself one migration behind** (`20260901000001_fix_double_encoded_jsonb` is pending there, not just on 5434), and 5434 is three behind. The double-encoding is live in both — **34,432 rows on 5433, 25,660 on 5434** — which is what `normalizeAmenityList`'s string branch is currently absorbing. The two databases have also drifted apart on row count (5433: 1,140,514; 5434: 1,140,979), so the Side-by-side Check's premise that 5434 is "freshly rebuilt from 5433 so the rows match" does not hold today.
 
 ### Not in this catch-up, deliberately
 
