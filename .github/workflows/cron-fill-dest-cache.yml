@@ -2,13 +2,21 @@ name: Fill TGX Destination Cache Gaps
 
 on:
   schedule:
-    - cron: '0 */2 * * *'   # every 2 hours
+    # Hourly at limit 500 while the backlog is worked off. Two jobs fill this cache and
+    # they are not interchangeable: sync-dest-cache bulk-loads TGX's own destination
+    # list, and this one resolves the remainder, whose OTV city names do not match that
+    # list ("Suncheon" vs "Suncheon-si"). On 2026-09-02 production held 103 codes — the
+    # bulk sync had never successfully run there — and running it took the uncached
+    # count from 22,635 cities to 13,416 in 40 seconds. Every city still uncached
+    # serves a user a slow first search that returns nothing, so 500 hourly clears the
+    # rest in roughly a day. Drop back to daily once this reports "all caught up".
+    - cron: '0 * * * *'
   workflow_dispatch:          # allow manual trigger from GitHub UI
     inputs:
       limit:
-        description: 'Cities to process per run (default 100)'
+        description: 'Cities to process per run (default 500, max 500)'
         required: false
-        default: '100'
+        default: '500'
       min_hotels:
         description: 'Minimum hotel count to be eligible (default 5)'
         required: false
@@ -22,7 +30,7 @@ jobs:
         env:
           SITE_URL: ${{ secrets.NEXT_PUBLIC_SITE_URL }}
           CRON_SECRET: ${{ secrets.CRON_SECRET }}
-          LIMIT: ${{ github.event.inputs.limit || '100' }}
+          LIMIT: ${{ github.event.inputs.limit || '500' }}
           MIN_HOTELS: ${{ github.event.inputs.min_hotels || '5' }}
         run: |
           STATUS=$(curl -s -o /tmp/body.json -w "%{http_code}" \

@@ -239,7 +239,20 @@ describe('No-Availability — the supplier answered and had nothing', () => {
         expect(result.totalCount).toBe(0);
     });
 
-    it('clears the unanswered state when the dest-code path fails but the hotel-code fallback answers for the catalog', async () => {
+    it('stays Unanswered when the dest-code path fails, even though the hotel-code fallback answers for the catalog', async () => {
+        // This asserted the opposite until 2026-09-02. The reasoning was that the batched
+        // hotel codes ARE the Phase 1 catalog, so a clean zero from the fallback had asked
+        // about every hotel the user could see and could therefore rule the city out.
+        //
+        // Live Phuket disproved it. The fallback answered zero, the client pruned 534 real
+        // hotels and showed "no results found"; an identical search seconds later — by
+        // then holding destination code 1476 — returned availability. A destination search
+        // that threw is a destination that was never searched, and a hotel-code sweep is
+        // not a substitute for it.
+        //
+        // The trade: a genuinely empty city whose dest-code search fails transiently now
+        // shows its catalog unpriced instead of "no results". That is the safer error, and
+        // it corrects itself on the next search.
         // Catalog lookup returns two hotels; every other statement returns [].
         const sql = vi.fn().mockImplementation((strings: TemplateStringsArray) => {
             const text = Array.isArray(strings) ? strings.join('') : '';
@@ -257,10 +270,12 @@ describe('No-Availability — the supplier answered and had nothing', () => {
             .mockRejectedValueOnce(new Error('aborted'))                                       // dest-code path dies
             .mockResolvedValue({ data: { hotelX: { search: { options: [], errors: [] } } } }); // fallback answers
 
-        const result = await runTgxSearch({ ...BASE_PARAMS, cityName: 'FallbackAnswered' });
+        const err = await runTgxSearch({ ...BASE_PARAMS, cityName: 'FallbackAnswered' })
+            .then(() => null)
+            .catch((e: unknown) => e as UnansweredSearchError);
 
-        // Not a throw: the catalog hotels were asked about and came back with nothing.
-        expect(result.data).toEqual([]);
+        expect(err).toBeInstanceOf(UnansweredSearchError);
+        expect(err!.message).toContain('dest-code 8003 threw');
     });
 
     it('still returns normally when the supplier answers with options that are all DIRECT rather than MERCHANT', async () => {
@@ -280,6 +295,69 @@ describe('No-Availability — the supplier answered and had nothing', () => {
 
         const result = await runTgxSearch({ ...BASE_PARAMS, cityName: 'AnsweredDirectOnly' });
 
+        expect(result.data).toEqual([]);
+    });
+});
+
+/**
+ * A cold city — one with no cached TGX destination code.
+ *
+ * Reported on live 2026-09-02: a first search for Phuket showed "no results found",
+ * and an immediate repeat of the identical search showed hotels. Between the two,
+ * tgx_destination_cache gained the row `phuket → 1476`, written by the first search
+ * itself. 22,635 cities with five or more hotels had no cached code at the time, so
+ * this was the normal path for a destination rather than an edge case.
+ *
+ * The first search recorded that destination-code resolution never answered, then ran
+ * the hotel-code fallback, which completed every batch with zero options. That clean
+ * zero used to erase the destination failure — the reasoning being that the batched
+ * codes ARE the Phase 1 catalog, so every visible hotel had been asked about. Phuket
+ * disproves it: the very next search, by destination code, returned real availability
+ * for the same city, dates and catalog. Asking TGX by hotel code is not equivalent to
+ * asking it by destination, so the fallback cannot rule out a city on its behalf.
+ */
+describe('Cold city — destination never resolved', () => {
+    function mockCatalogNoSentinel(hotelIds: string[]) {
+        const sql = vi.fn().mockImplementation((strings: TemplateStringsArray) => {
+            const text = Array.isArray(strings) ? strings.join('') : '';
+            // No NONE sentinel: this city is not known-unresolvable, it is merely uncached.
+            if (text.includes("destination_code = 'NONE'")) return Promise.resolve([]);
+            if (text.includes('FROM hotel_content')) {
+                return Promise.resolve(hotelIds.map(id => ({ hotel_id: id, name: `Hotel ${id}`, lat: 40.71, lng: -74.01 })));
+            }
+            return Promise.resolve([]);
+        }) as any;
+        sql.json = vi.fn((x: any) => x);
+        sql.array = vi.fn((x: any) => x);
+        vi.mocked(getSqlAdmin).mockReturnValue(sql);
+        return sql;
+    }
+
+    const catalogIds = Array.from({ length: 120 }, (_, i) => String(200000 + i));
+    const answeredWithNothing = { data: { hotelX: { search: { options: [], errors: [] } } } };
+
+    it('stays Unanswered when the fallback answers zero but the destination was never resolved', async () => {
+        mockCatalogNoSentinel(catalogIds);
+        vi.mocked(resolveTgxDestinationCode).mockResolvedValue(undefined);
+        vi.mocked(tgxGraphQL).mockResolvedValue(answeredWithNothing);
+
+        const err = await runTgxSearch({ ...BASE_PARAMS, cityName: 'Phuket' })
+            .then(() => null)
+            .catch((e: unknown) => e as UnansweredSearchError);
+
+        // Without this the client prunes 534 real hotels and says "no results found".
+        expect(err).toBeInstanceOf(UnansweredSearchError);
+        expect(err!.message).toContain('dest-code resolution timed out');
+    });
+
+    it('still reports No-Availability when the destination WAS resolved and answered cleanly', async () => {
+        // The other half of the rule: a destination that really was searched and really
+        // had nothing must still prune, or an empty city can never be reported as empty.
+        mockCatalogNoSentinel(catalogIds);
+        vi.mocked(resolveTgxDestinationCode).mockResolvedValue('1476');
+        vi.mocked(tgxGraphQL).mockResolvedValue(answeredWithNothing);
+
+        const result = await runTgxSearch({ ...BASE_PARAMS, cityName: 'GenuinelyEmpty' });
         expect(result.data).toEqual([]);
     });
 });

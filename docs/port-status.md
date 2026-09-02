@@ -232,7 +232,7 @@ Also in the diff: `cityAliases.ts` +153, `src/lib/server/search.ts` +108, `roomU
 
 - **Cancellation terms now reach the property payload.** `getProperty` mapped `refundableTag` but dropped `cancelPolicy`, although `r.cancelPolicy` was on the source object and **app-v2's `RoomOption` had declared the field all along** — the client was typed for data the API never sent, so a room could say "refundable" but not by when or for what fee. `toClientCancelPolicy` in `lib/hotels/travelgatex.ts` does the renaming at the supplier boundary, the same reason `toRefundableTag` lives there: TGX calls the figure `value`, the client's shape calls it `amount`, and `penaltyType` travels with it because without it a 20% penalty and a 20-unit one are the same number. 4 tests.
 
-api-v2: 175 tests, typecheck clean. app-v2: 147 tests, typecheck clean — the suite went green on 2026-09-02 once the room-selection and property-description tests were re-pointed at the redesign they had fallen behind (see "Stale tests, not bugs" below).
+api-v2: 196 tests, typecheck clean. app-v2: 147 tests, typecheck clean — the app-v2 suite went green on 2026-09-02 once the room-selection and property-description tests were re-pointed at the redesign they had fallen behind (see "Stale tests, not bugs" below).
 
 **app-v2's build is red, and was before this work.** `next build` exits 1 on 29 ESLint errors — unused imports and `any` — none introduced here. **17 of app-v2's 28 `features/**/*-view.tsx` have zero importers**: the feature-based split was half-adopted, so for those pages the code lives in `app/[locale]/…/page.tsx` and a stale duplicate sits beside it. Six of the nine files failing the build are among the dead ones. This is why `search-view.tsx` carries its own copy of the stream reader and did not get the banner. Deciding it is a slice-sized call, not a side effect of this catch-up.
 
@@ -378,3 +378,27 @@ Eight app-v2 tests arrived red with the teammate's UI pull and stayed red throug
 **Two tests were passing vacuously.** `draws no policies group when the hotel states none` queried the old `Policies & rules` label, which no longer exists under any condition — it has been re-pointed at `Rules & Policies` and is a real check again. `offers no amenities link when they all fit` queries a `See all amenities` button the panel can no longer render at all; it is left in place but is worth deleting when that component is next touched.
 
 **Correction to an earlier reading in this document's history.** The `.slice(0, 5)` in `property-description.tsx` was at one point suspected of defeating the disclosure. It does not — the cap is the design, and the disclosure is switched off independently. The board field was likewise suspected of a room/rate shape mismatch; `ratesOf` maps `boardCode: room.boardType`, so that path is sound.
+
+## C2c — metapolicy, ported 2026-09-02
+
+**What v1 has.** `hotel_content.metapolicy_struct` and `metapolicy_extra_info`, added by `20260728000001_hotel_content_metapolicy.sql` for RateHawk API Addendum §10(b), filled by the `etg-dump-sync` cron, and read into the property payload as `metapolicyStruct` / `metapolicyExtraInfo`. **Nothing in v1 consumes either field.** The data reaches the edge of the page and stops.
+
+Meanwhile v1's no-show and early-departure disclosure — `extractNoShowPenalty`, `detectNoShowPenalty`, `CancellationPolicySection`, `PoliciesSection` — reads `cancelPolicyInfos` and `hotelRemarks` off a LiteAPI-shaped blob. TravelgateX sends neither, so those paths are dead in v1 as well. The port therefore carries the *rule* (§10(b) requires disclosure) onto the shape that actually arrives, per ADR-0025.
+
+**ETG's `no_show` is not a fee.** It is `{ time, day_period, availability }` — the hour past which a guest counts as a no-show. There is no amount in it, so v1's `noShowPenalty: number` has no source and cannot be ported. Disclosing the deadline is the honest equivalent; inventing a number would be worse than saying nothing.
+
+**Measured, not assumed.** All 50 hotels on 5433 and 5434 carrying a metapolicy have the same 14 keys — 12 arrays, plus `no_show` and `visa` as objects. After normalisation **50/50 produce drawable sections**. `check_in_check_out_type` is `unspecified` on every row that has it, so those rows genuinely cannot say which of the two they are; that is the hotel's silence, not a mapping gap.
+
+**A price counts as stated only when a currency came with it.** ETG writes `"0.00"` for two different facts: a cot that is free (`currency: "EUR"`) and a charge the hotel never filled in (`currency: null`). The currency decides — with one, zero means Free; without one, the row still discloses "Not included in the rate" but shows no amount. Reading the second as free would disclose the opposite of the truth, which is the one error a §10(b) obligation cannot absorb.
+
+**The client was already built for this.** app-v2's `room-selection.tsx` has taken a `propertySections: DetailSection[]` prop and an `additionalInfo` string since the modal landed, `room-content.tsx` renders them through `DetailSectionGrid`, and `property.types.ts` says in a comment that it *"mirrors cheapestgo-api-v2 src/lib/hotels/roomContent.types.ts"* — a module that did not exist. It does now, and `getProperty` emits `roomPolicySections` and `additionalInfo` into it. **No app-v2 change was needed.** Verified end to end against `GET /api/v2/hotels/property/6301530`.
+
+**`SectionId` is a closed union shorter than ETG's group list, so groups merge:** deposit, parking, pets, shuttle, early check-in/late check-out, additional fees, no-show and visa all file under `general`; cots and extra beds under `beds-extra`; children and children's meals under `child-policy`; meals under `food-drink`; internet under `internet-comms`.
+
+**Still open on the same contract.** `amenityGroups` is the other prop app-v2 declares under that same "ETG-sourced extras" comment, and api-v2 does not emit it either. Room-scoped `DetailSection`s (`RoomContent.sections`, `keyFacts`, `bedLine`, `bedsExtraSummary`) are likewise unimplemented server-side — the modal falls back to `allFeatures` when they are absent, which is why nobody noticed.
+
+### Pre-existing bug found and fixed: the property endpoint was answering 500
+
+`hotel_review_items.id` is a Postgres `bigint`, which Prisma returns as a JS `BigInt`, and `JSON.stringify` throws on one. `getProperty` returns `reviewItems`, so **every hotel with a review row — 3,827 of them — was answering `500 INTERNAL_ERROR`**. The container running pre-change code fails identically, so this predates the metapolicy work; it surfaced only because verifying the metapolicy meant calling the endpoint. `findHotelReviewItems` now stringifies the id. The client keys these rows by array index, so nothing downstream changes.
+
+api-v2 after C2c: **196 tests** (was 175), typecheck clean.

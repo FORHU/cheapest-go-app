@@ -1843,6 +1843,10 @@ async function runCityFallback(
 
     // Hotel-code fallback: when dest-code yields nothing, search TGX by catalog hotel IDs.
     // Bypasses destination-code resolution for cities where TGX zones don't map well (e.g. Paris).
+    //
+    // Everything recorded up to here is a failure of the destination path, and the fallback
+    // is not entitled to overturn it — see the note where this index is used below.
+    const fallbackReasonsFrom = unansweredReasons.length;
     if (cityName) {
         try {
             const sqlAdmin = getSqlAdmin();
@@ -1950,15 +1954,21 @@ async function runCityFallback(
                     return buildCityResults(merchant, cityName, countryCode);
                 }
                 if (answered.length === batches.length) {
-                    // Every batch completed, all with zero options. Coverage here is a
-                    // bounded subset, but that subset IS the Phase 1 catalog — so every
-                    // hotel the user can currently see has been asked about and answered
-                    // for. That makes this a No-Availability result, not an Unanswered
-                    // one, even if the destination-code path failed earlier.
+                    // Every batch completed, all with zero options — so nothing the
+                    // fallback itself asked about went unanswered, and its own reasons
+                    // can go.
                     //
-                    // Requires ALL batches: if any batch went unanswered, part of the
-                    // catalog was never priced and must not be pruned on its behalf.
-                    unansweredReasons.length = 0;
+                    // What must NOT go are the destination-path reasons recorded before
+                    // this point. This previously cleared everything, on the reasoning
+                    // that the batched hotel codes ARE the Phase 1 catalog and so every
+                    // visible hotel had been asked about. Phuket disproved it on
+                    // 2026-09-02: the fallback answered zero for a cold city, the client
+                    // pruned the whole catalog and showed "no results found", and a repeat
+                    // search moments later — by then holding destination code 1476 —
+                    // returned real availability. Asking TGX by hotel code is not
+                    // equivalent to asking it by destination, so a clean zero from the
+                    // fallback cannot rule out a city whose destination was never resolved.
+                    unansweredReasons.length = fallbackReasonsFrom;
                 }
             } else if (unansweredReasons.length > 0) {
                 // Nothing to ask TGX about and no path answered — the destination was
