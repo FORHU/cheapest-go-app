@@ -17,12 +17,6 @@ export async function POST(req: NextRequest) {
     const csrfError = checkCsrf(req);
     if (csrfError) return csrfError;
 
-    // 5 payment initiations per minute per IP
-    const rl = await rateLimit(req, { limit: 5, windowMs: 60_000, prefix: 'hotel-payment' });
-    if (!rl.success) {
-        return NextResponse.json({ success: false, error: 'Too many requests. Please wait before trying again.' }, { status: 429 });
-    }
-
     try {
         const { user, error: authError } = await getAuthenticatedUser();
         if (authError || !user) {
@@ -30,6 +24,15 @@ export async function POST(req: NextRequest) {
                 { success: false, error: 'Authentication required' },
                 { status: 401 }
             );
+        }
+
+        // 5 payment initiations per minute per *user*. This ran before the session was
+        // read and was therefore keyed by address — which, behind Cloudflare, meant one
+        // shared allowance for everyone on a PoP, so customers were told to wait while
+        // trying to pay for something nobody else was paying for.
+        const rl = await rateLimit(req, { limit: 5, windowMs: 60_000, prefix: 'hotel-payment', userId: user.id });
+        if (!rl.success) {
+            return NextResponse.json({ success: false, error: 'Too many requests. Please wait before trying again.' }, { status: 429 });
         }
 
         const body = await req.json();

@@ -1,6 +1,7 @@
 import { createAdminClient } from '@/utils/postgres/admin';
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthenticatedUser } from '@/lib/server/auth';
+import { rateLimit } from '@/lib/server/rate-limit';
 import { formatCurrency, calculateNights } from '@/lib/utils';
 import { renderToBuffer } from '@react-pdf/renderer';
 import React from 'react';
@@ -22,43 +23,48 @@ export async function GET(
         const { id } = await params;
         const type = req.nextUrl.searchParams.get('type') || 'flight';
 
-    const { user, error: authError } = await getAuthenticatedUser();
-    if (authError || !user) {
-        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    // This is the same receipt the page at /trips/invoice/[id] renders, in another file
+    // format, so it answers to the same Capability Link: possession of the UUID is the
+    // authorisation (ADR-0027), and no session is required. It used to demand one and
+    // scope the row to the caller, which meant "Download PDF" failed for exactly the
+    // people the emailed link is for — a guest opening their receipt signed out, or
+    // anyone the booker forwarded it to. The session is still read, to fill in the
+    // viewer's email when the booking itself carries none.
+    const { user } = await getAuthenticatedUser().catch(() => ({ user: null, error: null }));
+
+    // Rendering a PDF is real CPU on the request path, and this endpoint is now reachable
+    // without a session, so it carries its own limit. Generous per person — a receipt is
+    // downloaded once or twice, and a legitimate reader never counts.
+    const rl = await rateLimit(req, {
+        limit: 20,
+        windowMs: 60_000,
+        prefix: 'invoice-pdf',
+        ...(user ? { userId: user.id } : {}),
+    });
+    if (!rl.success) {
+        return NextResponse.json({ error: 'Too many requests. Please wait a moment.' }, { status: 429 });
     }
 
-    const isAdmin = user.role === 'admin';
     const db = createAdminClient();
 
     const isHotel = type === 'hotel';
     let booking: any = null;
 
     // ── Fetch booking from the appropriate table ──
+    // UUID only. The page dropped its supplier-`booking_id` fallback for being a weaker
+    // way in to the same data (ADR-0027, rule 2); this route has to match, or the rule
+    // is enforced on one of the two URLs that serve the receipt.
     if (isHotel) {
-        let query = db.from('bookings').select('*').eq('id', id);
-        if (!isAdmin) query = query.eq('user_id', user.id);
-        const { data: byUuid } = await query.single();
-
-        if (byUuid) {
-            booking = byUuid;
-        } else {
-            let fallbackQuery = db.from('bookings').select('*').eq('booking_id', id);
-            if (!isAdmin) fallbackQuery = fallbackQuery.eq('user_id', user.id);
-            const { data: byBookingId } = await fallbackQuery.single();
-            booking = byBookingId;
-        }
+        const { data: byUuid } = await db.from('bookings').select('*').eq('id', id).single();
+        booking = byUuid;
     } else {
-        let query = db.from('flight_bookings').select('*, flight_segments(*), passengers(*)').eq('id', id);
-        if (!isAdmin) query = query.eq('user_id', user.id);
-        const { data } = await query.single();
+        const { data } = await db.from('flight_bookings').select('*, flight_segments(*), passengers(*)').eq('id', id).single();
         booking = data;
     }
 
     // Fallback: unified_bookings
     if (!booking) {
-        let uQuery = db.from('unified_bookings').select('*').eq('id', id);
-        if (!isAdmin) uQuery = uQuery.eq('user_id', user.id);
-        const { data: unified } = await uQuery.single();
+        const { data: unified } = await db.from('unified_bookings').select('*').eq('id', id).single();
 
         if (unified) {
             const meta = unified.metadata as any;
@@ -130,8 +136,10 @@ export async function GET(
     const effectiveIsFlight = (type === 'flight') || isBundleType;
 
     // ── Resolve customer email ──
-    let customerEmail = user.email || '';
-    if (isAdmin && !isHotel && booking.user_id) {
+    // Prefer the booking owner's own address, exactly as the receipt page does — a
+    // forwarded receipt should bill to the person who booked, not to whoever opened it.
+    let customerEmail = user?.email || '';
+    if (!isHotel && booking.user_id) {
         try {
             const { data: ownerProfile } = await db
                 .from('profiles')
@@ -140,8 +148,8 @@ export async function GET(
                 .single();
             if (ownerProfile?.email) customerEmail = ownerProfile.email;
         } catch (err) {
-            console.error('Failed to fetch owner profile for admin:', err);
-            // Non-critical: customerEmail remains admin's email as fallback
+            console.error('Failed to fetch booking owner profile:', err);
+            // Non-critical: customerEmail falls back to the viewer's own address
         }
     }
 

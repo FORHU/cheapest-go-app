@@ -600,8 +600,10 @@ export default function FlightBookingCard({ booking, onCancelled }: FlightBookin
         try {
             const res = await fetch('/api/flights/booking-note', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ uniqueId: booking.pnr, notes: [noteText.trim()], bookingId: booking.id }),
+                headers: { 'Content-Type': 'application/json', 'X-Requested-By': 'cheapestgo-client' },
+                // The PNR is no longer sent: the route reads it from the booking row it
+                // authorises, so the client cannot aim a note at someone else's reservation.
+                body: JSON.stringify({ notes: [noteText.trim()], bookingId: booking.id }),
             });
             const data = await res.json();
             if (data.success) {

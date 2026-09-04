@@ -257,9 +257,19 @@ export function CheckoutContent() {
         }
     }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
+    // The currency the URL asks for, resolved during render rather than in an effect.
+    //
+    // The store's default is KRW and it is persisted, so on `/checkout?currency=PHP` the
+    // effect above used to run *after* the first prebook: the page prebooked KRW, the
+    // effect switched to PHP, and the prebook hook fired again. Every checkout load cost
+    // two live TGX searches — one for a currency nobody asked for — and five loads in a
+    // minute exhausted the prebook allowance. Reading the URL here means the first
+    // prebook is already the right one, and the effect's later `set` is a no-op.
+    const prebookCurrency = searchParams.get('currency')?.toUpperCase() || selectedCurrency;
+
     // Prebook trigger hook (handles mount, currency change, auth retry)
     const { retryPrebook } = useCheckoutPrebook({
-        selectedCurrency,
+        selectedCurrency: prebookCurrency,
         startPrebook,
         prebookError,
     });
@@ -459,7 +469,10 @@ export function CheckoutContent() {
             }
         } catch (err) {
             const message = err instanceof Error ? err.message : t('validation.paymentSetupFailed');
-            toast.error(message);
+            // Fixed id so repeated attempts replace the notice instead of stacking it.
+            // Clicking through a rate limit or a network wobble produced a column of
+            // identical toasts, which reads as several different problems.
+            toast.error(message, { id: 'payment-setup-error' });
         } finally {
             setIsCreatingPayment(false);
         }

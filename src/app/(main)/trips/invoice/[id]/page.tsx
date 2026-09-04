@@ -19,9 +19,11 @@ export default async function InvoicePage({ params, searchParams }: PageProps) {
     const { id } = await params;
     const { type } = await searchParams;
 
-    // Receipt pages are public — the UUID in the URL is the credential (122 bits of entropy,
-    // shared only via the confirmation email). No login required, matching industry standard
-    // (Stripe, Booking.com, etc.). We still read the session to expose admin controls when present.
+    // Receipt pages are a Capability Link: the UUID in the URL is the credential (122 bits
+    // of entropy, shared only via the confirmation email), so no login is required and the
+    // link keeps working when a guest forwards it to a travel companion or an expense desk.
+    // See ADR-0027 for the rules a capability link must satisfy. We still read the session
+    // to expose admin controls when present.
     const { user } = await getAuthenticatedUser().catch(() => ({ user: null, error: null }));
     const t = await getTranslations('invoice');
 
@@ -32,14 +34,13 @@ export default async function InvoicePage({ params, searchParams }: PageProps) {
     let booking: any = null;
 
     if (isHotel) {
-        // Hotels: id param may be DB UUID or external booking_id
+        // UUID only. This used to fall back to `booking_id`, the *supplier's* reference —
+        // a value we do not control the entropy of, which appears in supplier payloads,
+        // admin screens and support threads. A route with a strong credential and a weak
+        // alternate lookup has the strength of the weak one, and every link we generate
+        // uses the UUID, so the fallback bought nothing. See ADR-0027.
         const { data: byUuid } = await db.from('bookings').select('*').eq('id', id).single();
-        if (byUuid) {
-            booking = byUuid;
-        } else {
-            const { data: byBookingId } = await db.from('bookings').select('*').eq('booking_id', id).single();
-            booking = byBookingId;
-        }
+        booking = byUuid;
     } else {
         const { data } = await db.from('flight_bookings').select('*, flight_segments(*), passengers(*)').eq('id', id).single();
         booking = data;

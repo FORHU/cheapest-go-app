@@ -91,41 +91,82 @@ export interface RateLimitResult {
 /**
  * Derive a stable client identifier for anonymous rate limiting.
  *
- * On Vercel the edge network sets `x-real-ip` to the true client IP and
- * clients cannot override it. We prefer this over `x-forwarded-for` where
- * the leftmost entry is the client-supplied value (spoofable).
+ * The site is served through Cloudflare, so the only header that names the *client*
+ * is `cf-connecting-ip`. `x-real-ip` names whatever proxy last handled the request —
+ * on this deployment that is the TLS terminator in front of the container, so it
+ * carries a Cloudflare edge address, not a customer. Keying on it put every visitor
+ * arriving through the same Cloudflare PoP into one bucket: with most traffic landing
+ * on one or two PoPs, a 5/min payment limit became 5/min for the entire country. The
+ * previous comment described Vercel, which this has not run on for some time.
  *
- * Fallback order: x-real-ip → rightmost x-forwarded-for → 'unknown'
+ * `cf-connecting-ip` is only believable if the request actually came through
+ * Cloudflare, because anything reaching the origin directly can invent it. That is
+ * proved by CF_ORIGIN_SECRET — a value added by a Cloudflare Transform Rule and known
+ * only to the edge. Without the secret configured we do not trust the header.
+ *
+ * Returns null when no client can be identified, which is deliberately different from
+ * a shared bucket: see `rateLimit`.
  */
-function getClientKey(req: Request): string {
+function getClientKey(req: Request): string | null {
     const headers = (req as any).headers;
     const get = (name: string): string => headers?.get?.(name) ?? '';
 
-    // x-real-ip is set by Vercel's edge and is not forwardable by clients
-    const realIp = get('x-real-ip').trim();
-    if (realIp) return realIp;
+    const originSecret = process.env.CF_ORIGIN_SECRET;
+    const fromCloudflare = !!originSecret && get('x-origin-auth').trim() === originSecret;
 
-    // Fallback: take the rightmost entry in x-forwarded-for.
-    // Vercel appends the client IP, so the last entry is the most trustworthy.
-    const forwarded = get('x-forwarded-for');
-    if (forwarded) {
-        const parts = forwarded.split(',');
-        const last = parts[parts.length - 1]?.trim();
-        if (last) return last;
+    if (fromCloudflare) {
+        const cfIp = get('cf-connecting-ip').trim();
+        if (cfIp) return cfIp;
+
+        // Cloudflare sets X-Forwarded-For to the client, appending rather than
+        // replacing, so the leftmost entry is the client it saw. Only readable once
+        // we know the request came through the edge — otherwise it is caller-supplied.
+        const forwarded = get('x-forwarded-for');
+        const first = forwarded.split(',')[0]?.trim();
+        if (first) return first;
     }
 
-    return 'unknown';
+    return null;
 }
+
+/**
+ * How much slack the shared backstop bucket gets when no individual client can be
+ * identified. It has to be wide enough that ordinary traffic never reaches it — every
+ * unidentified visitor counts against the same key — while still capping a flood
+ * against endpoints that cost money per call.
+ */
+const UNIDENTIFIED_MULTIPLIER = 50;
+
+let warnedUnidentified = false;
 
 export async function rateLimit(
     req: Request,
     options: RateLimitOptions,
 ): Promise<RateLimitResult> {
     const { limit, windowMs = 60_000, prefix = 'rl', userId } = options;
-    // Authenticated routes key on user ID — immune to IP spoofing
-    const clientId = userId ?? getClientKey(req);
-    const key = `${prefix}:${clientId}`;
 
+    // Authenticated routes key on user ID — immune to spoofing, and unaffected by
+    // whatever the edge does or does not tell us about addresses.
+    const clientId = userId ?? getClientKey(req);
+
+    if (!clientId) {
+        // No identifiable client. Sharing one bucket at the route's own limit is what
+        // used to happen by accident, and it throttles unrelated customers together —
+        // so the shared bucket exists only as a flood backstop, at a much wider limit.
+        if (!warnedUnidentified) {
+            warnedUnidentified = true;
+            console.warn(
+                '[rate-limit] No client identity available — falling back to the shared backstop bucket. ' +
+                'Set CF_ORIGIN_SECRET and the matching Cloudflare Transform Rule to restore per-client limits.',
+            );
+        }
+        return runLimit(`${prefix}:unidentified`, limit * UNIDENTIFIED_MULTIPLIER, windowMs);
+    }
+
+    return runLimit(`${prefix}:${clientId}`, limit, windowMs);
+}
+
+async function runLimit(key: string, limit: number, windowMs: number): Promise<RateLimitResult> {
     if (process.env.DATABASE_URL) {
         try {
             return await postgresRateLimit(key, limit, windowMs);

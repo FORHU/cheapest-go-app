@@ -1,0 +1,768 @@
+<title>Two Unposted Refunds</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+
+<style>
+  :root {
+    --paper:      #f7f8fa;
+    --card:       #ffffff;
+    --ink:        #101720;
+    --slate:      #5c6675;
+    --rule:       #dde1e8;
+    --rule-soft:  #eaedf2;
+    --trace:      #1c4f8c;
+    --trace-soft: #eaf0f8;
+    --oxide:      #a3341f;
+    --oxide-soft: #fbeeeb;
+    --good:       #1f6b4a;
+    --good-soft:  #e9f4ee;
+
+    --display: "Archivo", "Helvetica Neue", Arial, sans-serif;
+    --body:    "IBM Plex Sans", "Segoe UI", Helvetica, Arial, sans-serif;
+    --mono:    "IBM Plex Mono", "SFMono-Regular", Consolas, monospace;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper:      #0d1218;
+      --card:       #141b24;
+      --ink:        #e6eaf0;
+      --slate:      #97a2b2;
+      --rule:       #28323f;
+      --rule-soft:  #1d2632;
+      --trace:      #7ea9dd;
+      --trace-soft: #16233a;
+      --oxide:      #e08f7b;
+      --oxide-soft: #2c1a16;
+      --good:       #6fbd97;
+      --good-soft:  #142720;
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --paper:      #0d1218;
+    --card:       #141b24;
+    --ink:        #e6eaf0;
+    --slate:      #97a2b2;
+    --rule:       #28323f;
+    --rule-soft:  #1d2632;
+    --trace:      #7ea9dd;
+    --trace-soft: #16233a;
+    --oxide:      #e08f7b;
+    --oxide-soft: #2c1a16;
+    --good:       #6fbd97;
+    --good-soft:  #142720;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--body);
+    font-size: 15px;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .sheet {
+    max-width: 940px;
+    margin: 0 auto;
+    padding: 48px 32px 96px;
+  }
+
+  /* ---------- masthead ---------- */
+
+  .masthead {
+    border-bottom: 2px solid var(--ink);
+    padding-bottom: 20px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 24px;
+    align-items: flex-end;
+    justify-content: space-between;
+  }
+
+  .eyebrow {
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--trace);
+    margin: 0 0 10px;
+  }
+
+  h1 {
+    font-family: var(--display);
+    font-weight: 700;
+    font-size: clamp(30px, 5vw, 44px);
+    line-height: 1.05;
+    letter-spacing: -0.02em;
+    margin: 0;
+    text-wrap: balance;
+  }
+
+  .masthead-meta {
+    font-family: var(--mono);
+    font-size: 12px;
+    line-height: 1.9;
+    color: var(--slate);
+    text-align: right;
+  }
+  .masthead-meta b { color: var(--ink); font-weight: 500; }
+
+  .standfirst {
+    font-size: 17px;
+    line-height: 1.65;
+    max-width: 62ch;
+    margin: 28px 0 0;
+    color: var(--ink);
+  }
+  .standfirst .lede { font-weight: 600; }
+
+  .prepared {
+    font-size: 13px;
+    color: var(--slate);
+    margin: 14px 0 0;
+    max-width: 62ch;
+  }
+
+  /* ---------- section headings ---------- */
+
+  section { margin-top: 56px; }
+
+  h2 {
+    font-family: var(--display);
+    font-weight: 600;
+    font-size: 13px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--slate);
+    margin: 0 0 20px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--rule);
+  }
+
+  /* ---------- summary ---------- */
+
+  .summary {
+    display: grid;
+    grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+    gap: 28px;
+    align-items: start;
+  }
+  @media (max-width: 720px) {
+    .summary { grid-template-columns: 1fr; }
+  }
+
+  .total-block {
+    background: var(--oxide-soft);
+    border: 1px solid var(--oxide);
+    border-radius: 3px;
+    padding: 24px 26px;
+  }
+  .total-label {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--oxide);
+    margin: 0 0 8px;
+  }
+  .total-figure {
+    font-family: var(--display);
+    font-weight: 700;
+    font-size: clamp(34px, 6vw, 48px);
+    line-height: 1;
+    letter-spacing: -0.025em;
+    color: var(--oxide);
+    font-variant-numeric: tabular-nums;
+    margin: 0;
+  }
+  .total-note {
+    font-size: 13px;
+    color: var(--slate);
+    margin: 12px 0 0;
+  }
+
+  .card-facts {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 2px 20px;
+    font-size: 13.5px;
+    align-content: start;
+  }
+  .card-facts dt {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--slate);
+    padding-top: 4px;
+  }
+  .card-facts dd {
+    margin: 0;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--rule-soft);
+  }
+  .card-facts dd.mono { font-family: var(--mono); font-size: 12.5px; }
+
+  /* ---------- chain of custody ---------- */
+
+  .dossier {
+    background: var(--card);
+    border: 1px solid var(--rule);
+    border-radius: 3px;
+    margin-bottom: 28px;
+    overflow: hidden;
+  }
+
+  .dossier-head {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 24px;
+    align-items: baseline;
+    justify-content: space-between;
+    padding: 18px 24px;
+    border-bottom: 1px solid var(--rule);
+    background: var(--rule-soft);
+  }
+  .dossier-title {
+    font-family: var(--display);
+    font-weight: 600;
+    font-size: 19px;
+    letter-spacing: -0.01em;
+    margin: 0;
+  }
+  .dossier-index {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--slate);
+  }
+  .dossier-amount {
+    font-family: var(--mono);
+    font-weight: 600;
+    font-size: 17px;
+    font-variant-numeric: tabular-nums;
+    color: var(--oxide);
+  }
+
+  .chain { list-style: none; margin: 0; padding: 8px 24px 24px; }
+
+  .step {
+    display: grid;
+    grid-template-columns: 132px 22px minmax(0, 1fr);
+    gap: 0 16px;
+    align-items: start;
+  }
+  @media (max-width: 640px) {
+    .step { grid-template-columns: 20px minmax(0, 1fr); }
+    .step-date { grid-column: 1 / -1; padding-left: 36px; }
+  }
+
+  .step-date {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--slate);
+    padding-top: 17px;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+  @media (max-width: 640px) {
+    .step-date { text-align: left; padding-top: 14px; }
+  }
+
+  .step-spine {
+    position: relative;
+    justify-self: center;
+    width: 2px;
+    background: var(--rule);
+    min-height: 100%;
+  }
+  .step:first-child .step-spine { margin-top: 20px; min-height: calc(100% - 20px); }
+  .step:last-child  .step-spine { max-height: 20px; }
+
+  .step-spine::before {
+    content: "";
+    position: absolute;
+    top: 14px;
+    left: 50%;
+    width: 11px;
+    height: 11px;
+    border-radius: 50%;
+    background: var(--card);
+    border: 2px solid var(--trace);
+    transform: translate(-50%, 0);
+  }
+  .step--break .step-spine { background: repeating-linear-gradient(to bottom, var(--oxide) 0 4px, transparent 4px 9px); }
+  .step--break .step-spine::before { border-color: var(--oxide); background: var(--oxide); }
+
+  .step-body { padding: 12px 0 14px; }
+
+  .step-label {
+    font-family: var(--display);
+    font-weight: 600;
+    font-size: 15px;
+    margin: 0 0 4px;
+  }
+  .step--break .step-label { color: var(--oxide); }
+
+  .step-detail {
+    font-size: 13.5px;
+    color: var(--slate);
+    margin: 0;
+  }
+  .step-detail .val { color: var(--ink); font-family: var(--mono); font-size: 12.5px; }
+
+  .arn {
+    margin-top: 12px;
+    background: var(--trace-soft);
+    border-left: 3px solid var(--trace);
+    padding: 12px 16px;
+  }
+  .arn-label {
+    font-family: var(--mono);
+    font-size: 10.5px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--trace);
+    margin: 0 0 4px;
+  }
+  .arn-value {
+    font-family: var(--mono);
+    font-weight: 600;
+    font-size: clamp(16px, 3.2vw, 21px);
+    letter-spacing: 0.02em;
+    color: var(--ink);
+    margin: 0;
+    word-break: break-all;
+    font-variant-numeric: tabular-nums;
+    user-select: all;
+  }
+
+  .elapsed {
+    display: inline-block;
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--oxide);
+    background: var(--oxide-soft);
+    border: 1px solid var(--oxide);
+    border-radius: 2px;
+    padding: 2px 8px;
+    margin-top: 8px;
+  }
+
+  /* ---------- table ---------- */
+
+  .table-wrap { overflow-x: auto; }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13.5px;
+    min-width: 560px;
+  }
+  th {
+    font-family: var(--mono);
+    font-size: 10.5px;
+    font-weight: 500;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--slate);
+    text-align: left;
+    padding: 0 16px 8px 0;
+    border-bottom: 1px solid var(--rule);
+    white-space: nowrap;
+  }
+  td {
+    padding: 11px 16px 11px 0;
+    border-bottom: 1px solid var(--rule-soft);
+    vertical-align: top;
+  }
+  td.num { font-family: var(--mono); font-variant-numeric: tabular-nums; white-space: nowrap; }
+  tr.is-outstanding td { color: var(--oxide); }
+
+  .pill {
+    display: inline-block;
+    font-family: var(--mono);
+    font-size: 10.5px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    border-radius: 2px;
+    padding: 2px 7px;
+    white-space: nowrap;
+  }
+  .pill--good { color: var(--good); background: var(--good-soft); border: 1px solid var(--good); }
+  .pill--bad  { color: var(--oxide); background: var(--oxide-soft); border: 1px solid var(--oxide); }
+
+  /* ---------- ask ---------- */
+
+  .ask {
+    background: var(--card);
+    border: 1px solid var(--rule);
+    border-left: 3px solid var(--trace);
+    border-radius: 3px;
+    padding: 26px 28px;
+  }
+  .ask ol { margin: 0; padding-left: 22px; }
+  .ask li { margin-bottom: 12px; padding-left: 4px; }
+  .ask li:last-child { margin-bottom: 0; }
+  .ask strong { font-weight: 600; }
+
+  p.note {
+    font-size: 13.5px;
+    color: var(--slate);
+    max-width: 68ch;
+  }
+
+  .mono-inline { font-family: var(--mono); font-size: 12.5px; color: var(--ink); }
+
+  footer {
+    margin-top: 64px;
+    padding-top: 20px;
+    border-top: 1px solid var(--rule);
+    font-size: 12.5px;
+    color: var(--slate);
+  }
+
+  @media print {
+    body { background: #fff; }
+    .sheet { padding: 0; max-width: none; }
+    .dossier { break-inside: avoid; }
+    section { margin-top: 34px; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { animation: none !important; transition: none !important; }
+  }
+</style>
+
+<div class="sheet">
+
+  <header class="masthead">
+    <div>
+      <p class="eyebrow">Cardholder refund trace request</p>
+      <h1>Two Unposted Refunds</h1>
+    </div>
+    <div class="masthead-meta">
+      Prepared <b>4 September 2026</b><br>
+      Card <b>Visa Debit ···· 6163</b><br>
+      Issuer <b>BDO Unibank, Inc.</b>
+    </div>
+  </header>
+
+  <p class="standfirst">
+    <span class="lede">Two card refunds were successfully issued by the merchant and assigned Visa
+    acquirer reference numbers, but neither has posted to the account.</span>
+    Both original purchases settled as POS withdrawals and left the account. The merchant's payment
+    processor confirms both refunds were accepted by the card network — on 17 and 19 August 2026.
+    Sixteen and eighteen days later, no credit has appeared.
+  </p>
+
+  <p class="prepared">
+    Prepared by the cardholder. Figures are taken from the BDO transaction history and from the
+    merchant's Stripe payment records, both of which are available on request.
+  </p>
+
+  <section>
+    <h2>Amount outstanding</h2>
+    <div class="summary">
+      <div class="total-block">
+        <p class="total-label">Not credited as of 4 Sep 2026</p>
+        <p class="total-figure">₱21,709.36</p>
+        <p class="total-note">
+          Across two refunds — ₱18,955.97 and ₱2,753.39 — both issued in full by the merchant
+          with no amount withheld.
+        </p>
+      </div>
+
+      <dl class="card-facts">
+        <dt>Card</dt>
+        <dd class="mono">Visa Debit ···· 6163</dd>
+
+        <dt>Expiry</dt>
+        <dd class="mono">11 / 2031</dd>
+
+        <dt>Issuer</dt>
+        <dd>Banco de Oro Unibank, Inc.</dd>
+
+        <dt>Merchant</dt>
+        <dd>FORHU AI</dd>
+
+        <dt>Descriptor</dt>
+        <dd class="mono">POS W/D SV FORHU AI +6393080370 ATP</dd>
+
+        <dt>Processor</dt>
+        <dd>Stripe Payments</dd>
+      </dl>
+    </div>
+  </section>
+
+  <section>
+    <h2>Chain of custody</h2>
+
+    <article class="dossier">
+      <div class="dossier-head">
+        <div>
+          <p class="dossier-index">Item 1 · Aria Hotel Jeju</p>
+          <h3 class="dossier-title">₱18,955.97 debited 17 August</h3>
+        </div>
+        <span class="dossier-amount">USD 300.96</span>
+      </div>
+
+      <ol class="chain">
+        <li class="step">
+          <div class="step-date">17 Aug 2026</div>
+          <div class="step-spine"></div>
+          <div class="step-body">
+            <p class="step-label">Card debited</p>
+            <p class="step-detail">
+              <span class="val">−PHP 18,955.97</span> posted as a POS withdrawal, not an
+              authorization hold. Funds left the account.
+            </p>
+          </div>
+        </li>
+
+        <li class="step">
+          <div class="step-date">17 Aug, 7:13 PM</div>
+          <div class="step-spine"></div>
+          <div class="step-body">
+            <p class="step-label">Merchant received payment</p>
+            <p class="step-detail">
+              <span class="val">USD 300.96</span> — payment succeeded.
+              Payment ID <span class="val">pi_3U5OTCC6cOjdwOIC1fDPRbt5</span>
+            </p>
+          </div>
+        </li>
+
+        <li class="step">
+          <div class="step-date">19 Aug, 11:29 AM</div>
+          <div class="step-spine"></div>
+          <div class="step-body">
+            <p class="step-label">Merchant issued full refund</p>
+            <p class="step-detail">
+              <span class="val">USD 300.96</span> refunded in full. Processor status:
+              <em>“Successfully refunded due to customer request.”</em>
+            </p>
+            <div class="arn">
+              <p class="arn-label">Acquirer reference number</p>
+              <p class="arn-value">24007762321000009630602</p>
+            </div>
+          </div>
+        </li>
+
+        <li class="step step--break">
+          <div class="step-date">as of 4 Sep 2026</div>
+          <div class="step-spine"></div>
+          <div class="step-body">
+            <p class="step-label">Credit not received</p>
+            <p class="step-detail">
+              No corresponding credit has appeared on the account.
+            </p>
+            <span class="elapsed">16 days elapsed</span>
+          </div>
+        </li>
+      </ol>
+    </article>
+
+    <article class="dossier">
+      <div class="dossier-head">
+        <div>
+          <p class="dossier-index">Item 2 · Miasageori Station Daewon</p>
+          <h3 class="dossier-title">₱2,753.39 debited 4 August</h3>
+        </div>
+        <span class="dossier-amount">USD 44.18</span>
+      </div>
+
+      <ol class="chain">
+        <li class="step">
+          <div class="step-date">4 Aug 2026</div>
+          <div class="step-spine"></div>
+          <div class="step-body">
+            <p class="step-label">Card debited</p>
+            <p class="step-detail">
+              <span class="val">−PHP 2,753.39</span> posted as a POS withdrawal, not an
+              authorization hold. Funds left the account.
+            </p>
+          </div>
+        </li>
+
+        <li class="step">
+          <div class="step-date">4 Aug, 11:41 AM</div>
+          <div class="step-spine"></div>
+          <div class="step-body">
+            <p class="step-label">Merchant received payment</p>
+            <p class="step-detail">
+              <span class="val">USD 44.18</span> — payment succeeded.
+              Payment ID <span class="val">pi_3U0ZDiC6cOjdwOIC13w89Ikx</span>
+            </p>
+          </div>
+        </li>
+
+        <li class="step">
+          <div class="step-date">17 Aug, 6:12 PM</div>
+          <div class="step-spine"></div>
+          <div class="step-body">
+            <p class="step-label">Merchant issued full refund</p>
+            <p class="step-detail">
+              <span class="val">USD 44.18</span> refunded in full. Processor status:
+              <em>“Successfully refunded due to customer request.”</em>
+            </p>
+            <div class="arn">
+              <p class="arn-label">Acquirer reference number</p>
+              <p class="arn-value">24007762300000023660538</p>
+            </div>
+          </div>
+        </li>
+
+        <li class="step step--break">
+          <div class="step-date">as of 4 Sep 2026</div>
+          <div class="step-spine"></div>
+          <div class="step-body">
+            <p class="step-label">Credit not received</p>
+            <p class="step-detail">
+              No corresponding credit has appeared on the account.
+            </p>
+            <span class="elapsed">18 days elapsed</span>
+          </div>
+        </li>
+      </ol>
+    </article>
+  </section>
+
+  <section>
+    <h2>Control evidence — the same card did receive other refunds</h2>
+
+    <p class="note">
+      Three further refunds were issued to this same card from the same merchant account over the
+      same period, and all three resolved normally. One of them — Jeju Olympia Hotel — was issued
+      at <span class="mono-inline">17 Aug, 6:12 PM</span>, the very same minute as Item 2, and it
+      posted. The card is therefore capable of receiving credits from this merchant, and the failure
+      is specific to the two refunds above rather than to the account or the card.
+    </p>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Purchase</th>
+            <th>Amount</th>
+            <th>Charged</th>
+            <th>Refund issued</th>
+            <th>Form</th>
+            <th>Outcome</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Jeju Olympia Hotel</td>
+            <td class="num">USD 55.94</td>
+            <td class="num">13 Aug</td>
+            <td class="num">17 Aug, 6:12 PM</td>
+            <td>Refund</td>
+            <td><span class="pill pill--good">Received</span></td>
+          </tr>
+          <tr>
+            <td>Cullinan Gaepo</td>
+            <td class="num">USD 208.41</td>
+            <td class="num">17 Aug, 5:43 PM</td>
+            <td class="num">17 Aug, 6:01 PM</td>
+            <td>Reversal</td>
+            <td><span class="pill pill--good">Received</span></td>
+          </tr>
+          <tr>
+            <td>Miasageori Station Daewon</td>
+            <td class="num">USD 45.14</td>
+            <td class="num">4 Aug, 1:59 PM</td>
+            <td class="num">4 Aug, 3:23 PM</td>
+            <td>Reversal</td>
+            <td><span class="pill pill--good">Received</span></td>
+          </tr>
+          <tr class="is-outstanding">
+            <td><strong>Aria Hotel Jeju</strong></td>
+            <td class="num">USD 300.96</td>
+            <td class="num">17 Aug, 7:13 PM</td>
+            <td class="num">19 Aug, 11:29 AM</td>
+            <td>Refund</td>
+            <td><span class="pill pill--bad">Not received</span></td>
+          </tr>
+          <tr class="is-outstanding">
+            <td><strong>Miasageori Station Daewon</strong></td>
+            <td class="num">USD 44.18</td>
+            <td class="num">4 Aug, 11:41 AM</td>
+            <td class="num">17 Aug, 6:12 PM</td>
+            <td>Refund</td>
+            <td><span class="pill pill--bad">Not received</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p class="note" style="margin-top:18px;">
+      The two entries marked <em>Reversal</em> were cancelled before settlement, so the authorization
+      was voided and the held funds were released rather than credited. Those are correctly resolved
+      and are listed only to complete the record.
+    </p>
+  </section>
+
+  <section>
+    <h2>What is being requested</h2>
+    <div class="ask">
+      <ol>
+        <li>
+          <strong>Trace both credits using the acquirer reference numbers above.</strong>
+          <span class="mono-inline">24007762321000009630602</span> and
+          <span class="mono-inline">24007762300000023660538</span>. These are Visa network trace
+          numbers assigned when each refund was accepted, and they identify the inbound credits
+          within BDO's settlement records.
+        </li>
+        <li>
+          <strong>Confirm the disposition of each credit</strong> — the date it posted, or, if it was
+          rejected or returned, the reason and the date.
+        </li>
+        <li>
+          <strong>Credit the account for both refunds</strong>, totalling <strong>₱21,709.36</strong>
+          at the amounts originally debited, or advise what further documentation is required.
+        </li>
+      </ol>
+    </div>
+
+    <p class="note" style="margin-top:20px;">
+      A Visa refund to a Philippine debit card is expected to post within five to ten business days.
+      Both refunds are now well beyond that window. Because the original purchases settled as POS
+      withdrawals rather than holds, each refund returns as a separate inbound credit rather than as
+      a reversal of the original line, and will not appear against the original transaction.
+    </p>
+  </section>
+
+  <section>
+    <h2>Why the refunds were owed</h2>
+    <p class="note">
+      Both charges were hotel reservations booked through the merchant and cancelled within their
+      free-cancellation windows, which is why the merchant issued each refund in full with no
+      cancellation penalty withheld. The Aria Hotel Jeju reservation is recorded with the supplier
+      under order number <span class="mono-inline">989088624</span>, cancelled ahead of its
+      free-cancellation deadline of 30 August 2026. Supplier cancellation confirmations for both
+      reservations are available on request.
+    </p>
+    <p class="note">
+      This context is supporting background only. The merchant does not dispute either refund — both
+      were issued voluntarily and in full, and the processor has confirmed both were accepted by the
+      card network. The outstanding question is solely where the two credits are.
+    </p>
+  </section>
+
+  <footer>
+    Prepared 4 September 2026 · Cardholder Visa Debit ···· 6163 · Merchant FORHU AI ·
+    Amounts in PHP as debited; USD as processed. Supporting screenshots from BDO transaction
+    history and Stripe payment records available on request.
+  </footer>
+
+</div>

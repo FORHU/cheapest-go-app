@@ -3,6 +3,7 @@ import { safeError } from '@/lib/server/safe-error';
 import { prebookSchema } from '@/lib/schemas/booking';
 import { quoteTravelgateX } from '@/lib/server/travelgatex';
 import { rateLimit } from '@/lib/server/rate-limit';
+import { getAuthenticatedUser } from '@/lib/server/auth';
 import { createAdminClient } from '@/utils/postgres/admin';
 import { PREBOOK_QUOTE_TTL_MS } from '@/lib/pricing';
 import { convertCurrencyStrict, refreshExchangeRates } from '@/lib/currency';
@@ -101,7 +102,15 @@ export const dynamic = 'force-dynamic';
 
 export async function POST(req: Request) {
     try {
-        const rl = await rateLimit(req, { limit: 10, windowMs: 60_000, prefix: 'hotel-prebook' });
+        // Prebook is browsable signed out (ADR-0027), so there is often no user to key
+        // on — but when there is one, prefer it: it survives shared addresses and NAT.
+        const { user } = await getAuthenticatedUser();
+        const rl = await rateLimit(req, {
+            limit: 30,
+            windowMs: 60_000,
+            prefix: 'hotel-prebook',
+            ...(user ? { userId: user.id } : {}),
+        });
         if (!rl.success) {
             return Response.json({ success: false, error: 'Too many requests. Please wait a moment.' }, { status: 429 });
         }

@@ -18,7 +18,11 @@ const nextConfig = {
   output: "standalone",
   eslint: { ignoreDuringBuilds: true },
   typescript: { ignoreBuildErrors: true },
-  serverExternalPackages: ['@node-rs/argon2', 'postgres'],
+  // @react-pdf/renderer must not be bundled: it resolves fonts and its own internal
+  // modules at runtime, and Next's server bundle broke that badly enough to kill the
+  // worker outright — every receipt download returned 500 with only "Jest worker
+  // encountered 2 child process exceptions" in the log.
+  serverExternalPackages: ['@node-rs/argon2', 'postgres', '@react-pdf/renderer'],
   experimental: {},
   turbopack: {
     root: __dirname,
@@ -84,6 +88,17 @@ const nextConfig = {
               "frame-ancestors 'self'",
             ].join("; "),
           },
+        ],
+      },
+      {
+        // Receipt URLs are Capability Links — the id in the path is the credential
+        // (ADR-0027), so the path must not travel in a Referer header. The site-wide
+        // `origin-when-cross-origin` already withholds the path from other origins;
+        // `no-referrer` also withholds it from same-origin requests, so an image or
+        // script fetched by this page cannot carry the receipt id in its logs.
+        source: "/trips/invoice/:path*",
+        headers: [
+          { key: "Referrer-Policy", value: "no-referrer" },
         ],
       },
     ];

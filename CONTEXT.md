@@ -69,7 +69,23 @@ _Avoid_: assuming every enum-like column uses the same mechanism, or converting 
 
 **Profile** — a row in `public.profiles` auto-created by the `on_user_created` trigger on `public.users`. Replaces the Supabase `on_auth_user_created` trigger on `auth.users`. Does not carry `role` — use `users.role` for all authorization checks.
 
+**Capability Link** — a URL whose *possession* is the authorization, used where a **Session** would be the wrong demand: the receipt links in confirmation emails, which guests forward to travel companions and expense departments. It is scoped to one thing, read-only, unguessable, and never accompanied by a weaker way of naming the same thing. A Capability Link and a Session are the only two ways to become an authorized actor. See [ADR-0027](docs/adr/0027-authorisation-belongs-to-the-resource-not-the-page.md).
+_Avoid_: calling one "a public page" — it is credentialed, the credential just happens to be the URL. _Avoid_: adding a lookup by booking reference, PNR or supplier id beside it — the route is then only as strong as the weakest way in.
+
+**Sensitive Page** — not a concept here, and requests phrased in terms of it should be re-asked. Pages are not authorization boundaries; routes are ([ADR-0027](docs/adr/0027-authorisation-belongs-to-the-resource-not-the-page.md)). The answerable questions are "which route exposes this data" and "does that route check the owner".
+_Avoid_: "put this page behind auth" as a fix for an exposure report — it moves the login prompt without closing anything.
+
 ## Booking
+
+**Booking** — CheapestGo's own record of a stay it sold. A cache of the **Reservation**, never the authority on it: a Booking can exist for a Reservation that was cancelled elsewhere, and a Reservation can exist with no Booking at all.
+_Avoid_: using "booking" for the supplier's record — that is a **Reservation**, and conflating the two is why "the booking was cancelled" can be true and false at the same time.
+
+**Reservation** — the supplier's record of the stay, held by RateHawk and identified by its order number. The authority on whether a stay exists and whether it is cancelled. Cancellable from the supplier's own dashboard, without CheapestGo being told.
+
+**Unrecorded Reservation** — a **Reservation** the supplier confirmed and the customer paid for, with no **Booking** to match it. The customer holds a room the platform cannot see, cannot show them, and cannot cancel. Distinct from an **Orphaned Order**, where no sale completed and only inventory is held — here the money moved.
+_Avoid_: refunding one on discovery. The stay is real, so the charge is owed; what is missing is the record, not the entitlement.
+
+**Stale Booking** — a **Booking** still reading `confirmed` whose **Reservation** has been cancelled at the supplier. The opposite direction of drift from an **Unrecorded Reservation**, and the more common one, since any dashboard cancellation creates one.
 
 **Booking Reference** — the identifier CheapestGo puts on a **sale**, `CG-XXXXXX` for CheapestGo and `GG-XXXXXX` for GeomeeGo. Minted before the charge and written onto the PaymentIntent, so it exists even where a booking was never confirmed — a payment that took money and then failed still has to be attributable. The prefix is derived from **Source Brand** at mint time rather than stored beside it, so the two cannot disagree.
 _Avoid_: calling a **PNR** a reference, and reading a `CG` prefix as ours without the hyphen — `CG2MTN` is an airline PNR that begins with those letters by coincidence. The retired `FORHU-` prefix named FORHU Inc, the company every project shares, and so identified nothing.
