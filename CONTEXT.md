@@ -259,3 +259,26 @@ _Avoid_: showing a "from" price on these cards (requires a live availability cal
 
 **Refresh cadence** — only Flight Deals have a cron refresh (`sync-flight-deals` via Duffel). Hotel sections (Top Hotel Deals, Guest Favorites) were dropped in v1 because populating them required synthetic availability calls, which violate TravelGateX and RTX supplier terms (pre-fetch prohibition, clause 3.5 in the RTX agreement).
 _Avoid_: re-introducing any cron that calls a hotel availability API without a real user request behind it.
+
+## Support
+
+**Support Chat** — a conversation between one customer and CheapestGo about a trip they have or are trying to book. It is answered first by a model and then, on **Escalation**, by an **Agent**. A customer has at most one open Support Chat at a time; asking again resumes the one they have rather than starting a second.
+_Avoid_: "ticket" — a Support Chat is not queued, numbered, or closed by the customer, and nothing about it is promised to be answered off-line. _Avoid_: calling it a "session" — it outlives the browser tab it was opened in.
+
+**Support Widget** — the floating launcher and panel that hosts a Support Chat on the site. The widget is the surface; the Support Chat is the thing it shows. One can exist without the other: the chat continues when the widget is closed.
+_Avoid_: using "widget" for the conversation, or "chat" for the button.
+
+**Escalation** — the moment a Support Chat stops being answered by the model and joins the queue for an **Agent**, either because the customer asked for a person or because the model judged it should not answer. It is one-way within a conversation: once escalated, the model does not speak again in that Support Chat. It always reaches the queue, at any hour, and it always leaves behind a way to reply — a signed-in customer's account, or a guest's name and email, which is the one moment a guest is asked for them.
+_Avoid_: describing the model and an Agent as answering "together" — they never both hold the same conversation. _Avoid_: treating out-of-hours Escalation as a different kind of thing; it is the same transition, differently explained.
+
+**Support Hours** — the window in which an Escalation is promised a same-day answer, kept as one schedule in one timezone for both brands. Outside it the model still answers, Escalation still reaches the queue, and what changes is what the customer is told: which morning someone will pick it up.
+_Avoid_: "opening hours" — the site never closes, and the model answers around the clock. _Avoid_: describing Support Hours as gating Escalation — they govern the promise, not the queue.
+
+**Turn Budget** — the ceiling on how many times the model will answer, held per Support Chat and again across the whole site. A Support Chat that exhausts its budget stops being answered by the model and is offered an Agent instead; if the site-wide ceiling is reached, every Support Chat behaves that way until the hour turns over. It reads to a customer as "after a while, you get a person".
+_Avoid_: presenting an exhausted budget as an error — the conversation still works, and Escalation is still open.
+
+**Agent** — a CheapestGo staff member handling a customer, whether on a call or in an escalated Support Chat. Already the word used throughout the admin screens.
+_Avoid_: "travel agent" (suggests a third party) and "operator" or "bot" (an Agent is always a person).
+
+**AI Search** — the hero's natural-language mode, which turns one sentence into search parameters and runs a search. Distinct from a Support Chat: it is a single turn, it holds no history, and it is about finding a trip rather than fixing one.
+_Avoid_: calling it a chat or an assistant. _Note_: as of 2026-09-05 it is a mock — a two-second delay and a hardcoded result — so treat it as a design placeholder, not a capability.
