@@ -13,6 +13,7 @@ import {
 import { getSupportAvailability } from '@/lib/server/support/availability';
 import { nextOpening } from '@/lib/server/support/hours';
 import { appendMessage } from '@/lib/server/support/messages';
+import { HANDOVER_NOTICE } from '@/lib/server/support/responder';
 
 export const dynamic = 'force-dynamic';
 
@@ -105,13 +106,15 @@ export async function POST(req: NextRequest) {
     }
 
     // A row in the transcript, so the Agent who picks this up sees where the handover
-    // happened rather than guessing which half of the conversation the model wrote.
+    // happened rather than guessing which half of the conversation the model wrote — and
+    // so the customer sees an acknowledgement rather than the panel going quiet. Written
+    // to the customer, because they read it too.
     await appendMessage({
         conversationId: updated.id,
         senderType: 'system',
         body: humanAvailable
-            ? 'The customer asked to speak to a person.'
-            : 'The customer asked to speak to a person, outside support hours. Queued for the next opening.',
+            ? HANDOVER_NOTICE.askedForPerson
+            : HANDOVER_NOTICE.askedForPersonOutOfHours,
     });
 
     return NextResponse.json({

@@ -53,6 +53,16 @@ function fakeStore(
     return store;
 }
 
+/** A conversation in which the model has already answered `count` times. */
+function answeredTimes(count: number): Existing[] {
+    const messages: Existing[] = [];
+    for (let i = 0; i < count; i++) {
+        messages.push({ senderType: 'guest', body: `question ${i}` });
+        messages.push({ senderType: 'ai', body: `answer ${i}` });
+    }
+    return messages;
+}
+
 describe('runSupportTurn', () => {
     it("writes the model's answer as a single ai message", async () => {
         const store = fakeStore();
@@ -97,6 +107,69 @@ describe('runSupportTurn', () => {
         await runSupportTurn('conv-1', { model, store });
 
         expect(store.escalated).toBe(true);
+    });
+
+    it('offers a person instead of answering once the turn budget is spent', async () => {
+        // 30 answers already given. A fake with no replies queued throws if asked, so
+        // this fails loudly rather than quietly if the model is consulted anyway.
+        const store = fakeStore([
+            ...answeredTimes(30),
+            { senderType: 'guest', body: 'and one more thing' },
+        ]);
+        const model = fakeModel();
+
+        await runSupportTurn('conv-1', { model, store });
+
+        expect(model.calls).toEqual([]);
+        expect(store.escalated).toBe(true);
+    });
+
+    it('tells the customer what happened when the budget runs out', async () => {
+        // Without this the customer sends a message and gets silence while the status
+        // changes behind them, which reads as the chat having broken.
+        const store = fakeStore([
+            ...answeredTimes(30),
+            { senderType: 'guest', body: 'and one more thing' },
+        ]);
+
+        await runSupportTurn('conv-1', { model: fakeModel(), store });
+
+        expect(store.appended).toEqual([
+            {
+                conversationId: 'conv-1',
+                senderType: 'system',
+                body: "I've reached the limit of what I can help with in one conversation. I'm passing you to someone from the team.",
+            },
+        ]);
+    });
+
+    it('still answers on the last turn of the budget', async () => {
+        // 29 answers given: the boundary is exclusive, or the budget is really 29.
+        const store = fakeStore([
+            ...answeredTimes(29),
+            { senderType: 'guest', body: 'and one more thing' },
+        ]);
+        const model = fakeModel({ kind: 'text', text: 'Of course.' });
+
+        await runSupportTurn('conv-1', { model, store });
+
+        expect(store.escalated).toBe(false);
+        expect(store.appended.map(m => m.body)).toEqual(['Of course.']);
+    });
+
+    it('tells the customer what happened when the model hands over', async () => {
+        const store = fakeStore([{ senderType: 'guest', body: 'I want a refund.' }]);
+        const model = fakeModel({ kind: 'escalate', reason: 'refund request' });
+
+        await runSupportTurn('conv-1', { model, store });
+
+        expect(store.appended).toEqual([
+            {
+                conversationId: 'conv-1',
+                senderType: 'system',
+                body: "I'm not able to help with this one. I'm passing you to someone from the team.",
+            },
+        ]);
     });
 
     it('says nothing of its own when it hands over', async () => {
