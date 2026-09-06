@@ -24,6 +24,13 @@ export interface SupportState {
     needsDetails: boolean;
     /** Newest confirmed message id — where a reconnecting stream resumes from. */
     cursor: string | null;
+    /**
+     * The assistant has said it cannot answer, and has not answered since.
+     *
+     * Drives a standing banner. The notice itself is written once, but the customer keeps
+     * typing and needs to keep seeing why nothing is coming back.
+     */
+    assistantOffline: boolean;
 }
 
 export const initialSupportState: SupportState = {
@@ -33,6 +40,7 @@ export const initialSupportState: SupportState = {
     isTyping: false,
     needsDetails: false,
     cursor: null,
+    assistantOffline: false,
 };
 
 export type SupportAction =
@@ -54,6 +62,21 @@ export type SupportAction =
  */
 function endsTheWait(message: SupportMessageView): boolean {
     return message.senderType !== 'guest';
+}
+
+/**
+ * The two notices that mean the assistant could not run at all.
+ *
+ * A hand-over notice is deliberately not among them: declining a refund question is the
+ * assistant working, and a banner saying it is offline would contradict the message
+ * immediately above it.
+ */
+const OUTAGE_NOTICES = new Set(['model_failed', 'assistant_unavailable']);
+
+function readsAsOutage(message: SupportMessageView): boolean {
+    return message.senderType === 'system'
+        && message.noticeCode !== null
+        && OUTAGE_NOTICES.has(message.noticeCode);
 }
 
 function withMessage(
@@ -133,6 +156,12 @@ export function supportReducer(state: SupportState, action: SupportAction): Supp
                 pending,
                 cursor: newestId(confirmed),
                 isTyping: endsTheWait(action.message) ? false : state.isTyping,
+                // An answer is proof it recovered; anything else leaves the banner alone.
+                assistantOffline: readsAsOutage(action.message)
+                    ? true
+                    : action.message.senderType === 'ai'
+                        ? false
+                        : state.assistantOffline,
             };
         }
 

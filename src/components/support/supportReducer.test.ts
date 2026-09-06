@@ -183,6 +183,58 @@ describe('supportReducer', () => {
         expect(sent.cursor).toBeNull();
     });
 
+    it('knows the assistant is offline once it says so', () => {
+        // Drives a standing banner rather than a repeated message: the notice is written
+        // once, but the customer keeps typing and needs to keep seeing why nothing answers.
+        const state = supportReducer(opened, {
+            type: 'received',
+            message: serverMessage({
+                id: 's1', senderType: 'system', noticeCode: 'model_failed', body: 'x',
+            }),
+        });
+
+        expect(state.assistantOffline).toBe(true);
+    });
+
+    it('treats a tripped breaker as offline too', () => {
+        const state = supportReducer(opened, {
+            type: 'received',
+            message: serverMessage({
+                id: 's1', senderType: 'system', noticeCode: 'assistant_unavailable', body: 'x',
+            }),
+        });
+
+        expect(state.assistantOffline).toBe(true);
+    });
+
+    it('clears the offline banner as soon as the assistant answers again', () => {
+        const offline = supportReducer(opened, {
+            type: 'received',
+            message: serverMessage({
+                id: 's1', senderType: 'system', noticeCode: 'model_failed', body: 'x',
+            }),
+        });
+        const recovered = supportReducer(offline, {
+            type: 'received',
+            message: serverMessage({ id: 'a1', senderType: 'ai', body: 'Here you go.' }),
+        });
+
+        expect(recovered.assistantOffline).toBe(false);
+    });
+
+    it('does not call a hand-over notice an outage', () => {
+        // Declining a refund question is the assistant working, not failing. A banner
+        // saying it is offline would contradict the message right above it.
+        const state = supportReducer(opened, {
+            type: 'received',
+            message: serverMessage({
+                id: 's1', senderType: 'system', noticeCode: 'model_declined', body: 'x',
+            }),
+        });
+
+        expect(state.assistantOffline).toBe(false);
+    });
+
     it('asks for contact details when escalation says they are needed', () => {
         const state = supportReducer(opened, { type: 'details_required' });
 

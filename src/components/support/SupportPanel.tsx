@@ -87,7 +87,26 @@ export function SupportPanel({ onClose }: SupportPanelProps) {
                 />
             ) : (
                 <>
-                    {chat.canEscalate && (
+                    {/*
+                      * A standing line rather than a repeated message. The notice is
+                      * written to the transcript once; this keeps the reason visible while
+                      * the customer carries on typing, with the way out beside it.
+                      */}
+                    {chat.assistantOffline && chat.canEscalate && (
+                        <div className="mx-4 mb-2 flex shrink-0 flex-wrap items-center gap-x-2 gap-y-1 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-900 dark:bg-amber-950/40 dark:text-amber-200">
+                            <span>{t('status.offline')}</span>
+                            <button
+                                type="button"
+                                onClick={() => void chat.escalate()}
+                                disabled={chat.escalating}
+                                className="font-semibold underline underline-offset-2 transition hover:no-underline focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 disabled:opacity-50"
+                            >
+                                {t('escalate.ask')}
+                            </button>
+                        </div>
+                    )}
+
+                    {chat.canEscalate && !chat.assistantOffline && (
                         <div className="shrink-0 px-4 pb-1">
                             <button
                                 type="button"

@@ -62,7 +62,7 @@ function liveStore(): SupportTurnStore {
     return {
         async listMessages(conversationId) {
             const messages = await listMessages(conversationId);
-            return messages.map(({ senderType, body }) => ({ senderType, body }));
+            return messages.map(({ senderType, body, noticeCode }) => ({ senderType, body, noticeCode }));
         },
         async appendMessage(message) {
             await appendMessage(message);

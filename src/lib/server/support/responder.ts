@@ -69,7 +69,7 @@ export const SUPPORT_NOTICE: Record<SupportNoticeCode, string> = {
     assistant_unavailable:
         'The assistant is unavailable at the moment. You can still ask to speak to a person and someone from the team will pick this up.',
     model_failed:
-        "Something went wrong on my end. I'm passing you to someone from the team.",
+        'Something went wrong on my end. You can ask to speak to a person and someone from the team will pick this up.',
     details_needed:
         "I'd like to pass you to someone from the team. Leave your name and email and they'll pick this up.",
 };
@@ -101,6 +101,8 @@ export interface AppendedMessage {
 export interface TurnMessage {
     senderType: SupportSender;
     body: string;
+    /** Set on system rows — what lets a turn see whether it has just said this. */
+    noticeCode?: SupportNoticeCode | null;
 }
 
 export interface SupportTurnStore {
@@ -197,17 +199,40 @@ export interface SupportTurnDeps {
 async function handOver(
     conversationId: string,
     code: SupportNoticeCode,
+    history: TurnMessage[],
     deps: SupportTurnDeps,
 ): Promise<void> {
     if (!deps.owner.canBeQueued) {
         // Ask, rather than promise. The widget shows its escalation form on this notice,
         // and the customer's own request is what queues the conversation.
-        await deps.store.appendMessage(noticeMessage(conversationId, 'details_needed'));
+        await writeNotice(conversationId, 'details_needed', history, deps);
         return;
     }
 
-    await deps.store.appendMessage(noticeMessage(conversationId, code));
+    await writeNotice(conversationId, code, history, deps);
     await deps.store.markWaitingHuman(conversationId);
+}
+
+/**
+ * Write a notice, unless it is the one we just wrote.
+ *
+ * Three identical bubbles in a row read as a broken loop rather than an explanation, and
+ * the Agent who opens the transcript has to scroll past all of them. Only the immediately
+ * preceding message is checked: if the assistant recovered and failed again later, saying
+ * so a second time is right.
+ */
+async function writeNotice(
+    conversationId: string,
+    code: SupportNoticeCode,
+    history: TurnMessage[],
+    deps: SupportTurnDeps,
+): Promise<void> {
+    // The last thing *we* said, not the last thing in the conversation — the customer's
+    // new message is always last, so comparing against that would never match.
+    const lastFromUs = [...history].reverse().find(message => message.senderType !== 'guest');
+    if (lastFromUs?.senderType === 'system' && lastFromUs.noticeCode === code) return;
+
+    await deps.store.appendMessage(noticeMessage(conversationId, code));
 }
 
 export async function runSupportTurn(
@@ -220,7 +245,7 @@ export async function runSupportTurn(
     // a system note does not quietly spend one of the customer's answers.
     const answersGiven = history.filter(m => m.senderType === 'ai').length;
     if (answersGiven >= MAX_ANSWERS_PER_CONVERSATION) {
-        await handOver(conversationId, 'budget_spent', deps);
+        await handOver(conversationId, 'budget_spent', history, deps);
         return;
     }
 
@@ -230,7 +255,7 @@ export async function runSupportTurn(
         // Deliberately not an Escalation. The breaker trips site-wide, so queueing every
         // conversation would flood the Agent inbox during exactly the incident that
         // tripped it — and the model may well be answering again within the hour.
-        await deps.store.appendMessage(noticeMessage(conversationId, 'assistant_unavailable'));
+        await writeNotice(conversationId, 'assistant_unavailable', history, deps);
         return;
     }
 
@@ -261,12 +286,12 @@ export async function runSupportTurn(
                 // caller. Both mean the model is asking for something it was not given,
                 // and neither is a thing to negotiate about — a person takes it from here.
                 console.warn('[support/responder] model asked for an unoffered tool:', turn.name);
-                await handOver(conversationId, 'model_declined', deps);
+                await handOver(conversationId, 'model_declined', history, deps);
                 return;
             }
 
             if (toolCallsMade >= MAX_TOOL_CALLS_PER_TURN) {
-                await handOver(conversationId, 'model_declined', deps);
+                await handOver(conversationId, 'model_declined', history, deps);
                 return;
             }
 
@@ -282,8 +307,12 @@ export async function runSupportTurn(
         // is a spend ceiling we chose and it clears itself, while this is something
         // broken. If the provider is down site-wide the queue will fill, which is a
         // signal the team needs rather than one to suppress.
+        // Not an Escalation. A fault is rarely local — the first one here was a missing API
+        // key, which is broken for every conversation on the site at once, so handing over
+        // on failure quietly means queueing every customer we have. The chat stays where it
+        // is and the customer keeps the ability to ask for a person themselves.
         console.error('[support/responder] model turn failed:', err);
-        await handOver(conversationId, 'model_failed', deps);
+        await writeNotice(conversationId, 'model_failed', history, deps);
         return;
     }
 
@@ -292,7 +321,7 @@ export async function runSupportTurn(
         // parting answer from the model is one an Agent then has to contradict — on
         // precisely the topics it just declined to handle. `reason` is for the Agent's
         // eyes later, never repeated to the customer.
-        await handOver(conversationId, 'model_declined', deps);
+        await handOver(conversationId, 'model_declined', history, deps);
         return;
     }
 

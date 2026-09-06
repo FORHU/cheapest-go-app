@@ -36,7 +36,11 @@ function fakeModel(...replies: ModelReply[]): ModelClient & { calls: unknown[] }
 }
 
 /** One message already in the conversation when the turn starts. */
-type Existing = { senderType: AppendedMessage['senderType']; body: string };
+type Existing = {
+    senderType: AppendedMessage['senderType'];
+    body: string;
+    noticeCode?: AppendedMessage['noticeCode'];
+};
 
 /** An in-memory stand-in for the conversation's messages. */
 function fakeStore(
@@ -83,7 +87,7 @@ function fakeTool(
     const calls: unknown[] = [];
     return {
         name,
-        description: `the  tool`,
+        description: `the ${name} tool`,
         parameters: { type: 'object', properties: {} },
         requiresSession,
         calls,
@@ -275,7 +279,10 @@ describe('runSupportTurn', () => {
         ).resolves.toBeUndefined();
     });
 
-    it('hands over to a person when the model fails', async () => {
+    it('does not queue anyone when the model fails', async () => {
+        // A fault is rarely local: the first one was a missing API key, broken for every
+        // conversation at once. "Hand over when something breaks" then means "queue every
+        // customer on the site". Escalation happens by intent, never by malfunction.
         const store = fakeStore([{ senderType: 'guest', body: 'hello' }]);
         const model: ModelClient = {
             async complete() { throw new Error('upstream 503'); },
@@ -283,7 +290,7 @@ describe('runSupportTurn', () => {
 
         await runSupportTurn('conv-1', turnDeps({ model, store }));
 
-        expect(store.escalated).toBe(true);
+        expect(store.escalated).toBe(false);
     });
 
     it('tells the customer when the model fails, rather than leaving them typing at nothing', async () => {
@@ -297,9 +304,9 @@ describe('runSupportTurn', () => {
         expect(store.appended).toEqual([
             {
                 conversationId: 'conv-1',
-                noticeCode: 'model_failed',
                 senderType: 'system',
-                body: "Something went wrong on my end. I'm passing you to someone from the team.",
+                noticeCode: 'model_failed',
+                body: 'Something went wrong on my end. You can ask to speak to a person and someone from the team will pick this up.',
             },
         ]);
     });
@@ -437,6 +444,41 @@ describe('runSupportTurn', () => {
 
         expect(store.escalated).toBe(false);
         expect(store.appended.map(m => m.noticeCode)).toEqual(['details_needed']);
+    });
+
+    it('does not repeat a notice it has just written', async () => {
+        // Three identical bubbles in a row read as a broken loop rather than an
+        // explanation, and the Agent who opens the transcript scrolls past all of them.
+        const store = fakeStore([
+            { senderType: 'guest', body: 'first question' },
+            { senderType: 'system', body: 'assistant is unavailable', noticeCode: 'model_failed' },
+            { senderType: 'guest', body: 'second question' },
+        ]);
+        const model: ModelClient = {
+            async complete() { throw new Error('upstream 503'); },
+        };
+
+        await runSupportTurn('conv-1', turnDeps({ model, store }));
+
+        expect(store.appended).toEqual([]);
+    });
+
+    it('says it again if the assistant recovered in between', async () => {
+        // Only the message immediately before is checked. A second outage after a working
+        // answer is news, not repetition.
+        const store = fakeStore([
+            { senderType: 'system', body: 'unavailable', noticeCode: 'model_failed' },
+            { senderType: 'guest', body: 'second question' },
+            { senderType: 'ai', body: 'Here you go.' },
+            { senderType: 'guest', body: 'third question' },
+        ]);
+        const model: ModelClient = {
+            async complete() { throw new Error('upstream 503'); },
+        };
+
+        await runSupportTurn('conv-1', turnDeps({ model, store }));
+
+        expect(store.appended.map(m => m.noticeCode)).toEqual(['model_failed']);
     });
 
     it('says nothing of its own when it hands over', async () => {

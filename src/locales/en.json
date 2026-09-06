@@ -2658,7 +2658,8 @@
     },
     "status": {
       "waiting": "Waiting for someone from the team.",
-      "human": "You are talking to the team."
+      "human": "You are talking to the team.",
+      "offline": "The assistant is offline right now."
     },
     "notice": {
       "budget_spent": "I've reached the limit of what I can help with in one conversation. I'm passing you to someone from the team.",
@@ -2666,7 +2667,7 @@
       "asked_for_person": "You asked to speak to a person. Someone from the team will join shortly.",
       "asked_for_person_out_of_hours": "You asked to speak to a person. The team is offline right now, so this is queued for when support hours resume.",
       "assistant_unavailable": "The assistant is unavailable at the moment. You can still ask to speak to a person and someone from the team will pick this up.",
-      "model_failed": "Something went wrong on my end. I'm passing you to someone from the team.",
+      "model_failed": "Something went wrong on my end. You can ask to speak to a person and someone from the team will pick this up.",
       "details_needed": "I'd like to pass you to someone from the team. Leave your name and email and they'll pick this up."
     }
   }

@@ -159,6 +159,7 @@ export function useSupportChat(isOpen: boolean) {
         conversation: state.conversation,
         isTyping: state.isTyping,
         needsDetails: state.needsDetails,
+        assistantOffline: state.assistantOffline,
         escalating,
         // The composer is usable as soon as there is a conversation: a message posts over
         // HTTP whether or not the stream is up, and the reply is backfilled on reconnect.
