@@ -77,9 +77,13 @@ export function liveNotifyDeps(): NotifyDeps {
 
         async record(entry) {
             const { getSqlAdmin } = await import('@/lib/db/postgres');
+            const sql = getSqlAdmin();
             // booking_id stays null: a Support Chat is not attached to a booking. The
-            // conversation id lives in metadata so the row can still be traced back.
-            await getSqlAdmin()`
+            // conversation id lives in metadata so the row can still be traced back —
+            // which only works if it is stored as an object. `sql.json`, not
+            // JSON.stringify: postgres.js encodes a string parameter to JSON again, and
+            // `metadata->>'conversationId'` on a JSON string finds nothing.
+            await sql`
                 INSERT INTO email_logs (recipient, subject, email_type, status, error_message, metadata, sent_at)
                 VALUES (
                     ${entry.recipient},
@@ -87,7 +91,7 @@ export function liveNotifyDeps(): NotifyDeps {
                     'support_escalation',
                     ${entry.status},
                     ${entry.error ?? null},
-                    ${JSON.stringify({ conversationId: entry.conversationId })}::jsonb,
+                    ${sql.json({ conversationId: entry.conversationId })},
                     ${entry.status === 'sent' ? new Date() : null}
                 )
             `;

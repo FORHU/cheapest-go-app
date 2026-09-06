@@ -1,3 +1,5 @@
+import type { Role } from '@/lib/auth/roles';
+
 // Application User type
 export interface User {
     id: string;
@@ -5,7 +7,8 @@ export interface User {
     firstName?: string;
     lastName?: string;
     avatar?: string;
-    role?: 'user' | 'admin';
+    /** One vocabulary for roles across the app — see `lib/auth/roles`. */
+    role?: Role;
 }
 
 // Auth step in the authentication flow

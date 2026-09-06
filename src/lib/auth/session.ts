@@ -7,6 +7,7 @@
  *   - Server components
  */
 
+import { isRole, type Role } from './roles';
 import { cookies } from 'next/headers';
 import { getLucia } from './lucia';
 import type { Session, User } from 'lucia';
@@ -26,7 +27,7 @@ export interface SessionUser {
     firstName?: string;
     lastName?: string;
     avatarUrl?: string;
-    role: 'user' | 'admin';
+    role: Role;
     bannedAt?: string | null;
 }
 
@@ -62,7 +63,9 @@ export async function getSession(): Promise<SessionResult> {
             firstName: (user as any).firstName,
             lastName: (user as any).lastName,
             avatarUrl: (user as any).avatarUrl,
-            role: ((user as any).role ?? 'user') as 'user' | 'admin',
+            // Narrowed rather than cast: a role this build does not know becomes a customer,
+            // so an unrecognised value loses access instead of carrying it.
+            role: isRole((user as any).role) ? (user as any).role : 'user',
             bannedAt: (user as any).bannedAt,
         },
     };

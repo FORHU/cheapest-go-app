@@ -58,9 +58,15 @@ export async function saveSupportHours(value: unknown): Promise<ValidationResult
     if (!checked.ok) return checked;
 
     const sql = getSqlAdmin();
+    // The object, not `JSON.stringify` of it. postgres.js encodes a parameter to JSON for a
+    // jsonb column, so handing it a string stores a JSON *string* — `{"a":1}` becomes
+    // `"{\"a\":1}"`. The round trip still works, because `getSupportHours` defensively
+    // parses a string, which is exactly what makes the mistake survive unnoticed: every
+    // other reader (`value->'days'`, the admin settings screen, any hand-written query)
+    // silently finds nothing.
     await sql`
         INSERT INTO admin_settings (key, value)
-        VALUES (${SUPPORT_HOURS_KEY}, ${JSON.stringify(checked.hours)}::jsonb)
+        VALUES (${SUPPORT_HOURS_KEY}, ${sql.json(checked.hours as unknown as Parameters<typeof sql.json>[0])})
         ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value
     `;
 

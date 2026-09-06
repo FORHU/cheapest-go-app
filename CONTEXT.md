@@ -290,6 +290,10 @@ _Avoid_: "travel agent" (suggests a third party) and "operator" or "bot" (an Age
 **Takeover** — an Agent answering a Support Chat the model was still handling, which stops the model and makes the Agent the owner. Distinct from **Escalation**: nothing joins the queue, because the Agent is already there. It is the point of being able to watch what the assistant says at all — an Agent who sees a wrong answer corrects it by replying, not by asking for the conversation first.
 _Avoid_: calling it an Escalation — that word is reserved for a chat becoming *someone's to pick up*. _Avoid_: reading a Takeover as the assistant having failed; usually it means an Agent knew something better.
 
+**Support Agent** — an account that may do Agent work and nothing else: answer Support Chats, set the Support Hours, and look up a booking read-only to verify someone's claim. It cannot reach the back office, cannot change a booking, and cannot promote anyone.
+_Avoid_: treating "Support Agent" and "**Agent**" as the same word. Agent is what someone is *doing* — an admin answering a chat is an Agent. Support Agent is what an account is *allowed* to do. Every Support Agent is an Agent; most Agents so far have been admins.
+_Avoid_: giving a Support Agent access by widening the back office — access is granted by building the screen inside the **Support Desk**, so anything not deliberately built for them stays out of reach.
+
 **Assignment** — which Agent owns an escalated Support Chat. It is taken by answering: the first Agent to reply owns the conversation, and it leaves the unassigned queue for everyone else. There is no separate claiming step, and therefore no claim to go stale when someone opens a conversation and walks away.
 _Avoid_: treating Assignment as permission — any Agent can read any Support Chat; what Assignment says is who is dealing with it.
 
