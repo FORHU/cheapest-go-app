@@ -31,6 +31,15 @@ export interface SupportState {
      * typing and needs to keep seeing why nothing is coming back.
      */
     assistantOffline: boolean;
+    /**
+     * Replies that landed while the panel was shut.
+     *
+     * Shown on the launcher bubble. Without it a customer who closes the panel and gets
+     * an answer has no way of knowing except by reopening it.
+     */
+    unread: number;
+    /** Whether the panel is being read right now, which is what makes a reply unread. */
+    panelOpen: boolean;
 }
 
 export const initialSupportState: SupportState = {
@@ -41,6 +50,8 @@ export const initialSupportState: SupportState = {
     needsDetails: false,
     cursor: null,
     assistantOffline: false,
+    unread: 0,
+    panelOpen: true,
 };
 
 export type SupportAction =
@@ -50,7 +61,9 @@ export type SupportAction =
     | { type: 'send_failed'; clientId: string }
     | { type: 'received'; message: SupportMessageView }
     | { type: 'details_required' }
-    | { type: 'escalated'; conversation: SupportConversationView };
+    | { type: 'escalated'; conversation: SupportConversationView }
+    | { type: 'closed' }
+    | { type: 'opened_panel' };
 
 /**
  * Whether a message means the assistant has finished with this turn.
@@ -166,7 +179,21 @@ export function supportReducer(state: SupportState, action: SupportAction): Supp
                     : action.message.senderType === 'ai'
                         ? false
                         : state.assistantOffline,
+                // Only what arrived while nobody was reading, and only from the other
+                // side — the customer's own message coming back is not news to them.
+                unread: !state.panelOpen && action.message.senderType !== 'guest'
+                    ? state.unread + 1
+                    : state.unread,
             };
+        }
+
+        case 'closed': {
+            return { ...state, panelOpen: false };
+        }
+
+        case 'opened_panel': {
+            // Opening it is reading it.
+            return { ...state, panelOpen: true, unread: 0 };
         }
 
         case 'details_required': {

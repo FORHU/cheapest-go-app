@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { SupportLauncher } from './SupportLauncher';
 import { SupportPanel } from './SupportPanel';
+import { useSupportChat } from './useSupportChat';
 
 /**
  * The Support Widget: a floating launcher and the panel it opens.
@@ -20,6 +21,15 @@ export function SupportWidget() {
     const [mounted, setMounted] = useState(false);
     const [isOpen, setIsOpen] = useState(false);
 
+    /*
+     * The conversation lives here, not in the panel.
+     *
+     * The panel unmounts when it is closed, so a hook inside it would take the live stream
+     * with it — and then a reply arriving while the bubble is shut could never be counted.
+     * Held here, the connection survives closing and the launcher can show what came in.
+     */
+    const chat = useSupportChat(isOpen);
+
     // `document` exists only after hydration; a portal on the server would not match.
     useEffect(() => setMounted(true), []);
 
@@ -27,7 +37,7 @@ export function SupportWidget() {
 
     return createPortal(
         <>
-            {isOpen && <SupportPanel onClose={() => setIsOpen(false)} />}
+            {isOpen && <SupportPanel chat={chat} onClose={() => setIsOpen(false)} />}
 
             {/*
               * Hidden while the panel is up, rather than turned into a second close
@@ -35,7 +45,7 @@ export function SupportWidget() {
               * to anyone navigating by name — and under `sm` the panel is full-screen, so
               * a launcher behind it would be unreachable anyway.
               */}
-            {!isOpen && <SupportLauncher unread={0} onOpen={() => setIsOpen(true)} />}
+            {!isOpen && <SupportLauncher unread={chat.unread} onOpen={() => setIsOpen(true)} />}
         </>,
         document.body,
     );

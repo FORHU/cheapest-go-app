@@ -34,6 +34,7 @@ import {
 const INTEGRATIONS_PAGE_SIZE = 3;
 const BRAND_NAME = process.env.NEXT_PUBLIC_BRAND_NAME ?? 'CheapestGo';
 import { Button } from '@/components/ui/Button';
+import { useSupportWaiting } from './useSupportWaiting';
 
 // ─── Nav item type ─────────────────────────────────────────
 
@@ -42,6 +43,13 @@ interface NavItem {
     href: string;
     icon: React.ElementType;
     badge?: string;
+    /**
+     * Live count rendered instead of a static badge.
+     *
+     * Only the support queue has one: it is the single nav item whose number means
+     * "someone is waiting for you right now" rather than labelling what the page is.
+     */
+    liveCount?: boolean;
 }
 
 interface NavGroup {
@@ -75,7 +83,7 @@ const navGroups: NavGroup[] = [
     {
         title: 'General',
         items: [
-            { label: 'Support',       href: '/admin/support',        icon: MessageCircle },
+            { label: 'Support',       href: '/admin/support',        icon: MessageCircle, liveCount: true },
             { label: 'Communication', href: '/admin/communication',  icon: Mail },
             { label: 'Analytics',     href: '/admin/analytics',      icon: BarChart3 },
             { label: 'Price Alerts',  href: '/admin/price-alerts',   icon: Bell },
@@ -102,6 +110,29 @@ interface SidebarProps {
     onClose?: () => void;
     isCollapsed?: boolean;
     onToggleCollapse?: () => void;
+}
+
+// ─── Live queue count ──────────────────────────────────────
+
+/**
+ * How many customers are waiting for a person.
+ *
+ * Its own component so the polling hook runs once, for the one nav item that asks for it,
+ * rather than once per link — a hook cannot be called conditionally, and threading the
+ * number down through the group would put it in the way of every other item.
+ */
+function WaitingBadge() {
+    const waiting = useSupportWaiting();
+    if (waiting === 0) return null;
+
+    return (
+        <span
+            aria-label={`${waiting} waiting for a reply`}
+            className="text-[10px] font-black px-1.5 py-0.5 rounded-full bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20"
+        >
+            {waiting}
+        </span>
+    );
 }
 
 // ─── Single nav link ───────────────────────────────────────
@@ -150,6 +181,9 @@ function NavLink({
                 {!isCollapsed && (
                     <>
                         <span className="text-sm font-bold tracking-tight flex-1">{item.label}</span>
+
+                        {/* A waiting queue, not a label: red, and shown even on the active page. */}
+                        {item.liveCount && <WaitingBadge />}
 
                         {/* Badge (e.g. "Live") */}
                         {item.badge && !isActive && (

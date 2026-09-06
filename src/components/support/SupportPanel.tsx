@@ -20,14 +20,16 @@ import { useSupportChat } from './useSupportChat';
  * sits at `z-40`.
  */
 
+export type SupportChat = ReturnType<typeof useSupportChat>;
+
 interface SupportPanelProps {
+    chat: SupportChat;
     onClose: () => void;
 }
 
-export function SupportPanel({ onClose }: SupportPanelProps) {
+export function SupportPanel({ chat, onClose }: SupportPanelProps) {
     const t = useTranslations('support');
     const panelRef = useRef<HTMLDivElement>(null);
-    const chat = useSupportChat(true);
 
     // Escape closes, as it does for every other overlay in the app.
     useEffect(() => {

@@ -261,6 +261,48 @@ describe('supportReducer', () => {
         expect(state.assistantOffline).toBe(false);
     });
 
+    it('counts replies that arrived while the panel was closed', () => {
+        // The launcher renders this on the bubble. Without it a customer who closes the
+        // panel and gets an answer sees nothing at all, and only finds it by reopening.
+        const closed = supportReducer(opened, { type: 'closed' });
+        const replied = supportReducer(closed, {
+            type: 'received',
+            message: serverMessage({ id: 'a1', senderType: 'ai', body: 'Here you go.' }),
+        });
+
+        expect(replied.unread).toBe(1);
+    });
+
+    it('does not count the customer\'s own messages as unread', () => {
+        const closed = supportReducer(opened, { type: 'closed' });
+        const echoed = supportReducer(closed, {
+            type: 'received',
+            message: serverMessage({ id: 'g1', senderType: 'guest', body: 'hi' }),
+        });
+
+        expect(echoed.unread).toBe(0);
+    });
+
+    it('counts nothing while the panel is open, because it is being read', () => {
+        const replied = supportReducer(opened, {
+            type: 'received',
+            message: serverMessage({ id: 'a1', senderType: 'ai', body: 'Here you go.' }),
+        });
+
+        expect(replied.unread).toBe(0);
+    });
+
+    it('clears the count when the panel is opened again', () => {
+        const closed = supportReducer(opened, { type: 'closed' });
+        const replied = supportReducer(closed, {
+            type: 'received',
+            message: serverMessage({ id: 'a1', senderType: 'ai', body: 'Here you go.' }),
+        });
+        const reopened = supportReducer(replied, { type: 'opened_panel' });
+
+        expect(reopened.unread).toBe(0);
+    });
+
     it('asks for contact details when escalation says they are needed', () => {
         const state = supportReducer(opened, { type: 'details_required' });
 

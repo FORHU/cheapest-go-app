@@ -22,6 +22,9 @@ import type { SupportConversationView, SupportMessageView } from './types';
  */
 
 export function useSupportChat(isOpen: boolean) {
+    // Panel visibility is state, not just a prop: a reply that lands while the panel is
+    // shut is what the launcher badge counts.
+
     const locale = useLocale();
     const [state, dispatch] = useReducer(supportReducer, initialSupportState);
     const [connected, setConnected] = useState(false);
@@ -58,10 +61,12 @@ export function useSupportChat(isOpen: boolean) {
         })();
     }, [isOpen, state.conversation, locale]);
 
-    // Live updates. Held only while the panel is open — a stream per visitor per tab, for
-    // a panel nobody is looking at, is a connection the server holds for nothing.
+    // Live updates, held from the moment a conversation exists rather than only while the
+    // panel is open. A visitor who never opens support still holds nothing — that was the
+    // real point of the original rule — but once they have, closing the panel must not cut
+    // the connection, because an arriving reply is exactly what the launcher badge is for.
     useEffect(() => {
-        if (!isOpen || !state.conversation) return;
+        if (!state.conversation) return;
 
         // Some webviews and older browsers have no EventSource. Without live updates the
         // widget still works — a message posts over HTTP, and the reply is picked up by
@@ -94,7 +99,7 @@ export function useSupportChat(isOpen: boolean) {
         };
         // `cursorRef` deliberately not a dependency: the cursor changes on every message,
         // and reconnecting on each one would close the stream that just delivered it.
-    }, [isOpen, state.conversation]);
+    }, [state.conversation]);
 
     const send = useCallback((body: string) => {
         const clientId = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
@@ -152,6 +157,11 @@ export function useSupportChat(isOpen: boolean) {
         }
     }, []);
 
+    // Tell the reducer which side of the glass the customer is on.
+    useEffect(() => {
+        dispatch({ type: isOpen ? 'opened_panel' : 'closed' });
+    }, [isOpen]);
+
     const status = state.conversation?.status ?? null;
 
     return {
@@ -160,6 +170,7 @@ export function useSupportChat(isOpen: boolean) {
         isTyping: state.isTyping,
         needsDetails: state.needsDetails,
         assistantOffline: state.assistantOffline,
+        unread: state.unread,
         escalating,
         // The composer is usable as soon as there is a conversation: a message posts over
         // HTTP whether or not the stream is up, and the reply is backfilled on reconnect.
