@@ -2166,5 +2166,47 @@
     "terms": "服务条款",
     "privacy": "隐私政策",
     "refund": "退款政策"
+  },
+  "support": {
+    "title": "客服支持",
+    "subtitle": "有关预订或其他问题，欢迎咨询。",
+    "launcherOpen": "获取帮助",
+    "launcherClose": "关闭客服",
+    "typing": "CheapestGo 正在输入…",
+    "empty": "关于您的行程，有任何问题都可以问我们。",
+    "sender": {
+      "guest": "您",
+      "ai": "CheapestGo",
+      "agent": "客服",
+      "system": "提示"
+    },
+    "composer": {
+      "placeholder": "输入消息",
+      "connecting": "连接中…",
+      "send": "发送"
+    },
+    "escalate": {
+      "ask": "联系人工客服",
+      "title": "联系人工客服",
+      "intro": "请留下您的姓名和邮箱，以便客服人员回复您。",
+      "name": "姓名",
+      "email": "邮箱",
+      "submit": "请求人工客服",
+      "cancel": "暂不需要"
+    },
+    "status": {
+      "waiting": "正在等待客服人员。",
+      "human": "您正在与客服人员对话。",
+      "offline": "助手当前处于离线状态。"
+    },
+    "notice": {
+      "budget_spent": "在一次对话中我能提供的帮助已达上限。正在为您转接人工客服。",
+      "model_declined": "这个问题我无法处理。正在为您转接人工客服。",
+      "asked_for_person": "您已请求人工客服，客服人员稍后将加入对话。",
+      "asked_for_person_out_of_hours": "您已请求人工客服。目前不在服务时间内，我们将在服务时间开始后依次为您处理。",
+      "assistant_unavailable": "助手暂时无法使用。您仍可请求人工客服，将由客服人员为您处理。",
+      "model_failed": "我这边出现了问题。您可以请求人工客服，将由客服人员为您处理。",
+      "details_needed": "我想为您转接人工客服。请留下您的姓名和邮箱，客服人员将接手处理。"
+    }
   }
 }

@@ -259,3 +259,39 @@ _Avoid_: showing a "from" price on these cards (requires a live availability cal
 
 **Refresh cadence** — only Flight Deals have a cron refresh (`sync-flight-deals` via Duffel). Hotel sections (Top Hotel Deals, Guest Favorites) were dropped in v1 because populating them required synthetic availability calls, which violate TravelGateX and RTX supplier terms (pre-fetch prohibition, clause 3.5 in the RTX agreement).
 _Avoid_: re-introducing any cron that calls a hotel availability API without a real user request behind it.
+
+## Support
+
+**Support Chat** — a conversation between one customer and CheapestGo about a trip they have or are trying to book. It is answered first by a model and then, on **Escalation**, by an **Agent**. A customer has at most one open Support Chat at a time; asking again resumes the one they have rather than starting a second.
+_Avoid_: "ticket" — a Support Chat is not queued, numbered, or closed by the customer, and nothing about it is promised to be answered off-line. _Avoid_: calling it a "session" — it outlives the browser tab it was opened in.
+
+**Support Widget** — the floating launcher and panel that hosts a Support Chat on the site. The widget is the surface; the Support Chat is the thing it shows. One can exist without the other: the chat continues when the widget is closed.
+_Avoid_: using "widget" for the conversation, or "chat" for the button.
+
+**Escalation** — the moment a Support Chat stops being answered by the model and joins the queue for an **Agent**. It happens for exactly three reasons: the customer asked for a person, the model judged it should not answer, or the **Turn Budget** ran out. It is one-way within a conversation: once escalated, the model does not speak again in that Support Chat. It always reaches the queue, at any hour, and it always leaves behind a way to reply — a signed-in customer's account, or a guest's name and email, which is the one moment a guest is asked for them.
+_Avoid_: describing the model and an Agent as answering "together" — they never both hold the same conversation. _Avoid_: treating out-of-hours Escalation as a different kind of thing; it is the same transition, differently explained.
+
+**Escalation happens by intent, never by malfunction** — the three reasons above are all decisions. A model that times out, is misconfigured, or cannot be reached does **not** escalate: it says it is unavailable and leaves the conversation where it is, exactly as a spent **Turn Budget** ceiling does. The customer keeps the ability to ask for a person, so nobody is stranded; what they do not get is a queue position nobody chose.
+_Why_: a fault is rarely local. The first time the assistant broke it was a missing API key, which is broken for every conversation on the site at once — so "hand over when something goes wrong" quietly means "queue every customer we have", and the Agent inbox fills with conversations whose owner never asked for a person.
+_Avoid_: adding a retry-then-escalate path, or a "failed N times so escalate" threshold — both re-introduce the flood under a different name.
+
+**Support Hours** — the window in which an Escalation is promised a same-day answer, kept as one schedule in one timezone for both brands. Outside it the model still answers, Escalation still reaches the queue, and what changes is what the customer is told: which morning someone will pick it up.
+_Avoid_: "opening hours" — the site never closes, and the model answers around the clock. _Avoid_: describing Support Hours as gating Escalation — they govern the promise, not the queue.
+
+**Turn Budget** — the ceiling on how many times the model will answer, held per Support Chat and again across the whole site. A Support Chat that exhausts its budget stops being answered by the model and is offered an Agent instead; if the site-wide ceiling is reached, every Support Chat behaves that way until the hour turns over. It reads to a customer as "after a while, you get a person".
+_Avoid_: presenting an exhausted budget as an error — the conversation still works, and Escalation is still open.
+
+**Agent** — a CheapestGo staff member handling a customer, whether on a call or in an escalated Support Chat. Already the word used throughout the admin screens.
+_Avoid_: "travel agent" (suggests a third party) and "operator" or "bot" (an Agent is always a person).
+
+**Takeover** — an Agent answering a Support Chat the model was still handling, which stops the model and makes the Agent the owner. Distinct from **Escalation**: nothing joins the queue, because the Agent is already there. It is the point of being able to watch what the assistant says at all — an Agent who sees a wrong answer corrects it by replying, not by asking for the conversation first.
+_Avoid_: calling it an Escalation — that word is reserved for a chat becoming *someone's to pick up*. _Avoid_: reading a Takeover as the assistant having failed; usually it means an Agent knew something better.
+
+**Assignment** — which Agent owns an escalated Support Chat. It is taken by answering: the first Agent to reply owns the conversation, and it leaves the unassigned queue for everyone else. There is no separate claiming step, and therefore no claim to go stale when someone opens a conversation and walks away.
+_Avoid_: treating Assignment as permission — any Agent can read any Support Chat; what Assignment says is who is dealing with it.
+
+**Resolved** — an Agent's statement that a Support Chat is finished. It is not an ending: a customer who writes again reopens the conversation, with the same transcript, and the model gets first look at the new message exactly as it would on a fresh one. Only an Agent resolves; the customer closing the widget means nothing.
+_Avoid_: "closed" — nothing is prevented afterwards. _Avoid_: reading a Resolved chat as one the customer agreed was finished; it records what the Agent believed.
+
+**AI Search** — the hero's natural-language mode, which turns one sentence into search parameters and runs a search. Distinct from a Support Chat: it is a single turn, it holds no history, and it is about finding a trip rather than fixing one.
+_Avoid_: calling it a chat or an assistant. _Note_: as of 2026-09-05 it is a mock — a two-second delay and a hardcoded result — so treat it as a design placeholder, not a capability.

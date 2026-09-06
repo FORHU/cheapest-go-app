@@ -2628,5 +2628,47 @@
     "terms": "Terms of Service",
     "privacy": "Privacy Policy",
     "refund": "Refund Policy"
+  },
+  "support": {
+    "title": "Support",
+    "subtitle": "Ask about a booking or anything else.",
+    "launcherOpen": "Get help",
+    "launcherClose": "Close support",
+    "typing": "CheapestGo is typing…",
+    "empty": "Ask us anything about your trip.",
+    "sender": {
+      "guest": "You",
+      "ai": "CheapestGo",
+      "agent": "Support",
+      "system": "Support"
+    },
+    "composer": {
+      "placeholder": "Type your message",
+      "connecting": "Connecting…",
+      "send": "Send"
+    },
+    "escalate": {
+      "ask": "Talk to a person",
+      "title": "Talk to a person",
+      "intro": "Leave your name and email so someone from the team can reply.",
+      "name": "Name",
+      "email": "Email",
+      "submit": "Request a person",
+      "cancel": "Not now"
+    },
+    "status": {
+      "waiting": "Waiting for someone from the team.",
+      "human": "You are talking to the team.",
+      "offline": "The assistant is offline right now."
+    },
+    "notice": {
+      "budget_spent": "I've reached the limit of what I can help with in one conversation. I'm passing you to someone from the team.",
+      "model_declined": "I'm not able to help with this one. I'm passing you to someone from the team.",
+      "asked_for_person": "You asked to speak to a person. Someone from the team will join shortly.",
+      "asked_for_person_out_of_hours": "You asked to speak to a person. The team is offline right now, so this is queued for when support hours resume.",
+      "assistant_unavailable": "The assistant is unavailable at the moment. You can still ask to speak to a person and someone from the team will pick this up.",
+      "model_failed": "Something went wrong on my end. You can ask to speak to a person and someone from the team will pick this up.",
+      "details_needed": "I'd like to pass you to someone from the team. Leave your name and email and they'll pick this up."
+    }
   }
 }

@@ -2282,5 +2282,47 @@
     "terms": "이용약관",
     "privacy": "개인정보처리방침",
     "refund": "환불 정책"
+  },
+  "support": {
+    "title": "고객지원",
+    "subtitle": "예약이나 궁금한 점을 문의해 주세요.",
+    "launcherOpen": "도움말 열기",
+    "launcherClose": "고객지원 닫기",
+    "typing": "CheapestGo가 입력 중…",
+    "empty": "여행에 관해 무엇이든 문의해 주세요.",
+    "sender": {
+      "guest": "나",
+      "ai": "CheapestGo",
+      "agent": "상담원",
+      "system": "안내"
+    },
+    "composer": {
+      "placeholder": "메시지를 입력하세요",
+      "connecting": "연결 중…",
+      "send": "보내기"
+    },
+    "escalate": {
+      "ask": "상담원 연결",
+      "title": "상담원 연결",
+      "intro": "담당자가 답변드릴 수 있도록 성함과 이메일을 남겨 주세요.",
+      "name": "이름",
+      "email": "이메일",
+      "submit": "상담원 연결 요청",
+      "cancel": "나중에"
+    },
+    "status": {
+      "waiting": "담당자를 기다리는 중입니다.",
+      "human": "상담원과 대화 중입니다.",
+      "offline": "현재 어시스턴트를 이용할 수 없습니다."
+    },
+    "notice": {
+      "budget_spent": "한 대화에서 도와드릴 수 있는 한도에 도달했습니다. 담당 상담원에게 연결해 드리겠습니다.",
+      "model_declined": "이 문의는 제가 처리해 드리기 어렵습니다. 담당 상담원에게 연결해 드리겠습니다.",
+      "asked_for_person": "상담원 연결을 요청하셨습니다. 곧 담당자가 대화에 참여합니다.",
+      "asked_for_person_out_of_hours": "상담원 연결을 요청하셨습니다. 현재는 상담 시간이 아니므로, 상담 시간이 시작되면 순서대로 답변해 드립니다.",
+      "assistant_unavailable": "어시스턴트를 현재 이용할 수 없습니다. 상담원 연결을 요청하시면 담당자가 확인해 드립니다.",
+      "model_failed": "처리 중 문제가 발생했습니다. 상담원 연결을 요청하시면 담당자가 확인해 드립니다.",
+      "details_needed": "담당 상담원에게 연결해 드리고자 합니다. 성함과 이메일을 남겨 주시면 담당자가 이어서 도와드립니다."
+    }
   }
 }
