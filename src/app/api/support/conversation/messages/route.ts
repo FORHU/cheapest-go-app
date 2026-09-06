@@ -3,10 +3,12 @@ import { rateLimit } from '@/lib/server/rate-limit';
 import {
     findConversation,
     getSupportCaller,
+    needsGuestIdentity,
     rateLimitIdentity,
     SupportValidationError,
 } from '@/lib/server/support/conversations';
 import { appendMessage, listMessages } from '@/lib/server/support/messages';
+import { startSupportTurn } from '@/lib/server/support/turn';
 
 export const dynamic = 'force-dynamic';
 
@@ -74,6 +76,24 @@ export async function POST(req: NextRequest) {
             senderType: 'guest',
             body: body.body,
         });
+
+        // Started, not awaited. The customer's message is acknowledged immediately and the
+        // model's answer arrives over the same SSE stream an Agent's reply would — one
+        // delivery path, and a slow model never becomes a slow request. This works because
+        // the app runs as a persistent Node process on EC2, not as a serverless function
+        // that would be frozen the moment the response is returned.
+        //
+        // Only while the model is the one answering: an escalated conversation belongs to
+        // an Agent, and Escalation is one-way.
+        if (conversation.status === 'ai_active') {
+            void startSupportTurn({
+                conversationId: conversation.id,
+                userId: conversation.userId,
+                canBeQueued: !needsGuestIdentity(conversation),
+                req,
+            });
+        }
+
         return NextResponse.json({ message }, { status: 201 });
     } catch (err) {
         if (err instanceof SupportValidationError) {

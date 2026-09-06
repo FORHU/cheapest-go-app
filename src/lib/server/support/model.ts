@@ -12,8 +12,25 @@ export interface ModelMessage {
     content: string;
 }
 
+/**
+ * A tool as the model is told about it. The JSON Schema lives with the tool rather than
+ * in the adapter, so everything about one thing stays in one place.
+ */
+export interface ModelToolDefinition {
+    name: string;
+    description: string;
+    /** JSON Schema for the arguments. */
+    parameters: Record<string, unknown>;
+}
+
 export interface ModelRequest {
     messages: ModelMessage[];
+    /**
+     * The tools this turn may call. The list is built per turn from who the conversation
+     * belongs to, so a tool the caller is not entitled to is not merely refused on
+     * invocation — it is never offered.
+     */
+    tools: ModelToolDefinition[];
 }
 
 /**
@@ -25,7 +42,8 @@ export interface ModelRequest {
  */
 export type ModelReply =
     | { kind: 'text'; text: string }
-    | { kind: 'escalate'; reason?: string };
+    | { kind: 'escalate'; reason?: string }
+    | { kind: 'tool'; name: string; args: unknown };
 
 export interface ModelClient {
     complete(request: ModelRequest): Promise<ModelReply>;

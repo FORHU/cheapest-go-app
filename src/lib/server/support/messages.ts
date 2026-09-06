@@ -1,6 +1,7 @@
 import { getSqlAdmin } from '@/lib/db/postgres';
 import { publish } from './events';
 import { SupportValidationError } from './conversations';
+import type { SupportNoticeCode } from './responder';
 
 export type SupportSender = 'guest' | 'ai' | 'agent' | 'system';
 
@@ -10,6 +11,11 @@ export interface SupportMessage {
     senderType: SupportSender;
     senderAdminId: string | null;
     body: string;
+    /**
+     * Set on `system` rows only. Which notice this is, so the widget and the admin inbox
+     * each render it in their own reader's language; `body` is the English fallback.
+     */
+    noticeCode: SupportNoticeCode | null;
     createdAt: string;
 }
 
@@ -28,6 +34,7 @@ const COLUMNS = `
     sender_type      AS "senderType",
     sender_admin_id  AS "senderAdminId",
     body,
+    notice_code      AS "noticeCode",
     created_at       AS "createdAt"
 `;
 
@@ -37,6 +44,8 @@ export interface AppendMessageInput {
     body: string;
     /** Required when senderType is 'agent'; the table refuses an unattributed agent reply. */
     senderAdminId?: string | null;
+    /** System rows only — the table refuses a code on anyone else's words. */
+    noticeCode?: SupportNoticeCode | null;
 }
 
 /**
@@ -59,8 +68,8 @@ export async function appendMessage(input: AppendMessageInput): Promise<SupportM
     const sql = getSqlAdmin();
     const rows = await sql.unsafe<SupportMessage[]>(
         `WITH inserted AS (
-             INSERT INTO support_messages (conversation_id, sender_type, sender_admin_id, body)
-             VALUES ($1, $2, $3, $4)
+             INSERT INTO support_messages (conversation_id, sender_type, sender_admin_id, body, notice_code)
+             VALUES ($1, $2, $3, $4, $5)
              RETURNING ${COLUMNS}
          ), touched AS (
              UPDATE support_conversations
@@ -68,7 +77,7 @@ export async function appendMessage(input: AppendMessageInput): Promise<SupportM
               WHERE id = $1
          )
          SELECT * FROM inserted`,
-        [input.conversationId, input.senderType, input.senderAdminId ?? null, body],
+        [input.conversationId, input.senderType, input.senderAdminId ?? null, body, input.noticeCode ?? null],
     );
 
     const message = rows[0];
