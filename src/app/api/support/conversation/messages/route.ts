@@ -9,6 +9,7 @@ import {
 } from '@/lib/server/support/conversations';
 import { appendMessage, listMessages } from '@/lib/server/support/messages';
 import { startSupportTurn } from '@/lib/server/support/turn';
+import { reopenIfResolved } from '@/lib/server/support/inbox';
 
 export const dynamic = 'force-dynamic';
 
@@ -85,7 +86,14 @@ export async function POST(req: NextRequest) {
         //
         // Only while the model is the one answering: an escalated conversation belongs to
         // an Agent, and Escalation is one-way.
-        if (conversation.status === 'ai_active') {
+        // Resolved is not an ending: writing again reopens the conversation and the
+        // assistant gets first look, wherever the panel happens to be. Without this a
+        // message typed into an already-open panel lands nowhere — no turn runs and the
+        // conversation is in nobody's queue.
+        const reopened = conversation.status === 'resolved'
+            && await reopenIfResolved(conversation.id);
+
+        if (reopened || conversation.status === 'ai_active') {
             void startSupportTurn({
                 conversationId: conversation.id,
                 userId: conversation.userId,

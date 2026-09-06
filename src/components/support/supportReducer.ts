@@ -115,7 +115,11 @@ export function supportReducer(state: SupportState, action: SupportAction): Supp
                     ...state.pending,
                     { clientId: action.clientId, body: action.body, createdAt: action.at },
                 ],
-                isTyping: true,
+                // Only while the assistant is the one expected to answer. The indicator
+                // names it, and it does not run on a conversation an Agent owns — showing
+                // it there means claiming someone is typing for however many minutes the
+                // Agent takes. The panel header carries that state instead, accurately.
+                isTyping: state.conversation?.status === 'ai_active',
             };
         }
 

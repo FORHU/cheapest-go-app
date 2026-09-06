@@ -240,15 +240,26 @@ export function needsGuestIdentity(conversation: SupportConversation): boolean {
     return !conversation.guestName || !conversation.guestEmail;
 }
 
-/** Move a conversation into the human queue. Returns null if it was already there. */
-export async function requestHuman(conversationId: string): Promise<SupportConversation | null> {
+/**
+ * Move a conversation into the human queue. Returns null if it was already there.
+ *
+ * `reason` is the model's own account of why it gave up, kept for the Agent who picks the
+ * conversation up. It is never rendered to the customer — `toPublicConversation` does not
+ * carry it, and it must stay that way: it is a private note about someone, which may be
+ * blunt and may be wrong.
+ */
+export async function requestHuman(
+    conversationId: string,
+    reason?: string,
+): Promise<SupportConversation | null> {
     const sql = getSqlAdmin();
     const rows = await sql.unsafe<SupportConversation[]>(
         `UPDATE support_conversations
-            SET status = 'waiting_human'
+            SET status = 'waiting_human',
+                escalation_reason = COALESCE($2, escalation_reason)
           WHERE id = $1 AND status IN ('ai_active', 'resolved')
       RETURNING ${COLUMNS}`,
-        [conversationId],
+        [conversationId, reason ?? null],
     );
     return rows[0] ?? null;
 }

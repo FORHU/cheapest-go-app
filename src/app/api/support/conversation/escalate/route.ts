@@ -14,6 +14,7 @@ import { getSupportAvailability } from '@/lib/server/support/availability';
 import { nextOpening } from '@/lib/server/support/hours';
 import { appendMessage } from '@/lib/server/support/messages';
 import { noticeMessage } from '@/lib/server/support/responder';
+import { liveNotifyDeps, notifyEscalation } from '@/lib/server/support/notify';
 
 export const dynamic = 'force-dynamic';
 
@@ -114,6 +115,21 @@ export async function POST(req: NextRequest) {
             updated.id,
             humanAvailable ? 'asked_for_person' : 'asked_for_person_out_of_hours',
         ),
+    );
+
+    // Started, not awaited. The customer has already been told a person is coming; a slow
+    // or broken mail provider must not make them wait for that answer, or undo it. Sent
+    // at any hour — out of hours it simply lands overnight and is read in the morning.
+    void notifyEscalation(
+        {
+            id: updated.id,
+            guestName: updated.guestName,
+            guestEmail: updated.guestEmail,
+            sourceBrand: updated.sourceBrand,
+            escalationReason: null,
+            userId: updated.userId,
+        },
+        liveNotifyDeps(),
     );
 
     return NextResponse.json({

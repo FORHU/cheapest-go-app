@@ -109,6 +109,32 @@ describe('supportReducer', () => {
         expect(sent.isTyping).toBe(true);
     });
 
+    it('does not claim the assistant is typing once a person owns the conversation', () => {
+        // The indicator names the assistant, and the assistant does not run on a chat an
+        // Agent owns. Left as it was, a customer watches "CheapestGo is typing" for the
+        // several minutes an Agent takes to reply.
+        for (const status of ['waiting_human', 'human_active'] as const) {
+            const withAgent = supportReducer(initialSupportState, {
+                type: 'opened',
+                conversation: { ...conversation, status },
+                messages: [],
+            });
+            const sent = supportReducer(withAgent, {
+                type: 'sent', clientId: 'c1', body: 'hi', at: '2026-09-06T10:00:01.000Z',
+            });
+
+            expect(sent.isTyping, `status ${status}`).toBe(false);
+        }
+    });
+
+    it('still shows it while the assistant is the one answering', () => {
+        const sent = supportReducer(opened, {
+            type: 'sent', clientId: 'c1', body: 'hi', at: '2026-09-06T10:00:01.000Z',
+        });
+
+        expect(sent.isTyping).toBe(true);
+    });
+
     it('stops the typing indicator when a reply arrives', () => {
         const sent = supportReducer(opened, {
             type: 'sent', clientId: 'c1', body: 'hi', at: '2026-09-06T10:00:01.000Z',

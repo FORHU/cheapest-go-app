@@ -30,6 +30,7 @@ function checkEnv() {
     ['ETG_API_KEY',             'ETG/RateHawk — hotel review sync cron will fail'],
     ['SENTRY_DSN',              'Sentry — errors not tracked in production'],
     ['AI_API_KEY',              'Support chat — the assistant cannot answer; every conversation shows it as offline'],
+    ['SUPPORT_NOTIFY_EMAIL',    'Support chat — nobody is emailed when a customer asks for a person'],
   ];
 
   const missing  = required.filter(([k]) => !process.env[k]);

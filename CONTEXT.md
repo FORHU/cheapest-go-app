@@ -284,5 +284,14 @@ _Avoid_: presenting an exhausted budget as an error — the conversation still w
 **Agent** — a CheapestGo staff member handling a customer, whether on a call or in an escalated Support Chat. Already the word used throughout the admin screens.
 _Avoid_: "travel agent" (suggests a third party) and "operator" or "bot" (an Agent is always a person).
 
+**Takeover** — an Agent answering a Support Chat the model was still handling, which stops the model and makes the Agent the owner. Distinct from **Escalation**: nothing joins the queue, because the Agent is already there. It is the point of being able to watch what the assistant says at all — an Agent who sees a wrong answer corrects it by replying, not by asking for the conversation first.
+_Avoid_: calling it an Escalation — that word is reserved for a chat becoming *someone's to pick up*. _Avoid_: reading a Takeover as the assistant having failed; usually it means an Agent knew something better.
+
+**Assignment** — which Agent owns an escalated Support Chat. It is taken by answering: the first Agent to reply owns the conversation, and it leaves the unassigned queue for everyone else. There is no separate claiming step, and therefore no claim to go stale when someone opens a conversation and walks away.
+_Avoid_: treating Assignment as permission — any Agent can read any Support Chat; what Assignment says is who is dealing with it.
+
+**Resolved** — an Agent's statement that a Support Chat is finished. It is not an ending: a customer who writes again reopens the conversation, with the same transcript, and the model gets first look at the new message exactly as it would on a fresh one. Only an Agent resolves; the customer closing the widget means nothing.
+_Avoid_: "closed" — nothing is prevented afterwards. _Avoid_: reading a Resolved chat as one the customer agreed was finished; it records what the Agent believed.
+
 **AI Search** — the hero's natural-language mode, which turns one sentence into search parameters and runs a search. Distinct from a Support Chat: it is a single turn, it holds no history, and it is about finding a trip rather than fixing one.
 _Avoid_: calling it a chat or an assistant. _Note_: as of 2026-09-05 it is a mock — a two-second delay and a hardcoded result — so treat it as a design placeholder, not a capability.

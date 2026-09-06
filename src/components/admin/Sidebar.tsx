@@ -16,6 +16,7 @@ import {
     ChevronRight,
     ChevronLeft,
     Mail,
+    MessageCircle,
     Shield,
     Banknote,
     Plug,
@@ -74,6 +75,7 @@ const navGroups: NavGroup[] = [
     {
         title: 'General',
         items: [
+            { label: 'Support',       href: '/admin/support',        icon: MessageCircle },
             { label: 'Communication', href: '/admin/communication',  icon: Mail },
             { label: 'Analytics',     href: '/admin/analytics',      icon: BarChart3 },
             { label: 'Price Alerts',  href: '/admin/price-alerts',   icon: Bell },

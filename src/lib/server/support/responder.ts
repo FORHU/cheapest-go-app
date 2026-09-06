@@ -108,7 +108,13 @@ export interface TurnMessage {
 export interface SupportTurnStore {
     listMessages(conversationId: string): Promise<TurnMessage[]>;
     appendMessage(message: AppendedMessage): Promise<void>;
-    markWaitingHuman(conversationId: string): Promise<void>;
+    /**
+     * Queue the conversation for an Agent, recording the model's stated reason.
+     *
+     * The reason is for the Agent who picks this up and is never shown to the customer —
+     * it is the model's private note about them, which may be blunt and may be wrong.
+     */
+    markWaitingHuman(conversationId: string, reason?: string): Promise<void>;
 }
 
 /**
@@ -201,6 +207,7 @@ async function handOver(
     code: SupportNoticeCode,
     history: TurnMessage[],
     deps: SupportTurnDeps,
+    reason?: string,
 ): Promise<void> {
     if (!deps.owner.canBeQueued) {
         // Ask, rather than promise. The widget shows its escalation form on this notice,
@@ -210,7 +217,7 @@ async function handOver(
     }
 
     await writeNotice(conversationId, code, history, deps);
-    await deps.store.markWaitingHuman(conversationId);
+    await deps.store.markWaitingHuman(conversationId, reason);
 }
 
 /**
@@ -239,6 +246,7 @@ export async function runSupportTurn(
     conversationId: string,
     deps: SupportTurnDeps,
 ): Promise<void> {
+    let escalationReason: string | undefined;
     const history = await deps.store.listMessages(conversationId);
 
     // Counted from the transcript rather than a column, so a turn that failed and wrote
@@ -317,11 +325,13 @@ export async function runSupportTurn(
     }
 
     if (reply.kind === 'escalate') {
+        // The model's stated reason goes to the Agent, never to the customer.
+        escalationReason = reply.reason;
         // The notice is written by us, not by the model. Escalation is one-way, so a
         // parting answer from the model is one an Agent then has to contradict — on
         // precisely the topics it just declined to handle. `reason` is for the Agent's
         // eyes later, never repeated to the customer.
-        await handOver(conversationId, 'model_declined', history, deps);
+        await handOver(conversationId, 'model_declined', history, deps, escalationReason);
         return;
     }
 

@@ -5,6 +5,8 @@ import { appendMessage, listMessages } from './messages';
 import { runSupportTurn, type SupportTurnStore, type TurnAllowance } from './responder';
 import { supportTools } from './tools';
 import { chatCompletionsConfigFromEnv, createChatCompletionsClient } from './chat-completions';
+import { liveNotifyDeps, notifyEscalation, type EscalatedConversation } from './notify';
+import type { SupportConversation } from './conversations';
 
 /**
  * Everything the responder needs, assembled from the real world, plus the claim that
@@ -67,8 +69,12 @@ function liveStore(): SupportTurnStore {
         async appendMessage(message) {
             await appendMessage(message);
         },
-        async markWaitingHuman(conversationId) {
-            await requestHuman(conversationId);
+        async markWaitingHuman(conversationId, reason) {
+            const updated = await requestHuman(conversationId, reason);
+            // Only on the transition: `requestHuman` returns null when the conversation
+            // was already queued, and ringing the doorbell twice for one customer is noise.
+            // Not awaited — the escalation has already happened and must not wait on mail.
+            if (updated) void notifyEscalation(toEscalated(updated), liveNotifyDeps());
         },
     };
 }
@@ -141,4 +147,17 @@ export async function startSupportTurn(input: StartSupportTurnInput): Promise<vo
             );
         }
     }
+}
+
+/** The slice of a conversation the doorbell needs. */
+function toEscalated(conversation: SupportConversation): EscalatedConversation {
+    return {
+        id: conversation.id,
+        guestName: conversation.guestName,
+        guestEmail: conversation.guestEmail,
+        sourceBrand: conversation.sourceBrand,
+        // Not on the row type yet — read from the update that just wrote it.
+        escalationReason: (conversation as { escalationReason?: string | null }).escalationReason ?? null,
+        userId: conversation.userId,
+    };
 }
