@@ -1,10 +1,11 @@
+import { isRole, type Role } from '@/lib/auth/roles';
 import { getSqlAdmin } from '@/lib/db/postgres';
 
 export interface AdminUserRecord {
     id: string;
     email: string;
     fullName: string;
-    role: 'user' | 'admin';
+    role: Role;
     createdAt: string;
 }
 
@@ -25,7 +26,7 @@ export async function getUsersList(): Promise<AdminUserRecord[]> {
             id: u.id,
             email: u.email || '',
             fullName,
-            role: u.role || 'user',
+            role: isRole(u.role) ? u.role : 'user',
             createdAt: u.created_at,
         };
     });

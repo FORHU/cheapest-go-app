@@ -1,5 +1,6 @@
 'use client';
 
+import { landingFor } from '@/lib/auth/roles';
 import { useState, useRef, useMemo, useEffect, useCallback } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useAuthStore } from '@/stores/authStore';
@@ -81,24 +82,28 @@ export function useLoginForm(options: UseLoginFormOptions = {}): UseLoginFormRet
     // Redirect when user is authenticated
     useEffect(() => {
         if (user) {
-            // Admin mode redirection logic
+            // The staff door: /admin and /support/login. Anyone with somewhere to be as
+            // staff goes there; a customer signing in here is told, rather than being
+            // dropped on a page that will only redirect them again.
             if (isAdminMode) {
-                if (user.role === 'admin') {
-                    router.push('/admin/overview');
+                const staffLanding = landingFor(user.role);
+                if (staffLanding) {
+                    router.push(staffLanding);
                 } else {
-                    // Not an admin, sign out
                     const logoutAndError = async () => {
                         await logout();
-                        setErrors({ general: 'Access Denied: You do not have administrative privileges.' });
+                        setErrors({ general: 'Access Denied: this sign-in is for staff accounts.' });
                     };
                     logoutAndError();
                 }
                 return;
             }
 
-            // Normal user mode redirection logic
-            if (user.role === 'admin') {
-                router.push('/admin/overview');
+            // Normal sign-in. Staff still land where they work rather than on the
+            // marketing site — an admin at /admin/overview, a Support Agent at the desk.
+            const landing = landingFor(user.role);
+            if (landing) {
+                router.push(landing);
                 return;
             }
 

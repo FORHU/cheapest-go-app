@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation';
 import type { Metadata } from 'next';
 import { getSession } from '@/lib/auth/session';
+import { canStaffSupport } from '@/lib/auth/roles';
 import { DeskShell } from './DeskShell';
 
 export const dynamic = 'force-dynamic';
@@ -24,7 +25,17 @@ export default async function DeskLayout({ children }: { children: React.ReactNo
     const { user } = await getSession();
 
     if (!user) redirect('/login?redirect=/admin/desk');
-    if (user.role !== 'admin') redirect('/');
+    if (!canStaffSupport(user.role)) redirect('/');
 
-    return <DeskShell>{children}</DeskShell>;
+    // The top bar reads the person from the client store, which a hard refresh onto the
+    // desk leaves empty. Handing it down here is what the admin layout does, and without
+    // it an Agent is greeted as "Guest User" on their own console.
+    const profile = {
+        role: user.role,
+        firstName: user.firstName || '',
+        lastName: user.lastName || '',
+        avatar: user.avatarUrl,
+    };
+
+    return <DeskShell profile={profile}>{children}</DeskShell>;
 }

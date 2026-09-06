@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import { isRole, roleLabel } from '@/lib/auth/roles';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Search, CalendarRange, Users, Shield, Loader2, Plane, Building2, ArrowUp, ArrowDown, CornerDownLeft } from 'lucide-react';
@@ -215,8 +216,8 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
                                 </span>
                             )}
                             {result.meta?.role && (
-                                <span className={`text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-lg shrink-0 ${result.meta.role === 'admin' ? 'bg-blue-500/10 text-blue-500' : 'text-slate-400'}`}>
-                                    {result.meta.role}
+                                <span className={`text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-lg shrink-0 ${result.meta.role === 'admin' ? 'bg-blue-500/10 text-blue-500' : result.meta.role === 'support_agent' ? 'bg-emerald-500/10 text-emerald-600' : 'text-slate-400'}`}>
+                                    {roleLabel(isRole(result.meta.role) ? result.meta.role : null)}
                                 </span>
                             )}
                         </button>

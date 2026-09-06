@@ -46,6 +46,15 @@ describe('SupportHoursForm', () => {
         }
     });
 
+    it('leaves the page title to the banner above it', () => {
+        // Every admin screen names itself once, in the shell's banner. The form carried its
+        // own heading back when the desk had no banner; keeping it now stacks "Support
+        // Hours" on "Support hours" and reads as a mistake.
+        render(<SupportHoursForm initialHours={hours} />);
+
+        expect(screen.queryByRole('heading', { name: /support hours/i })).not.toBeInTheDocument();
+    });
+
     it('marks a day with no window as closed', () => {
         render(<SupportHoursForm initialHours={hours} />);
 

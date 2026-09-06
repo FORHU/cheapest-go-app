@@ -49,6 +49,25 @@ describe('DeskNav', () => {
         expect(screen.queryByText('0')).not.toBeInTheDocument();
     });
 
+    it('keeps both links reachable when the rail is collapsed', () => {
+        // The admin sidebar collapses to icons. Copying that is only safe if the icons
+        // still say what they are to a screen reader, which the labels were doing before.
+        render(<DeskNav pathname="/admin/desk" waiting={0} isCollapsed />);
+
+        expect(screen.queryByText('Settings')).not.toBeInTheDocument();
+        expect(screen.getByRole('link', { name: 'Support' })).toHaveAttribute('href', '/admin/desk');
+        expect(screen.getByRole('link', { name: 'Settings' })).toHaveAttribute('href', '/admin/desk/settings');
+    });
+
+    it('still says how many are waiting when collapsed', () => {
+        // The number has nowhere to go once the labels are gone, and dropping it would
+        // make the collapsed rail the one place a queue can build up unseen.
+        render(<DeskNav pathname="/admin/desk" waiting={4} isCollapsed />);
+
+        expect(screen.queryByText('4')).not.toBeInTheDocument();
+        expect(screen.getByRole('link', { name: /4 waiting/i })).toBeInTheDocument();
+    });
+
     it('marks which page you are on', () => {
         render(<DeskNav pathname="/admin/desk/settings" waiting={0} />);
 

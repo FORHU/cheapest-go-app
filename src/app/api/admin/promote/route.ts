@@ -4,6 +4,8 @@ import { rateLimit } from '@/lib/server/rate-limit';
 import { requireAdmin, isAuthError } from '@/lib/server/admin';
 import { createNotification } from '@/lib/server/admin/notify';
 import { logAdminAction } from '@/lib/server/admin/audit';
+import { validateRoleChange } from '@/lib/server/admin/roleChange';
+import { roleLabel } from '@/lib/auth/roles';
 
 export async function POST(req: NextRequest) {
     const rl = await rateLimit(req, { limit: 10, windowMs: 60_000, prefix: 'admin-promote' });
@@ -14,55 +16,39 @@ export async function POST(req: NextRequest) {
         if (isAuthError(auth)) return auth;
 
         const body = await req.json();
-        const { userId, newRole } = body;
 
-        if (!userId || typeof userId !== 'string') {
-            return NextResponse.json(
-                { success: false, error: 'Missing or invalid userId' },
-                { status: 400 }
-            );
+        const change = validateRoleChange({
+            actorId: auth.user.id,
+            targetId: body?.userId,
+            newRole: body?.newRole,
+        });
+        if (!change.ok) {
+            return NextResponse.json({ success: false, error: change.error }, { status: 400 });
         }
-
-        if (!['user', 'admin'].includes(newRole)) {
-            return NextResponse.json(
-                { success: false, error: 'Invalid role. Must be "user" or "admin"' },
-                { status: 400 }
-            );
-        }
-
-        // Prevent self-demotion (would lock the admin out)
-        if (userId === auth.user.id && newRole !== 'admin') {
-            return NextResponse.json(
-                { success: false, error: 'Cannot demote yourself' },
-                { status: 400 }
-            );
-        }
+        const { targetId: userId, newRole } = change;
 
         const adminSupabase = createAdminClient();
 
-        // 1. Update profiles table (authoritative source of truth)
-        const { error: profileError } = await adminSupabase
-            .from('profiles')
-            .update({ role: newRole })
-            .eq('id', userId);
-
-        if (profileError) {
-            console.error('[Admin Promote] Profile update error:', profileError);
-            return NextResponse.json(
-                { success: false, error: 'Failed to update profile role' },
-                { status: 500 }
-            );
-        }
-
-        // 2. Also update the users table (Lucia auth source of truth for role)
+        /*
+         * One write, to `users`.
+         *
+         * This route used to update `profiles.role` first and treat it as the source of
+         * truth. That column was dropped in 20260619000001 — ADR-0003 makes `users.role`
+         * authoritative — so the update failed, and because the failure was fatal the route
+         * returned 500 before ever reaching `users`. Promotion through the admin has been
+         * broken since; the only way to make someone an admin was `scripts/make-admin.mjs`.
+         */
         const { error: userError } = await adminSupabase
             .from('users')
             .update({ role: newRole })
             .eq('id', userId);
 
         if (userError) {
-            // Non-fatal: profiles table is already updated
-            console.error('[Admin Promote] Users table sync error:', userError);
+            console.error('[Admin Promote] Role update error:', userError);
+            return NextResponse.json(
+                { success: false, error: 'Failed to update role' },
+                { status: 500 }
+            );
         }
 
         logAdminAction({
@@ -74,8 +60,10 @@ export async function POST(req: NextRequest) {
         });
 
         createNotification(
-            `User ${newRole === 'admin' ? 'Promoted' : 'Demoted'}`,
-            `User ${userId} role changed to ${newRole} by ${auth.user.email}.`,
+            'User role changed',
+            // Named rather than "promoted" or "demoted": with three roles, support_agent is
+            // neither, and calling it one of them would say something untrue in the log.
+            `User ${userId} is now ${roleLabel(newRole)} (changed by ${auth.user.email}).`,
             'system'
         );
 

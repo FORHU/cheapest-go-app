@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation';
 import { getSession } from '@/lib/auth/session';
+import { canStaffSupport } from '@/lib/auth/roles';
 import { inboxCounts, listInbox } from '@/lib/server/support/inbox';
 import { SupportInboxClient } from '../(dashboard)/support/SupportInboxClient';
 import type { InboxConversation } from '../(dashboard)/support/types';
@@ -14,7 +15,7 @@ export const dynamic = 'force-dynamic';
  */
 export default async function DeskInboxPage() {
     const { user } = await getSession();
-    if (!user || user.role !== 'admin') redirect('/');
+    if (!user || !canStaffSupport(user.role)) redirect('/');
 
     const [conversations, counts] = await Promise.all([
         listInbox({ filter: 'waiting', adminId: user.id }),

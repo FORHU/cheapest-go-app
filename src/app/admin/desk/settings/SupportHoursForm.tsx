@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { Loader2 } from 'lucide-react';
+import { motion } from 'framer-motion';
 
 /**
  * When the desk is open.
@@ -106,97 +107,106 @@ export function SupportHoursForm({ initialHours }: { initialHours: HoursValue })
     };
 
     return (
-        <form onSubmit={save} className="max-w-2xl space-y-6">
-            <header>
-                <h1 className="text-xl font-semibold text-slate-900 dark:text-slate-100">Support hours</h1>
-                <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-                    When someone is available to take an escalated chat. Outside these hours the
-                    assistant still answers, and a customer asking for a person is still queued —
-                    they are just told when the team is back.
-                </p>
-            </header>
-
-            <label className="block">
-                <span className="text-[11px] font-black uppercase tracking-[0.12em] text-slate-400">
-                    Timezone
-                </span>
-                <select
-                    value={timezone}
-                    onChange={event => { setTimezone(event.target.value); setSaved(false); }}
-                    className="mt-1 h-9 w-full rounded-lg border border-slate-200 bg-white px-2 text-sm dark:border-white/10 dark:bg-white/5"
-                >
-                    {TIMEZONES.map(zone => <option key={zone} value={zone}>{zone}</option>)}
-                </select>
-            </label>
-
-            <ul className="space-y-2">
-                {DAYS.map(({ key, label }) => (
-                    <li
-                        key={key}
-                        className="flex flex-wrap items-center gap-3 rounded-lg border border-slate-200 px-3 py-2 dark:border-white/10"
-                    >
-                        <label className="flex w-36 items-center gap-2">
-                            <input
-                                type="checkbox"
-                                checked={days[key].open}
-                                aria-label={`${label} open`}
-                                onChange={event => {
-                                    setDays(current => ({
-                                        ...current,
-                                        [key]: { ...current[key], open: event.target.checked },
-                                    }));
-                                    setSaved(false);
-                                }}
-                            />
-                            <span className="text-sm font-medium text-slate-800 dark:text-slate-200">
-                                {label}
-                            </span>
-                        </label>
-
-                        {days[key].open ? (
-                            <div className="flex items-center gap-2">
-                                <input
-                                    type="time"
-                                    value={days[key].window.open}
-                                    aria-label={`${label} opens`}
-                                    onChange={event => setWindow(key, 'open', event.target.value)}
-                                    className="h-8 rounded-lg border border-slate-200 px-2 text-sm dark:border-white/10 dark:bg-white/5"
-                                />
-                                <span className="text-slate-400">to</span>
-                                <input
-                                    type="time"
-                                    value={days[key].window.close}
-                                    aria-label={`${label} closes`}
-                                    onChange={event => setWindow(key, 'close', event.target.value)}
-                                    className="h-8 rounded-lg border border-slate-200 px-2 text-sm dark:border-white/10 dark:bg-white/5"
-                                />
-                            </div>
-                        ) : (
-                            <span className="text-sm text-slate-400">Closed</span>
-                        )}
-                    </li>
-                ))}
-            </ul>
-
-            {error && (
-                <p role="alert" className="rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-800 dark:bg-rose-950/40 dark:text-rose-200">
-                    {error}
-                </p>
-            )}
-            {saved && (
-                <p role="status" className="rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200">
-                    Saved.
-                </p>
-            )}
-
-            <button
-                type="submit"
-                disabled={saving}
-                className="flex h-9 items-center gap-2 rounded-lg bg-blue-600 px-4 text-sm font-medium text-white transition hover:bg-blue-500 disabled:opacity-50"
+        <form onSubmit={save} className="max-w-3xl">
+            <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.4 }}
+                className="bg-white dark:bg-obsidian rounded-xl shadow-xl overflow-hidden border border-slate-200/50 dark:border-white/5"
             >
-                {saving && <Loader2 className="h-4 w-4 animate-spin" />}
-                Save hours
-            </button>
+                {/* The page is named once, by the shell's banner. This says what it does. */}
+                <div className="p-6 border-b border-slate-100 dark:border-white/5">
+                    <p className="text-sm leading-relaxed text-slate-500 dark:text-slate-400">
+                        When someone is available to take an escalated chat. Outside these hours the
+                        assistant still answers, and a customer asking for a person is still queued —
+                        they are just told when the team is back.
+                    </p>
+                </div>
+
+                <div className="p-6 space-y-6">
+                    <label className="block">
+                        <span className="text-[11px] font-black uppercase tracking-[0.12em] text-slate-400">
+                            Timezone
+                        </span>
+                        <select
+                            value={timezone}
+                            onChange={event => { setTimezone(event.target.value); setSaved(false); }}
+                            className="mt-1 h-9 w-full rounded-lg border border-slate-200 bg-white px-2 text-sm dark:border-white/10 dark:bg-white/5"
+                        >
+                            {TIMEZONES.map(zone => <option key={zone} value={zone}>{zone}</option>)}
+                        </select>
+                    </label>
+
+                    <ul className="space-y-2">
+                        {DAYS.map(({ key, label }) => (
+                            <li
+                                key={key}
+                                className="flex flex-wrap items-center gap-3 rounded-xl border border-slate-100 bg-slate-50/60 px-4 py-3 transition-colors hover:border-slate-200 dark:border-white/5 dark:bg-white/[0.03] dark:hover:border-white/10"
+                            >
+                                <label className="flex w-36 items-center gap-2">
+                                    <input
+                                        type="checkbox"
+                                        checked={days[key].open}
+                                        aria-label={`${label} open`}
+                                        onChange={event => {
+                                            setDays(current => ({
+                                                ...current,
+                                                [key]: { ...current[key], open: event.target.checked },
+                                            }));
+                                            setSaved(false);
+                                        }}
+                                    />
+                                    <span className="text-sm font-medium text-slate-800 dark:text-slate-200">
+                                        {label}
+                                    </span>
+                                </label>
+
+                                {days[key].open ? (
+                                    <div className="flex items-center gap-2">
+                                        <input
+                                            type="time"
+                                            value={days[key].window.open}
+                                            aria-label={`${label} opens`}
+                                            onChange={event => setWindow(key, 'open', event.target.value)}
+                                            className="h-8 rounded-lg border border-slate-200 px-2 text-sm dark:border-white/10 dark:bg-white/5"
+                                        />
+                                        <span className="text-slate-400">to</span>
+                                        <input
+                                            type="time"
+                                            value={days[key].window.close}
+                                            aria-label={`${label} closes`}
+                                            onChange={event => setWindow(key, 'close', event.target.value)}
+                                            className="h-8 rounded-lg border border-slate-200 px-2 text-sm dark:border-white/10 dark:bg-white/5"
+                                        />
+                                    </div>
+                                ) : (
+                                    <span className="text-sm text-slate-400">Closed</span>
+                                )}
+                            </li>
+                        ))}
+                    </ul>
+
+                    {error && (
+                        <p role="alert" className="rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-800 dark:bg-rose-950/40 dark:text-rose-200">
+                            {error}
+                        </p>
+                    )}
+                    {saved && (
+                        <p role="status" className="rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200">
+                            Saved.
+                        </p>
+                    )}
+
+                    <button
+                        type="submit"
+                        disabled={saving}
+                        className="flex h-12 items-center gap-2 rounded-xl bg-blue-600 px-6 text-sm font-black text-white shadow-lg shadow-blue-600/20 transition hover:bg-blue-700 disabled:opacity-50"
+                    >
+                        {saving && <Loader2 className="h-4 w-4 animate-spin" />}
+                        Save hours
+                    </button>
+                </div>
+            </motion.div>
         </form>
     );
 }
