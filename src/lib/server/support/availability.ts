@@ -3,7 +3,9 @@ import {
     DEFAULT_SUPPORT_HOURS,
     isWithinSupportHours,
     parseSupportHours,
+    validateSupportHours,
     type SupportHours,
+    type ValidationResult,
 } from './hours';
 
 /**
@@ -42,6 +44,27 @@ export async function getSupportHours(): Promise<SupportHours> {
 
 function safeParse(value: string): unknown {
     try { return JSON.parse(value); } catch { return null; }
+}
+
+/**
+ * Store a schedule, after checking it.
+ *
+ * Rejects rather than coerces. Reading is forgiving because a bad row must not take the
+ * widget down; writing is not, because an operator who sets Saturday cover and sees it
+ * accepted must actually have Saturday cover.
+ */
+export async function saveSupportHours(value: unknown): Promise<ValidationResult> {
+    const checked = validateSupportHours(value);
+    if (!checked.ok) return checked;
+
+    const sql = getSqlAdmin();
+    await sql`
+        INSERT INTO admin_settings (key, value)
+        VALUES (${SUPPORT_HOURS_KEY}, ${JSON.stringify(checked.hours)}::jsonb)
+        ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value
+    `;
+
+    return checked;
 }
 
 export interface SupportAvailability {

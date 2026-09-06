@@ -201,6 +201,73 @@ export function nextOpening(hours: SupportHours, at: Date): SupportOpening | nul
     return null;
 }
 
+export type ValidationResult =
+    | { ok: true; hours: SupportHours }
+    | { ok: false; error: string };
+
+/**
+ * Check a schedule on the way *in* — the opposite job from reading one.
+ *
+ * `parseSupportHours` forgives anything, because a typo in a settings row must not take
+ * the widget down. Saving cannot forgive: quietly storing something other than what was
+ * typed means an operator sets Saturday cover, sees it accepted, and finds out on Saturday
+ * that it was dropped. Every problem is returned by name so the form can point at it.
+ */
+export function validateSupportHours(value: unknown): ValidationResult {
+    if (!value || typeof value !== 'object') {
+        return { ok: false, error: 'Support hours must be an object.' };
+    }
+
+    const raw = value as Record<string, unknown>;
+
+    if (typeof raw.timezone !== 'string' || !raw.timezone.trim()) {
+        return { ok: false, error: 'A timezone is required.' };
+    }
+    if (!localTime(new Date(), raw.timezone)) {
+        return { ok: false, error: `"${raw.timezone}" is not a timezone this system knows.` };
+    }
+    if (!raw.days || typeof raw.days !== 'object') {
+        return { ok: false, error: 'Support hours must list the days of the week.' };
+    }
+
+    const rawDays = raw.days as Record<string, unknown>;
+    const days: Partial<Record<SupportDay, SupportWindow | null>> = {};
+
+    for (const [name, window] of Object.entries(rawDays)) {
+        if (!(DAY_ORDER as readonly string[]).includes(name)) {
+            return { ok: false, error: `"${name}" is not a day. Use mon, tue, wed, thu, fri, sat or sun.` };
+        }
+        const day = name as SupportDay;
+
+        // Explicitly closed. Distinct from a malformed window, and the only way to say it.
+        if (window === null) {
+            days[day] = null;
+            continue;
+        }
+        if (!window || typeof window !== 'object') {
+            return { ok: false, error: `${day}: expected opening and closing times, or null for closed.` };
+        }
+
+        const { open, close } = window as Record<string, unknown>;
+        if (typeof open !== 'string' || parseClock(open) === null) {
+            return { ok: false, error: `${day}: "${String(open)}" is not a time. Use HH:MM.` };
+        }
+        if (typeof close !== 'string' || parseClock(close) === null) {
+            return { ok: false, error: `${day}: "${String(close)}" is not a time. Use HH:MM.` };
+        }
+        if (parseClock(open) === parseClock(close)) {
+            return {
+                ok: false,
+                error: `${day}: opens and closes at the same time. Set it to closed instead.`,
+            };
+        }
+
+        days[day] = { open, close };
+    }
+
+    return { ok: true, hours: { timezone: raw.timezone, days } };
+}
+
 /**
  * Narrow an unvalidated `admin_settings` value to a schedule.
  *

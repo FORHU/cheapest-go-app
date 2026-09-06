@@ -275,6 +275,9 @@ _Avoid_: describing the model and an Agent as answering "together" — they neve
 _Why_: a fault is rarely local. The first time the assistant broke it was a missing API key, which is broken for every conversation on the site at once — so "hand over when something goes wrong" quietly means "queue every customer we have", and the Agent inbox fills with conversations whose owner never asked for a person.
 _Avoid_: adding a retry-then-escalate path, or a "failed N times so escalate" threshold — both re-introduce the flood under a different name.
 
+**Support Desk** — a second, narrower console for people whose whole job is answering Support Chats: the inbox and the Support Hours, and nothing else. It is a workspace, **not** a permission boundary — everyone who can open it is a full admin and can still reach every other admin screen by typing the address. It removes noise, not access.
+_Avoid_: describing it as "restricted", "limited" or "support-only access" — there is no support role, and saying so would leave someone believing a boundary exists where none does. If one is ever wanted, it is a third role and an audit of every admin route, not a shorter menu.
+
 **Support Hours** — the window in which an Escalation is promised a same-day answer, kept as one schedule in one timezone for both brands. Outside it the model still answers, Escalation still reaches the queue, and what changes is what the customer is told: which morning someone will pick it up.
 _Avoid_: "opening hours" — the site never closes, and the model answers around the clock. _Avoid_: describing Support Hours as gating Escalation — they govern the promise, not the queue.
 

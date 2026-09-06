@@ -17,6 +17,7 @@ import {
     ChevronLeft,
     Mail,
     MessageCircle,
+    Headphones,
     Shield,
     Banknote,
     Plug,
@@ -84,6 +85,7 @@ const navGroups: NavGroup[] = [
         title: 'General',
         items: [
             { label: 'Support',       href: '/admin/support',        icon: MessageCircle, liveCount: true },
+            { label: 'Support Desk',  href: '/admin/desk',           icon: Headphones },
             { label: 'Communication', href: '/admin/communication',  icon: Mail },
             { label: 'Analytics',     href: '/admin/analytics',      icon: BarChart3 },
             { label: 'Price Alerts',  href: '/admin/price-alerts',   icon: Bell },
