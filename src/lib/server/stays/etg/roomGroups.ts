@@ -96,7 +96,7 @@ export async function seedHotelRoomGroupsById(hotelId: string): Promise<RoomGrou
         const groups = parseRoomGroups(data.room_groups ?? []);
         await sql`
             UPDATE hotel_content
-            SET room_groups          = ${JSON.stringify(groups)}::jsonb,
+            SET room_groups          = ${sql.json(groups as unknown as Record<string, never>[])}::jsonb,
                 room_groups_seeded_at = NOW()
             WHERE hotel_id = ${hotelId}
         `;
