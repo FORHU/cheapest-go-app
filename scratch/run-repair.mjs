@@ -20,8 +20,10 @@ if (!/rds\.amazonaws\.com/.test(host)) {
   throw new Error(`Refusing to run: expected RDS, got ${host}`);
 }
 
-const fileSql = fs.readFileSync('scratch/repair-rows.sql', 'utf8');
+const sqlFile = process.argv.slice(2).find((a) => a.endsWith('.sql')) || 'scratch/repair-rows.sql';
+const fileSql = fs.readFileSync(sqlFile, 'utf8');
 
+console.log(`file   : ${sqlFile}`);
 console.log(`target : ${host}`);
 console.log(`mode   : ${COMMIT ? 'COMMIT — changes will be saved' : 'DRY RUN — will roll back'}\n`);
 
@@ -39,15 +41,17 @@ try {
       stmt++;
       if (r && r.length) {
         console.log(`--- statement ${stmt}: ${r.length} row(s) ---`);
+        // Print whatever columns the query actually returned, truncated so a wide
+        // row or a large jsonb blob doesn't wreck the table layout.
         console.table(
-          r.map((row) => ({
-            booking: row.booking_id,
-            property: row.property_name,
-            status: row.status,
-            price: `${row.total_price} ${row.currency}`,
-            meta: row.meta_type,
-            supplierRef: row.supplier_ref,
-          }))
+          r.map((row) =>
+            Object.fromEntries(
+              Object.entries(row).map(([k, v]) => {
+                const s = String(v);
+                return [k, s.length > 38 ? s.slice(0, 37) + '…' : s];
+              })
+            )
+          )
         );
       } else {
         console.log(`--- statement ${stmt}: ${r?.count ?? 0} row(s) affected ---`);

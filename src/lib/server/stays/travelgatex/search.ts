@@ -870,7 +870,7 @@ async function backgroundSeedEtgContent(hotelId: string, hotelName: string): Pro
             UPDATE hotel_content
             SET ratehawk_hid          = ${hid},
                 images                = ${imgLiteral}::text[],
-                room_groups           = ${JSON.stringify(roomGroups)}::jsonb,
+                room_groups           = ${sql.json(roomGroups as unknown as Record<string, never>[])}::jsonb,
                 room_groups_seeded_at = NOW()
             WHERE hotel_id = ${hotelId}
               AND ratehawk_hid IS NULL

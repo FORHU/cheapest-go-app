@@ -275,6 +275,30 @@ export async function confirmAndSaveTgxBooking(
     const threshold = params.quotedPrice * 1.05;
     if (price > threshold) {
       console.warn(`[confirmAndSaveTgxBooking] Price increased beyond threshold: quoted=${params.quotedPrice} booked=${price} currency=${currency}`);
+
+      // The supplier has already confirmed a real reservation by this point — this guard
+      // runs after bookTravelgateX, not before it. Returning without cancelling leaves an
+      // Unrecorded Reservation: a live stay held at the supplier, no row in our database,
+      // and the caller about to refund the guest, so the cost falls on us. Observed for
+      // real on 2026-09-06 (CG-770AZS / supplier 448577296), which had to be cancelled by
+      // hand. This is the hotel counterpart of the compensating cancel ADR-0013 added for
+      // flights. Best-effort: a failure here is logged loudly because that log line is the
+      // only trace the reservation will otherwise leave.
+      try {
+        const undo = await cancelTravelgateX({
+          clientReference: bookingId,
+          supplierReference: supplierRef,
+          hotelCode: hotelCode ?? undefined,
+        });
+        console.log('[confirmAndSaveTgxBooking] price_changed — supplier booking cancelled:', JSON.stringify(undo));
+      } catch (undoErr: any) {
+        console.error(
+          `[confirmAndSaveTgxBooking] ORPHANED HOTEL RESERVATION — MANUAL CANCELLATION REQUIRED. ` +
+          `clientReference=${bookingId} supplierRef=${supplierRef} hotelCode=${hotelCode} reason=price_changed`,
+          undoErr?.message
+        );
+      }
+
       return { success: false, errorCode: 'price_changed', oldPrice: params.quotedPrice, newPrice: price };
     }
   }
@@ -373,8 +397,8 @@ export async function confirmAndSaveTgxBooking(
         ${totalPrice}, ${storedCurrency},
         ${params.holder.firstName}, ${params.holder.lastName}, ${params.holder.email},
         ${bookingStatus}, ${params.specialRequests ?? null}, ${params.voucherCode ?? null}, ${params.discountAmount ?? 0},
-        ${policyType}, ${storedCancelPolicy ? JSON.stringify(storedCancelPolicy) : null}::jsonb,
-        'travelgatex', ${JSON.stringify({ supplierRef, hotelRef, hotelCode, clientReference })}::jsonb,
+        ${policyType}, ${storedCancelPolicy ? sql.json(storedCancelPolicy) : null}::jsonb,
+        'travelgatex', ${sql.json({ supplierRef, hotelRef, hotelCode, clientReference })}::jsonb,
         ${params.paymentIntentId ?? null},
         ${price}, ${totalPrice}
       )
@@ -401,8 +425,16 @@ export async function confirmAndSaveTgxBooking(
             fx_captured_at = ${fx.fx_captured_at}, fx_source = ${fx.fx_source}
         WHERE booking_id = ${bookingId}
       `;
-    } catch {
+    } catch (patchErr: any) {
       // Columns don't exist on this DB yet — booking already saved, non-fatal.
+      // Logged rather than swallowed: this threw on every hotel booking taken between
+      // 2026-08-04 and 2026-09-02, leaving source_brand NULL on all of them, and left
+      // no trace anywhere. The NULL column is the durable signal (ADR-0026); this line
+      // is only what makes the cause diagnosable when it happens again.
+      console.error(
+        `[confirmAndSaveTgxBooking] Column patch UPDATE failed for ${bookingId} (non-fatal):`,
+        patchErr?.message
+      );
     }
 
     // Insert policy snapshot
@@ -419,7 +451,7 @@ export async function confirmAndSaveTgxBooking(
         '{}',
         0, 0,
         ${freeCancelDeadline ? sql`${freeCancelDeadline}::timestamptz` : sql`NULL`},
-        ${JSON.stringify(booking)}::jsonb,
+        ${sql.json(booking)}::jsonb,
         NOW()
       )
       RETURNING id
@@ -493,8 +525,8 @@ export async function confirmAndSaveTgxBooking(
           ${totalPrice}, ${storedCurrency},
           ${params.holder.firstName}, ${params.holder.lastName}, ${params.holder.email},
           ${bookingStatus}, ${emergencyNote}, ${params.voucherCode ?? null}, ${params.discountAmount ?? 0},
-          ${policyType}, ${storedCancelPolicy ? JSON.stringify(storedCancelPolicy) : null}::jsonb,
-          'travelgatex', ${JSON.stringify({ supplierRef, hotelRef, hotelCode, clientReference })}::jsonb,
+          ${policyType}, ${storedCancelPolicy ? sqlEmergency.json(storedCancelPolicy) : null}::jsonb,
+          'travelgatex', ${sqlEmergency.json({ supplierRef, hotelRef, hotelCode, clientReference })}::jsonb,
           ${params.paymentIntentId ?? null},
           ${price}, ${totalPrice}
         )
