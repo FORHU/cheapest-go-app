@@ -25,7 +25,8 @@ export type SupportNoticeCode =
     | 'asked_for_person_out_of_hours'
     | 'assistant_unavailable'
     | 'model_failed'
-    | 'details_needed';
+    | 'details_needed'
+    | 'assistant_retired';
 
 export const SUPPORT_NOTICE: Record<SupportNoticeCode, string> = {
     budget_spent:
@@ -42,6 +43,8 @@ export const SUPPORT_NOTICE: Record<SupportNoticeCode, string> = {
         'Something went wrong on my end. You can ask to speak to a person and someone from the team will pick this up.',
     details_needed:
         "I'd like to pass you to someone from the team. Leave your name and email and they'll pick this up.",
+    assistant_retired:
+        'Support has moved to our team and is no longer answered automatically. Sign in and write again and someone will pick it up.',
 };
 
 /** A notice as a message row: the code drives rendering, the body is the fallback. */
