@@ -8,6 +8,7 @@ import { LogOut } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { useUserCurrency } from '@/stores/searchStore';
 import { getCurrencySymbol } from '@/lib/currency';
+import { canonicalBrandName } from '@/lib/brand';
 
 interface AccountSidebarProps {
     user: User;
@@ -22,7 +23,7 @@ interface AccountSidebarProps {
     }>;
 }
 
-const BRAND_NAME = process.env.NEXT_PUBLIC_BRAND_NAME ?? 'CheapestGo';
+const BRAND_NAME = canonicalBrandName(process.env.NEXT_PUBLIC_BRAND_NAME);
 
 export const AccountSidebar: React.FC<AccountSidebarProps> = ({
     user,

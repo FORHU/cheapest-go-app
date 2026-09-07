@@ -181,7 +181,7 @@ export async function confirmAndSaveTgxBooking(
   // and normally arrives from the PaymentIntent so the booking and the charge agree; a
   // booking made with no payment intent still needs one, hence the fallback.
   const clientReference = params.bookingReference
-    ?? mintBookingReference(process.env.NEXT_PUBLIC_BRAND_NAME ?? 'CheapestGo');
+    ?? mintBookingReference(canonicalBrandName(process.env.NEXT_PUBLIC_BRAND_NAME));
 
   // Parse authoritative dates from the TGX token — the client-provided checkIn/checkOut
   // may be stale (e.g. from a previous session in localStorage). Token dates are canonical.
@@ -416,7 +416,7 @@ export async function confirmAndSaveTgxBooking(
       await sql`
         UPDATE bookings
         SET property_lat = ${property_lat}, property_lng = ${property_lng},
-            source_brand = ${process.env.NEXT_PUBLIC_BRAND_NAME ?? 'CheapestGo'},
+            source_brand = ${canonicalBrandName(process.env.NEXT_PUBLIC_BRAND_NAME)},
             -- Duplicates booking_id for hotels, where the two are the same string. Stored
             -- anyway so all three booking tables answer "which platform" from one column
             -- name — flights and unified rows have no equivalent of booking_id.
@@ -567,6 +567,7 @@ export async function confirmAndSaveTgxBooking(
 import { calculateCancellation } from './cancellation-engine';
 import { createRefundRequest, processRefund } from './refunds';
 import type { LiteApiRefundInfo } from './refunds';
+import { canonicalBrandName } from '@/lib/brand';
 
 export async function cancelBooking(
   bookingId: string,

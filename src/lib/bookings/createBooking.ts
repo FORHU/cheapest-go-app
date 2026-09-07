@@ -1,4 +1,5 @@
 import { createAdminClient } from '@/utils/postgres/admin';
+import { canonicalBrandName } from '@/lib/brand';
 
 // ─── Types ───────────────────────────────────────────────────────────
 
@@ -212,7 +213,7 @@ export async function createBooking(input: CreateBookingInput): Promise<CreateBo
             markup_amount: input.markupAmount ?? 0,
             profit: (input.markupAmount ?? 0) || (input.totalPrice - (input.supplierCost ?? input.totalPrice)),
             currency: input.currency.toUpperCase(),
-            source_brand: process.env.NEXT_PUBLIC_BRAND_NAME ?? 'CheapestGo',
+            source_brand: canonicalBrandName(process.env.NEXT_PUBLIC_BRAND_NAME),
             metadata: input.metadata,
         };
 

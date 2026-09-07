@@ -19,6 +19,13 @@ const LENGTH = 6;
 
 const BRAND_PREFIX: Record<string, string> = {
     CheapestGo: 'CG',
+    AirangGo: 'GG',
+    // GeomeeGo was AirangGo's name until the 2026-09 rebrand. Kept because the prefix is
+    // resolved from whatever NEXT_PUBLIC_BRAND_NAME the process was started with, and the
+    // Korean instance keeps serving the old value until it is redeployed — dropping this
+    // would silently mint CG- references for AirangGo sales in that window and file them
+    // under the wrong brand in Stripe. The prefix stays GG so references already issued
+    // remain readable and no two brands ever share one.
     GeomeeGo: 'GG',
 };
 

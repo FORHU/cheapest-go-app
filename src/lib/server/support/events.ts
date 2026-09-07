@@ -4,7 +4,7 @@ import { getSqlAdmin } from '@/lib/db/postgres';
 /**
  * Delivery of new support messages to whoever is holding a stream open.
  *
- * The app runs as several Node processes against one RDS — CheapestGo and GeomeeGo are
+ * The app runs as several Node processes against one RDS — CheapestGo and AirangGo are
  * separate EC2 instances (ADR-0005), and a guest can be on one while the agent answering
  * them is on the other. An in-process EventEmitter would work perfectly in development
  * and drop every cross-instance message in production, silently, which is the worst shape

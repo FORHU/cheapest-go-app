@@ -3,6 +3,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
+import { brandWordmark, canonicalBrandName } from '@/lib/brand';
 
 interface AuthHeaderProps {
     title: React.ReactNode;
@@ -10,7 +11,7 @@ interface AuthHeaderProps {
     onBack?: () => void;
 }
 
-const BRAND_NAME = process.env.NEXT_PUBLIC_BRAND_NAME ?? 'CheapestGo';
+const BRAND_NAME = canonicalBrandName(process.env.NEXT_PUBLIC_BRAND_NAME);
 
 export function AuthHeader({ title, subtitle, onBack }: AuthHeaderProps) {
     return (
@@ -27,11 +28,7 @@ export function AuthHeader({ title, subtitle, onBack }: AuthHeaderProps) {
             {/* Logo */}
             <Link href="/" className="flex items-center gap-3 mb-8">
                 <h1 className="text-slate-900 dark:text-white font-display font-bold text-xl tracking-tight">
-                    {BRAND_NAME === 'CheapestGo'
-                        ? <>Cheapest<span className="text-alabaster-accent dark:text-obsidian-accent">Go</span></>
-                        : BRAND_NAME === 'GeomeeGo'
-                        ? <>Geomee<span className="text-alabaster-accent dark:text-obsidian-accent">Go</span></>
-                        : BRAND_NAME}
+                    {brandWordmark(BRAND_NAME).head}<span className="text-alabaster-accent dark:text-obsidian-accent">{brandWordmark(BRAND_NAME).tail}</span>
                 </h1>
             </Link>
 

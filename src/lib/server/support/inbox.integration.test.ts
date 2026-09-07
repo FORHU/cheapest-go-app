@@ -164,13 +164,13 @@ describe('listInbox', () => {
     it('keeps both brands in one queue', async (ctx) => {
         if (!(await databaseReachable())) ctx.skip();
 
-        // ADR-0030: a GeomeeGo customer waiting must not be invisible on the CheapestGo
+        // ADR-0030: a AirangGo customer waiting must not be invisible on the CheapestGo
         // admin, which is what following the brand switcher would do.
         const cheapestgo = await makeConversation({ brand: 'CheapestGo', minutesAgo: 10 });
-        const geomeego = await makeConversation({ brand: 'GeomeeGo', minutesAgo: 5 });
+        const airanggo = await makeConversation({ brand: 'AirangGo', minutesAgo: 5 });
 
         expect(ours(await listInbox({ filter: 'waiting' })).sort())
-            .toEqual([cheapestgo, geomeego].sort());
+            .toEqual([cheapestgo, airanggo].sort());
     });
 
     it('separates what the assistant is handling from what needs a person', async (ctx) => {
@@ -227,7 +227,7 @@ describe('inboxCounts', () => {
         const before = await inboxCounts(agentA);
 
         await makeConversation({ status: 'waiting_human' });
-        await makeConversation({ status: 'waiting_human', brand: 'GeomeeGo' });
+        await makeConversation({ status: 'waiting_human', brand: 'AirangGo' });
         await makeConversation({ status: 'ai_active' });
         await makeConversation({ status: 'resolved' });
 

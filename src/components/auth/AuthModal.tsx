@@ -11,8 +11,9 @@ import PasswordStep from './PasswordStep';
 import RegisterStep from './RegisterStep';
 import VerifyEmailStep from './VerifyEmailStep';
 import ForgotPasswordStep from './ForgotPasswordStep';
+import { brandWordmark, canonicalBrandName } from '@/lib/brand';
 
-const BRAND_NAME = process.env.NEXT_PUBLIC_BRAND_NAME ?? 'CheapestGo';
+const BRAND_NAME = canonicalBrandName(process.env.NEXT_PUBLIC_BRAND_NAME);
 
 const AuthModal: React.FC = () => {
     const t = useTranslations('nav');
@@ -90,11 +91,7 @@ const AuthModal: React.FC = () => {
                         {/* Logo Header */}
                         <div className="pt-6 pb-3 px-6 flex justify-center shrink-0">
                             <h1 className="text-slate-900 dark:text-white font-display font-bold text-xl tracking-tight">
-                                {BRAND_NAME === 'CheapestGo'
-                                    ? <>Cheapest<span className="text-alabaster-accent dark:text-obsidian-accent">Go</span></>
-                                    : BRAND_NAME === 'GeomeeGo'
-                                    ? <>Geomee<span className="text-alabaster-accent dark:text-obsidian-accent">Go</span></>
-                                    : BRAND_NAME}
+                                {brandWordmark(BRAND_NAME).head}<span className="text-alabaster-accent dark:text-obsidian-accent">{brandWordmark(BRAND_NAME).tail}</span>
                             </h1>
                         </div>
 

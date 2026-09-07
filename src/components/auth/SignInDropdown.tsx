@@ -7,6 +7,7 @@ import { useAuthStore } from '@/stores/authStore';
 import Link from 'next/link';
 import { usePathname, useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
+import { canonicalBrandName } from '@/lib/brand';
 
 
 function getInitials(firstName?: string | null, lastName?: string | null, email?: string | null): string {
@@ -27,7 +28,7 @@ interface SignInDropdownProps {
     onToggleOpen?: (open: boolean) => void;
 }
 
-const BRAND_NAME = process.env.NEXT_PUBLIC_BRAND_NAME ?? 'CheapestGo';
+const BRAND_NAME = canonicalBrandName(process.env.NEXT_PUBLIC_BRAND_NAME);
 
 const SignInDropdown: React.FC<SignInDropdownProps> = ({ variant = 'dropdown', collapsible = false, onNavigate, onToggleOpen }) => {
     const { user, logout } = useAuthStore();

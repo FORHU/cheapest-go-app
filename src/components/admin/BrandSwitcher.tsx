@@ -3,19 +3,26 @@
 import { useState, useEffect, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 
-type AdminBrand = 'CheapestGo' | 'GeomeeGo' | 'all';
+type AdminBrand = 'CheapestGo' | 'AirangGo' | 'all';
 
 const BRANDS: { value: AdminBrand; label: string; short: string }[] = [
     { value: 'all', label: 'All Brands', short: 'All' },
     { value: 'CheapestGo', label: 'CheapestGo', short: 'CGO' },
-    { value: 'GeomeeGo', label: 'GeomeeGo', short: 'GMG' },
+    { value: 'AirangGo', label: 'AirangGo', short: 'AGO' },
 ];
 
+/**
+ * An admin who used the switcher before the rebrand still has `admin_brand_view=GeomeeGo`
+ * in their browser. Read as an unknown value it would silently drop them back to
+ * CheapestGo and show them the wrong brand's bookings, so it maps to the new name instead
+ * — the same mapping the server applies in brand-filter.ts.
+ */
 function getCookieBrand(): AdminBrand {
     if (typeof document === 'undefined') return 'CheapestGo';
     const match = document.cookie.match(/(?:^|;\s*)admin_brand_view=([^;]+)/);
     const val = match?.[1];
-    if (val === 'CheapestGo' || val === 'GeomeeGo' || val === 'all') return val;
+    if (val === 'GeomeeGo') return 'AirangGo';
+    if (val === 'CheapestGo' || val === 'AirangGo' || val === 'all') return val;
     return 'CheapestGo';
 }
 

@@ -70,7 +70,7 @@ afterEach(() => {
 
 const waiting = [
     conversation({ id: 'a', guestName: 'Ana Reyes', sourceBrand: 'CheapestGo' }),
-    conversation({ id: 'b', guestName: '김민준', sourceBrand: 'GeomeeGo' }),
+    conversation({ id: 'b', guestName: '김민준', sourceBrand: 'AirangGo' }),
 ];
 
 describe('SupportInboxClient', () => {
@@ -99,7 +99,7 @@ describe('SupportInboxClient', () => {
             />,
         );
 
-        expect(screen.getByText('GeomeeGo')).toBeInTheDocument();
+        expect(screen.getByText('AirangGo')).toBeInTheDocument();
         expect(screen.getByText('CheapestGo')).toBeInTheDocument();
     });
 

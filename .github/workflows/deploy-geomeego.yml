@@ -1,4 +1,19 @@
-name: Deploy GeomeeGo
+name: Deploy AirangGo
+
+# AirangGo was GeomeeGo until the 2026-09 rebrand. The brand VALUE below is the new name;
+# the GEOMEEGO tokens left in this file are not, and must not be renamed here alone:
+#
+#   secrets.*_GEOMEEGO   named in GitHub repository settings — renaming the reference
+#                        without renaming the secret resolves to empty and deploys a
+#                        broken container
+#   ~/.env.geomeego      a file on the EC2 box, read by --env-file below
+#   --name geomeego      the running container; the stop/rm above it target that name,
+#                        so changing one without the others leaves two containers
+#                        contesting the same port
+#
+# Rename those as one coordinated change with GitHub settings and the box, not in this
+# file. What DOES need updating in GitHub settings now is the VALUE of
+# NEXT_PUBLIC_SITE_URL_GEOMEEGO — it must become https://airanggo.com once DNS moves.
 
 on:
   push:
@@ -36,21 +51,22 @@ jobs:
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
 
-      - name: Build and push GeomeeGo image to ECR
+      - name: Build and push AirangGo image to ECR
         env:
           REGISTRY: ${{ steps.login-ecr.outputs.registry }}
           REPOSITORY: ${{ secrets.ECR_REPOSITORY_GEOMEEGO }}
           SHA: ${{ github.sha }}
         run: |
           docker build \
-            --build-arg NEXT_PUBLIC_BRAND_NAME="GeomeeGo" \
+            --build-arg NEXT_PUBLIC_BRAND_NAME="AirangGo" \
             --build-arg NEXT_PUBLIC_LOCALE="ko" \
             --build-arg NEXT_PUBLIC_DEFAULT_CURRENCY="KRW" \
             --build-arg NEXT_PUBLIC_DEFAULT_COUNTRY="KR" \
             --build-arg NEXT_PUBLIC_SITE_URL="${{ secrets.NEXT_PUBLIC_SITE_URL_GEOMEEGO }}" \
             --build-arg NEXT_PUBLIC_BRAND_EMAIL="${{ secrets.NEXT_PUBLIC_BRAND_EMAIL_GEOMEEGO }}" \
-            --build-arg NEXT_PUBLIC_BRAND_FAVICON="/Geomeego_Light.png" \
-            --build-arg NEXT_PUBLIC_BRAND_LOGO="/Geomeego.png" \
+            --build-arg NEXT_PUBLIC_BRAND_FAVICON="/Airang_Fav.png" \
+            --build-arg NEXT_PUBLIC_BRAND_LOGO="/Airanggo_transparent.png" \
+            --build-arg NEXT_PUBLIC_BRAND_LOGO_DARK="/AirangGo.png" \
             --build-arg NEXT_PUBLIC_MAPBOX_TOKEN="${{ secrets.NEXT_PUBLIC_MAPBOX_TOKEN }}" \
             --build-arg NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY="${{ secrets.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY }}" \
             -t $REGISTRY/$REPOSITORY:$SHA \
@@ -67,7 +83,7 @@ jobs:
           ssh-keyscan -H "${{ secrets.EC2_HOST_GEOMEEGO }}" >> ~/.ssh/known_hosts || true
           echo "StrictHostKeyChecking no" >> ~/.ssh/config
 
-      - name: Write .env to GeomeeGo EC2
+      - name: Write .env to AirangGo EC2
         env:
           V_DATABASE_URL: ${{ secrets.DATABASE_URL }}
           V_DATABASE_URL_UNPOOLED: ${{ secrets.DATABASE_URL_UNPOOLED }}
@@ -116,9 +132,10 @@ jobs:
           V_MYSTIFLY_PASSWORD: ${{ secrets.MYSTIFLY_PASSWORD }}
           V_MYSTIFLY_USERNAME: ${{ secrets.MYSTIFLY_USERNAME }}
           V_JWT_SECRET: ${{ secrets.JWT_SECRET }}
-          V_NEXT_PUBLIC_BRAND_NAME: GeomeeGo
-          V_NEXT_PUBLIC_BRAND_FAVICON: /Geomeego_Light.png
-          V_NEXT_PUBLIC_BRAND_LOGO: /Geomeego.png
+          V_NEXT_PUBLIC_BRAND_NAME: AirangGo
+          V_NEXT_PUBLIC_BRAND_FAVICON: /Airang_Fav.png
+          V_NEXT_PUBLIC_BRAND_LOGO: /Airanggo_transparent.png
+          V_NEXT_PUBLIC_BRAND_LOGO_DARK: /AirangGo.png
           V_NEXT_PUBLIC_DEFAULT_CURRENCY: KRW
           V_NEXT_PUBLIC_DEFAULT_COUNTRY: KR
         run: |
@@ -173,12 +190,13 @@ jobs:
             "NEXT_PUBLIC_BRAND_NAME=$V_NEXT_PUBLIC_BRAND_NAME" \
             "NEXT_PUBLIC_BRAND_FAVICON=$V_NEXT_PUBLIC_BRAND_FAVICON" \
             "NEXT_PUBLIC_BRAND_LOGO=$V_NEXT_PUBLIC_BRAND_LOGO" \
+            "NEXT_PUBLIC_BRAND_LOGO_DARK=$V_NEXT_PUBLIC_BRAND_LOGO_DARK" \
             "NEXT_PUBLIC_DEFAULT_CURRENCY=$V_NEXT_PUBLIC_DEFAULT_CURRENCY" \
             "NEXT_PUBLIC_DEFAULT_COUNTRY=$V_NEXT_PUBLIC_DEFAULT_COUNTRY" \
           | ssh -i ~/.ssh/id_rsa ${{ secrets.EC2_USER_GEOMEEGO }}@${{ secrets.EC2_HOST_GEOMEEGO }} \
               "cat > ~/.env.geomeego && chmod 600 ~/.env.geomeego"
 
-      - name: Deploy to GeomeeGo EC2
+      - name: Deploy to AirangGo EC2
         env:
           REGISTRY: ${{ steps.login-ecr.outputs.registry }}
           REPOSITORY: ${{ secrets.ECR_REPOSITORY_GEOMEEGO }}

@@ -16,7 +16,7 @@ import type {
  * records you glance at; this is work you sit inside for minutes, and losing sight of the
  * queue while you reply is the thing that makes a support tool tiring.
  *
- * The queue is never filtered by brand — see ADR-0030. A GeomeeGo customer waiting must
+ * The queue is never filtered by brand — see ADR-0030. A AirangGo customer waiting must
  * not be invisible on the CheapestGo admin, because an empty queue and a filtered-away
  * queue look exactly the same.
  */

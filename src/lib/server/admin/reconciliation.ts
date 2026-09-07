@@ -85,9 +85,9 @@ export async function assertStripeAccount(): Promise<{ ok: true; account: string
 /**
  * Every hotel PaymentIntent that succeeded in the window but has no Booking row.
  *
- * Not narrowed by brand on purpose. CheapestGo and GeomeeGo write to the same table, so
+ * Not narrowed by brand on purpose. CheapestGo and AirangGo write to the same table, so
  * filtering to one storefront would make the other's orphans permanently invisible — and
- * GeomeeGo has no separate admin to catch them.
+ * AirangGo has no separate admin to catch them.
  */
 export async function findUnrecordedReservations(windowDays = 30): Promise<ReconciliationResult> {
     const guard = await assertStripeAccount();

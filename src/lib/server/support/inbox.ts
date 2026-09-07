@@ -52,7 +52,7 @@ export interface ListInboxInput {
  * The conversations in one view of the inbox.
  *
  * Never filtered by brand. Every other admin screen follows the brand switcher, and this
- * one deliberately does not: a GeomeeGo customer waiting would be invisible on the
+ * one deliberately does not: a AirangGo customer waiting would be invisible on the
  * CheapestGo admin, and nobody would learn the conversation existed. See ADR-0030.
  *
  * `waiting` is oldest-first because the longest wait is the most urgent; everything else

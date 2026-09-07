@@ -34,6 +34,7 @@ import { duffelIdentityDocuments } from '@/lib/server/flights/duffel-identity-do
 import { normalizedToFlightOffer } from '@/utils/flight-utils';
 import { mintBookingReference } from '@/lib/bookingReference';
 import { revalidateFlight } from '@/lib/server/flights/revalidate-flight';
+import { canonicalBrandName } from '@/lib/brand';
 
 export const dynamic = 'force-dynamic';
 
@@ -631,7 +632,7 @@ export async function POST(req: NextRequest) {
         // row written after payment is filed under the same identifier the PaymentIntent
         // carries. Flights had no reference of ours at all until now — admin showed the
         // airline's PNR, which the airline owns and we cannot make unique to this platform.
-        const brand = process.env.NEXT_PUBLIC_BRAND_NAME ?? 'CheapestGo';
+        const brand = canonicalBrandName(process.env.NEXT_PUBLIC_BRAND_NAME);
         const bookingReference = mintBookingReference(brand);
 
         const { data: sessionRow, error: sessionError } = await db

@@ -43,7 +43,7 @@ export const MAX_TOOL_CALLS_PER_TURN = 4;
  *
  * The English here is not the notice — the *code* is. A stored sentence can only ever be
  * right for one of the two people who read a Support Chat: write it in Korean for a
- * GeomeeGo customer and the English-speaking Agent opening the inbox reads Korean. So the
+ * AirangGo customer and the English-speaking Agent opening the inbox reads Korean. So the
  * row carries which notice it is, each reader renders it from their own locale files
  * (`support.notice.*`), and these strings are the English rendering plus the fallback for
  * a client that meets a code it does not know.

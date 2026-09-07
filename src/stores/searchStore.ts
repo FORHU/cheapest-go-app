@@ -441,7 +441,7 @@ export const useSearchStore = create<SearchState>()(
                 }
                 if (version <= 1) {
                     // Reset to the build-time default so brand-specific defaults take effect
-                    // (e.g. existing GeomeeGo visitors who accidentally got USD get migrated to KRW)
+                    // (e.g. existing AirangGo visitors who accidentally got USD get migrated to KRW)
                     persisted.userCurrency = process.env.NEXT_PUBLIC_DEFAULT_CURRENCY ?? 'USD';
                     persisted.userCountry = process.env.NEXT_PUBLIC_DEFAULT_COUNTRY ?? 'US';
                 }

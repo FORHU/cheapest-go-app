@@ -19,7 +19,7 @@ describe('slice row display', () => {
 
     it('marks Korean day periods in Korean, marker first', () => {
         // Node's ICU renders these as "AM 8:45" / "PM 6:45" — the reason the marker is
-        // our own string rather than CLDR's. GeomeeGo is locked to this locale.
+        // our own string rather than CLDR's. AirangGo is locked to this locale.
         expect(formatTimeIn('2026-08-26T08:45:00', 'ko')).toBe('오전 8:45');
         expect(formatTimeIn(ARR, 'ko')).toBe('오후 6:45');
         expect(formatTimeIn(ARR, 'ko-KR')).toBe('오후 6:45');

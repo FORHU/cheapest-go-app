@@ -1,5 +1,6 @@
 import { ImageResponse } from 'next/og';
 import { NextRequest } from 'next/server';
+import { canonicalBrandName } from '@/lib/brand';
 
 export const runtime = 'edge';
 
@@ -249,7 +250,7 @@ export async function GET(req: NextRequest) {
               fontSize: 12, fontWeight: 700, letterSpacing: 2,
               color: '#6366f1', textTransform: 'uppercase',
               display: 'flex',
-            }}>CheapestGo</span>
+            }}>{canonicalBrandName(process.env.NEXT_PUBLIC_BRAND_NAME)}</span>
             <div style={{
               fontSize: 68, fontWeight: 800, color: '#0f172a',
               lineHeight: 1.0, letterSpacing: -2,

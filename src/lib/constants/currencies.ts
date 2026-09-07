@@ -1,7 +1,7 @@
 /**
  * The Charge Currency surface — the currencies a customer can actually be billed in.
  *
- * Deliberately three: Korea (via GeomeeGo), the Philippines, and USD as the fallback.
+ * Deliberately three: Korea (via AirangGo), the Philippines, and USD as the fallback.
  * See CONTEXT.md → Money → Charge Currency.
  *
  * This is the single source of truth. It was previously duplicated as a bare array in

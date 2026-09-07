@@ -2,6 +2,7 @@ import { cookies } from 'next/headers';
 import { getSqlAdmin } from '@/lib/db/postgres';
 import { getSession } from '@/lib/auth/session';
 import { hashGuestToken, mintGuestToken, SUPPORT_COOKIE } from './tokens';
+import { canonicalBrandName } from '@/lib/brand';
 
 /**
  * Finding the conversation the caller is entitled to — which, on the guest side, is the
@@ -52,7 +53,7 @@ export function normaliseLocale(locale: unknown): string {
 
 /** Which brand's instance is serving this request. Same source as bookings.source_brand. */
 function currentBrand(): string {
-    return process.env.NEXT_PUBLIC_BRAND_NAME ?? 'CheapestGo';
+    return canonicalBrandName(process.env.NEXT_PUBLIC_BRAND_NAME);
 }
 
 export interface SupportCaller {

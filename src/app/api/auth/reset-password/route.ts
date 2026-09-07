@@ -9,6 +9,7 @@ import { getUserByEmail } from '@/lib/auth/session';
 import { getSqlAdmin } from '@/lib/db/postgres';
 import { rateLimit } from '@/lib/server/rate-limit';
 import { env } from '@/utils/env';
+import { FROM_NOREPLY } from '@/lib/server/email';
 
 export const dynamic = 'force-dynamic';
 
@@ -47,7 +48,11 @@ export async function POST(req: NextRequest) {
                 'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-                from: 'CheapestGo <no-reply@mail.cheapestgo.com>',
+                // FROM_NOREPLY, not a literal: this route is served by every brand, and a
+                // password-reset arriving from a company the recipient has never used is
+                // the one email most likely to be read as phishing and ignored. The
+                // sending domain must also match the brand, or SPF/DKIM alignment fails.
+                from: FROM_NOREPLY,
                 to: [user.email],
                 subject: 'Reset your password',
                 html: `<p>Click <a href="${resetUrl}">here</a> to reset your password. This link expires in 1 hour.</p>`,

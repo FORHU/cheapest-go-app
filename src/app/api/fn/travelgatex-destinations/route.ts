@@ -4,6 +4,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
+import { requireInternalSecret } from '@/lib/server/internalAuth';
 import { tgxGraphQL, getTgxConfig } from '@/lib/server/stays/travelgatex/client';
 
 export const dynamic = 'force-dynamic';
@@ -21,14 +22,9 @@ query TgxDestinations($access: ID!, $text: String!, $maxSize: Int) {
   }
 }`;
 
-function checkAuth(req: NextRequest): boolean {
-    const secret = process.env.FUNCTIONS_SECRET || process.env.INTERNAL_SECRET;
-    if (!secret) return true;
-    return req.headers.get('authorization') === `Bearer ${secret}`;
-}
-
 export async function POST(req: NextRequest) {
-    if (!checkAuth(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const authError = requireInternalSecret(req, 'travelgatex-destinations');
+    if (authError) return authError;
     try {
         const { keyword } = await req.json();
         if (!keyword?.trim()) return NextResponse.json({ data: [] });

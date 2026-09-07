@@ -27,15 +27,18 @@ _Avoid_: setting `redirect_uri` to the frontend URL — Google would land on a p
 
 **Cutover** — the moment traffic switches from v1 to v2. Has not happened yet. Until it does, v2 runs on its own database and never writes a migration — dbmate in v1 stays the sole author of schema, and v2's database is rebuilt from v1's. See [ADR-0018](docs/adr/0018-v2-has-its-own-database.md).
 
-**GeomeeGo** — a white-label deployment of CheapestGo targeting Korean users, served at `geomeego.com`. It is the same codebase, same database, and same feature set as CheapestGo — not a separate product. It differs only in brand name, logo, favicon, email sender, and locale (locked to Korean, no language switcher). Runs as a second EC2 instance pointing at the same repo and the same `DATABASE_URL`. See [ADR-0005](docs/adr/0005-geomeego-white-label-deployment.md).
-_Avoid_: treating GeomeeGo as a separate product or separate codebase — it shares all suppliers, inventory, users, and admin with CheapestGo. _Avoid_: adding Korean-specific features or business logic to the codebase without making them brand-configurable.
+**AirangGo** — a white-label deployment of CheapestGo targeting Korean users, served at `airanggo.com`. It is the same codebase, same database, and same feature set as CheapestGo — not a separate product. It differs only in brand name, logo, favicon, email sender, and locale (locked to Korean, no language switcher). Runs as a second EC2 instance pointing at the same repo and the same `DATABASE_URL`. See [ADR-0005](docs/adr/0005-geomeego-white-label-deployment.md).
+_Avoid_: treating AirangGo as a separate product or separate codebase — it shares all suppliers, inventory, users, and admin with CheapestGo. _Avoid_: adding Korean-specific features or business logic to the codebase without making them brand-configurable.
 
-**White-label Deployment** — a Coolify service running the same `cheapest-go-app` repo with a different set of brand env vars (`NEXT_PUBLIC_BRAND_NAME`, `NEXT_PUBLIC_BRAND_LOGO_URL`, `NEXT_PUBLIC_BRAND_FAVICON`, `NEXT_PUBLIC_BRAND_EMAIL`, `NEXT_PUBLIC_LOCALE`, `NEXT_PUBLIC_SITE_URL`). The brand env vars are the single source of truth for which site is being served. No runtime domain detection.
+**GeomeeGo** — what **AirangGo** was called before the 2026-09 rebrand, and the second name this brand has had. Not a separate brand and never was. The name survives in running configuration rather than in intent: the Korean instance is still started with it until redeployed, `geomeego.com` still resolves until DNS moves, and admin cookies still hold it — so both names are accepted at once, on purpose. Infrastructure named after it (GitHub secrets, the EC2 container, `~/.env.geomeego`) is deliberately untouched, because those names live outside this repo.
+_Avoid_: renaming an infrastructure identifier to match the brand as a tidy-up — a secret reference renamed on only one side resolves to empty and deploys a broken container. _Avoid_: reading a `GG-` **Booking Reference** as belonging to a defunct brand; the prefix was kept through the rename so one brand's references stay one series.
+
+**White-label Deployment** — a second EC2 instance running the same `cheapest-go-app` repo with a different set of brand env vars (`NEXT_PUBLIC_BRAND_NAME`, `NEXT_PUBLIC_BRAND_LOGO_URL`, `NEXT_PUBLIC_BRAND_FAVICON`, `NEXT_PUBLIC_BRAND_EMAIL`, `NEXT_PUBLIC_LOCALE`, `NEXT_PUBLIC_SITE_URL`). The brand env vars are the single source of truth for which site is being served. No runtime domain detection.
 _Avoid_: reading `req.headers.host` to decide which brand to render — all brand config comes from env vars baked in at build/start time.
 
 ## Deployment
 
-**AWS EC2** — the Next.js app runs as a persistent Node.js process on EC2. Not serverless. Connection pools are shared across requests within one process. Each brand deployment (CheapestGo, GeomeeGo) is a separate EC2 instance with its own env vars pointing at the same RDS database.
+**AWS EC2** — the Next.js app runs as a persistent Node.js process on EC2. Not serverless. Connection pools are shared across requests within one process. Each brand deployment (CheapestGo, AirangGo) is a separate EC2 instance with its own env vars pointing at the same RDS database.
 
 **Dev environment** — Docker Compose with PostgreSQL 17 + pgAdmin 4. One port means one thing: v1 dev on **3000**, the v1 container (live RDS) on **3001**, app-v2 on **3002**, api-v2 on **4000**. v1's Postgres is **5433**; v2's is **5434** ([ADR-0018](docs/adr/0018-v2-has-its-own-database.md)), with Redis on 6380. Local only. pgAdmin available at `http://localhost:5050` (admin@cheapestgo.local / cheapestgo).
 
@@ -87,12 +90,12 @@ _Avoid_: refunding one on discovery. The stay is real, so the charge is owed; wh
 
 **Stale Booking** — a **Booking** still reading `confirmed` whose **Reservation** has been cancelled at the supplier. The opposite direction of drift from an **Unrecorded Reservation**, and the more common one, since any dashboard cancellation creates one.
 
-**Booking Reference** — the identifier CheapestGo puts on a **sale**, `CG-XXXXXX` for CheapestGo and `GG-XXXXXX` for GeomeeGo. Minted before the charge and written onto the PaymentIntent, so it exists even where a booking was never confirmed — a payment that took money and then failed still has to be attributable. The prefix is derived from **Source Brand** at mint time rather than stored beside it, so the two cannot disagree.
+**Booking Reference** — the identifier CheapestGo puts on a **sale**, `CG-XXXXXX` for CheapestGo and `GG-XXXXXX` for AirangGo. Minted before the charge and written onto the PaymentIntent, so it exists even where a booking was never confirmed — a payment that took money and then failed still has to be attributable. The prefix is derived from **Source Brand** at mint time rather than stored beside it, so the two cannot disagree.
 _Avoid_: calling a **PNR** a reference, and reading a `CG` prefix as ours without the hyphen — `CG2MTN` is an airline PNR that begins with those letters by coincidence. The retired `FORHU-` prefix named FORHU Inc, the company every project shares, and so identified nothing.
 
 **PNR** — the airline's own record locator for a booking, six characters, assigned by the carrier. The traveller needs it at the airport and the airline will not recognise anything else, so it is displayed alongside the **Booking Reference**, never in place of it. Not unique to this platform and not ours to change.
 
-**Source Brand** — which storefront made the sale: `CheapestGo` or `GeomeeGo`. Stored on every booking table and the authority on brand; the **Booking Reference** prefix is a second representation of it, never an independent one.
+**Source Brand** — which storefront made the sale: `CheapestGo` or `AirangGo`. Stored on every booking table and the authority on brand; the **Booking Reference** prefix is a second representation of it, never an independent one.
 _Avoid_: treating brand as the same thing as project — FORHU Inc runs products beyond this platform, and they share one Stripe account and one pooled payout.
 
 **Edge Function** → **API Route** — all 47 Deno functions formerly hosted on Supabase Edge Functions have been converted or deleted. All active endpoints are Next.js API routes.
@@ -118,6 +121,9 @@ _Avoid_: treating it as fraud or error — a positioning flight on a separate ti
 
 **Settlement Currency** — the **Supplier Currency** of the specific offer being bought, and the denomination of every figure derived from the supplier order. The currency a charge is converted *from*.
 _Avoid_: converting from the currency in the client’s booking payload — that is a **Display Currency** value and a display artefact, never the basis for an amount charged.
+
+**Supplier Attempt** — one call to a supplier's booking or cancellation API, recorded before it is made rather than after. Distinct from a **Booking Reference**, which records a *sale*: an attempt records that we *asked*, which is the fact that survives a timeout, a crash, or a caller that never intended to write a booking at all. An attempt with no completion means the supplier was asked and the answer was never heard — not that nothing happened.
+_Avoid_: treating the `bookings` table as the record of what a supplier holds. On 2026-09-06 a live OTV reservation existed with no row here, and six of seven live Duffel orders had none either; the supplier's own list is the authority, and an attempt is our side of it. _Avoid_: logging a supplier call on success — the calls worth having are the ones that did not obviously succeed.
 
 **Orphaned Order** — a **Pre-Order** whose customer never completed payment, leaving airline inventory held against no sale. Reclaimed automatically only if the booking session recorded it; one that was created but never recorded is invisible to the platform and survives until the airline's own hold expires.
 _Avoid_: calling it a failed booking — the order succeeded, it is the payment that did not.

@@ -10,6 +10,7 @@ import { createAdminClient } from '@/utils/postgres/admin';
 import { env } from '@/utils/env';
 import { mintBookingReference } from '@/lib/bookingReference';
 import { createHash } from 'crypto';
+import { canonicalBrandName } from '@/lib/brand';
 
 export const dynamic = 'force-dynamic';
 
@@ -176,7 +177,7 @@ export async function POST(req: NextRequest) {
         // to be attributed — those are the hardest rows to trace, and giving them no
         // reference would leave exactly the wrong gap. The confirm route reads this back
         // off the PaymentIntent it already retrieves, so the client never carries it.
-        const brand = process.env.NEXT_PUBLIC_BRAND_NAME ?? 'CheapestGo';
+        const brand = canonicalBrandName(process.env.NEXT_PUBLIC_BRAND_NAME);
         const bookingReference = mintBookingReference(brand);
 
         const paymentIntent = await stripe.paymentIntents.create({

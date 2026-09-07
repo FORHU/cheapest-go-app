@@ -5,11 +5,12 @@ import path from 'path';
 import { calculateNights } from '@/lib/utils';
 import { derivePolicyType, getFreeCancelDeadline, formatPolicyDescription } from '@/lib/policy-formatter';
 import { getAirlineName } from '@/types/flights';
+import { canonicalBrandName } from '@/lib/brand';
 
 // ─── Sending addresses ────────────────────────────────────────────────
 // Verified domain: mail.cheapestgo.com (Resend, ap-northeast-1)
 // Change these two constants if the sending domain ever changes.
-const BRAND_NAME = process.env.NEXT_PUBLIC_BRAND_NAME ?? 'CheapestGo';
+const BRAND_NAME = canonicalBrandName(process.env.NEXT_PUBLIC_BRAND_NAME);
 const BRAND_EMAIL = process.env.NEXT_PUBLIC_BRAND_EMAIL ?? 'no-reply@mail.cheapestgo.com';
 const BRAND_LOGO = process.env.NEXT_PUBLIC_BRAND_LOGO ?? '/Web_Logo_Transparent.png';
 

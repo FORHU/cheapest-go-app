@@ -21,6 +21,11 @@ const CURRENCY_FLAGS: Record<string, string> = {
 };
 
 import { CHARGE_CURRENCY_CODES } from '@/lib/constants/currencies';
+import { canonicalBrandName } from '@/lib/brand';
+
+// Empty string and unset both mean "no dark variant" — an env var absent at build time
+// inlines as undefined, and one set to "" would otherwise render a broken image.
+const BRAND_LOGO_DARK = process.env.NEXT_PUBLIC_BRAND_LOGO_DARK || null;
 
 const CURRENCIES = CHARGE_CURRENCY_CODES;
 
@@ -71,14 +76,31 @@ const HeaderContent = () => {
 
           {/* Logo */}
           <Link href="/" className="flex items-center hover:opacity-80 transition-opacity shrink-0">
+            {/* Two files, swapped by theme, because a wordmark cannot be recoloured by CSS.
+                Both brands' logos are near-black, and `dark:brightness-[1.15]` does nothing
+                for black text — on the dark navbar the logo was effectively invisible.
+                AirangGo ships a white variant; brands without one keep the single image and
+                the brightness bump, so nothing regresses for CheapestGo. */}
             <Image
               src={process.env.NEXT_PUBLIC_BRAND_LOGO ?? '/Web_Logo_Transparent.png'}
-              alt={process.env.NEXT_PUBLIC_BRAND_NAME ?? 'CheapestGo'}
+              alt={canonicalBrandName(process.env.NEXT_PUBLIC_BRAND_NAME)}
               width={140}
               height={36}
-              className="h-7 md:h-9 w-auto object-contain dark:brightness-[1.15] rounded-lg"
+              className={`h-7 md:h-9 w-auto object-contain rounded-lg ${
+                BRAND_LOGO_DARK ? 'dark:hidden' : 'dark:brightness-[1.15]'
+              }`}
               priority
             />
+            {BRAND_LOGO_DARK && (
+              <Image
+                src={BRAND_LOGO_DARK}
+                alt={canonicalBrandName(process.env.NEXT_PUBLIC_BRAND_NAME)}
+                width={140}
+                height={36}
+                className="hidden dark:block h-7 md:h-9 w-auto object-contain rounded-lg"
+                priority
+              />
+            )}
           </Link>
 
 

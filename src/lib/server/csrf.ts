@@ -16,8 +16,14 @@ import { NextRequest, NextResponse } from 'next/server';
 const ALLOWED_ORIGINS = (() => {
     const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://cheapestgo.com';
     const origins = new Set([siteUrl.replace(/\/$/, '')]);
-    // Allow geomeego.com as a second brand on the same backend
+    // The Korean brand, served off this same backend. Both spellings are listed
+    // deliberately: geomeego.com is the live domain and airanggo.com is the rebrand it
+    // moves to, and during the changeover a traveller can arrive on either. Dropping the
+    // old one the day the new one is added would reject every state-mutating request from
+    // anyone still landing on geomeego.com — including mid-checkout. Remove geomeego.com
+    // only once its DNS no longer resolves here.
     origins.add('https://geomeego.com');
+    origins.add('https://airanggo.com');
     // Always allow localhost in development
     if (process.env.NODE_ENV !== 'production') {
         origins.add('http://localhost:3000');

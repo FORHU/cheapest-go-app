@@ -32,9 +32,10 @@ import {
 } from 'lucide-react';
 
 const INTEGRATIONS_PAGE_SIZE = 3;
-const BRAND_NAME = process.env.NEXT_PUBLIC_BRAND_NAME ?? 'CheapestGo';
+const BRAND_NAME = canonicalBrandName(process.env.NEXT_PUBLIC_BRAND_NAME);
 import { Button } from '@/components/ui/Button';
 import { useSupportWaiting } from './useSupportWaiting';
+import { brandWordmark, canonicalBrandName } from '@/lib/brand';
 
 // ─── Nav item type ─────────────────────────────────────────
 
@@ -331,11 +332,8 @@ export function Sidebar({ onClose, isCollapsed, onToggleCollapse }: SidebarProps
                 </div>
                 {!isCollapsed && (
                     <h1 className="text-xl font-black tracking-tighter text-slate-900 dark:text-white whitespace-nowrap">
-                        {BRAND_NAME === 'CheapestGo'
-                            ? <>Cheapest Go<span className="text-blue-600">.</span></>
-                            : BRAND_NAME === 'GeomeeGo'
-                            ? <>Geome<span className="text-blue-600">Go</span>.</>
-                            : <>{BRAND_NAME}<span className="text-blue-600">.</span></>}
+                        {brandWordmark(BRAND_NAME).head}{brandWordmark(BRAND_NAME).tail}
+                        <span className="text-blue-600">.</span>
                     </h1>
                 )}
             </Link>
