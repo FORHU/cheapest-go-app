@@ -281,6 +281,9 @@ _Avoid_: describing the model and an Agent as answering "together" — they neve
 _Why_: a fault is rarely local. The first time the assistant broke it was a missing API key, which is broken for every conversation on the site at once — so "hand over when something goes wrong" quietly means "queue every customer we have", and the Agent inbox fills with conversations whose owner never asked for a person.
 _Avoid_: adding a retry-then-escalate path, or a "failed N times so escalate" threshold — both re-introduce the flood under a different name.
 
+**Support Desk** — a second, narrower console for people whose whole job is answering Support Chats: the inbox and the Support Hours, and nothing else. It is a workspace, **not** a permission boundary — everyone who can open it is a full admin and can still reach every other admin screen by typing the address. It removes noise, not access.
+_Avoid_: describing it as "restricted", "limited" or "support-only access" — there is no support role, and saying so would leave someone believing a boundary exists where none does. If one is ever wanted, it is a third role and an audit of every admin route, not a shorter menu.
+
 **Support Hours** — the window in which an Escalation is promised a same-day answer, kept as one schedule in one timezone for both brands. Outside it the model still answers, Escalation still reaches the queue, and what changes is what the customer is told: which morning someone will pick it up.
 _Avoid_: "opening hours" — the site never closes, and the model answers around the clock. _Avoid_: describing Support Hours as gating Escalation — they govern the promise, not the queue.
 
@@ -292,6 +295,10 @@ _Avoid_: "travel agent" (suggests a third party) and "operator" or "bot" (an Age
 
 **Takeover** — an Agent answering a Support Chat the model was still handling, which stops the model and makes the Agent the owner. Distinct from **Escalation**: nothing joins the queue, because the Agent is already there. It is the point of being able to watch what the assistant says at all — an Agent who sees a wrong answer corrects it by replying, not by asking for the conversation first.
 _Avoid_: calling it an Escalation — that word is reserved for a chat becoming *someone's to pick up*. _Avoid_: reading a Takeover as the assistant having failed; usually it means an Agent knew something better.
+
+**Support Agent** — an account that may do Agent work and nothing else: answer Support Chats, set the Support Hours, and look up a booking read-only to verify someone's claim. It cannot reach the back office, cannot change a booking, and cannot promote anyone.
+_Avoid_: treating "Support Agent" and "**Agent**" as the same word. Agent is what someone is *doing* — an admin answering a chat is an Agent. Support Agent is what an account is *allowed* to do. Every Support Agent is an Agent; most Agents so far have been admins.
+_Avoid_: giving a Support Agent access by widening the back office — access is granted by building the screen inside the **Support Desk**, so anything not deliberately built for them stays out of reach.
 
 **Assignment** — which Agent owns an escalated Support Chat. It is taken by answering: the first Agent to reply owns the conversation, and it leaves the unassigned queue for everyone else. There is no separate claiming step, and therefore no claim to go stale when someone opens a conversation and walks away.
 _Avoid_: treating Assignment as permission — any Agent can read any Support Chat; what Assignment says is who is dealing with it.

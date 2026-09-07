@@ -7,6 +7,7 @@
  *   3. Fallback redirect for already-authenticated users
  */
 
+import { landingFor } from '@/lib/auth/roles';
 import { createHmac, timingSafeEqual } from 'crypto';
 import { NextResponse } from 'next/server';
 import { getSqlAdmin } from '@/lib/db/postgres';
@@ -179,7 +180,8 @@ export async function GET(request: Request) {
         const { user } = await getSession();
         if (user) {
             const returnTo = safeReturnTo(searchParams.get('next') ?? '/');
-            const target = user.role === 'admin' ? '/admin' : returnTo;
+            const landing = landingFor(user.role);
+            const target = landing ?? returnTo;
             return NextResponse.redirect(`${origin}${target}`);
         }
     } catch (err: unknown) {

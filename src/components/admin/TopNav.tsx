@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 import { useAuthStore } from '@/stores/authStore';
+import { isRole, roleLabel } from '@/lib/auth/roles';
 import { CommandPalette } from './CommandPalette';
 import { BrandSwitcher } from './BrandSwitcher';
 
@@ -41,9 +42,19 @@ import {
 interface TopNavProps {
     onMenuClick?: () => void;
     isCollapsed?: boolean;
+    /**
+     * Which console this bar is sitting on.
+     *
+     * Shared rather than duplicated so the two cannot drift apart visually. The desk drops
+     * the three controls that would be present and broken there: notifications are behind
+     * `requireAdmin`, the palette searches bookings and customers, and the brand switcher
+     * does not scope the support inbox (ADR-0030).
+     */
+    variant?: 'admin' | 'desk';
 }
 
-export function TopNav({ onMenuClick, isCollapsed }: TopNavProps) {
+export function TopNav({ onMenuClick, isCollapsed, variant = 'admin' }: TopNavProps) {
+    const isDesk = variant === 'desk';
     const { theme, toggleTheme } = useTheme();
     const router = useRouter();
     const user = useAuthStore((s) => s.user);
@@ -73,6 +84,8 @@ export function TopNav({ onMenuClick, isCollapsed }: TopNavProps) {
 
     // Cmd+K / Ctrl+K to open search palette
     useEffect(() => {
+        if (isDesk) return;
+
         const handleKeyDown = (e: KeyboardEvent) => {
             if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
                 e.preventDefault();
@@ -81,14 +94,16 @@ export function TopNav({ onMenuClick, isCollapsed }: TopNavProps) {
         };
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
-    }, []);
+    }, [isDesk]);
 
     React.useEffect(() => {
+        if (isDesk) return;
+
         fetchNotifications();
         // Set up a refresh interval every 30 seconds
         const interval = setInterval(fetchNotifications, 30000);
         return () => clearInterval(interval);
-    }, [fetchNotifications]);
+    }, [fetchNotifications, isDesk]);
 
     const markAllAsRead = async () => {
         try {
@@ -164,6 +179,7 @@ export function TopNav({ onMenuClick, isCollapsed }: TopNavProps) {
                 </Button>
 
                 {/* Mobile: icon-only search button */}
+                {!isDesk && (
                 <Button
                     variant="ghost"
                     size="icon"
@@ -172,8 +188,10 @@ export function TopNav({ onMenuClick, isCollapsed }: TopNavProps) {
                 >
                     <Search size={18} />
                 </Button>
+                )}
 
                 {/* sm+: full search bar */}
+                {!isDesk && (
                 <button
                     onClick={() => setIsSearchOpen(true)}
                     className="relative max-w-md w-full hidden sm:flex items-center gap-3 bg-white dark:bg-white/5 border border-slate-100 dark:border-white/10 rounded-lg py-2.5 pl-11 pr-12 text-sm font-medium text-slate-400 hover:border-slate-200 dark:hover:border-white/20 transition-all cursor-pointer text-left"
@@ -187,12 +205,15 @@ export function TopNav({ onMenuClick, isCollapsed }: TopNavProps) {
                         <span>K</span>
                     </div>
                 </button>
+                )}
             </div>
 
-            {/* Center: Brand Switcher */}
-            <div className="flex items-center justify-center px-2 sm:px-4">
-                <BrandSwitcher />
-            </div>
+            {/* Center: Brand Switcher — see the variant note; it does not scope the desk. */}
+            {!isDesk && (
+                <div className="flex items-center justify-center px-2 sm:px-4">
+                    <BrandSwitcher />
+                </div>
+            )}
 
             {/* Right: Actions & Profile */}
             <div className="flex items-center gap-1 sm:gap-4">
@@ -200,17 +221,20 @@ export function TopNav({ onMenuClick, isCollapsed }: TopNavProps) {
                     variant="ghost"
                     size="icon"
                     onClick={toggleTheme}
+                    aria-label={theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}
                     className="w-10 h-10 rounded-xl text-slate-500 hover:bg-white dark:hover:bg-white/5 border border-transparent hover:border-slate-100 dark:hover:border-white/10"
                 >
                     {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
                 </Button>
 
+                {!isDesk && (
                 <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                         <div className="relative">
                             <Button
                                 variant="ghost"
                                 size="icon"
+                                aria-label="Notifications"
                                 className="w-10 h-10 rounded-md text-slate-500 hover:bg-white dark:hover:bg-white/5 border border-transparent hover:border-slate-100 dark:hover:border-white/10"
                             >
                                 <Bell size={20} />
@@ -267,6 +291,7 @@ export function TopNav({ onMenuClick, isCollapsed }: TopNavProps) {
                         </div>
                     </DropdownMenuContent>
                 </DropdownMenu>
+                )}
 
                 <div className="h-10 w-1px bg-slate-100 dark:bg-white/5 mx-1 sm:mx-2 hidden sm:block" />
 
@@ -276,7 +301,7 @@ export function TopNav({ onMenuClick, isCollapsed }: TopNavProps) {
                             {user ? ((user.firstName || user.lastName) ? `${user.firstName ?? ''} ${user.lastName ?? ''}`.trim() : (user.email ?? 'Admin')) : 'Guest User'}
                         </p>
                         <p className="text-[10px] font-bold text-slate-400 mt-1 uppercase tracking-wider">
-                            {user?.role === 'admin' ? 'Administrator' : 'Standard User'}
+                            {roleLabel(isRole(user?.role) ? user.role : null)}
                         </p>
                     </div>
                     <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-blue-600 flex items-center justify-center text-white font-bold shadow-lg shadow-blue-600/20 ring-2 ring-white dark:ring-white/10 ring-offset-2 dark:ring-offset-transparent overflow-hidden transition-transform group-hover:scale-105">
@@ -337,7 +362,7 @@ export function TopNav({ onMenuClick, isCollapsed }: TopNavProps) {
                 </Dialog>
             </div>
 
-            <CommandPalette open={isSearchOpen} onOpenChange={setIsSearchOpen} />
+            {!isDesk && <CommandPalette open={isSearchOpen} onOpenChange={setIsSearchOpen} />}
         </header>
     );
 }

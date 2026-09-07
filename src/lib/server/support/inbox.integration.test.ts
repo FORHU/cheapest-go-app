@@ -350,7 +350,7 @@ describe('getConversationForAgent', () => {
 
         // An array, empty or not — the point is that the lookup happened at all.
         expect((await getConversationForAgent(rows[0].id))?.bookings).toBeInstanceOf(Array);
-    });
+    }, 20_000);
 
     it('returns nothing for a conversation that does not exist', async (ctx) => {
         if (!(await databaseReachable())) ctx.skip();

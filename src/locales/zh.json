@@ -2197,7 +2197,9 @@
     "status": {
       "waiting": "正在等待客服人员。",
       "human": "您正在与客服人员对话。",
-      "offline": "助手当前处于离线状态。"
+      "offline": "助手当前处于离线状态。",
+      "backOn": "{when} 恢复服务",
+      "backToday": "今天 {when} 恢复服务"
     },
     "notice": {
       "budget_spent": "在一次对话中我能提供的帮助已达上限。正在为您转接人工客服。",

@@ -2659,7 +2659,9 @@
     "status": {
       "waiting": "Waiting for someone from the team.",
       "human": "You are talking to the team.",
-      "offline": "The assistant is offline right now."
+      "offline": "The assistant is offline right now.",
+      "backOn": "Back {when}",
+      "backToday": "Back today at {when}"
     },
     "notice": {
       "budget_spent": "I've reached the limit of what I can help with in one conversation. I'm passing you to someone from the team.",

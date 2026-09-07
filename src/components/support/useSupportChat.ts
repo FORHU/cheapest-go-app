@@ -9,6 +9,7 @@ import {
 } from './supportReducer';
 import type { EscalationDetails } from './EscalationForm';
 import type { SupportConversationView, SupportMessageView } from './types';
+import type { ReopenOpening } from './reopenTime';
 
 /**
  * Fetch and EventSource, wired to the reducer that holds the decisions.
@@ -162,11 +163,31 @@ export function useSupportChat(isOpen: boolean) {
         dispatch({ type: isOpen ? 'opened_panel' : 'closed' });
     }, [isOpen]);
 
+    // When the desk is next open, for a customer who has been queued out of hours. Read
+    // from the server rather than stored in the notice, so editing the hours in the desk
+    // changes what a waiting customer sees.
+    const [nextOpening, setNextOpening] = useState<ReopenOpening | null>(null);
+
+    useEffect(() => {
+        if (!isOpen) return;
+        void (async () => {
+            try {
+                const response = await fetch('/api/support/availability');
+                if (!response.ok) return;
+                const data = (await response.json()) as { nextOpening?: ReopenOpening | null };
+                setNextOpening(data.nextOpening ?? null);
+            } catch {
+                // The panel simply says less.
+            }
+        })();
+    }, [isOpen]);
+
     const status = state.conversation?.status ?? null;
 
     return {
         messages: visibleMessages(state),
         conversation: state.conversation,
+        nextOpening,
         isTyping: state.isTyping,
         needsDetails: state.needsDetails,
         assistantOffline: state.assistantOffline,

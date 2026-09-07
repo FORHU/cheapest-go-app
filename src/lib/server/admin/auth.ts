@@ -3,6 +3,7 @@
  * Uses Lucia session validation and the PostgreSQL admin client.
  */
 
+import { canAdminister } from '@/lib/auth/roles';
 import { NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth/session';
 import { createAdminClient } from '@/utils/postgres/admin';
@@ -28,7 +29,7 @@ export async function requireAdmin(): Promise<AdminAuthResult | NextResponse> {
         return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
     }
 
-    if (user.role !== 'admin') {
+    if (!canAdminister(user.role)) {
         return NextResponse.json({ success: false, error: 'Forbidden' }, { status: 403 });
     }
 

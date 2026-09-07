@@ -8,6 +8,7 @@
  * Session cookies: sb-session (same name convention, or configure below)
  */
 
+import { isRole, type Role } from './roles';
 import { Lucia } from 'lucia';
 import { getSqlAdmin } from '@/lib/db/postgres';
 
@@ -123,7 +124,7 @@ export function getLucia(): Lucia {
                     firstName: attrs.first_name as string | undefined,
                     lastName: attrs.last_name as string | undefined,
                     avatarUrl: attrs.avatar_url as string | undefined,
-                    role: attrs.role as 'user' | 'admin',
+                    role: isRole(attrs.role) ? attrs.role : 'user',
                     bannedAt: attrs.banned_at as string | null,
                 };
             },
@@ -148,7 +149,7 @@ declare module 'lucia' {
             first_name?: string;
             last_name?: string;
             avatar_url?: string;
-            role: 'user' | 'admin';
+            role: Role;
             banned_at?: string | null;
         };
     }

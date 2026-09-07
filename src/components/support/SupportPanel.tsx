@@ -2,11 +2,12 @@
 
 import { useEffect, useRef } from 'react';
 import { X } from 'lucide-react';
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import { SupportTranscript } from './SupportTranscript';
 import { SupportComposer } from './SupportComposer';
 import { EscalationForm } from './EscalationForm';
 import { useSupportChat } from './useSupportChat';
+import { formatReopen } from './reopenTime';
 
 /**
  * The panel itself.
@@ -45,7 +46,9 @@ export function SupportPanel({ chat, onClose }: SupportPanelProps) {
         panelRef.current?.focus();
     }, []);
 
+    const locale = useLocale();
     const status = chat.conversation?.status;
+    const reopen = formatReopen(chat.nextOpening, locale);
 
     return (
         <div
@@ -68,6 +71,20 @@ export function SupportPanel({ chat, onClose }: SupportPanelProps) {
                                 ? t('status.human')
                                 : t('subtitle')}
                     </p>
+
+                    {/*
+                      * When the team is back. Only while queued, and only out of hours —
+                      * a customer being answered now does not need to know about Monday.
+                      * Rendered live so editing the hours in the desk changes it, rather
+                      * than being frozen into the stored notice.
+                      */}
+                    {status === 'waiting_human' && reopen && (
+                        <p className="mt-0.5 text-xs font-medium text-slate-600 dark:text-slate-300">
+                            {reopen.today
+                                ? t('status.backToday', { when: reopen.when })
+                                : t('status.backOn', { when: reopen.when })}
+                        </p>
+                    )}
                 </div>
                 <button
                     type="button"
