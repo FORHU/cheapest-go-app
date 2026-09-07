@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { User, Lock, Bell, Loader2, Check, Eye, EyeOff, HelpCircle, MessageCircle, Mail } from 'lucide-react';
 import type { User as UserType } from '@/types/auth';
 import { useAuthStore } from '@/stores/authStore';
+import { useSupportWidgetStore } from '@/stores/supportWidgetStore';
 import { clientFetch } from '@/lib/api/client';
 import { toast } from 'sonner';
 import { useTranslations } from 'next-intl';
@@ -18,6 +19,7 @@ export const AccountMainContent: React.FC<AccountMainContentProps> = ({ user, ac
     const { updateProfile, updatePassword } = useAuthStore();
     const t = useTranslations('account');
     const router = useRouter();
+    const openSupport = useSupportWidgetStore((s) => s.open);
 
     // Profile form state
     const [firstName, setFirstName] = useState(user.firstName || '');
@@ -349,9 +351,10 @@ export const AccountMainContent: React.FC<AccountMainContentProps> = ({ user, ac
                             </div>
                         </a>
 
-                        <a
-                            href="#"
-                            className="flex items-center gap-4 p-4 bg-slate-50 dark:bg-white/5 rounded-xl hover:bg-slate-100 dark:hover:bg-white/10 transition-colors"
+                        <button
+                            type="button"
+                            onClick={openSupport}
+                            className="w-full text-left flex items-center gap-4 p-4 bg-slate-50 dark:bg-white/5 rounded-xl hover:bg-slate-100 dark:hover:bg-white/10 transition-colors"
                         >
                             <div className="p-3 bg-green-100 dark:bg-green-900/30 rounded-lg">
                                 <MessageCircle className="w-5 h-5 text-green-600 dark:text-green-400" />
@@ -360,7 +363,7 @@ export const AccountMainContent: React.FC<AccountMainContentProps> = ({ user, ac
                                 <p className="font-medium text-slate-900 dark:text-white">{t('help.liveChat')}</p>
                                 <p className="text-sm text-slate-500 dark:text-slate-400">{t('help.liveChatDesc')}</p>
                             </div>
-                        </a>
+                        </button>
 
                         <div className="mt-8 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-xl border border-blue-100 dark:border-blue-800/50">
                             <h3 className="font-medium text-slate-900 dark:text-white mb-2">{t('help.faqTitle')}</h3>
