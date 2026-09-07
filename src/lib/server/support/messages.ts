@@ -1,7 +1,7 @@
 import { getSqlAdmin } from '@/lib/db/postgres';
 import { publish } from './events';
 import { SupportValidationError } from './conversations';
-import type { SupportNoticeCode } from './responder';
+import type { SupportNoticeCode } from './notices';
 
 export type SupportSender = 'guest' | 'ai' | 'agent' | 'system';
 

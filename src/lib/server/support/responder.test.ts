@@ -3,11 +3,11 @@ import { runSupportTurn } from './responder';
 import type { ModelClient, ModelReply, ModelRequest } from './model';
 import type {
     SupportTurnStore,
-    AppendedMessage,
     TurnAllowance,
     SupportTool,
     SupportTurnDeps,
 } from './responder';
+import type { AppendedMessage } from './notices';
 
 /**
  * The support responder decides what happens when a customer sends a message: answer,
