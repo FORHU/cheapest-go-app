@@ -219,6 +219,11 @@ export async function agentReply(input: AgentReplyInput): Promise<SupportMessage
  * The old assignment is dropped with it — leaving it in place would keep the conversation
  * on an Agent's list while it is sitting back in the unassigned queue.
  *
+ * `waiting_notified_at` is dropped for the same reason: this is a new waiting spell, and
+ * the doorbell has not rung for it. Keeping the old mark would mean a customer answered in
+ * March and back in June is queued in silence, because a ring that happened three months
+ * ago still counts as somebody having been told.
+ *
  * Returns whether anything changed. A conversation that was never resolved is untouched:
  * a customer writing to an Agent mid-conversation must not be bounced back to the queue,
  * because Escalation is one-way.
@@ -229,7 +234,8 @@ export async function reopenIfResolved(conversationId: string): Promise<boolean>
         UPDATE support_conversations
            SET status = 'waiting_human',
                assigned_admin_id = NULL,
-               escalation_reason = NULL
+               escalation_reason = NULL,
+               waiting_notified_at = NULL
          WHERE id = ${conversationId}
            AND status = 'resolved'
         RETURNING id

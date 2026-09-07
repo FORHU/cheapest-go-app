@@ -143,8 +143,15 @@ export async function openConversation(input: OpenConversationInput): Promise<Op
             return { conversation: existing, issuedGuestToken: null, created: false };
         }
         const rows = await sql.unsafe<SupportConversation[]>(
+            // `waiting_notified_at` goes back to NULL with the assignment: this is a new
+            // waiting spell and nobody has been told about it. Leaving the old mark would
+            // mean a customer answered in March and back in June queues in silence,
+            // because a ring three months ago still counts as somebody having been told.
             `UPDATE support_conversations
-                SET status = 'waiting_human', assigned_admin_id = NULL, last_message_at = now()
+                SET status = 'waiting_human',
+                    assigned_admin_id = NULL,
+                    waiting_notified_at = NULL,
+                    last_message_at = now()
               WHERE id = $1
           RETURNING ${COLUMNS}`,
             [existing.id],

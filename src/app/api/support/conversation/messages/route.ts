@@ -8,6 +8,7 @@ import {
 } from '@/lib/server/support/conversations';
 import { appendMessage, listMessages } from '@/lib/server/support/messages';
 import { reopenIfResolved } from '@/lib/server/support/inbox';
+import { liveNotifyDeps, notifyWaitingCustomer } from '@/lib/server/support/notify';
 
 export const dynamic = 'force-dynamic';
 
@@ -84,6 +85,24 @@ export async function POST(req: NextRequest) {
         if (conversation.status === 'resolved') {
             await reopenIfResolved(conversation.id);
         }
+
+        // The doorbell. Per ADR-0031 there is nobody but an Agent to answer this, and
+        // nothing else on the site would say so: creation is too early, because the widget
+        // opens a conversation the moment the panel does, so this — a customer's message
+        // into a Waiting conversation nobody owns — is the first moment there is anything
+        // to tell the team. It rings once per waiting spell, decided by a conditional
+        // UPDATE inside `notifyWaitingCustomer`, so a question typed in three parts is one
+        // email and a customer returning months later is a new one.
+        //
+        // After the reopen above, never before: the reopen is what clears the mark the
+        // previous spell left, and ringing first would be claiming a spell that is about
+        // to be reset — the ring would be lost and the returning customer would queue in
+        // silence.
+        //
+        // Started, not awaited, exactly as the escalate route does it: the message is
+        // already stored and the customer is owed their 201 now, not after a mail
+        // provider has had its turn. It swallows its own failures for the same reason.
+        void notifyWaitingCustomer(conversation.id, liveNotifyDeps());
 
         return NextResponse.json({ message }, { status: 201 });
     } catch (err) {
