@@ -3,12 +3,10 @@ import { rateLimit } from '@/lib/server/rate-limit';
 import {
     findConversation,
     getSupportCaller,
-    needsGuestIdentity,
     rateLimitIdentity,
     SupportValidationError,
 } from '@/lib/server/support/conversations';
 import { appendMessage, listMessages } from '@/lib/server/support/messages';
-import { startSupportTurn } from '@/lib/server/support/turn';
 import { reopenIfResolved } from '@/lib/server/support/inbox';
 
 export const dynamic = 'force-dynamic';
@@ -78,28 +76,13 @@ export async function POST(req: NextRequest) {
             body: body.body,
         });
 
-        // Started, not awaited. The customer's message is acknowledged immediately and the
-        // model's answer arrives over the same SSE stream an Agent's reply would — one
-        // delivery path, and a slow model never becomes a slow request. This works because
-        // the app runs as a persistent Node process on EC2, not as a serverless function
-        // that would be frozen the moment the response is returned.
-        //
-        // Only while the model is the one answering: an escalated conversation belongs to
-        // an Agent, and Escalation is one-way.
-        // Resolved is not an ending: writing again reopens the conversation and the
-        // assistant gets first look, wherever the panel happens to be. Without this a
-        // message typed into an already-open panel lands nowhere — no turn runs and the
-        // conversation is in nobody's queue.
-        const reopened = conversation.status === 'resolved'
-            && await reopenIfResolved(conversation.id);
-
-        if (reopened || conversation.status === 'ai_active') {
-            void startSupportTurn({
-                conversationId: conversation.id,
-                userId: conversation.userId,
-                canBeQueued: !needsGuestIdentity(conversation),
-                req,
-            });
+        // Resolved is not an ending: writing again reopens the conversation into the
+        // Agent queue, wherever the panel happens to be. Per ADR-0031 there is nobody to
+        // hand it to first — reopening onto `waiting_human` is the whole of it. Without
+        // this a message typed into an already-open panel lands nowhere: it is stored,
+        // but the conversation stays resolved and no queue shows it.
+        if (conversation.status === 'resolved') {
+            await reopenIfResolved(conversation.id);
         }
 
         return NextResponse.json({ message }, { status: 201 });
