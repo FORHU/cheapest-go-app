@@ -24,12 +24,19 @@ async function databaseReachable(): Promise<boolean> {
     }
 }
 
-/** A conversation to claim against, cleaned up by the caller. */
+/**
+ * A conversation to claim against, cleaned up by the caller.
+ *
+ * The contact details are not what this file is about — a claim ignores status and owner
+ * entirely. They are here because a conversation is now born `waiting_human` and
+ * `support_conversations_queued_is_answerable_check` refuses a queued row with no reply
+ * path, so a bare guest row can no longer be inserted at all.
+ */
 async function makeConversation(): Promise<string> {
     const { getSqlAdmin } = await import('@/lib/db/postgres');
     const rows = await getSqlAdmin()<{ id: string }[]>`
-        INSERT INTO support_conversations (guest_token_hash, source_brand, locale)
-        VALUES (${`test-${crypto.randomUUID()}`}, 'CheapestGo', 'en')
+        INSERT INTO support_conversations (guest_token_hash, guest_name, guest_email, source_brand, locale)
+        VALUES (${`test-${crypto.randomUUID()}`}, 'Ana Reyes', 'ana@example.com', 'CheapestGo', 'en')
         RETURNING id
     `;
     return rows[0].id;
