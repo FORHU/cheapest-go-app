@@ -167,6 +167,13 @@ export interface FlightSegmentDetail {
   duration: number;
   stops: number;
   aircraft?: string;
+  /**
+   * What this leg allows, when the airline said. The offer-level badge reports the
+   * smallest allowance across every leg, which is what the journey guarantees; this is
+   * what the individual flight carries, which the timeline row names. Absent means the
+   * airline told us nothing — distinct from a quantity of 0.
+   */
+  baggage?: { carryOnBags?: number; checkedBags?: number };
   cabinClass: CabinClass;
   bookingClass?: string;
   fareBasis?: string;

@@ -2,9 +2,12 @@
 
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plane, ArrowRight, Luggage, ShoppingBag, ChevronDown, ChevronUp, Shield, XCircle, BadgeDollarSign, Users } from 'lucide-react';
-import type { FlightOffer, FlightSegmentDetail } from '@/types/flights';
-import { formatPrice, formatDuration, formatTimeIn, dayOffset, layoverMinutes } from '@/utils/flight-utils';
+import { ArrowRight, Luggage, ShoppingBag, ChevronDown, ChevronUp, Shield, XCircle, BadgeDollarSign, Users } from 'lucide-react';
+import type { FlightOffer } from '@/types/flights';
+import { formatPrice, formatPriceWithCents, formatDuration, formatTimeIn, formatDurationLong } from '@/utils/flight-utils';
+import { offerSlices } from '@/lib/flights/offer-slices';
+import { getAirportByCode } from '@/lib/airports';
+import { FlightItineraryDetails } from '@/components/flights/FlightItineraryDetails';
 import SaveButton from '@/components/common/SaveButton';
 import { useTranslations, useLocale } from 'next-intl';
 
@@ -18,6 +21,20 @@ function providerLabel(provider: string): string {
     if (provider === 'mystifly_v2' || provider === 'mystifly') return 'Mystifly';
     if (provider === 'duffel') return 'Duffel';
     return provider;
+}
+
+function airportLabel(code: string | undefined): string {
+    if (!code) return '';
+    const name = getAirportByCode(code)?.name;
+    return name ? `${name} (${code})` : code;
+}
+
+/**
+ * "Economy", "Premium Economy" — title-cased in the text itself rather than by a
+ * `capitalize` class, so the badge reads correctly wherever the string is used.
+ */
+function cabinLabel(cabinClass: string | undefined): string {
+    return (cabinClass || 'economy').replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
 }
 
 function stopsLabel(stops: number, t: Translator): string {
@@ -36,7 +53,7 @@ function AirlineLogo({ code, name }: { code: string | undefined; name?: string }
 
     if (iata && !failed) {
         return (
-            <div className="w-6 h-6 lg:w-8 lg:h-8 rounded-md bg-white border border-slate-200 dark:border-slate-700 flex items-center justify-center shrink-0 overflow-hidden">
+            <div className="w-8 h-8 lg:w-10 lg:h-10 rounded-full bg-white border border-slate-200 dark:border-slate-700 flex items-center justify-center shrink-0 overflow-hidden">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                     src={`https://pics.avs.io/40/40/${iata}.png`}
@@ -49,72 +66,8 @@ function AirlineLogo({ code, name }: { code: string | undefined; name?: string }
     }
 
     return (
-        <div className="w-6 h-6 lg:w-8 lg:h-8 rounded-md bg-slate-600 flex items-center justify-center text-white font-bold text-[9px] lg:text-xs shrink-0">
+        <div className="w-8 h-8 lg:w-10 lg:h-10 rounded-full bg-slate-600 flex items-center justify-center text-white font-bold text-[9px] lg:text-xs shrink-0">
             {initials}
-        </div>
-    );
-}
-
-// ─── Segment Detail Row ──────────────────────────────────────────────
-
-function SegmentRow({ segment, t, locale }: { segment: FlightSegmentDetail; t: Translator; locale: string }) {
-    return (
-        <div className="flex items-center gap-2 lg:gap-4 py-1.5 lg:py-2.5 px-1">
-            <AirlineLogo code={segment.airline.code} name={segment.airline.name} />
-
-            <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-1 lg:gap-2 text-[9px] lg:text-xs text-slate-500 dark:text-slate-400">
-                    <span className="font-medium truncate">{segment.airline.name}</span>
-                    <span className="text-slate-300 dark:text-slate-600">·</span>
-                    <span>{segment.flightNumber}</span>
-                    {segment.aircraft && (
-                        <>
-                            <span className="text-slate-300 dark:text-slate-600 hidden sm:inline">·</span>
-                            <span className="hidden sm:inline">{segment.aircraft}</span>
-                        </>
-                    )}
-                    {segment.operatingAirline?.name && (
-                        <span className="text-amber-700 dark:text-amber-500 truncate">
-                            {t('operatedBy', { airline: segment.operatingAirline.name })}
-                        </span>
-                    )}
-                </div>
-
-                <div className="flex items-center gap-1.5 lg:gap-3 mt-0.5 lg:mt-1.5">
-                    <div className="text-center min-w-[40px] lg:min-w-[56px]">
-                        <div className="text-xs lg:text-base font-semibold text-slate-900 dark:text-white">{formatTimeIn(segment.departure.time, locale)}</div>
-                        <div className="text-[10px] lg:text-xs text-slate-500 dark:text-slate-400">
-                            {segment.departure.airport}{segment.departure.terminal ? ` T${segment.departure.terminal}` : ''}
-                        </div>
-                    </div>
-
-                    <div className="flex-1 flex flex-col items-center gap-0 lg:gap-0.5 min-w-[60px] lg:min-w-[90px]">
-                        <span className="text-[10px] lg:text-xs text-slate-400 dark:text-slate-500">{formatDuration(segment.duration)}</span>
-                        <div className="w-full flex items-center gap-0.5">
-                            <div className="h-px flex-1 bg-gradient-to-r from-transparent via-slate-300 dark:via-slate-600 to-transparent" />
-                            <Plane className="w-2 h-2 lg:w-3 lg:h-3 text-indigo-500 rotate-90 shrink-0" />
-                            <div className="h-px flex-1 bg-gradient-to-r from-transparent via-slate-300 dark:via-slate-600 to-transparent" />
-                        </div>
-                        <span className="text-[10px] lg:text-xs text-emerald-600 dark:text-emerald-400 font-medium">
-                            {segment.stops === 0 ? t('direct') : t('stopCountShort', { count: segment.stops })}
-                        </span>
-                    </div>
-
-                    <div className="text-center min-w-[40px] lg:min-w-[56px]">
-                        <div className="text-xs lg:text-base font-semibold text-slate-900 dark:text-white">
-                            {formatTimeIn(segment.arrival.time, locale)}
-                            {dayOffset(segment.departure.time, segment.arrival.time) > 0 && (
-                                <sup className="text-[8px] lg:text-[10px] text-amber-600 dark:text-amber-400 ml-0.5">
-                                    +{dayOffset(segment.departure.time, segment.arrival.time)}
-                                </sup>
-                            )}
-                        </div>
-                        <div className="text-[10px] lg:text-xs text-slate-500 dark:text-slate-400">
-                            {segment.arrival.airport}{segment.arrival.terminal ? ` T${segment.arrival.terminal}` : ''}
-                        </div>
-                    </div>
-                </div>
-            </div>
         </div>
     );
 }
@@ -138,49 +91,32 @@ export const FlightCard: React.FC<FlightCardProps> = ({ offer, index = 0, onSele
     // does not — without ever converting the wall clock. See formatTimeIn.
     const locale = useLocale();
 
-    // Group segments by their logical segment index (each search leg)
-    const legGroups: { [key: number]: FlightSegmentDetail[] } = {};
-    offer.segments.forEach((seg, i) => {
-        // Fallback to array split if segmentIndex is mysteriously missing from older APIs
-        // Splitting the array in half invented a return slice: a 1-stop one-way rendered as
-        // an "outbound" ending at the layover airport and a "return" that was really the
-        // second half of the same journey. Group into one slice instead of guessing.
-        const groupIndex = seg.segmentIndex ?? 0;
-        if (!legGroups[groupIndex]) legGroups[groupIndex] = [];
-        legGroups[groupIndex].push(seg);
-    });
-
-    const routeIndices = Object.keys(legGroups).map(Number).sort((a, b) => a - b);
+    // The slices the traveller actually flies. The book page reads the same function, so
+    // the two screens cannot disagree about a journey again — they did, and a round trip
+    // that stopped once each way was "1 stop" here and "2 stops" at checkout.
+    const slices = offerSlices(offer);
 
     // Collapsed card view: always show the outbound leg only.
     // Using the last segment overall would show the return arrival airport/time for round-trips.
     const primary = offer.segments[0];
-    const outboundLeg = legGroups[0] ?? offer.segments;
+    const outbound = slices[0];
+    const outboundLeg = outbound?.segments ?? offer.segments;
     const outboundLast = outboundLeg[outboundLeg.length - 1];
-    const outboundStops = Math.max(0, outboundLeg.length - 1);
     // Everything below describes the OUTBOUND SLICE and nothing else. Mixing an
     // offer-wide figure in here is what made a 2-segment outbound advertise "+ 3 more".
-    //
-    // The duration is the provider's own quoted elapsed time for this slice, never rebuilt
-    // from the timestamps: those carry no UTC offset, so subtracting them is wrong by the
-    // timezone gap between origin and destination. Absent means no provider quoted one, in
-    // which case nothing is shown rather than a guess.
-    const outboundDurationMins = offer.sliceDurations?.[routeIndices[0] ?? 0];
-    // Each connection: how long on the ground, and where. Both times are at the same
-    // airport, so their shared offset cancels and this subtraction is exact.
-    const outboundLayovers = outboundLeg.slice(0, -1).map((s, i) => ({
-        airport: s.arrival.airport,
-        minutes: layoverMinutes(s.arrival.time, outboundLeg[i + 1]?.departure.time),
-    }));
+    const outboundStops = outbound?.stops ?? 0;
+    const outboundDurationMins = outbound?.durationMinutes;
     // Every flight number in this slice — the traveller boards each one of them.
     const outboundFlightNumbers = outboundLeg.map(s => s.flightNumber).filter(Boolean).join(', ');
+    // The design names airports in full. A code we do not carry is shown as itself —
+    // the three letters on the boarding pass beat an invented name.
+    const departureAirport = airportLabel(primary.departure.airport);
+    const arrivalAirport = airportLabel(outboundLast?.arrival?.airport);
     // Who actually flies, when that is not who sold the seat.
     const operators = Array.from(
         new Set(outboundLeg.map(s => s.operatingAirline?.name).filter(Boolean))
     ) as string[];
     const partiallyOperated = operators.length > 0 && outboundLeg.some(s => !s.operatingAirline);
-    // Calendar days between take-off and touchdown — the "+1" on an overnight arrival.
-    const outboundDayOffset = dayOffset(primary.departure.time, outboundLast?.arrival?.time);
 
     return (
         <motion.div
@@ -188,11 +124,11 @@ export const FlightCard: React.FC<FlightCardProps> = ({ offer, index = 0, onSele
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: index * 0.03, duration: 0.25 }}
             className={`
-                group relative bg-white dark:bg-slate-900 w-full 
-                rounded-md overflow-hidden border transition-all duration-200
+                group relative bg-white dark:bg-slate-900 w-full
+                rounded-2xl overflow-hidden border transition-all duration-200
                 ${isSelected
-                    ? 'border-indigo-500 ring-2 ring-indigo-500/20 shadow-lg'
-                    : 'border-slate-200 dark:border-slate-700 hover:border-blue-300 dark:hover:border-blue-600 hover:shadow-lg shadow-sm'
+                    ? 'border-blue-500 ring-2 ring-blue-500/15 shadow-[0_16px_40px_-16px_rgba(15,23,42,0.20)]'
+                    : 'border-slate-200/70 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600 shadow-[0_10px_30px_-14px_rgba(15,23,42,0.14)] hover:shadow-[0_16px_40px_-16px_rgba(15,23,42,0.18)]'
                 }
             `}
         >
@@ -201,7 +137,7 @@ export const FlightCard: React.FC<FlightCardProps> = ({ offer, index = 0, onSele
                 <SaveButton
                     type="flight"
                     title={`${primary.departure.airport} → ${outboundLast?.arrival?.airport} · ${primary.departure.time?.slice(0, 10) ?? ''}`}
-                    subtitle={`${primary.airline.name} · ${formatDuration(offer.totalDuration)} · ${stopsLabel(offer.totalStops, t)}`}
+                    subtitle={`${primary.airline.name} · ${formatDurationLong(outboundDurationMins)} · ${stopsLabel(outboundStops, t)}`}
                     price={offer.price.total}
                     currency={offer.price.currency}
                     imageUrl={`https://pics.avs.io/40/40/${(primary.airline.code || '').toUpperCase()}.png`}
@@ -214,93 +150,43 @@ export const FlightCard: React.FC<FlightCardProps> = ({ offer, index = 0, onSele
             <div className="flex flex-col lg:flex-row">
                 {/* ─── Flight Info + Expand (left) ─── */}
                 <div className="flex-1 min-w-0">
-                  <div className="px-3 py-2 lg:px-4 lg:py-2.5">
-                    {/* Airline header */}
-                    <div className="flex items-center gap-1.5 lg:gap-2 mb-1 lg:mb-1.5">
-                        <AirlineLogo code={primary.airline.code} name={primary.airline.name} />
-                        <div className="min-w-0">
-                            <div className="flex items-center gap-1 lg:gap-2">
-                                <span className="font-normal text-blue-600 dark:text-blue-400 text-[10px] lg:text-xs">
+                  <div className="p-4 lg:p-6">
+                    {/* ─── Airline, its flight numbers, and the fare's badges ─── */}
+                    <div className="flex flex-wrap items-start gap-x-3 gap-y-2 mb-3 lg:mb-4">
+                        <div className="flex items-center gap-2 shrink-0">
+                            <AirlineLogo code={primary.airline.code} name={primary.airline.name} />
+                            <div className="min-w-0">
+                                <div className="font-semibold text-blue-600 dark:text-blue-400 text-[12px] lg:text-[14px] leading-tight">
                                     {primary.airline.name}
-                                </span>
-                            </div>
-                            <div className="text-[10px] lg:text-xs text-slate-500 dark:text-slate-400">
-                                {outboundFlightNumbers}
-                            </div>
-                            {operators.length > 0 && (
-                                <div className="text-[9px] lg:text-[11px] text-amber-700 dark:text-amber-500 truncate">
-                                    {partiallyOperated
-                                        ? t('partiallyOperatedBy', { airline: operators.join(', ') })
-                                        : t('operatedBy', { airline: operators.join(', ') })}
                                 </div>
-                            )}
-                        </div>
-                    </div>
-
-                    {/* Route timeline — outbound leg only */}
-                    <div className="flex items-center gap-1.5 lg:gap-3 min-w-0 w-full">
-                        <div className="text-center shrink-0">
-                            <div className="text-xs lg:text-base font-normal text-slate-900 dark:text-white leading-tight">{formatTimeIn(primary.departure.time, locale)}</div>
-                            <div className="text-[8px] lg:text-[10px] text-slate-500 dark:text-slate-400 font-normal">
-                                {primary.departure.airport}{primary.departure.terminal ? ` T${primary.departure.terminal}` : ''}
-                            </div>
-                        </div>
-
-                        <div className="flex-1 flex flex-col items-center gap-0 min-w-0">
-                            <span className="text-[10px] lg:text-xs text-slate-400 dark:text-slate-500 font-normal">
-                                {outboundDurationMins ? formatDuration(outboundDurationMins) : ''}
-                            </span>
-                            <div className="w-full flex items-center gap-0.5">
-                                <div className="h-[1.5px] lg:h-[2px] flex-1 bg-gradient-to-r from-indigo-400 to-purple-400 rounded-full" />
-                                <Plane className="w-2.5 h-2.5 lg:w-4 lg:h-4 text-indigo-500 rotate-90" />
-                            </div>
-                            <span className={`text-[10px] lg:text-xs font-normal ${outboundStops === 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'}`}>
-                                {stopsLabel(outboundStops, t)}
-                                {outboundLayovers.length > 0 && (
-                                    <span className="text-slate-400 dark:text-slate-500">
-                                        {' · '}
-                                        {outboundLayovers
-                                            .map(l => (l.minutes > 0 ? `${formatDuration(l.minutes)} ${l.airport}` : l.airport))
-                                            .join(' · ')}
-                                    </span>
-                                )}
-                            </span>
-                        </div>
-
-                        <div className="text-center shrink-0">
-                            <div className="text-xs lg:text-base font-normal text-slate-900 dark:text-white leading-tight">
-                                {formatTimeIn(outboundLast?.arrival?.time, locale)}
-                                {outboundDayOffset > 0 && (
-                                    <sup className="text-[8px] lg:text-[10px] text-amber-600 dark:text-amber-400 ml-0.5">+{outboundDayOffset}</sup>
+                                <div className="text-[10px] lg:text-[12px] text-slate-400 dark:text-slate-500">
+                                    {outboundFlightNumbers}
+                                </div>
+                                {operators.length > 0 && (
+                                    <div className="text-[9px] lg:text-[11px] text-amber-700 dark:text-amber-500 truncate">
+                                        {partiallyOperated
+                                            ? t('partiallyOperatedBy', { airline: operators.join(', ') })
+                                            : t('operatedBy', { airline: operators.join(', ') })}
+                                    </div>
                                 )}
                             </div>
-                            <div className="text-[8px] lg:text-[10px] text-slate-500 dark:text-slate-400 font-normal">
-                                {outboundLast?.arrival?.airport}{outboundLast?.arrival?.terminal ? ` T${outboundLast.arrival.terminal}` : ''}
-                            </div>
                         </div>
-                    </div>
 
-                    {/* Tags */}
-                    <div className="flex flex-wrap gap-0.5 lg:gap-1 mt-1 lg:mt-1.5 min-w-0 overflow-hidden">
+                        {/* Tags */}
+                    <div className="flex flex-wrap items-center gap-1 lg:gap-1.5 min-w-0">
                         {/* ─── Baggage allowance ───
                             Rendered only when the airline actually stated an allowance.
                             A count of 0 is a fact ("no free bag") and is shown muted;
                             an absent count means unknown and shows nothing at all. */}
                         {offer.baggage?.carryOnBags != null && (
-                            <span className={`inline-flex items-center gap-0.5 px-1 lg:px-2 py-px lg:py-0.5 rounded-full text-[8px] lg:text-xs border ${offer.baggage.carryOnBags > 0
-                                ? 'bg-emerald-50 dark:bg-emerald-500/10 border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-400'
-                                : 'bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400'
-                                }`}>
-                                <ShoppingBag className="w-2 h-2 lg:w-3 lg:h-3" />
+                            <span className="inline-flex items-center gap-1 px-2 lg:px-2.5 py-0.5 lg:py-1 rounded-full text-[9px] lg:text-[11px] bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
+                                <ShoppingBag className="w-3 h-3 lg:w-3.5 lg:h-3.5" />
                                 {t('carryOnBags', { count: offer.baggage.carryOnBags })}
                             </span>
                         )}
                         {offer.baggage?.checkedBags != null && (
-                            <span className={`inline-flex items-center gap-0.5 px-1 lg:px-2 py-px lg:py-0.5 rounded-full text-[8px] lg:text-xs border ${offer.baggage.checkedBags > 0
-                                ? 'bg-emerald-50 dark:bg-emerald-500/10 border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-400'
-                                : 'bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400'
-                                }`}>
-                                <Luggage className="w-2 h-2 lg:w-3 lg:h-3" />
+                            <span className="inline-flex items-center gap-1 px-2 lg:px-2.5 py-0.5 lg:py-1 rounded-full text-[9px] lg:text-[11px] bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
+                                <Luggage className="w-3 h-3 lg:w-3.5 lg:h-3.5" />
                                 {t('checkedBags', { count: offer.baggage.checkedBags })}
                             </span>
                         )}
@@ -314,8 +200,8 @@ export const FlightCard: React.FC<FlightCardProps> = ({ offer, index = 0, onSele
                             if (isRefundable && penalty === 0) {
                                 // 🟢 Free cancellation
                                 return (
-                                    <span className="inline-flex items-center gap-0.5 px-1 lg:px-2 py-px lg:py-0.5 rounded-full text-[8px] lg:text-xs bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-400">
-                                        <Shield className="w-2 h-2 lg:w-3 lg:h-3" />
+                                    <span className="inline-flex items-center gap-1 px-2 lg:px-2.5 py-0.5 lg:py-1 rounded-full text-[9px] lg:text-[11px] bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
+                                        <Shield className="w-3 h-3 lg:w-3.5 lg:h-3.5" />
                                         {t('freeCancellation')}
                                     </span>
                                 );
@@ -328,36 +214,31 @@ export const FlightCard: React.FC<FlightCardProps> = ({ offer, index = 0, onSele
                                     ? t('refundableFee', { fee: formattedFee })
                                     : t('refundableFeesMayApply');
                                 return (
-                                    <span className="inline-flex items-center gap-0.5 px-1 lg:px-2 py-px lg:py-0.5 rounded-full text-[8px] lg:text-xs bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-400">
-                                        <BadgeDollarSign className="w-2 h-2 lg:w-3 lg:h-3" />
+                                    <span className="inline-flex items-center gap-1 px-2 lg:px-2.5 py-0.5 lg:py-1 rounded-full text-[9px] lg:text-[11px] bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
+                                        <BadgeDollarSign className="w-3 h-3 lg:w-3.5 lg:h-3.5" />
                                         {feeLabel}
                                     </span>
                                 );
                             } else {
                                 // 🔴 Non-refundable
                                 return (
-                                    <span className="inline-flex items-center gap-0.5 px-1 lg:px-2 py-px lg:py-0.5 rounded-full text-[8px] lg:text-xs bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400">
-                                        <XCircle className="w-2 h-2 lg:w-3 lg:h-3" />
+                                    <span className="inline-flex items-center gap-1 px-2 lg:px-2.5 py-0.5 lg:py-1 rounded-full text-[9px] lg:text-[11px] bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
+                                        <XCircle className="w-3 h-3 lg:w-3.5 lg:h-3.5" />
                                         {t('nonRefundable')}
                                     </span>
                                 );
                             }
                         })()}
-                        <span className="inline-flex items-center px-1 lg:px-2 py-px lg:py-0.5 rounded-full text-[8px] lg:text-xs bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 capitalize">
-                            {(primary.cabinClass || 'economy').replace('_', ' ')}
+                        <span className="inline-flex items-center gap-1 px-2 lg:px-2.5 py-0.5 lg:py-1 rounded-full text-[9px] lg:text-[11px] bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
+                            {cabinLabel(primary.cabinClass)}
                         </span>
                         {offer.alternatives && offer.alternatives.length > 0 && (
-                            <span className="inline-flex items-center gap-0.5 px-1 lg:px-2 py-px lg:py-0.5 rounded-full text-[9px] lg:text-xs bg-indigo-600 text-white font-normal animate-pulse shadow-sm shadow-indigo-500/50">
-                                <BadgeDollarSign className="w-2 h-2 lg:w-3 lg:h-3" />
+                            <span className="inline-flex items-center gap-1 px-2 lg:px-2.5 py-0.5 lg:py-1 rounded-full text-[9px] lg:text-[11px] bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
+                                <BadgeDollarSign className="w-3 h-3 lg:w-3.5 lg:h-3.5" />
                                 {t('brandsAvailable', { count: offer.alternatives.length + 1 })}
                             </span>
                         )}
-                        {primary.aircraft && (
-                            <span className="inline-flex items-center gap-0.5 px-1 lg:px-2 py-px lg:py-0.5 rounded-full text-[9px] lg:text-xs bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400">
-                                <Plane className="w-2 h-2 lg:w-3 lg:h-3" />
-                                {primary.aircraft}
-                            </span>
-                        )}
+                        
                         {offer.seatsRemaining != null && offer.seatsRemaining > 0 && (
                             <span className={`inline-flex items-center gap-0.5 px-1 lg:px-2 py-px lg:py-0.5 rounded-full text-[9px] lg:text-xs font-normal border ${offer.seatsRemaining <= 3
                                     ? 'bg-red-50 dark:bg-red-500/10 border-red-200 dark:border-red-800 text-red-600 dark:text-red-400'
@@ -365,7 +246,7 @@ export const FlightCard: React.FC<FlightCardProps> = ({ offer, index = 0, onSele
                                         ? 'bg-amber-50 dark:bg-amber-500/10 border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-400'
                                         : 'bg-emerald-50 dark:bg-emerald-500/10 border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-400'
                                 }`}>
-                                <Users className="w-2 h-2 lg:w-3 lg:h-3" />
+                                <Users className="w-3 h-3 lg:w-3.5 lg:h-3.5" />
                                 {offer.seatsRemaining <= 3
                                     ? t('onlySeatsLeft', { count: offer.seatsRemaining })
                                     : offer.seatsRemaining <= 6
@@ -374,13 +255,59 @@ export const FlightCard: React.FC<FlightCardProps> = ({ offer, index = 0, onSele
                             </span>
                         )}
                     </div>
+                    </div>
+
+                    {/* ─── Route summary — the OUTBOUND leg only ───
+                        The offer's totals sum both directions of a round trip and so
+                        describe a journey nobody takes. Everything here is that leg's. */}
+                    <div className="flex items-start justify-between gap-1 lg:gap-3">
+                        <div className="flex w-[34%] shrink-0 flex-col gap-0.5 sm:w-[26%]">
+                            <span className="text-lg lg:text-2xl font-semibold leading-tight text-slate-900 dark:text-white">
+                                {formatTimeIn(primary.departure.time, locale)}
+                            </span>
+                            <span className="text-[9px] lg:text-[11px] text-slate-400 dark:text-slate-500">
+                                {t('departing')}
+                            </span>
+                            <span className="text-[11px] lg:text-[13px] leading-snug text-slate-800 dark:text-slate-200">
+                                {departureAirport}
+                            </span>
+                        </div>
+
+                        <div className="flex min-w-0 flex-1 flex-col items-center gap-1 px-1 pt-1.5 lg:px-2">
+                            <span className="text-center text-[10px] lg:text-[12px] text-slate-400 dark:text-slate-500">
+                                {t('totalFlightDuration')}
+                                <span className="ml-1 font-semibold text-slate-900 dark:text-white">
+                                    {formatDurationLong(outboundDurationMins)}
+                                </span>
+                            </span>
+                            <div className="w-full border-t border-dotted border-blue-300 dark:border-blue-800/60" />
+                            <span className="text-center text-[10px] lg:text-[12px] text-slate-400 dark:text-slate-500">
+                                {t('stopsLabel')}
+                                <span className="ml-1 font-semibold text-slate-900 dark:text-white">
+                                    {t('stopCountTitle', { count: outboundStops })}
+                                </span>
+                            </span>
+                        </div>
+
+                        <div className="flex w-[34%] shrink-0 flex-col items-end gap-0.5 text-right sm:w-[26%]">
+                            <span className="text-lg lg:text-2xl font-semibold leading-tight text-slate-900 dark:text-white">
+                                {formatTimeIn(outboundLast?.arrival?.time, locale)}
+                            </span>
+                            <span className="text-[9px] lg:text-[11px] text-slate-400 dark:text-slate-500">
+                                {t('arrivingAt')}
+                            </span>
+                            <span className="text-[11px] lg:text-[13px] leading-snug text-slate-700 dark:text-slate-200">
+                                {arrivalAirport}
+                            </span>
+                        </div>
+                    </div>
                   </div>
 
                   {/* ─── Expand Toggle ─── */}
                   {offer.segments.length > 1 && (
                       <button
                           onClick={() => setExpanded(!expanded)}
-                          className="flex items-center gap-0.5 px-3 lg:px-4 pb-1.5 text-[10px] lg:text-xs text-indigo-600 dark:text-indigo-400 hover:text-indigo-500 transition-colors"
+                          className="flex items-center gap-1 px-4 lg:px-6 pb-4 lg:pb-6 text-[10px] lg:text-xs text-slate-800 dark:text-slate-200 hover:text-slate-950 dark:hover:text-white transition-colors"
                       >
                           {expanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
                           {expanded ? t('hideDetails') : (offer.alternatives && offer.alternatives.length > 0 ? t('compareOptions', { count: offer.alternatives.length + 1 }) : t('showAllSegments'))}
@@ -399,16 +326,16 @@ export const FlightCard: React.FC<FlightCardProps> = ({ offer, index = 0, onSele
                           >
                           {/* Alternatives / Brands Section */}
                           {offer.alternatives && offer.alternatives.length > 0 && (
-                              <div className="bg-slate-50/50 dark:bg-slate-800/20 px-2.5 lg:px-5 py-3 border-b border-slate-100 dark:border-slate-800">
+                              <div className="bg-slate-50/50 dark:bg-slate-800/20 px-4 lg:px-6 py-4 border-b border-slate-100 dark:border-slate-800">
                                   <h4 className="text-[11px] font-normal text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
-                                      <BadgeDollarSign className="w-3.5 h-3.5 text-indigo-500" />
+                                      <BadgeDollarSign className="w-3.5 h-3.5 text-blue-500" />
                                       {t('availableFareOptions')}
                                   </h4>
                                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
                                       {/* Current main offer as one of the options */}
-                                      <div className="flex flex-col p-2.5 rounded-lg border-2 border-indigo-500 bg-white dark:bg-slate-900 shadow-sm">
+                                      <div className="flex flex-col p-2.5 rounded-lg border-2 border-blue-500 bg-white dark:bg-slate-900 shadow-sm">
                                           <div className="flex justify-between items-start mb-1">
-                                              <span className="text-[11px] font-normal text-indigo-600 dark:text-indigo-400 px-1.5 py-0.5 bg-indigo-50 dark:bg-indigo-900/30 rounded uppercase">
+                                              <span className="text-[11px] font-normal text-blue-600 dark:text-blue-400 px-1.5 py-0.5 bg-blue-50 dark:bg-blue-900/30 rounded uppercase">
                                                   {offer.brandedFare?.brandName || offer.brandedFare?.fareType || t('standard')}
                                               </span>
                                               <span className="text-xs font-normal text-slate-900 dark:text-white">
@@ -420,7 +347,7 @@ export const FlightCard: React.FC<FlightCardProps> = ({ offer, index = 0, onSele
                                           </p>
                                           <button
                                               disabled
-                                              className="mt-auto py-1 px-3 rounded bg-indigo-600 text-white text-[10px] font-normal opacity-50 cursor-default"
+                                              className="mt-auto py-1 px-3 rounded bg-blue-600 text-white text-[10px] font-normal opacity-50 cursor-default"
                                           >
                                               {t('currentlySelected')}
                                           </button>
@@ -428,7 +355,7 @@ export const FlightCard: React.FC<FlightCardProps> = ({ offer, index = 0, onSele
 
                                       {/* Alternatives */}
                                       {offer.alternatives.map((alt) => (
-                                          <div key={alt.offerId} className="flex flex-col p-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 hover:border-indigo-300 transition-colors">
+                                          <div key={alt.offerId} className="flex flex-col p-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 hover:border-blue-300 transition-colors">
                                               <div className="flex justify-between items-start mb-1">
                                                   <span className="text-[11px] font-normal text-slate-600 dark:text-slate-300 px-1.5 py-0.5 bg-slate-100 dark:bg-slate-800 rounded uppercase">
                                                       {alt.brandedFare?.brandName || alt.brandedFare?.fareType || t('option')}
@@ -445,7 +372,7 @@ export const FlightCard: React.FC<FlightCardProps> = ({ offer, index = 0, onSele
                                                       e.stopPropagation();
                                                       onSelect?.(alt);
                                                   }}
-                                                  className="mt-auto py-1 px-3 rounded bg-slate-100 dark:bg-slate-800 hover:bg-indigo-600 hover:text-white text-slate-700 dark:text-slate-300 text-[10px] font-normal transition-colors"
+                                                  className="mt-auto py-1 px-3 rounded bg-slate-100 dark:bg-slate-800 hover:bg-blue-600 hover:text-white text-slate-700 dark:text-slate-300 text-[10px] font-normal transition-colors"
                                               >
                                                   {t('selectFare', { fare: alt.brandedFare?.brandName || alt.brandedFare?.fareType || t('thisFare') })}
                                               </button>
@@ -456,25 +383,8 @@ export const FlightCard: React.FC<FlightCardProps> = ({ offer, index = 0, onSele
                           )}
 
                           {/* Flight Detail Segments */}
-                          <div className="px-2.5 lg:px-5 pb-2 lg:pb-4 space-y-0.5 lg:space-y-1">
-                              {routeIndices.map((idx, routeIndex) => {
-                                  const legSegments = legGroups[idx];
-                                  if (!legSegments || legSegments.length === 0) return null;
-
-                                  let label = t('legLabel', { number: routeIndex + 1 });
-                                  if (routeIndices.length === 2) {
-                                      label = routeIndex === 0 ? t('outbound') : t('return');
-                                  }
-
-                                  return (
-                                      <div className="pt-3" key={idx}>
-                                          <div className="text-[11px] font-normal text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">
-                                              {label}
-                                          </div>
-                                          {legSegments.map((seg, i) => <SegmentRow key={`${idx}-${i}`} segment={seg} t={t} locale={locale} />)}
-                                      </div>
-                                  );
-                              })}
+                          <div className="px-4 lg:px-6 py-4 lg:py-6 space-y-0.5 lg:space-y-1">
+                              <FlightItineraryDetails offer={offer} />
                           </div>
                           </motion.div>
                       )}
@@ -482,7 +392,7 @@ export const FlightCard: React.FC<FlightCardProps> = ({ offer, index = 0, onSele
                 </div>
 
                 {/* ─── Price + CTA (right) ─── */}
-                <div className="relative flex flex-row lg:flex-col items-center lg:items-end justify-between lg:justify-between gap-1 lg:gap-1.5 lg:w-[180px] px-3 py-1.5 lg:py-3 lg:px-4 lg:border-l border-t lg:border-t-0 border-slate-100 dark:border-slate-800">
+                <div className="relative flex flex-row lg:flex-col items-center lg:items-center justify-between lg:justify-between gap-1 lg:gap-1.5 lg:w-[180px] p-4 lg:p-6 lg:border-l border-t lg:border-t-0 border-slate-100 dark:border-slate-800">
                     {/* Heart button — desktop only, inline */}
                     <div className="hidden lg:flex justify-end w-full mb-1 relative z-10">
                         <SaveButton
@@ -498,19 +408,21 @@ export const FlightCard: React.FC<FlightCardProps> = ({ offer, index = 0, onSele
                         />
                     </div>
 
-                    <div className="lg:text-right">
-                        <div className="text-xs lg:text-lg font-normal text-slate-900 dark:text-white leading-tight">
-                            {formatPrice(offer.price.pricePerAdult, offer.price.currency, targetCurrency)}<span className="text-[8px] lg:text-xs text-slate-400 dark:text-slate-500">{t('perPersonShort')}</span>
-                        </div>
-                        <div className="text-[9px] lg:text-xs text-slate-400 dark:text-slate-500">
-                            {t('includesTaxesFees')}
-                        </div>
+                    {/* The design states the fare to the cent. formatPrice rounds every
+                        other price in the app, hotels included, and stays as it is. */}
+                    <div className="lg:text-center">
+                        <span className="text-base lg:text-2xl font-semibold text-slate-900 dark:text-white leading-tight">
+                            {formatPriceWithCents(offer.price.pricePerAdult, offer.price.currency, targetCurrency)}
+                        </span>
+                        <span className="ml-1 text-[9px] lg:text-xs text-slate-400 dark:text-slate-500">
+                            {t('feesIncluded')}
+                        </span>
                     </div>
 
                     <div className="flex items-center gap-2 lg:mt-auto">
                         <button
                             onClick={() => onSelect?.(offer)}
-                            className="px-4 lg:px-6 py-1 lg:py-2 rounded-full lg:rounded-lg lg:w-auto bg-blue-600 hover:bg-blue-700 text-white font-normal text-[10px] lg:text-sm transition-colors flex items-center justify-center gap-1 shrink-0"
+                            className="px-5 lg:px-8 py-1.5 lg:py-2 rounded-full lg:rounded-md bg-blue-600 hover:bg-blue-700 text-white font-medium text-[11px] lg:text-sm transition-colors flex items-center justify-center gap-1 shrink-0"
                         >
                             {t('select')}
                             <ArrowRight className="w-3 h-3 lg:w-4 lg:h-4" />

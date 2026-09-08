@@ -190,7 +190,8 @@ export function parseDuffelOffer(offer: any, cabinClassFallback?: string) {
                 duration: parseDuffelDuration(seg.duration),
                 stops: 0,
                 aircraft: seg.aircraft?.name,
-                cabinClass: seg.passengers?.[0]?.cabin_class || cabinClassFallback
+                cabinClass: seg.passengers?.[0]?.cabin_class || cabinClassFallback,
+                baggage: segmentBaggage(seg)
             });
         });
     });
@@ -256,25 +257,31 @@ export function parseDuffelOffer(offer: any, cabinClassFallback?: string) {
  * Distinguishes "no free bag" (quantity 0 — a fact worth showing) from "the airline
  * told us nothing" (returns undefined, and the badge is omitted rather than guessed).
  */
+function segmentBaggage(seg: any): { carryOnBags: number; checkedBags: number } | undefined {
+    const bags = seg?.passengers?.[0]?.baggages;
+    if (!Array.isArray(bags)) return undefined;
+
+    let carryOnBags = 0;
+    let checkedBags = 0;
+    for (const bag of bags) {
+        const qty = Number(bag?.quantity) || 0;
+        if (bag?.type === 'carry_on') carryOnBags += qty;
+        else if (bag?.type === 'checked') checkedBags += qty;
+    }
+    return { carryOnBags, checkedBags };
+}
+
 function extractBaggageAllowance(offer: any): { carryOnBags?: number; checkedBags?: number } | undefined {
     let carryOn: number | null = null;
     let checked: number | null = null;
 
     for (const slice of offer.slices ?? []) {
         for (const seg of slice.segments ?? []) {
-            const bags = seg.passengers?.[0]?.baggages;
-            if (!Array.isArray(bags)) continue;
+            const bags = segmentBaggage(seg);
+            if (!bags) continue;
 
-            let segCarryOn = 0;
-            let segChecked = 0;
-            for (const bag of bags) {
-                const qty = Number(bag?.quantity) || 0;
-                if (bag?.type === 'carry_on') segCarryOn += qty;
-                else if (bag?.type === 'checked') segChecked += qty;
-            }
-
-            carryOn = carryOn === null ? segCarryOn : Math.min(carryOn, segCarryOn);
-            checked = checked === null ? segChecked : Math.min(checked, segChecked);
+            carryOn = carryOn === null ? bags.carryOnBags : Math.min(carryOn, bags.carryOnBags);
+            checked = checked === null ? bags.checkedBags : Math.min(checked, bags.checkedBags);
         }
     }
 

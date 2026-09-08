@@ -744,6 +744,10 @@
       "nameIcao": "请使用英文字母（例如：Jose，而非 José）",
       "phoneDigitsOnly": "电话号码只能包含数字",
       "phoneRequired": "请输入电话号码"
+    },
+    "itinerary": {
+      "outbound": "去程",
+      "return": "回程"
     }
   },
   "flights": {
@@ -752,26 +756,24 @@
       "bagsCount": "{count} 件行李",
       "bestValue": "最佳价值",
       "brandsAvailable": "{count} 个品牌可选",
-      "carryOnBags": "{count, plural, =0 {无手提行李} other {# 件手提行李}}",
+      "carryOnBags": "{count, plural, =0 {无随身行李} other {随身行李 # 件}}",
       "checkedBags": "{count, plural, =0 {无托运行李} other {# 件托运行李}}",
       "compareOptions": "比较 {count} 个选项",
       "currentlySelected": "当前已选",
       "direct": "直飞",
       "freeCancellation": "免费取消",
       "hideDetails": "隐藏详情",
-      "includesTaxesFees": "含税费",
       "legLabel": "第{number}段",
       "moreSegments": "+ {count} 个",
       "operatedBy": "由 {airline} 执飞",
       "partiallyOperatedBy": "部分航段由 {airline} 执飞",
       "noBag": "无行李",
-      "nonRefundable": "不可退款",
+      "nonRefundable": "24 小时后不可退款",
       "nonstop": "直飞",
       "onlySeatsLeft": "仅剩 {count} 个座位！",
       "option": "选项",
       "outbound": "去程",
       "perPerson": "每人",
-      "perPersonShort": "/人",
       "refundableFee": "可退款（预计费用：{fee}）",
       "refundableFeesMayApply": "可退款（可能收取费用）",
       "return": "返程",
@@ -787,7 +789,13 @@
       "stops": "次中转",
       "stopsCount": "{count}次中转",
       "thisFare": "此票价",
-      "viewDeal": "查看优惠"
+      "viewDeal": "查看优惠",
+      "departing": "出发",
+      "arrivingAt": "抵达",
+      "totalFlightDuration": "总飞行时长",
+      "stopsLabel": "经停：",
+      "stopCountTitle": "{count, plural, =0 {直飞} other {经停 # 次}}",
+      "feesIncluded": "含费用"
     },
     "filtersPanel": {
       "airlines": "航空公司",
@@ -863,6 +871,16 @@
       },
       "missingInformation": "缺少信息",
       "selectField": "请选择{field}"
+    },
+    "itinerary": {
+      "departFrom": "出发",
+      "arriveAt": "抵达",
+      "flightDuration": "飞行时长",
+      "outbound": "去程",
+      "return": "回程",
+      "legLabel": "第 {number} 段",
+      "layoverLabel": "中转",
+      "layoverValue": "在 {airport} 中转 {duration}"
     }
   },
   "footer": {

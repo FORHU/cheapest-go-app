@@ -856,6 +856,10 @@
       "nameIcao": "영문자만 입력해 주세요 (예: Jose, José 불가)",
       "phoneDigitsOnly": "전화번호는 숫자만 입력해 주세요",
       "phoneRequired": "전화번호를 입력해 주세요"
+    },
+    "itinerary": {
+      "outbound": "가는 편",
+      "return": "오는 편"
     }
   },
   "flights": {
@@ -871,19 +875,17 @@
       "direct": "직항",
       "freeCancellation": "무료 취소",
       "hideDetails": "상세 정보 숨기기",
-      "includesTaxesFees": "세금 및 수수료 포함",
       "legLabel": "{number}번째 구간",
       "moreSegments": "+ {count} 더",
       "operatedBy": "{airline} 운항",
       "partiallyOperatedBy": "일부 구간 {airline} 운항",
       "noBag": "수하물 없음",
-      "nonRefundable": "환불 불가",
+      "nonRefundable": "24시간 이후 환불 불가",
       "nonstop": "직항",
       "onlySeatsLeft": "{count}석만 남음!",
       "option": "옵션",
       "outbound": "가는 편",
       "perPerson": "1인당",
-      "perPersonShort": "/1인",
       "refundableFee": "환불 가능 (예상 수수료: {fee})",
       "refundableFeesMayApply": "환불 가능 (수수료가 부과될 수 있음)",
       "return": "오는 편",
@@ -899,7 +901,13 @@
       "stops": "회 경유",
       "stopsCount": "{count}회 경유",
       "thisFare": "이 요금",
-      "viewDeal": "요금 보기"
+      "viewDeal": "요금 보기",
+      "departing": "출발",
+      "arrivingAt": "도착",
+      "totalFlightDuration": "총 비행 시간",
+      "stopsLabel": "경유:",
+      "stopCountTitle": "{count, plural, =0 {직항} other {경유 #회}}",
+      "feesIncluded": "수수료 포함"
     },
     "filtersPanel": {
       "airlines": "항공사",
@@ -975,6 +983,16 @@
       },
       "missingInformation": "정보가 부족합니다",
       "selectField": "{field}을(를) 선택해 주세요"
+    },
+    "itinerary": {
+      "departFrom": "출발",
+      "arriveAt": "도착",
+      "flightDuration": "비행 시간",
+      "outbound": "가는 편",
+      "return": "오는 편",
+      "legLabel": "구간 {number}",
+      "layoverLabel": "경유",
+      "layoverValue": "{airport}에서 {duration}"
     }
   },
   "footer": {
