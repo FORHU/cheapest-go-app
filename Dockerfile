@@ -1,13 +1,21 @@
 # 1. Base Image
 FROM node:24-alpine AS base
 WORKDIR /app
-RUN corepack enable && corepack prepare pnpm@latest --activate
+# Pinned, not @latest. An unpinned toolchain means the image can change behaviour
+# with no commit to this repo — which is exactly how this broke: pnpm 10 began
+# failing on undecided dependency build scripts, and `@latest` picked it up.
+# Keep this in step with the pnpm the lockfile was produced by.
+RUN corepack enable && corepack prepare pnpm@10.32.1 --activate
 ENV PNPM_HOME="/pnpm"
 ENV PATH="$PNPM_HOME:$PATH"
 
 # 2. Dependencies
 FROM base AS deps
-COPY package.json pnpm-lock.yaml ./
+# pnpm-workspace.yaml carries onlyBuiltDependencies / ignoredBuiltDependencies.
+# Without it pnpm sees every dependency build script as undecided and refuses to
+# continue, which is why this built locally — where the file is present — and
+# failed in Docker, where it was never copied.
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 RUN pnpm install --frozen-lockfile --ignore-scripts
 
 # 3. Builder
