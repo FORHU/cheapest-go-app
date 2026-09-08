@@ -1,57 +1,66 @@
-# Deploy CheapestGo to production.
+# Deploy AirangGo — the Korean white-label of CheapestGo.
 #
-# Flow: docker build -> push to ECR -> SSM RunCommand writes the runtime env file,
-# pulls the image, restarts the app and its cron sidecar.
-# NEXT_PUBLIC_* is inlined at build time (Next.js client + many server routes),
-# so those values are build args as well as runtime env.
+# Same codebase, same RDS, same suppliers as production. Differs only in brand env
+# vars and locale, so this workflow is deploy-production.yml with brand build args
+# and no cron sidecar: the operational jobs run once, on the CheapestGo box, against
+# the shared database. Running them here too would double every scheduled job.
 #
 # ---------------------------------------------------------------------------
-# Two containers, one image repository:
-#   - CONTAINER_NAME      cheapestgo        port 3000, the app
-#   - CRON_CONTAINER_NAME cheapestgo-cron   --network host, runs docker/cron/crontab
-# The sidecar is rebuilt and recreated on every deploy so the schedule on the box is
-# always the crontab in this commit. It reaches the app on localhost:3000 rather than
-# the public URL, because /api/internal/* is not meant to be called from outside.
+#   CONTAINER_NAME  geomeego     the container is NOT renamed — see below
+#   CONTAINER_PORT  3001         published on the host; the app listens on 3000 inside
+#   ENV_FILE_PATH   e.g. /opt/airanggo/.env
 #
-# No --platform: the instances are x86 and the runner is x86, so a native build
-# matches. Do not copy an arm64 build arg from another repo without checking the
-# instance type — an arch mismatch fails at container start, not at build.
+# AirangGo was GeomeeGo until the 2026-09 rebrand. The brand VALUES below are the new
+# name; the infrastructure names are not, and must not be renamed here alone:
+#
+#   secrets.*_GEOMEEGO   named in GitHub settings — renaming the reference without
+#                        renaming the secret resolves to empty and deploys a broken
+#                        container
+#   --name geomeego      the running container; the stop/rm below target that name,
+#                        so changing one without the other leaves two containers
+#                        contesting port 3001
 #
 # ---------------------------------------------------------------------------
 # One-time AWS setup:
 #
-# 1. IAM role for this repo (OIDC). Trust:
+# 1. IAM role for this repo (OIDC). Trust — the SAME subject as production, because
+#    both brands deploy from the one environment:
 #      aud = sts.amazonaws.com
 #      sub = repo:FORHU/cheapest-go-app:environment:production
-#    Permissions: ECR push/pull on the repository below; ssm:SendCommand on
-#      arn:aws:ssm:REGION::document/AWS-RunShellScript and the instance ARN;
+#    Permissions: ECR push/pull on BOTH repositories; ssm:SendCommand on
+#      arn:aws:ssm:REGION::document/AWS-RunShellScript and both instance ARNs;
 #      plus ssm:ListCommands / ListCommandInvocations / GetCommandInvocation.
 #
-# 2. Instance role: AmazonSSMManagedInstanceCore + ECR pull on the repository.
-#    Without the first, SSM cannot reach the box and this workflow cannot run.
+# 2. Instance role: AmazonSSMManagedInstanceCore + ECR pull.
 #
 # ---------------------------------------------------------------------------
-# Environment: production
+# Environment: production — shared with CheapestGo, not a separate one.
 #
-# Variables (non-secret):
-#   AWS_REGION            e.g. ap-southeast-1
-#   ECR_REPOSITORY        e.g. cheapestgo
-#   EC2_TARGET_TAG_KEY    Name
-#   EC2_TARGET_TAG_VALUE  production-cheapestgo
-#   CONTAINER_PORT        e.g. 3000
-#   ENV_FILE_PATH         e.g. /opt/cheapestgo/.env
+# 41 of this workflow's 45 secrets are identical to production's: the database, Stripe,
+# every supplier key. A second environment would mean re-entering all 41 by hand and
+# rotating each in two places forever, with the failure mode being a silent drift
+# nobody notices until one brand is authenticating with a stale key.
 #
-# Secrets: AWS_DEPLOY_ROLE_ARN plus the 43 runtime values listed in the deploy job.
+# So the brand is distinguished by variable NAME, the same way the existing secrets
+# already are — the _GEOMEEGO suffix is historical and matches its neighbours rather
+# than the current brand name. Renaming it means renaming every sibling at once.
 #
-# NOTE ON SECRETS: the runtime env is base64-encoded into the SSM command, which
-# means those values are retrievable from SSM command history and CloudTrail by
-# anyone with ssm:GetCommandInvocation on this account. That is acceptable for a
-# repo whose variables are all public; ours are not. Moving the env file to an SSM
-# Parameter Store SecureString the instance reads for itself would remove that
-# exposure and is the intended follow-up.
+# Variables (non-secret) read by this workflow:
+#   AWS_REGION                     shared with production
+#   EC2_TARGET_TAG_KEY             shared with production — Name
+#   ECR_REPOSITORY_GEOMEEGO        the AirangGo repository
+#   EC2_TARGET_TAG_VALUE_GEOMEEGO  production-airanggo
+#   CONTAINER_PORT_GEOMEEGO        3001
+#   ENV_FILE_PATH_GEOMEEGO         e.g. /opt/airanggo/.env
+#
+# Secrets: AWS_DEPLOY_ROLE_ARN (shared) plus the runtime values in the deploy job.
+#
+# NOTE ON SECRETS: as in deploy-production.yml, the runtime env is base64-encoded into
+# the SSM command and is therefore retrievable from SSM command history and CloudTrail.
+# Moving it to an SSM Parameter Store SecureString is the intended follow-up.
 # ---------------------------------------------------------------------------
 
-name: Deploy to Production
+name: Deploy AirangGo
 
 on:
   push:
@@ -63,12 +72,11 @@ permissions:
   contents: read
 
 concurrency:
-  group: deploy-production
+  group: deploy-airanggo
   cancel-in-progress: false
 
 env:
-  CONTAINER_NAME: cheapestgo
-  CRON_CONTAINER_NAME: cheapestgo-cron
+  CONTAINER_NAME: geomeego
 
 jobs:
   ci:
@@ -90,7 +98,7 @@ jobs:
     environment: production
     env:
       AWS_REGION: ${{ vars.AWS_REGION }}
-      ECR_REPOSITORY: ${{ vars.ECR_REPOSITORY }}
+      ECR_REPOSITORY: ${{ vars.ECR_REPOSITORY_GEOMEEGO }}
     outputs:
       image_tag: ${{ steps.meta.outputs.image_tag }}
     steps:
@@ -113,50 +121,48 @@ jobs:
 
       - name: Require public build args
         env:
-          NEXT_PUBLIC_SITE_URL: ${{ secrets.NEXT_PUBLIC_SITE_URL }}
-          NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY }}
+          SITE_URL: ${{ secrets.NEXT_PUBLIC_SITE_URL_GEOMEEGO }}
+          BRAND_EMAIL: ${{ secrets.NEXT_PUBLIC_BRAND_EMAIL_GEOMEEGO }}
         run: |
           set -euo pipefail
           MISSING=""
           require_env() { if [[ -z "$2" ]]; then MISSING="${MISSING} $1"; fi; }
-          require_env NEXT_PUBLIC_SITE_URL "$NEXT_PUBLIC_SITE_URL"
-          require_env NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY "$NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY"
+          require_env NEXT_PUBLIC_SITE_URL_GEOMEEGO "$SITE_URL"
+          require_env NEXT_PUBLIC_BRAND_EMAIL_GEOMEEGO "$BRAND_EMAIL"
           if [[ -n "$MISSING" ]]; then
             echo "Missing required secrets:${MISSING}" >&2
             exit 1
           fi
 
-      - name: Build and push app image
+      # Brand identity is inlined at build time — NEXT_PUBLIC_* reaches the client
+      # bundle, and the Dockerfile also promotes each to a runtime ENV, so the image
+      # carries its own brand even before the env file is written.
+      #
+      # Asset filenames are case-sensitive on the build container:
+      #   Airanggo_transparent.png (lowercase g) vs AirangGo.png (capital G).
+      - name: Build and push image
         env:
           ECR_REGISTRY: ${{ steps.ecr-login.outputs.registry }}
           IMAGE_TAG: ${{ steps.meta.outputs.image_tag }}
         run: |
           set -euo pipefail
           docker build \
+            --build-arg NEXT_PUBLIC_BRAND_NAME="AirangGo" \
+            --build-arg NEXT_PUBLIC_LOCALE="ko" \
+            --build-arg NEXT_PUBLIC_DEFAULT_CURRENCY="KRW" \
+            --build-arg NEXT_PUBLIC_DEFAULT_COUNTRY="KR" \
+            --build-arg NEXT_PUBLIC_SITE_URL="${{ secrets.NEXT_PUBLIC_SITE_URL_GEOMEEGO }}" \
+            --build-arg NEXT_PUBLIC_BRAND_EMAIL="${{ secrets.NEXT_PUBLIC_BRAND_EMAIL_GEOMEEGO }}" \
+            --build-arg NEXT_PUBLIC_BRAND_FAVICON="/Airang_Fav.png" \
+            --build-arg NEXT_PUBLIC_BRAND_LOGO="/Airanggo_transparent.png" \
+            --build-arg NEXT_PUBLIC_BRAND_LOGO_DARK="/AirangGo.png" \
             --build-arg NEXT_PUBLIC_MAPBOX_TOKEN="${{ secrets.NEXT_PUBLIC_MAPBOX_TOKEN }}" \
             --build-arg NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY="${{ secrets.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY }}" \
-            --build-arg NEXT_PUBLIC_SITE_URL="${{ secrets.NEXT_PUBLIC_SITE_URL }}" \
             --tag "$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" \
             --tag "$ECR_REGISTRY/$ECR_REPOSITORY:latest" \
             .
           docker push "$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
           docker push "$ECR_REGISTRY/$ECR_REPOSITORY:latest"
-
-      # The sidecar runs the operational jobs in docker/cron/crontab — ticket polling,
-      # orphaned-order cleanup, email retries, session and cache expiry, destination
-      # cache fills. Same repository, distinct tag: no second repo or variable needed.
-      - name: Build and push cron sidecar
-        env:
-          ECR_REGISTRY: ${{ steps.ecr-login.outputs.registry }}
-          IMAGE_TAG: ${{ steps.meta.outputs.image_tag }}
-        run: |
-          set -euo pipefail
-          docker build \
-            --tag "$ECR_REGISTRY/$ECR_REPOSITORY:cron-$IMAGE_TAG" \
-            --tag "$ECR_REGISTRY/$ECR_REPOSITORY:cron-latest" \
-            ./docker/cron
-          docker push "$ECR_REGISTRY/$ECR_REPOSITORY:cron-$IMAGE_TAG"
-          docker push "$ECR_REGISTRY/$ECR_REPOSITORY:cron-latest"
 
   deploy:
     name: Deploy via SSM
@@ -165,7 +171,7 @@ jobs:
     environment: production
     env:
       AWS_REGION: ${{ vars.AWS_REGION }}
-      ECR_REPOSITORY: ${{ vars.ECR_REPOSITORY }}
+      ECR_REPOSITORY: ${{ vars.ECR_REPOSITORY_GEOMEEGO }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -185,18 +191,18 @@ jobs:
         env:
           ECR_REGISTRY: ${{ steps.ecr-login.outputs.registry }}
           IMAGE_TAG: ${{ needs.build-and-push.outputs.image_tag }}
-          CONTAINER_PORT: ${{ vars.CONTAINER_PORT }}
-          ENV_FILE_PATH: ${{ vars.ENV_FILE_PATH }}
+          CONTAINER_PORT: ${{ vars.CONTAINER_PORT_GEOMEEGO }}
+          ENV_FILE_PATH: ${{ vars.ENV_FILE_PATH_GEOMEEGO }}
           TAG_KEY: ${{ vars.EC2_TARGET_TAG_KEY }}
-          TAG_VALUE: ${{ vars.EC2_TARGET_TAG_VALUE }}
+          TAG_VALUE: ${{ vars.EC2_TARGET_TAG_VALUE_GEOMEEGO }}
           V_DATABASE_URL: ${{ secrets.DATABASE_URL }}
           V_DATABASE_URL_UNPOOLED: ${{ secrets.DATABASE_URL_UNPOOLED }}
           V_DATABASE_SSL: ${{ secrets.DATABASE_SSL }}
-          V_NEXT_PUBLIC_SITE_URL: ${{ secrets.NEXT_PUBLIC_SITE_URL }}
+          V_NEXT_PUBLIC_SITE_URL: ${{ secrets.NEXT_PUBLIC_SITE_URL_GEOMEEGO }}
           V_DUFFEL_ACCESS_TOKEN: ${{ secrets.DUFFEL_ACCESS_TOKEN }}
           V_STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
           V_NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY }}
-          V_STRIPE_WEBHOOK_SECRET: ${{ secrets.STRIPE_WEBHOOK_SECRET }}
+          V_STRIPE_WEBHOOK_SECRET: ${{ secrets.STRIPE_WEBHOOK_SECRET_GEOMEEGO }}
           V_TRAVELGATEX_API_KEY: ${{ secrets.TRAVELGATEX_API_KEY }}
           V_TRAVELGATEX_CODE: ${{ secrets.TRAVELGATEX_CODE }}
           V_TRAVELGATEX_SUPPLIER: ${{ secrets.TRAVELGATEX_SUPPLIER }}
@@ -212,7 +218,7 @@ jobs:
           V_GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
           V_GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
           V_RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
-          V_NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION: ${{ secrets.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION }}
+          V_NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION: ${{ secrets.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION_GEOMEEGO }}
           V_FOURSQUARE_SERVICE_API_KEY: ${{ secrets.FOURSQUARE_SERVICE_API_KEY }}
           V_FLIGHT_MARKUP_PERCENTAGE: ${{ secrets.FLIGHT_MARKUP_PERCENTAGE }}
           V_HOTEL_MARKUP_PERCENTAGE: ${{ secrets.HOTEL_MARKUP_PERCENTAGE }}
@@ -236,7 +242,6 @@ jobs:
           set -euo pipefail
 
           IMAGE="$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
-          CRON_IMAGE="$ECR_REGISTRY/$ECR_REPOSITORY:cron-$IMAGE_TAG"
 
           MISSING=""
           require_env() { if [[ -z "$2" ]]; then MISSING="${MISSING} $1"; fi; }
@@ -254,18 +259,23 @@ jobs:
 
           NL=$'\n'
           ENV_CONTENT=""
-          # Empty values are skipped rather than written blank: an env key set to the
-          # empty string reads as configured-but-empty, which is how a missing secret
-          # becomes a runtime failure far from its cause.
           append_env() { if [[ -n "$2" ]]; then ENV_CONTENT="${ENV_CONTENT}${1}=${2}${NL}"; fi; }
 
           append_env NODE_ENV production
-          # 3000 is the port the app listens on INSIDE the container, always. CONTAINER_PORT
-          # is the host port it is published on, which differs per brand (AirangGo uses 3001
-          # on a shared box). Setting PORT from CONTAINER_PORT would make the app listen on
-          # the host port inside the container, leaving the published mapping pointing at
-          # nothing — and it would look like a healthy deploy.
+          # 3000 inside the container, always. CONTAINER_PORT (3001) is the host port,
+          # so the app must not be told to listen on it.
           append_env PORT 3000
+
+          # Brand identity. Also baked into the image as ENV by the Dockerfile; repeated
+          # here so the running brand is legible on the box without inspecting the image.
+          append_env NEXT_PUBLIC_BRAND_NAME AirangGo
+          append_env NEXT_PUBLIC_LOCALE ko
+          append_env NEXT_PUBLIC_DEFAULT_CURRENCY KRW
+          append_env NEXT_PUBLIC_DEFAULT_COUNTRY KR
+          append_env NEXT_PUBLIC_BRAND_FAVICON /Airang_Fav.png
+          append_env NEXT_PUBLIC_BRAND_LOGO /Airanggo_transparent.png
+          append_env NEXT_PUBLIC_BRAND_LOGO_DARK /AirangGo.png
+
           append_env DATABASE_URL "$V_DATABASE_URL"
           append_env DATABASE_URL_UNPOOLED "$V_DATABASE_URL_UNPOOLED"
           append_env DATABASE_SSL "$V_DATABASE_SSL"
@@ -330,18 +340,6 @@ jobs:
             -p ${CONTAINER_PORT}:3000 \
             --env-file ${ENV_FILE_PATH} \
             ${IMAGE}
-
-          docker pull ${CRON_IMAGE}
-          docker stop ${CRON_CONTAINER_NAME} >/dev/null 2>&1 || true
-          docker rm ${CRON_CONTAINER_NAME} >/dev/null 2>&1 || true
-          docker run -d \
-            --name ${CRON_CONTAINER_NAME} \
-            --restart unless-stopped \
-            --network host \
-            --env-file ${ENV_FILE_PATH} \
-            -e APP_URL=http://localhost:${CONTAINER_PORT} \
-            ${CRON_IMAGE}
-
           docker image prune -f
           EOF
 
@@ -364,7 +362,7 @@ jobs:
         env:
           COMMAND_ID: ${{ steps.send-command.outputs.command_id }}
           TAG_KEY: ${{ vars.EC2_TARGET_TAG_KEY }}
-          TAG_VALUE: ${{ vars.EC2_TARGET_TAG_VALUE }}
+          TAG_VALUE: ${{ vars.EC2_TARGET_TAG_VALUE_GEOMEEGO }}
         run: |
           set -euo pipefail
 

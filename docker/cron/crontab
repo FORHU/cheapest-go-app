@@ -30,3 +30,8 @@
 0 3 * * * curl -sf -X GET $APP_URL/api/cron/cache-cleanup       -H "Authorization: Bearer $CRON_SECRET" -o /dev/null
 0 4 * * * curl -sf -X GET $APP_URL/api/cron/cleanup-sessions    -H "Authorization: Bearer $CRON_SECRET" -o /dev/null
 0 6 * * * curl -sf -X GET $APP_URL/api/cron/check-price-alerts  -H "Authorization: Bearer $CRON_SECRET" -o /dev/null
+
+# ── Monthly (UTC) ─────────────────────────────────────────────────────────────
+# On the 5th, after Duffel issues its invoice (by the 3rd), so the reported
+# Platform Cost can be checked against the real bill rather than standing alone.
+0 5 5 * * curl -sf -X GET $APP_URL/api/cron/platform-cost-reconciliation -H "Authorization: Bearer $CRON_SECRET" -o /dev/null

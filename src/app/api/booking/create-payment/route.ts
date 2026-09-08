@@ -3,7 +3,7 @@ import { getAuthenticatedUser } from '@/lib/server/auth';
 import { stripe } from '@/lib/stripe/server';
 import { rateLimit } from '@/lib/server/rate-limit';
 import { checkCsrf } from '@/lib/server/csrf';
-import { applyMarkup, toStripeAmount, HOTEL_MARKUP, BUNDLE_MARKUP } from '@/lib/pricing';
+import { applyMarkup, toStripeAmount, HOTEL_MARKUP_SPEC } from '@/lib/pricing';
 import { convertCurrencyStrict, refreshExchangeRates } from '@/lib/currency';
 import { resolveHotelChargeBase } from '@/lib/bookings/hotelChargeBase';
 import { createAdminClient } from '@/utils/postgres/admin';
@@ -155,14 +155,19 @@ export async function POST(req: NextRequest) {
 
         const baseInChargeCurrency = resolved.base;
 
-        // Apply platform markup — bundle rate (4%) when paired with a flight, standalone rate (5%) otherwise.
-        // See src/lib/pricing.ts for full strategy documentation.
+        // Apply platform markup. One rate, bundled or not: bundling was never a discount
+        // line, only a swap to a lower rate, and the gap it spent is now an earmarked
+        // provision against TravelgateX's incoming connection fee. See ADR-0031.
         // Markup is applied to the server-derived base, never to the client's figure.
-        const markupRate = bundleFlightId ? BUNDLE_MARKUP : HOTEL_MARKUP;
-        const pricing = applyMarkup(baseInChargeCurrency, markupRate);
+        //
+        // No flat-fee conversion here: hotels carry no per-booking supplier fee to
+        // recover, so HOTEL_MARKUP_SPEC.flat is zero and the base's currency does not
+        // matter. Should a flat component ever be added — when TravelgateX starts
+        // billing — it is USD-denominated and must be converted into `currency` first.
+        const pricing = applyMarkup(baseInChargeCurrency, HOTEL_MARKUP_SPEC, 0);
         const stripeAmount = toStripeAmount(pricing.chargedPrice, currency);
 
-        console.log(`[create-payment] Hotel pricing: quote=${resolved.quoteGross} ${resolved.quoteCurrency} → base=${pricing.originalPrice} ${currency}, charged=${pricing.chargedPrice}, markup=${(markupRate * 100).toFixed(0)}%${bundleFlightId ? ' (bundle)' : ' (standalone)'}`);
+        console.log(`[create-payment] Hotel pricing: quote=${resolved.quoteGross} ${resolved.quoteCurrency} → base=${pricing.originalPrice} ${currency}, charged=${pricing.chargedPrice}, markup=${(pricing.markupRate * 100).toFixed(1)}%${pricing.capped ? ' (CAPPED)' : ''}${bundleFlightId ? ' (bundled with a flight — no longer discounted)' : ''}`);
 
         // Create Stripe PaymentIntent (automatic capture — refund on LiteAPI failure)
         // Include amount+currency in the hash so a price change (prebook refresh) produces a new key
@@ -196,7 +201,7 @@ export async function POST(req: NextRequest) {
                 type: bundleFlightId ? 'hotel_bundle' : 'hotel',
                 bundleFlightId: bundleFlightId || '',
                 originalPrice: String(pricing.originalPrice),
-                markupRate: String(markupRate),
+                markupRate: String(pricing.markupRate),
                 markupAmount: String(pricing.markupAmount),
             },
             description: `${bookingReference} · ${propertyName || 'Hotel'} — ${roomName || 'Room'}`,

@@ -1,5 +1,14 @@
 import { describe, it, expect, vi } from 'vitest';
 import { resolveHotelChargeBase, type StoredQuote } from './hotelChargeBase';
+import { HOTEL_FX_DISPLAY_TOLERANCE as TOL } from '@/lib/pricing';
+
+// Fixtures are derived from TOL rather than written as literals. They used to be
+// sized to a hard-coded 0.5%, so measuring Stripe at 4.4% — which forced the
+// tolerance down to 0.3% — broke them. INSIDE and ABSORB sit two-thirds of the
+// way to the limit, clear of the boundary in either direction.
+const INSIDE = 100 * (1 + TOL * 2 / 3);
+const ABSORB = 100 * (1 - TOL * 2 / 3);
+const AT_LIMIT = 100 * (1 - TOL * 0.97);
 
 const HOUR = 3600_000;
 const NOW = Date.UTC(2026, 7, 16, 12, 0, 0);
@@ -58,11 +67,11 @@ describe('resolveHotelChargeBase', () => {
     });
 
     it('allows small drift inside the tolerance', () => {
-        // 0.3% off — browser and server on either side of an hourly rate refresh.
-        const res = resolveHotelChargeBase(quote(), 100.3, 'USD', convert, NOW);
+        // Inside the band — browser and server on either side of an hourly refresh.
+        const res = resolveHotelChargeBase(quote(), INSIDE, 'USD', convert, NOW);
         expect(res.ok).toBe(true);
         if (!res.ok) return;
-        expect(res.drift).toBeCloseTo(0.003, 4);
+        expect(res.drift).toBeCloseTo(TOL * 2 / 3, 6);
     });
 
     it('rejects drift just outside the tolerance', () => {
@@ -73,17 +82,17 @@ describe('resolveHotelChargeBase', () => {
     });
 
     it('never bills above the displayed price, absorbing the difference', () => {
-        // Server says 100, browser displayed 99.7 — charge the 99.7 the customer saw.
-        const res = resolveHotelChargeBase(quote(), 99.7, 'USD', convert, NOW);
+        // Server says 100, browser displayed less — charge what the customer saw.
+        const res = resolveHotelChargeBase(quote(), ABSORB, 'USD', convert, NOW);
         expect(res.ok).toBe(true);
         if (!res.ok) return;
-        expect(res.base).toBeCloseTo(99.7, 10);
-        expect(res.absorbed).toBeCloseTo(0.3, 10);
+        expect(res.base).toBeCloseTo(ABSORB, 10);
+        expect(res.absorbed).toBeCloseTo(100 - ABSORB, 10);
     });
 
     it('passes on a lower price when the server figure is below the displayed one', () => {
-        // Server says 100, browser displayed 100.3 — the customer gets 100, not 100.3.
-        const res = resolveHotelChargeBase(quote(), 100.3, 'USD', convert, NOW);
+        // Server says 100, browser displayed more — the customer gets 100.
+        const res = resolveHotelChargeBase(quote(), INSIDE, 'USD', convert, NOW);
         expect(res.ok).toBe(true);
         if (!res.ok) return;
         expect(res.base).toBeCloseTo(100, 10);
@@ -91,11 +100,12 @@ describe('resolveHotelChargeBase', () => {
     });
 
     it('absorbs at most the tolerance, so a booking cannot be sold at a loss', () => {
-        // The largest absorbable gap is bounded by the tolerance itself.
-        const res = resolveHotelChargeBase(quote(), 99.51, 'USD', convert, NOW);
+        // The largest absorbable gap is bounded by the tolerance itself — which is
+        // the point of the tolerance: it is sized to stay inside the hotel margin.
+        const res = resolveHotelChargeBase(quote(), AT_LIMIT, 'USD', convert, NOW);
         expect(res.ok).toBe(true);
         if (!res.ok) return;
-        expect(res.absorbed).toBeLessThanOrEqual(100 * 0.005 + 1e-9);
+        expect(res.absorbed).toBeLessThanOrEqual(100 * TOL + 1e-9);
     });
 
     it('rejects a missing quote', () => {

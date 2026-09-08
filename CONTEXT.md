@@ -231,7 +231,8 @@ _Avoid_: conflating with **Supplier Currency** — the two differ on most bookin
 _Avoid_: treating a converted display price as a quote.
 
 **Display Currency** — what a price is *shown* in across the storefront. Converted server-side, so the figure on screen is the same one that will be charged; the browser renders prices, it does not compute them.
-_Avoid_: converting prices in the browser — two independent conversions drift apart and put the customer in front of a price-changed prompt. _Avoid_: using the admin's own currency selector (a per-viewer display preference) as if it were the **Reporting Currency**.
+The guarantee is about **conversion**, not about the total: a displayed price is the supplier's price in the viewer's currency, and the markup is added at booking by deliberate choice, so the checkout total is knowingly higher than the search figure.
+_Avoid_: converting prices in the browser — two independent conversions drift apart and put the customer in front of a price-changed prompt. _Avoid_: using the admin's own currency selector (a per-viewer display preference) as if it were the **Reporting Currency**. _Avoid_: reading the search figure as an all-in quote, or the gap at checkout as a fault — it is the markup, and it widens as the markup grows.
 
 **Nightly Rate** — a room's price for one night. What the storefront advertises and what a guest compares between hotels, so it is the figure on a search card and on a room card. Always derived, never quoted: suppliers price stays, not nights.
 _Avoid_: showing a **Stay Total** with a "per night" label — the same number means something different to a supplier and to a guest, and the guest reads it as the cheaper of the two.
@@ -244,11 +245,20 @@ _Avoid_: recomputing a past period at today's rate — a closed month never move
 
 **Locked Rate** — the exchange rate captured alongside a payment, and the evidence for its **Booked Amount**. Stored with the booking rather than looked up later, because a rate that was not recorded at the time cannot be recovered.
 
+**Price Promise** — the competitive claim the brand name makes, and it is measured **against other online travel agencies** — Trip.com, Agoda, Expedia, Kiwi — never against an airline's or hotel's own website. Chosen because the fares Duffel and OTV expose carry no commission a direct channel has to pay, so beating direct is not a promise that can be kept; beating an OTA is.
+_Avoid_: reading it as a promise to beat a **Home-Market Fare** — a local consolidator on domestic inventory sits outside the claim, and the glossary already records CheapestGo landing multiples above one. _Avoid_: treating a metasearch results row as the benchmark — those compare a raw number, which a per-booking flat fee will always lose on cheap fares.
+
 **Gross Booking Value** — the total customer-facing value of bookings taken, including the supplier's share. A volume measure: it says how much money moved through the platform, not how much the platform earned.
 _Avoid_: calling this "revenue" — most of it belongs to the airline or hotel.
 
-**Net Revenue** — what CheapestGo keeps: **Gross Booking Value** less supplier cost. Equal to the markup, which is deliberately sized to cover Stripe fees rather than to earn a margin.
-_Avoid_: "profit" — the markup is a cost-recovery buffer, and labelling it profit implies a margin the pricing model does not intend to make.
+**Platform Cost** — the third-party cost of operating a booking over and above what the airline or hotel is owed, and the closed set the markup exists to recover: payment processing (Stripe) plus a supplier platform's own fees. Deliberately excludes hosting, monitoring, mapping and every other running cost of the business — those scale with the product rather than with bookings, so recovering them through a fare would be a margin under another name.
+_Avoid_: treating **Platform Cost** as equal to supplier cost — the fare or room rate owed to the provider is not a platform fee. _Avoid_: assuming every supplier carries one. It is presently a **flights-only** cost: Duffel bills FORHU monthly for order and content fees, whereas the OTV monthly invoice is the room cost itself drawn on a credit line, not a fee on top of it.
+_Avoid_: reading it as a single percentage. It is **part flat and part proportional** — Duffel bills a fixed fee on each paid order plus a share of the order's value, and Stripe does the same shape again — so a recovery expressed only as a percentage is too thin on cheap fares and too fat on expensive ones.
+_Avoid_: assuming a cancelled booking costs nothing. Both suppliers charge on the order as created; the customer's refund returns the markup in full, so a cancellation is a **Platform Cost** with no recovery attached to it.
+_Avoid_: conflating the **estimated** and **recorded** figures. A booking has to be priced before it is charged, so the markup is set against an estimate; what each party actually took is only knowable afterwards, from Stripe's balance transaction and the supplier's monthly invoice. Both are **Platform Cost**, and the gap between them is the thing worth watching — a pricing model that is never compared against the recorded figure will keep charging a number that stopped being right without anyone learning of it.
+
+**Net Revenue** — what CheapestGo keeps: **Gross Booking Value** less supplier cost. Equal to the markup, which is deliberately sized to recover **Platform Cost** rather than to earn a margin.
+_Avoid_: "profit" — the markup is a cost-recovery buffer, and labelling it profit implies a margin the pricing model does not intend to make. _Avoid_: reading a positive **Net Revenue** as money kept — the monthly platform invoices are settled out of it and are not visible on any single booking.
 
 **Reversal** — the accounting undo of a refunded booking, carried out at that booking's own **Locked Rate** so the sale and the refund cancel to nothing. The customer is returned exactly what they paid in their **Charge Currency**, so no gain or loss arises to report.
 _Avoid_: revaluing a refund at the current rate — that manufactures an FX movement out of a transaction that had none.

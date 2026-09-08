@@ -5,6 +5,7 @@ import { confirmAndSaveTgxBooking } from '@/lib/server/bookings';
 import { stripe } from '@/lib/stripe/server';
 import { isBookingReference } from '@/lib/bookingReference';
 import { createNotification } from '@/lib/server/admin/notify';
+import { extractStripeFee, STRIPE_FEE_EXPAND, type RecordedStripeFee } from '@/lib/stripe/fee';
 
 export const maxDuration = 120;
 import { sendBookingConfirmationEmail } from '@/lib/server/email';
@@ -53,9 +54,20 @@ export async function POST(req: NextRequest) {
         // not be able to choose the identifier a payment is filed under.
         let bookingReference: string | undefined;
 
+        // What Stripe actually took, read off the balance transaction rather than
+        // estimated from STRIPE_RATE. Empty when there is no PaymentIntent to read.
+        let stripeFee: RecordedStripeFee = {};
+
         // ── Stripe payment verification (when paymentIntentId is present) ──
         if (body.paymentIntentId) {
-            const pi = await stripe.paymentIntents.retrieve(body.paymentIntentId);
+            // Expanded so the real Stripe fee can be recorded alongside the booking.
+            // This retrieve already had to happen for the reference, so the fee costs
+            // no extra API call — and `STRIPE_RATE` in pricing.ts is only an estimate
+            // of it, never checked against anything until now. See ADR-0031.
+            const pi = await stripe.paymentIntents.retrieve(body.paymentIntentId, {
+                expand: STRIPE_FEE_EXPAND,
+            });
+            stripeFee = extractStripeFee(pi);
             bookingReference = isBookingReference(pi.metadata?.bookingReference)
                 ? pi.metadata.bookingReference
                 : undefined;
@@ -129,6 +141,16 @@ export async function POST(req: NextRequest) {
 
         if (result.success) {
             revalidatePath('/trips');
+
+            // Record what Stripe really took, merged into provider_metadata rather than
+            // threaded through the two INSERT sites in bookings.ts. Additive and
+            // fire-and-forget: a booking that exists must never be jeopardised by a
+            // reporting figure. Flights get the same number via the financial ledger.
+            if (result.data?.bookingId && stripeFee.stripeFee !== undefined) {
+                recordHotelStripeFee(result.data.bookingId, stripeFee)
+                    .catch(e => console.error('[confirm] Stripe fee record failed:', e));
+            }
+
             createNotification(
                 'Hotel Booking Confirmed',
                 `Booking ${result.data?.bookingId || ''} confirmed for ${user.email}.`,
@@ -242,4 +264,45 @@ export async function POST(req: NextRequest) {
             { status: 500 }
         );
     }
+}
+
+/**
+ * Merge the real Stripe fee into a hotel booking's `provider_metadata`.
+ *
+ * Merged rather than written as a column, so no migration is needed — and merged
+ * rather than replaced, so it cannot clobber the supplier references
+ * (`supplierRef`, `hotelRef`, `hotelCode`, `clientReference`) that cancellation
+ * depends on and that are written into the same jsonb at INSERT time.
+ *
+ * `STRIPE_RATE` in pricing.ts prices the booking from an estimate; this is what
+ * was actually taken. Keeping both is what makes the estimate checkable. See
+ * ADR-0031.
+ */
+async function recordHotelStripeFee(bookingId: string, fee: RecordedStripeFee): Promise<void> {
+    const svc = createAdminClient();
+    const { data, error: readErr } = await svc
+        .from('bookings')
+        .select('provider_metadata')
+        .eq('booking_id', bookingId)
+        .maybeSingle();
+
+    if (readErr || !data) {
+        console.error('[confirm] Stripe fee: booking not readable:', readErr?.message ?? 'no row');
+        return;
+    }
+
+    // provider_metadata has been double-encoded in the past (see travelgatex-cancel),
+    // so a string here is parsed rather than spread character by character.
+    let existing = data.provider_metadata as unknown;
+    if (typeof existing === 'string') {
+        try { existing = JSON.parse(existing); } catch { existing = {}; }
+    }
+
+    const { error } = await svc
+        .from('bookings')
+        .update({ provider_metadata: { ...(existing as object ?? {}), ...fee } })
+        .eq('booking_id', bookingId);
+
+    if (error) console.error('[confirm] Stripe fee: update failed:', error.message);
+    else console.log(`[confirm] Stripe fee recorded for ${bookingId}: ${fee.stripeFee} ${fee.stripeFeeCurrency} (${((fee.stripeFeeRate ?? 0) * 100).toFixed(2)}%)`);
 }

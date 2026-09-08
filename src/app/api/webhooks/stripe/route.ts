@@ -7,6 +7,8 @@ import { awaitBookingRow } from '@/lib/server/flights/await-booking-row';
 import { env } from '@/utils/env';
 import { issueTicket } from '@/lib/server/flights/issue-ticket';
 import { createBooking } from '@/lib/server/flights/create-booking';
+import { fromStripeAmount } from '@/lib/pricing';
+import { fetchStripeFee } from '@/lib/stripe/fee';
 
 // Must cover the whole chain this handler drives: create-booking (itself allowed
 // 120s) plus issue-ticket. At 30s the platform killed the request mid-booking,
@@ -160,7 +162,7 @@ export async function POST(req: NextRequest) {
                 if (bookingData.bookingId) {
                     logFlightPaymentEvent(supabase, {
                         bookingId: bookingData.bookingId,
-                        amount: pi.amount / 100,
+                        amount: fromStripeAmount(pi.amount, pi.currency || 'usd'),
                         currency: (pi.currency || 'usd').toUpperCase(),
                         provider: 'mystifly_v2',
                         transactionId: pi.id,
@@ -289,7 +291,7 @@ export async function POST(req: NextRequest) {
                 if (bookingData.bookingId) {
                     logFlightPaymentEvent(supabase, {
                         bookingId: bookingData.bookingId,
-                        amount: pi.amount / 100,
+                        amount: fromStripeAmount(pi.amount, pi.currency || 'usd'),
                         currency: (pi.currency || 'usd').toUpperCase(),
                         provider: 'duffel',
                         transactionId: pi.id,
@@ -522,6 +524,22 @@ async function fireBookingConfirmationEmail(
 /**
  * Insert a payment event into the booking_financial_events ledger.
  * Fire-and-forget — must not throw.
+ *
+ * ## Why this records the real Stripe fee
+ *
+ * `STRIPE_RATE` in pricing.ts is an *estimate* — it has to be, because the markup
+ * is computed before a charge exists. But it was never checked against anything.
+ * It carried the US domestic-card rate (2.9%) while Charge Currency is KRW, USD
+ * and PHP, so most customers plausibly cost nearer 5.4% once the international-card
+ * and conversion surcharges land, and nothing anywhere would have said so.
+ *
+ * Stripe reports the exact fee per charge on the balance transaction, for free.
+ * Recording it here turns the estimate into something reconcilable: the model
+ * still prices from `STRIPE_RATE`, but the ledger knows what was actually taken,
+ * so drift becomes visible instead of arriving as a surprise invoice. See ADR-0031.
+ *
+ * The fee is best-effort. A booking must never fail, or lose its ledger row,
+ * because a reporting figure could not be fetched.
  */
 async function logFlightPaymentEvent(
     supabase: any,
@@ -535,6 +553,8 @@ async function logFlightPaymentEvent(
     },
 ) {
     try {
+        const fee = await fetchStripeFee(params.transactionId);
+
         const { error } = await supabase
             .from('booking_financial_events')
             .insert({
@@ -544,7 +564,7 @@ async function logFlightPaymentEvent(
                 currency: params.currency,
                 provider: params.provider,
                 transaction_id: params.transactionId,
-                metadata: params.metadata || {},
+                metadata: { ...(params.metadata || {}), ...fee },
             });
 
         if (error) {

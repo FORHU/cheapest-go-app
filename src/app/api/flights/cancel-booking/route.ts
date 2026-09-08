@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
+import { fromStripeAmount } from '@/lib/pricing';
 import { env } from "@/utils/env";
 
 export const maxDuration = 60;
@@ -353,7 +354,7 @@ export async function POST(req: NextRequest) {
                     console.log(`[cancel-booking:stripe] PI is uncaptured (Mystifly pre-ticket) — cancelling PI instead of refunding`);
                     await stripe.paymentIntents.cancel(paymentIntentId!, { cancellation_reason: 'requested_by_customer' });
                     refunded = true;
-                    actualStripeRefundAmount = piAmount / 100;
+                    actualStripeRefundAmount = fromStripeAmount(piAmount, piCurrency);
                     actualStripeCurrency = piCurrency.toUpperCase();
                     console.log(`[cancel-booking] Uncaptured PI cancelled (Mystifly pre-ticket): ${paymentIntentId}`);
                     await supabase
@@ -413,7 +414,7 @@ export async function POST(req: NextRequest) {
 
                 if (stripeRefund.status === 'succeeded' || stripeRefund.status === 'pending') {
                     refunded = true;
-                    actualStripeRefundAmount = refundAmountCents / 100;
+                    actualStripeRefundAmount = fromStripeAmount(refundAmountCents, piCurrency);
                     actualStripeCurrency = piCurrency.toUpperCase();
                     const refundedLog = {
                         at: new Date().toISOString(),
@@ -491,7 +492,7 @@ export async function POST(req: NextRequest) {
         if (paymentIntentId) {
             try {
                 const pi = cachedPi ?? await stripe.paymentIntents.retrieve(paymentIntentId);
-                merchantTotalPaid = pi.amount / 100;
+                merchantTotalPaid = fromStripeAmount(pi.amount, pi.currency);
                 merchantCurrency = pi.currency.toUpperCase();
 
                 if (refundAmount > 0) {
