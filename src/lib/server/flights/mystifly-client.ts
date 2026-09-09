@@ -272,8 +272,10 @@ export function normalizeMystiflyV2Results(raw: any, maxOffers = 50): any[] {
             let checkedBags = 0;
 
             const seenItineraryRefs: string[] = [];
-            let outboundDurationMin = 0;
-            let outboundSegCount = 0;
+            // Per slice, not per trip: a row shows one leg, and `stops` has to mean the
+            // same thing here as it does for Duffel or the maxStops filter mixes them up.
+            const sliceDurationMins: number[] = [];
+            const sliceSegCounts: number[] = [];
 
             for (const odo of (itin.OriginDestinations ?? [])) {
                 const seg = data.FlightSegmentList?.find((s: any) => s.SegmentRef === odo.SegmentRef);
@@ -283,7 +285,6 @@ export function normalizeMystiflyV2Results(raw: any, maxOffers = 50): any[] {
                 const itinRef = odo.ItineraryRef ?? '';
                 if (!seenItineraryRefs.includes(itinRef)) seenItineraryRefs.push(itinRef);
                 const itineraryIndex = seenItineraryRefs.indexOf(itinRef);
-                const isOutbound = itineraryIndex === 0;
 
                 const airlineCode = seg.OperatingCarrierCode ?? seg.MarketingCarriercode ?? '';
                 const flightNum = seg.OperatingFlightNumber ?? seg.MarketingFlightNumber ?? '';
@@ -292,10 +293,8 @@ export function normalizeMystiflyV2Results(raw: any, maxOffers = 50): any[] {
                 const duration = Number(seg.JourneyDuration) || calculateDuration(depTime, arrTime);
                 totalDurationMin += duration;
 
-                if (isOutbound) {
-                    outboundDurationMin += duration;
-                    outboundSegCount++;
-                }
+                sliceDurationMins[itineraryIndex] = (sliceDurationMins[itineraryIndex] ?? 0) + duration;
+                sliceSegCounts[itineraryIndex] = (sliceSegCounts[itineraryIndex] ?? 0) + 1;
 
                 const iref = data.ItineraryReferenceList?.find((i: any) => i.ItineraryRef === odo.ItineraryRef);
                 if (iref?.FareFamily && !brandName) brandName = iref.FareFamily;
@@ -324,10 +323,17 @@ export function normalizeMystiflyV2Results(raw: any, maxOffers = 50): any[] {
 
             if (!segments.length) continue;
 
-            // Stop count = outbound segments - 1 (seg.stops is unreliable in V2 API responses).
-            // Display duration uses outbound leg only (not the combined round-trip total).
-            const displayStops = outboundSegCount > 0 ? outboundSegCount - 1 : 0;
-            const displayDuration = outboundDurationMin || totalDurationMin;
+            // Stops across the whole trip — every plane change on every leg (seg.stops is
+            // unreliable in V2 API responses). Counting only the outbound made the same
+            // round trip come back as 1 here and 2 from Duffel, so maxStops filtered the
+            // two providers by different rules and checkout contradicted the search row.
+            // A consumer that wants one leg's stops reads sliceDurations' companion shape:
+            // group the segments by itineraryIndex, as the UI does.
+            const displayStops = sliceSegCounts.reduce((acc, count) => acc + Math.max(0, count - 1), 0);
+            // Per-leg elapsed time, so a row can show the duration of the leg it displays
+            // instead of a round-trip sum describing no journey anyone takes.
+            const sliceDurations = sliceSegCounts.map((_, i) => sliceDurationMins[i] ?? 0);
+            const displayDuration = sliceDurations[0] || totalDurationMin;
             // Destination and arrivalTime from the last OUTBOUND segment, not the inbound return.
             const outboundSegs = segments.filter(s => (s.itineraryIndex ?? 0) === 0);
             const firstSeg = segments[0];
@@ -350,6 +356,7 @@ export function normalizeMystiflyV2Results(raw: any, maxOffers = 50): any[] {
                 arrival_time: lastSeg.arrivalTime,
                 duration: displayDuration,
                 durationMinutes: displayDuration,
+                sliceDurations,
                 stops: displayStops,
                 remaining_seats: null,
                 checkedBags: checkedBags || undefined,

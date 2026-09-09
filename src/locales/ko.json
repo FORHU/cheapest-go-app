@@ -856,6 +856,10 @@
       "nameIcao": "영문자만 입력해 주세요 (예: Jose, José 불가)",
       "phoneDigitsOnly": "전화번호는 숫자만 입력해 주세요",
       "phoneRequired": "전화번호를 입력해 주세요"
+    },
+    "itinerary": {
+      "outbound": "가는 편",
+      "return": "오는 편"
     }
   },
   "flights": {
@@ -871,19 +875,17 @@
       "direct": "직항",
       "freeCancellation": "무료 취소",
       "hideDetails": "상세 정보 숨기기",
-      "includesTaxesFees": "세금 및 수수료 포함",
       "legLabel": "{number}번째 구간",
       "moreSegments": "+ {count} 더",
       "operatedBy": "{airline} 운항",
       "partiallyOperatedBy": "일부 구간 {airline} 운항",
       "noBag": "수하물 없음",
-      "nonRefundable": "환불 불가",
+      "nonRefundable": "24시간 이후 환불 불가",
       "nonstop": "직항",
       "onlySeatsLeft": "{count}석만 남음!",
       "option": "옵션",
       "outbound": "가는 편",
       "perPerson": "1인당",
-      "perPersonShort": "/1인",
       "refundableFee": "환불 가능 (예상 수수료: {fee})",
       "refundableFeesMayApply": "환불 가능 (수수료가 부과될 수 있음)",
       "return": "오는 편",
@@ -899,7 +901,13 @@
       "stops": "회 경유",
       "stopsCount": "{count}회 경유",
       "thisFare": "이 요금",
-      "viewDeal": "요금 보기"
+      "viewDeal": "요금 보기",
+      "departing": "출발",
+      "arrivingAt": "도착",
+      "totalFlightDuration": "총 비행 시간",
+      "stopsLabel": "경유:",
+      "stopCountTitle": "{count, plural, =0 {직항} other {경유 #회}}",
+      "feesIncluded": "수수료 포함"
     },
     "filtersPanel": {
       "airlines": "항공사",
@@ -962,7 +970,9 @@
       "stillSearching": "아직 검색 중...",
       "takingLonger": "평소보다 검색 시간이 더 걸리고 있습니다",
       "total_count": "(총 {count}개)",
-      "tryAgain": "다시 시도"
+      "tryAgain": "다시 시도",
+      "providersUnreachable": "항공사에 연결하지 못했습니다",
+      "providersUnreachableDescription": "노선이 없는 것이 아니라 저희 측 문제입니다. 다시 검색해 주세요."
     },
     "validation": {
       "fields": {
@@ -975,6 +985,16 @@
       },
       "missingInformation": "정보가 부족합니다",
       "selectField": "{field}을(를) 선택해 주세요"
+    },
+    "itinerary": {
+      "departFrom": "출발",
+      "arriveAt": "도착",
+      "flightDuration": "비행 시간",
+      "outbound": "가는 편",
+      "return": "오는 편",
+      "legLabel": "구간 {number}",
+      "layoverLabel": "경유",
+      "layoverValue": "{airport}에서 {duration}"
     }
   },
   "footer": {
@@ -2324,7 +2344,8 @@
       "asked_for_person_out_of_hours": "상담원 연결을 요청하셨습니다. 현재는 상담 시간이 아니므로, 상담 시간이 시작되면 순서대로 답변해 드립니다.",
       "assistant_unavailable": "어시스턴트를 현재 이용할 수 없습니다. 상담원 연결을 요청하시면 담당자가 확인해 드립니다.",
       "model_failed": "처리 중 문제가 발생했습니다. 상담원 연결을 요청하시면 담당자가 확인해 드립니다.",
-      "details_needed": "담당 상담원에게 연결해 드리고자 합니다. 성함과 이메일을 남겨 주시면 담당자가 이어서 도와드립니다."
+      "details_needed": "담당 상담원에게 연결해 드리고자 합니다. 성함과 이메일을 남겨 주시면 담당자가 이어서 도와드립니다.",
+      "assistant_retired": "고객지원이 담당 팀으로 이전되어 더 이상 자동으로 응답되지 않습니다. 로그인 후 다시 문의해 주시면 담당자가 확인해 드립니다."
     }
   }
 }

@@ -130,6 +130,10 @@ export interface OpenConversationResult {
  * Resuming a resolved conversation reopens it rather than starting a fresh one, so the
  * agent who picks it up sees what was already said instead of answering a question that
  * looks like it arrived without context.
+ *
+ * Either way the conversation ends up Waiting. Per ADR-0031 there is no assistant to open
+ * against and none to hand a reopened chat back to, so `ai_active` is not a state anything
+ * writes any more — new rows take the `waiting_human` DEFAULT, and a reopen names it.
  */
 export async function openConversation(input: OpenConversationInput): Promise<OpenConversationResult> {
     const sql = getSqlAdmin();
@@ -140,8 +144,15 @@ export async function openConversation(input: OpenConversationInput): Promise<Op
             return { conversation: existing, issuedGuestToken: null, created: false };
         }
         const rows = await sql.unsafe<SupportConversation[]>(
+            // `waiting_notified_at` goes back to NULL with the assignment: this is a new
+            // waiting spell and nobody has been told about it. Leaving the old mark would
+            // mean a customer answered in March and back in June queues in silence,
+            // because a ring three months ago still counts as somebody having been told.
             `UPDATE support_conversations
-                SET status = 'ai_active', assigned_admin_id = NULL, last_message_at = now()
+                SET status = 'waiting_human',
+                    assigned_admin_id = NULL,
+                    waiting_notified_at = NULL,
+                    last_message_at = now()
               WHERE id = $1
           RETURNING ${COLUMNS}`,
             [existing.id],

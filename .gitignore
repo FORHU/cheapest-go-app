@@ -47,3 +47,6 @@ OTV_STATIC_DATA.csv
 # ETG dump files
 *.zst
 hotel-dump.jsonl
+
+# Superpowers brainstorming session files
+.superpowers/

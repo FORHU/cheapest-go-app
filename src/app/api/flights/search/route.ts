@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import type { CabinClass, FlightSearchParams } from '@/types/flights';
-import { searchFlights } from '@/lib/server/flights/search-flights';
+import { searchFlightsWithStatus } from '@/lib/server/flights/search-flights';
 import { rateLimit } from '@/lib/server/rate-limit';
 import { flightSearchSchema } from '@/lib/schemas/flight';
 
@@ -132,14 +132,21 @@ export async function POST(req: NextRequest) {
         // ── Search providers in parallel (15s timeout each) ─────────────────
         // saveSearch is called inside searchFlights after the cache check,
         // so we never create an empty record that poisons the cache lookup.
-        const allOffers = await searchFlights(params);
+        const { offers: allOffers, failedProviders } = await searchFlightsWithStatus(params);
 
         // ── Apply server-side filters (if provided) ──────────────────────────
         const filters = body.filters as ServerFilters | undefined;
         const offers = applyServerFilters(allOffers, filters);
 
+        // Zero offers because every provider broke is not zero offers because nobody
+        // flies the route. Without this flag the page renders both as "No flights
+        // found", and an outage looks to the traveller like an answer.
+        const providersFailed = allOffers.length === 0 && failedProviders.length > 0;
+
         return NextResponse.json({
             success: true,
+            providersFailed,
+            failedProviders,
             data: {
                 offers,
                 totalResults: offers.length,

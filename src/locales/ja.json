@@ -742,6 +742,10 @@
       "nameIcao": "英字のみ入力してください（例：Jose、Joséは不可）",
       "phoneDigitsOnly": "電話番号は数字のみ入力してください",
       "phoneRequired": "電話番号を入力してください"
+    },
+    "itinerary": {
+      "outbound": "往路",
+      "return": "復路"
     }
   },
   "flights": {
@@ -750,26 +754,24 @@
       "bagsCount": "手荷物 {count}個",
       "bestValue": "最高の価値",
       "brandsAvailable": "{count}件のブランドあり",
-      "carryOnBags": "{count, plural, =0 {機内持ち込みなし} other {機内持ち込み #個}}",
+      "carryOnBags": "{count, plural, =0 {機内持込手荷物なし} other {機内持込手荷物 #個}}",
       "checkedBags": "{count, plural, =0 {受託手荷物なし} other {受託手荷物 #個}}",
       "compareOptions": "{count}件のオプションを比較",
       "currentlySelected": "現在選択中",
       "direct": "直行便",
       "freeCancellation": "無料キャンセル",
       "hideDetails": "詳細を隠す",
-      "includesTaxesFees": "税金・手数料込み",
       "legLabel": "区間 {number}",
       "moreSegments": "+ {count}件",
       "operatedBy": "運航: {airline}",
       "partiallyOperatedBy": "一部運航: {airline}",
       "noBag": "手荷物なし",
-      "nonRefundable": "返金不可",
+      "nonRefundable": "24時間以降は払い戻し不可",
       "nonstop": "直行便",
       "onlySeatsLeft": "残り{count}席!",
       "option": "オプション",
       "outbound": "往路",
       "perPerson": "1人あたり",
-      "perPersonShort": "/人",
       "refundableFee": "返金可 (推定手数料: {fee})",
       "refundableFeesMayApply": "返金可 (手数料がかかる場合があります)",
       "return": "復路",
@@ -785,7 +787,13 @@
       "stops": "回乗り継ぎ",
       "stopsCount": "{count}回乗り継ぎ",
       "thisFare": "この運賃",
-      "viewDeal": "料金を見る"
+      "viewDeal": "料金を見る",
+      "departing": "出発",
+      "arrivingAt": "到着",
+      "totalFlightDuration": "総飛行時間",
+      "stopsLabel": "経由:",
+      "stopCountTitle": "{count, plural, =0 {直行} other {経由 #回}}",
+      "feesIncluded": "手数料込み"
     },
     "filtersPanel": {
       "airlines": "航空会社",
@@ -848,7 +856,9 @@
       "stillSearching": "検索中...",
       "takingLonger": "通常より検索に時間がかかっています",
       "total_count": "（合計{count}件）",
-      "tryAgain": "再試行"
+      "tryAgain": "再試行",
+      "providersUnreachable": "航空会社に接続できませんでした",
+      "providersUnreachableDescription": "これは当社側の問題であり、路線がないわけではありません。もう一度検索してください。"
     },
     "validation": {
       "fields": {
@@ -861,6 +871,16 @@
       },
       "missingInformation": "情報が不足しています",
       "selectField": "{field}を選択してください"
+    },
+    "itinerary": {
+      "departFrom": "出発",
+      "arriveAt": "到着",
+      "flightDuration": "飛行時間",
+      "outbound": "往路",
+      "return": "復路",
+      "legLabel": "区間 {number}",
+      "layoverLabel": "乗り継ぎ",
+      "layoverValue": "{airport} で {duration}"
     }
   },
   "footer": {
@@ -2205,7 +2225,8 @@
       "asked_for_person_out_of_hours": "担当者への接続をご希望とのことです。現在は受付時間外のため、受付時間の開始後に順次対応いたします。",
       "assistant_unavailable": "現在アシスタントをご利用いただけません。担当者への接続をご希望いただければ、担当者が対応いたします。",
       "model_failed": "こちらで問題が発生しました。担当者への接続をご希望いただければ、担当者が対応いたします。",
-      "details_needed": "担当者におつなぎしたいと思います。お名前とメールアドレスをご記入いただければ、担当者が引き継ぎます。"
+      "details_needed": "担当者におつなぎしたいと思います。お名前とメールアドレスをご記入いただければ、担当者が引き継ぎます。",
+      "assistant_retired": "サポートは担当チームへ移管され、自動応答は行っておりません。ログインの上、あらためてお問い合わせいただければ、担当者が確認いたします。"
     }
   }
 }

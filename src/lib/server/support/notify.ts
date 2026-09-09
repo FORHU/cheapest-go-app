@@ -7,6 +7,12 @@
  *
  * Nothing here may throw. By the time it runs, the customer has already been told a person
  * is coming — a mail provider outage cannot be allowed to undo that.
+ *
+ * `notifyEscalation` and `EscalatedConversation` keep their names for now. Escalation is
+ * retired vocabulary (ADR-0031) and both are due to be renamed, but `turn.ts` and the
+ * escalate route still import them and both of those modules are about to be deleted;
+ * renaming here would mean editing files on their way out. `notifyWaitingCustomer` below
+ * is the name the new trigger goes by, and is the only entry point anything still calls.
  */
 
 export interface EscalatedConversation {
@@ -173,5 +179,79 @@ export async function notifyEscalation(
             // left to write this down, and it still must not reach the caller.
             console.error('[support/notify] could not record the failure either:', recordErr);
         }
+    }
+}
+
+/**
+ * Take the right to ring for this conversation, or report that it has already rung.
+ *
+ * One conditional UPDATE, so the decision belongs to Postgres. Reading the row, deciding,
+ * and then writing would let a customer who sends two lines a few milliseconds apart —
+ * which is the ordinary way people type — produce two doorbells: both requests read
+ * `waiting_notified_at IS NULL`, both conclude they are first, and they may not even be on
+ * the same instance for anything in this process to notice. `RETURNING` makes the claim
+ * and the answer the same statement: exactly one of them updates a row, and only that one
+ * gets a conversation back to ring for.
+ *
+ * The three conditions are the whole of the rule. Waiting and unassigned is what "nobody
+ * is coming to this" means; NULL is what "and nobody has been told" means.
+ *
+ * `getSqlAdmin` is imported here rather than at the top of the file for the same reason
+ * `record` does it: `escalationEmail` and `notifyEscalation` are pure enough to be unit
+ * tested without a database, and a static import would drag postgres.js into that test.
+ */
+async function claimWaitingRing(conversationId: string): Promise<EscalatedConversation | null> {
+    const { getSqlAdmin } = await import('@/lib/db/postgres');
+    const sql = getSqlAdmin();
+    const rows = await sql<EscalatedConversation[]>`
+        UPDATE support_conversations
+           SET waiting_notified_at = now()
+         WHERE id = ${conversationId}
+           AND status = 'waiting_human'
+           AND assigned_admin_id IS NULL
+           AND waiting_notified_at IS NULL
+        RETURNING id,
+                  guest_name        AS "guestName",
+                  guest_email       AS "guestEmail",
+                  source_brand      AS "sourceBrand",
+                  escalation_reason AS "escalationReason",
+                  user_id           AS "userId"
+    `;
+    return rows[0] ?? null;
+}
+
+/**
+ * A customer has written into a conversation nobody is coming to. Tell the team, once.
+ *
+ * This is the trigger ADR-0031 leaves behind. The doorbell used to ring on Escalation,
+ * which was an event and could only happen once; there is no Escalation any more, and a
+ * message is not that kind of event — people send three of them for one question. So
+ * `waiting_notified_at` records not whether this conversation has ever rung but whether
+ * *this waiting spell* has, and both reopen paths clear it so a customer who comes back
+ * weeks after being answered rings again.
+ *
+ * Never throws. It is started without being awaited by the message route, where an
+ * escaping rejection would be an unhandled promise rejection in the process serving every
+ * other request — and the customer's message is already stored either way.
+ */
+export async function notifyWaitingCustomer(
+    conversationId: string,
+    deps: NotifyDeps,
+): Promise<void> {
+    try {
+        if (!deps.address) {
+            // Checked before the claim, not after. A deployment that has not said who is
+            // on duty has not decided it does not want to know: spending the ring here
+            // would mean that the moment SUPPORT_NOTIFY_EMAIL is set, every customer
+            // already in the queue stays invisible for the life of their conversation.
+            return;
+        }
+
+        const claimed = await claimWaitingRing(conversationId);
+        if (!claimed) return;
+
+        await notifyEscalation(claimed, deps);
+    } catch (err) {
+        console.error('[support/notify] could not ring for a waiting customer:', err);
     }
 }

@@ -881,6 +881,10 @@
       "nameIcao": "Use English letters only (e.g. Jose instead of José)",
       "phoneDigitsOnly": "Phone number must contain digits only",
       "phoneRequired": "Phone number is required"
+    },
+    "itinerary": {
+      "outbound": "Outbound",
+      "return": "Return"
     }
   },
   "flights": {
@@ -893,26 +897,24 @@
       "bagsCount": "{count} bag(s)",
       "bestValue": "Best value",
       "brandsAvailable": "{count} brands available",
-      "carryOnBags": "{count, plural, =0 {No carry-on} one {# carry-on} other {# carry-ons}}",
+      "carryOnBags": "{count, plural, =0 {No carry-on bag} one {# carry-on bag} other {# carry-on bags}}",
       "checkedBags": "{count, plural, =0 {No checked bag} one {# checked bag} other {# checked bags}}",
       "compareOptions": "Compare {count} options",
       "currentlySelected": "Currently Selected",
       "direct": "Direct",
       "freeCancellation": "Free cancellation",
       "hideDetails": "Hide details",
-      "includesTaxesFees": "includes taxes & fees",
       "legLabel": "Leg {number}",
       "moreSegments": "+ {count} more",
       "operatedBy": "Operated by {airline}",
       "partiallyOperatedBy": "Partially operated by {airline}",
       "noBag": "No bag",
-      "nonRefundable": "Non-refundable",
+      "nonRefundable": "Non-refundable after 24 hours",
       "nonstop": "Nonstop",
       "onlySeatsLeft": "Only {count} left!",
       "option": "Option",
       "outbound": "Outbound",
       "perPerson": "per person",
-      "perPersonShort": "/person",
       "refundableFee": "Refundable (est. fee: {fee})",
       "refundableFeesMayApply": "Refundable (fees may apply)",
       "return": "Return",
@@ -928,7 +930,13 @@
       "stops": "stops",
       "stopsCount": "{count} stops",
       "thisFare": "this",
-      "viewDeal": "View"
+      "viewDeal": "View",
+      "departing": "Departing",
+      "arrivingAt": "Arriving at",
+      "totalFlightDuration": "Total Flight Duration",
+      "stopsLabel": "Stops:",
+      "stopCountTitle": "{count, plural, =0 {Nonstop} one {# Stop} other {# Stops}}",
+      "feesIncluded": "fees included"
     },
     "filtersPanel": {
       "airlines": "Airlines",
@@ -992,7 +1000,9 @@
       "stillSearching": "Still searching...",
       "takingLonger": "Search is taking longer than usual",
       "total_count": "({count} total)",
-      "tryAgain": "Try Again"
+      "tryAgain": "Try Again",
+      "providersUnreachable": "We couldn’t reach our flight partners",
+      "providersUnreachableDescription": "This is a problem on our side, not a sign that the route is unavailable. Try the search again."
     },
     "validation": {
       "fields": {
@@ -1005,6 +1015,16 @@
       },
       "missingInformation": "Missing information",
       "selectField": "Please select {field}"
+    },
+    "itinerary": {
+      "departFrom": "Depart from",
+      "arriveAt": "Arrive at",
+      "flightDuration": "Flight Duration",
+      "outbound": "Outbound",
+      "return": "Return",
+      "legLabel": "Leg {number}",
+      "layoverLabel": "Layover",
+      "layoverValue": "{duration} at {airport}"
     }
   },
   "footer": {
@@ -2670,7 +2690,8 @@
       "asked_for_person_out_of_hours": "You asked to speak to a person. The team is offline right now, so this is queued for when support hours resume.",
       "assistant_unavailable": "The assistant is unavailable at the moment. You can still ask to speak to a person and someone from the team will pick this up.",
       "model_failed": "Something went wrong on my end. You can ask to speak to a person and someone from the team will pick this up.",
-      "details_needed": "I'd like to pass you to someone from the team. Leave your name and email and they'll pick this up."
+      "details_needed": "I'd like to pass you to someone from the team. Leave your name and email and they'll pick this up.",
+      "assistant_retired": "Support has moved to our team and is no longer answered automatically. Sign in and write again and someone will pick it up."
     }
   }
 }

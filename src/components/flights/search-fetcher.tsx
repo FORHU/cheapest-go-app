@@ -15,6 +15,8 @@ import { GlobalSparkle } from '@/components/ui/GlobalSparkle';
 import { MobileBottomNav } from '@/components/common/MobileBottomNav';
 import PriceCalendar from './PriceCalendar';
 import { Suspense } from 'react';
+import { searchStateFromResponse, type SearchOutcome } from '@/lib/flights/search-state';
+import { CLIENT_SEARCH_TIMEOUT_MS, CLIENT_SLOW_SEARCH_MS } from '@/lib/flights/search-budget';
 
 // ─── City name → IATA code lookup ─────────────────────────────────────────────
 const CITY_TO_IATA: Record<string, string> = {
@@ -62,17 +64,19 @@ type SearchState =
     | { status: 'loading' }
     | { status: 'loading_slow' }
     | { status: 'needs_input'; originRaw: string; destinationRaw: string }
-    | { status: 'success'; offers: FlightOffer[] }
-    | { status: 'empty' }
     | { status: 'timeout' }
-    | { status: 'error'; message: string };
+    | SearchOutcome;
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 /** Soft warning — show "still searching" message */
-const SLOW_SEARCH_MS = 15_000;
-/** Hard client-side timeout. User sees an actionable state instead of infinite loading. */
-const SEARCH_TIMEOUT_MS = 45_000;
+const SLOW_SEARCH_MS = CLIENT_SLOW_SEARCH_MS;
+/**
+ * Hard client-side timeout. User sees an actionable state instead of infinite loading.
+ * Derived from the server's ceiling in search-budget — aborting first would throw away
+ * a slow answer the server was still willing to wait for.
+ */
+const SEARCH_TIMEOUT_MS = CLIENT_SEARCH_TIMEOUT_MS;
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -245,17 +249,10 @@ export function SearchFetcher({
                     await new Promise(r => setTimeout(r, minWait - elapsed));
                 }
 
-                if (!json.success) {
-                    setState({ status: 'error', message: json.error || 'Search failed' });
-                    return;
-                }
-
-                const offers: FlightOffer[] = json.data?.offers ?? [];
+                const next = searchStateFromResponse(json);
+                const offers: FlightOffer[] = next.status === 'success' ? next.offers : [];
                 setAllOffers(offers);
-                setState(offers.length > 0
-                    ? { status: 'success', offers }
-                    : { status: 'empty' }
-                );
+                setState(next);
 
                 // Capture cheapest price for "Continue Your Search" on the home page
                 if (offers.length > 0 && destination) {
@@ -341,6 +338,31 @@ export function SearchFetcher({
                     className="inline-block px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-full transition-colors">
                     Search with Airport Picker
                 </a>
+            </div>
+        );
+    }
+
+    // Every provider failed. Deliberately NOT the "No flights found" panel: that one
+    // makes a claim about the route, and we have not learned anything about the route.
+    if (state.status === 'provider_error') {
+        return (
+            <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-2xl p-10 text-center space-y-4">
+                <div className="text-5xl">📡</div>
+                <h2 className="text-xl font-bold text-slate-800 dark:text-white">{t('providersUnreachable')}</h2>
+                <p className="text-sm text-slate-500 dark:text-slate-400 max-w-sm mx-auto">
+                    {t('providersUnreachableDescription')}
+                </p>
+                <div className="flex gap-3 justify-center mt-2">
+                    <button
+                        onClick={() => setRetryKey(k => k + 1)}
+                        className="px-6 py-2.5 bg-amber-500 hover:bg-amber-600 text-white text-sm font-semibold rounded-full transition-colors">
+                        {t('tryAgain')}
+                    </button>
+                    <a href="/"
+                        className="px-6 py-2.5 bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-700 dark:text-white text-sm font-semibold rounded-full transition-colors">
+                        {t('newSearch')}
+                    </a>
+                </div>
             </div>
         );
     }

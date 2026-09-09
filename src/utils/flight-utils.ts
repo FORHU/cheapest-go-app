@@ -43,6 +43,46 @@ export function formatTimeIn(iso: string | undefined, locale = 'en'): string {
     return clock.markerFirst ? `${marker} ${hour12}:${minute}` : `${hour12}:${minute} ${marker}`;
 }
 
+/**
+ * The calendar day of a Local Airport Time, in the reader's locale.
+ *
+ * The date is pinned to UTC before formatting, so the digits in the string survive:
+ * building a Date from an offset-less time and formatting it anywhere else moves a
+ * 00:30 departure to the previous day for every browser east of Greenwich.
+ */
+export function formatDateIn(iso: string | undefined, locale = 'en'): string {
+    if (!iso) return '';
+    const day = Date.parse(`${iso.slice(0, 10)}T00:00:00Z`);
+    if (!Number.isFinite(day)) return '';
+    return new Date(day).toLocaleDateString(locale, {
+        timeZone: 'UTC',
+        weekday: 'short',
+        day: 'numeric',
+        month: 'short',
+    });
+}
+
+/**
+ * The full date and clock of a Local Airport Time — `Wed, Sep 23, 2026, 6:40 PM`.
+ *
+ * The date half is pinned to UTC for the same reason `formatDateIn` pins it. The clock
+ * half is delegated to `formatTimeIn` rather than formatted here, so a timeline node and
+ * the summary row above it can never disagree about what time a flight leaves.
+ */
+export function formatDateTimeIn(iso: string | undefined, locale = 'en'): string {
+    if (!iso) return '';
+    const day = Date.parse(`${iso.slice(0, 10)}T00:00:00Z`);
+    if (!Number.isFinite(day)) return '';
+    const date = new Date(day).toLocaleDateString(locale, {
+        timeZone: 'UTC',
+        weekday: 'short',
+        year: 'numeric',
+        day: 'numeric',
+        month: 'short',
+    });
+    return `${date}, ${formatTimeIn(iso, locale)}`;
+}
+
 export function formatTime(iso: string): string {
     return formatTimeIn(iso);
 }
@@ -76,6 +116,45 @@ export function formatDuration(minutes: number): string {
     const h = Math.floor(minutes / 60);
     const m = minutes % 60;
     return h > 0 ? `${h}h ${m}m` : `${m}m`;
+}
+
+/**
+ * An elapsed time written the way the itinerary timeline writes it: `08h 50m`, and
+ * `1d 01h 35m` once the journey passes a day. Zero-padded so a column of durations
+ * lines up, and days broken out because "25h 35m" makes a reader do arithmetic.
+ *
+ * Returns nothing for a duration that isn't a positive number — an absent duration is
+ * shown as absent, never as `00h 00m`.
+ */
+export function formatDurationLong(minutes: number | undefined): string {
+    if (typeof minutes !== 'number' || !Number.isFinite(minutes) || minutes <= 0) return '';
+    const pad = (n: number) => String(n).padStart(2, '0');
+    const days = Math.floor(minutes / 1440);
+    const hours = Math.floor((minutes % 1440) / 60);
+    const mins = minutes % 60;
+    const clock = `${pad(hours)}h ${pad(mins)}m`;
+    return days > 0 ? `${days}d ${clock}` : clock;
+}
+
+/**
+ * A fare stated to the cent — `$1,039.00`.
+ *
+ * `formatPrice` rounds to whole units for every price in the app, hotels included, and
+ * that stays as it is. The flight card states the exact fare, so it asks for it here
+ * rather than making every other price grow decimals.
+ */
+export function formatPriceWithCents(amount: number, currency: string, targetCurrency?: string): string {
+    const from = currency?.toUpperCase() || 'USD';
+    const to = targetCurrency?.toUpperCase() || from;
+    const displayAmount = from !== to ? convertCurrency(amount, from, to) : amount;
+    try {
+        return new Intl.NumberFormat('en-US', {
+            style: 'currency', currency: to, minimumFractionDigits: 2, maximumFractionDigits: 2,
+        }).format(displayAmount);
+    } catch {
+        const symbol = getCurrencySymbol(to);
+        return `${symbol}${displayAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    }
 }
 
 export function formatPrice(amount: number, currency: string, targetCurrency?: string): string {

@@ -2,6 +2,7 @@ import { FlightSearchParams, FlightSearch, FlightOffer, FlightResult } from "@/t
 import { searchDuffel } from "./providers/duffel";
 import { createClient } from "@/utils/postgres/server";
 import { normalizedToFlightOffer } from "@/utils/flight-utils";
+import { PROVIDER_CEILING_MS } from "@/lib/flights/search-budget";
 
 /**
  * Helper to wrap a promise with a timeout.
@@ -31,7 +32,29 @@ async function withTimeout<T>(promise: Promise<T>, ms: number, providerName: str
  * price history — it just never answers a search.
  */
 export async function searchFlights(params: FlightSearchParams): Promise<FlightOffer[]> {
-    const TIMEOUT_MS = 12000; // 12 seconds
+    return (await searchFlightsWithStatus(params)).offers;
+}
+
+export interface FlightSearchOutcome {
+    offers: FlightOffer[];
+    /**
+     * Providers that threw or blew the ceiling. An empty `offers` with a name in here
+     * is a broken search; an empty `offers` with nothing in here is a route nobody
+     * flies. The caller needs to tell those apart — presented identically, a provider
+     * outage reads to the traveller as "there are no flights", with nothing to retry.
+     */
+    failedProviders: string[];
+}
+
+/**
+ * `searchFlights` with the provider outcome attached. See {@link searchFlights} for
+ * why nothing here is served from cache.
+ */
+export async function searchFlightsWithStatus(params: FlightSearchParams): Promise<FlightSearchOutcome> {
+    // Circuit breaker for a provider that ignores its own deadline — derived from the
+    // ladder in search-budget so it can never again land ON one attempt's timeout and
+    // cut the retries off before they can deliver.
+    const TIMEOUT_MS = PROVIDER_CEILING_MS;
 
     // Create the search record up front so the results written at the end have
     // something to hang off.
@@ -55,10 +78,12 @@ export async function searchFlights(params: FlightSearchParams): Promise<FlightO
         .filter((r): r is PromiseFulfilledResult<FlightResult[]> => r.status === "fulfilled")
         .flatMap(r => r.value);
 
-    // Log failures/timeouts for observability
+    // Log failures/timeouts for observability, and keep the names for the caller.
+    const failedProviders: string[] = [];
     settlement.forEach((r, i) => {
         if (r.status === "rejected") {
             const providerName = providers[i].name;
+            failedProviders.push(providerName);
             console.error(`[Search] ${providerName} failed:`, r.reason.message || r.reason);
         }
     });
@@ -76,7 +101,10 @@ export async function searchFlights(params: FlightSearchParams): Promise<FlightO
     }
 
     // Return aggregated and unified results
-    return allResults.map(r => normalizedToFlightOffer(r, params.returnDate ? 'round-trip' : 'one-way'));
+    return {
+        offers: allResults.map(r => normalizedToFlightOffer(r, params.returnDate ? 'round-trip' : 'one-way')),
+        failedProviders,
+    };
 }
 
 

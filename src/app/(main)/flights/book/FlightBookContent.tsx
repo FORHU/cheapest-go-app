@@ -4,11 +4,13 @@ import React, { useEffect } from 'react';
 import { useTranslations } from 'next-intl';
 import { motion } from 'framer-motion';
 import { Plane, User, Mail, Loader2, CheckCircle, AlertTriangle, MapPin, PartyPopper, Info, Clock, Shield, XCircle, X, BadgeDollarSign, RefreshCw, Users, BedDouble, ArrowRight, Armchair, Luggage, Sparkles, ChevronDown } from 'lucide-react';
+import { FlightItinerarySummary } from '@/components/flights/FlightItinerarySummary';
+import { FlightItineraryDetails } from '@/components/flights/FlightItineraryDetails';
 import { useSearchParams, useRouter } from 'next/navigation';
 import BackButton from '@/components/common/BackButton';
 import StripeEmbeddedCheckout from '@/components/checkout/StripeEmbeddedCheckout';
 import { Confetti, Balloons } from '@/components/ui/Animations';
-import { formatTime, formatDuration, formatPrice } from '@/utils/flight-utils';
+import { formatPrice } from '@/utils/flight-utils';
 import { useFlightBooking } from '@/hooks/flights/useFlightBooking';
 import { useUserCurrency } from '@/stores/searchStore';
 import type { FarePolicy } from '@/types/flights';
@@ -881,28 +883,22 @@ function BookingContent() {
                     </div>
 
                     <div className="flex items-center gap-2 lg:gap-4">
-                        <div className="text-center">
-                            <div className="text-[11px] lg:text-base font-normal text-slate-900 dark:text-white">{formatTime(primary.departure.time)}</div>
-                            <div className="text-[9px] lg:text-[11px] text-slate-500 dark:text-slate-400">{primary.departure.airport}</div>
-                        </div>
-                        <div className="flex-1 flex flex-col items-center gap-0.5">
-                            <span className="text-[9px] lg:text-[11px] text-slate-400">{formatDuration(offer.totalDuration)}</span>
-                            <div className="w-full h-px bg-slate-200 dark:bg-slate-700 relative">
-                                <Plane className="w-3 h-3 text-indigo-500 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 rotate-90" />
-                            </div>
-                            <span className="text-[9px] lg:text-[11px] text-emerald-600 dark:text-emerald-400 font-normal">
-                                {offer.totalStops === 0 ? t('orderSummary.nonstop') : t('orderSummary.stops', { count: offer.totalStops })}
-                            </span>
-                        </div>
-                        <div className="text-center">
-                            <div className="text-[11px] lg:text-base font-normal text-slate-900 dark:text-white">{formatTime(last.arrival.time)}</div>
-                            <div className="text-[9px] lg:text-[11px] text-slate-500 dark:text-slate-400">{last.arrival.airport}</div>
+                        <div className="flex-1 min-w-0">
+                            <FlightItinerarySummary offer={offer} />
                         </div>
                         <div className="ml-auto text-right pl-2 lg:pl-4 border-l border-slate-200 dark:border-slate-700">
                             <div className="text-sm lg:text-lg font-normal text-slate-900 dark:text-white">{formatPrice(offer.price.total + selectedSeats.reduce((s, x) => s + x.price, 0) + selectedBags.reduce((s, b) => s + b.price, 0), offer.price.currency, targetCurrency)}</div>
                             <div className="text-[9px] lg:text-[11px] text-slate-500 dark:text-slate-400">{t('totalPrice')}</div>
                         </div>
                     </div>
+
+                    {/* The itinerary in full. This page used to show the strips above and
+                        nothing else, so the flight numbers, aircraft, terminals and layovers
+                        of the journey being paid for appeared nowhere on it. */}
+                    <div className="mt-3 lg:mt-4 pt-3 lg:pt-4 border-t border-slate-100 dark:border-slate-800">
+                        <FlightItineraryDetails offer={offer} />
+                    </div>
+
                     {offer.seatsRemaining != null && offer.seatsRemaining > 0 && (
                         <div className="mt-2 lg:mt-3 pt-2 lg:pt-3 border-t border-slate-100 dark:border-slate-800">
                             <span className={`inline-flex items-center gap-1 px-2 py-0.5 lg:py-1 rounded-full text-[9px] lg:text-[11px] font-normal border ${offer.seatsRemaining <= 3
@@ -1500,26 +1496,8 @@ function BookingContent() {
                             <h3 className="text-[10px] lg:text-xs font-normal text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-3">{t('orderSummary.title')}</h3>
 
                             {/* Flight itinerary */}
-                            <div className="flex items-center gap-2 lg:gap-4 mb-3 pb-3 border-b border-slate-100 dark:border-slate-800">
-                                <div className="text-center">
-                                    <div className="text-[11px] lg:text-sm font-normal text-slate-900 dark:text-white">{formatTime(primary.departure.time)}</div>
-                                    <div className="text-[9px] lg:text-[11px] text-slate-500">{primary.departure.airport}</div>
-                                    <div className="text-[9px] text-slate-400">{primary.departure.time?.slice(0, 10)}</div>
-                                </div>
-                                <div className="flex-1 flex flex-col items-center gap-0.5">
-                                    <span className="text-[9px] lg:text-[11px] text-slate-400">{formatDuration(offer.totalDuration)}</span>
-                                    <div className="w-full h-px bg-slate-200 dark:bg-slate-700 relative">
-                                        <Plane className="w-3 h-3 text-indigo-500 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 rotate-90" />
-                                    </div>
-                                    <span className="text-[9px] lg:text-[11px] text-slate-400">
-                                        {offer.totalStops === 0 ? t('orderSummary.nonstop') : t('orderSummary.stops', { count: offer.totalStops })}
-                                    </span>
-                                </div>
-                                <div className="text-center">
-                                    <div className="text-[11px] lg:text-sm font-normal text-slate-900 dark:text-white">{formatTime(last.arrival.time)}</div>
-                                    <div className="text-[9px] lg:text-[11px] text-slate-500">{last.arrival.airport}</div>
-                                    <div className="text-[9px] text-slate-400">{last.arrival.time?.slice(0, 10)}</div>
-                                </div>
+                            <div className="mb-3 pb-3 border-b border-slate-100 dark:border-slate-800">
+                                <FlightItinerarySummary offer={offer} />
                             </div>
 
                             {/* Meta row */}

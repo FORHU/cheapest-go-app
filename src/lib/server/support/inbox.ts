@@ -210,26 +210,32 @@ export async function agentReply(input: AgentReplyInput): Promise<SupportMessage
  * records what the Agent believed, not what the customer agreed.
  */
 /**
- * Hand a finished conversation back to the assistant when the customer writes again.
+ * Hand a finished conversation back to the queue when the customer writes again.
  *
- * Resolved is not an ending. Someone returning days later usually has a new question, so
- * the cheap path gets first look; if it turns out to be a continuation, the model hands
- * over and it is back in the queue within one turn.
+ * Resolved is not an ending. Someone returning days later usually has a new question, and
+ * per ADR-0031 there is no assistant to give it to first — it goes straight to
+ * `waiting_human`, the same place a fresh conversation is born into.
  *
  * The old assignment is dropped with it — leaving it in place would keep the conversation
- * on an Agent's list while the assistant is the one answering.
+ * on an Agent's list while it is sitting back in the unassigned queue.
+ *
+ * `waiting_notified_at` is dropped for the same reason: this is a new waiting spell, and
+ * the doorbell has not rung for it. Keeping the old mark would mean a customer answered in
+ * March and back in June is queued in silence, because a ring that happened three months
+ * ago still counts as somebody having been told.
  *
  * Returns whether anything changed. A conversation that was never resolved is untouched:
- * a customer writing to an Agent mid-conversation must not be bounced back to the model,
+ * a customer writing to an Agent mid-conversation must not be bounced back to the queue,
  * because Escalation is one-way.
  */
 export async function reopenIfResolved(conversationId: string): Promise<boolean> {
     const sql = getSqlAdmin();
     const rows = await sql<{ id: string }[]>`
         UPDATE support_conversations
-           SET status = 'ai_active',
+           SET status = 'waiting_human',
                assigned_admin_id = NULL,
-               escalation_reason = NULL
+               escalation_reason = NULL,
+               waiting_notified_at = NULL
          WHERE id = ${conversationId}
            AND status = 'resolved'
         RETURNING id

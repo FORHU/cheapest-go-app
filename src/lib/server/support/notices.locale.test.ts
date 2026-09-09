@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { SUPPORT_NOTICE, type SupportNoticeCode } from './responder';
+import { SUPPORT_NOTICE, type SupportNoticeCode } from './notices';
 import en from '@/locales/en.json';
 import ja from '@/locales/ja.json';
 import ko from '@/locales/ko.json';

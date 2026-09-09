@@ -1,6 +1,7 @@
 import { FlightResult, FlightSearchParams } from "@/types/flights";
 import { env } from "@/utils/env";
 import { logApiCall } from "@/lib/server/api-logger";
+import { PROVIDER_ATTEMPT_TIMEOUT_MS, PROVIDER_RETRY_BACKOFF_MS } from "@/lib/flights/search-budget";
 
 /**
  * Duffel provider adapter.
@@ -59,7 +60,10 @@ export async function searchDuffel(params: FlightSearchParams): Promise<FlightRe
     const startMs = Date.now();
 
     // ── Fix 2 & 3: Retry on 429 (rate limit) and 500 (transient error) ─────────
-    const MAX_RETRIES = 2;
+    // The ladder is sized in @/lib/flights/search-budget so the orchestrator's
+    // ceiling and the browser's abort are derived from it rather than guessed
+    // alongside it — see the note there on the 12s-versus-12s race.
+    const MAX_RETRIES = PROVIDER_RETRY_BACKOFF_MS.length;
     let lastStatus = 0;
     let lastErrMsg = '';
 
@@ -73,7 +77,7 @@ export async function searchDuffel(params: FlightSearchParams): Promise<FlightRe
                     "Content-Type": "application/json"
                 },
                 body: JSON.stringify(body),
-                signal: AbortSignal.timeout(12000),
+                signal: AbortSignal.timeout(PROVIDER_ATTEMPT_TIMEOUT_MS),
             });
 
             lastStatus = response.status;
@@ -92,7 +96,7 @@ export async function searchDuffel(params: FlightSearchParams): Promise<FlightRe
 
                 // 500 — transient server error, retry after brief backoff
                 if (response.status === 500 && attempt < MAX_RETRIES) {
-                    const waitMs = 2000 * (attempt + 1); // 2s, 4s
+                    const waitMs = PROVIDER_RETRY_BACKOFF_MS[attempt];
                     console.warn(`[Duffel] Server error (500). Retrying in ${waitMs}ms (attempt ${attempt + 1}/${MAX_RETRIES})`);
                     await new Promise(r => setTimeout(r, waitMs));
                     continue;
@@ -127,7 +131,7 @@ export async function searchDuffel(params: FlightSearchParams): Promise<FlightRe
 
             // Retry timeouts (500-equivalent transient failures)
             if (isTimeout && attempt < MAX_RETRIES) {
-                const waitMs = 1500 * (attempt + 1);
+                const waitMs = PROVIDER_RETRY_BACKOFF_MS[attempt];
                 console.warn(`[Duffel] Timeout on attempt ${attempt + 1}. Retrying in ${waitMs}ms`);
                 await new Promise(r => setTimeout(r, waitMs));
                 continue;
@@ -190,7 +194,8 @@ export function parseDuffelOffer(offer: any, cabinClassFallback?: string) {
                 duration: parseDuffelDuration(seg.duration),
                 stops: 0,
                 aircraft: seg.aircraft?.name,
-                cabinClass: seg.passengers?.[0]?.cabin_class || cabinClassFallback
+                cabinClass: seg.passengers?.[0]?.cabin_class || cabinClassFallback,
+                baggage: segmentBaggage(seg)
             });
         });
     });
@@ -256,25 +261,31 @@ export function parseDuffelOffer(offer: any, cabinClassFallback?: string) {
  * Distinguishes "no free bag" (quantity 0 — a fact worth showing) from "the airline
  * told us nothing" (returns undefined, and the badge is omitted rather than guessed).
  */
+function segmentBaggage(seg: any): { carryOnBags: number; checkedBags: number } | undefined {
+    const bags = seg?.passengers?.[0]?.baggages;
+    if (!Array.isArray(bags)) return undefined;
+
+    let carryOnBags = 0;
+    let checkedBags = 0;
+    for (const bag of bags) {
+        const qty = Number(bag?.quantity) || 0;
+        if (bag?.type === 'carry_on') carryOnBags += qty;
+        else if (bag?.type === 'checked') checkedBags += qty;
+    }
+    return { carryOnBags, checkedBags };
+}
+
 function extractBaggageAllowance(offer: any): { carryOnBags?: number; checkedBags?: number } | undefined {
     let carryOn: number | null = null;
     let checked: number | null = null;
 
     for (const slice of offer.slices ?? []) {
         for (const seg of slice.segments ?? []) {
-            const bags = seg.passengers?.[0]?.baggages;
-            if (!Array.isArray(bags)) continue;
+            const bags = segmentBaggage(seg);
+            if (!bags) continue;
 
-            let segCarryOn = 0;
-            let segChecked = 0;
-            for (const bag of bags) {
-                const qty = Number(bag?.quantity) || 0;
-                if (bag?.type === 'carry_on') segCarryOn += qty;
-                else if (bag?.type === 'checked') segChecked += qty;
-            }
-
-            carryOn = carryOn === null ? segCarryOn : Math.min(carryOn, segCarryOn);
-            checked = checked === null ? segChecked : Math.min(checked, segChecked);
+            carryOn = carryOn === null ? bags.carryOnBags : Math.min(carryOn, bags.carryOnBags);
+            checked = checked === null ? bags.checkedBags : Math.min(checked, bags.checkedBags);
         }
     }
 

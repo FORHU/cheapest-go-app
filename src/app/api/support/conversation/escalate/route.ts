@@ -13,7 +13,7 @@ import {
 import { getSupportAvailability } from '@/lib/server/support/availability';
 import { nextOpening } from '@/lib/server/support/hours';
 import { appendMessage } from '@/lib/server/support/messages';
-import { noticeMessage } from '@/lib/server/support/responder';
+import { noticeMessage } from '@/lib/server/support/notices';
 import { liveNotifyDeps, notifyEscalation } from '@/lib/server/support/notify';
 
 export const dynamic = 'force-dynamic';

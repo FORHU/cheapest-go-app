@@ -1,7 +1,8 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import { NextIntlClientProvider } from 'next-intl';
 import { SupportWidget } from './SupportWidget';
+import { useSupportWidgetStore } from '@/stores/supportWidgetStore';
 
 /**
  * The widget assembled: launcher, panel, and the conversation opening behind them.
@@ -53,6 +54,9 @@ class FakeEventSource {
 let fetchMock: ReturnType<typeof vi.fn>;
 
 beforeEach(() => {
+    // Open/closed is a module-level store now, so it outlives a test unless reset.
+    useSupportWidgetStore.setState({ isOpen: false });
+
     FakeEventSource.instances = [];
     FakeEventSource.closed = 0;
     vi.stubGlobal('EventSource', FakeEventSource);
@@ -151,5 +155,23 @@ describe('SupportWidget', () => {
         // Still exactly one: not torn down, and not a second one either.
         expect(FakeEventSource.instances).toHaveLength(1);
         expect(FakeEventSource.closed).toBe(0);
+    });
+    it('opens when another part of the app asks for support', async () => {
+        // Account -> Help offers "Live Chat" from outside this portal, so it cannot
+        // reach the launcher's handler; it opens the panel through the store instead.
+        render(<SupportWidget />, { wrapper: Wrapper });
+
+        act(() => useSupportWidgetStore.getState().open());
+
+        expect(screen.getByRole('dialog', { name: 'Support' })).toBeInTheDocument();
+
+        // Opening this way starts the conversation exactly as the launcher does; await it
+        // so the state it settles belongs to this test.
+        await waitFor(() =>
+            expect(fetchMock).toHaveBeenCalledWith(
+                '/api/support/conversation',
+                expect.objectContaining({ method: 'POST' }),
+            ),
+        );
     });
 });

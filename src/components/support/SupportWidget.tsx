@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { useSupportWidgetStore } from '@/stores/supportWidgetStore';
 import { SupportLauncher } from './SupportLauncher';
 import { SupportPanel } from './SupportPanel';
 import { useSupportChat } from './useSupportChat';
@@ -19,7 +20,15 @@ import { useSupportChat } from './useSupportChat';
 
 export function SupportWidget() {
     const [mounted, setMounted] = useState(false);
-    const [isOpen, setIsOpen] = useState(false);
+
+    /*
+     * Open/closed lives in a store rather than here, because the launcher is not the only
+     * way in: Account → Help offers "Live Chat", and that row renders in a different
+     * subtree from this portal. The conversation still lives in the hook below.
+     */
+    const isOpen = useSupportWidgetStore((s) => s.isOpen);
+    const open = useSupportWidgetStore((s) => s.open);
+    const close = useSupportWidgetStore((s) => s.close);
 
     /*
      * The conversation lives here, not in the panel.
@@ -37,7 +46,7 @@ export function SupportWidget() {
 
     return createPortal(
         <>
-            {isOpen && <SupportPanel chat={chat} onClose={() => setIsOpen(false)} />}
+            {isOpen && <SupportPanel chat={chat} onClose={close} />}
 
             {/*
               * Hidden while the panel is up, rather than turned into a second close
@@ -45,7 +54,7 @@ export function SupportWidget() {
               * to anyone navigating by name — and under `sm` the panel is full-screen, so
               * a launcher behind it would be unreachable anyway.
               */}
-            {!isOpen && <SupportLauncher unread={chat.unread} onOpen={() => setIsOpen(true)} />}
+            {!isOpen && <SupportLauncher unread={chat.unread} onOpen={open} />}
         </>,
         document.body,
     );

@@ -16,7 +16,8 @@ export type SupportNoticeCodeView =
     | 'asked_for_person_out_of_hours'
     | 'assistant_unavailable'
     | 'model_failed'
-    | 'details_needed';
+    | 'details_needed'
+    | 'assistant_retired';
 
 export interface SupportMessageView {
     id: string;

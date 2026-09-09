@@ -360,15 +360,16 @@ describe('getConversationForAgent', () => {
 });
 
 describe('reopenIfResolved', () => {
-    it('hands a resolved conversation back to the assistant when the customer writes', async (ctx) => {
+    it('hands a resolved conversation back to a person when the customer writes', async (ctx) => {
         if (!(await databaseReachable())) ctx.skip();
 
-        // Resolved is not an ending. Without this the message is stored, no turn runs, and
-        // the conversation is in nobody's queue — the customer is talking to nothing.
+        // Resolved is not an ending. Per ADR-0031 there is no assistant to hand it back
+        // to: without this the message is stored, nothing answers, and the conversation
+        // is in a status no queue shows.
         const id = await makeConversation({ status: 'resolved' });
 
         expect(await reopenIfResolved(id)).toBe(true);
-        expect(await statusOf(id)).toBe('ai_active');
+        expect(await statusOf(id)).toBe('waiting_human');
     });
 
     it('drops the previous assignment, so it is not still on an Agent\'s list', async (ctx) => {

@@ -285,42 +285,42 @@ _Avoid_: re-introducing any cron that calls a hotel availability API without a r
 
 ## Support
 
-**Support Chat** — a conversation between one customer and CheapestGo about a trip they have or are trying to book. It is answered first by a model and then, on **Escalation**, by an **Agent**. A customer has at most one open Support Chat at a time; asking again resumes the one they have rather than starting a second.
-_Avoid_: "ticket" — a Support Chat is not queued, numbered, or closed by the customer, and nothing about it is promised to be answered off-line. _Avoid_: calling it a "session" — it outlives the browser tab it was opened in.
+**Support Chat** — a conversation between one customer and CheapestGo about a trip they have or are trying to book, answered by an **Agent**. Opening one requires signing in, so every Support Chat has an account behind it and therefore a way to reach whoever started it.  A customer has at most one open Support Chat at a time; asking again resumes the one they have rather than starting a second.
+_Avoid_: "ticket" — a Support Chat is not numbered, not closed by the customer, and nothing about it is promised to be answered off-line. _Avoid_: calling it a "session" — it outlives the browser tab it was opened in.
+_Note_: until 2026-09-07 a Support Chat was answered first by a model and reached an Agent only on hand-over. The model is gone and the vocabulary of hand-over went with it — a reader who finds `escalation_reason` or a `senderType` of `ai` in the schema is looking at residue, not at a capability.
 
-**Support Widget** — the floating launcher and panel that hosts a Support Chat on the site. The widget is the surface; the Support Chat is the thing it shows. One can exist without the other: the chat continues when the widget is closed.
+**Support Widget** — the floating launcher and panel that hosts a Support Chat on the site. The widget is the surface; the Support Chat is the thing it shows. One can exist without the other: the chat continues when the widget is closed. A signed-out visitor sees the launcher and is asked to sign in; the widget is never a box a stranger types into.
 _Avoid_: using "widget" for the conversation, or "chat" for the button.
 
-**Escalation** — the moment a Support Chat stops being answered by the model and joins the queue for an **Agent**. It happens for exactly three reasons: the customer asked for a person, the model judged it should not answer, or the **Turn Budget** ran out. It is one-way within a conversation: once escalated, the model does not speak again in that Support Chat. It always reaches the queue, at any hour, and it always leaves behind a way to reply — a signed-in customer's account, or a guest's name and email, which is the one moment a guest is asked for them.
-_Avoid_: describing the model and an Agent as answering "together" — they never both hold the same conversation. _Avoid_: treating out-of-hours Escalation as a different kind of thing; it is the same transition, differently explained.
+**Waiting** — a Support Chat nobody has answered yet. Every Support Chat begins here, at any hour, from its first message. It is a state, not an event: nothing *happens* to put a chat in the queue, because the queue is where a chat starts.
+_Avoid_: "escalated", "raised", "handed over" — all three imply a prior owner, and there is never one. _Avoid_: treating an out-of-hours chat as a different kind of thing; it is the same state, differently explained.
 
-**Escalation happens by intent, never by malfunction** — the three reasons above are all decisions. A model that times out, is misconfigured, or cannot be reached does **not** escalate: it says it is unavailable and leaves the conversation where it is, exactly as a spent **Turn Budget** ceiling does. The customer keeps the ability to ask for a person, so nobody is stranded; what they do not get is a queue position nobody chose.
-_Why_: a fault is rarely local. The first time the assistant broke it was a missing API key, which is broken for every conversation on the site at once — so "hand over when something goes wrong" quietly means "queue every customer we have", and the Agent inbox fills with conversations whose owner never asked for a person.
-_Avoid_: adding a retry-then-escalate path, or a "failed N times so escalate" threshold — both re-introduce the flood under a different name.
+**Translation** — a machine rendering of one message into another language, stored beside that message and never in place of it. It runs both ways: a customer's words into the Agent's reading language, an Agent's reply into the customer's locale. Every translation is shown marked as machine-made, to the Agent and to the customer alike.
+_Avoid_: calling a translation "the message" — the message is what its author wrote, and that text stays authoritative wherever the two disagree. _Avoid_: treating the two renderings as two messages; it is one message, read twice.
+_Why the original is kept_: an Agent answers on the basis of a translation, so a later question about what was promised is really a question about what the Agent read. Re-translating afterwards cannot reproduce it.
 
-**Support Desk** — a second, narrower console for people whose whole job is answering Support Chats: the inbox and the Support Hours, and nothing else. It is a workspace, **not** a permission boundary — everyone who can open it is a full admin and can still reach every other admin screen by typing the address. It removes noise, not access.
-_Avoid_: describing it as "restricted", "limited" or "support-only access" — there is no support role, and saying so would leave someone believing a boundary exists where none does. If one is ever wanted, it is a third role and an audit of every admin route, not a shorter menu.
+**A malfunction never changes a conversation's state** — when translation is unavailable the message is delivered exactly as its author wrote it, marked untranslated, and nothing else moves: no hold, no queue change, no retry into silence.
+_Why_: a fault on a shared service is never local. The first time this broke it was one dead API key, which is broken for every conversation on the site at once — so any rule of the form "when it fails, do something different" fires for every customer simultaneously, and the something-different is always worse than the plain truth. A customer can paste English into a translator; they can do nothing whatever with a reply that never arrived.
+_Avoid_: a retry-then-hold path, or a "failed N times so hold" threshold — both re-introduce the site-wide surprise under a different name.
 
-**Support Hours** — the window in which an Escalation is promised a same-day answer, kept as one schedule in one timezone for both brands. Outside it the model still answers, Escalation still reaches the queue, and what changes is what the customer is told: which morning someone will pick it up.
-_Avoid_: "opening hours" — the site never closes, and the model answers around the clock. _Avoid_: describing Support Hours as gating Escalation — they govern the promise, not the queue.
+**Support Desk** — a second, narrower console for people whose whole job is answering Support Chats: the inbox and the Support Hours, and nothing else.
+_Note_: it is now a permission boundary as well as a workspace. A **Support Agent** account can reach the Desk and nothing else; an admin reaches it and every other admin screen too. It was a workspace only, before the role existed.
+_Avoid_: granting a Support Agent access by widening the back office — access is granted by building the screen inside the Support Desk, so anything not deliberately built for them stays out of reach.
 
-**Turn Budget** — the ceiling on how many times the model will answer, held per Support Chat and again across the whole site. A Support Chat that exhausts its budget stops being answered by the model and is offered an Agent instead; if the site-wide ceiling is reached, every Support Chat behaves that way until the hour turns over. It reads to a customer as "after a while, you get a person".
-_Avoid_: presenting an exhausted budget as an error — the conversation still works, and Escalation is still open.
+**Support Hours** — the window in which a **Waiting** Support Chat is promised a same-day answer, kept as one schedule in one timezone for both brands. Outside it a customer can still open a chat and still write; what changes is what they are told — which morning someone will pick it up.
+_Avoid_: "opening hours" — the site never closes and the widget never refuses a message. _Avoid_: describing Support Hours as gating the queue — they govern the promise, not the queue.
 
-**Agent** — a CheapestGo staff member handling a customer, whether on a call or in an escalated Support Chat. Already the word used throughout the admin screens.
-_Avoid_: "travel agent" (suggests a third party) and "operator" or "bot" (an Agent is always a person).
-
-**Takeover** — an Agent answering a Support Chat the model was still handling, which stops the model and makes the Agent the owner. Distinct from **Escalation**: nothing joins the queue, because the Agent is already there. It is the point of being able to watch what the assistant says at all — an Agent who sees a wrong answer corrects it by replying, not by asking for the conversation first.
-_Avoid_: calling it an Escalation — that word is reserved for a chat becoming *someone's to pick up*. _Avoid_: reading a Takeover as the assistant having failed; usually it means an Agent knew something better.
+**Agent** — a CheapestGo staff member handling a customer, whether on a call or in a Support Chat. Already the word used throughout the admin screens.
+_Avoid_: "travel agent" (suggests a third party) and "operator" or "bot" — an Agent is always a person, and now the only thing that ever answers a Support Chat.
 
 **Support Agent** — an account that may do Agent work and nothing else: answer Support Chats, set the Support Hours, and look up a booking read-only to verify someone's claim. It cannot reach the back office, cannot change a booking, and cannot promote anyone.
 _Avoid_: treating "Support Agent" and "**Agent**" as the same word. Agent is what someone is *doing* — an admin answering a chat is an Agent. Support Agent is what an account is *allowed* to do. Every Support Agent is an Agent; most Agents so far have been admins.
 _Avoid_: giving a Support Agent access by widening the back office — access is granted by building the screen inside the **Support Desk**, so anything not deliberately built for them stays out of reach.
 
-**Assignment** — which Agent owns an escalated Support Chat. It is taken by answering: the first Agent to reply owns the conversation, and it leaves the unassigned queue for everyone else. There is no separate claiming step, and therefore no claim to go stale when someone opens a conversation and walks away.
+**Assignment** — which Agent owns a **Waiting** Support Chat. It is taken by answering: the first Agent to reply owns the conversation, and it leaves the unassigned queue for everyone else. There is no separate claiming step, and therefore no claim to go stale when someone opens a conversation and walks away.
 _Avoid_: treating Assignment as permission — any Agent can read any Support Chat; what Assignment says is who is dealing with it.
 
-**Resolved** — an Agent's statement that a Support Chat is finished. It is not an ending: a customer who writes again reopens the conversation, with the same transcript, and the model gets first look at the new message exactly as it would on a fresh one. Only an Agent resolves; the customer closing the widget means nothing.
+**Resolved** — an Agent's statement that a Support Chat is finished. It is not an ending: a customer who writes again reopens the conversation, with the same transcript, and it returns to **Waiting** exactly as a fresh one would. Only an Agent resolves; the customer closing the widget means nothing.
 _Avoid_: "closed" — nothing is prevented afterwards. _Avoid_: reading a Resolved chat as one the customer agreed was finished; it records what the Agent believed.
 
 **AI Search** — the hero's natural-language mode, which turns one sentence into search parameters and runs a search. Distinct from a Support Chat: it is a single turn, it holds no history, and it is about finding a trip rather than fixing one.
