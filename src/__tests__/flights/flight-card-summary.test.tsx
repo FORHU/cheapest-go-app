@@ -185,6 +185,50 @@ describe('FlightCard — the route summary', () => {
     });
 });
 
+describe('FlightCard — the route summary terminal', () => {
+    // CRK (T1) → DOH (T2 in / T3 out) → LHR (T4). The collapsed summary is the
+    // journey's two ends; the connection's terminals belong to the expanded view.
+    const withTerminals = {
+        ...referenceOffer,
+        segments: [
+            seg(0, 'CRK', 'DOH', '2026-09-23T18:40:00', '2026-09-23T22:30:00', {
+                duration: 530,
+                flightNumber: 'QR0927',
+                departure: { airport: 'CRK', terminal: '1', time: '2026-09-23T18:40:00' },
+                arrival: { airport: 'DOH', terminal: '2', time: '2026-09-23T22:30:00' },
+            }),
+            seg(0, 'DOH', 'LHR', '2026-09-24T01:15:00', '2026-09-24T06:30:00', {
+                duration: 470,
+                flightNumber: 'QR0003',
+                departure: { airport: 'DOH', terminal: '3', time: '2026-09-24T01:15:00' },
+                arrival: { airport: 'LHR', terminal: '4', time: '2026-09-24T06:30:00' },
+            }),
+        ],
+    } as FlightOffer;
+
+    it('names the departure and arrival terminal without the row being expanded', () => {
+        renderIntl(<FlightCard offer={withTerminals} />);
+
+        // getByText, not getAllByText: the only T1 is Clark's gate, the only T4 is
+        // Heathrow's — the summary reaches for the journey's ends, not a leg between.
+        expect(screen.getByText('Terminal 1')).toBeTruthy();
+        expect(screen.getByText('Terminal 4')).toBeTruthy();
+    });
+
+    it('sits each terminal under the airport it belongs to', () => {
+        renderIntl(<FlightCard offer={withTerminals} />);
+
+        expect(screen.getByText('Clark International Airport (CRK)').parentElement!.textContent).toContain('Terminal 1');
+        expect(screen.getByText('Heathrow Airport (LHR)').parentElement!.textContent).toContain('Terminal 4');
+    });
+
+    it('says nothing when the airline named no terminal', () => {
+        renderIntl(<FlightCard offer={referenceOffer} />);
+
+        expect(screen.queryByText(/Terminal/)).toBeNull();
+    });
+});
+
 describe('FlightCard — the fare rail', () => {
     it('states the fare to the cent', () => {
         renderIntl(<FlightCard offer={referenceOffer} />);
@@ -212,6 +256,38 @@ describe('FlightCard — the itinerary behind "Show all segments"', () => {
         expect(screen.getAllByText('Depart from')).toHaveLength(2);
         expect(screen.getByText('02h 45m at Hamad International Airport')).toBeTruthy();
         expect(screen.getByText('Wed, Sep 23, 2026, 6:40 PM')).toBeTruthy();
+    });
+
+    it('spells out the connection terminals that the collapsed summary leaves off', () => {
+        // CRK (T1) → DOH (T2 in / T3 out) → LHR (T4). Collapsed, the row names the
+        // journey's ends; expanding it adds the terminals changed at Doha.
+        const withTerminals = {
+            ...referenceOffer,
+            segments: [
+                seg(0, 'CRK', 'DOH', '2026-09-23T18:40:00', '2026-09-23T22:30:00', {
+                    duration: 530,
+                    flightNumber: 'QR0927',
+                    departure: { airport: 'CRK', terminal: '1', time: '2026-09-23T18:40:00' },
+                    arrival: { airport: 'DOH', terminal: '2', time: '2026-09-23T22:30:00' },
+                }),
+                seg(0, 'DOH', 'LHR', '2026-09-24T01:15:00', '2026-09-24T06:30:00', {
+                    duration: 470,
+                    flightNumber: 'QR0003',
+                    departure: { airport: 'DOH', terminal: '3', time: '2026-09-24T01:15:00' },
+                    arrival: { airport: 'LHR', terminal: '4', time: '2026-09-24T06:30:00' },
+                }),
+            ],
+        } as FlightOffer;
+
+        renderIntl(<FlightCard offer={withTerminals} />);
+
+        expect(screen.queryByText('Terminal 2')).toBeNull();
+        expect(screen.queryByText('Terminal 3')).toBeNull();
+
+        fireEvent.click(screen.getByText('Show all segments'));
+
+        expect(screen.getByText('Terminal 2')).toBeTruthy();
+        expect(screen.getByText('Terminal 3')).toBeTruthy();
     });
 
     it('labels each direction of a round trip', () => {

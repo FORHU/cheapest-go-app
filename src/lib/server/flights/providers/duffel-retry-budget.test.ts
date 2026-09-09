@@ -3,7 +3,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 vi.mock('@/utils/env', () => ({ env: { DUFFEL_TOKEN: 'test_token' } }));
 vi.mock('@/lib/server/api-logger', () => ({ logApiCall: vi.fn() }));
 
-import { searchDuffel } from './duffel';
+import { searchDuffel, DuffelSearchError } from './duffel';
 import { PROVIDER_RETRY_BACKOFF_MS, PROVIDER_WORST_CASE_MS } from '@/lib/flights/search-budget';
 
 const PARAMS = {
@@ -38,7 +38,7 @@ describe('searchDuffel retry ladder', () => {
             return Promise.reject(err);
         });
 
-        const promise = searchDuffel(PARAMS);
+        const promise = searchDuffel(PARAMS).catch((e) => e);
         await vi.advanceTimersByTimeAsync(PROVIDER_WORST_CASE_MS * 2);
         await promise;
 
@@ -55,11 +55,47 @@ describe('searchDuffel retry ladder', () => {
             return Promise.reject(err);
         });
 
-        const promise = searchDuffel(PARAMS);
+        const promise = searchDuffel(PARAMS).catch((e) => e);
         await vi.advanceTimersByTimeAsync(PROVIDER_WORST_CASE_MS * 2);
         await promise;
 
         const gaps = attemptAt.slice(1).map((t, i) => t - attemptAt[i]);
         expect(gaps).toEqual([...PROVIDER_RETRY_BACKOFF_MS]);
+    });
+
+    it('reports a provider failure once the ladder is spent, not an empty route', async () => {
+        // Zero offers because Duffel never answered is an outage the page can retry —
+        // it must not collapse into the same "No flights found" a real empty route gets.
+        vi.stubGlobal('fetch', () => {
+            const err = new Error('timed out');
+            err.name = 'TimeoutError';
+            return Promise.reject(err);
+        });
+
+        const promise = searchDuffel(PARAMS).catch((e) => e);
+        await vi.advanceTimersByTimeAsync(PROVIDER_WORST_CASE_MS * 2);
+
+        expect(await promise).toBeInstanceOf(DuffelSearchError);
+    });
+
+    it('does not retry a 429 and surfaces it as a failure', async () => {
+        let attempts = 0;
+        vi.stubGlobal('fetch', () => {
+            attempts++;
+            return Promise.resolve(
+                new Response(JSON.stringify({ errors: [{ title: 'rate limited' }] }), {
+                    status: 429,
+                    headers: { 'Retry-After': '30' },
+                }),
+            );
+        });
+
+        const promise = searchDuffel(PARAMS).catch((e) => e);
+        await vi.advanceTimersByTimeAsync(PROVIDER_WORST_CASE_MS * 2);
+        const result = await promise;
+
+        expect(result).toBeInstanceOf(DuffelSearchError);
+        expect((result as DuffelSearchError).status).toBe(429);
+        expect(attempts).toBe(1);
     });
 });

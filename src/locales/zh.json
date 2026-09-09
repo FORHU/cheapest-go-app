@@ -792,6 +792,7 @@
       "viewDeal": "查看优惠",
       "departing": "出发",
       "arrivingAt": "抵达",
+      "terminal": "{terminal} 号航站楼",
       "totalFlightDuration": "总飞行时长",
       "stopsLabel": "经停：",
       "stopCountTitle": "{count, plural, =0 {直飞} other {经停 # 次}}",
@@ -882,7 +883,8 @@
       "return": "回程",
       "legLabel": "第 {number} 段",
       "layoverLabel": "中转",
-      "layoverValue": "在 {airport} 中转 {duration}"
+      "layoverValue": "在 {airport} 中转 {duration}",
+      "terminal": "{terminal} 号航站楼"
     }
   },
   "footer": {
