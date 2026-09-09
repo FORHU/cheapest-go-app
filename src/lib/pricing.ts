@@ -5,7 +5,7 @@
  * platform's own fees — and nothing else. No margin is intended, and hosting,
  * monitoring and mapping are deliberately outside the set: they scale with the
  * product rather than with bookings, so recovering them through a fare would be
- * a margin under another name. See ADR-0031.
+ * a margin under another name. See ADR-0036.
  *
  * ## Platform Cost is flat plus proportional, so the markup is too
  *
@@ -39,7 +39,7 @@
  * The denominator has a pole at c = 0.971: past a 97.1% cancellation rate no
  * finite markup recovers anything. The curve is gentle at low c and violent at
  * high c, so this choice is only safe while c stays low — hence the true-up
- * rules in ADR-0031. Defaults below assume **c = 20%**, which is an assumption
+ * rules in ADR-0036. Defaults below assume **c = 20%**, which is an assumption
  * awaiting real data, not a measurement.
  *
  * ## FLIGHTS — $4.40 + 7.2%, effective fee capped at 12%
@@ -84,7 +84,7 @@
  * Retired. Bundling swapped HOTEL_MARKUP for BUNDLE_MARKUP and nothing else,
  * so the advertised "saving" was funded from the hotel provision. A bundle is
  * still one Duffel order, one OTV booking and two Stripe charges — there is no
- * cost saving to pass on. See ADR-0031.
+ * cost saving to pass on. See ADR-0036.
  *
  * ─── Changing rates ───────────────────────────────────────────────────────────
  *
@@ -146,7 +146,7 @@ export const FLIGHT_MARKUP_SPEC: MarkupSpec = {
  * Hotels have no per-booking supplier fee to recover — the OTV monthly invoice
  * is the room cost itself, and TravelgateX's connection fee is not yet billed.
  * ~1.2 points of this is an earmarked provision against that incoming fee
- * rather than margin; see the header and ADR-0031.
+ * rather than margin; see the header and ADR-0036.
  */
 export const HOTEL_MARKUP_SPEC: MarkupSpec = {
     rate: parseMarkupEnv('HOTEL_MARKUP_PERCENTAGE', 0.059),
@@ -386,7 +386,7 @@ export function applyMarkup(
  * There is also no cost saving to pass on. A bundle is one Duffel order, one
  * OTV booking and *two* Stripe charges; the only real saving available is the
  * $0.30 of a merged PaymentIntent, which is far too small to advertise. See
- * ADR-0031.
+ * ADR-0036.
  *
  * @returns 0 — callers should render no savings banner.
  */
@@ -441,7 +441,7 @@ export function fromStripeAmount(amount: number, currency: string): number {
  * a positive result is not profit: the supplier platform's own fees (Duffel's
  * $3.00 + 1%) arrive on a monthly invoice and are not visible on any single
  * booking, so this figure is what is available to pay them with, not what is
- * kept. See the header and ADR-0031.
+ * kept. See the header and ADR-0036.
  *
  * @param basePrice - Raw provider fare
  * @param spec      - The markup applied

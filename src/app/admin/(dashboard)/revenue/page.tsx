@@ -38,7 +38,7 @@ export default async function AdminRevenuePage({
         // margin. This used to split it 70/30 into "Platform" and "Operational Margin",
         // which was a display convention with nothing behind it — the 30% was never earned
         // and, since the markup does not even cover Duffel's monthly invoice on the old
-        // rates, was money already spent. See ADR-0031.
+        // rates, was money already spent. See ADR-0036.
         const markupPlatform = markupAmount;
         const markupMargin = 0;
 

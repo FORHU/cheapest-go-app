@@ -12,7 +12,7 @@ import { applyMarkup, FLIGHT_MARKUP_SPEC, type MarkupSpec } from './pricing';
  * The booking routes were the only place this ran, which made it look untestable
  * without a live booking. It isn't: `convertCurrencyStrict` is a pure function
  * over the in-memory EXCHANGE_RATES table, so the exact production path can be
- * exercised here — no Duffel, no OTV, no PaymentIntent. See ADR-0031.
+ * exercised here — no Duffel, no OTV, no PaymentIntent. See ADR-0036.
  */
 
 const FLIGHTS: MarkupSpec = { rate: 0.072, flat: 4.40, cap: 0.12 };

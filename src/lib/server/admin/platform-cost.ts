@@ -16,7 +16,7 @@
  * Derived on every call, never stored, for the reason ADR-0026 gives: a stored
  * discrepancy is a third record that can disagree with the two it summarises.
  *
- * See docs/adr/0031-the-markup-is-flat-plus-proportional-because-platform-cost-is.md.
+ * See docs/adr/0036-the-markup-is-flat-plus-proportional-because-platform-cost-is.md.
  */
 
 import { getSqlAdmin } from '@/lib/db/postgres';

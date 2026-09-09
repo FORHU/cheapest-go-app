@@ -63,7 +63,7 @@ export async function POST(req: NextRequest) {
             // Expanded so the real Stripe fee can be recorded alongside the booking.
             // This retrieve already had to happen for the reference, so the fee costs
             // no extra API call — and `STRIPE_RATE` in pricing.ts is only an estimate
-            // of it, never checked against anything until now. See ADR-0031.
+            // of it, never checked against anything until now. See ADR-0036.
             const pi = await stripe.paymentIntents.retrieve(body.paymentIntentId, {
                 expand: STRIPE_FEE_EXPAND,
             });
@@ -276,7 +276,7 @@ export async function POST(req: NextRequest) {
  *
  * `STRIPE_RATE` in pricing.ts prices the booking from an estimate; this is what
  * was actually taken. Keeping both is what makes the estimate checkable. See
- * ADR-0031.
+ * ADR-0036.
  */
 async function recordHotelStripeFee(bookingId: string, fee: RecordedStripeFee): Promise<void> {
     const svc = createAdminClient();

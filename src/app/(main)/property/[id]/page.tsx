@@ -150,7 +150,7 @@ export default async function PropertyPage({
 
     const currency = (searchParamsResult.currency as string) || 'KRW';
     const bundleFlightId = (searchParamsResult.bundleFlightId as string) || null;
-    // Always 0 since ADR-0031 retired the bundle discount: bundling was a swap to a
+    // Always 0 since ADR-0036 retired the bundle discount: bundling was a swap to a
     // lower hotel rate rather than a discount line, and there is no cost saving behind
     // it to pass on. Kept as a call rather than inlined so reinstating a real, funded
     // discount is one change in one place — see bundleSavingPercent().

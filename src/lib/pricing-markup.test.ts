@@ -14,7 +14,7 @@ import {
  * charges $3.00 per paid order on top of 1% of order value, and Stripe charges a
  * flat fee on top of a rate. These tests pin the arithmetic that follows from
  * that, and in particular the two places it can silently go wrong: the cap, and
- * the flat component's currency. See ADR-0031.
+ * the flat component's currency. See ADR-0036.
  */
 
 /** Flights: 7.2% + $4.40, capped at 12%. */

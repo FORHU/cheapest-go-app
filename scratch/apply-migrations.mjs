@@ -18,12 +18,22 @@ import path from 'path';
 import postgres from 'postgres';
 
 const FILES = [
+    // Already recorded — these print SKIP. Kept so a run shows the guard working
+    // rather than silently doing nothing.
     '20260905000001_support_chat.sql',
     '20260906000001_support_message_notice_code.sql',
     '20260906000002_support_turn_claim.sql',
     '20260906000003_support_escalation_reason.sql',
     '20260906000004_email_logs_support_escalation.sql',
     '20260906000005_support_agent_role.sql',
+
+    // Pending. Order matters: support_assistant_retired_notice widens the notice_code
+    // CHECK constraint that start_waiting then inserts 'assistant_retired' against.
+    '20260906000001_rename_geomeego_to_airanggo.sql',
+    '20260907000001_supplier_booking_attempts.sql',
+    '20260907000001_support_assistant_retired_notice.sql',
+    '20260907000002_support_conversations_start_waiting.sql',
+    '20260907000003_support_conversations_waiting_notified_at.sql',
 ];
 
 const dry = process.argv.includes('--dry');

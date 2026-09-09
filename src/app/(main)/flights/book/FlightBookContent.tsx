@@ -777,7 +777,7 @@ function BookingContent() {
 
                                     {/*
                                       * The "✦ BUNDLE DEAL" badge was removed with the discount itself
-                                      * (ADR-0031). Its ko/ja/zh translations render as "bundle discount"
+                                      * (ADR-0036). Its ko/ja/zh translations render as "bundle discount"
                                       * outright, so it claimed a price advantage checkout no longer gives.
                                       * The strings are left in the locale files for whenever a real,
                                       * funded bundle discount exists to badge.
@@ -799,7 +799,7 @@ function BookingContent() {
 
                                         {/*
                                           * The "book separately → bundle savings" comparison that sat here was
-                                          * removed with the bundle discount (ADR-0031). Bundling never had a cost
+                                          * removed with the bundle discount (ADR-0036). Bundling never had a cost
                                           * saving behind it — it swapped the hotel rate for a lower one, spending
                                           * a provision that is now committed to TravelgateX's incoming fee — so
                                           * the strip advertised a discount the checkout no longer applies.

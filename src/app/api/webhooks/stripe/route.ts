@@ -536,7 +536,7 @@ async function fireBookingConfirmationEmail(
  * Stripe reports the exact fee per charge on the balance transaction, for free.
  * Recording it here turns the estimate into something reconcilable: the model
  * still prices from `STRIPE_RATE`, but the ledger knows what was actually taken,
- * so drift becomes visible instead of arriving as a surprise invoice. See ADR-0031.
+ * so drift becomes visible instead of arriving as a surprise invoice. See ADR-0036.
  *
  * The fee is best-effort. A booking must never fail, or lose its ledger row,
  * because a reporting figure could not be fetched.

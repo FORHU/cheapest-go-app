@@ -157,7 +157,7 @@ export async function POST(req: NextRequest) {
 
         // Apply platform markup. One rate, bundled or not: bundling was never a discount
         // line, only a swap to a lower rate, and the gap it spent is now an earmarked
-        // provision against TravelgateX's incoming connection fee. See ADR-0031.
+        // provision against TravelgateX's incoming connection fee. See ADR-0036.
         // Markup is applied to the server-derived base, never to the client's figure.
         //
         // No flat-fee conversion here: hotels carry no per-booking supplier fee to

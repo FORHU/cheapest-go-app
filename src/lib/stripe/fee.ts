@@ -12,7 +12,7 @@
  * Stripe reports the exact figure per charge, for free, on the balance
  * transaction. Recording it makes the estimate reconcilable rather than assumed:
  * the model still prices from `STRIPE_RATE`, and the ledger knows what was really
- * taken, so drift shows up in a query instead of in an invoice. See ADR-0031.
+ * taken, so drift shows up in a query instead of in an invoice. See ADR-0036.
  */
 import type Stripe from 'stripe';
 import { getStripe } from './server';
