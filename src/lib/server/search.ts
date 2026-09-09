@@ -305,6 +305,34 @@ export function setDestCodeCache(cityKey: string, destCode: string): void {
 }
 
 /**
+ * Drop entries from the in-process cache so the next lookup re-reads the database.
+ *
+ * This Map has no TTL and no eviction: an entry survives for the life of the process. That
+ * is right for a code that never changes, and wrong the moment a code turns out to have
+ * been incorrect — on 2026-09-09 `paris:fr` was resolved to a ZONE for Alpine-Casparis
+ * Municipal Airport, the database was then repaired to the real code 2734, and Paris kept
+ * returning the wrong hotels because the repair could not reach the running process. The
+ * only remedy was to restart the container.
+ *
+ * A prefix clears one city across every country ("paris"), no argument clears everything.
+ * Returns the number of entries removed so a caller can report it.
+ */
+export function clearDestCodeCache(prefix?: string): number {
+    if (!prefix) {
+        const n = _destCodeCache.size;
+        _destCodeCache.clear();
+        return n;
+    }
+    const p = prefix.toLowerCase().trim();
+    let n = 0;
+    // Matches the bare key and every "city:cc" scoped key beneath it.
+    for (const key of [..._destCodeCache.keys()]) {
+        if (key === p || key.startsWith(`${p}:`)) { _destCodeCache.delete(key); n++; }
+    }
+    return n;
+}
+
+/**
  * Resolve a TravelgateX destination code for a given city.
  * Checks in-process cache → DB → TGX API (in that order).
  * Writes back to DB so future lookups skip the TGX API call entirely.
