@@ -345,6 +345,20 @@ jobs:
           echo "${ENV_CONTENT_B64}" | base64 -d | sudo tee ${ENV_FILE_PATH} > /dev/null
           sudo chmod 600 ${ENV_FILE_PATH}
 
+          # Reclaim disk BEFORE pulling — see the same block in deploy-production.yml.
+          #
+          # This brand shares the instance with CheapestGo, so the two deploys fill one
+          # disk between them and either can be the one that runs out. On 2026-09-09 the
+          # CheapestGo pull failed on `no space left on device` and, because the script is
+          # `set -e`, left the previous containers running and answering 200.
+          #
+          # `-a` removes every image no CONTAINER references, so both brands' running
+          # containers are safe; only images left over from earlier deploys go.
+          echo "disk before prune:"; df -h /var/lib/docker | tail -1
+          docker image prune -af || true
+          docker builder prune -af || true
+          echo "disk after prune:"; df -h /var/lib/docker | tail -1
+
           docker pull ${IMAGE}
           docker stop ${CONTAINER_NAME} >/dev/null 2>&1 || true
           docker rm ${CONTAINER_NAME} >/dev/null 2>&1 || true
@@ -354,7 +368,10 @@ jobs:
             -p ${CONTAINER_PORT}:3000 \
             --env-file ${ENV_FILE_PATH} \
             ${IMAGE}
-          docker image prune -f
+          # Again afterwards: the image the old container was holding is unreferenced now
+          # that the new one is running, so this is what actually reclaims the last deploy.
+          docker image prune -af || true
+          echo "disk after deploy:"; df -h /var/lib/docker | tail -1
           EOF
 
           PARAMS=$(jq -n --rawfile script deploy-remote.sh \

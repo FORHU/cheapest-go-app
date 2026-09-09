@@ -335,6 +335,28 @@ jobs:
           echo "${ENV_CONTENT_B64}" | base64 -d | sudo tee ${ENV_FILE_PATH} > /dev/null
           sudo chmod 600 ${ENV_FILE_PATH}
 
+          # Reclaim disk BEFORE pulling, not after.
+          #
+          # On 2026-09-09 this deploy died on `no space left on device` while pulling the
+          # app image, and because the script is `set -e` the containers were never
+          # replaced — the previous image kept serving under `--restart unless-stopped`, so
+          # the site answered 200 throughout while main had moved on. CI reported the
+          # failure correctly; what misled was the healthy site, which is the only signal
+          # anyone checks by hand.
+          #
+          # The cause is that the cleanup below was `docker image prune -f`, which drops
+          # only DANGLING images. Every deploy pulls a new `:$IMAGE_TAG` and that tag keeps
+          # the old image alive forever, at 1-2 GB each. Cleanup also ran last, after both
+          # pulls, so it could never free space for the pull that needed it.
+          #
+          # `-a` removes every image no CONTAINER references. The running app and cron
+          # containers reference theirs, so this cannot pull the site out from under itself;
+          # it only reclaims the images previous deploys left behind.
+          echo "disk before prune:"; df -h /var/lib/docker | tail -1
+          docker image prune -af || true
+          docker builder prune -af || true
+          echo "disk after prune:"; df -h /var/lib/docker | tail -1
+
           docker pull ${IMAGE}
           docker stop ${CONTAINER_NAME} >/dev/null 2>&1 || true
           docker rm ${CONTAINER_NAME} >/dev/null 2>&1 || true
@@ -356,7 +378,10 @@ jobs:
             -e APP_URL=http://localhost:${CONTAINER_PORT} \
             ${CRON_IMAGE}
 
-          docker image prune -f
+          # Again afterwards: the image the old container was holding is unreferenced now
+          # that the new one is running, so this is what actually reclaims the last deploy.
+          docker image prune -af || true
+          echo "disk after deploy:"; df -h /var/lib/docker | tail -1
           EOF
 
           PARAMS=$(jq -n --rawfile script deploy-remote.sh \
