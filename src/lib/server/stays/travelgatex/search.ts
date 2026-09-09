@@ -2121,10 +2121,21 @@ async function _runTgxSearch(params: TgxSearchParams): Promise<any> {
 
         return runCityFallback(
             cityName, resolvedCountry, baseCriteria,
-            // Pass undefined so resolution always uses the CITY-keyed DB cache (e.g. "seoul" → 3124).
-            // Passing countryCode creates a different key ("seoul:kr") that misses cache, forces a
-            // live TGX destinationSearcher call, and often returns undefined on production.
-            resolveTgxDestinationCode(cityName, undefined).catch(() => undefined),
+            // The country is passed. It used to be withheld because a scoped key ("seoul:kr")
+            // misses the city-keyed cache and forces a live TGX call that often returns
+            // undefined in production — a real cost, and the reason this said `undefined`.
+            //
+            // resolveTgxDestinationCode now falls back to the city-only key itself, so that
+            // cost is gone: "seoul:kr" misses, the fallback reads "seoul", its parent is
+            // "South Korea#KR", the country agrees and the cached 3124 is returned with no
+            // round trip. What the country buys is the rejection — "paris" is cached as Paris,
+            // Texas, and without a country to contradict it that code was handed to searches
+            // for Paris, France, which TGX truthfully reported as empty. Bali (Greece) and
+            // Rome (United States) failed identically.
+            //
+            // Only a row that can be *proven* to belong elsewhere is refused, so a city that
+            // resolved from cache before still does.
+            resolveTgxDestinationCode(cityName, resolvedCountry).catch(() => undefined),
             params.lat, params.lng, params.areaRung, params.bbox,
         );
     } else {

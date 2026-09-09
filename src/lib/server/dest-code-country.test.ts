@@ -1,4 +1,6 @@
 import { describe, it, expect } from 'vitest';
+import fs from 'node:fs';
+import path from 'node:path';
 
 /**
  * A cached destination code belongs to a country, and the unscoped fallback must
@@ -83,5 +85,79 @@ describe('destination code country scoping', () => {
         // An unscoped search has no country to contradict, so nothing is rejected.
         expect(acceptsRow('United States of America#US', undefined)).toBe(true);
         expect(acceptsRow('Greece#GR', undefined)).toBe(true);
+    });
+});
+
+/**
+ * The sync must keep both cities when two countries share a name.
+ *
+ * Rejecting the wrong row is only half a fix: reject Paris, Texas and the resolver falls
+ * through to TGX's `destinationSearcher`, which for "Paris" answers with a ZONE for
+ * Alpine-Casparis Municipal Airport — a substring match returning zero availability. The
+ * real French code was in TGX's destination list all along; the sync dropped it because it
+ * keyed on the bare name and the United States, with 4,699 of the 37,788 names, got there
+ * first.
+ *
+ * So the scoped key has to be written at sync time. These mirror that keying.
+ */
+describe('sync keys a destination by name and country', () => {
+    const countryOf = (parent: string | null): string | undefined =>
+        /#([A-Z]{2})$/.exec(parent ?? '')?.[1];
+
+    const keysFor = (name: string, parent: string | null): string[] => {
+        const bare = name.toLowerCase().trim();
+        const cc = countryOf(parent);
+        return cc ? [bare, `${bare}:${cc.toLowerCase()}`] : [bare];
+    };
+
+    it('writes both a bare and a scoped key for a country-parented city', () => {
+        expect(keysFor('Paris', 'France#FR')).toEqual(['paris', 'paris:fr']);
+        expect(keysFor('Bali', 'Indonesia#ID')).toEqual(['bali', 'bali:id']);
+    });
+
+    it('gives the two Parises different scoped keys', () => {
+        // The collision that started this: one bare key, two real cities. Scoped, they no
+        // longer contend, and neither overwrites the other whatever order TGX pages them in.
+        const fr = keysFor('Paris', 'France#FR');
+        const us = keysFor('Paris', 'United States of America#US');
+        expect(fr[0]).toBe(us[0]);          // same bare key — the collision
+        expect(fr[1]).not.toBe(us[1]);      // distinct scoped keys — the fix
+        expect(fr[1]).toBe('paris:fr');
+        expect(us[1]).toBe('paris:us');
+    });
+
+    it('still writes the bare key alone when the parent names no country', () => {
+        // A numeric parent identifies nothing, so there is no country to scope by and the
+        // row behaves exactly as it did before.
+        expect(keysFor('Greater London', '11218')).toEqual(['greater london']);
+        expect(keysFor('Porte de Paris', '-')).toEqual(['porte de paris']);
+        expect(keysFor('Somewhere', null)).toEqual(['somewhere']);
+    });
+});
+
+/**
+ * The rule above is worthless unless the search actually invokes it with a country.
+ *
+ * Every assertion in the block above passed on 2026-09-09 while production still answered
+ * "Paris, France" with Paris, Texas — because they exercise a *mirror* of the rule, and the
+ * one caller that matters passed `undefined`. The logic was right and unreached: a green
+ * suite and a dead landing card at the same time.
+ *
+ * So this reads the call site. It is a coarse test and deliberately so — the failure it
+ * guards against was not a wrong rule but an unwired one, and nothing about the rule's own
+ * correctness can detect that.
+ */
+describe('the city fallback passes a country to the resolver', () => {
+    const source = fs.readFileSync(
+        path.join(process.cwd(), 'src/lib/server/stays/travelgatex/search.ts'),
+        'utf8',
+    );
+
+    it('does not hand the resolver a literal undefined', () => {
+        expect(source).not.toMatch(/resolveTgxDestinationCode\(\s*cityName\s*,\s*undefined\s*\)/);
+    });
+
+    it('hands it the country resolved for this search', () => {
+        expect(source).toMatch(/resolveTgxDestinationCode\(\s*cityName\s*,\s*resolvedCountry\s*\)/);
     });
 });

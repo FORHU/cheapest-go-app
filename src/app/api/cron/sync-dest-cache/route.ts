@@ -99,6 +99,31 @@ export async function GET(req: NextRequest) {
                     parent_code: (dest.parent as string | null) ?? null,
                 });
             }
+
+            // The same name under its own country, so a name two countries share keeps both.
+            //
+            // The bare key above holds one row per name worldwide, and "first-seen wins" is
+            // decided by TGX's paging order rather than by anything about the place. The
+            // United States supplies 4,699 of these names — more than any other country — so
+            // it wins most collisions: `paris` resolved to Paris, Texas, `rome` to Rome,
+            // Georgia, `bali` to Bali in Crete. The French Paris was in the very same
+            // response and was dropped on the floor; 2,282 other French cities were kept.
+            //
+            // A search that knows its country reads `paris:fr` and gets the real code from
+            // TGX's own list. The bare key stays exactly as it was, so an unscoped search is
+            // unaffected and no existing row changes meaning.
+            const cc = /#([A-Z]{2})$/.exec((dest.parent as string | null) ?? '')?.[1];
+            if (cc) {
+                const scopedKey = `${key}:${cc.toLowerCase()}`;
+                const scopedExisting = destMap.get(scopedKey);
+                if (!scopedExisting || (scopedExisting.type !== 'CITY' && dest.type === 'CITY')) {
+                    destMap.set(scopedKey, {
+                        code:        dest.code as string,
+                        type:        dest.type as string,
+                        parent_code: (dest.parent as string | null) ?? null,
+                    });
+                }
+            }
         }
 
         console.log(
