@@ -970,7 +970,9 @@
       "stillSearching": "아직 검색 중...",
       "takingLonger": "평소보다 검색 시간이 더 걸리고 있습니다",
       "total_count": "(총 {count}개)",
-      "tryAgain": "다시 시도"
+      "tryAgain": "다시 시도",
+      "providersUnreachable": "항공사에 연결하지 못했습니다",
+      "providersUnreachableDescription": "노선이 없는 것이 아니라 저희 측 문제입니다. 다시 검색해 주세요."
     },
     "validation": {
       "fields": {

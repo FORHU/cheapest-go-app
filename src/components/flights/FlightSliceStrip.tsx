@@ -5,6 +5,7 @@ import { Plane } from 'lucide-react';
 import { useTranslations, useLocale } from 'next-intl';
 import type { OfferSlice } from '@/lib/flights/offer-slices';
 import { formatDuration, formatTimeIn } from '@/utils/flight-utils';
+import { ArrivalDayOffset } from './ArrivalDayOffset';
 
 /**
  * One slice of a journey, rendered in its own terms: where it leaves, where it lands,
@@ -66,6 +67,7 @@ export function FlightSliceStrip({ slice }: { slice: OfferSlice }) {
             <div className="text-center">
                 <div className="text-[11px] lg:text-base font-normal text-slate-900 dark:text-white">
                     {formatTimeIn(slice.arrival.time, locale)}
+                    <ArrivalDayOffset from={slice.departure.time} to={slice.arrival.time} />
                 </div>
                 <div className="text-[9px] lg:text-[11px] text-slate-500 dark:text-slate-400">
                     {slice.arrival.airport}

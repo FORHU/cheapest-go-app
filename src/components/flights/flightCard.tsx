@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowRight, Luggage, ShoppingBag, ChevronDown, ChevronUp, Shield, XCircle, BadgeDollarSign, Users } from 'lucide-react';
 import type { FlightOffer } from '@/types/flights';
 import { formatPrice, formatPriceWithCents, formatDuration, formatTimeIn, formatDurationLong } from '@/utils/flight-utils';
+import { ArrivalDayOffset } from './ArrivalDayOffset';
 import { offerSlices } from '@/lib/flights/offer-slices';
 import { getAirportByCode } from '@/lib/airports';
 import { FlightItineraryDetails } from '@/components/flights/FlightItineraryDetails';
@@ -292,6 +293,10 @@ export const FlightCard: React.FC<FlightCardProps> = ({ offer, index = 0, onSele
                         <div className="flex w-[34%] shrink-0 flex-col items-end gap-0.5 text-right sm:w-[26%]">
                             <span className="text-lg lg:text-2xl font-semibold leading-tight text-slate-900 dark:text-white">
                                 {formatTimeIn(outboundLast?.arrival?.time, locale)}
+                                <ArrivalDayOffset
+                                    from={primary.departure.time}
+                                    to={outboundLast?.arrival?.time}
+                                />
                             </span>
                             <span className="text-[9px] lg:text-[11px] text-slate-400 dark:text-slate-500">
                                 {t('arrivingAt')}

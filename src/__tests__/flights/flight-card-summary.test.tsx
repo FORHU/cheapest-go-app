@@ -122,12 +122,14 @@ describe('FlightCard — the airline block', () => {
 });
 
 describe('FlightCard — the route summary', () => {
-    it('gives the arrival clock no day marker', () => {
+    it('marks the arrival clock with the day it lands on', () => {
         renderIntl(<FlightCard offer={referenceOffer} />);
 
-        // The journey does land the next day; the design says so with "1d 01h 35m"
-        // rather than a superscript on the clock.
-        expect(screen.queryByText('+1')).toBeNull();
+        // The duration used to carry this alone, as "1d 01h 50m". It is a proxy, and a
+        // lossy one: "1d" appears once ELAPSED time passes 24h, which is a different
+        // question from whether the flight crosses midnight. A 90-minute Manila red-eye
+        // lands the next day and reads "01h 30m". The clock states it directly now.
+        expect(screen.getByText('+1')).toBeTruthy();
     });
 });
 

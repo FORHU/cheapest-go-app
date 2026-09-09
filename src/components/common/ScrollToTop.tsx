@@ -40,7 +40,11 @@ export const ScrollToTop = () => {
                     className={cn(
                         "fixed z-50 flex items-center justify-center w-8 h-8 lg:w-10 lg:h-10 rounded-full",
                         "bg-blue-600 text-white shadow-lg hover:bg-blue-700 hover:shadow-xl transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2",
-                        "right-4 bottom-[calc(env(safe-area-inset-bottom,0px)+80px)] lg:bottom-8"
+                        // Stacked above the Support Widget launcher, which owns this corner: a
+                        // 56px bubble at `sm:bottom-6 right-6`, so its top edge is 80px up. Below
+                        // `sm` the launcher drops to `bottom-4` and the mobile nav is the thing to
+                        // clear instead — the 80px offset already does.
+                        "right-4 sm:right-6 bottom-[calc(env(safe-area-inset-bottom,0px)+80px)] sm:bottom-24"
                     )}
                     aria-label="Scroll to top"
                 >

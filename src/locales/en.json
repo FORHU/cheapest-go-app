@@ -1000,7 +1000,9 @@
       "stillSearching": "Still searching...",
       "takingLonger": "Search is taking longer than usual",
       "total_count": "({count} total)",
-      "tryAgain": "Try Again"
+      "tryAgain": "Try Again",
+      "providersUnreachable": "We couldn’t reach our flight partners",
+      "providersUnreachableDescription": "This is a problem on our side, not a sign that the route is unavailable. Try the search again."
     },
     "validation": {
       "fields": {

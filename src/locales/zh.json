@@ -858,7 +858,9 @@
       "stillSearching": "仍在搜索...",
       "takingLonger": "搜索时间比平时长",
       "total_count": "（共 {count} 个）",
-      "tryAgain": "重试"
+      "tryAgain": "重试",
+      "providersUnreachable": "无法连接到航空公司",
+      "providersUnreachableDescription": "这是我们这边的问题，并不表示该航线不可用。请重新搜索。"
     },
     "validation": {
       "fields": {

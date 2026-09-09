@@ -856,7 +856,9 @@
       "stillSearching": "検索中...",
       "takingLonger": "通常より検索に時間がかかっています",
       "total_count": "（合計{count}件）",
-      "tryAgain": "再試行"
+      "tryAgain": "再試行",
+      "providersUnreachable": "航空会社に接続できませんでした",
+      "providersUnreachableDescription": "これは当社側の問題であり、路線がないわけではありません。もう一度検索してください。"
     },
     "validation": {
       "fields": {

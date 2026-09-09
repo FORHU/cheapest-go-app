@@ -1,6 +1,7 @@
 import { FlightResult, FlightSearchParams } from "@/types/flights";
 import { env } from "@/utils/env";
 import { logApiCall } from "@/lib/server/api-logger";
+import { PROVIDER_ATTEMPT_TIMEOUT_MS, PROVIDER_RETRY_BACKOFF_MS } from "@/lib/flights/search-budget";
 
 /**
  * Duffel provider adapter.
@@ -59,7 +60,10 @@ export async function searchDuffel(params: FlightSearchParams): Promise<FlightRe
     const startMs = Date.now();
 
     // ── Fix 2 & 3: Retry on 429 (rate limit) and 500 (transient error) ─────────
-    const MAX_RETRIES = 2;
+    // The ladder is sized in @/lib/flights/search-budget so the orchestrator's
+    // ceiling and the browser's abort are derived from it rather than guessed
+    // alongside it — see the note there on the 12s-versus-12s race.
+    const MAX_RETRIES = PROVIDER_RETRY_BACKOFF_MS.length;
     let lastStatus = 0;
     let lastErrMsg = '';
 
@@ -73,7 +77,7 @@ export async function searchDuffel(params: FlightSearchParams): Promise<FlightRe
                     "Content-Type": "application/json"
                 },
                 body: JSON.stringify(body),
-                signal: AbortSignal.timeout(12000),
+                signal: AbortSignal.timeout(PROVIDER_ATTEMPT_TIMEOUT_MS),
             });
 
             lastStatus = response.status;
@@ -92,7 +96,7 @@ export async function searchDuffel(params: FlightSearchParams): Promise<FlightRe
 
                 // 500 — transient server error, retry after brief backoff
                 if (response.status === 500 && attempt < MAX_RETRIES) {
-                    const waitMs = 2000 * (attempt + 1); // 2s, 4s
+                    const waitMs = PROVIDER_RETRY_BACKOFF_MS[attempt];
                     console.warn(`[Duffel] Server error (500). Retrying in ${waitMs}ms (attempt ${attempt + 1}/${MAX_RETRIES})`);
                     await new Promise(r => setTimeout(r, waitMs));
                     continue;
@@ -127,7 +131,7 @@ export async function searchDuffel(params: FlightSearchParams): Promise<FlightRe
 
             // Retry timeouts (500-equivalent transient failures)
             if (isTimeout && attempt < MAX_RETRIES) {
-                const waitMs = 1500 * (attempt + 1);
+                const waitMs = PROVIDER_RETRY_BACKOFF_MS[attempt];
                 console.warn(`[Duffel] Timeout on attempt ${attempt + 1}. Retrying in ${waitMs}ms`);
                 await new Promise(r => setTimeout(r, waitMs));
                 continue;
