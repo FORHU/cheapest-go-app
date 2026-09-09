@@ -39,13 +39,22 @@ export async function GET(req: NextRequest) {
 
     // Cities in hotel_content with enough hotels but no dest code yet, ordered by
     // hotel count so the most-searched destinations are resolved first.
-    const rows = await sql<{ city: string; cnt: number }[]>`
-        SELECT lower(hc.city) AS city, count(*) AS cnt
+    // Grouped by city AND country, and cached under the scoped key `city:cc`.
+    //
+    // This used to group on `lower(hc.city)` alone and resolve with no country, so every
+    // Paris in the world collapsed into one row and TGX picked whichever it liked. It
+    // picked Paris, Texas — while this very table held 3,933 French Paris hotels against
+    // 38 American ones — and "Paris, France" returned nothing until 2026-09-09. The
+    // country was always here; it was simply dropped on the way to the resolver.
+    const rows = await sql<{ city: string; country: string; cnt: number }[]>`
+        SELECT lower(hc.city) AS city, upper(hc.country) AS country, count(*) AS cnt
         FROM hotel_content hc
         WHERE hc.city IS NOT NULL
           AND hc.city != ''
-          AND lower(hc.city) NOT IN (SELECT city_key FROM tgx_destination_cache)
-        GROUP BY lower(hc.city)
+          AND hc.country IS NOT NULL
+          AND hc.country != ''
+          AND lower(hc.city) || ':' || lower(hc.country) NOT IN (SELECT city_key FROM tgx_destination_cache)
+        GROUP BY lower(hc.city), upper(hc.country)
         HAVING count(*) >= ${minHotels}
         ORDER BY count(*) DESC
         LIMIT ${limit}
@@ -64,23 +73,27 @@ export async function GET(req: NextRequest) {
         let failed   = 0;
         for (const row of rows) {
             const cityName = row.city;
+            const country = row.country;
+            const scopedKey = `${cityName}:${country.toLowerCase()}`;
             try {
+                // The country is passed through, so the resolver keys on `city:cc` and
+                // asks TGX for the right place. Without it every ambiguous name resolves
+                // once, globally, to whichever country TGX happened to return.
                 const code = await Promise.race([
-                    backgroundResolveDestCode(cityName),
+                    backgroundResolveDestCode(cityName, country),
                     new Promise<undefined>(r => setTimeout(() => r(undefined), 30_000)),
                 ]);
                 if (code) {
                     resolved++;
-                    console.log(`[fill-dest-cache] ✓ ${cityName} → ${code}`);
+                    console.log(`[fill-dest-cache] ✓ ${cityName} (${country}) → ${code}`);
                 } else {
                     failed++;
-                    console.log(`[fill-dest-cache] ✗ ${cityName} — no code found, marking as unresolvable`);
-                    // Insert sentinel so this city is skipped on future runs.
-                    // Many failures are non-English city names (e.g. German: "wien", "prag")
-                    // that TGX destinationSearcher will never match.
+                    console.log(`[fill-dest-cache] ✗ ${cityName} (${country}) — no code found, marking as unresolvable`);
+                    // Sentinel under the scoped key, so a failure for one country does not
+                    // mark the name unresolvable everywhere.
                     await sql`
                         INSERT INTO tgx_destination_cache (city_key, destination_code)
-                        VALUES (${cityName}, 'NONE')
+                        VALUES (${scopedKey}, 'NONE')
                         ON CONFLICT (city_key) DO NOTHING
                     `.catch(() => {});
                 }

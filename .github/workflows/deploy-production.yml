@@ -216,6 +216,15 @@ jobs:
           V_FOURSQUARE_SERVICE_API_KEY: ${{ secrets.FOURSQUARE_SERVICE_API_KEY }}
           V_FLIGHT_MARKUP_PERCENTAGE: ${{ secrets.FLIGHT_MARKUP_PERCENTAGE }}
           V_HOTEL_MARKUP_PERCENTAGE: ${{ secrets.HOTEL_MARKUP_PERCENTAGE }}
+          # Added with ADR-0031. The markup is no longer one percentage per product:
+          # it has a flat component and a cap, and it is sized against a MEASURED
+          # STRIPE_RATE rather than Stripe's headline 2.9%. Shipping only the two
+          # percentages leaves the rest on code defaults, which mixes old and new.
+          V_FLIGHT_MARKUP_FLAT_USD: ${{ secrets.FLIGHT_MARKUP_FLAT_USD }}
+          V_HOTEL_MARKUP_FLAT_USD: ${{ secrets.HOTEL_MARKUP_FLAT_USD }}
+          V_MARKUP_CAP: ${{ secrets.MARKUP_CAP }}
+          V_STRIPE_RATE: ${{ secrets.STRIPE_RATE }}
+          V_STRIPE_FLAT_FEE: ${{ secrets.STRIPE_FLAT_FEE }}
           V_OTV_CREDIT_LIMIT: ${{ secrets.OTV_CREDIT_LIMIT }}
           V_OTV_CREDIT_UTILIZATION_ALERT_PCT: ${{ secrets.OTV_CREDIT_UTILIZATION_ALERT_PCT }}
           V_OTV_DEADLINE_ALERT_HOURS: ${{ secrets.OTV_DEADLINE_ALERT_HOURS }}
@@ -293,6 +302,11 @@ jobs:
           append_env FOURSQUARE_SERVICE_API_KEY "$V_FOURSQUARE_SERVICE_API_KEY"
           append_env FLIGHT_MARKUP_PERCENTAGE "$V_FLIGHT_MARKUP_PERCENTAGE"
           append_env HOTEL_MARKUP_PERCENTAGE "$V_HOTEL_MARKUP_PERCENTAGE"
+          append_env FLIGHT_MARKUP_FLAT_USD "$V_FLIGHT_MARKUP_FLAT_USD"
+          append_env HOTEL_MARKUP_FLAT_USD "$V_HOTEL_MARKUP_FLAT_USD"
+          append_env MARKUP_CAP "$V_MARKUP_CAP"
+          append_env STRIPE_RATE "$V_STRIPE_RATE"
+          append_env STRIPE_FLAT_FEE "$V_STRIPE_FLAT_FEE"
           append_env OTV_CREDIT_LIMIT "$V_OTV_CREDIT_LIMIT"
           append_env OTV_CREDIT_UTILIZATION_ALERT_PCT "$V_OTV_CREDIT_UTILIZATION_ALERT_PCT"
           append_env OTV_DEADLINE_ALERT_HOURS "$V_OTV_DEADLINE_ALERT_HOURS"

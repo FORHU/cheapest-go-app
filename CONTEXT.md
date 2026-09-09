@@ -27,7 +27,8 @@ _Avoid_: setting `redirect_uri` to the frontend URL — Google would land on a p
 
 **Cutover** — the moment traffic switches from v1 to v2. Has not happened yet. Until it does, v2 runs on its own database and never writes a migration — dbmate in v1 stays the sole author of schema, and v2's database is rebuilt from v1's. See [ADR-0018](docs/adr/0018-v2-has-its-own-database.md).
 
-**AirangGo** — a white-label deployment of CheapestGo targeting Korean users, served at `airanggo.com`. It is the same codebase, same database, and same feature set as CheapestGo — not a separate product. It differs only in brand name, logo, favicon, email sender, and locale (locked to Korean, no language switcher). Runs as a second EC2 instance pointing at the same repo and the same `DATABASE_URL`. See [ADR-0005](docs/adr/0005-geomeego-white-label-deployment.md).
+**AirangGo** — a white-label deployment of CheapestGo targeting Korean users, served at `airanggo.com`. It is the same codebase, same database, and same feature set as CheapestGo — not a separate product. It differs only in brand name, logo, favicon, email sender, and locale (locked to Korean, no language switcher). Runs as a second **container on the same EC2 instance** as CheapestGo — port 3001 beside 3000, one nginx routing both by hostname, one database. See [ADR-0005](docs/adr/0005-geomeego-white-label-deployment.md).
+_Avoid_: looking for a second instance — there is one box, and stopping the container named `geomeego` takes airanggo.com down.
 _Avoid_: treating AirangGo as a separate product or separate codebase — it shares all suppliers, inventory, users, and admin with CheapestGo. _Avoid_: adding Korean-specific features or business logic to the codebase without making them brand-configurable.
 
 **GeomeeGo** — what **AirangGo** was called before the 2026-09 rebrand, and the second name this brand has had. Not a separate brand and never was. The name survives in running configuration rather than in intent: the Korean instance is still started with it until redeployed, `geomeego.com` still resolves until DNS moves, and admin cookies still hold it — so both names are accepted at once, on purpose. Infrastructure named after it (GitHub secrets, the EC2 container, `~/.env.geomeego`) is deliberately untouched, because those names live outside this repo.
@@ -38,7 +39,7 @@ _Avoid_: reading `req.headers.host` to decide which brand to render — all bran
 
 ## Deployment
 
-**AWS EC2** — the Next.js app runs as a persistent Node.js process on EC2. Not serverless. Connection pools are shared across requests within one process. Each brand deployment (CheapestGo, AirangGo) is a separate EC2 instance with its own env vars pointing at the same RDS database.
+**AWS EC2** — the Next.js app runs as a persistent Node.js process on EC2. Not serverless. Connection pools are shared across requests within one process. Both brands run as separate containers on **one** EC2 instance, each with its own env file and host port, behind a single nginx that routes on hostname. One RDS database serves both.
 
 **Dev environment** — Docker Compose with PostgreSQL 17 + pgAdmin 4. One port means one thing: v1 dev on **3000**, the v1 container (live RDS) on **3001**, app-v2 on **3002**, api-v2 on **4000**. v1's Postgres is **5433**; v2's is **5434** ([ADR-0018](docs/adr/0018-v2-has-its-own-database.md)), with Redis on 6380. Local only. pgAdmin available at `http://localhost:5050` (admin@cheapestgo.local / cheapestgo).
 
@@ -166,6 +167,9 @@ _Avoid_: showing no-availability hotels to users — TGX explicitly recommends a
 **NONE Sentinel** — a row in `tgx_destination_cache` whose `destination_code` is the literal `NONE`, meaning TGX's destinationSearcher has no destination code for that city. A city carrying one skips **Search by Destination** entirely and is served by **Hotel-Code Fallback**, at roughly half the inventory (measured: Seoul, 89 hotels via fallback against 185 via destination code `3124`).
 _Avoid_: treating a NONE Sentinel as a statement about supplier coverage — it records only that one destinationSearcher call failed, and it is written on any TGX `5xx`, including a transient one. _Avoid_: assuming a city recovers on its own once TGX is healthy — nothing expires or overwrites the sentinel, unlike the 7-day window on `tgx_failed_dest_codes`.
 
+**Destination Code** — the supplier's identifier for a place, and what a hotel search is actually asked in terms of. A city name does not identify one: Paris, Rome, Bali, Cambridge and Valencia each name several places in different countries, so a code is only meaningful together with the country it belongs to. Resolved once and cached, because asking the supplier costs an 18-second round trip.
+_Avoid_: keying a cached code on the city name alone. A single global row per name means the first country resolved wins forever, and every other country silently inherits it — on 2026-09-09 "Paris, France" searched Paris, Texas, "Bali, Indonesia" searched Bali in Crete, and "Rome, Italy" returned eight hotels in Rome, Georgia. _Avoid_: reading a zero from a wrong-country code as a **No-Availability Hotel** result; the supplier answered honestly about a place nobody asked for.
+
 **Unanswered Search** — a hotel search that ended without the supplier ever giving a usable answer: a TGX timeout, a `513` handler overload, a destination code that never resolved, or an empty catalog to fall back on. Distinct from a **No-Availability Hotel**, where the supplier *did* answer and reported no inventory. Only the latter justifies pruning the Phase 1 catalog — an Unanswered Search has learned nothing about availability, so the catalog stays on screen and the user is told prices could not be loaded.
 _Avoid_: rendering an Unanswered Search as "no hotels found" or as the destination lacking supplier coverage — the destination was never actually asked. _Avoid_: caching an Unanswered Search's empty result, or recording its destination code as an OTV miss. _Avoid_: letting a clean zero from the **Hotel-Code Fallback** cancel a destination that was never resolved — asking by hotel code is not the same question as asking by destination, and on 2026-09-02 a Phuket search where the fallback answered zero was followed seconds later by a destination-code search that returned real availability for the same city and dates.
 
@@ -260,6 +264,9 @@ _Avoid_: conflating the **estimated** and **recorded** figures. A booking has to
 **Net Revenue** — what CheapestGo keeps: **Gross Booking Value** less supplier cost. Equal to the markup, which is deliberately sized to recover **Platform Cost** rather than to earn a margin.
 _Avoid_: "profit" — the markup is a cost-recovery buffer, and labelling it profit implies a margin the pricing model does not intend to make. _Avoid_: reading a positive **Net Revenue** as money kept — the monthly platform invoices are settled out of it and are not visible on any single booking.
 
+**Price Hold** — the short window in which a supplier's quote stays chargeable, after which it lapses and the traveller re-quotes. It is a countdown, not a commitment: expiry is the designed behaviour, and nothing about it promises the price will still be available afterwards or that it is the lowest anywhere.
+_Avoid_: "price guarantee", and its translations — `가격 보장` and `料金の保証` both read as a promise the product does not make, on a banner shown mid-checkout beside money. Chinese `价格保留` is the right shape. _Avoid_: conflating it with the **Price Promise**, which is a competitive claim about other agencies and has nothing to do with a quote's lifetime.
+
 **Reversal** — the accounting undo of a refunded booking, carried out at that booking's own **Locked Rate** so the sale and the refund cancel to nothing. The customer is returned exactly what they paid in their **Charge Currency**, so no gain or loss arises to report.
 _Avoid_: revaluing a refund at the current rate — that manufactures an FX movement out of a transaction that had none.
 
@@ -318,3 +325,17 @@ _Avoid_: "closed" — nothing is prevented afterwards. _Avoid_: reading a Resolv
 
 **AI Search** — the hero's natural-language mode, which turns one sentence into search parameters and runs a search. Distinct from a Support Chat: it is a single turn, it holds no history, and it is about finding a trip rather than fixing one.
 _Avoid_: calling it a chat or an assistant. _Note_: as of 2026-09-05 it is a mock — a two-second delay and a hardcoded result — so treat it as a design placeholder, not a capability.
+
+## Localization
+
+**Interface Language** — the words CheapestGo itself authors on the **storefront**: buttons, labels, map controls, policy headings, and the amenity vocabulary its own code maps supplier codes onto. Everything here is translatable by the team, into every locale the storefront offers, and English appearing in it reads as an unfinished product rather than an imported one. The back office is deliberately outside it — the only people who see admin are the team, so it stays English however many locales the storefront gains.
+_Avoid_: treating a screen as translated because its keys exist — a string that was never given a key is invisible to any coverage count, and those are the ones a customer notices first, because they sit in the booking funnel rather than in the settings.
+
+**Supplier Content** — the words a provider wrote: property descriptions, room names, bed notes, cancellation prose. It arrives in whatever language the supplier holds and is passed through unchanged, so it stays English on a Korean storefront. Deliberate: the content cache keeps one description per property with no language dimension, and a machine translation of a description sitting beside a price someone is being asked to pay is worse than the original.
+_Avoid_: counting it as a translation gap. It is a supplier capability question — whether OTV holds Korean text at all — not a missing key.
+
+**Storefront Locale** — the language a page is written in. It selects the **Interface Language** and nothing else: not **Supplier Content**, not the **Charge Currency**, not which properties are returned.
+_Avoid_: inferring the market from it — locale is what a page is written in, not who may buy.
+
+**Language Territory** — the set of languages one domain is allowed to serve, and the rule that no language is served by two domains. `airanggo.com` holds Korean alone; `cheapestgo.com` holds English, Japanese and Chinese. A language has exactly one home, so two of our own URLs never compete for the same query and `hreflang` has a single alternate to name per language.
+_Avoid_: adding a locale to a domain because the routing already supports it — the constraint is commercial, not technical, and the cost of breaking it is that a brand competes with itself for its own market. _Avoid_: reading it as a restriction on visitors; anyone may buy from any storefront, in any **Charge Currency** offered.
