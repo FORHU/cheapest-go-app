@@ -927,7 +927,9 @@
       "from": "最安",
       "perNight": "/泊",
       "reviews": "{count}件のレビュー",
-      "viewDeal": "料金を見る"
+      "viewDeal": "料金を見る",
+      "fetchingPrices": "料金を取得中…",
+      "fetchingPricesLong": "料金を取得しています。少々お待ちください…"
     },
     "collapse": "折りたたむ ↑",
     "filters": {
@@ -2228,5 +2230,11 @@
       "details_needed": "担当者におつなぎしたいと思います。お名前とメールアドレスをご記入いただければ、担当者が引き継ぎます。",
       "assistant_retired": "サポートは担当チームへ移管され、自動応答は行っておりません。ログインの上、あらためてお問い合わせいただければ、担当者が確認いたします。"
     }
+  },
+  "map": {
+    "closeMap": "地図を閉じる",
+    "placesWithin": "この範囲内の場所",
+    "noProperties": "表示できる宿泊施設がありません",
+    "adjustFilters": "検索条件を変更してみてください"
   }
 }

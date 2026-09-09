@@ -930,7 +930,9 @@
       "from": "起价",
       "perNight": "/晚",
       "reviews": "{count} 条评论",
-      "viewDeal": "查看优惠"
+      "viewDeal": "查看优惠",
+      "fetchingPrices": "正在获取价格…",
+      "fetchingPricesLong": "正在获取价格，请稍候…"
     },
     "collapse": "收起 ↑",
     "filters": {
@@ -2231,5 +2233,11 @@
       "details_needed": "我想为您转接人工客服。请留下您的姓名和邮箱，客服人员将接手处理。",
       "assistant_retired": "客服支持现已转由人工团队负责，不再自动回复。请登录后重新发送消息，客服人员会尽快为您处理。"
     }
+  },
+  "map": {
+    "closeMap": "关闭地图",
+    "placesWithin": "范围内的地点",
+    "noProperties": "没有可显示的住宿",
+    "adjustFilters": "请尝试调整搜索筛选条件"
   }
 }

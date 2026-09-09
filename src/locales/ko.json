@@ -1041,7 +1041,9 @@
       "from": "최저",
       "perNight": "/박",
       "reviews": "리뷰 {count}개",
-      "viewDeal": "요금 보기"
+      "viewDeal": "요금 보기",
+      "fetchingPrices": "요금 조회 중…",
+      "fetchingPricesLong": "요금을 불러오는 중입니다. 잠시만 기다려 주세요…"
     },
     "collapse": "접기 ↑",
     "filters": {
@@ -2347,5 +2349,11 @@
       "details_needed": "담당 상담원에게 연결해 드리고자 합니다. 성함과 이메일을 남겨 주시면 담당자가 이어서 도와드립니다.",
       "assistant_retired": "고객지원이 담당 팀으로 이전되어 더 이상 자동으로 응답되지 않습니다. 로그인 후 다시 문의해 주시면 담당자가 확인해 드립니다."
     }
+  },
+  "map": {
+    "closeMap": "지도 닫기",
+    "placesWithin": "반경 내 장소",
+    "noProperties": "표시할 숙소가 없습니다",
+    "adjustFilters": "검색 필터를 조정해 보세요"
   }
 }

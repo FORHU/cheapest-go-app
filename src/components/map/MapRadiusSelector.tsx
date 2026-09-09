@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
 import React from 'react';
 import { MapPin } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -25,13 +26,14 @@ interface MapRadiusSelectorProps {
  * the POI photo cards.
  */
 export function MapRadiusSelector({ radiusMeters, onRadiusChange }: MapRadiusSelectorProps) {
+    const tMap = useTranslations('map');
     return (
         <div className="flex items-center gap-0.5 h-8 pl-2.5 pr-2 rounded-full bg-white/95 dark:bg-slate-900/95 border border-slate-200 dark:border-slate-700 shadow-lg">
             <MapPin size={11} className="text-blue-500 shrink-0" />
             {/* Prompt shown until a radius is picked — nothing is plotted before then */}
             {radiusMeters === null && (
                 <span className="mx-1 text-[10px] font-semibold text-slate-500 dark:text-slate-400 whitespace-nowrap">
-                    Places within
+                    {tMap('placesWithin')}
                 </span>
             )}
             {DISTANCE_OPTIONS.map(({ label, value }) => (

@@ -1072,7 +1072,9 @@
       "from": "From",
       "perNight": "/night",
       "reviews": "{count} reviews",
-      "viewDeal": "View"
+      "viewDeal": "View",
+      "fetchingPrices": "Fetching prices…",
+      "fetchingPricesLong": "Fetching prices, hang tight…"
     },
     "collapse": "Collapse ↑",
     "filters": {
@@ -2693,5 +2695,11 @@
       "details_needed": "I'd like to pass you to someone from the team. Leave your name and email and they'll pick this up.",
       "assistant_retired": "Support has moved to our team and is no longer answered automatically. Sign in and write again and someone will pick it up."
     }
+  },
+  "map": {
+    "closeMap": "Close map",
+    "placesWithin": "Places within",
+    "noProperties": "No properties to show",
+    "adjustFilters": "Try adjusting your search filters"
   }
 }
