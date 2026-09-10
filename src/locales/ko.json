@@ -126,7 +126,9 @@
       "resetPassword": "비밀번호 재설정",
       "sendResetLink": "재설정 링크 보내기",
       "signIn": "로그인",
-      "tryAgain": "다시 시도해 주세요"
+      "tryAgain": "다시 시도해 주세요",
+      "showPassword": "비밀번호 표시",
+      "hidePassword": "비밀번호 숨기기"
     },
     "closeModal": "닫기",
     "emailStep": {

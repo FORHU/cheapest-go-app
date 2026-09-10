@@ -125,6 +125,10 @@
       "terms": "登录即表示您同意我们的{terms}和{privacy}。",
       "termsLink": "服务条款",
       "title": "登录 {brand}"
+    },
+    "actions": {
+      "showPassword": "显示密码",
+      "hidePassword": "隐藏密码"
     }
   },
   "bookingDestination": {

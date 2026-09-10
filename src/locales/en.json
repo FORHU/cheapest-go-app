@@ -131,7 +131,9 @@
       "resetPassword": "Reset Password",
       "sendResetLink": "Send reset link",
       "signIn": "Sign in",
-      "tryAgain": "try again"
+      "tryAgain": "try again",
+      "showPassword": "Show password",
+      "hidePassword": "Hide password"
     },
     "closeModal": "Close modal",
     "emailStep": {

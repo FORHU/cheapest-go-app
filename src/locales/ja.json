@@ -125,6 +125,10 @@
       "terms": "ログインすることで{terms}と{privacy}に同意したものとみなされます。",
       "termsLink": "利用規約",
       "title": "{brand} にログイン"
+    },
+    "actions": {
+      "showPassword": "パスワードを表示",
+      "hidePassword": "パスワードを非表示"
     }
   },
   "bookingDestination": {

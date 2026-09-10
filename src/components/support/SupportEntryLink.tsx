@@ -1,5 +1,6 @@
 'use client';
 
+import { Suspense } from 'react';
 import { usePathname, useSearchParams } from 'next/navigation';
 import { useAuthStore } from '@/stores/authStore';
 import { useSupportWidgetStore } from '@/stores/supportWidgetStore';
@@ -24,6 +25,26 @@ import { useSupportWidgetStore } from '@/stores/supportWidgetStore';
  * a keyboard than one that is consistently either.
  */
 export function SupportEntryLink({ className, label }: { className?: string; label: string }) {
+    return (
+        // The boundary lives here, not at the call site.
+        //
+        // `useSearchParams` in a client component requires a Suspense boundary above it, or
+        // the whole route bails out of static generation — and this renders inside the
+        // Footer, which is itself used as a Suspense *fallback*, and a fallback renders
+        // outside the boundary it belongs to. That combination failed the AirangGo image
+        // build on an unrelated page, `/booking/hotel-confirmed`, which is exactly how hard
+        // this is to attribute from the error.
+        //
+        // Owning the boundary means no caller can place this component somewhere that
+        // breaks their build. The fallback is the same link without the redirect: during
+        // prerender there is no query string to preserve anyway.
+        <Suspense fallback={<a href="/login" className={className}>{label}</a>}>
+            <SupportEntry className={className} label={label} />
+        </Suspense>
+    );
+}
+
+function SupportEntry({ className, label }: { className?: string; label: string }) {
     const user = useAuthStore(s => s.user);
     const openSupport = useSupportWidgetStore(s => s.open);
     const pathname = usePathname();
