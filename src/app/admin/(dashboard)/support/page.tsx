@@ -30,6 +30,7 @@ export default async function AdminSupportPage() {
             initialFilter="waiting"
             initialConversations={conversations as unknown as InboxConversation[]}
             initialCounts={counts}
+            currentAdminId={user.id}
         />
     );
 }

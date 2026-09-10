@@ -33,6 +33,14 @@ export interface SupportConversationView {
     status: SupportStatusView;
     locale: string;
     guestName: string | null;
+    /**
+     * The Chat Reference, e.g. CS-9QM2K7.
+     *
+     * Shown so the customer can name this conversation elsewhere. It is not a credential —
+     * quoting it proves nothing and opens nothing, and the chat is reached by signing in
+     * (ADR-0038).
+     */
+    reference: string;
     createdAt: string;
     lastMessageAt: string;
     /** True when asking for a person will need a name and email first. */

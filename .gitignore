@@ -50,3 +50,4 @@ hotel-dump.jsonl
 
 # Superpowers brainstorming session files
 .superpowers/
+.env.smoke

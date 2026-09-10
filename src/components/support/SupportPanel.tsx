@@ -1,11 +1,12 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
-import { X } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { X, Copy } from 'lucide-react';
 import { useLocale, useTranslations } from 'next-intl';
 import { SupportTranscript } from './SupportTranscript';
 import { SupportComposer } from './SupportComposer';
 import { EscalationForm } from './EscalationForm';
+import { SupportBookingPicker } from './SupportBookingPicker';
 import { useSupportChat } from './useSupportChat';
 import { formatReopen } from './reopenTime';
 
@@ -31,6 +32,7 @@ interface SupportPanelProps {
 export function SupportPanel({ chat, onClose }: SupportPanelProps) {
     const t = useTranslations('support');
     const panelRef = useRef<HTMLDivElement>(null);
+    const [copied, setCopied] = useState(false);
 
     // Escape closes, as it does for every other overlay in the app.
     useEffect(() => {
@@ -85,6 +87,35 @@ export function SupportPanel({ chat, onClose }: SupportPanelProps) {
                                 : t('status.backOn', { when: reopen.when })}
                         </p>
                     )}
+
+                    {/*
+                      * The Chat Reference. Shown here and sent nowhere: support mail is a
+                      * doorbell to the team, not a copy of the conversation, so emailing
+                      * this would invite replies into a mailbox nothing reads. Copyable
+                      * because its whole purpose is to be quoted somewhere else.
+                      */}
+                    {chat.conversation?.reference && (
+                        <button
+                            type="button"
+                            onClick={() => {
+                                const ref = chat.conversation?.reference;
+                                if (!ref) return;
+                                // Clipboard access can be refused or absent; the reference is
+                                // on screen either way, so a failure needs no message.
+                                void navigator.clipboard?.writeText(ref).then(
+                                    () => { setCopied(true); setTimeout(() => setCopied(false), 1500); },
+                                    () => {},
+                                );
+                            }}
+                            className="mt-1 inline-flex items-center gap-1 rounded font-mono text-[11px] text-slate-400 transition hover:text-slate-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:hover:text-slate-300"
+                            title={t('reference.copy')}
+                        >
+                            {chat.conversation.reference}
+                            <span className="font-sans not-italic">
+                                {copied ? t('reference.copied') : <Copy className="h-3 w-3" />}
+                            </span>
+                        </button>
+                    )}
                 </div>
                 <button
                     type="button"
@@ -137,6 +168,12 @@ export function SupportPanel({ chat, onClose }: SupportPanelProps) {
                             </button>
                         </div>
                     )}
+                    {/*
+                      * Directly above the composer, so choosing a trip and writing about it
+                      * read as one action. Above the transcript it would push the newest
+                      * message out of view; below the composer nobody would see it at all.
+                      */}
+                    <SupportBookingPicker conversationId={chat.conversation?.id ?? null} />
                     <SupportComposer canSend={chat.canSend} onSend={chat.send} />
                 </>
             )}

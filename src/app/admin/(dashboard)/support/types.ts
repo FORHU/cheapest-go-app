@@ -21,7 +21,37 @@ export interface InboxConversation {
      * the customer, and it is never sent to the widget.
      */
     escalationReason: string | null;
+    /** The Chat Reference, e.g. CS-9QM2K7 (ADR-0038). Names the conversation; opens nothing. */
+    reference: string;
+    /** An Agent overruling Urgency. null means the trip dates decide (ADR-0039). */
+    priority: UrgencyView | null;
+    /** What the queue sorted by: the override, or the tier read from the linked trips. */
+    urgency: UrgencyView;
     lastMessageAt: string;
+    createdAt: string;
+}
+
+/** Ordered least to most urgent, mirroring URGENCY_RANK on the server. */
+export type UrgencyView = 'low' | 'normal' | 'high' | 'critical';
+
+export interface LinkedBookingView {
+    bookingReference: string;
+    /** The Agent who attached it; null when the customer chose it themselves. */
+    linkedBy: string | null;
+    linkedAt: string;
+    /**
+     * False when no booking here matches the reference — a typo, or a supplier booking that
+     * never reached this database. Either way it carries no dates, so it contributes nothing
+     * to Urgency and is marked rather than left looking attached.
+     */
+    known: boolean;
+}
+
+export interface SupportNoteView {
+    id: string;
+    conversationId: string;
+    authorAdminId: string;
+    body: string;
     createdAt: string;
 }
 
@@ -42,4 +72,7 @@ export interface ConversationDetail {
     conversation: InboxConversation;
     messages: InboxMessage[];
     bookings: unknown[] | null;
+    linkedBookings: LinkedBookingView[];
+    /** Agent-only. Never reaches the widget — see the notes table's own comment. */
+    notes: SupportNoteView[];
 }

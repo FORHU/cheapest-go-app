@@ -20,9 +20,25 @@ import postgres from 'postgres';
 const CUTOFF = '20260905000001';           // exclusive: this file and later are run, not backfilled
 const dry = process.argv.includes('--dry');
 
-const env = fs.readFileSync('.env', 'utf8');
-const url = env.match(/^RDS_DATABASE_URL=(.*)$/m)[1].trim().replace(/^"|"$/g, '');
-const sql = postgres(url, { ssl: { rejectUnauthorized: false }, max: 1, connect_timeout: 25 });
+// Environment first, then `.env` — same reason as apply-migrations.mjs: an override that
+// is silently ignored sends a run meant for localhost to production.
+const fileEnv = fs.readFileSync('.env', 'utf8');
+const fromFile = fileEnv.match(/^RDS_DATABASE_URL=(.*)$/m)?.[1].trim().replace(/^"|"$/g, '');
+const url = process.env.RDS_DATABASE_URL?.trim() || fromFile;
+if (!url) {
+    console.error('No database URL. Set RDS_DATABASE_URL in the environment or in .env.');
+    process.exit(1);
+}
+
+const host = url.match(/@([^/:?]+)/)?.[1] ?? 'unknown';
+const isLocal = /^(localhost|127\.0\.0\.1)$/.test(host);
+console.log(`target: ${host}${isLocal ? '  (local)' : '  ** LIVE **'}\n`);
+
+const sql = postgres(url, {
+    ssl: isLocal ? false : { rejectUnauthorized: false },
+    max: 1,
+    connect_timeout: 25,
+});
 
 const versions = fs.readdirSync('db/migrations')
     .filter(f => f.endsWith('.sql'))

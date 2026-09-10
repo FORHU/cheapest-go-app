@@ -286,7 +286,7 @@ _Avoid_: re-introducing any cron that calls a hotel availability API without a r
 ## Support
 
 **Support Chat** — a conversation between one customer and CheapestGo about a trip they have or are trying to book, answered by an **Agent**. Opening one requires signing in, so every Support Chat has an account behind it and therefore a way to reach whoever started it.  A customer has at most one open Support Chat at a time; asking again resumes the one they have rather than starting a second.
-_Avoid_: "ticket" — a Support Chat is not numbered, not closed by the customer, and nothing about it is promised to be answered off-line. _Avoid_: calling it a "session" — it outlives the browser tab it was opened in.
+_Avoid_: "ticket" — it is not closed by the customer, nothing about it is promised to be answered off-line, and it is not a unit of work that can be handed on while the customer waits somewhere else. A **Chat Reference** now names one, so "not numbered" is no longer the reason; being numbered is what lets a customer cite a conversation, not what turns it into a queue item. _Avoid_: calling it a "session" — it outlives the browser tab it was opened in.
 _Note_: until 2026-09-07 a Support Chat was answered first by a model and reached an Agent only on hand-over. The model is gone and the vocabulary of hand-over went with it — a reader who finds `escalation_reason` or a `senderType` of `ai` in the schema is looking at residue, not at a capability.
 
 **Support Widget** — the floating launcher and panel that hosts a Support Chat on the site. The widget is the surface; the Support Chat is the thing it shows. One can exist without the other: the chat continues when the widget is closed. A signed-out visitor sees the launcher and is asked to sign in; the widget is never a box a stranger types into.
@@ -322,6 +322,23 @@ _Avoid_: treating Assignment as permission — any Agent can read any Support Ch
 
 **Resolved** — an Agent's statement that a Support Chat is finished. It is not an ending: a customer who writes again reopens the conversation, with the same transcript, and it returns to **Waiting** exactly as a fresh one would. Only an Agent resolves; the customer closing the widget means nothing.
 _Avoid_: "closed" — nothing is prevented afterwards. _Avoid_: reading a Resolved chat as one the customer agreed was finished; it records what the Agent believed.
+
+**Chat Reference** — the short code that names one Support Chat out loud, `CS-` and six characters, e.g. `CS-9QM2K7`. It exists so a customer writing from their own mail client, or an Agent naming a case to a colleague, can point at a conversation without a link.
+_Avoid_: treating it as a credential. Holding a Chat Reference grants nothing: a Support Chat is reached by signing in, and the reference only names the thing you must already be entitled to see. This is the deliberate difference from helpdesks whose reference number *is* the way in.
+_Avoid_: reading it as a booking reference. Bookings are `CG-` and `GG-`, one prefix per brand, because a booking has to be attributed to a brand inside one shared Stripe account. A chat has no money in it and the queue is deliberately blind to brand, so one prefix serves both.
+_Avoid_: "ticket number" — see the note under **Support Chat** on why the conversation is not a ticket.
+
+**Linked Booking** — a trip a Support Chat is about, named by its booking reference. A chat has any number of them, including none: a customer has at most one open Support Chat, so the single chat that is open has to carry every question they have, and a trip is often a flight and a hotel bought separately. A general question about how refunds work has no Linked Booking at all and is not incomplete for lacking one.
+_Note_: the link records who made it. A customer chooses from their own bookings when opening the chat; an Agent can add or remove one afterwards. Nothing is linked by inference — a booking attached because it merely happened to be upcoming is a guess presented as a fact, and the place it would surface is a refund dispute.
+_Avoid_: calling it "the booking" as though there were one.
+
+**Urgency** — how close a Support Chat's customer is to travelling, and therefore how badly waiting hurts them. It is read from the **Linked Booking**, not declared: someone in a hotel tonight or at an airport in three hours outranks someone asking about a receipt, whatever order they wrote in. A chat with several Linked Bookings takes the most urgent of them; a chat with none is ordinary, which is right — a question with no trip attached is rarely the one that cannot wait.
+_Why it is not asked_: a customer offered a box marked "urgent" ticks it, and a queue sorted by self-assessment is sorted by nothing. Departure dates are already known, already true, and cannot be argued with.
+_Note_: an Agent can overrule it, and the override is what is stored — Urgency itself is computed at read time and never written down, because a booking that was three weeks away when the chat opened is three days away later and the queue must know that without anyone revisiting the row.
+_Avoid_: "priority" as though it were a property of the conversation. It is a property of the *trip*, and it changes on its own as the date approaches.
+
+**Internal Note** — something an Agent writes on a Support Chat for other Agents. It has no recipient: it is never delivered, never translated, never shown to the customer, and its arrival does not change the customer's place in the queue.
+_Avoid_: thinking of it as a message with the audience turned off. A Note is an annotation on the conversation, which is why it is kept apart from the transcript rather than filtered out of it — the customer's view of a Support Chat cannot omit a Note it is incapable of reading.
 
 **AI Search** — the hero's natural-language mode, which turns one sentence into search parameters and runs a search. Distinct from a Support Chat: it is a single turn, it holds no history, and it is about finding a trip rather than fixing one.
 _Avoid_: calling it a chat or an assistant. _Note_: as of 2026-09-05 it is a mock — a two-second delay and a hardcoded result — so treat it as a design placeholder, not a capability.

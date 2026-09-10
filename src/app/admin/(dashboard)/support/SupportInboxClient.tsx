@@ -8,6 +8,10 @@ import type {
     InboxCountsView,
     InboxFilterView,
 } from './types';
+import { UrgencyBadge } from '@/components/support/UrgencyBadge';
+import { UrgencyOverride } from '@/components/support/UrgencyOverride';
+import { LinkedBookings } from '@/components/support/LinkedBookings';
+import { AgentNotes } from '@/components/support/AgentNotes';
 
 /**
  * The Agent's inbox: the queue on the left, the conversation on the right.
@@ -39,12 +43,15 @@ interface SupportInboxClientProps {
     initialFilter: InboxFilterView;
     initialConversations: InboxConversation[];
     initialCounts: InboxCountsView;
+    /** The signed-in Agent, so their own notes can be told from a colleague's. */
+    currentAdminId: string;
 }
 
 export function SupportInboxClient({
     initialFilter,
     initialConversations,
     initialCounts,
+    currentAdminId,
 }: SupportInboxClientProps) {
     const [filter, setFilter] = useState<InboxFilterView>(initialFilter);
     const [conversations, setConversations] = useState(initialConversations);
@@ -198,10 +205,28 @@ export function SupportInboxClient({
                                             openId === item.id ? 'bg-blue-50 dark:bg-blue-950/30' : ''
                                         }`}
                                     >
-                                        <span className="block text-sm font-medium text-slate-900 dark:text-slate-100">
-                                            {item.guestName ?? 'Signed-in customer'}
+                                        <span className="flex items-center justify-between gap-2">
+                                            <span className="truncate text-sm font-medium text-slate-900 dark:text-slate-100">
+                                                {item.guestName ?? 'Signed-in customer'}
+                                            </span>
+                                            {/*
+                                              * Right-aligned so the badges form a column the
+                                              * eye can run down, rather than sitting at a
+                                              * different offset on every row behind a name.
+                                              */}
+                                            <UrgencyBadge
+                                                urgency={item.urgency}
+                                                overridden={item.priority !== null}
+                                            />
                                         </span>
                                         <span className="mt-0.5 flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+                                            {/*
+                                              * Monospaced so a reference a customer reads out
+                                              * over the phone can be matched character by
+                                              * character against the list.
+                                              */}
+                                            <span className="font-mono">{item.reference}</span>
+                                            <span aria-hidden>·</span>
                                             <span>{item.sourceBrand ?? 'CheapestGo'}</span>
                                             <span aria-hidden>·</span>
                                             <span>{new Date(item.lastMessageAt).toLocaleString()}</span>
@@ -235,11 +260,18 @@ export function SupportInboxClient({
                         <>
                             <header className="shrink-0 border-b border-slate-200 px-4 py-3 dark:border-white/10">
                                 <div className="flex items-start justify-between gap-3">
-                                    <div>
-                                        <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">
-                                            {detail.conversation.guestName ?? 'Signed-in customer'}
+                                    <div className="min-w-0">
+                                        <p className="flex items-center gap-2 text-sm font-semibold text-slate-900 dark:text-slate-100">
+                                            <span className="truncate">
+                                                {detail.conversation.guestName ?? 'Signed-in customer'}
+                                            </span>
+                                            <UrgencyBadge
+                                                urgency={detail.conversation.urgency}
+                                                overridden={detail.conversation.priority !== null}
+                                            />
                                         </p>
                                         <p className="text-xs text-slate-500 dark:text-slate-400">
+                                            <span className="font-mono">{detail.conversation.reference}</span> ·{' '}
                                             {detail.conversation.guestEmail ?? '—'} ·{' '}
                                             {detail.conversation.sourceBrand ?? 'CheapestGo'} ·{' '}
                                             {detail.conversation.locale}
@@ -277,6 +309,34 @@ export function SupportInboxClient({
                                         {detail.bookings.length === 1 ? '' : 's'} on this account
                                     </p>
                                 )}
+
+                                <LinkedBookings
+                                    conversationId={detail.conversation.id}
+                                    bookings={detail.linkedBookings}
+                                    onChanged={() => void loadDetail(detail.conversation.id)}
+                                />
+
+                                {/*
+                                  * The override, offered as plain words rather than a
+                                  * priority dropdown. "Let the dates decide" is a real
+                                  * choice and not the same as picking Normal: it hands the
+                                  * conversation back to a rule that keeps moving as the
+                                  * departure approaches, where Normal freezes it there.
+                                  */}
+                                <UrgencyOverride
+                                    conversationId={detail.conversation.id}
+                                    priority={detail.conversation.priority}
+                                    onChanged={() => void loadDetail(detail.conversation.id)}
+                                />
+
+                                <div className="mt-2">
+                                    <AgentNotes
+                                        conversationId={detail.conversation.id}
+                                        notes={detail.notes}
+                                        currentAdminId={currentAdminId}
+                                        onChanged={() => void loadDetail(detail.conversation.id)}
+                                    />
+                                </div>
                             </header>
 
                             <div className="min-h-0 flex-1 space-y-3 overflow-y-auto px-4 py-3">

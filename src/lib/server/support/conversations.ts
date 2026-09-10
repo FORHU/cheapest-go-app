@@ -27,6 +27,8 @@ export interface SupportConversation {
     sourceBrand: string | null;
     locale: string;
     assignedAdminId: string | null;
+    /** The Chat Reference, e.g. CS-9QM2K7. Names the conversation and opens nothing (ADR-0038). */
+    reference: string;
     createdAt: string;
     lastMessageAt: string;
 }
@@ -43,6 +45,7 @@ const COLUMNS = `
     source_brand       AS "sourceBrand",
     locale,
     assigned_admin_id  AS "assignedAdminId",
+    reference,
     created_at         AS "createdAt",
     last_message_at    AS "lastMessageAt"
 `;
@@ -288,6 +291,10 @@ export function toPublicConversation(conversation: SupportConversation) {
         status: conversation.status,
         locale: conversation.locale,
         guestName: conversation.guestName,
+        // Safe to send, and the only reason it exists: the reference names this conversation
+        // and grants nothing, so the customer can cite it anywhere without it being a way in
+        // (ADR-0038). This is the deliberate break from helpdesks whose number *is* the key.
+        reference: conversation.reference,
         createdAt: conversation.createdAt,
         lastMessageAt: conversation.lastMessageAt,
         // So the widget knows whether asking for a person will need a form first, rather

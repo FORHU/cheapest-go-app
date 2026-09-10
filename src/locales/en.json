@@ -2694,6 +2694,16 @@
       "model_failed": "Something went wrong on my end. You can ask to speak to a person and someone from the team will pick this up.",
       "details_needed": "I'd like to pass you to someone from the team. Leave your name and email and they'll pick this up.",
       "assistant_retired": "Support has moved to our team and is no longer answered automatically. Sign in and write again and someone will pick it up."
+    },
+    "reference": {
+      "copy": "Copy this chat reference",
+      "copied": "Copied"
+    },
+    "trips": {
+      "question": "Which trip is this about?",
+      "skip": "Not about a trip",
+      "about": "About",
+      "change": "Change"
     }
   },
   "map": {

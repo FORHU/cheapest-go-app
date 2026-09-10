@@ -34,12 +34,44 @@ const FILES = [
     '20260907000001_support_assistant_retired_notice.sql',
     '20260907000002_support_conversations_start_waiting.sql',
     '20260907000003_support_conversations_waiting_notified_at.sql',
+
+    // Chat Reference, Linked Bookings and Internal Notes (ADR-0038, ADR-0039).
+    '20260909000001_support_chat_reference_bookings_notes.sql',
 ];
 
 const dry = process.argv.includes('--dry');
-const env = fs.readFileSync('.env', 'utf8');
-const url = env.match(/^RDS_DATABASE_URL=(.*)$/m)[1].trim().replace(/^"|"$/g, '');
-const sql = postgres(url, { ssl: { rejectUnauthorized: false }, max: 1, connect_timeout: 25 });
+
+/**
+ * The database to migrate, from the environment first and only then from `.env`.
+ *
+ * It used to read `.env` alone, which quietly ignored `RDS_DATABASE_URL=… node …` — the
+ * obvious way to point this at a local database. On 2026-09-10 a run meant for localhost
+ * went to production instead, and the only clue was a timestamp. Reading the environment
+ * first makes the override do what it looks like it does.
+ *
+ *   RDS_DATABASE_URL="$(...)" node scratch/apply-migrations.mjs   # explicit target
+ *   node scratch/apply-migrations.mjs                             # .env, i.e. live
+ */
+const fileEnv = fs.readFileSync('.env', 'utf8');
+const fromFile = fileEnv.match(/^RDS_DATABASE_URL=(.*)$/m)?.[1].trim().replace(/^"|"$/g, '');
+const url = process.env.RDS_DATABASE_URL?.trim() || fromFile;
+if (!url) {
+    console.error('No database URL. Set RDS_DATABASE_URL in the environment or in .env.');
+    process.exit(1);
+}
+
+// Say which one, every time. A migration runner that does not name its target is one
+// nobody can tell they pointed at the wrong database until afterwards.
+const host = url.match(/@([^/:?]+)/)?.[1] ?? 'unknown';
+const isLocal = /^(localhost|127\.0\.0\.1)$/.test(host);
+console.log(`target: ${host}${isLocal ? '  (local)' : '  ** LIVE **'}\n`);
+
+const sql = postgres(url, {
+    // A local database has no TLS to negotiate; insisting on it fails the connection.
+    ssl: isLocal ? false : { rejectUnauthorized: false },
+    max: 1,
+    connect_timeout: 25,
+});
 
 const upOnly = (text) => {
     const body = text.split(/^--\s*migrate:down\s*$/m)[0];
@@ -86,7 +118,19 @@ for (const f of FILES) {
 
 if (!dry) {
     console.log('\n── schema_migrations now ──');
-    console.table(await sql`select version, applied_at from schema_migrations order by version`);
+    // `applied_at` is this script's column, not dbmate's. Where the table was created by
+    // dbmate it holds `version` alone, and `CREATE TABLE IF NOT EXISTS` above leaves such a
+    // table exactly as it found it — so the summary must ask what is there rather than
+    // assume. It threw on the local database on 2026-09-10, after every migration had
+    // already succeeded, which made a clean run look like a failed one.
+    const hasAppliedAt = (await sql`
+        SELECT 1 FROM information_schema.columns
+         WHERE table_schema = 'public' AND table_name = 'schema_migrations'
+           AND column_name = 'applied_at'`).length > 0;
+
+    console.table(hasAppliedAt
+        ? await sql`select version, applied_at from schema_migrations order by version`
+        : await sql`select version from schema_migrations order by version`);
 }
 
 await sql.end();

@@ -27,6 +27,7 @@ export default async function DeskInboxPage() {
             initialFilter="waiting"
             initialConversations={conversations as unknown as InboxConversation[]}
             initialCounts={counts}
+            currentAdminId={user.id}
         />
     );
 }
