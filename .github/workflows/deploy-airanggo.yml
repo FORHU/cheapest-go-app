@@ -84,12 +84,24 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      # pnpm, not npm. Both lockfiles used to be committed and neither tool updated the
+      # other, so a dependency added with one left CI installing from a stale lockfile —
+      # which is how the AWS SDK reached main with a package-lock.json that did not have
+      # it. package-lock.json is gone; pnpm-lock.yaml is the only lockfile now.
+      #
+      # Pinned to the version the lockfile was produced by, and kept in step with the
+      # Dockerfile: pnpm 10 changed lockfile handling mid-series, so an unpinned install
+      # can fail on a lockfile nobody has touched.
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.32.1
       - uses: actions/setup-node@v4
         with:
           node-version: 24
-      - run: npm ci --ignore-scripts
-      - run: npx tsc --noEmit
-      - run: npm test -- --run
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile --ignore-scripts
+      - run: pnpm exec tsc --noEmit
+      - run: pnpm test -- --run
 
   build-and-push:
     name: Build and push image

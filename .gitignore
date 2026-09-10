@@ -51,3 +51,8 @@ hotel-dump.jsonl
 # Superpowers brainstorming session files
 .superpowers/
 .env.smoke
+
+# One lockfile only. package-lock.json and pnpm-lock.yaml were both committed and
+# neither tool updated the other, so a dependency added with one left the other stale.
+# pnpm governs the image and CI; npm must not silently reintroduce a second lockfile.
+package-lock.json
