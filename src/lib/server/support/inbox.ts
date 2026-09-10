@@ -217,6 +217,8 @@ export interface AgentReplyInput {
     conversationId: string;
     adminId: string;
     body: string;
+    /** Files the Agent uploaded to this conversation, to go out with the reply. */
+    attachmentIds?: string[];
 }
 
 /**
@@ -253,6 +255,7 @@ export async function agentReply(input: AgentReplyInput): Promise<SupportMessage
         senderType: 'agent',
         senderAdminId: input.adminId,
         body: input.body,
+        attachmentIds: input.attachmentIds,
     });
 }
 

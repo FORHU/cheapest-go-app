@@ -1,8 +1,12 @@
 import { cookies } from 'next/headers';
 import { getSqlAdmin } from '@/lib/db/postgres';
 import { getSession } from '@/lib/auth/session';
-import { hashGuestToken, mintGuestToken, SUPPORT_COOKIE } from './tokens';
+// `mintGuestToken` is deliberately no longer imported: nothing issues a guest token now
+// that opening requires an account. `hashGuestToken` stays, because a guest who already
+// holds a cookie can still read the transcript that told them to sign in.
+import { hashGuestToken, SUPPORT_COOKIE } from './tokens';
 import { canonicalBrandName } from '@/lib/brand';
+import { attachmentsConfigured } from '@/lib/server/storage/s3';
 
 /**
  * Finding the conversation the caller is entitled to — which, on the guest side, is the
@@ -184,22 +188,20 @@ export async function openConversation(input: OpenConversationInput): Promise<Op
         };
     }
 
-    // A guest starts with nothing but a token. Their name and email are collected at
-    // Escalation, the one moment the answer is needed — and even then they are a
-    // reply-to address, never a credential (ADR-0029).
-    const token = mintGuestToken();
-    const rows = await sql.unsafe<SupportConversation[]>(
-        `INSERT INTO support_conversations (guest_token_hash, source_brand, locale)
-         VALUES ($1, $2, $3)
-      RETURNING ${COLUMNS}`,
-        [hashGuestToken(token), brand, locale],
-    );
-
-    return {
-        conversation: rows[0],
-        issuedGuestToken: token,
-        created: true,
-    };
+    // No account, no conversation.
+    //
+    // ADR-0032 decided this and the data migration acted on it — every guest conversation
+    // was resolved with a notice telling them to sign in — but the code that *creates* one
+    // was left open, so a signed-out caller could still mint a guest token and start
+    // typing. The guarantee the ADR exists for is that every Support Chat has a way to
+    // reach whoever started it: a Support Chat is answered inside the app, and `notify.ts`
+    // is a doorbell to the team rather than mail to the customer, so a guest who closes the
+    // tab is someone an Agent is answering into a void.
+    //
+    // Thrown rather than returned so no caller can treat it as an ordinary empty result.
+    // The guest *read* paths stay open on purpose: a returning guest can still see their
+    // transcript and the notice that tells them how to come back.
+    throw new SupportValidationError('Sign in to start a Support Chat.');
 }
 
 /** Longest name and email accepted, so a form post cannot write an essay into the row. */
@@ -300,6 +302,10 @@ export function toPublicConversation(conversation: SupportConversation) {
         // So the widget knows whether asking for a person will need a form first, rather
         // than discovering it from a rejected request.
         escalationNeedsDetails: needsGuestIdentity(conversation),
+        // Same reasoning for the paperclip: an environment with no bucket configured - a
+        // developer's laptop, a preview deployment - should not offer a control whose only
+        // possible outcome is a 503.
+        attachmentsEnabled: attachmentsConfigured(),
     };
 }
 

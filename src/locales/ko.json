@@ -2306,6 +2306,12 @@
     "refund": "환불 정책"
   },
   "support": {
+    "attachments": {
+      "attach": "파일 첨부",
+      "uploading": "업로드 중…",
+      "remove": "{name} 제거",
+      "download": "{name} 다운로드"
+    },
     "title": "고객지원",
     "subtitle": "예약이나 궁금한 점을 문의해 주세요.",
     "launcherOpen": "도움말 열기",

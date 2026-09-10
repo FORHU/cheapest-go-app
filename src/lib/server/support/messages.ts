@@ -1,6 +1,12 @@
 import { getSqlAdmin } from '@/lib/db/postgres';
 import { publish } from './events';
 import { SupportValidationError } from './conversations';
+import {
+    attachmentsByMessage,
+    bindAttachmentsToMessage,
+    MAX_ATTACHMENTS_PER_MESSAGE,
+    type SupportAttachmentView,
+} from './attachments';
 import type { SupportNoticeCode } from './notices';
 
 export type SupportSender = 'guest' | 'ai' | 'agent' | 'system';
@@ -17,6 +23,12 @@ export interface SupportMessage {
      */
     noticeCode: SupportNoticeCode | null;
     createdAt: string;
+    /**
+     * Files sent with this message. Empty for almost every row, so it is hydrated in one
+     * query per read rather than joined into the message select - a join would multiply the
+     * message row by its attachments and make every reader deduplicate.
+     */
+    attachments: SupportAttachmentView[];
 }
 
 /**
@@ -46,6 +58,14 @@ export interface AppendMessageInput {
     senderAdminId?: string | null;
     /** System rows only — the table refuses a code on anyone else's words. */
     noticeCode?: SupportNoticeCode | null;
+    /**
+     * Files already uploaded to this conversation, to be sent with this message.
+     *
+     * Ids, not bytes: the upload happened while the customer was still typing, over its own
+     * route. An id that is not an unsent file of this conversation binds nothing, which is
+     * what makes it safe to take these straight from a request body.
+     */
+    attachmentIds?: string[];
 }
 
 /**
@@ -57,32 +77,81 @@ export interface AppendMessageInput {
  */
 export async function appendMessage(input: AppendMessageInput): Promise<SupportMessage> {
     const body = input.body.trim();
-    if (!body) throw new SupportValidationError('Message cannot be empty.');
+    const attachmentIds = input.attachmentIds ?? [];
+
+    // A message with files and no words is a real message - "here is the confirmation you
+    // asked for" is often the whole of it - so emptiness is only emptiness when nothing at
+    // all was sent.
+    if (!body && attachmentIds.length === 0) {
+        throw new SupportValidationError('Message cannot be empty.');
+    }
     if (body.length > MAX_MESSAGE_LENGTH) {
         throw new SupportValidationError(`Message cannot be longer than ${MAX_MESSAGE_LENGTH} characters.`);
+    }
+    if (attachmentIds.length > MAX_ATTACHMENTS_PER_MESSAGE) {
+        throw new SupportValidationError(
+            `A message can carry at most ${MAX_ATTACHMENTS_PER_MESSAGE} files.`,
+        );
     }
     if (input.senderType === 'agent' && !input.senderAdminId) {
         throw new SupportValidationError('An agent message must name the agent.');
     }
 
     const sql = getSqlAdmin();
-    const rows = await sql.unsafe<SupportMessage[]>(
-        `WITH inserted AS (
-             INSERT INTO support_messages (conversation_id, sender_type, sender_admin_id, body, notice_code)
-             VALUES ($1, $2, $3, $4, $5)
-             RETURNING ${COLUMNS}
-         ), touched AS (
-             UPDATE support_conversations
-                SET last_message_at = now()
-              WHERE id = $1
-         )
-         SELECT * FROM inserted`,
-        [input.conversationId, input.senderType, input.senderAdminId ?? null, body, input.noticeCode ?? null],
-    );
 
-    const message = rows[0];
+    // One transaction, because the binding below can still refuse the whole send: a
+    // wordless message whose file ids turn out to bind nothing is a blank row in the
+    // transcript, and rolling back is the only way to not leave one.
+    const message = await sql.begin(async tx => {
+        const rows = await tx.unsafe<SupportMessage[]>(
+            `WITH inserted AS (
+                 INSERT INTO support_messages (conversation_id, sender_type, sender_admin_id, body, notice_code)
+                 VALUES ($1, $2, $3, $4, $5)
+                 RETURNING ${COLUMNS}
+             ), touched AS (
+                 UPDATE support_conversations
+                    SET last_message_at = now()
+                  WHERE id = $1
+             )
+             SELECT * FROM inserted`,
+            [input.conversationId, input.senderType, input.senderAdminId ?? null, body, input.noticeCode ?? null],
+        );
+
+        const inserted = rows[0];
+        const bound = await bindAttachmentsToMessage(
+            input.conversationId,
+            inserted.id,
+            attachmentIds,
+            tx,
+        );
+
+        if (!body && bound === 0) {
+            throw new SupportValidationError('Those files are no longer available to send.');
+        }
+
+        return inserted;
+    });
+
+    // Hydrated from the same ids that were just bound rather than re-read: the transaction
+    // has committed, so this is the one shape every reader of this message will see.
+    message.attachments = await attachmentsByMessage([message.id]).then(m => m.get(message.id) ?? []);
+
     await publish({ conversationId: message.conversationId, messageId: message.id });
     return message;
+}
+
+/**
+ * Put each message's files on it.
+ *
+ * Separate from the message select on purpose - see the note on `SupportMessage.attachments`
+ * - and one query for the whole page rather than one per row.
+ */
+async function withAttachments(rows: SupportMessage[]): Promise<SupportMessage[]> {
+    if (rows.length === 0) return rows;
+
+    const grouped = await attachmentsByMessage(rows.map(row => row.id));
+    for (const row of rows) row.attachments = grouped.get(row.id) ?? [];
+    return rows;
 }
 
 /** One message by id — what a stream listener reads after being woken by a notify. */
@@ -92,7 +161,8 @@ export async function getMessage(messageId: string): Promise<SupportMessage | nu
         `SELECT ${COLUMNS} FROM support_messages WHERE id = $1`,
         [messageId],
     );
-    return rows[0] ?? null;
+    if (!rows[0]) return null;
+    return (await withAttachments(rows))[0];
 }
 
 /**
@@ -118,5 +188,5 @@ export async function listMessages(
           LIMIT $3`,
         [conversationId, sinceMessageId ?? null, MESSAGE_PAGE_SIZE],
     );
-    return rows;
+    return withAttachments(rows);
 }

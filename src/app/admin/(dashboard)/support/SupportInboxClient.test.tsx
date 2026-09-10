@@ -126,7 +126,7 @@ describe('SupportInboxClient', () => {
         mockApi({
             conversation: conversation({ id: 'a' }),
             messages: [
-                { id: 'm1', senderType: 'guest', body: 'I want a refund.', noticeCode: null, createdAt: '2026-09-06T10:00:00.000Z' },
+                { id: 'm1', senderType: 'guest', body: 'I want a refund.', noticeCode: null, createdAt: '2026-09-06T10:00:00.000Z', attachments: [] },
             ],
             bookings: null,
         });

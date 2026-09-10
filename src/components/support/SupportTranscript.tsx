@@ -1,8 +1,10 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
+import { FileText, ImageIcon } from 'lucide-react';
 import { useTranslations } from 'next-intl';
-import type { SupportMessageView } from './types';
+import { formatFileSize } from './formatFileSize';
+import type { SupportAttachmentView, SupportMessageView } from './types';
 
 /**
  * The conversation as the customer reads it.
@@ -75,6 +77,49 @@ function SupportMessageRow({ message }: { message: SupportMessageView }) {
             >
                 {renderBody(message, t)}
             </p>
+
+            {message.attachments.length > 0 && (
+                <ul className="mt-1.5 flex flex-col gap-1">
+                    {message.attachments.map(attachment => (
+                        <AttachmentLink key={attachment.id} attachment={attachment} />
+                    ))}
+                </ul>
+            )}
+        </li>
+    );
+}
+
+/**
+ * One file, as a link rather than a preview.
+ *
+ * An image is not rendered inline even though it usually could be. What arrives here was
+ * uploaded by somebody - the customer, or an Agent forwarding something a customer sent
+ * them - and a transcript that renders unreviewed uploads is a page that displays whatever
+ * the last person chose to upload. A link makes opening it a decision.
+ *
+ * The href is this app's route, not the bucket: the route decides whether the person asking
+ * may have the file and only then mints a link that works for a few minutes. A message
+ * still being sent has no id to fetch by, so its files are named but not yet linked.
+ */
+function AttachmentLink({ attachment }: { attachment: SupportAttachmentView }) {
+    const t = useTranslations('support');
+    const Icon = attachment.contentType.startsWith('image/') ? ImageIcon : FileText;
+
+    return (
+        <li>
+            <a
+                href={`/api/support/conversation/attachments/${attachment.id}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label={t('attachments.download', { name: attachment.fileName })}
+                className="flex items-center gap-1.5 rounded-md bg-white px-2 py-1.5 text-xs text-slate-700 ring-1 ring-slate-200 transition hover:bg-slate-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:bg-white/5 dark:text-slate-200 dark:ring-white/10 dark:hover:bg-white/10"
+            >
+                <Icon className="h-3.5 w-3.5 shrink-0 text-slate-400 dark:text-slate-500" />
+                <span className="max-w-[12rem] truncate">{attachment.fileName}</span>
+                <span className="shrink-0 text-slate-400 dark:text-slate-500">
+                    {formatFileSize(attachment.sizeBytes)}
+                </span>
+            </a>
         </li>
     );
 }

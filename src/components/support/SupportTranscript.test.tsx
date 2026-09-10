@@ -37,6 +37,7 @@ const message = (over: Partial<SupportMessageView>): SupportMessageView => ({
     id: 'm1',
     senderType: 'guest',
     body: 'hello',
+    attachments: [],
     noticeCode: null,
     createdAt: '2026-09-06T10:00:00.000Z',
     ...over,

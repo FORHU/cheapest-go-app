@@ -37,6 +37,10 @@ const FILES = [
 
     // Chat Reference, Linked Bookings and Internal Notes (ADR-0038, ADR-0039).
     '20260909000001_support_chat_reference_bookings_notes.sql',
+
+    // Support attachments, and the retention rule for them (ADR-0040).
+    '20260910000001_support_message_attachments.sql',
+    '20260910000002_support_attachment_retention.sql',
 ];
 
 const dry = process.argv.includes('--dry');

@@ -241,6 +241,15 @@ jobs:
           V_MYSTIFLY_PASSWORD: ${{ secrets.MYSTIFLY_PASSWORD }}
           V_MYSTIFLY_USERNAME: ${{ secrets.MYSTIFLY_USERNAME }}
           V_JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          # Support attachments (ADR-0040). The bucket is a var, not a secret: a bucket
+          # name is not one, and the credentials that reach it come from the instance role
+          # rather than from anything shipped here.
+          #
+          # AWS_REGION was already used by this workflow for ECR and SSM, but it never
+          # reached the container — so the S3 client had no region and attachments read as
+          # unconfigured however the bucket was set up.
+          V_SUPPORT_ATTACHMENTS_BUCKET: ${{ vars.SUPPORT_ATTACHMENTS_BUCKET }}
+          V_AWS_REGION: ${{ vars.AWS_REGION }}
         run: |
           set -euo pipefail
 
@@ -323,6 +332,8 @@ jobs:
           append_env MYSTIFLY_PASSWORD "$V_MYSTIFLY_PASSWORD"
           append_env MYSTIFLY_USERNAME "$V_MYSTIFLY_USERNAME"
           append_env JWT_SECRET "$V_JWT_SECRET"
+          append_env SUPPORT_ATTACHMENTS_BUCKET "$V_SUPPORT_ATTACHMENTS_BUCKET"
+          append_env AWS_REGION "$V_AWS_REGION"
 
           ENV_CONTENT_B64=$(printf '%s' "$ENV_CONTENT" | base64 | tr -d '\n')
           ENV_DIR=$(dirname "$ENV_FILE_PATH")

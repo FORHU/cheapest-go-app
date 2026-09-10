@@ -57,6 +57,16 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: 'Too many requests' }, { status: 429 });
     }
 
+    // Opening requires an account (ADR-0032). `openConversation` refuses a signed-out
+    // caller too — this is the same rule stated where the request arrives, so the widget
+    // gets a clear answer instead of a validation error it would have to interpret.
+    if (!caller.userId) {
+        return NextResponse.json(
+            { error: 'Sign in to start a Support Chat.', authRequired: true },
+            { status: 401 },
+        );
+    }
+
     let body: Record<string, unknown> = {};
     try {
         const raw = await req.text();

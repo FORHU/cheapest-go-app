@@ -54,6 +54,20 @@ export async function POST(req: NextRequest) {
     });
     if (!rl.success) return NextResponse.json({ error: 'Too many requests' }, { status: 429 });
 
+    // Writing requires an account (ADR-0032). A holder of a legacy `cg-support` cookie can
+    // still *read* their transcript and the notice telling them to sign in — that is the
+    // route back the ADR left them — but they cannot add to it, because an Agent replying
+    // to someone unreachable is the failure the whole decision exists to prevent.
+    //
+    // `authRequired` rather than a bare 401 so the widget can tell "sign in" apart from
+    // "your session expired mid-sentence", which look identical from a status code alone.
+    if (!caller.userId) {
+        return NextResponse.json(
+            { error: 'Sign in to write to support.', authRequired: true },
+            { status: 401 },
+        );
+    }
+
     const conversation = await findConversation(caller);
     if (!conversation) return NextResponse.json({ error: 'No conversation' }, { status: 404 });
 
@@ -68,6 +82,13 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: 'A message body is required.' }, { status: 400 });
     }
 
+    // Ids that are not uuids are dropped rather than refused. They cannot name a row, so a
+    // 400 would only be telling a malformed client something it could have worked out; the
+    // ids that survive are still checked against this conversation when they are bound.
+    const attachmentIds = Array.isArray(body.attachmentIds)
+        ? body.attachmentIds.filter((value): value is string => typeof value === 'string' && isUuid(value))
+        : [];
+
     try {
         // Always 'guest': this route is the customer side, and letting a caller choose
         // its own sender_type would let anyone post a message attributed to an agent.
@@ -75,6 +96,7 @@ export async function POST(req: NextRequest) {
             conversationId: conversation.id,
             senderType: 'guest',
             body: body.body,
+            attachmentIds,
         });
 
         // Resolved is not an ending: writing again reopens the conversation into the

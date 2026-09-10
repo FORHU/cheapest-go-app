@@ -2187,6 +2187,12 @@
     "refund": "返金ポリシー"
   },
   "support": {
+    "attachments": {
+      "attach": "ファイルを添付",
+      "uploading": "アップロード中…",
+      "remove": "{name} を削除",
+      "download": "{name} をダウンロード"
+    },
     "title": "サポート",
     "subtitle": "ご予約やご不明な点についてお問い合わせください。",
     "launcherOpen": "ヘルプを開く",

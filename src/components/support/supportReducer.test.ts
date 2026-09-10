@@ -44,6 +44,7 @@ describe('supportReducer', () => {
             clientId: 'c1',
             body: 'Do you charge a change fee?',
             at: '2026-09-06T10:00:01.000Z',
+            attachments: [],
         });
 
         expect(visibleMessages(state).map(m => m.body)).toEqual(['Do you charge a change fee?']);
@@ -55,6 +56,7 @@ describe('supportReducer', () => {
             clientId: 'c1',
             body: 'Do you charge a change fee?',
             at: '2026-09-06T10:00:01.000Z',
+            attachments: [],
         });
         const confirmed = supportReducer(sent, {
             type: 'confirmed',
@@ -90,6 +92,7 @@ describe('supportReducer', () => {
             clientId: 'c1',
             body: 'Do you charge a change fee?',
             at: '2026-09-06T10:00:01.000Z',
+            attachments: [],
         });
         const streamed = supportReducer(sent, {
             type: 'received',
@@ -103,7 +106,7 @@ describe('supportReducer', () => {
 
     it('starts the typing indicator on send', () => {
         const sent = supportReducer(opened, {
-            type: 'sent', clientId: 'c1', body: 'hi', at: '2026-09-06T10:00:01.000Z',
+            type: 'sent', clientId: 'c1', body: 'hi', at: '2026-09-06T10:00:01.000Z', attachments: [],
         });
 
         expect(sent.isTyping).toBe(true);
@@ -120,7 +123,7 @@ describe('supportReducer', () => {
                 messages: [],
             });
             const sent = supportReducer(withAgent, {
-                type: 'sent', clientId: 'c1', body: 'hi', at: '2026-09-06T10:00:01.000Z',
+                type: 'sent', clientId: 'c1', body: 'hi', at: '2026-09-06T10:00:01.000Z', attachments: [],
             });
 
             expect(sent.isTyping, `status ${status}`).toBe(false);
@@ -129,7 +132,7 @@ describe('supportReducer', () => {
 
     it('still shows it while the assistant is the one answering', () => {
         const sent = supportReducer(opened, {
-            type: 'sent', clientId: 'c1', body: 'hi', at: '2026-09-06T10:00:01.000Z',
+            type: 'sent', clientId: 'c1', body: 'hi', at: '2026-09-06T10:00:01.000Z', attachments: [],
         });
 
         expect(sent.isTyping).toBe(true);
@@ -137,7 +140,7 @@ describe('supportReducer', () => {
 
     it('stops the typing indicator when a reply arrives', () => {
         const sent = supportReducer(opened, {
-            type: 'sent', clientId: 'c1', body: 'hi', at: '2026-09-06T10:00:01.000Z',
+            type: 'sent', clientId: 'c1', body: 'hi', at: '2026-09-06T10:00:01.000Z', attachments: [],
         });
         const replied = supportReducer(sent, {
             type: 'received',
@@ -151,7 +154,7 @@ describe('supportReducer', () => {
         // The echo of what was just sent is not a reply. Treating it as one stops the
         // indicator the instant it starts, and the customer watches nothing happen.
         const sent = supportReducer(opened, {
-            type: 'sent', clientId: 'c1', body: 'hi', at: '2026-09-06T10:00:01.000Z',
+            type: 'sent', clientId: 'c1', body: 'hi', at: '2026-09-06T10:00:01.000Z', attachments: [],
         });
         const echoed = supportReducer(sent, {
             type: 'received',
@@ -165,7 +168,7 @@ describe('supportReducer', () => {
         // A handover writes a system row and no ai row. If only ai rows cleared it, the
         // indicator would spin forever on exactly the conversations that went wrong.
         const sent = supportReducer(opened, {
-            type: 'sent', clientId: 'c1', body: 'refund please', at: '2026-09-06T10:00:01.000Z',
+            type: 'sent', clientId: 'c1', body: 'refund please', at: '2026-09-06T10:00:01.000Z', attachments: [],
         });
         const handed = supportReducer(sent, {
             type: 'received',
@@ -203,7 +206,7 @@ describe('supportReducer', () => {
         // Resuming from a client-side id would ask the server for messages after a row it
         // has never heard of, and the backfill would come back empty.
         const sent = supportReducer(opened, {
-            type: 'sent', clientId: 'c1', body: 'hi', at: '2026-09-06T10:00:20.000Z',
+            type: 'sent', clientId: 'c1', body: 'hi', at: '2026-09-06T10:00:20.000Z', attachments: [],
         });
 
         expect(sent.cursor).toBeNull();
@@ -322,7 +325,7 @@ describe('supportReducer', () => {
 
     it('removes the optimistic copy when the send fails', () => {
         const sent = supportReducer(opened, {
-            type: 'sent', clientId: 'c1', body: 'hi', at: '2026-09-06T10:00:01.000Z',
+            type: 'sent', clientId: 'c1', body: 'hi', at: '2026-09-06T10:00:01.000Z', attachments: [],
         });
         const failed = supportReducer(sent, { type: 'send_failed', clientId: 'c1' });
 

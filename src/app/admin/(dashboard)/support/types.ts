@@ -5,6 +5,8 @@
  * never reaches for a module that opens database connections.
  */
 
+import type { SupportAttachmentView } from '@/components/support/types';
+
 export type InboxFilterView = 'waiting' | 'mine' | 'assistant' | 'resolved';
 
 export interface InboxConversation {
@@ -61,6 +63,11 @@ export interface InboxMessage {
     body: string;
     noticeCode: string | null;
     createdAt: string;
+    /**
+     * Files on this message. Never a URL - the bytes are behind a route that re-checks the
+     * Agent on every fetch and mints a short-lived link (ADR-0040).
+     */
+    attachments: SupportAttachmentView[];
 }
 
 export interface InboxCountsView {

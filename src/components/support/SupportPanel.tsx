@@ -174,7 +174,16 @@ export function SupportPanel({ chat, onClose }: SupportPanelProps) {
                       * message out of view; below the composer nobody would see it at all.
                       */}
                     <SupportBookingPicker conversationId={chat.conversation?.id ?? null} />
-                    <SupportComposer canSend={chat.canSend} onSend={chat.send} />
+                    <SupportComposer
+                        canSend={chat.canSend}
+                        onSend={chat.send}
+                        attachments={chat.attachments}
+                        canAttach={chat.canAttach}
+                        uploading={chat.uploading}
+                        uploadError={chat.uploadError}
+                        onAttach={chat.attach}
+                        onRemoveAttachment={chat.removeAttachment}
+                    />
                 </>
             )}
         </div>

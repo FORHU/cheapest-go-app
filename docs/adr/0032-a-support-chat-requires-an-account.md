@@ -19,3 +19,29 @@ This follows directly from [ADR-0031](0031-support-is-answered-only-by-people.md
 - **The widget's job changes for signed-out visitors.** The launcher stays visible — hiding it would make support look absent — and opens a sign-in prompt rather than a composer.
 - **Guest columns and the escalation form become dead code.** Left in place rather than migrated away, for the same reason as ADR-0031's residue: past conversations genuinely had guests, and their transcripts still name them.
 - **Every existing guest conversation is closed, including ones that left contact details.** This looks harsher than it is, and the reason is not obvious: an Agent's reply lives in the app, and `notify.ts` is a doorbell to the team rather than a copy of the conversation to the customer. There is no email path to a guest. So once the widget requires an account, a queued guest conversation is one nobody can read — the answering-into-the-void this ADR exists to prevent. They are resolved with an `assistant_retired` notice telling them to sign in and write again, which preserves the transcript and gives them a route back. Signed-in conversations are queued normally.
+
+## Enforcement, added 2026-09-10
+
+This decision was documented and acted on in the data, but not enforced in code, and the gap
+lasted two days. The migration resolved every guest conversation; `openConversation` went on
+minting guest tokens for anyone signed out, and no route or client checked. The reason
+nobody noticed is worth recording: the only entry point was the floating launcher, and the
+launcher was removed for unrelated reasons — so anonymous support became unreachable rather
+than refused. A decision enforced by the absence of a button is not enforced.
+
+What now holds it:
+
+- **`openConversation` throws** for a signed-out caller. The guest `INSERT` is deleted, not
+  merely unreachable, and `mintGuestToken` has no callers left.
+- **Every customer-side write returns 401** with `authRequired: true` — opening a
+  conversation, posting a message, and asking for a person. The flag exists because "sign
+  in" and "your session expired mid-sentence" are indistinguishable from a status code, and
+  the widget has to tell a customer which happened.
+- **Reading stays open to a guest holding the old cookie.** That is deliberate and is the
+  route back this ADR promised them: the transcript, and the notice saying to sign in and
+  write again. Closing it would strand them with no explanation.
+- **`account-required.test.ts` pins all of the above**, so the guard cannot be dropped a
+  second time without a test going red.
+
+The escalation form is now dead in fact as well as in name — its name-and-email branch
+cannot be entered, because the route refuses before reaching it.

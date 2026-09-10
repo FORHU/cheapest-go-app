@@ -2,12 +2,13 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { LogOut, Briefcase, Settings, Star, ChevronDown } from 'lucide-react';
+import { LogOut, Briefcase, Settings, Star, ChevronDown, MessageCircle } from 'lucide-react';
 import { useAuthStore } from '@/stores/authStore';
 import Link from 'next/link';
 import { usePathname, useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { canonicalBrandName } from '@/lib/brand';
+import { useSupportWidgetStore } from '@/stores/supportWidgetStore';
 
 
 function getInitials(firstName?: string | null, lastName?: string | null, email?: string | null): string {
@@ -33,6 +34,9 @@ const BRAND_NAME = canonicalBrandName(process.env.NEXT_PUBLIC_BRAND_NAME);
 const SignInDropdown: React.FC<SignInDropdownProps> = ({ variant = 'dropdown', collapsible = false, onNavigate, onToggleOpen }) => {
     const { user, logout } = useAuthStore();
     const t = useTranslations('nav');
+    // Opens the support panel in place. The widget is portalled to document.body from the
+    // customer layout, so a store is the only thing this menu and that portal share.
+    const openSupport = useSupportWidgetStore((s) => s.open);
     const [isOpen, setIsOpen] = useState(false);
     const [isInlineOpen, setIsInlineOpen] = useState(false);
     const [mounted, setMounted] = useState(false);
@@ -124,6 +128,22 @@ const SignInDropdown: React.FC<SignInDropdownProps> = ({ variant = 'dropdown', c
                         <Settings className="h-5 w-5 text-slate-400" />
                         {t('accountSettings')}
                     </Link>
+
+                    {/*
+                      * Support lives here now, in place of the floating launcher that used
+                      * to sit on every page. A button rather than a Link: the panel is a
+                      * portal over the current page, so navigating away from whatever the
+                      * customer was looking at would lose the very context they are about
+                      * to ask about.
+                      */}
+                    <button
+                        type="button"
+                        onClick={() => { openSupport(); handleNav(); }}
+                        className="w-full flex items-center gap-3 px-3 py-2 text-sm font-semibold text-slate-700 dark:text-slate-200 hover:bg-black/5 dark:hover:bg-white/5 rounded-lg transition-colors"
+                    >
+                        <MessageCircle className="h-5 w-5 text-slate-400" />
+                        {t('support')}
+                    </button>
                 </div>
 
                 {/* Sign Out */}
@@ -306,6 +326,16 @@ const SignInDropdown: React.FC<SignInDropdownProps> = ({ variant = 'dropdown', c
                                 <Settings className="h-5 w-5 text-slate-400" />
                                 {t('accountSettings')}
                             </Link>
+
+                            {/* Same entry on the mobile sheet — see the desktop block above. */}
+                            <button
+                                type="button"
+                                onClick={() => { openSupport(); handleNav(); }}
+                                className="w-full flex items-center gap-3 px-4 py-2.5 text-[clamp(0.8125rem,1.5vw,0.875rem)] text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/5 transition-colors"
+                            >
+                                <MessageCircle className="h-5 w-5 text-slate-400" />
+                                {t('support')}
+                            </button>
                         </div>
 
                         {/* Logout */}

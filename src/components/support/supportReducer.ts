@@ -1,4 +1,4 @@
-import type { SupportConversationView, SupportMessageView } from './types';
+import type { SupportAttachmentView, SupportConversationView, SupportMessageView } from './types';
 
 /**
  * The widget's state, as a reducer.
@@ -14,6 +14,14 @@ interface PendingMessage {
     clientId: string;
     body: string;
     createdAt: string;
+    /**
+     * The files being sent with it.
+     *
+     * Carried on the optimistic row so the customer sees what they attached the moment they
+     * press send. They were uploaded before this point, so these are already real - the
+     * only thing still in flight is the message binding them.
+     */
+    attachments: SupportAttachmentView[];
 }
 
 export interface SupportState {
@@ -56,7 +64,7 @@ export const initialSupportState: SupportState = {
 
 export type SupportAction =
     | { type: 'opened'; conversation: SupportConversationView; messages: SupportMessageView[] }
-    | { type: 'sent'; clientId: string; body: string; at: string }
+    | { type: 'sent'; clientId: string; body: string; at: string; attachments: SupportAttachmentView[] }
     | { type: 'confirmed'; clientId: string; message: SupportMessageView }
     | { type: 'send_failed'; clientId: string }
     | { type: 'received'; message: SupportMessageView }
@@ -126,7 +134,12 @@ export function supportReducer(state: SupportState, action: SupportAction): Supp
                 ...state,
                 pending: [
                     ...state.pending,
-                    { clientId: action.clientId, body: action.body, createdAt: action.at },
+                    {
+                        clientId: action.clientId,
+                        body: action.body,
+                        createdAt: action.at,
+                        attachments: action.attachments,
+                    },
                 ],
                 // Only while the assistant is the one expected to answer. The indicator
                 // names it, and it does not run on a conversation an Agent owns — showing
@@ -225,6 +238,7 @@ export function visibleMessages(state: SupportState): SupportMessageView[] {
         body: p.body,
         noticeCode: null,
         createdAt: p.createdAt,
+        attachments: p.attachments,
     }));
 
     return [...state.confirmed, ...optimistic].sort(byCreatedAt);

@@ -19,6 +19,29 @@ export type SupportNoticeCodeView =
     | 'details_needed'
     | 'assistant_retired';
 
+/**
+ * A file on a message, as the widget sees it.
+ *
+ * No URL. The bytes are behind a route that checks who is asking and hands back a link
+ * good for a few minutes, so what the client holds is an id it can ask with - not a
+ * pointer it could keep, share, or find still working next week.
+ */
+export interface SupportAttachmentView {
+    id: string;
+    fileName: string;
+    contentType: string;
+    sizeBytes: number;
+    uploadedByType: 'guest' | 'agent';
+    /**
+     * True once the bytes have expired under the retention rule, while the row remains.
+     *
+     * The name and size are still shown; only the file is gone. Without this the transcript
+     * would misrepresent itself — a message that plainly refers to a document, with nothing
+     * on it, and no way to tell "never sent" from "sent and since expired".
+     */
+    bytesDeleted: boolean;
+}
+
 export interface SupportMessageView {
     id: string;
     senderType: SupportSenderView;
@@ -26,6 +49,8 @@ export interface SupportMessageView {
     /** Set on system rows. Rendered from locale files; `body` is the fallback. */
     noticeCode: SupportNoticeCodeView | null;
     createdAt: string;
+    /** Files sent with this message. Empty on almost every row. */
+    attachments: SupportAttachmentView[];
 }
 
 export interface SupportConversationView {
@@ -45,4 +70,6 @@ export interface SupportConversationView {
     lastMessageAt: string;
     /** True when asking for a person will need a name and email first. */
     escalationNeedsDetails: boolean;
+    /** False where no attachment bucket is configured; the composer hides the paperclip. */
+    attachmentsEnabled: boolean;
 }

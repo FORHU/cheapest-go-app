@@ -2652,6 +2652,12 @@
     "refund": "Refund Policy"
   },
   "support": {
+    "attachments": {
+      "attach": "Attach a file",
+      "uploading": "Uploading…",
+      "remove": "Remove {name}",
+      "download": "Download {name}"
+    },
     "title": "Support",
     "subtitle": "Ask about a booking or anything else.",
     "launcherOpen": "Get help",

@@ -1,7 +1,9 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Loader2, Send, Check } from 'lucide-react';
+import { Loader2, Send, Check, Paperclip, FileText, ImageIcon, X } from 'lucide-react';
+import { formatFileSize } from '@/components/support/formatFileSize';
+import type { SupportAttachmentView } from '@/components/support/types';
 import type {
     ConversationDetail,
     InboxConversation,
@@ -61,6 +63,11 @@ export function SupportInboxClient({
     const [loadingDetail, setLoadingDetail] = useState(false);
     const [reply, setReply] = useState('');
     const [sending, setSending] = useState(false);
+    /** Files this Agent has uploaded and not yet sent. Cleared when the reply goes. */
+    const [pendingFiles, setPendingFiles] = useState<SupportAttachmentView[]>([]);
+    const [uploading, setUploading] = useState(false);
+    const [uploadError, setUploadError] = useState<string | null>(null);
+    const fileInput = useRef<HTMLInputElement>(null);
 
     const openIdRef = useRef<string | null>(null);
     openIdRef.current = openId;
@@ -125,20 +132,60 @@ export function SupportInboxClient({
         void loadDetail(id);
     };
 
+    /**
+     * Upload a file to the open conversation, before the reply that carries it exists.
+     *
+     * Same two-step shape as the customer's widget, for the same reason: an Agent attaches
+     * a voucher and then writes the sentence explaining it, not the other way round.
+     */
+    const attach = async (file: File) => {
+        if (!openId) return;
+        setUploading(true);
+        setUploadError(null);
+
+        try {
+            const form = new FormData();
+            form.append('file', file);
+
+            const response = await fetch(`/api/admin/support/conversations/${openId}/attachments`, {
+                method: 'POST',
+                body: form,
+            });
+            const data = (await response.json()) as {
+                attachment?: SupportAttachmentView;
+                error?: string;
+            };
+
+            if (!response.ok || !data.attachment) {
+                setUploadError(data.error ?? 'Could not upload that file.');
+                return;
+            }
+            setPendingFiles(current => [...current, data.attachment as SupportAttachmentView]);
+        } catch {
+            setUploadError('Could not upload that file.');
+        } finally {
+            setUploading(false);
+        }
+    };
+
     const sendReply = async (event: React.FormEvent) => {
         event.preventDefault();
         const body = reply.trim();
-        if (!body || !openId || sending) return;
+        // Words or files: a reply that is only the document the customer asked for is a
+        // reply.
+        if ((!body && pendingFiles.length === 0) || !openId || sending) return;
 
         setSending(true);
         try {
             const response = await fetch(`/api/admin/support/conversations/${openId}/messages`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ body }),
+                body: JSON.stringify({ body, attachmentIds: pendingFiles.map(f => f.id) }),
             });
             if (response.ok) {
                 setReply('');
+                setPendingFiles([]);
+                setUploadError(null);
                 await Promise.all([loadDetail(openId), loadList(filter)]);
             }
         } finally {
@@ -225,7 +272,15 @@ export function SupportInboxClient({
                                               * over the phone can be matched character by
                                               * character against the list.
                                               */}
-                                            <span className="font-mono">{item.reference}</span>
+                                            {/*
+                                              * `whitespace-nowrap` because the reference is
+                                              * one word to a reader even though the hyphen
+                                              * lets the browser break it: in a 20rem column
+                                              * it was wrapping to "CS-" / "TW3RZ7", which is
+                                              * unreadable precisely when someone is matching
+                                              * it against what a customer just read out.
+                                              */}
+                                            <span className="whitespace-nowrap font-mono">{item.reference}</span>
                                             <span aria-hidden>·</span>
                                             <span>{item.sourceBrand ?? 'CheapestGo'}</span>
                                             <span aria-hidden>·</span>
@@ -346,6 +401,38 @@ export function SupportInboxClient({
                                             {message.senderType}
                                         </span>
                                         <p className="text-sm text-slate-800 dark:text-slate-200">{message.body}</p>
+
+                                        {message.attachments.length > 0 && (
+                                            <ul className="mt-1.5 flex flex-col gap-1">
+                                                {message.attachments.map(file => {
+                                                    const Icon = file.contentType.startsWith('image/')
+                                                        ? ImageIcon
+                                                        : FileText;
+                                                    return (
+                                                        <li key={file.id}>
+                                                            {/*
+                                                              * Links to this app, not to the bucket: the route
+                                                              * re-checks the Agent and mints a URL good for a few
+                                                              * minutes (ADR-0040). Opened in a new tab so reading
+                                                              * an attachment does not lose the queue.
+                                                              */}
+                                                            <a
+                                                                href={`/api/admin/support/conversations/${detail.conversation.id}/attachments/${file.id}`}
+                                                                target="_blank"
+                                                                rel="noopener noreferrer"
+                                                                className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs text-slate-700 ring-1 ring-slate-200 transition hover:bg-slate-50 dark:text-slate-200 dark:ring-white/10 dark:hover:bg-white/10"
+                                                            >
+                                                                <Icon className="h-3.5 w-3.5 shrink-0 text-slate-400" />
+                                                                <span className="max-w-[16rem] truncate">{file.fileName}</span>
+                                                                <span className="shrink-0 text-slate-400">
+                                                                    {formatFileSize(file.sizeBytes)}
+                                                                </span>
+                                                            </a>
+                                                        </li>
+                                                    );
+                                                })}
+                                            </ul>
+                                        )}
                                     </div>
                                 ))}
                             </div>
@@ -357,8 +444,63 @@ export function SupportInboxClient({
                               */}
                             <form
                                 onSubmit={sendReply}
-                                className="flex shrink-0 items-center gap-2 border-t border-slate-200 px-4 py-3 dark:border-white/10"
+                                className="flex shrink-0 flex-col gap-2 border-t border-slate-200 px-4 py-3 dark:border-white/10"
                             >
+                                {pendingFiles.length > 0 && (
+                                    <ul className="flex flex-wrap gap-2">
+                                        {pendingFiles.map(file => (
+                                            <li
+                                                key={file.id}
+                                                className="flex items-center gap-1.5 rounded-md bg-slate-100 py-1 pl-2 pr-1 text-xs text-slate-700 dark:bg-white/10 dark:text-slate-200"
+                                            >
+                                                <span className="max-w-[12rem] truncate">{file.fileName}</span>
+                                                <span className="text-slate-400">{formatFileSize(file.sizeBytes)}</span>
+                                                <button
+                                                    type="button"
+                                                    aria-label={`Remove ${file.fileName}`}
+                                                    onClick={() =>
+                                                        setPendingFiles(current =>
+                                                            current.filter(f => f.id !== file.id),
+                                                        )
+                                                    }
+                                                    className="rounded p-0.5 text-slate-500 transition hover:bg-slate-200 dark:hover:bg-white/10"
+                                                >
+                                                    <X className="h-3 w-3" />
+                                                </button>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                )}
+
+                                {uploadError && (
+                                    <p role="alert" className="text-xs text-red-600 dark:text-red-400">
+                                        {uploadError}
+                                    </p>
+                                )}
+
+                                <div className="flex items-center gap-2">
+                                <input
+                                    ref={fileInput}
+                                    type="file"
+                                    accept="image/jpeg,image/png,image/webp,image/gif,image/heic,application/pdf"
+                                    className="hidden"
+                                    tabIndex={-1}
+                                    onChange={event => {
+                                        const file = event.target.files?.[0];
+                                        if (file) void attach(file);
+                                        event.target.value = '';
+                                    }}
+                                />
+                                <button
+                                    type="button"
+                                    onClick={() => fileInput.current?.click()}
+                                    disabled={uploading}
+                                    aria-label={uploading ? 'Uploading' : 'Attach a file'}
+                                    title="Attach a file"
+                                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-slate-500 transition hover:bg-slate-100 disabled:opacity-50 dark:hover:bg-white/10"
+                                >
+                                    <Paperclip className={uploading ? 'h-4 w-4 animate-pulse' : 'h-4 w-4'} />
+                                </button>
                                 <input
                                     type="text"
                                     value={reply}
@@ -369,11 +511,12 @@ export function SupportInboxClient({
                                 />
                                 <button
                                     type="submit"
-                                    disabled={sending || !reply.trim()}
+                                    disabled={sending || (!reply.trim() && pendingFiles.length === 0)}
                                     className="flex h-9 items-center gap-1.5 rounded-lg bg-blue-600 px-3 text-sm font-medium text-white transition hover:bg-blue-500 disabled:opacity-50"
                                 >
                                     <Send className="h-4 w-4" /> Send
                                 </button>
+                                </div>
                             </form>
                         </>
                     )}

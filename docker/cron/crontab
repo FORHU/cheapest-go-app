@@ -29,6 +29,10 @@
 0 2 * * * curl -sf -X GET $APP_URL/api/cron/etg-reviews-sync   -H "Authorization: Bearer $CRON_SECRET" -o /dev/null
 0 3 * * * curl -sf -X GET $APP_URL/api/cron/cache-cleanup       -H "Authorization: Bearer $CRON_SECRET" -o /dev/null
 0 4 * * * curl -sf -X GET $APP_URL/api/cron/cleanup-sessions    -H "Authorization: Bearer $CRON_SECRET" -o /dev/null
+# Retention for support attachments (ADR-0040). Daily and off-peak: the working set is
+# whatever crossed 90 days since its conversation was resolved, which is a trickle, and
+# each row costs an S3 delete. Runs after cleanup-sessions so the two do not overlap.
+0 4 * * * curl -sf -X GET $APP_URL/api/cron/purge-support-attachments -H "Authorization: Bearer $CRON_SECRET" -o /dev/null
 0 6 * * * curl -sf -X GET $APP_URL/api/cron/check-price-alerts  -H "Authorization: Bearer $CRON_SECRET" -o /dev/null
 
 # ── Monthly (UTC) ─────────────────────────────────────────────────────────────
