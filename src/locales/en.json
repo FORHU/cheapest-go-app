@@ -2719,5 +2719,37 @@
     "placesWithin": "Places within",
     "noProperties": "No properties to show",
     "adjustFilters": "Try adjusting your search filters"
+  },
+  "help": {
+    "title": "Help | CheapestGo",
+    "description": "Answers about bookings, refunds and payments, and how to reach our team.",
+    "pageTitle": "Help",
+    "pageSubtitle": "Answers to the things people ask most, and a way to reach a person.",
+    "chatCta": "Chat with us",
+    "chatNote": "Support is answered inside your account, so your conversation is waiting for you whenever you come back. Sign in to start one.",
+    "contactHeading": "Prefer email?",
+    "sections": {
+      "confirmation": {
+        "title": "I booked, but I have no confirmation",
+        "body": "Check Trips while signed in with the account you booked on — a booking appears there as soon as the supplier confirms it, usually within a minute. If your card was charged and nothing is in Trips, tell us: that is the one case we want to hear about immediately, because it means a booking exists somewhere we cannot see."
+      },
+      "refunds": {
+        "title": "When do I get my refund?",
+        "body": "A refund goes back to the card that paid, and how long it takes is decided by your bank rather than by us — commonly five to ten working days after we send it. Whether a booking can be refunded at all depends on the rate you chose, which is shown before you pay and again on the booking itself.",
+        "link": "Read the refund policy"
+      },
+      "changes": {
+        "title": "Can I change or cancel a booking?",
+        "body": "Cancellation is done from Trips, and what it costs depends on the rate: some are free until a deadline, some are not refundable at any point. The deadline is on the booking. Changing dates or names is not something we can do directly — cancel and rebook if the rate allows it, and message us first if you are unsure."
+      },
+      "priceGap": {
+        "title": "Why is the total higher than the price I searched?",
+        "body": "A search result shows the supplier price converted to your currency. Our fee is added at checkout, so the total is higher than the figure you first saw, and it is shown in full before you pay. Nothing is added after that."
+      },
+      "payment": {
+        "title": "My card was charged but the booking failed",
+        "body": "That charge is an authorisation that was never completed, and your bank releases it on its own, usually within a few days. If it has not cleared, or if you were charged and a booking does exist that you did not intend, message us with the reference and we will trace it."
+      }
+    }
   }
 }

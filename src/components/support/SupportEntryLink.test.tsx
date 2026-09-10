@@ -5,12 +5,14 @@ import { useSupportWidgetStore } from '@/stores/supportWidgetStore';
 import { useAuthStore } from '@/stores/authStore';
 
 /**
- * The signed-out route into support.
+ * The route into support, which is three different routes depending on who is asking and
+ * where from.
  *
- * The behaviour worth pinning is the fork: a signed-in customer opens the panel where they
- * stand, and a signed-out one is sent to sign in rather than into a conversation nobody can
- * answer. Getting that backwards produces the failure ADR-0032 exists to prevent — an Agent
- * replying to someone who left no way to be reached.
+ * A Support Chat requires an account (ADR-0032), so a signed-out visitor cannot be dropped
+ * into one. What they get instead used to be a sign-in form, which answered a question they
+ * had not asked and left anyone unable to sign in — locked out, or with no account at all —
+ * with no route to anything. Now they get the help articles, and the sign-in is offered
+ * there, next to the reason for it.
  */
 
 let pathname = '/property/123';
@@ -30,38 +32,49 @@ beforeEach(() => {
 afterEach(() => vi.restoreAllMocks());
 
 describe('SupportEntryLink', () => {
-    it('sends a signed-out visitor to sign in, not into a chat', () => {
+    it('sends a signed-out visitor to the help page, not into a chat', () => {
         render(<SupportEntryLink label="Support" />);
 
-        const link = screen.getByRole('link', { name: 'Support' });
-        expect(link.getAttribute('href')).toContain('/login');
-        // The panel must not open: a guest conversation is one an Agent answers into a void.
+        expect(screen.getByRole('link', { name: 'Support' }).getAttribute('href')).toBe('/help');
+        // Never a chat: a guest conversation is one an Agent answers into a void.
         expect(useSupportWidgetStore.getState().isOpen).toBe(false);
     });
 
-    it('brings them back to the page they asked from', () => {
-        // Someone reaching for support from a property page has a question about that
-        // property. Returning them to the home page loses it.
+    it('does not send them to sign in before they have read anything', () => {
+        // The failure this replaces. Reaching for support and being handed a login form
+        // reads as "support is unavailable", which is what it amounted to.
         render(<SupportEntryLink label="Support" />);
-
-        const href = screen.getByRole('link', { name: 'Support' }).getAttribute('href') ?? '';
-        expect(href).toContain('redirect=');
-        expect(decodeURIComponent(href)).toContain('/property/123?checkin=2026-10-10');
+        expect(screen.getByRole('link', { name: 'Support' }).getAttribute('href')).not.toContain('/login');
     });
 
-    it('does not ask to be returned to the home page or to login itself', () => {
-        pathname = '/';
-        render(<SupportEntryLink label="Support" />);
-        expect(screen.getByRole('link', { name: 'Support' }).getAttribute('href')).toBe('/login');
+    it('offers sign-in once they are already on the help page', () => {
+        // Here the articles are on screen and a person is what is being asked for, so the
+        // next step really is to sign in — and the redirect brings them back.
+        pathname = '/help';
+        search = new URLSearchParams();
+        render(<SupportEntryLink label="Chat with us" />);
+
+        const href = screen.getByRole('link', { name: 'Chat with us' }).getAttribute('href') ?? '';
+        expect(href).toContain('/login');
+        expect(decodeURIComponent(href)).toContain('redirect=/help');
     });
 
-    it('opens the panel in place for a signed-in customer', () => {
+    it('opens the panel in place for a signed-in customer, wherever they are', () => {
+        // A button, not a link: the panel is a portal over the current page, so there is
+        // nothing to navigate to and nothing to lose.
         useAuthStore.setState({ user: { id: 'u1', email: 'a@b.c' } } as never);
         render(<SupportEntryLink label="Support" />);
 
-        // A button, not a link: the panel is a portal over the current page, so there is
-        // nothing to navigate to.
         fireEvent.click(screen.getByRole('button', { name: 'Support' }));
+        expect(useSupportWidgetStore.getState().isOpen).toBe(true);
+    });
+
+    it('opens the panel from the help page too, for someone signed in', () => {
+        pathname = '/help';
+        useAuthStore.setState({ user: { id: 'u1', email: 'a@b.c' } } as never);
+        render(<SupportEntryLink label="Chat with us" />);
+
+        fireEvent.click(screen.getByRole('button', { name: 'Chat with us' }));
         expect(useSupportWidgetStore.getState().isOpen).toBe(true);
     });
 });

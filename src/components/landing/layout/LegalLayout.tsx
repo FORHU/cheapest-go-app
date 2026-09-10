@@ -9,8 +9,16 @@ interface Section {
 interface LegalLayoutProps {
   title: string;
   subtitle: string;
-  effectiveDate: string;
-  lastUpdated: string;
+  /**
+   * Optional, and absent on purpose for pages that are not policy.
+   *
+   * A policy has an effective date because it is a commitment that took force on a day and
+   * can be superseded. Help articles are neither — stamping one with "effective 1 January"
+   * says it is a document with legal weight, which is a claim, not decoration. Omitting
+   * both hides the row entirely.
+   */
+  effectiveDate?: string;
+  lastUpdated?: string;
   sections: Section[];
 }
 
@@ -35,10 +43,12 @@ export const LegalLayout: React.FC<LegalLayoutProps> = ({
             {title}
           </h1>
           <p className="text-slate-400 text-sm sm:text-base">{subtitle}</p>
-          <div className="flex flex-wrap gap-4 mt-5 text-xs text-slate-500">
-            <span>{t('effective')} <strong className="text-slate-300">{effectiveDate}</strong></span>
-            <span>{t('lastUpdated')} <strong className="text-slate-300">{lastUpdated}</strong></span>
-          </div>
+          {(effectiveDate || lastUpdated) && (
+            <div className="flex flex-wrap gap-4 mt-5 text-xs text-slate-500">
+              {effectiveDate && <span>{t('effective')} <strong className="text-slate-300">{effectiveDate}</strong></span>}
+              {lastUpdated && <span>{t('lastUpdated')} <strong className="text-slate-300">{lastUpdated}</strong></span>}
+            </div>
+          )}
         </div>
       </div>
 

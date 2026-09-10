@@ -36,9 +36,9 @@ export function SupportEntryLink({ className, label }: { className?: string; lab
         // this is to attribute from the error.
         //
         // Owning the boundary means no caller can place this component somewhere that
-        // breaks their build. The fallback is the same link without the redirect: during
-        // prerender there is no query string to preserve anyway.
-        <Suspense fallback={<a href="/login" className={className}>{label}</a>}>
+        // breaks their build. The fallback is /help, which is where a reader who is not
+        // signed in is going anyway — and during prerender nobody is.
+        <Suspense fallback={<a href="/help" className={className}>{label}</a>}>
             <SupportEntry className={className} label={label} />
         </Suspense>
     );
@@ -58,18 +58,27 @@ function SupportEntry({ className, label }: { className?: string; label: string 
         );
     }
 
-    // Come back to where they were. Someone who reached for support from a property page
-    // has a question about that property, and landing them on the home page afterwards
-    // loses it.
-    const params = new URLSearchParams();
-    const query = searchParams?.toString();
-    if (pathname && pathname !== '/' && pathname !== '/login') {
-        params.set('redirect', pathname + (query ? `?${query}` : ''));
+    // Signed out, and already on /help — the only place where the next step really is to
+    // sign in, because the articles are what is on screen and a person is what is being
+    // asked for. The redirect brings them back here afterwards.
+    //
+    // Everywhere else, /help. Sending someone straight to a sign-in form because they
+    // reached for support answers a question they did not ask: most of what support is
+    // asked is on that page, and a visitor who cannot sign in — locked out, or without an
+    // account at all — otherwise has no route to anything.
+    if (pathname === '/help') {
+        const params = new URLSearchParams();
+        const query = searchParams?.toString();
+        params.set('redirect', '/help' + (query ? `?${query}` : ''));
+        return (
+            <a href={`/login?${params.toString()}`} className={className}>
+                {label}
+            </a>
+        );
     }
-    const href = params.toString() ? `/login?${params.toString()}` : '/login';
 
     return (
-        <a href={href} className={className}>
+        <a href="/help" className={className}>
             {label}
         </a>
     );
