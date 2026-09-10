@@ -45,6 +45,15 @@ export function SupportBookingPicker({ conversationId }: { conversationId: strin
                 if (cancelled) return;
                 setTrips(data.trips ?? []);
                 setLinked((data.linked ?? []).map((l: { bookingReference: string }) => l.bookingReference));
+            } catch {
+                // Offer nothing rather than throw. This runs on every panel open, and the
+                // failure it has to survive is the customer being on a bad connection — the
+                // moment they most need to write to support. A picker that cannot list
+                // trips is a picker that does not appear; the composer below is untouched.
+                //
+                // Unguarded, the rejection escaped the effect entirely: an unhandled
+                // rejection in the browser, and in the test run a fetch that outlived the
+                // test that started it.
             } finally {
                 // Nothing is rendered until the answer is known: a picker that appears a
                 // beat after the panel opens moves the composer under the cursor.
@@ -66,6 +75,9 @@ export function SupportBookingPicker({ conversationId }: { conversationId: strin
             if (!res.ok) return;
             const data = await res.json();
             setLinked((data.linked ?? []).map((l: { bookingReference: string }) => l.bookingReference));
+        } catch {
+            // The chip simply does not appear. Linking a trip is a convenience that saves an
+            // Agent a question; failing it must never take the conversation down with it.
         } finally {
             setBusy(false);
         }
@@ -82,6 +94,9 @@ export function SupportBookingPicker({ conversationId }: { conversationId: strin
             if (!res.ok) return;
             const data = await res.json();
             setLinked((data.linked ?? []).map((l: { bookingReference: string }) => l.bookingReference));
+        } catch {
+            // The chip stays where it was. An Agent can detach it, and a trip linked one
+            // time too many is a smaller problem than a panel that threw.
         } finally {
             setBusy(false);
         }
