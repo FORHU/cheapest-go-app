@@ -1,13 +1,26 @@
 import React from 'react';
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
-import { nightsBetween, toPerNight } from '@/lib/perNightPrice';
+import { nightsBetween } from '@/lib/perNightPrice';
 
 /**
- * TGX quotes property.price as a gross total for the whole stay, and every price
- * surface is labelled "/night". The map markers used to render that total as-is,
- * so a 4-night stay showed the same hotel as $31 on its marker and $8 on the card
- * sitting directly on top of it. These lock the two together.
+ * A map marker renders the search price as it arrives.
+ *
+ * `property.price` on a search result is already a **Nightly Rate**: `/api/search/stream`
+ * divides the supplier's stay total before putting it on the wire. So a marker converts
+ * currency and nothing else.
+ *
+ * This file used to assert the opposite, and that is worth keeping in view. It declared a
+ * fixture as `price: 31, // whole stay, 4 nights` and required the marker to render $8 —
+ * true of the wire at the time. When the division moved to the server the fixture was never
+ * revisited, so the test went on passing against an assumption the wire no longer honoured
+ * while production advertised half price on every multi-night search: ₱1,587 on a marker for
+ * a room the property page sold at ₱3,173.
+ *
+ * The lesson is in the fixture, not the assertion. A component test that invents its own
+ * input can only ever check the component against the author's belief about the input, and
+ * a belief does not fail when the producer changes. `nightly-rate-divided-once.test.ts`
+ * carries the half that reads both sides.
  */
 
 const checkIn = new Date('2026-09-25T00:00:00Z');
@@ -34,7 +47,8 @@ import { SelectedPropertyPopup } from '@/components/mapbox/components/SelectedPr
 const property: any = {
     id: 'p1',
     name: 'Sujeongjang Inn',
-    price: 31,          // whole stay, 4 nights
+    // As the search stream sends it: one night, already divided.
+    price: 31,
     currency: 'USD',
     coordinates: { lat: 37.5, lng: 127.0 },
 };
@@ -50,22 +64,10 @@ describe('nightsBetween', () => {
     });
 });
 
-describe('toPerNight', () => {
-    it('divides the stay total across nights', () => {
-        expect(toPerNight(31, 'USD', 'USD', 4)).toBeCloseTo(7.75);
-    });
-
-    it('converts before dividing', () => {
-        expect(toPerNight(52000, 'KRW', 'USD', 4)).toBeCloseTo(10);
-    });
-
-    it('never divides by zero', () => {
-        expect(toPerNight(31, 'USD', 'USD', 0)).toBe(31);
-    });
-});
-
 describe('selected hotel marker', () => {
-    it('shows the per-night price, not the stay total', () => {
+    it('renders the nightly rate it was given, undivided', () => {
+        // Four nights are in scope via useDates, so a marker that still divided would show
+        // $8. The number arriving is already per night; dividing it again is the bug.
         render(
             <SelectedPropertyPopup
                 selectedProperty={property}
@@ -76,8 +78,23 @@ describe('selected hotel marker', () => {
             />
         );
 
-        // $31 / 4 nights = $7.75, rendered at zero decimals.
-        expect(screen.getByTestId('marker').textContent).toContain('$8');
-        expect(screen.getByTestId('marker').textContent).not.toContain('$31');
+        const rendered = screen.getByTestId('marker').textContent ?? '';
+        expect(rendered).toContain('$31');
+        expect(rendered).not.toContain('$8');
+    });
+
+    it('still converts currency', () => {
+        render(
+            <SelectedPropertyPopup
+                selectedProperty={{ ...property, price: 52000, currency: 'KRW' }}
+                onClose={() => {}}
+                onViewDetails={() => {}}
+                onSelect={() => {}}
+                isMobile
+            />
+        );
+
+        // 52,000 KRW ÷ 1300 = $40. Converted, not divided by the four nights.
+        expect(screen.getByTestId('marker').textContent).toContain('$40');
     });
 });

@@ -18,7 +18,7 @@ import { MapDetailsPanel } from '@/components/mapbox/components/MapDetailsPanel'
 import { useMapDetails } from '@/components/mapbox/hooks/useMapDetails';
 import { useUserCurrency } from '@/stores/searchStore';
 import { useNights } from '@/hooks/useNights';
-import { toPerNight } from '@/lib/perNightPrice';
+import { convertCurrency } from '@/lib/currency';
 
 interface SearchListWithMapProps {
     properties: Property[];
@@ -81,7 +81,7 @@ function SearchListWithMap({ properties, children }: SearchListWithMapProps) {
     const markerPrices = useMemo(() => {
         const prices: Record<string, number> = {};
         for (const p of mappableProperties) {
-            prices[p.id] = toPerNight(p.price, p.currency, targetCurrency, nights);
+            prices[p.id] = convertCurrency(p.price, p.currency || 'USD', targetCurrency);
         }
         return prices;
     }, [mappableProperties, targetCurrency, nights]);

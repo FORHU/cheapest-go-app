@@ -36,3 +36,22 @@ jobs:
 
       - name: Test
         run: pnpm test -- --run
+
+      # A production build, because typecheck and tests cannot see this class of failure.
+      #
+      # On 2026-09-10 a `useSearchParams` added to the footer took every route out of static
+      # generation, and the build died prerendering `/booking/hotel-confirmed` — a page the
+      # change never touched. tsc passed. 1,129 tests passed. The first thing that knew was
+      # the Docker build, by which point the commit was on main and both brands were
+      # deploying.
+      #
+      # Costs about 100s. Both brands build on every push to main, so finding it here is
+      # cheaper than finding it twice in the image step.
+      #
+      # The NEXT_PUBLIC_* values are placeholders: this proves the build completes and every
+      # page prerenders, not that production's configuration is right.
+      - name: Build
+        run: pnpm build
+        env:
+          NEXT_PUBLIC_SITE_URL: https://cheapestgo.com
+          NEXT_PUBLIC_BRAND_NAME: CheapestGo

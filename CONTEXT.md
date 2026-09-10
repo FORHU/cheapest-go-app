@@ -240,6 +240,8 @@ _Avoid_: converting prices in the browser — two independent conversions drift 
 
 **Nightly Rate** — a room's price for one night. What the storefront advertises and what a guest compares between hotels, so it is the figure on a search card and on a room card. Always derived, never quoted: suppliers price stays, not nights.
 _Avoid_: showing a **Stay Total** with a "per night" label — the same number means something different to a supplier and to a guest, and the guest reads it as the cheaper of the two.
+_Note_: derived exactly once, and the search stream is where. A price that has already been divided looks no different from one that has not — both are numbers, and dividing a second time is silent — so a Nightly Rate arriving from a search is rendered and converted, never divided. On 2026-09-10 seven display surfaces divided again and the whole storefront advertised half: ₱1,587 on a map marker for a room the property page sold at ₱3,173. It showed on no one-night stay, which is why it survived.
+_Avoid_: a helper named for the conversion rather than for what it takes. "To per night" reads as safe to apply to anything, including a figure that is already per night; the name is what invited the second division after the first had been fixed.
 
 **Stay Total** — what a room costs for the whole date range asked about. This is what OTV/TGX actually quotes and what prebook confirms, so it is the only hotel price the platform receives directly and the basis of every charge.
 _Avoid_: passing one as a bare number. A price and the stay it covers travel together; a figure that has lost its night count cannot be restated per night by whoever renders it next, only guessed at.

@@ -20,7 +20,7 @@ import { computeBounds } from './types';
 import type { MappableProperty } from './types';
 import { useUserCurrency } from '@/stores/searchStore';
 import { useNights } from '@/hooks/useNights';
-import { toPerNight } from '@/lib/perNightPrice';
+import { convertCurrency } from '@/lib/currency';
 
 interface PropertyMapViewProps {
     properties: MappableProperty[];
@@ -222,7 +222,7 @@ const PropertyMapView = React.memo(function PropertyMapView({
     const markerPrices = useMemo(() => {
         const prices: Record<string, number> = {};
         for (const p of properties) {
-            prices[p.id] = toPerNight(p.price, p.currency, targetCurrency, nights);
+            prices[p.id] = convertCurrency(p.price, p.currency || 'USD', targetCurrency);
         }
         return prices;
     }, [properties, targetCurrency, nights]);

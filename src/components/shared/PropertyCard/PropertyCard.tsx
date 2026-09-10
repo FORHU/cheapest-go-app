@@ -324,9 +324,9 @@ const HorizontalCard: React.FC<PropertyCardProps> = ({
     // and client (live rates from a previous page visit), causing hydration mismatches.
     // Divide by nights: TGX returns gross as a total-stay amount, not per-night.
     const sourceCurrency = property.currency || 'USD';
-    const displayPrice = mounted ? convertCurrency(property.price, sourceCurrency, targetCurrency) / nights : property.price;
+    const displayPrice = mounted ? convertCurrency(property.price, sourceCurrency, targetCurrency) : property.price;
     const displayOriginalPrice = property.originalPrice
-        ? (mounted ? convertCurrency(property.originalPrice, sourceCurrency, targetCurrency) / nights : property.originalPrice)
+        ? (mounted ? convertCurrency(property.originalPrice, sourceCurrency, targetCurrency) : property.originalPrice)
         : undefined;
     const symbol = getCurrencySymbol(mounted ? targetCurrency : sourceCurrency);
 

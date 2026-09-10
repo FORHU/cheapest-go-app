@@ -79,12 +79,12 @@ const MapPopup = React.memo(function MapPopup({
         return Math.max(1, Math.round((checkOut.getTime() - checkIn.getTime()) / 86400000));
     }, [checkIn, checkOut]);
     const displayPrice = React.useMemo(
-        () => convertCurrency(property.price, sourceCurrency, targetCurrency) / nights,
+        () => convertCurrency(property.price, sourceCurrency, targetCurrency),
         [property.price, sourceCurrency, targetCurrency, nights]
     );
     const displayOriginalPrice = React.useMemo(
         () => property.originalPrice
-            ? convertCurrency(property.originalPrice, sourceCurrency, targetCurrency) / nights
+            ? convertCurrency(property.originalPrice, sourceCurrency, targetCurrency)
             : undefined,
         [property.originalPrice, sourceCurrency, targetCurrency, nights]
     );

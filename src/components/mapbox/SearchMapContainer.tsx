@@ -20,7 +20,6 @@ import { MapSearchOverlay } from './components/MapSearchOverlay';
 import { useRouter } from 'next/navigation';
 import { useUserCurrency } from '@/stores/searchStore';
 import { useNights } from '@/hooks/useNights';
-import { toPerNight } from '@/lib/perNightPrice';
 import { useMapDetails } from './hooks/useMapDetails';
 import { MapDetailsPanel } from './components/MapDetailsPanel';
 import { env } from '@/utils/env';
@@ -32,6 +31,7 @@ import { NearbyPlaceMarker } from '../map/NearbyPlaceMarker';
 import { NearbyPlacePopup } from '../map/NearbyPlacePopup';
 import { useNearbyGems } from '../property/hooks/useNearbyGems';
 import type { NearbyPlace } from '../map/useMapNearbyPlaces';
+import { convertCurrency } from '@/lib/currency';
 
 // Haversine distance — defined outside component to avoid re-creation on every render
 const calculateDistance = (l1: { lat: number; lng: number }, l2: { lat: number; lng: number }) => {
@@ -239,7 +239,7 @@ export const SearchMapContainer = React.memo(({
     const markerPrices = useMemo(() => {
         const prices: Record<string, number> = {};
         for (const p of mappableProperties) {
-            prices[p.id] = toPerNight(p.price, p.currency, targetCurrency, nights);
+            prices[p.id] = convertCurrency(p.price, p.currency || 'USD', targetCurrency);
         }
         return prices;
     }, [mappableProperties, targetCurrency, nights]);

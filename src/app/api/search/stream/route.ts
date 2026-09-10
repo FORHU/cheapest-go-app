@@ -613,10 +613,29 @@ export async function POST(req: NextRequest) {
                     return { data: [] as any[], allMappable: [] as any[] };
                 });
 
-                // Normalise total-stay prices → per-night. TGX and ETG both return
-                // the price for the full stay; the UI labels it "/night".
+                // Normalise total-stay prices → per-night. TGX and ETG both return the price
+                // for the full stay; the UI labels it "/night".
+                //
+                // This is the ONLY place a search price is divided by the night count. Every
+                // surface downstream converts currency and renders — see `lib/perNightPrice.ts`
+                // for what happened when they divided too.
+                //
+                // Unrounded, and unconditional.
+                //
+                // It used to round. Today that costs almost nothing — OTV returns PHP
+                // whatever currency we ask for (see travelgatex/search.ts), so it rounded to
+                // whole pesos, about ₱1 in ₱1,600. It is dropped because it is rounding in a
+                // unit chosen by the supplier rather than by the reader: the same statement
+                // against a supplier that answered in USD, or any currency where one unit is
+                // worth something, would be throwing away real money before the viewer's
+                // currency is even known. Formatting belongs to the display, which knows what
+                // a unit is worth to the person looking at it.
+                //
+                // The `nights > 1` guard went with it — dividing by one is identity, and a
+                // condition that only ever changes a number's precision is a difference
+                // nobody can see and everybody has to read past.
                 const tgxHotels: any[] = (Array.isArray(tgxResult.data) ? tgxResult.data : [])
-                    .map((h: any) => nights > 1 ? { ...h, price: Math.round((h.price ?? 0) / nights) } : h);
+                    .map((h: any) => ({ ...h, price: (h.price ?? 0) / Math.max(1, nights) }));
                 const tgxMappable: any[] = tgxResult.allMappable ?? [];
                 console.log(`[stream] phase2 TGX done: ${tgxHotels.length} hotels in ${Date.now() - p2Start}ms (total ${elapsed()})`);
 
