@@ -1,5 +1,6 @@
 import type { FlightSegmentDetail } from '@/types/flights';
 import { getAirportByCode } from '@/lib/airports';
+import { segmentTerminal } from './terminal-fallback';
 import type { OfferSlice } from './offer-slices';
 
 /** One end of a flight: when it happens, and where, named the way a sign at the airport names it. */
@@ -23,15 +24,17 @@ export interface TimelineLeg {
     layover?: { airportCode: string; airportName: string; minutes: number };
 }
 
-function stop(end: FlightSegmentDetail['departure'] | FlightSegmentDetail['arrival']): TimelineStop {
-    const code = end.airport;
+function stop(seg: FlightSegmentDetail, end: 'departure' | 'arrival'): TimelineStop {
+    const point = seg[end];
+    const code = point.airport;
     return {
-        time: end.time,
+        time: point.time,
         airportCode: code,
         // A code we do not carry is shown as itself. Inventing a name would be worse
         // than showing the three letters printed on the boarding pass.
         airportName: getAirportByCode(code)?.name ?? code,
-        terminal: end.terminal,
+        // The provider's terminal if it gave one, else the carrier's standing gate.
+        terminal: segmentTerminal(seg, end),
     };
 }
 
@@ -47,8 +50,8 @@ export function sliceTimeline(slice: OfferSlice): TimelineLeg[] {
         const layover = slice.layovers[i];
         return {
             segment,
-            departure: stop(segment.departure),
-            arrival: stop(segment.arrival),
+            departure: stop(segment, 'departure'),
+            arrival: stop(segment, 'arrival'),
             durationMinutes: segment.duration > 0 ? segment.duration : undefined,
             layover: layover
                 ? {

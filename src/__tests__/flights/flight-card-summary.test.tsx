@@ -222,10 +222,31 @@ describe('FlightCard — the route summary terminal', () => {
         expect(screen.getByText('Heathrow Airport (LHR)').parentElement!.textContent).toContain('Terminal 4');
     });
 
-    it('says nothing when the airline named no terminal', () => {
+    it('says nothing when the airline named no terminal and the airport is untracked', () => {
         renderIntl(<FlightCard offer={referenceOffer} />);
 
         expect(screen.queryByText(/Terminal/)).toBeNull();
+    });
+
+    it('fills a missing terminal from the standing assignment for the carrier', () => {
+        // Duffel returns no terminal for Korean Air. Incheon T2 is KE's home
+        // terminal regardless, and the card should say so.
+        const koreanAir = {
+            ...referenceOffer,
+            segments: [
+                seg(0, 'ICN', 'MNL', '2026-09-23T20:00:00', '2026-09-24T00:00:00', {
+                    duration: 240,
+                    flightNumber: 'KE621',
+                    airline: { code: 'KE', name: 'Korean Air' },
+                }),
+            ],
+            sliceDurations: [240],
+            totalStops: 0,
+        } as FlightOffer;
+
+        renderIntl(<FlightCard offer={koreanAir} />);
+
+        expect(screen.getByText('Terminal 2')).toBeTruthy();
     });
 });
 

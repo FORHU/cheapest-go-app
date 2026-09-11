@@ -7,6 +7,7 @@ import type { FlightOffer } from '@/types/flights';
 import { formatPrice, formatPriceWithCents, formatDuration, formatTimeIn, formatDurationLong } from '@/utils/flight-utils';
 import { ArrivalDayOffset } from './ArrivalDayOffset';
 import { offerSlices } from '@/lib/flights/offer-slices';
+import { segmentTerminal } from '@/lib/flights/terminal-fallback';
 import { getAirportByCode } from '@/lib/airports';
 import { FlightItineraryDetails } from '@/components/flights/FlightItineraryDetails';
 import SaveButton from '@/components/common/SaveButton';
@@ -113,6 +114,9 @@ export const FlightCard: React.FC<FlightCardProps> = ({ offer, index = 0, onSele
     // the three letters on the boarding pass beat an invented name.
     const departureAirport = airportLabel(primary.departure.airport);
     const arrivalAirport = airportLabel(outboundLast?.arrival?.airport);
+    // Provider's terminal if it gave one, else the carrier's standing gate.
+    const departureTerminal = segmentTerminal(primary, 'departure');
+    const arrivalTerminal = outboundLast ? segmentTerminal(outboundLast, 'arrival') : undefined;
     // Who actually flies, when that is not who sold the seat.
     const operators = Array.from(
         new Set(outboundLeg.map(s => s.operatingAirline?.name).filter(Boolean))
@@ -272,12 +276,12 @@ export const FlightCard: React.FC<FlightCardProps> = ({ offer, index = 0, onSele
                             <span className="text-[11px] lg:text-[13px] leading-snug text-slate-800 dark:text-slate-200">
                                 {departureAirport}
                             </span>
-                            {/* The gate this leg leaves from, when the airline named it.
-                                A connecting itinerary spells out every terminal once
-                                expanded — this is the journey's start only. */}
-                            {primary.departure.terminal && (
+                            {/* The gate this leg leaves from. A connecting itinerary
+                                spells out every terminal once expanded — this is the
+                                journey's start only. */}
+                            {departureTerminal && (
                                 <span className="text-[10px] lg:text-[12px] leading-snug text-slate-400 dark:text-slate-500">
-                                    {t('terminal', { terminal: primary.departure.terminal })}
+                                    {t('terminal', { terminal: departureTerminal })}
                                 </span>
                             )}
                         </div>
@@ -316,9 +320,9 @@ export const FlightCard: React.FC<FlightCardProps> = ({ offer, index = 0, onSele
                             </span>
                             {/* The terminal this leg reaches — the outbound's final
                                 arrival, matching the airport named just above. */}
-                            {outboundLast?.arrival?.terminal && (
+                            {arrivalTerminal && (
                                 <span className="text-[10px] lg:text-[12px] leading-snug text-slate-400 dark:text-slate-500">
-                                    {t('terminal', { terminal: outboundLast.arrival.terminal })}
+                                    {t('terminal', { terminal: arrivalTerminal })}
                                 </span>
                             )}
                         </div>

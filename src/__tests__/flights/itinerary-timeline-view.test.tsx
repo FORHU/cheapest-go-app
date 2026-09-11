@@ -190,10 +190,29 @@ describe('FlightItineraryTimeline — terminals', () => {
         expect(heathrow.parentElement!.textContent).toContain('Terminal 4');
     });
 
-    it('says nothing about a terminal the airline did not state', () => {
+    it('says nothing about a terminal the airline did not state at an untracked airport', () => {
         renderIntl(<FlightItineraryTimeline slice={offerSlices(oneStop)[0]} />);
 
         expect(screen.queryByText(/Terminal/)).toBeNull();
+    });
+
+    it('fills a missing terminal from the standing assignment for the operating carrier', () => {
+        // Korean Air ICN→MNL: Duffel gives no terminal, but ICN T2 is where KE flies from.
+        const koreanAir = {
+            ...oneStop,
+            segments: [
+                seg('ICN', 'MNL', '2026-09-23T20:00:00', '2026-09-24T00:00:00', {
+                    duration: 240,
+                    flightNumber: 'KE621',
+                    airline: { code: 'KE', name: 'Korean Air' },
+                }),
+            ],
+            sliceDurations: [240],
+        } as FlightOffer;
+
+        renderIntl(<FlightItineraryTimeline slice={offerSlices(koreanAir)[0]} />);
+
+        expect(screen.getByText('Terminal 2')).toBeTruthy();
     });
 
     it('shows a terminal change across a layover — land at one, leave from another', () => {
