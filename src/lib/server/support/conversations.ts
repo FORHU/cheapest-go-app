@@ -164,6 +164,10 @@ export async function openConversation(input: OpenConversationInput): Promise<Op
           RETURNING ${COLUMNS}`,
             [existing.id],
         );
+        // Back to Unassigned, recorded — the admin decides who has it next (ADR-0041).
+        // Imported here because assignment.ts imports this module.
+        const { recordReopened } = await import('./assignment');
+        await recordReopened(existing.id, existing.assignedAdminId ?? null);
         return {
             conversation: rows[0],
             issuedGuestToken: null,

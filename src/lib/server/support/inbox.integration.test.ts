@@ -3,19 +3,27 @@ import {
     listInbox,
     inboxCounts,
     agentReply,
-    resolveConversation,
     reopenIfResolved,
     getConversationForAgent,
     type InboxFilter,
 } from './inbox';
+import {
+    assignConversation,
+    returnToQueue,
+    resolveConversation,
+    releaseConversationsOf,
+    handledTally,
+    SupportPermissionError,
+    type SupportActor,
+} from './assignment';
 
 /**
- * The Agent's side of a Support Chat.
+ * The Agent's side of a Support Chat, and Assignment by admin (ADR-0041).
  *
  * Integration rather than unit tests: every decision here is expressed in SQL — which
- * conversations are in the queue, what order they are in, and the conditional UPDATE that
- * decides which of two Agents owns a conversation. A fake store would test the shape of
- * the code and none of the behaviour.
+ * conversations are in which queue, what order they are in, who may write where, and what
+ * is recorded when a chat changes hands or is resolved. A fake store would test the shape
+ * of the code and none of the behaviour.
  *
  * Skips when no database is reachable.
  */
@@ -36,14 +44,15 @@ async function sql() {
     return getSqlAdmin();
 }
 
-/** An admin to attribute replies to. Agent messages are refused without one. */
-async function makeAgent(email: string): Promise<string> {
+async function makeUser(role: 'admin' | 'support_agent' | 'user', label: string): Promise<SupportActor> {
     const db = await sql();
     const rows = await db<{ id: string }[]>`
-        INSERT INTO users (email, role) VALUES (${email}, 'admin') RETURNING id
+        INSERT INTO users (email, role, first_name)
+        VALUES (${`inbox-test-${label}-${crypto.randomUUID()}@example.com`}, ${role}, ${label})
+        RETURNING id
     `;
     createdUsers.push(rows[0].id);
-    return rows[0].id;
+    return { id: rows[0].id, role: role === 'user' ? 'support_agent' : role };
 }
 
 interface MakeConversation {
@@ -82,9 +91,7 @@ async function makeConversation(over: MakeConversation = {}): Promise<string> {
 
 async function statusOf(id: string): Promise<string> {
     const db = await sql();
-    const rows = await db<{ status: string }[]>`
-        SELECT status FROM support_conversations WHERE id = ${id}
-    `;
+    const rows = await db<{ status: string }[]>`SELECT status FROM support_conversations WHERE id = ${id}`;
     return rows[0]?.status ?? 'gone';
 }
 
@@ -96,33 +103,31 @@ async function assigneeOf(id: string): Promise<string | null> {
     return rows[0]?.assigned_admin_id ?? null;
 }
 
+async function eventsOf(id: string) {
+    const db = await sql();
+    return db<{ kind: string; from_admin_id: string | null; to_admin_id: string | null; actor_admin_id: string | null }[]>`
+        SELECT kind, from_admin_id, to_admin_id, actor_admin_id
+          FROM support_assignment_events WHERE conversation_id = ${id}
+         ORDER BY created_at, id
+    `;
+}
+
 const ids = (rows: { id: string }[]) => rows.map(r => r.id);
 
 /**
- * The rows from a query that this file put there.
- *
- * The inbox is deliberately unfiltered — it shows every conversation on the site — so a
- * query here also returns whatever another test file created a moment ago. Scoping the
- * assertion rather than the query keeps these tests about `listInbox`'s real behaviour
- * instead of a version of it that only ever sees an empty table.
+ * The rows from a query that this file put there. The inbox is deliberately unfiltered — it
+ * shows every conversation on the site — so a query also returns other test files' rows.
  */
 const ours = (rows: { id: string }[]) => rows.filter(r => created.includes(r.id)).map(r => r.id);
 
-/**
- * Exactly what this file created, so cleanup removes only that.
- *
- * Vitest runs test files in parallel against one database. A blanket
- * `DELETE FROM support_conversations` here deletes another file's fixtures mid-test —
- * which is how the turn-claim tests started failing once this file existed.
- */
+/** Exactly what this file created, so cleanup removes only that. */
 const created: string[] = [];
 const createdUsers: string[] = [];
 
 async function cleanUp() {
     const db = await sql();
-    // Conversations first. `users.id` is ON DELETE SET NULL, so removing a user before
-    // their conversation would null `user_id` on a row with no guest token and violate
-    // support_conversations_has_owner_check.
+    // Conversations first: `users.id` is ON DELETE SET NULL, and a conversation with no
+    // owner would violate support_conversations_has_owner_check.
     if (created.length) {
         await db`DELETE FROM support_conversations WHERE id = ANY(${db.array(created)}::uuid[])`;
     }
@@ -133,14 +138,16 @@ async function cleanUp() {
     createdUsers.length = 0;
 }
 
-let agentA = '';
-let agentB = '';
+let admin: SupportActor;
+let agentA: SupportActor;
+let agentB: SupportActor;
 
 beforeEach(async () => {
     if (!(await databaseReachable())) return;
     await cleanUp();
-    agentA = await makeAgent(`inbox-test-a-${crypto.randomUUID()}@example.com`);
-    agentB = await makeAgent(`inbox-test-b-${crypto.randomUUID()}@example.com`);
+    admin = await makeUser('admin', 'Admin');
+    agentA = await makeUser('support_agent', 'Aida');
+    agentB = await makeUser('support_agent', 'Ben');
 });
 
 afterAll(async () => {
@@ -151,47 +158,68 @@ afterAll(async () => {
 });
 
 describe('listInbox', () => {
-    it('shows the queue oldest first, because the longest wait is the most urgent', async (ctx) => {
+    it('shows the Unassigned queue oldest first, because the longest wait is the most urgent', async (ctx) => {
         if (!(await databaseReachable())) ctx.skip();
 
         const recent = await makeConversation({ minutesAgo: 2 });
         const oldest = await makeConversation({ minutesAgo: 90 });
         const middle = await makeConversation({ minutesAgo: 20 });
 
-        expect(ours(await listInbox({ filter: 'waiting' }))).toEqual([oldest, middle, recent]);
+        expect(ours(await listInbox({ filter: 'unassigned' }))).toEqual([oldest, middle, recent]);
     });
 
     it('keeps both brands in one queue', async (ctx) => {
         if (!(await databaseReachable())) ctx.skip();
 
-        // ADR-0030: a AirangGo customer waiting must not be invisible on the CheapestGo
-        // admin, which is what following the brand switcher would do.
+        // ADR-0030: a AirangGo customer must not be invisible on the CheapestGo admin.
         const cheapestgo = await makeConversation({ brand: 'CheapestGo', minutesAgo: 10 });
         const airanggo = await makeConversation({ brand: 'AirangGo', minutesAgo: 5 });
 
-        expect(ours(await listInbox({ filter: 'waiting' })).sort())
-            .toEqual([cheapestgo, airanggo].sort());
+        expect(ours(await listInbox({ filter: 'unassigned' })).sort()).toEqual([cheapestgo, airanggo].sort());
     });
 
-    it('separates what the assistant is handling from what needs a person', async (ctx) => {
+    it('keeps a chat an admin answered without assigning in Unassigned', async (ctx) => {
+        if (!(await databaseReachable())) ctx.skip();
+
+        // Answered is not owned: the admin helped, and the chat still needs someone.
+        const id = await makeConversation();
+        await agentReply({ conversationId: id, actor: admin, body: 'Looking into it.' });
+
+        expect(await statusOf(id)).toBe('human_active');
+        expect(ours(await listInbox({ filter: 'unassigned' }))).toEqual([id]);
+    });
+
+    it('separates the retired assistant from what needs a person', async (ctx) => {
         if (!(await databaseReachable())) ctx.skip();
 
         const waiting = await makeConversation({ status: 'waiting_human' });
         const withAssistant = await makeConversation({ status: 'ai_active' });
 
-        expect(ours(await listInbox({ filter: 'waiting' }))).toEqual([waiting]);
+        expect(ours(await listInbox({ filter: 'unassigned' }))).toEqual([waiting]);
         expect(ours(await listInbox({ filter: 'assistant' }))).toEqual([withAssistant]);
     });
 
-    it('shows an Agent only their own conversations under mine', async (ctx) => {
+    it('shows an Agent only their own under mine, and everyone\'s under assigned', async (ctx) => {
         if (!(await databaseReachable())) ctx.skip();
 
-        const mine = await makeConversation({ status: 'waiting_human' });
-        const theirs = await makeConversation({ status: 'waiting_human' });
-        await agentReply({ conversationId: mine, adminId: agentA, body: 'On it.' });
-        await agentReply({ conversationId: theirs, adminId: agentB, body: 'Mine.' });
+        const mine = await makeConversation();
+        const theirs = await makeConversation();
+        await assignConversation({ conversationId: mine, toAdminId: agentA.id, actor: admin });
+        await assignConversation({ conversationId: theirs, toAdminId: agentB.id, actor: admin });
 
-        expect(ours(await listInbox({ filter: 'mine', adminId: agentA }))).toEqual([mine]);
+        expect(ours(await listInbox({ filter: 'mine', adminId: agentA.id }))).toEqual([mine]);
+        expect(ours(await listInbox({ filter: 'assigned' })).sort()).toEqual([mine, theirs].sort());
+        expect(ours(await listInbox({ filter: 'unassigned' }))).toEqual([]);
+    });
+
+    it('names who a chat is assigned to', async (ctx) => {
+        if (!(await databaseReachable())) ctx.skip();
+
+        const id = await makeConversation();
+        await assignConversation({ conversationId: id, toAdminId: agentA.id, actor: admin });
+
+        const row = (await listInbox({ filter: 'assigned' })).find(r => r.id === id)!;
+        expect(row.assignedAdminName).toBe('Aida');
     });
 
     it('keeps resolved conversations out of every working view', async (ctx) => {
@@ -199,111 +227,230 @@ describe('listInbox', () => {
 
         const done = await makeConversation({ status: 'resolved' });
 
-        for (const filter of ['waiting', 'assistant'] as InboxFilter[]) {
+        for (const filter of ['unassigned', 'assigned', 'assistant'] as InboxFilter[]) {
             expect(ids(await listInbox({ filter }))).not.toContain(done);
         }
         expect(ours(await listInbox({ filter: 'resolved' }))).toEqual([done]);
     });
-
-    it('carries what the Agent needs to triage without opening it', async (ctx) => {
-        if (!(await databaseReachable())) ctx.skip();
-
-        const id = await makeConversation({ minutesAgo: 5 });
-        const row = (await listInbox({ filter: 'waiting' })).find(r => r.id === id)!;
-
-        expect(row.id).toBe(id);
-        expect(row.guestName).toBe('Ana Reyes');
-        expect(row.sourceBrand).toBe('CheapestGo');
-        expect(row.status).toBe('waiting_human');
-    });
 });
 
 describe('inboxCounts', () => {
-    it('counts what is waiting, for the sidebar badge', async (ctx) => {
+    it("shows an admin the Unassigned queue on the badge", async (ctx) => {
         if (!(await databaseReachable())) ctx.skip();
 
-        // A delta rather than an absolute: the count is site-wide by design, so another
-        // test file's rows are legitimately in it.
-        const before = await inboxCounts(agentA);
-
+        // A delta: the count is site-wide by design, so other files' rows are in it.
+        const before = await inboxCounts(admin);
         await makeConversation({ status: 'waiting_human' });
         await makeConversation({ status: 'waiting_human', brand: 'AirangGo' });
         await makeConversation({ status: 'ai_active' });
         await makeConversation({ status: 'resolved' });
+        const after = await inboxCounts(admin);
 
+        expect(after.unassigned - before.unassigned).toBe(2);
+        expect(after.waiting - before.waiting).toBe(2);
+    });
+
+    it('shows a Support Agent only their own unanswered chats on the badge', async (ctx) => {
+        if (!(await databaseReachable())) ctx.skip();
+
+        const before = await inboxCounts(agentA);
+        const mine = await makeConversation();
+        await makeConversation(); // Unassigned — not theirs to be alarmed by.
+        await assignConversation({ conversationId: mine, toAdminId: agentA.id, actor: admin });
         const after = await inboxCounts(agentA);
 
-        // Two, not one: both brands count, per ADR-0030. A badge that hides a brand is
-        // worse than no badge, because it looks authoritative.
-        expect(after.waiting - before.waiting).toBe(2);
+        expect(after.waiting - before.waiting).toBe(1);
+        expect(after.mine - before.mine).toBe(1);
     });
 });
 
-describe('agentReply', () => {
-    it('takes ownership on the first reply', async (ctx) => {
+describe('agentReply — writing follows Assignment', () => {
+    it('never assigns: the first reply takes nothing', async (ctx) => {
         if (!(await databaseReachable())) ctx.skip();
 
         const id = await makeConversation();
-        await agentReply({ conversationId: id, adminId: agentA, body: 'Looking into it.' });
+        await agentReply({ conversationId: id, actor: admin, body: 'Looking into it.' });
 
-        expect(await assigneeOf(id)).toBe(agentA);
+        expect(await assigneeOf(id)).toBeNull();
         expect(await statusOf(id)).toBe('human_active');
     });
 
-    it('does not steal a conversation someone else already answered', async (ctx) => {
-        if (!(await databaseReachable())) ctx.skip();
-
-        // Two agents on a Monday morning. The second reply is still delivered — the
-        // customer should not lose it — but ownership stays with whoever got there first.
-        const id = await makeConversation();
-        await agentReply({ conversationId: id, adminId: agentA, body: 'Looking into it.' });
-        await agentReply({ conversationId: id, adminId: agentB, body: 'Me too.' });
-
-        expect(await assigneeOf(id)).toBe(agentA);
-    });
-
-    it('gives exactly one owner when two Agents reply at the same instant', async (ctx) => {
+    it('lets a Support Agent reply in a chat assigned to them', async (ctx) => {
         if (!(await databaseReachable())) ctx.skip();
 
         const id = await makeConversation();
-        await Promise.all([
-            agentReply({ conversationId: id, adminId: agentA, body: 'A' }),
-            agentReply({ conversationId: id, adminId: agentB, body: 'B' }),
-        ]);
-
-        expect([agentA, agentB]).toContain(await assigneeOf(id));
-    });
-
-    it('attributes the message to the Agent who wrote it', async (ctx) => {
-        if (!(await databaseReachable())) ctx.skip();
-
-        const id = await makeConversation();
-        const message = await agentReply({
-            conversationId: id, adminId: agentA, body: 'Looking into it.',
-        });
+        await assignConversation({ conversationId: id, toAdminId: agentA.id, actor: admin });
+        const message = await agentReply({ conversationId: id, actor: agentA, body: 'Hello, I have it.' });
 
         expect(message.senderType).toBe('agent');
-        expect(message.senderAdminId).toBe(agentA);
+        expect(message.senderAdminId).toBe(agentA.id);
+    });
+
+    it('refuses a Support Agent in an Unassigned chat — there is nothing to race for', async (ctx) => {
+        if (!(await databaseReachable())) ctx.skip();
+
+        const id = await makeConversation();
+        await expect(agentReply({ conversationId: id, actor: agentA, body: 'Mine!' }))
+            .rejects.toBeInstanceOf(SupportPermissionError);
+        expect(await assigneeOf(id)).toBeNull();
+    });
+
+    it("refuses a Support Agent in a colleague's chat", async (ctx) => {
+        if (!(await databaseReachable())) ctx.skip();
+
+        const id = await makeConversation();
+        await assignConversation({ conversationId: id, toAdminId: agentB.id, actor: admin });
+
+        await expect(agentReply({ conversationId: id, actor: agentA, body: 'I can help.' }))
+            .rejects.toBeInstanceOf(SupportPermissionError);
+    });
+
+    it("lets an admin write in anyone's chat without taking it", async (ctx) => {
+        if (!(await databaseReachable())) ctx.skip();
+
+        const id = await makeConversation();
+        await assignConversation({ conversationId: id, toAdminId: agentB.id, actor: admin });
+        await agentReply({ conversationId: id, actor: admin, body: 'Adding a note for you.' });
+
+        expect(await assigneeOf(id)).toBe(agentB.id);
     });
 
     it('refuses an empty reply', async (ctx) => {
         if (!(await databaseReachable())) ctx.skip();
 
         const id = await makeConversation();
-        await expect(agentReply({ conversationId: id, adminId: agentA, body: '   ' }))
-            .rejects.toThrow();
+        await expect(agentReply({ conversationId: id, actor: admin, body: '   ' })).rejects.toThrow();
     });
 });
 
-describe('resolveConversation', () => {
-    it('marks a conversation done', async (ctx) => {
+describe('assignConversation', () => {
+    it('gives a chat to a Support Agent and records it', async (ctx) => {
         if (!(await databaseReachable())) ctx.skip();
 
         const id = await makeConversation();
-        await agentReply({ conversationId: id, adminId: agentA, body: 'All sorted.' });
-        await resolveConversation(id, agentA);
+        await assignConversation({ conversationId: id, toAdminId: agentA.id, actor: admin });
+
+        expect(await assigneeOf(id)).toBe(agentA.id);
+        expect(await eventsOf(id)).toEqual([
+            { kind: 'assigned', from_admin_id: null, to_admin_id: agentA.id, actor_admin_id: admin.id },
+        ]);
+    });
+
+    it('records a reassignment as from one person to another', async (ctx) => {
+        if (!(await databaseReachable())) ctx.skip();
+
+        const id = await makeConversation();
+        await assignConversation({ conversationId: id, toAdminId: agentA.id, actor: admin });
+        await assignConversation({ conversationId: id, toAdminId: agentB.id, actor: admin });
+
+        expect((await eventsOf(id)).at(-1)).toEqual(
+            { kind: 'assigned', from_admin_id: agentA.id, to_admin_id: agentB.id, actor_admin_id: admin.id },
+        );
+    });
+
+    it('refuses a Support Agent — assigning is an admin decision', async (ctx) => {
+        if (!(await databaseReachable())) ctx.skip();
+
+        const id = await makeConversation();
+        await expect(assignConversation({ conversationId: id, toAdminId: agentA.id, actor: agentA }))
+            .rejects.toBeInstanceOf(SupportPermissionError);
+    });
+
+    it('refuses someone who cannot answer Support Chats', async (ctx) => {
+        if (!(await databaseReachable())) ctx.skip();
+
+        const id = await makeConversation();
+        const customer = await makeUser('user', 'Customer');
+        await expect(assignConversation({ conversationId: id, toAdminId: customer.id, actor: admin }))
+            .rejects.toThrow(/cannot answer/i);
+    });
+
+    it('does not assign a resolved chat', async (ctx) => {
+        if (!(await databaseReachable())) ctx.skip();
+
+        const id = await makeConversation({ status: 'resolved' });
+        await expect(assignConversation({ conversationId: id, toAdminId: agentA.id, actor: admin }))
+            .rejects.toThrow(/resolved/i);
+    });
+});
+
+describe('returnToQueue', () => {
+    it('lets a Support Agent give their chat back to Unassigned, recorded', async (ctx) => {
+        if (!(await databaseReachable())) ctx.skip();
+
+        const id = await makeConversation();
+        await assignConversation({ conversationId: id, toAdminId: agentA.id, actor: admin });
+        await returnToQueue({ conversationId: id, actor: agentA });
+
+        expect(await assigneeOf(id)).toBeNull();
+        expect((await eventsOf(id)).at(-1)).toMatchObject({ kind: 'returned', from_admin_id: agentA.id });
+    });
+
+    it("refuses giving back a chat that is not yours", async (ctx) => {
+        if (!(await databaseReachable())) ctx.skip();
+
+        const id = await makeConversation();
+        await assignConversation({ conversationId: id, toAdminId: agentB.id, actor: admin });
+
+        await expect(returnToQueue({ conversationId: id, actor: agentA }))
+            .rejects.toBeInstanceOf(SupportPermissionError);
+        expect(await assigneeOf(id)).toBe(agentB.id);
+    });
+});
+
+describe('resolveConversation — Handled', () => {
+    it('credits the chat to whoever held it when it was resolved', async (ctx) => {
+        if (!(await databaseReachable())) ctx.skip();
+
+        const id = await makeConversation();
+        await assignConversation({ conversationId: id, toAdminId: agentA.id, actor: admin });
+        await resolveConversation({ conversationId: id, actor: agentA });
 
         expect(await statusOf(id)).toBe('resolved');
+        expect((await eventsOf(id)).at(-1)).toMatchObject({ kind: 'resolved', to_admin_id: agentA.id });
+    });
+
+    it('does not make an admin the owner of an Unassigned chat they close', async (ctx) => {
+        if (!(await databaseReachable())) ctx.skip();
+
+        const id = await makeConversation();
+        await resolveConversation({ conversationId: id, actor: admin });
+
+        expect(await assigneeOf(id)).toBeNull();
+        expect((await eventsOf(id)).at(-1)).toMatchObject({ kind: 'resolved', to_admin_id: null });
+    });
+
+    it("refuses a Support Agent closing a colleague's chat", async (ctx) => {
+        if (!(await databaseReachable())) ctx.skip();
+
+        const id = await makeConversation();
+        await assignConversation({ conversationId: id, toAdminId: agentB.id, actor: admin });
+
+        await expect(resolveConversation({ conversationId: id, actor: agentA }))
+            .rejects.toBeInstanceOf(SupportPermissionError);
+    });
+
+    it('tallies handled chats per person, counting a reopened chat again', async (ctx) => {
+        if (!(await databaseReachable())) ctx.skip();
+
+        const since = new Date(Date.now() - 60_000);
+        const first = await makeConversation();
+        const second = await makeConversation();
+        await assignConversation({ conversationId: first, toAdminId: agentA.id, actor: admin });
+        await assignConversation({ conversationId: second, toAdminId: agentB.id, actor: admin });
+        await resolveConversation({ conversationId: first, actor: agentA });
+        await resolveConversation({ conversationId: second, actor: agentB });
+
+        // The first customer comes back; the admin gives it to Ben this time.
+        await reopenIfResolved(first);
+        await assignConversation({ conversationId: first, toAdminId: agentB.id, actor: admin });
+        await resolveConversation({ conversationId: first, actor: agentB });
+
+        const tally = await handledTally(since);
+        const of = (actor: SupportActor) => tally.find(t => t.adminId === actor.id)!;
+        expect(of(agentA).handled).toBe(1);
+        expect(of(agentB).handled).toBe(2);
+        expect(of(agentA).name).toBe('Aida');
     });
 });
 
@@ -314,7 +461,7 @@ describe('getConversationForAgent', () => {
         const id = await makeConversation();
         const db = await sql();
         await db`UPDATE support_conversations SET escalation_reason = 'refund request' WHERE id = ${id}`;
-        await agentReply({ conversationId: id, adminId: agentA, body: 'On it.' });
+        await agentReply({ conversationId: id, actor: admin, body: 'On it.' });
 
         const detail = await getConversationForAgent(id);
 
@@ -326,9 +473,7 @@ describe('getConversationForAgent', () => {
     it('shows no bookings for a guest, however plausible their email looks', async (ctx) => {
         if (!(await databaseReachable())) ctx.skip();
 
-        // ADR-0029: an unverified email is not a credential. An Agent may still look
-        // someone up in the bookings screen — that is a person weighing a claim. What must
-        // not happen is a stranger's trips appearing here because they typed an address.
+        // ADR-0029: an unverified email is not a credential.
         const id = await makeConversation();
 
         expect((await getConversationForAgent(id))?.bookings).toBeNull();
@@ -338,17 +483,14 @@ describe('getConversationForAgent', () => {
         if (!(await databaseReachable())) ctx.skip();
 
         const db = await sql();
-        const customer = await makeAgent(`inbox-test-customer-${crypto.randomUUID()}@example.com`);
+        const customer = await makeUser('user', 'Customer');
         const rows = await db<{ id: string }[]>`
             INSERT INTO support_conversations (user_id, source_brand, locale, status)
-            VALUES (${customer}, 'CheapestGo', 'en', 'waiting_human')
+            VALUES (${customer.id}, 'CheapestGo', 'en', 'waiting_human')
             RETURNING id
         `;
-        // Cleanup deletes users too, and users.id is ON DELETE SET NULL — an unrecorded
-        // conversation would have its owner nulled and trip the owner CHECK.
         created.push(rows[0].id);
 
-        // An array, empty or not — the point is that the lookup happened at all.
         expect((await getConversationForAgent(rows[0].id))?.bookings).toBeInstanceOf(Array);
     }, 20_000);
 
@@ -360,40 +502,56 @@ describe('getConversationForAgent', () => {
 });
 
 describe('reopenIfResolved', () => {
-    it('hands a resolved conversation back to a person when the customer writes', async (ctx) => {
+    it('hands a resolved conversation back to Unassigned when the customer writes', async (ctx) => {
         if (!(await databaseReachable())) ctx.skip();
 
-        // Resolved is not an ending. Per ADR-0031 there is no assistant to hand it back
-        // to: without this the message is stored, nothing answers, and the conversation
-        // is in a status no queue shows.
         const id = await makeConversation({ status: 'resolved' });
 
         expect(await reopenIfResolved(id)).toBe(true);
         expect(await statusOf(id)).toBe('waiting_human');
+        expect(ours(await listInbox({ filter: 'unassigned' }))).toEqual([id]);
     });
 
-    it('drops the previous assignment, so it is not still on an Agent\'s list', async (ctx) => {
+    it('drops the previous assignment and records the reopen', async (ctx) => {
         if (!(await databaseReachable())) ctx.skip();
 
         const id = await makeConversation();
-        await agentReply({ conversationId: id, adminId: agentA, body: 'All sorted.' });
-        await resolveConversation(id, agentA);
+        await assignConversation({ conversationId: id, toAdminId: agentA.id, actor: admin });
+        await resolveConversation({ conversationId: id, actor: agentA });
         await reopenIfResolved(id);
 
         expect(await assigneeOf(id)).toBeNull();
-        expect(ids(await listInbox({ filter: 'mine', adminId: agentA }))).not.toContain(id);
+        expect(ids(await listInbox({ filter: 'mine', adminId: agentA.id }))).not.toContain(id);
+        expect((await eventsOf(id)).at(-1)).toMatchObject({ kind: 'reopened', from_admin_id: agentA.id });
     });
 
     it('leaves a conversation that was never resolved exactly as it is', async (ctx) => {
         if (!(await databaseReachable())) ctx.skip();
 
-        // A customer writing to an Agent mid-conversation must not be bounced back to the
-        // assistant. Escalation is one-way.
         const id = await makeConversation();
-        await agentReply({ conversationId: id, adminId: agentA, body: 'On it.' });
+        await assignConversation({ conversationId: id, toAdminId: agentA.id, actor: admin });
+        await agentReply({ conversationId: id, actor: agentA, body: 'On it.' });
 
         expect(await reopenIfResolved(id)).toBe(false);
         expect(await statusOf(id)).toBe('human_active');
-        expect(await assigneeOf(id)).toBe(agentA);
+        expect(await assigneeOf(id)).toBe(agentA.id);
+    });
+});
+
+describe('releaseConversationsOf', () => {
+    it('returns a demoted Support Agent\'s open chats to Unassigned', async (ctx) => {
+        if (!(await databaseReachable())) ctx.skip();
+
+        const open = await makeConversation();
+        const done = await makeConversation();
+        await assignConversation({ conversationId: open, toAdminId: agentA.id, actor: admin });
+        await assignConversation({ conversationId: done, toAdminId: agentA.id, actor: admin });
+        await resolveConversation({ conversationId: done, actor: agentA });
+
+        expect(await releaseConversationsOf(agentA.id, admin.id)).toBe(1);
+        expect(await assigneeOf(open)).toBeNull();
+        // A resolved chat keeps its record: it was handled, and that does not change.
+        expect(await assigneeOf(done)).toBe(agentA.id);
+        expect((await eventsOf(open)).at(-1)).toMatchObject({ kind: 'released', from_admin_id: agentA.id });
     });
 });

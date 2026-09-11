@@ -302,6 +302,12 @@ _Why it exists_: a Support Chat requires an account, so before this page "Suppor
 _Note_: it is the destination of the support entry point for anyone not signed in, and it carries the way to a person at the bottom rather than the top — most of what support is asked is answered by the article above the button.
 _Avoid_: confusing it with `/support/login`, which is the staff door and has no customer content on it. _Avoid_: treating it as policy — the **Refund Policy** and the terms are the documents, and this links to them rather than restating them, which is also why it carries no effective date.
 
+**Handled** — a Support Chat counts as handled by the **Support Agent** it was assigned to at the moment it was resolved. The tally admins pay from: one resolution, one handled chat, credited to one person. A chat reopened and resolved again is handled again, by whoever holds it the second time.
+_Avoid_: counting replies, or crediting whoever wrote last — an admin who helped out, or a colleague who read along, did not handle it. _Avoid_: reconstructing it from who holds a chat now; it is recorded when it happens, because assignment moves afterwards and memory is what the disputes are about.
+
+**Unassigned** — a Support Chat no admin has given to a **Support Agent** yet. The admins' queue: what is in it is theirs to hand out, and nobody else's to answer.
+_Avoid_: using it interchangeably with **Waiting**. Unassigned is about who owns the chat; Waiting is about whether the customer has been answered. A chat assigned a minute ago is no longer Unassigned and still Waiting.
+
 **Waiting** — a Support Chat nobody has answered yet. Every Support Chat begins here, at any hour, from its first message. It is a state, not an event: nothing *happens* to put a chat in the queue, because the queue is where a chat starts.
 _Avoid_: "escalated", "raised", "handed over" — all three imply a prior owner, and there is never one. _Avoid_: treating an out-of-hours chat as a different kind of thing; it is the same state, differently explained.
 
@@ -326,12 +332,18 @@ _Avoid_: "opening hours" — the site never closes and the widget never refuses 
 **Agent** — a CheapestGo staff member handling a customer, whether on a call or in a Support Chat. Already the word used throughout the admin screens.
 _Avoid_: "travel agent" (suggests a third party) and "operator" or "bot" — an Agent is always a person, and now the only thing that ever answers a Support Chat.
 
-**Support Agent** — an account that may do Agent work and nothing else: answer Support Chats, set the Support Hours, and look up a booking read-only to verify someone's claim. It cannot reach the back office, cannot change a booking, and cannot promote anyone.
+**Support Agent** — an account that may do Agent work and nothing else: answer the Support Chats **assigned to them**, read the rest, set the Support Hours, and look up a booking read-only to verify someone's claim. It cannot reach the back office, cannot change a booking, cannot promote anyone, and cannot assign a chat — not even to itself (see **Assignment**).
 _Avoid_: treating "Support Agent" and "**Agent**" as the same word. Agent is what someone is *doing* — an admin answering a chat is an Agent. Support Agent is what an account is *allowed* to do. Every Support Agent is an Agent; most Agents so far have been admins.
 _Avoid_: giving a Support Agent access by widening the back office — access is granted by building the screen inside the **Support Desk**, so anything not deliberately built for them stays out of reach.
 
-**Assignment** — which Agent owns a **Waiting** Support Chat. It is taken by answering: the first Agent to reply owns the conversation, and it leaves the unassigned queue for everyone else. There is no separate claiming step, and therefore no claim to go stale when someone opens a conversation and walks away.
-_Avoid_: treating Assignment as permission — any Agent can read any Support Chat; what Assignment says is who is dealing with it.
+**Assignment** — which **Support Agent** a Support Chat belongs to. It is given by an admin, never taken: a **Waiting** chat stays in the queue until an admin assigns it, and a Support Agent cannot claim, take or answer their way into one.
+_Why_: Support Agents' pay depends on the chats they handle, so any way of *taking* a chat — first to reply, a "take" button — makes the queue a race between colleagues, won by whoever watches it hardest rather than whoever the work should go to. Until 2026-09-11 Assignment was taken by answering, and that was exactly the race.
+_Avoid_: "claim" and "take" — both describe the Agent acting, and the Agent no longer does. _Avoid_: treating "the first to reply" as the owner; replying never moves a chat.
+_Note_: an admin may write in any Support Chat — to help, or to cover one that cannot wait — and doing so never changes whose it is. An admin who wants to own a chat assigns it to themselves, like anyone else. Help from an admin must not quietly take a chat, and the pay with it, away from the Support Agent it belongs to.
+_Note_: a Support Agent can give a chat back, and only back — to **Unassigned**, for an admin to hand out again. Never to a named colleague: that would be an Agent assigning. Giving back exists so a chat is not stranded with someone who has gone off shift.
+_Note_: a resolved chat the customer reopens by writing again returns to **Unassigned**, not to whoever had it. Usually the admin gives it back to the same Support Agent; the point is that they decide, so a customer is never owned for good by whoever answered them first.
+_Note_: nothing assigns a chat but an admin — not a timer, not a rota. A chat that arrives with no admin around stays **Unassigned** until one is; the customer has already been told, by the **Support Hours**, when to expect someone, and the doorbell goes to whoever assigns.
+_Note_: a Support Agent may read every Support Chat — the queue and colleagues' chats alike — but writes only in their own. Reading is how they learn and how they cover for each other; writing is the work, and the work is what is paid for, so it follows Assignment exactly.
 
 **Resolved** — an Agent's statement that a Support Chat is finished. It is not an ending: a customer who writes again reopens the conversation, with the same transcript, and it returns to **Waiting** exactly as a fresh one would. Only an Agent resolves; the customer closing the widget means nothing.
 _Avoid_: "closed" — nothing is prevented afterwards. _Avoid_: reading a Resolved chat as one the customer agreed was finished; it records what the Agent believed.

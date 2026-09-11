@@ -7,7 +7,24 @@
 
 import type { SupportAttachmentView } from '@/components/support/types';
 
-export type InboxFilterView = 'waiting' | 'mine' | 'assistant' | 'resolved';
+export type InboxFilterView = 'unassigned' | 'mine' | 'assigned' | 'assistant' | 'resolved';
+
+/** Who is looking — decides what they may write in and what they are offered (ADR-0041). */
+export type SupportRoleView = 'admin' | 'support_agent';
+
+export interface AssignableAgentView {
+    id: string;
+    name: string;
+    role: SupportRoleView;
+}
+
+export interface HandledTallyView {
+    adminId: string;
+    name: string;
+    role: SupportRoleView;
+    open: number;
+    handled: number;
+}
 
 export interface InboxConversation {
     id: string;
@@ -18,6 +35,8 @@ export interface InboxConversation {
     guestEmail: string | null;
     userId: string | null;
     assignedAdminId: string | null;
+    /** Who it is assigned to, named. */
+    assignedAdminName?: string | null;
     /**
      * The model's own account of why it gave up. Agent-only — it is a private note about
      * the customer, and it is never sent to the widget.
@@ -81,8 +100,10 @@ export interface InboxMessage {
 }
 
 export interface InboxCountsView {
-    waiting: number;
+    unassigned: number;
     mine: number;
+    /** The sidebar badge: Unassigned for an admin, their own unanswered chats for a Support Agent. */
+    waiting: number;
 }
 
 export interface ConversationDetail {

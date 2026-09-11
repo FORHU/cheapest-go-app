@@ -71,6 +71,10 @@ export async function GET(req: NextRequest) {
 
             try {
                 unsubscribe = await subscribe(conversationId, event => {
+                    // A change to the conversation rather than to a message — it was assigned
+                    // or given back. Nothing the customer sees.
+                    if (!event.messageId) return;
+
                     // The notify carries ids only; the row is read here so a long message
                     // never has to fit through the 8000-byte NOTIFY payload.
                     getMessage(event.messageId)

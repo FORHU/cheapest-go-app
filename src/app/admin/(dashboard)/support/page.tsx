@@ -20,17 +20,19 @@ export default async function AdminSupportPage() {
     // layout above already sends them there.
     if (!user || !canAdminister(user.role)) redirect('/');
 
+    // An admin's work is handing out the Unassigned queue, so that is where this opens.
     const [conversations, counts] = await Promise.all([
-        listInbox({ filter: 'waiting', adminId: user.id }),
-        inboxCounts(user.id),
+        listInbox({ filter: 'unassigned', adminId: user.id }),
+        inboxCounts({ id: user.id, role: 'admin' }),
     ]);
 
     return (
         <SupportInboxClient
-            initialFilter="waiting"
+            initialFilter="unassigned"
             initialConversations={conversations as unknown as InboxConversation[]}
             initialCounts={counts}
             currentAdminId={user.id}
+            currentRole="admin"
         />
     );
 }

@@ -20,7 +20,12 @@ const CHANNEL = 'support_chat';
 
 export interface SupportEvent {
     conversationId: string;
-    messageId: string;
+    /**
+     * The message that was written or changed — or null when the conversation itself
+     * changed (it was assigned, given back). The customer's stream only relays messages, so
+     * it ignores a null; the inbox refetches either way.
+     */
+    messageId: string | null;
 }
 
 type Handler = (event: SupportEvent) => void;
@@ -66,7 +71,8 @@ function ensureListening(): Promise<void> {
                 let event: SupportEvent;
                 try {
                     const parsed = JSON.parse(payload) as { c?: unknown; m?: unknown };
-                    if (typeof parsed.c !== 'string' || typeof parsed.m !== 'string') return;
+                    if (typeof parsed.c !== 'string') return;
+                    if (parsed.m !== null && typeof parsed.m !== 'string') return;
                     event = { conversationId: parsed.c, messageId: parsed.m };
                 } catch {
                     return; // Not ours, or truncated. Nothing sensible to do with it.

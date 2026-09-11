@@ -48,6 +48,9 @@ const FILES = [
 
     // An Agent's translated reply, translated back so the Agent sees what the customer read.
     '20260911000002_support_message_back_translation.sql',
+
+    // Who a Support Chat was given to, and who handled it — Assignment by admin (ADR-0041).
+    '20260911000003_support_assignment_events.sql',
 ];
 
 const dry = process.argv.includes('--dry');

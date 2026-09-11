@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { requireAgent } from '@/lib/server/support/admin-auth';
+import { requireAgent, refuseUnlessCanWrite } from '@/lib/server/support/admin-auth';
 import { SupportValidationError } from '@/lib/server/support/conversations';
 import {
     countUnboundAttachments,
@@ -31,6 +31,9 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     }
 
     const { id } = await ctx.params;
+    // An attachment is the start of a reply, so it follows the reply rule (ADR-0041).
+    const refused = await refuseUnlessCanWrite(agent, id);
+    if (refused) return refused;
 
     const declared = Number(req.headers.get('content-length') ?? 0);
     if (declared > MAX_ATTACHMENT_BYTES * 1.1) {

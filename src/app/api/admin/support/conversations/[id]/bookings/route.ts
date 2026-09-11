@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { requireAgent } from '@/lib/server/support/admin-auth';
+import { requireAgent, refuseUnlessCanWrite } from '@/lib/server/support/admin-auth';
 import {
     linkBooking,
     unlinkBooking,
@@ -31,6 +31,10 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     if (!agent) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const { id } = await ctx.params;
+    // Linking trips is working the chat — only in your own, unless you are an admin.
+    const refused = await refuseUnlessCanWrite(agent, id);
+    if (refused) return refused;
+
     const body = (await req.json().catch(() => null)) as { bookingReference?: unknown } | null;
     const reference =
         typeof body?.bookingReference === 'string' ? body.bookingReference.trim() : '';
@@ -56,6 +60,9 @@ export async function DELETE(req: NextRequest, ctx: { params: Promise<{ id: stri
     if (!agent) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const { id } = await ctx.params;
+    const refused = await refuseUnlessCanWrite(agent, id);
+    if (refused) return refused;
+
     const reference = req.nextUrl.searchParams.get('bookingReference');
     if (!reference) {
         return NextResponse.json({ error: 'bookingReference is required' }, { status: 400 });

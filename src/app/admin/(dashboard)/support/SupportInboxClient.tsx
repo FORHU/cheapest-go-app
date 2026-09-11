@@ -5,11 +5,16 @@ import { Loader2, Send, Check, Paperclip, FileText, ImageIcon, X } from 'lucide-
 import { formatFileSize } from '@/components/support/formatFileSize';
 import type { SupportAttachmentView } from '@/components/support/types';
 import type {
+    AssignableAgentView,
     ConversationDetail,
+    HandledTallyView,
     InboxConversation,
     InboxCountsView,
     InboxFilterView,
+    SupportRoleView,
 } from './types';
+import { AssignmentControls } from './AssignmentControls';
+import { TeamTally } from './TeamTally';
 import { UrgencyBadge } from '@/components/support/UrgencyBadge';
 import { UrgencyOverride } from '@/components/support/UrgencyOverride';
 import { LinkedBookings } from '@/components/support/LinkedBookings';
@@ -30,16 +35,30 @@ import { MAX_MESSAGE_LENGTH, MESSAGE_COUNTER_FROM } from '@/lib/support/limits';
  * queue look exactly the same.
  */
 
-const TABS: { filter: InboxFilterView; label: string }[] = [
-    { filter: 'waiting', label: 'Waiting' },
-    { filter: 'mine', label: 'Mine' },
-    { filter: 'assistant', label: 'Assistant' },
-    { filter: 'resolved', label: 'Resolved' },
-];
+/**
+ * The views, in the order each role works them (ADR-0041). An admin's job is handing out the
+ * Unassigned queue; a Support Agent's is the chats given to them — they may read the queue
+ * and colleagues' chats, but it is not where their work is.
+ */
+const TABS: Record<SupportRoleView, { filter: InboxFilterView; label: string }[]> = {
+    admin: [
+        { filter: 'unassigned', label: 'Unassigned' },
+        { filter: 'mine', label: 'Mine' },
+        { filter: 'assigned', label: 'Assigned' },
+        { filter: 'resolved', label: 'Resolved' },
+    ],
+    support_agent: [
+        { filter: 'mine', label: 'Mine' },
+        { filter: 'unassigned', label: 'Unassigned' },
+        { filter: 'assigned', label: 'Assigned' },
+        { filter: 'resolved', label: 'Resolved' },
+    ],
+};
 
 const EMPTY: Record<InboxFilterView, string> = {
-    waiting: 'Nothing waiting. Everyone has been answered.',
-    mine: 'You are not handling anything right now.',
+    unassigned: 'Nothing to hand out. Every chat has someone.',
+    mine: 'Nothing is assigned to you right now.',
+    assigned: 'No chats are assigned to anyone.',
     assistant: 'The assistant is not in any conversations.',
     resolved: 'Nothing resolved yet.',
 };
@@ -99,6 +118,8 @@ interface SupportInboxClientProps {
     initialCounts: InboxCountsView;
     /** The signed-in Agent, so their own notes can be told from a colleague's. */
     currentAdminId: string;
+    /** Decides what they may write in and what they are offered (ADR-0041). */
+    currentRole?: SupportRoleView;
 }
 
 export function SupportInboxClient({
@@ -106,6 +127,7 @@ export function SupportInboxClient({
     initialConversations,
     initialCounts,
     currentAdminId,
+    currentRole = 'admin',
 }: SupportInboxClientProps) {
     const [filter, setFilter] = useState<InboxFilterView>(initialFilter);
     const [conversations, setConversations] = useState(initialConversations);
@@ -121,6 +143,11 @@ export function SupportInboxClient({
     const [uploadError, setUploadError] = useState<string | null>(null);
     const fileInput = useRef<HTMLInputElement>(null);
 
+    /** Admins only: who a chat can be given to, and the team's tally. */
+    const [agents, setAgents] = useState<AssignableAgentView[]>([]);
+    const [tally, setTally] = useState<HandledTallyView[]>([]);
+    const [tallySince, setTallySince] = useState<string | null>(null);
+
     const openIdRef = useRef<string | null>(null);
     openIdRef.current = openId;
 
@@ -129,8 +156,30 @@ export function SupportInboxClient({
         if (!response.ok) return;
         const data = await response.json();
         setConversations(data.conversations ?? []);
-        setCounts(data.counts ?? { waiting: 0, mine: 0 });
+        setCounts(data.counts ?? { unassigned: 0, mine: 0, waiting: 0 });
     }, []);
+
+    const loadTeam = useCallback(async () => {
+        if (currentRole !== 'admin') return;
+        try {
+            const response = await fetch('/api/admin/support/agents');
+            if (!response.ok) return;
+            const data = (await response.json()) as {
+                agents?: AssignableAgentView[];
+                tally?: HandledTallyView[];
+                since?: string;
+            };
+            setAgents(data.agents ?? []);
+            setTally(data.tally ?? []);
+            setTallySince(data.since ?? null);
+        } catch {
+            // The inbox still works without it; assigning just has no one to offer.
+        }
+    }, [currentRole]);
+
+    useEffect(() => {
+        void loadTeam();
+    }, [loadTeam]);
 
     const loadDetail = useCallback(async (id: string) => {
         setLoadingDetail(true);
@@ -163,13 +212,14 @@ export function SupportInboxClient({
             }
 
             void loadList(filter);
+            void loadTeam();
             if (conversationId && conversationId === openIdRef.current) {
                 void loadDetail(conversationId);
             }
         });
 
         return () => source.close();
-    }, [filter, loadList, loadDetail]);
+    }, [filter, loadList, loadDetail, loadTeam]);
 
     const chooseFilter = (next: InboxFilterView) => {
         setFilter(next);
@@ -255,6 +305,11 @@ export function SupportInboxClient({
         }
     };
 
+    // Whether this Agent may write in the open chat — their own, or any if they are an admin.
+    // Reading is never gated (ADR-0041).
+    const canWrite = detail !== null
+        && (currentRole === 'admin' || detail.conversation.assignedAdminId === currentAdminId);
+
     return (
         <div className="flex h-[calc(100dvh-8rem)] flex-col gap-4">
             <header>
@@ -264,8 +319,10 @@ export function SupportInboxClient({
                 </p>
             </header>
 
+            {currentRole === 'admin' && <TeamTally tally={tally} since={tallySince} />}
+
             <nav className="flex flex-wrap gap-1" aria-label="Inbox filters">
-                {TABS.map(tab => (
+                {TABS[currentRole].map(tab => (
                     <button
                         key={tab.filter}
                         type="button"
@@ -278,7 +335,7 @@ export function SupportInboxClient({
                         }`}
                     >
                         {tab.label}
-                        {tab.filter === 'waiting' && counts.waiting > 0 && ` (${counts.waiting})`}
+                        {tab.filter === 'unassigned' && counts.unassigned > 0 && ` (${counts.unassigned})`}
                         {tab.filter === 'mine' && counts.mine > 0 && ` (${counts.mine})`}
                     </button>
                 ))}
@@ -338,6 +395,14 @@ export function SupportInboxClient({
                                             <span aria-hidden>·</span>
                                             <span>{new Date(item.lastMessageAt).toLocaleString()}</span>
                                         </span>
+                                        {/* Whose it is, where that is not obvious from the view. */}
+                                        {filter !== 'mine' && item.assignedAdminId && (
+                                            <span className="mt-0.5 block truncate text-xs text-slate-400">
+                                                {item.assignedAdminId === currentAdminId
+                                                    ? 'Assigned to you'
+                                                    : `Assigned to ${item.assignedAdminName ?? 'someone'}`}
+                                            </span>
+                                        )}
                                     </button>
                                 </li>
                             ))}
@@ -390,15 +455,32 @@ export function SupportInboxClient({
                                       * one word away, and two controls that sound alike is how
                                       * the wrong one gets pressed.
                                       */}
-                                    <button
-                                        type="button"
-                                        onClick={() => void resolve()}
-                                        aria-label="Mark conversation resolved"
-                                        className="flex shrink-0 items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 transition hover:bg-slate-50 dark:border-white/10 dark:text-slate-300 dark:hover:bg-white/5"
-                                    >
-                                        <Check className="h-3.5 w-3.5" /> Resolve
-                                    </button>
+                                    {canWrite && detail.conversation.status !== 'resolved' && (
+                                        <button
+                                            type="button"
+                                            onClick={() => void resolve()}
+                                            aria-label="Mark conversation resolved"
+                                            className="flex shrink-0 items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 transition hover:bg-slate-50 dark:border-white/10 dark:text-slate-300 dark:hover:bg-white/5"
+                                        >
+                                            <Check className="h-3.5 w-3.5" /> Resolve
+                                        </button>
+                                    )}
                                 </div>
+
+                                <AssignmentControls
+                                    conversationId={detail.conversation.id}
+                                    assignedAdminId={detail.conversation.assignedAdminId}
+                                    assignedAdminName={detail.conversation.assignedAdminName}
+                                    resolved={detail.conversation.status === 'resolved'}
+                                    currentAdminId={currentAdminId}
+                                    currentRole={currentRole}
+                                    agents={agents}
+                                    onChanged={() => {
+                                        void loadDetail(detail.conversation.id);
+                                        void loadList(filter);
+                                        void loadTeam();
+                                    }}
+                                />
 
                                 {/*
                                   * The model's private note. Shown here and nowhere else —
@@ -430,11 +512,13 @@ export function SupportInboxClient({
                                   * conversation back to a rule that keeps moving as the
                                   * departure approaches, where Normal freezes it there.
                                   */}
-                                <UrgencyOverride
-                                    conversationId={detail.conversation.id}
-                                    priority={detail.conversation.priority}
-                                    onChanged={() => void loadDetail(detail.conversation.id)}
-                                />
+                                {canWrite && (
+                                    <UrgencyOverride
+                                        conversationId={detail.conversation.id}
+                                        priority={detail.conversation.priority}
+                                        onChanged={() => void loadDetail(detail.conversation.id)}
+                                    />
+                                )}
 
                                 <div className="mt-2">
                                     <AgentNotes
@@ -505,11 +589,18 @@ export function SupportInboxClient({
                             </div>
 
                             {/*
-                              * Never disabled by status. Replying to a chat the assistant is
-                              * handling is a Takeover, and catching a wrong answer is the
-                              * reason the Assistant tab exists at all.
+                              * Only where this Agent may write: their own chat, or any chat
+                              * if they are an admin (ADR-0041). Everyone else reads, and is
+                              * told why the box is not there rather than finding it refuses.
                               */}
-                            <form
+                            {!canWrite && (
+                                <p className="shrink-0 border-t border-slate-200 px-4 py-3 text-xs text-slate-500 dark:border-white/10 dark:text-slate-400">
+                                    {detail.conversation.assignedAdminId
+                                        ? `Assigned to ${detail.conversation.assignedAdminName ?? 'someone else'}. You can read this chat, but only they can reply.`
+                                        : 'Not assigned yet. An admin will give it to someone — you can read it meanwhile.'}
+                                </p>
+                            )}
+                            {canWrite && <form
                                 onSubmit={sendReply}
                                 className="flex shrink-0 flex-col gap-2 border-t border-slate-200 px-4 py-3 dark:border-white/10"
                             >
@@ -591,7 +682,7 @@ export function SupportInboxClient({
                                         {`${MAX_MESSAGE_LENGTH - reply.length} characters left`}
                                     </p>
                                 )}
-                            </form>
+                            </form>}
                         </>
                     )}
                 </section>

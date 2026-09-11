@@ -56,7 +56,7 @@ function mockApi(detail: unknown = null) {
         return {
             ok: true,
             status: 200,
-            json: async () => ({ filter: 'waiting', conversations: [], counts: { waiting: 0, mine: 0 } }),
+            json: async () => ({ filter: 'unassigned', conversations: [], counts: { unassigned: 0, mine: 0, waiting: 0 } }),
         };
     });
     vi.stubGlobal('fetch', fetchMock);
@@ -81,9 +81,9 @@ describe('SupportInboxClient', () => {
         mockApi();
         render(
             <SupportInboxClient
-                initialFilter="waiting"
+                initialFilter="unassigned"
                 initialConversations={waiting}
-                initialCounts={{ waiting: 2, mine: 0 }}
+                initialCounts={{ unassigned: 2, mine: 0, waiting: 2 }}
                 currentAdminId="admin-1"
             />,
         );
@@ -97,9 +97,9 @@ describe('SupportInboxClient', () => {
         mockApi();
         render(
             <SupportInboxClient
-                initialFilter="waiting"
+                initialFilter="unassigned"
                 initialConversations={waiting}
-                initialCounts={{ waiting: 2, mine: 0 }}
+                initialCounts={{ unassigned: 2, mine: 0, waiting: 2 }}
                 currentAdminId="admin-1"
             />,
         );
@@ -108,18 +108,18 @@ describe('SupportInboxClient', () => {
         expect(screen.getByText('CheapestGo')).toBeInTheDocument();
     });
 
-    it('says when nothing is waiting, rather than showing an empty box', () => {
+    it('says when there is nothing to hand out, rather than showing an empty box', () => {
         mockApi();
         render(
             <SupportInboxClient
-                initialFilter="waiting"
+                initialFilter="unassigned"
                 initialConversations={[]}
-                initialCounts={{ waiting: 0, mine: 0 }}
+                initialCounts={{ unassigned: 0, mine: 0, waiting: 0 }}
                 currentAdminId="admin-1"
             />,
         );
 
-        expect(screen.getByText(/nothing waiting/i)).toBeInTheDocument();
+        expect(screen.getByText(/nothing to hand out/i)).toBeInTheDocument();
     });
 
     it('opens a conversation and shows the transcript beside the queue', async () => {
@@ -133,9 +133,9 @@ describe('SupportInboxClient', () => {
 
         render(
             <SupportInboxClient
-                initialFilter="waiting"
+                initialFilter="unassigned"
                 initialConversations={waiting}
-                initialCounts={{ waiting: 2, mine: 0 }}
+                initialCounts={{ unassigned: 2, mine: 0, waiting: 2 }}
                 currentAdminId="admin-1"
             />,
         );
@@ -158,9 +158,9 @@ describe('SupportInboxClient', () => {
 
         render(
             <SupportInboxClient
-                initialFilter="waiting"
+                initialFilter="unassigned"
                 initialConversations={waiting}
-                initialCounts={{ waiting: 2, mine: 0 }}
+                initialCounts={{ unassigned: 2, mine: 0, waiting: 2 }}
                 currentAdminId="admin-1"
             />,
         );
@@ -175,9 +175,9 @@ describe('SupportInboxClient', () => {
 
         render(
             <SupportInboxClient
-                initialFilter="waiting"
+                initialFilter="unassigned"
                 initialConversations={waiting}
-                initialCounts={{ waiting: 2, mine: 0 }}
+                initialCounts={{ unassigned: 2, mine: 0, waiting: 2 }}
                 currentAdminId="admin-1"
             />,
         );
@@ -209,7 +209,7 @@ describe('SupportInboxClient', () => {
             <SupportInboxClient
                 initialFilter="assistant"
                 initialConversations={[conversation({ id: 'a', status: 'ai_active' })]}
-                initialCounts={{ waiting: 0, mine: 0 }}
+                initialCounts={{ unassigned: 0, mine: 0, waiting: 0 }}
                 currentAdminId="admin-1"
             />,
         );
@@ -224,9 +224,9 @@ describe('SupportInboxClient', () => {
 
         render(
             <SupportInboxClient
-                initialFilter="waiting"
+                initialFilter="unassigned"
                 initialConversations={waiting}
-                initialCounts={{ waiting: 2, mine: 0 }}
+                initialCounts={{ unassigned: 2, mine: 0, waiting: 2 }}
                 currentAdminId="admin-1"
             />,
         );
@@ -248,9 +248,9 @@ describe('SupportInboxClient', () => {
         mockApi();
         render(
             <SupportInboxClient
-                initialFilter="waiting"
+                initialFilter="unassigned"
                 initialConversations={waiting}
-                initialCounts={{ waiting: 2, mine: 0 }}
+                initialCounts={{ unassigned: 2, mine: 0, waiting: 2 }}
                 currentAdminId="admin-1"
             />,
         );
@@ -288,9 +288,9 @@ describe('a machine translation in the inbox', () => {
 
         render(
             <SupportInboxClient
-                initialFilter="waiting"
+                initialFilter="unassigned"
                 initialConversations={waiting}
-                initialCounts={{ waiting: 2, mine: 0 }}
+                initialCounts={{ unassigned: 2, mine: 0, waiting: 2 }}
                 currentAdminId="admin-1"
             />,
         );
@@ -321,9 +321,9 @@ describe('a machine translation in the inbox', () => {
 
         render(
             <SupportInboxClient
-                initialFilter="waiting"
+                initialFilter="unassigned"
                 initialConversations={waiting}
-                initialCounts={{ waiting: 2, mine: 0 }}
+                initialCounts={{ unassigned: 2, mine: 0, waiting: 2 }}
                 currentAdminId="admin-1"
             />,
         );
@@ -355,9 +355,9 @@ describe('a machine translation in the inbox', () => {
 
         render(
             <SupportInboxClient
-                initialFilter="waiting"
+                initialFilter="unassigned"
                 initialConversations={waiting}
-                initialCounts={{ waiting: 2, mine: 0 }}
+                initialCounts={{ unassigned: 2, mine: 0, waiting: 2 }}
                 currentAdminId="admin-1"
             />,
         );
@@ -365,5 +365,97 @@ describe('a machine translation in the inbox', () => {
         fireEvent.click(screen.getByText('Ana Reyes'));
         await screen.findByText('공항인데 항공권이 취소되었어요.');
         expect(screen.getByText(/could not translate/i)).toBeInTheDocument();
+    });
+});
+
+/**
+ * What each role may do with an open chat (ADR-0041). A Support Agent reads everything but
+ * writes only in their own; an admin assigns, and writes anywhere.
+ */
+describe('Assignment on screen', () => {
+    /** Routes the detail endpoint, the team endpoint, and everything else to an empty list. */
+    function mockDetail(detailConversation: Partial<InboxConversation>) {
+        vi.stubGlobal('fetch', vi.fn(async (url: string) => {
+            if (url.includes('/api/admin/support/agents')) {
+                return {
+                    ok: true, status: 200,
+                    json: async () => ({
+                        agents: [
+                            { id: 'agent-1', name: 'Aida Cruz', role: 'support_agent' },
+                            { id: 'admin-1', name: 'Boss', role: 'admin' },
+                        ],
+                        tally: [{ adminId: 'agent-1', name: 'Aida Cruz', role: 'support_agent', open: 1, handled: 7 }],
+                        since: '2026-09-01T00:00:00.000Z',
+                    }),
+                };
+            }
+            if (/conversations\/[^/?]+$/.test(url)) {
+                return {
+                    ok: true, status: 200,
+                    json: async () => ({
+                        conversation: conversation({ id: 'a', ...detailConversation }),
+                        messages: [], bookings: null, linkedBookings: [], notes: [],
+                    }),
+                };
+            }
+            return {
+                ok: true, status: 200,
+                json: async () => ({ filter: 'mine', conversations: [], counts: { unassigned: 0, mine: 0, waiting: 0 } }),
+            };
+        }));
+    }
+
+    const open = async (role: 'admin' | 'support_agent', me: string) => {
+        render(
+            <SupportInboxClient
+                initialFilter="unassigned"
+                initialConversations={[conversation({ id: 'a', guestName: 'Ana Reyes' })]}
+                initialCounts={{ unassigned: 1, mine: 0, waiting: 1 }}
+                currentAdminId={me}
+                currentRole={role}
+            />,
+        );
+        fireEvent.click(screen.getByText('Ana Reyes'));
+        await screen.findByText(/Assigned to|Unassigned/, { selector: 'span' });
+    };
+
+    it('lets a Support Agent read an Unassigned chat but not answer it', async () => {
+        mockDetail({ assignedAdminId: null });
+        await open('support_agent', 'agent-1');
+
+        expect(screen.queryByRole('textbox', { name: /reply to the customer/i })).not.toBeInTheDocument();
+        expect(screen.getByText(/an admin will give it to someone/i)).toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: /mark conversation resolved/i })).not.toBeInTheDocument();
+        // Never offered the assignment list — choosing who gets a chat is the admin's.
+        expect(screen.queryByRole('combobox')).not.toBeInTheDocument();
+    });
+
+    it("tells a Support Agent whose a colleague's chat is, and keeps them out of it", async () => {
+        mockDetail({ assignedAdminId: 'agent-2', assignedAdminName: 'Ben Santos' });
+        await open('support_agent', 'agent-1');
+
+        expect(screen.getByText(/only they can reply/i)).toHaveTextContent('Ben Santos');
+        expect(screen.queryByRole('textbox', { name: /reply to the customer/i })).not.toBeInTheDocument();
+    });
+
+    it('gives a Support Agent the reply box, and a way to give it back, in their own chat', async () => {
+        mockDetail({ assignedAdminId: 'agent-1', assignedAdminName: 'Aida Cruz' });
+        await open('support_agent', 'agent-1');
+
+        expect(screen.getByRole('textbox', { name: /reply to the customer/i })).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: /give back to unassigned/i })).toBeInTheDocument();
+    });
+
+    it('offers an admin everyone who can take the chat, and the team tally', async () => {
+        mockDetail({ assignedAdminId: null });
+        await open('admin', 'admin-1');
+
+        const select = await screen.findByRole('combobox');
+        await waitFor(() => expect(select).toHaveTextContent('Aida Cruz'));
+        // An admin writes anywhere — the reply box is there even though it is unassigned.
+        expect(screen.getByRole('textbox', { name: /reply to the customer/i })).toBeInTheDocument();
+
+        fireEvent.click(screen.getByRole('button', { name: /team · handled in/i }));
+        expect(screen.getByText('7')).toBeInTheDocument();
     });
 });

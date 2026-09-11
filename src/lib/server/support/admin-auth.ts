@@ -1,5 +1,8 @@
+import { NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth/session';
 import { canStaffSupport } from '@/lib/auth/roles';
+import { assertCanWriteIn, SupportPermissionError } from './assignment';
+import { SupportValidationError } from './conversations';
 
 /**
  * The gate on every `/api/admin/support/*` route.
@@ -20,10 +23,37 @@ import { canStaffSupport } from '@/lib/auth/roles';
 
 export interface AdminActor {
     id: string;
+    /**
+     * 'admin' or 'support_agent'. Carried because what an Agent may *write* depends on it:
+     * an admin writes in any chat, a Support Agent only in their own (ADR-0041).
+     */
+    role: 'admin' | 'support_agent';
+}
+
+/**
+ * For a route that writes to one chat: a 403 saying why when this Agent may not write in it,
+ * or null when they may. Reading is never gated — every Agent may read every chat.
+ */
+export async function refuseUnlessCanWrite(
+    agent: AdminActor,
+    conversationId: string,
+): Promise<NextResponse | null> {
+    try {
+        await assertCanWriteIn(agent, conversationId);
+        return null;
+    } catch (err) {
+        if (err instanceof SupportPermissionError) {
+            return NextResponse.json({ error: err.message }, { status: 403 });
+        }
+        if (err instanceof SupportValidationError) {
+            return NextResponse.json({ error: err.message }, { status: 404 });
+        }
+        throw err;
+    }
 }
 
 export async function requireAgent(): Promise<AdminActor | null> {
     const { user } = await getSession();
     if (!user || !canStaffSupport(user.role)) return null;
-    return { id: user.id };
+    return { id: user.id, role: user.role === 'admin' ? 'admin' : 'support_agent' };
 }

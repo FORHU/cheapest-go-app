@@ -2,10 +2,14 @@ import { NextResponse } from 'next/server';
 import { requireAgent } from '@/lib/server/support/admin-auth';
 import { agentReply } from '@/lib/server/support/inbox';
 import { SupportValidationError } from '@/lib/server/support/conversations';
+import { SupportPermissionError } from '@/lib/server/support/assignment';
 
 export const dynamic = 'force-dynamic';
 
-/** Reply as an Agent. The first reply takes ownership; later ones do not move it. */
+/**
+ * Reply as an Agent — in a chat assigned to you, or any chat if you are an admin. Replying
+ * never assigns (ADR-0041).
+ */
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
     const agent = await requireAgent();
     if (!agent) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -32,12 +36,15 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         // its own sender is how a message ends up attributed to the wrong side.
         const message = await agentReply({
             conversationId: id,
-            adminId: agent.id,
+            actor: agent,
             body: body.body,
             attachmentIds,
         });
         return NextResponse.json({ message }, { status: 201 });
     } catch (err) {
+        if (err instanceof SupportPermissionError) {
+            return NextResponse.json({ error: err.message }, { status: 403 });
+        }
         if (err instanceof SupportValidationError) {
             return NextResponse.json({ error: err.message }, { status: 400 });
         }
