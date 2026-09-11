@@ -152,7 +152,10 @@ export const FlightCard: React.FC<FlightCardProps> = ({ offer, index = 0, onSele
                 />
             </div>
 
-            <div className="flex flex-col lg:flex-row">
+            {/* Row on desktop while collapsed, so the price rail runs alongside the
+                summary; forced to a column once expanded, so the rail drops below the
+                itinerary instead of stretching the full height of it as a side strip. */}
+            <div className={`flex flex-col ${expanded ? '' : 'lg:flex-row'}`}>
                 {/* ─── Flight Info + Expand (left) ─── */}
                 <div className="flex-1 min-w-0">
                   <div className="p-4 lg:p-6">
@@ -278,10 +281,16 @@ export const FlightCard: React.FC<FlightCardProps> = ({ offer, index = 0, onSele
                             </span>
                             {/* The gate this leg leaves from. A connecting itinerary
                                 spells out every terminal once expanded — this is the
-                                journey's start only. */}
-                            {departureTerminal && (
+                                journey's start only. When neither the provider nor the
+                                standing table has one, say so rather than leaving the
+                                row silently blank next to a card that does show one. */}
+                            {departureTerminal ? (
                                 <span className="text-[10px] lg:text-[12px] leading-snug text-slate-400 dark:text-slate-500">
                                     {t('terminal', { terminal: departureTerminal })}
+                                </span>
+                            ) : (
+                                <span className="text-[10px] lg:text-[12px] italic leading-snug text-slate-400 dark:text-slate-500">
+                                    {t('terminalUnavailable')}
                                 </span>
                             )}
                         </div>
@@ -319,10 +328,16 @@ export const FlightCard: React.FC<FlightCardProps> = ({ offer, index = 0, onSele
                                 {arrivalAirport}
                             </span>
                             {/* The terminal this leg reaches — the outbound's final
-                                arrival, matching the airport named just above. */}
-                            {arrivalTerminal && (
+                                arrival, matching the airport named just above. Same
+                                "not yet known" note as the departure end when neither
+                                source has one. */}
+                            {arrivalTerminal ? (
                                 <span className="text-[10px] lg:text-[12px] leading-snug text-slate-400 dark:text-slate-500">
                                     {t('terminal', { terminal: arrivalTerminal })}
+                                </span>
+                            ) : (
+                                <span className="text-[10px] lg:text-[12px] italic leading-snug text-slate-400 dark:text-slate-500">
+                                    {t('terminalUnavailable')}
                                 </span>
                             )}
                         </div>
@@ -333,7 +348,7 @@ export const FlightCard: React.FC<FlightCardProps> = ({ offer, index = 0, onSele
                   {offer.segments.length > 1 && (
                       <button
                           onClick={() => setExpanded(!expanded)}
-                          className="flex items-center gap-1 px-4 lg:px-6 pb-4 lg:pb-6 text-[10px] lg:text-xs text-slate-800 dark:text-slate-200 hover:text-slate-950 dark:hover:text-white transition-colors"
+                          className="flex items-center gap-1 px-4 lg:px-6 pb-4 lg:pb-6 text-[10px] lg:text-xs text-slate-800 dark:text-slate-200 hover:text-slate-950 dark:hover:text-white transition-colors cursor-pointer"
                       >
                           {expanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
                           {expanded ? t('hideDetails') : (offer.alternatives && offer.alternatives.length > 0 ? t('compareOptions', { count: offer.alternatives.length + 1 }) : t('showAllSegments'))}
@@ -347,7 +362,7 @@ export const FlightCard: React.FC<FlightCardProps> = ({ offer, index = 0, onSele
                               initial={{ height: 0, opacity: 0 }}
                               animate={{ height: 'auto', opacity: 1 }}
                               exit={{ height: 0, opacity: 0 }}
-                              transition={{ duration: 0.3, ease: [0.04, 0.62, 0.23, 0.98] }}
+                              transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
                               className="border-t border-slate-100 dark:border-slate-800 overflow-hidden"
                           >
                           {/* The height animation above opens the space; this slides the
@@ -360,7 +375,7 @@ export const FlightCard: React.FC<FlightCardProps> = ({ offer, index = 0, onSele
                               initial={{ y: -12 }}
                               animate={{ y: 0 }}
                               exit={{ y: -12 }}
-                              transition={{ duration: 0.3, ease: [0.04, 0.62, 0.23, 0.98] }}
+                              transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
                           >
                           {/* Alternatives / Brands Section */}
                           {offer.alternatives && offer.alternatives.length > 0 && (
@@ -430,10 +445,16 @@ export const FlightCard: React.FC<FlightCardProps> = ({ offer, index = 0, onSele
                   </AnimatePresence>
                 </div>
 
-                {/* ─── Price + CTA (right) ─── */}
-                <div className="relative flex flex-row lg:flex-col items-center lg:items-center justify-between lg:justify-between gap-1 lg:gap-1.5 lg:w-[180px] p-4 lg:p-6 lg:border-l border-t lg:border-t-0 border-slate-100 dark:border-slate-800">
-                    {/* Heart button — desktop only, inline */}
-                    <div className="hidden lg:flex justify-end w-full mb-1 relative z-10">
+                {/* ─── Price + CTA (right when collapsed, below when expanded) ─── */}
+                <div
+                    className={`relative flex flex-row items-center justify-between gap-1 lg:gap-1.5 p-4 lg:p-6 border-t border-slate-100 dark:border-slate-800 ${
+                        expanded ? 'w-full' : 'lg:flex-col lg:w-[180px] lg:border-l lg:border-t-0'
+                    }`}
+                >
+                    {/* Heart button — desktop only, inline. Hidden once expanded: it
+                        assumes the column layout's "full width, own line" shape, which
+                        no longer applies once this rail sits in a row below the card. */}
+                    <div className={expanded ? 'hidden' : 'hidden lg:flex justify-end w-full mb-1 relative z-10'}>
                         <SaveButton
                             type="flight"
                             title={`${primary.departure.airport} → ${outboundLast?.arrival?.airport} · ${primary.departure.time?.slice(0, 10) ?? ''}`}
@@ -461,7 +482,7 @@ export const FlightCard: React.FC<FlightCardProps> = ({ offer, index = 0, onSele
                     <div className="flex items-center gap-2 lg:mt-auto">
                         <button
                             onClick={() => onSelect?.(offer)}
-                            className="px-5 lg:px-8 py-1.5 lg:py-2 rounded-full lg:rounded-md bg-blue-600 hover:bg-blue-700 text-white font-medium text-[11px] lg:text-sm transition-colors flex items-center justify-center gap-1 shrink-0"
+                            className="px-5 lg:px-8 py-1.5 lg:py-2 rounded-full lg:rounded-md bg-blue-600 hover:bg-blue-700 text-white font-medium text-[11px] lg:text-sm transition-colors flex items-center justify-center gap-1 shrink-0 cursor-pointer"
                         >
                             {t('select')}
                             <ArrowRight className="w-3 h-3 lg:w-4 lg:h-4" />

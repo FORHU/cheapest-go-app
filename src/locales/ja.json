@@ -791,6 +791,7 @@
       "departing": "出発",
       "arrivingAt": "到着",
       "terminal": "ターミナル {terminal}",
+      "terminalUnavailable": "ターミナル情報は出発が近づくと表示されます",
       "totalFlightDuration": "総飛行時間",
       "stopsLabel": "経由:",
       "stopCountTitle": "{count, plural, =0 {直行} other {経由 #回}}",
@@ -882,7 +883,9 @@
       "legLabel": "区間 {number}",
       "layoverLabel": "乗り継ぎ",
       "layoverValue": "{airport} で {duration}",
-      "terminal": "ターミナル {terminal}"
+      "terminal": "ターミナル {terminal}",
+      "terminalUnavailable": "ターミナル情報は出発が近づくと表示されます",
+      "totalFlightDuration": "総飛行時間"
     }
   },
   "footer": {

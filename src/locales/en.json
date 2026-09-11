@@ -934,6 +934,7 @@
       "departing": "Departing",
       "arrivingAt": "Arriving at",
       "terminal": "Terminal {terminal}",
+      "terminalUnavailable": "Terminal available closer to departure",
       "totalFlightDuration": "Total Flight Duration",
       "stopsLabel": "Stops:",
       "stopCountTitle": "{count, plural, =0 {Nonstop} one {# Stop} other {# Stops}}",
@@ -1026,7 +1027,9 @@
       "legLabel": "Leg {number}",
       "layoverLabel": "Layover",
       "layoverValue": "{duration} at {airport}",
-      "terminal": "Terminal {terminal}"
+      "terminal": "Terminal {terminal}",
+      "terminalUnavailable": "Terminal available closer to departure",
+      "totalFlightDuration": "Total Flight Duration"
     }
   },
   "footer": {

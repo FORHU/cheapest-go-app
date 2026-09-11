@@ -222,10 +222,13 @@ describe('FlightCard — the route summary terminal', () => {
         expect(screen.getByText('Heathrow Airport (LHR)').parentElement!.textContent).toContain('Terminal 4');
     });
 
-    it('says nothing when the airline named no terminal and the airport is untracked', () => {
+    it('says terminal info comes closer to departure when the airline named none and the airport is untracked', () => {
         renderIntl(<FlightCard offer={referenceOffer} />);
 
-        expect(screen.queryByText(/Terminal/)).toBeNull();
+        // Two ends, both untracked (CRK, LHR) — the note appears once per end rather
+        // than leaving the row silently blank, which read as broken next to a card
+        // that does show a terminal.
+        expect(screen.getAllByText('Terminal available closer to departure')).toHaveLength(2);
     });
 
     it('fills a missing terminal from the standing assignment for the carrier', () => {
@@ -265,6 +268,31 @@ describe('FlightCard — the fare rail', () => {
         fireEvent.click(screen.getByRole('button', { name: 'Select' }));
 
         expect(onSelect).toHaveBeenCalledWith(referenceOffer);
+    });
+
+    it('gives the Select button a pointer cursor, like every other clickable control', () => {
+        renderIntl(<FlightCard offer={referenceOffer} />);
+
+        expect(screen.getByRole('button', { name: 'Select' }).className).toContain('cursor-pointer');
+    });
+
+    it('drops the price rail below the itinerary once it is expanded', () => {
+        renderIntl(<FlightCard offer={referenceOffer} />);
+
+        // Collapsed: a fixed-width column running alongside the itinerary.
+        const railBefore = screen.getByText('fees included').parentElement!.parentElement!;
+        expect(railBefore.className).toContain('lg:w-[180px]');
+        expect(railBefore.className).not.toContain('w-full');
+
+        fireEvent.click(screen.getByText('Show all segments'));
+
+        // Expanded: the rail would otherwise stretch the full height of the now much
+        // taller itinerary as a side column. It sits below it instead, full width.
+        // Re-queried rather than reusing the node above — the mocked motion.div hands
+        // React a new component type on every render, so the whole card remounts.
+        const railAfter = screen.getByText('fees included').parentElement!.parentElement!;
+        expect(railAfter.className).toContain('w-full');
+        expect(railAfter.className).not.toContain('lg:w-[180px]');
     });
 });
 
@@ -327,5 +355,30 @@ describe('FlightCard — the itinerary behind "Show all segments"', () => {
 
         expect(screen.getByText('Outbound')).toBeTruthy();
         expect(screen.getByText('Return')).toBeTruthy();
+    });
+
+    it('states the Return leg\'s own total flight duration beside its label', () => {
+        const roundTrip = {
+            ...referenceOffer,
+            segments: [
+                ...referenceOffer.segments,
+                seg(1, 'LHR', 'CRK', '2026-09-30T09:00:00', '2026-10-01T06:40:00', { duration: 830, flightNumber: 'QR0500' }),
+            ],
+            // Outbound: 25h 50m gate to gate (unchanged). Return: 21h 40m.
+            sliceDurations: [1550, 1300],
+            tripType: 'round-trip',
+        } as FlightOffer;
+
+        const { container } = renderIntl(<FlightCard offer={roundTrip} />);
+        fireEvent.click(screen.getByText('Show all segments'));
+
+        expect(container.textContent).toContain('Return');
+        expect(screen.getByText('Return').parentElement!.textContent).toContain('21h 40m');
+    });
+
+    it('gives the "Show all segments" toggle a pointer cursor', () => {
+        renderIntl(<FlightCard offer={referenceOffer} />);
+
+        expect(screen.getByText('Show all segments').closest('button')).toHaveClass('cursor-pointer');
     });
 });

@@ -190,10 +190,12 @@ describe('FlightItineraryTimeline — terminals', () => {
         expect(heathrow.parentElement!.textContent).toContain('Terminal 4');
     });
 
-    it('says nothing about a terminal the airline did not state at an untracked airport', () => {
+    it('says terminal info comes closer to departure at an untracked airport with none stated', () => {
         renderIntl(<FlightItineraryTimeline slice={offerSlices(oneStop)[0]} />);
 
-        expect(screen.queryByText(/Terminal/)).toBeNull();
+        // Four ends in this leg (CRK depart, DOH arrive, DOH depart, LHR arrive), none
+        // tracked — every one gets the note rather than sitting blank.
+        expect(screen.getAllByText('Terminal available closer to departure')).toHaveLength(4);
     });
 
     it('fills a missing terminal from the standing assignment for the operating carrier', () => {
