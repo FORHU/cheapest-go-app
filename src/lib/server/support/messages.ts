@@ -8,6 +8,8 @@ import {
     type SupportAttachmentView,
 } from './attachments';
 import type { SupportNoticeCode } from './notices';
+import type { SupportLang } from './translation';
+import { MAX_MESSAGE_LENGTH } from '@/lib/support/limits';
 
 export type SupportSender = 'guest' | 'ai' | 'agent' | 'system';
 
@@ -29,13 +31,25 @@ export interface SupportMessage {
      * message row by its attachments and make every reader deduplicate.
      */
     attachments: SupportAttachmentView[];
+    /**
+     * One machine translation, stored beside the author's words and never in place of them
+     * (ADR-0033). A customer's message carries an English rendering for the Agent; an
+     * Agent's reply carries one in the customer's language. Null when nothing needed
+     * translating, while it is still running, or when it failed.
+     */
+    translatedBody: string | null;
+    /** The language translatedBody is in. */
+    translatedLang: string | null;
+    /**
+     * null (nothing to translate), 'pending', 'translated', or 'untranslated'. The last is
+     * not an error to retry: the message was delivered in its author's words, and this is
+     * what tells the reader that is what they are looking at.
+     */
+    translationStatus: 'pending' | 'translated' | 'untranslated' | null;
 }
 
-/**
- * Longest message accepted. Support questions are prose, not documents, and the ceiling
- * is what stops one paste filling a row, a stream frame and an AI context window at once.
- */
-export const MAX_MESSAGE_LENGTH = 4000;
+// Longest message accepted — kept beside the chat boxes that enforce it too.
+export { MAX_MESSAGE_LENGTH };
 
 /** Most messages returned in one read, so a long history cannot become an unbounded response. */
 export const MESSAGE_PAGE_SIZE = 200;
@@ -47,7 +61,10 @@ const COLUMNS = `
     sender_admin_id  AS "senderAdminId",
     body,
     notice_code      AS "noticeCode",
-    created_at       AS "createdAt"
+    created_at       AS "createdAt",
+    translated_body    AS "translatedBody",
+    translated_lang    AS "translatedLang",
+    translation_status AS "translationStatus"
 `;
 
 export interface AppendMessageInput {
@@ -137,7 +154,140 @@ export async function appendMessage(input: AppendMessageInput): Promise<SupportM
     message.attachments = await attachmentsByMessage([message.id]).then(m => m.get(message.id) ?? []);
 
     await publish({ conversationId: message.conversationId, messageId: message.id });
+
+    // Translation runs after the message is delivered, never before it, and is not awaited.
+    //
+    // CONTEXT.md: a malfunction never changes a conversation's state. The translator is a
+    // relay on another team's box that has been down, rate-limited and refusing within the
+    // last week; if a send waited on it, every one of those would become a message that did
+    // not arrive. Instead the author's words land now, and the translation follows through
+    // the same publish — listeners re-read the row, so no second event type is needed.
+    //
+    // Safe to leave unawaited because this is a long-lived EC2 process, not a function that
+    // is frozen when the response returns.
+    void translateInBackground(message.id);
+
     return message;
+}
+
+/**
+ * Translate one delivered message and store the result beside its author's words.
+ *
+ * Runs after delivery and is never awaited by a send. Every path ends in a stored status and
+ * a publish, including failure: a translation that silently never arrives would leave the
+ * reader looking at "translating…" forever, which is worse than "not translated".
+ *
+ * Exported for the tests and for a manual re-run; nothing in a request path awaits it.
+ */
+export async function translateInBackground(messageId: string): Promise<void> {
+    try {
+        const sql = getSqlAdmin();
+        const rows = await sql<{
+            conversationId: string;
+            senderType: string;
+            body: string;
+            locale: string;
+        }[]>`
+            SELECT m.conversation_id AS "conversationId",
+                   m.sender_type     AS "senderType",
+                   m.body,
+                   c.locale
+              FROM support_messages m
+              JOIN support_conversations c ON c.id = m.conversation_id
+             WHERE m.id = ${messageId}
+        `;
+        const row = rows[0];
+        if (!row) return;
+
+        const { planTranslation, translate, translationConfigured } = await import('./translation');
+
+        // Only an Agent's reply needs to know the customer's language, and only when it is
+        // in English — read it off the customer's own messages before spending a query.
+        const customerLang = row.senderType === 'agent'
+            ? await customerLanguage(row.conversationId, row.locale)
+            : 'en';
+        const target = planTranslation(row.senderType, row.body, customerLang);
+
+        // Nothing to do: English between English speakers, a system notice, or a message that
+        // is only files. Status stays NULL, which every reader renders as "just the original".
+        if (!target || !row.body.trim()) return;
+
+        // No translator configured is not a failure to report on every message — it is a
+        // deployment without the feature. Leave the row untouched.
+        if (!translationConfigured()) return;
+
+        // Marked pending first, so a reader who opens the chat mid-translation sees it is
+        // coming rather than concluding there is none. The target language is recorded now,
+        // not on success: it is what says which reader the translation is for, and so which
+        // side shows "translating…" and, if it fails, "could not translate".
+        await sql`
+            UPDATE support_messages
+               SET translation_status = 'pending',
+                   translated_lang = ${target}
+             WHERE id = ${messageId} AND translation_status IS NULL
+        `;
+        await publish({ conversationId: row.conversationId, messageId });
+
+        const translated = await translate(row.body, target);
+
+        if (translated) {
+            await sql`
+                UPDATE support_messages
+                   SET translated_body = ${translated},
+                       translated_lang = ${target},
+                       translation_status = 'translated'
+                 WHERE id = ${messageId}
+            `;
+        } else {
+            // Refused, wrapped past recovery, timed out or unreachable. The original stands
+            // and is marked — never a refusal stored as the customer's words.
+            await sql`
+                UPDATE support_messages
+                   SET translation_status = 'untranslated'
+                 WHERE id = ${messageId}
+            `;
+        }
+
+        await publish({ conversationId: row.conversationId, messageId });
+    } catch (err) {
+        // Nothing here may reach the sender. The message is already delivered; a failure to
+        // translate it is logged and otherwise changes nothing.
+        console.error('[support/translation] background translation failed:', err);
+    }
+}
+
+/**
+ * The language the customer writes in, read from what they have actually written.
+ *
+ * The storefront locale is only a fallback, for a reply sent before the customer has said
+ * anything. It is wrong often enough to matter — a Korean customer on cheapestgo.com reads
+ * an English storefront and writes Korean.
+ *
+ * The latest message *not* in English wins, not simply the latest message: a Korean customer
+ * who answers "OK" or pastes a booking reference has not switched to English, and replies
+ * that suddenly stopped being translated would strand them. A customer who has only ever
+ * written English is English, whatever storefront they came from.
+ */
+async function customerLanguage(conversationId: string, locale: string): Promise<SupportLang> {
+    const sql = getSqlAdmin();
+    const rows = await sql<{ body: string }[]>`
+        SELECT body FROM support_messages
+         WHERE conversation_id = ${conversationId}
+           AND sender_type = 'guest'
+           AND body <> ''
+         ORDER BY created_at DESC, id DESC
+         LIMIT 20
+    `;
+    const { detectLang } = await import('./translation');
+
+    if (rows.length === 0) {
+        return (['en', 'ko', 'ja', 'zh'] as const).find(l => l === locale) ?? 'en';
+    }
+    for (const { body } of rows) {
+        const lang = detectLang(body);
+        if (lang !== 'en') return lang;
+    }
+    return 'en';
 }
 
 /**

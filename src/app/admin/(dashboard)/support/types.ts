@@ -64,6 +64,14 @@ export interface InboxMessage {
     noticeCode: string | null;
     createdAt: string;
     /**
+     * A machine translation stored beside the author's words (ADR-0033). On a customer's
+     * message it is the English the Agent reads first; the customer's own words stay one
+     * click away and remain authoritative.
+     */
+    translatedBody?: string | null;
+    translatedLang?: string | null;
+    translationStatus?: 'pending' | 'translated' | 'untranslated' | null;
+    /**
      * Files on this message. Never a URL - the bytes are behind a route that re-checks the
      * Agent on every fetch and mints a short-lived link (ADR-0040).
      */

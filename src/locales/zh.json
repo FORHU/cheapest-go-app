@@ -2215,7 +2215,8 @@
     "composer": {
       "placeholder": "输入消息",
       "connecting": "连接中…",
-      "send": "发送"
+      "send": "发送",
+      "remaining": "还可输入{count}个字符"
     },
     "escalate": {
       "ask": "联系人工客服",
@@ -2252,6 +2253,13 @@
       "skip": "与行程无关",
       "about": "关于",
       "change": "更改"
+    },
+    "translation": {
+      "translated": "机器翻译",
+      "showOriginal": "查看原文",
+      "showTranslation": "查看译文",
+      "pending": "翻译中…",
+      "untranslated": "未翻译"
     }
   },
   "map": {

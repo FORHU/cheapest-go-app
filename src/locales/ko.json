@@ -2329,7 +2329,8 @@
     "composer": {
       "placeholder": "메시지를 입력하세요",
       "connecting": "연결 중…",
-      "send": "보내기"
+      "send": "보내기",
+      "remaining": "{count}자 남음"
     },
     "escalate": {
       "ask": "상담원 연결",
@@ -2366,6 +2367,13 @@
       "skip": "여행과 관련 없음",
       "about": "문의 대상",
       "change": "변경"
+    },
+    "translation": {
+      "translated": "자동 번역됨",
+      "showOriginal": "원문 보기",
+      "showTranslation": "번역 보기",
+      "pending": "번역 중…",
+      "untranslated": "번역되지 않음"
     }
   },
   "map": {

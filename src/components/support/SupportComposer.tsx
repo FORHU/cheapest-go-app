@@ -3,6 +3,7 @@
 import { useRef, useState } from 'react';
 import { Paperclip, Send, X } from 'lucide-react';
 import { useTranslations } from 'next-intl';
+import { MAX_MESSAGE_LENGTH, MESSAGE_COUNTER_FROM } from '@/lib/support/limits';
 import { formatFileSize } from './formatFileSize';
 import type { SupportAttachmentView } from './types';
 
@@ -130,6 +131,7 @@ export function SupportComposer({
                     type="text"
                     value={value}
                     onChange={event => setValue(event.target.value)}
+                    maxLength={MAX_MESSAGE_LENGTH}
                     disabled={!canSend}
                     placeholder={canSend ? t('composer.placeholder') : t('composer.connecting')}
                     aria-label={t('composer.placeholder')}
@@ -145,6 +147,13 @@ export function SupportComposer({
                     <Send className="h-4 w-4" />
                 </button>
             </div>
+
+            {/* Only near the limit. The box stops at the limit on its own; this says why. */}
+            {value.length >= MESSAGE_COUNTER_FROM && (
+                <p aria-live="polite" className="text-right text-xs text-slate-500 dark:text-slate-400">
+                    {t('composer.remaining', { count: MAX_MESSAGE_LENGTH - value.length })}
+                </p>
+            )}
         </form>
     );
 }

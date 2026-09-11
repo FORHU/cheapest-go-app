@@ -5,6 +5,8 @@ import { FileText, ImageIcon } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { formatFileSize } from './formatFileSize';
 import type { SupportAttachmentView, SupportMessageView } from './types';
+import { TranslatedText } from './TranslatedText';
+import { readerView } from './translationView';
 
 /**
  * The conversation as the customer reads it.
@@ -75,7 +77,27 @@ function SupportMessageRow({ message }: { message: SupportMessageView }) {
                             : 'rounded-lg bg-white px-3 py-2 text-sm text-slate-900 ring-1 ring-slate-200 dark:bg-white/5 dark:text-slate-100 dark:ring-white/10'
                 }
             >
-                {renderBody(message, t)}
+                {/*
+                  * A notice renders from this reader's own locale file and is never
+                  * translated. Anything else goes through `readerView`: an Agent's reply
+                  * arrives in the customer's language, marked as a machine translation,
+                  * with the Agent's own English one click away.
+                  */}
+                {isNotice ? (
+                    renderBody(message, t)
+                ) : (
+                    <TranslatedText
+                        view={readerView(message, false)}
+                        tone={isCustomer ? 'dark' : 'light'}
+                        labels={{
+                            translated: t('translation.translated'),
+                            showOriginal: t('translation.showOriginal'),
+                            showTranslation: t('translation.showTranslation'),
+                            pending: t('translation.pending'),
+                            untranslated: t('translation.untranslated'),
+                        }}
+                    />
+                )}
             </p>
 
             {message.attachments.length > 0 && (

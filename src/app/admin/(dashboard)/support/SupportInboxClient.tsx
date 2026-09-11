@@ -14,6 +14,9 @@ import { UrgencyBadge } from '@/components/support/UrgencyBadge';
 import { UrgencyOverride } from '@/components/support/UrgencyOverride';
 import { LinkedBookings } from '@/components/support/LinkedBookings';
 import { AgentNotes } from '@/components/support/AgentNotes';
+import { TranslatedText } from '@/components/support/TranslatedText';
+import { readerView } from '@/components/support/translationView';
+import { MAX_MESSAGE_LENGTH, MESSAGE_COUNTER_FROM } from '@/lib/support/limits';
 
 /**
  * The Agent's inbox: the queue on the left, the conversation on the right.
@@ -39,6 +42,22 @@ const EMPTY: Record<InboxFilterView, string> = {
     mine: 'You are not handling anything right now.',
     assistant: 'The assistant is not in any conversations.',
     resolved: 'Nothing resolved yet.',
+};
+
+/**
+ * English, because English is the staff working language and every Agent reads the inbox in
+ * it. The customer's widget carries its own localised copy of the same labels.
+ *
+ * "Could not translate" rather than a softer word: when this shows, the text above it is the
+ * customer's own words in their own language, and an Agent who skims past it will answer a
+ * message they have not understood.
+ */
+const AGENT_TRANSLATION_LABELS = {
+    translated: 'Machine-translated',
+    showOriginal: 'Show original',
+    showTranslation: 'Show translation',
+    pending: 'Translating…',
+    untranslated: 'Could not translate — this is the customer’s original',
 };
 
 interface SupportInboxClientProps {
@@ -400,7 +419,20 @@ export function SupportInboxClient({
                                         <span className="block text-[11px] font-medium uppercase tracking-[0.12em] text-slate-400">
                                             {message.senderType}
                                         </span>
-                                        <p className="text-sm text-slate-800 dark:text-slate-200">{message.body}</p>
+                                        {/*
+                                          * A customer's message arrives in English for the
+                                          * Agent, marked as a machine translation, with the
+                                          * customer's own words one click away. When the
+                                          * translation failed the original shows with an
+                                          * amber "not translated" — never a refusal the
+                                          * translator produced in the customer's name.
+                                          */}
+                                        <p className="text-sm text-slate-800 dark:text-slate-200">
+                                            <TranslatedText
+                                                view={readerView(message, true)}
+                                                labels={AGENT_TRANSLATION_LABELS}
+                                            />
+                                        </p>
 
                                         {message.attachments.length > 0 && (
                                             <ul className="mt-1.5 flex flex-col gap-1">
@@ -505,6 +537,7 @@ export function SupportInboxClient({
                                     type="text"
                                     value={reply}
                                     onChange={event => setReply(event.target.value)}
+                                    maxLength={MAX_MESSAGE_LENGTH}
                                     placeholder="Reply to the customer"
                                     aria-label="Reply to the customer"
                                     className="h-9 flex-1 rounded-lg border border-slate-200 px-3 text-sm dark:border-white/10 dark:bg-white/5"
@@ -517,6 +550,12 @@ export function SupportInboxClient({
                                     <Send className="h-4 w-4" /> Send
                                 </button>
                                 </div>
+
+                                {reply.length >= MESSAGE_COUNTER_FROM && (
+                                    <p aria-live="polite" className="text-right text-xs text-slate-500 dark:text-slate-400">
+                                        {`${MAX_MESSAGE_LENGTH - reply.length} characters left`}
+                                    </p>
+                                )}
                             </form>
                         </>
                     )}

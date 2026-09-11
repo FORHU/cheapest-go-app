@@ -51,6 +51,14 @@ export interface SupportMessageView {
     createdAt: string;
     /** Files sent with this message. Empty on almost every row. */
     attachments: SupportAttachmentView[];
+    /**
+     * A machine translation stored beside the author's words (ADR-0033). On an Agent's reply
+     * it is in the customer's language, which is the text the customer reads first.
+     */
+    translatedBody?: string | null;
+    translatedLang?: string | null;
+    /** null when nothing needed translating; see `readerView` for how each is shown. */
+    translationStatus?: 'pending' | 'translated' | 'untranslated' | null;
 }
 
 export interface SupportConversationView {

@@ -2675,7 +2675,8 @@
     "composer": {
       "placeholder": "Type your message",
       "connecting": "Connecting…",
-      "send": "Send"
+      "send": "Send",
+      "remaining": "{count, plural, one {# character left} other {# characters left}}"
     },
     "escalate": {
       "ask": "Talk to a person",
@@ -2712,6 +2713,13 @@
       "skip": "Not about a trip",
       "about": "About",
       "change": "Change"
+    },
+    "translation": {
+      "translated": "Translated automatically",
+      "showOriginal": "Show original",
+      "showTranslation": "Show translation",
+      "pending": "Translating…",
+      "untranslated": "Not translated"
     }
   },
   "map": {

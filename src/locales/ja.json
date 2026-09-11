@@ -2212,7 +2212,8 @@
     "composer": {
       "placeholder": "メッセージを入力",
       "connecting": "接続中…",
-      "send": "送信"
+      "send": "送信",
+      "remaining": "残り{count}文字"
     },
     "escalate": {
       "ask": "担当者につなぐ",
@@ -2249,6 +2250,13 @@
       "skip": "旅行に関する問い合わせではない",
       "about": "対象",
       "change": "変更"
+    },
+    "translation": {
+      "translated": "自動翻訳",
+      "showOriginal": "原文を表示",
+      "showTranslation": "翻訳を表示",
+      "pending": "翻訳中…",
+      "untranslated": "未翻訳"
     }
   },
   "map": {
