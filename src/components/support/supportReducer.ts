@@ -237,6 +237,9 @@ export function visibleMessages(state: SupportState): SupportMessageView[] {
         senderType: 'guest',
         body: p.body,
         noticeCode: null,
+        // Nothing has been rendered yet — the row does not exist server-side, and a
+        // customer is never shown a machine rendering of their own words in any case.
+        translatedBody: null,
         createdAt: p.createdAt,
         attachments: p.attachments,
     }));

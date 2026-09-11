@@ -61,6 +61,11 @@ export interface InboxMessage {
     id: string;
     senderType: 'guest' | 'ai' | 'agent' | 'system';
     body: string;
+    /**
+     * The English rendering of a customer's message (ADR-0033), or null when there is none.
+     * Null is ordinary: an English conversation, or the translator being unreachable.
+     */
+    translatedBody: string | null;
     noticeCode: string | null;
     createdAt: string;
     /**

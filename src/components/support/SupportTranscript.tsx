@@ -60,6 +60,15 @@ function SupportMessageRow({ message }: { message: SupportMessageView }) {
     const isCustomer = message.senderType === 'guest';
     const isNotice = message.senderType === 'system';
 
+    /**
+     * The rendering this reader is the audience for.
+     *
+     * Only an Agent's reply: that is the one rendered into the customer's language. A guest
+     * row's translation is the English the Agent reads, and showing a customer a machine
+     * rendering of their own sentence tells them nothing they did not already write.
+     */
+    const rendering = message.senderType === 'agent' ? message.translatedBody : null;
+
     return (
         <li className={isCustomer ? 'self-end max-w-[85%]' : 'self-start max-w-[85%]'}>
             <span className="block text-[11px] font-medium uppercase tracking-[0.12em] text-slate-400 dark:text-slate-500 mb-1">
@@ -75,8 +84,25 @@ function SupportMessageRow({ message }: { message: SupportMessageView }) {
                             : 'rounded-lg bg-white px-3 py-2 text-sm text-slate-900 ring-1 ring-slate-200 dark:bg-white/5 dark:text-slate-100 dark:ring-white/10'
                 }
             >
-                {renderBody(message, t)}
+                {rendering ?? renderBody(message, t)}
             </p>
+
+            {/*
+              * The label and the author's own words, together and always both.
+              *
+              * ADR-0033 keeps the original because an Agent's reply is a statement someone
+              * made, and the question a customer asks later is what they were actually
+              * told. The label is what stops the rendering above being read as CheapestGo's
+              * considered wording when the machine got it wrong.
+              */}
+            {rendering && (
+                <div className="mt-1">
+                    <span className="block text-[11px] uppercase tracking-[0.12em] text-slate-400 dark:text-slate-500">
+                        {t('machineTranslated')}
+                    </span>
+                    <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">{message.body}</p>
+                </div>
+            )}
 
             {message.attachments.length > 0 && (
                 <ul className="mt-1.5 flex flex-col gap-1">

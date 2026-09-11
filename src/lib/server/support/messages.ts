@@ -8,6 +8,7 @@ import {
     type SupportAttachmentView,
 } from './attachments';
 import type { SupportNoticeCode } from './notices';
+import { translationFor, translationConfigFromEnv } from './translation';
 
 export type SupportSender = 'guest' | 'ai' | 'agent' | 'system';
 
@@ -22,6 +23,15 @@ export interface SupportMessage {
      * each render it in their own reader's language; `body` is the English fallback.
      */
     noticeCode: SupportNoticeCode | null;
+    /**
+     * The machine rendering of `body`, stored when it was written and never recomputed
+     * (ADR-0033). English for a customer's words, the customer's locale for an Agent's.
+     *
+     * Null is ordinary, not an error: an English conversation needs no rendering, and
+     * neither does a message sent while the translator was unreachable. Every reader shows
+     * the original in that case, marked untranslated.
+     */
+    translatedBody: string | null;
     createdAt: string;
     /**
      * Files sent with this message. Empty for almost every row, so it is hydrated in one
@@ -47,6 +57,7 @@ const COLUMNS = `
     sender_admin_id  AS "senderAdminId",
     body,
     notice_code      AS "noticeCode",
+    translated_body  AS "translatedBody",
     created_at       AS "createdAt"
 `;
 
@@ -99,14 +110,31 @@ export async function appendMessage(input: AppendMessageInput): Promise<SupportM
 
     const sql = getSqlAdmin();
 
+    /**
+     * The rendering to store beside this message, worked out before the row is written.
+     *
+     * Inline rather than after the insert, so the transcript never shows a message that is
+     * untranslated and then quietly is not. The cost is that a send waits on a third party,
+     * which is why `translationFor` has a short timeout and answers null for every failure:
+     * past it the message is delivered in its author's own words, marked untranslated, and
+     * nothing else about the conversation moves.
+     */
+    const [conversation] = await sql<{ locale: string }[]>`
+        SELECT locale FROM support_conversations WHERE id = ${input.conversationId}::uuid
+    `;
+    const translatedBody = conversation
+        ? await translationFor(input.senderType, conversation.locale, body, translationConfigFromEnv())
+        : null;
+
     // One transaction, because the binding below can still refuse the whole send: a
     // wordless message whose file ids turn out to bind nothing is a blank row in the
     // transcript, and rolling back is the only way to not leave one.
     const message = await sql.begin(async tx => {
         const rows = await tx.unsafe<SupportMessage[]>(
             `WITH inserted AS (
-                 INSERT INTO support_messages (conversation_id, sender_type, sender_admin_id, body, notice_code)
-                 VALUES ($1, $2, $3, $4, $5)
+                 INSERT INTO support_messages
+                     (conversation_id, sender_type, sender_admin_id, body, notice_code, translated_body)
+                 VALUES ($1, $2, $3, $4, $5, $6)
                  RETURNING ${COLUMNS}
              ), touched AS (
                  UPDATE support_conversations
@@ -114,7 +142,14 @@ export async function appendMessage(input: AppendMessageInput): Promise<SupportM
                   WHERE id = $1
              )
              SELECT * FROM inserted`,
-            [input.conversationId, input.senderType, input.senderAdminId ?? null, body, input.noticeCode ?? null],
+            [
+                input.conversationId,
+                input.senderType,
+                input.senderAdminId ?? null,
+                body,
+                input.noticeCode ?? null,
+                translatedBody,
+            ],
         );
 
         const inserted = rows[0];

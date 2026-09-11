@@ -41,6 +41,9 @@ const FILES = [
     // Support attachments, and the retention rule for them (ADR-0040).
     '20260910000001_support_message_attachments.sql',
     '20260910000002_support_attachment_retention.sql',
+
+    // The stored machine translation beside each message (ADR-0033, ADR-0034).
+    '20260911000001_support_message_translation.sql',
 ];
 
 const dry = process.argv.includes('--dry');

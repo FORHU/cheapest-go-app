@@ -48,6 +48,11 @@ export interface SupportMessageView {
     body: string;
     /** Set on system rows. Rendered from locale files; `body` is the fallback. */
     noticeCode: SupportNoticeCodeView | null;
+    /**
+     * The machine rendering stored beside `body` (ADR-0033), or null when there is none —
+     * an English conversation, or a message sent while the translator was unreachable.
+     */
+    translatedBody: string | null;
     createdAt: string;
     /** Files sent with this message. Empty on almost every row. */
     attachments: SupportAttachmentView[];

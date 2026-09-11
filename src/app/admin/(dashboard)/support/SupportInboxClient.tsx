@@ -400,7 +400,30 @@ export function SupportInboxClient({
                                         <span className="block text-[11px] font-medium uppercase tracking-[0.12em] text-slate-400">
                                             {message.senderType}
                                         </span>
-                                        <p className="text-sm text-slate-800 dark:text-slate-200">{message.body}</p>
+                                        {/*
+                                          * A customer's message is read here through its
+                                          * English rendering, because English is the staff
+                                          * working language — but the rendering never
+                                          * replaces what they wrote. An Agent answering a
+                                          * mistranslation has to be able to see that is
+                                          * what happened, and the label is what tells them
+                                          * the sentence above was written by a machine.
+                                          */}
+                                        {message.senderType === 'guest' && message.translatedBody ? (
+                                            <>
+                                                <p className="text-sm text-slate-800 dark:text-slate-200">
+                                                    {message.translatedBody}
+                                                </p>
+                                                <span className="mt-1 block text-[11px] uppercase tracking-[0.12em] text-slate-400 dark:text-slate-500">
+                                                    Machine translation
+                                                </span>
+                                                <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
+                                                    {message.body}
+                                                </p>
+                                            </>
+                                        ) : (
+                                            <p className="text-sm text-slate-800 dark:text-slate-200">{message.body}</p>
+                                        )}
 
                                         {message.attachments.length > 0 && (
                                             <ul className="mt-1.5 flex flex-col gap-1">

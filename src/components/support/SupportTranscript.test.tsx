@@ -18,6 +18,7 @@ const messages = {
         sender: { guest: 'You', ai: 'CheapestGo', agent: 'Support', system: 'Support' },
         typing: 'CheapestGo is typing',
         empty: 'Ask us anything about your trip.',
+        machineTranslated: 'LOCALISED machine-made label',
         notice: {
             // Deliberately not the English in `body`, so a test can tell which one rendered.
             budget_spent: 'LOCALISED handover notice',
@@ -37,6 +38,7 @@ const message = (over: Partial<SupportMessageView>): SupportMessageView => ({
     id: 'm1',
     senderType: 'guest',
     body: 'hello',
+    translatedBody: null,
     attachments: [],
     noticeCode: null,
     createdAt: '2026-09-06T10:00:00.000Z',
@@ -134,5 +136,89 @@ describe('SupportTranscript', () => {
         render(<SupportTranscript messages={[message({})]} isTyping={false} />, { wrapper: Wrapper });
 
         expect(screen.getByRole('log')).toHaveAttribute('aria-live', 'polite');
+    });
+});
+
+/**
+ * The stored rendering, shown to the customer.
+ *
+ * Per ADR-0033 a translation is never presented as the message: it is shown marked as
+ * machine-made, because storing it makes it look like authored content and the label is
+ * what stops a customer reading a mistranslated policy as CheapestGo's considered wording.
+ *
+ * The null branch is not an edge case — an English conversation and an outage both produce
+ * it, and the reader has to get the author's own words in both.
+ */
+describe('a machine translation', () => {
+    it("shows the Agent's reply rendered into the customer's language, marked machine-made", () => {
+        render(
+            <Wrapper>
+                <SupportTranscript
+                    messages={[message({
+                        senderType: 'agent',
+                        body: 'Your refund has been approved.',
+                        translatedBody: 'MACHINE KOREAN REFUND LINE',
+                    })]}
+                />
+            </Wrapper>,
+        );
+
+        expect(screen.getByText('MACHINE KOREAN REFUND LINE')).toBeInTheDocument();
+        expect(screen.getByText('LOCALISED machine-made label')).toBeInTheDocument();
+    });
+
+    it("keeps the Agent's own words on the row, because those are what was actually written", () => {
+        // ADR-0033: the original stays authoritative wherever the two disagree, so it is
+        // never replaced — a customer disputing what they were promised has to be able to
+        // see the sentence an Agent actually sent.
+        render(
+            <Wrapper>
+                <SupportTranscript
+                    messages={[message({
+                        senderType: 'agent',
+                        body: 'Your refund has been approved.',
+                        translatedBody: 'MACHINE KOREAN REFUND LINE',
+                    })]}
+                />
+            </Wrapper>,
+        );
+
+        expect(screen.getByText('Your refund has been approved.')).toBeInTheDocument();
+    });
+
+    it('shows the original alone, unmarked, when there is no rendering', () => {
+        render(
+            <Wrapper>
+                <SupportTranscript
+                    messages={[message({
+                        senderType: 'agent',
+                        body: 'Your refund has been approved.',
+                        translatedBody: null,
+                    })]}
+                />
+            </Wrapper>,
+        );
+
+        expect(screen.getByText('Your refund has been approved.')).toBeInTheDocument();
+        expect(screen.queryByText('LOCALISED machine-made label')).not.toBeInTheDocument();
+    });
+
+    it("does not show the customer an English rendering of their own words", () => {
+        // A guest row's translation exists for the Agent to read. Showing it back to the
+        // person who wrote the original is noise at best, and at worst invites them to
+        // correct a rendering that is not addressed to them.
+        render(
+            <Wrapper>
+                <SupportTranscript
+                    messages={[message({
+                        senderType: 'guest',
+                        body: '\uD658\uBD88 \uC5B8\uC81C \uB418\uB098\uC694?',
+                        translatedBody: 'MACHINE ENGLISH FOR THE AGENT',
+                    })]}
+                />
+            </Wrapper>,
+        );
+
+        expect(screen.queryByText('MACHINE ENGLISH FOR THE AGENT')).not.toBeInTheDocument();
     });
 });
