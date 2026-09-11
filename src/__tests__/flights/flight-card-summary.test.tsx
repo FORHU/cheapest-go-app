@@ -357,28 +357,29 @@ describe('FlightCard — the itinerary behind "Show all segments"', () => {
         expect(screen.getByText('Return')).toBeTruthy();
     });
 
-    it('states the Return leg\'s own total flight duration beside its label', () => {
+    it("states each direction's own total flight duration beside its label", () => {
         const roundTrip = {
             ...referenceOffer,
             segments: [
                 ...referenceOffer.segments,
                 seg(1, 'LHR', 'CRK', '2026-09-30T09:00:00', '2026-10-01T06:40:00', { duration: 830, flightNumber: 'QR0500' }),
             ],
-            // Outbound: 25h 50m gate to gate (unchanged). Return: 21h 40m.
+            // Outbound: 25h 50m gate to gate. Return: 21h 40m — a different figure, so
+            // a mix-up between the two reads as a wrong number, not a coincidence.
             sliceDurations: [1550, 1300],
             tripType: 'round-trip',
         } as FlightOffer;
 
-        const { container } = renderIntl(<FlightCard offer={roundTrip} />);
+        renderIntl(<FlightCard offer={roundTrip} />);
         fireEvent.click(screen.getByText('Show all segments'));
 
-        expect(container.textContent).toContain('Return');
+        expect(screen.getByText('Outbound').parentElement!.textContent).toContain('1d 01h 50m');
         expect(screen.getByText('Return').parentElement!.textContent).toContain('21h 40m');
     });
 
     it('gives the "Show all segments" toggle a pointer cursor', () => {
         renderIntl(<FlightCard offer={referenceOffer} />);
 
-        expect(screen.getByText('Show all segments').closest('button')).toHaveClass('cursor-pointer');
+        expect(screen.getByText('Show all segments').closest('button')!.className).toContain('cursor-pointer');
     });
 });

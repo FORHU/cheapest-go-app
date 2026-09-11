@@ -44,10 +44,11 @@ export function FlightItineraryDetails({ offer }: { offer: FlightOffer }) {
                                         ? (i === 0 ? t('outbound') : t('return'))
                                         : t('legLabel', { number: i + 1 })}
                                 </span>
-                                {/* The outbound's total already sits in the collapsed summary above
-                                    this row; the Return leg has nowhere else stating it, so it gets
-                                    it here instead of leaving the traveller to add the flights up. */}
-                                {twoWay && i === 1 && (
+                                {/* Each direction's own total, not the offer-wide figure — a round
+                                    trip's outbound and return rarely run the same length, and the
+                                    traveller reading one leg's segments wants that leg's number,
+                                    not a sum of both directions or a value borrowed from the other. */}
+                                {twoWay && (
                                     <span className="normal-case tracking-normal text-slate-400 dark:text-slate-500">
                                         {t('totalFlightDuration')}{' '}
                                         <span className="font-semibold text-slate-700 dark:text-slate-200">
