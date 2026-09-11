@@ -185,6 +185,74 @@ describe('FlightCard — the route summary', () => {
     });
 });
 
+describe('FlightCard — the route summary terminal', () => {
+    // CRK (T1) → DOH (T2 in / T3 out) → LHR (T4). The collapsed summary is the
+    // journey's two ends; the connection's terminals belong to the expanded view.
+    const withTerminals = {
+        ...referenceOffer,
+        segments: [
+            seg(0, 'CRK', 'DOH', '2026-09-23T18:40:00', '2026-09-23T22:30:00', {
+                duration: 530,
+                flightNumber: 'QR0927',
+                departure: { airport: 'CRK', terminal: '1', time: '2026-09-23T18:40:00' },
+                arrival: { airport: 'DOH', terminal: '2', time: '2026-09-23T22:30:00' },
+            }),
+            seg(0, 'DOH', 'LHR', '2026-09-24T01:15:00', '2026-09-24T06:30:00', {
+                duration: 470,
+                flightNumber: 'QR0003',
+                departure: { airport: 'DOH', terminal: '3', time: '2026-09-24T01:15:00' },
+                arrival: { airport: 'LHR', terminal: '4', time: '2026-09-24T06:30:00' },
+            }),
+        ],
+    } as FlightOffer;
+
+    it('names the departure and arrival terminal without the row being expanded', () => {
+        renderIntl(<FlightCard offer={withTerminals} />);
+
+        // getByText, not getAllByText: the only T1 is Clark's gate, the only T4 is
+        // Heathrow's — the summary reaches for the journey's ends, not a leg between.
+        expect(screen.getByText('Terminal 1')).toBeTruthy();
+        expect(screen.getByText('Terminal 4')).toBeTruthy();
+    });
+
+    it('sits each terminal under the airport it belongs to', () => {
+        renderIntl(<FlightCard offer={withTerminals} />);
+
+        expect(screen.getByText('Clark International Airport (CRK)').parentElement!.textContent).toContain('Terminal 1');
+        expect(screen.getByText('Heathrow Airport (LHR)').parentElement!.textContent).toContain('Terminal 4');
+    });
+
+    it('says terminal info comes closer to departure when the airline named none and the airport is untracked', () => {
+        renderIntl(<FlightCard offer={referenceOffer} />);
+
+        // Two ends, both untracked (CRK, LHR) — the note appears once per end rather
+        // than leaving the row silently blank, which read as broken next to a card
+        // that does show a terminal.
+        expect(screen.getAllByText('Terminal available closer to departure')).toHaveLength(2);
+    });
+
+    it('fills a missing terminal from the standing assignment for the carrier', () => {
+        // Duffel returns no terminal for Korean Air. Incheon T2 is KE's home
+        // terminal regardless, and the card should say so.
+        const koreanAir = {
+            ...referenceOffer,
+            segments: [
+                seg(0, 'ICN', 'MNL', '2026-09-23T20:00:00', '2026-09-24T00:00:00', {
+                    duration: 240,
+                    flightNumber: 'KE621',
+                    airline: { code: 'KE', name: 'Korean Air' },
+                }),
+            ],
+            sliceDurations: [240],
+            totalStops: 0,
+        } as FlightOffer;
+
+        renderIntl(<FlightCard offer={koreanAir} />);
+
+        expect(screen.getByText('Terminal 2')).toBeTruthy();
+    });
+});
+
 describe('FlightCard — the fare rail', () => {
     it('states the fare to the cent', () => {
         renderIntl(<FlightCard offer={referenceOffer} />);
@@ -201,6 +269,31 @@ describe('FlightCard — the fare rail', () => {
 
         expect(onSelect).toHaveBeenCalledWith(referenceOffer);
     });
+
+    it('gives the Select button a pointer cursor, like every other clickable control', () => {
+        renderIntl(<FlightCard offer={referenceOffer} />);
+
+        expect(screen.getByRole('button', { name: 'Select' }).className).toContain('cursor-pointer');
+    });
+
+    it('drops the price rail below the itinerary once it is expanded', () => {
+        renderIntl(<FlightCard offer={referenceOffer} />);
+
+        // Collapsed: a fixed-width column running alongside the itinerary.
+        const railBefore = screen.getByText('fees included').parentElement!.parentElement!;
+        expect(railBefore.className).toContain('lg:w-[180px]');
+        expect(railBefore.className).not.toContain('w-full');
+
+        fireEvent.click(screen.getByText('Show all segments'));
+
+        // Expanded: the rail would otherwise stretch the full height of the now much
+        // taller itinerary as a side column. It sits below it instead, full width.
+        // Re-queried rather than reusing the node above — the mocked motion.div hands
+        // React a new component type on every render, so the whole card remounts.
+        const railAfter = screen.getByText('fees included').parentElement!.parentElement!;
+        expect(railAfter.className).toContain('w-full');
+        expect(railAfter.className).not.toContain('lg:w-[180px]');
+    });
 });
 
 describe('FlightCard — the itinerary behind "Show all segments"', () => {
@@ -212,6 +305,38 @@ describe('FlightCard — the itinerary behind "Show all segments"', () => {
         expect(screen.getAllByText('Depart from')).toHaveLength(2);
         expect(screen.getByText('02h 45m at Hamad International Airport')).toBeTruthy();
         expect(screen.getByText('Wed, Sep 23, 2026, 6:40 PM')).toBeTruthy();
+    });
+
+    it('spells out the connection terminals that the collapsed summary leaves off', () => {
+        // CRK (T1) → DOH (T2 in / T3 out) → LHR (T4). Collapsed, the row names the
+        // journey's ends; expanding it adds the terminals changed at Doha.
+        const withTerminals = {
+            ...referenceOffer,
+            segments: [
+                seg(0, 'CRK', 'DOH', '2026-09-23T18:40:00', '2026-09-23T22:30:00', {
+                    duration: 530,
+                    flightNumber: 'QR0927',
+                    departure: { airport: 'CRK', terminal: '1', time: '2026-09-23T18:40:00' },
+                    arrival: { airport: 'DOH', terminal: '2', time: '2026-09-23T22:30:00' },
+                }),
+                seg(0, 'DOH', 'LHR', '2026-09-24T01:15:00', '2026-09-24T06:30:00', {
+                    duration: 470,
+                    flightNumber: 'QR0003',
+                    departure: { airport: 'DOH', terminal: '3', time: '2026-09-24T01:15:00' },
+                    arrival: { airport: 'LHR', terminal: '4', time: '2026-09-24T06:30:00' },
+                }),
+            ],
+        } as FlightOffer;
+
+        renderIntl(<FlightCard offer={withTerminals} />);
+
+        expect(screen.queryByText('Terminal 2')).toBeNull();
+        expect(screen.queryByText('Terminal 3')).toBeNull();
+
+        fireEvent.click(screen.getByText('Show all segments'));
+
+        expect(screen.getByText('Terminal 2')).toBeTruthy();
+        expect(screen.getByText('Terminal 3')).toBeTruthy();
     });
 
     it('labels each direction of a round trip', () => {
@@ -230,5 +355,31 @@ describe('FlightCard — the itinerary behind "Show all segments"', () => {
 
         expect(screen.getByText('Outbound')).toBeTruthy();
         expect(screen.getByText('Return')).toBeTruthy();
+    });
+
+    it("states each direction's own total flight duration beside its label", () => {
+        const roundTrip = {
+            ...referenceOffer,
+            segments: [
+                ...referenceOffer.segments,
+                seg(1, 'LHR', 'CRK', '2026-09-30T09:00:00', '2026-10-01T06:40:00', { duration: 830, flightNumber: 'QR0500' }),
+            ],
+            // Outbound: 25h 50m gate to gate. Return: 21h 40m — a different figure, so
+            // a mix-up between the two reads as a wrong number, not a coincidence.
+            sliceDurations: [1550, 1300],
+            tripType: 'round-trip',
+        } as FlightOffer;
+
+        renderIntl(<FlightCard offer={roundTrip} />);
+        fireEvent.click(screen.getByText('Show all segments'));
+
+        expect(screen.getByText('Outbound').parentElement!.textContent).toContain('1d 01h 50m');
+        expect(screen.getByText('Return').parentElement!.textContent).toContain('21h 40m');
+    });
+
+    it('gives the "Show all segments" toggle a pointer cursor', () => {
+        renderIntl(<FlightCard offer={referenceOffer} />);
+
+        expect(screen.getByText('Show all segments').closest('button')!.className).toContain('cursor-pointer');
     });
 });

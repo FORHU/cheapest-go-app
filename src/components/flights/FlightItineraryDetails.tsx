@@ -5,6 +5,7 @@ import { useTranslations } from 'next-intl';
 import type { FlightOffer } from '@/types/flights';
 import { offerSlices } from '@/lib/flights/offer-slices';
 import { sliceTimeline } from '@/lib/flights/itinerary-timeline';
+import { formatDurationLong } from '@/utils/flight-utils';
 import { FlightItineraryTimeline, LayoverNote } from './FlightItineraryTimeline';
 
 /**
@@ -37,10 +38,24 @@ export function FlightItineraryDetails({ offer }: { offer: FlightOffer }) {
                 <React.Fragment key={slice.sliceIndex}>
                     <div className="flex flex-col gap-2">
                         {multiLeg && (
-                            <div className="text-[10px] lg:text-[11px] font-medium uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                                {twoWay
-                                    ? (i === 0 ? t('outbound') : t('return'))
-                                    : t('legLabel', { number: i + 1 })}
+                            <div className="flex items-center justify-between text-[10px] lg:text-[11px] font-medium uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                                <span>
+                                    {twoWay
+                                        ? (i === 0 ? t('outbound') : t('return'))
+                                        : t('legLabel', { number: i + 1 })}
+                                </span>
+                                {/* Each direction's own total, not the offer-wide figure — a round
+                                    trip's outbound and return rarely run the same length, and the
+                                    traveller reading one leg's segments wants that leg's number,
+                                    not a sum of both directions or a value borrowed from the other. */}
+                                {twoWay && (
+                                    <span className="normal-case tracking-normal text-slate-400 dark:text-slate-500">
+                                        {t('totalFlightDuration')}{' '}
+                                        <span className="font-semibold text-slate-700 dark:text-slate-200">
+                                            {formatDurationLong(slice.durationMinutes)}
+                                        </span>
+                                    </span>
+                                )}
                             </div>
                         )}
                         <FlightItineraryTimeline slice={slice} showLayovers={!multiLeg} />

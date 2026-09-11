@@ -4,6 +4,20 @@ import { logApiCall } from "@/lib/server/api-logger";
 import { PROVIDER_ATTEMPT_TIMEOUT_MS, PROVIDER_RETRY_BACKOFF_MS } from "@/lib/flights/search-budget";
 
 /**
+ * The provider tried and could not answer — a 429, a 5xx, a timeout, an
+ * unreachable host. Distinct from an empty offer list, which is a real answer
+ * about the route. The orchestrator turns this into a named `failedProviders`
+ * entry so the results page can offer a retry instead of telling the traveller
+ * "No flights found" over what is actually an outage.
+ */
+export class DuffelSearchError extends Error {
+    constructor(message: string, readonly status?: number) {
+        super(message);
+        this.name = "DuffelSearchError";
+    }
+}
+
+/**
  * Duffel provider adapter.
  * Handles communication with the Duffel API and transforms results to our unified format.
  */
@@ -86,14 +100,6 @@ export async function searchDuffel(params: FlightSearchParams): Promise<FlightRe
                 const errorData = await response.json().catch(() => ({}));
                 lastErrMsg = `Duffel API Error: ${response.status} - ${JSON.stringify(errorData)}`;
 
-                // 429 — account-level rate limit; retrying immediately just generates more 429s.
-                // Log a warning (not an error) and bail — the caller should space out requests.
-                if (response.status === 429) {
-                    const retryAfter = response.headers.get('Retry-After') ?? 'unknown';
-                    console.warn(`[Duffel] Rate limited (429). Retry-After: ${retryAfter}s. Skipping search for ${params.origin}->${params.destination}.`);
-                    return [];
-                }
-
                 // 500 — transient server error, retry after brief backoff
                 if (response.status === 500 && attempt < MAX_RETRIES) {
                     const waitMs = PROVIDER_RETRY_BACKOFF_MS[attempt];
@@ -102,14 +108,24 @@ export async function searchDuffel(params: FlightSearchParams): Promise<FlightRe
                     continue;
                 }
 
-                console.error(`[Duffel] API error (${response.status}):`, lastErrMsg);
+                // 429 — account-level rate limit; retrying immediately just generates
+                // more 429s, so this one never retries. Every other non-OK status that
+                // reaches here is a failure the caller must be able to see: fall through
+                // to the throw below rather than returning an empty list that reads as
+                // "no flights on this route".
+                if (response.status === 429) {
+                    const retryAfter = response.headers.get('Retry-After') ?? 'unknown';
+                    console.warn(`[Duffel] Rate limited (429). Retry-After: ${retryAfter}s. Search for ${params.origin}->${params.destination} not attempted further.`);
+                } else {
+                    console.error(`[Duffel] API error (${response.status}):`, lastErrMsg);
+                }
                 logApiCall({
                     provider: 'duffel', endpoint: DUFFEL_API_URL,
                     requestParams: { origin: params.origin, destination: params.destination, departureDate: params.departureDate, returnDate: params.returnDate, adults: params.adults, cabinClass: params.cabinClass },
                     responseStatus: response.status, durationMs: Date.now() - startMs,
                     errorMessage: lastErrMsg, searchId: params.searchId,
                 });
-                return [];
+                break;
             }
 
             const json = await response.json();
@@ -128,6 +144,7 @@ export async function searchDuffel(params: FlightSearchParams): Promise<FlightRe
 
         } catch (error: any) {
             const isTimeout = error.name === 'TimeoutError' || error.name === 'AbortError';
+            lastErrMsg = error.message;
 
             // Retry timeouts (500-equivalent transient failures)
             if (isTimeout && attempt < MAX_RETRIES) {
@@ -144,13 +161,18 @@ export async function searchDuffel(params: FlightSearchParams): Promise<FlightRe
                 errorMessage: error.message, searchId: params.searchId,
             });
             console.error("[Duffel] Search failed after retries:", error.message);
-            return [];
+            break;
         }
     }
 
-    // Exhausted retries
-    console.error(`[Duffel] Giving up after ${MAX_RETRIES} retries. Last status: ${lastStatus}`);
-    return [];
+    // Reached only when every attempt failed. Throwing — rather than returning [] —
+    // is what lets the orchestrator name Duffel in `failedProviders`, so the page
+    // shows a retryable "providers unreachable" state instead of "No flights found".
+    console.error(`[Duffel] Giving up after ${MAX_RETRIES} retr${MAX_RETRIES === 1 ? 'y' : 'ies'}. Last status: ${lastStatus}`);
+    throw new DuffelSearchError(
+        `Duffel search failed${lastStatus ? ` (HTTP ${lastStatus})` : ''}: ${lastErrMsg || 'no response'}`,
+        lastStatus || undefined,
+    );
 }
 
 export function parseDuffelOffer(offer: any, cabinClassFallback?: string) {

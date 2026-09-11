@@ -259,3 +259,111 @@ describe('SupportInboxClient', () => {
         expect(FakeEventSource.instances[0].url).toBe('/api/admin/support/stream');
     });
 });
+
+/**
+ * The stored rendering, shown to the Agent.
+ *
+ * This is the direction that makes the queue workable: English is the staff working
+ * language, so a Korean customer's message is read here through its rendering. Per
+ * ADR-0033 it is shown marked as machine-made and never replaces the customer's own words —
+ * an Agent answering a mistranslation needs to be able to see that is what happened.
+ */
+describe('a machine translation in the inbox', () => {
+    it("shows the customer's message in English, marked machine-made", async () => {
+        mockApi({
+            conversation: conversation({ id: 'a' }),
+            messages: [{
+                id: 'm1',
+                senderType: 'guest',
+                body: '\uD658\uBD88 \uC5B8\uC81C \uB418\uB098\uC694?',
+                translatedBody: 'When will the refund be processed?',
+                translatedLang: 'en',
+                translationStatus: 'translated',
+                noticeCode: null,
+                createdAt: '2026-09-06T10:00:00.000Z',
+                attachments: [],
+            }],
+            bookings: null,
+        });
+
+        render(
+            <SupportInboxClient
+                initialFilter="waiting"
+                initialConversations={waiting}
+                initialCounts={{ waiting: 2, mine: 0 }}
+                currentAdminId="admin-1"
+            />,
+        );
+
+        fireEvent.click(screen.getByText('Ana Reyes'));
+        await screen.findByText('When will the refund be processed?');
+        expect(screen.getByText(/machine-translated/i)).toBeInTheDocument();
+
+        // The original to check it against, one click away and never replaced.
+        fireEvent.click(screen.getByRole('button', { name: 'Show original' }));
+        expect(screen.getByText('\uD658\uBD88 \uC5B8\uC81C \uB418\uB098\uC694?')).toBeInTheDocument();
+    });
+
+    it('shows the message alone when there is no rendering', async () => {
+        mockApi({
+            conversation: conversation({ id: 'a' }),
+            messages: [{
+                id: 'm1',
+                senderType: 'guest',
+                body: 'I want a refund.',
+                translatedBody: null,
+                noticeCode: null,
+                createdAt: '2026-09-06T10:00:00.000Z',
+                attachments: [],
+            }],
+            bookings: null,
+        });
+
+        render(
+            <SupportInboxClient
+                initialFilter="waiting"
+                initialConversations={waiting}
+                initialCounts={{ waiting: 2, mine: 0 }}
+                currentAdminId="admin-1"
+            />,
+        );
+
+        fireEvent.click(screen.getByText('Ana Reyes'));
+        await screen.findByText('I want a refund.');
+
+        expect(screen.queryByText(/machine-translated/i)).not.toBeInTheDocument();
+    });
+
+    it("warns when a customer's message could not be translated, rather than hiding it", async () => {
+        // The case the guard exists for: the translator refused, so the Agent reads the
+        // customer's own words, flagged — never "I cannot assist with that" in their name.
+        mockApi({
+            conversation: conversation({ id: 'a' }),
+            messages: [{
+                id: 'm1',
+                senderType: 'guest',
+                body: '공항인데 항공권이 취소되었어요.',
+                translatedBody: null,
+                translatedLang: 'en',
+                translationStatus: 'untranslated',
+                noticeCode: null,
+                createdAt: '2026-09-06T10:00:00.000Z',
+                attachments: [],
+            }],
+            bookings: null,
+        });
+
+        render(
+            <SupportInboxClient
+                initialFilter="waiting"
+                initialConversations={waiting}
+                initialCounts={{ waiting: 2, mine: 0 }}
+                currentAdminId="admin-1"
+            />,
+        );
+
+        fireEvent.click(screen.getByText('Ana Reyes'));
+        await screen.findByText('공항인데 항공권이 취소되었어요.');
+        expect(screen.getByText(/could not translate/i)).toBeInTheDocument();
+    });
+});

@@ -8,7 +8,7 @@ import { formatDateTimeIn, formatDurationLong, formatTimeIn } from '@/utils/flig
 
 type Translator = ReturnType<typeof useTranslations>;
 
-/** One end of a flight: the clock, what it is, and the airport in full beneath. */
+/** One end of a flight: the clock, what it is, the airport in full, and its terminal. */
 function EndColumn({
     stop,
     label,
@@ -19,6 +19,7 @@ function EndColumn({
     align: 'left' | 'right';
 }) {
     const locale = useLocale();
+    const t = useTranslations('flights.itinerary');
     const alignment = align === 'left' ? 'text-left items-start' : 'text-right items-end';
 
     return (
@@ -34,6 +35,19 @@ function EndColumn({
                     ? stop.airportCode
                     : `${stop.airportName} (${stop.airportCode})`}
             </span>
+            {/* Which terminal, when the airline named one. A connection can land at one
+                terminal and leave from another, so this is per-end, not per-airport.
+                When neither the provider nor the standing table has one, say so rather
+                than leaving the end silently blank beside one that does have it. */}
+            {stop.terminal ? (
+                <span className="text-[10px] leading-snug text-slate-500 dark:text-slate-400 lg:text-[12px]">
+                    {t('terminal', { terminal: stop.terminal })}
+                </span>
+            ) : (
+                <span className="text-[10px] italic leading-snug text-slate-500 dark:text-slate-400 lg:text-[12px]">
+                    {t('terminalUnavailable')}
+                </span>
+            )}
         </div>
     );
 }

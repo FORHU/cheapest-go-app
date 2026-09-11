@@ -17,6 +17,7 @@ import PriceCalendar from './PriceCalendar';
 import { Suspense } from 'react';
 import { searchStateFromResponse, type SearchOutcome } from '@/lib/flights/search-state';
 import { CLIENT_SEARCH_TIMEOUT_MS, CLIENT_SLOW_SEARCH_MS } from '@/lib/flights/search-budget';
+import { searchCacheKey, readSearchCache, writeSearchCache } from '@/lib/flights/search-cache';
 
 // ─── City name → IATA code lookup ─────────────────────────────────────────────
 const CITY_TO_IATA: Record<string, string> = {
@@ -207,7 +208,35 @@ export function SearchFetcher({
             return;
         }
 
-        // 2. Progressive timeout — soft warning at 15s, hard abort at 45s
+        const cacheKey = searchCacheKey({
+            origin: resolvedOrigin,
+            destination: resolvedDestination,
+            departureDate,
+            returnDate: returnDate || undefined,
+            adults,
+            children,
+            infants,
+            cabinClass,
+        });
+
+        // 2. Serve a recent identical search straight from sessionStorage.
+        //
+        // This is the results → book → browser Back path: the App Router remounts
+        // this component on back-navigation, which re-fires the search seconds
+        // after the first one. That burst is what trips the provider's account
+        // rate limit, and a rate-limited retry renders as "No flights found" over
+        // results the traveller was looking at moments ago. `retryKey > 0` means
+        // they explicitly asked for a fresh search — skip the cache then.
+        if (retryKey === 0) {
+            const cached = readSearchCache(cacheKey);
+            if (cached) {
+                setAllOffers(cached);
+                setState({ status: 'success', offers: cached });
+                return;
+            }
+        }
+
+        // 3. Progressive timeout — soft warning at 15s, hard abort at 45s
         const slowId = setTimeout(() => {
             setState(prev => prev.status === 'loading' ? { status: 'loading_slow' } : prev);
         }, SLOW_SEARCH_MS);
@@ -253,6 +282,11 @@ export function SearchFetcher({
                 const offers: FlightOffer[] = next.status === 'success' ? next.offers : [];
                 setAllOffers(offers);
                 setState(next);
+
+                // Only a real result is worth remembering — see search-cache.
+                if (next.status === 'success') {
+                    writeSearchCache(cacheKey, next.offers);
+                }
 
                 // Capture cheapest price for "Continue Your Search" on the home page
                 if (offers.length > 0 && destination) {

@@ -906,6 +906,8 @@
       "viewDeal": "요금 보기",
       "departing": "출발",
       "arrivingAt": "도착",
+      "terminal": "터미널 {terminal}",
+      "terminalUnavailable": "터미널 정보는 출발일이 가까워지면 제공됩니다",
       "totalFlightDuration": "총 비행 시간",
       "stopsLabel": "경유:",
       "stopCountTitle": "{count, plural, =0 {직항} other {경유 #회}}",
@@ -996,7 +998,10 @@
       "return": "오는 편",
       "legLabel": "구간 {number}",
       "layoverLabel": "경유",
-      "layoverValue": "{airport}에서 {duration}"
+      "layoverValue": "{airport}에서 {duration}",
+      "terminal": "터미널 {terminal}",
+      "terminalUnavailable": "터미널 정보는 출발일이 가까워지면 제공됩니다",
+      "totalFlightDuration": "총 비행 시간"
     }
   },
   "footer": {

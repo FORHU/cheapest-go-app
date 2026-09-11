@@ -7,6 +7,7 @@ import type { FlightOffer } from '@/types/flights';
 import { formatPrice, formatPriceWithCents, formatDuration, formatTimeIn, formatDurationLong } from '@/utils/flight-utils';
 import { ArrivalDayOffset } from './ArrivalDayOffset';
 import { offerSlices } from '@/lib/flights/offer-slices';
+import { segmentTerminal } from '@/lib/flights/terminal-fallback';
 import { getAirportByCode } from '@/lib/airports';
 import { FlightItineraryDetails } from '@/components/flights/FlightItineraryDetails';
 import SaveButton from '@/components/common/SaveButton';
@@ -113,6 +114,9 @@ export const FlightCard: React.FC<FlightCardProps> = ({ offer, index = 0, onSele
     // the three letters on the boarding pass beat an invented name.
     const departureAirport = airportLabel(primary.departure.airport);
     const arrivalAirport = airportLabel(outboundLast?.arrival?.airport);
+    // Provider's terminal if it gave one, else the carrier's standing gate.
+    const departureTerminal = segmentTerminal(primary, 'departure');
+    const arrivalTerminal = outboundLast ? segmentTerminal(outboundLast, 'arrival') : undefined;
     // Who actually flies, when that is not who sold the seat.
     const operators = Array.from(
         new Set(outboundLeg.map(s => s.operatingAirline?.name).filter(Boolean))
@@ -148,7 +152,10 @@ export const FlightCard: React.FC<FlightCardProps> = ({ offer, index = 0, onSele
                 />
             </div>
 
-            <div className="flex flex-col lg:flex-row">
+            {/* Row on desktop while collapsed, so the price rail runs alongside the
+                summary; forced to a column once expanded, so the rail drops below the
+                itinerary instead of stretching the full height of it as a side strip. */}
+            <div className={`flex flex-col ${expanded ? '' : 'lg:flex-row'}`}>
                 {/* ─── Flight Info + Expand (left) ─── */}
                 <div className="flex-1 min-w-0">
                   <div className="p-4 lg:p-6">
@@ -272,6 +279,20 @@ export const FlightCard: React.FC<FlightCardProps> = ({ offer, index = 0, onSele
                             <span className="text-[11px] lg:text-[13px] leading-snug text-slate-800 dark:text-slate-200">
                                 {departureAirport}
                             </span>
+                            {/* The gate this leg leaves from. A connecting itinerary
+                                spells out every terminal once expanded — this is the
+                                journey's start only. When neither the provider nor the
+                                standing table has one, say so rather than leaving the
+                                row silently blank next to a card that does show one. */}
+                            {departureTerminal ? (
+                                <span className="text-[10px] lg:text-[12px] leading-snug text-slate-400 dark:text-slate-500">
+                                    {t('terminal', { terminal: departureTerminal })}
+                                </span>
+                            ) : (
+                                <span className="text-[10px] lg:text-[12px] italic leading-snug text-slate-400 dark:text-slate-500">
+                                    {t('terminalUnavailable')}
+                                </span>
+                            )}
                         </div>
 
                         <div className="flex min-w-0 flex-1 flex-col items-center gap-1 px-1 pt-1.5 lg:px-2">
@@ -284,7 +305,9 @@ export const FlightCard: React.FC<FlightCardProps> = ({ offer, index = 0, onSele
                             <div className="w-full border-t border-dotted border-blue-300 dark:border-blue-800/60" />
                             <span className="text-center text-[10px] lg:text-[12px] text-slate-400 dark:text-slate-500">
                                 {t('stopsLabel')}
-                                <span className="ml-1 font-semibold text-slate-900 dark:text-white">
+                                {/* The value carries the colour, the label stays muted —
+                                    the stop count is what the eye is scanning the row for. */}
+                                <span className="ml-1 font-semibold text-orange-600 dark:text-orange-400">
                                     {t('stopCountTitle', { count: outboundStops })}
                                 </span>
                             </span>
@@ -304,6 +327,19 @@ export const FlightCard: React.FC<FlightCardProps> = ({ offer, index = 0, onSele
                             <span className="text-[11px] lg:text-[13px] leading-snug text-slate-700 dark:text-slate-200">
                                 {arrivalAirport}
                             </span>
+                            {/* The terminal this leg reaches — the outbound's final
+                                arrival, matching the airport named just above. Same
+                                "not yet known" note as the departure end when neither
+                                source has one. */}
+                            {arrivalTerminal ? (
+                                <span className="text-[10px] lg:text-[12px] leading-snug text-slate-400 dark:text-slate-500">
+                                    {t('terminal', { terminal: arrivalTerminal })}
+                                </span>
+                            ) : (
+                                <span className="text-[10px] lg:text-[12px] italic leading-snug text-slate-400 dark:text-slate-500">
+                                    {t('terminalUnavailable')}
+                                </span>
+                            )}
                         </div>
                     </div>
                   </div>
@@ -312,7 +348,7 @@ export const FlightCard: React.FC<FlightCardProps> = ({ offer, index = 0, onSele
                   {offer.segments.length > 1 && (
                       <button
                           onClick={() => setExpanded(!expanded)}
-                          className="flex items-center gap-1 px-4 lg:px-6 pb-4 lg:pb-6 text-[10px] lg:text-xs text-slate-800 dark:text-slate-200 hover:text-slate-950 dark:hover:text-white transition-colors"
+                          className="flex items-center gap-1 px-4 lg:px-6 pb-4 lg:pb-6 text-[10px] lg:text-xs text-slate-800 dark:text-slate-200 hover:text-slate-950 dark:hover:text-white transition-colors cursor-pointer"
                       >
                           {expanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
                           {expanded ? t('hideDetails') : (offer.alternatives && offer.alternatives.length > 0 ? t('compareOptions', { count: offer.alternatives.length + 1 }) : t('showAllSegments'))}
@@ -326,8 +362,20 @@ export const FlightCard: React.FC<FlightCardProps> = ({ offer, index = 0, onSele
                               initial={{ height: 0, opacity: 0 }}
                               animate={{ height: 'auto', opacity: 1 }}
                               exit={{ height: 0, opacity: 0 }}
-                              transition={{ duration: 0.3, ease: [0.04, 0.62, 0.23, 0.98] }}
+                              transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
                               className="border-t border-slate-100 dark:border-slate-800 overflow-hidden"
+                          >
+                          {/* The height animation above opens the space; this slides the
+                              itinerary down into it, so the legs read as arriving rather
+                              than as the card stretching. Clipped by the parent's
+                              overflow-hidden, so it travels in from under the rule.
+                              Carries no layout of its own — the padding stays on the
+                              sections inside it. */}
+                          <motion.div
+                              initial={{ y: -12 }}
+                              animate={{ y: 0 }}
+                              exit={{ y: -12 }}
+                              transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
                           >
                           {/* Alternatives / Brands Section */}
                           {offer.alternatives && offer.alternatives.length > 0 && (
@@ -392,14 +440,21 @@ export const FlightCard: React.FC<FlightCardProps> = ({ offer, index = 0, onSele
                               <FlightItineraryDetails offer={offer} />
                           </div>
                           </motion.div>
+                          </motion.div>
                       )}
                   </AnimatePresence>
                 </div>
 
-                {/* ─── Price + CTA (right) ─── */}
-                <div className="relative flex flex-row lg:flex-col items-center lg:items-center justify-between lg:justify-between gap-1 lg:gap-1.5 lg:w-[180px] p-4 lg:p-6 lg:border-l border-t lg:border-t-0 border-slate-100 dark:border-slate-800">
-                    {/* Heart button — desktop only, inline */}
-                    <div className="hidden lg:flex justify-end w-full mb-1 relative z-10">
+                {/* ─── Price + CTA (right when collapsed, below when expanded) ─── */}
+                <div
+                    className={`relative flex flex-row items-center justify-between gap-1 lg:gap-1.5 p-4 lg:p-6 border-t border-slate-100 dark:border-slate-800 ${
+                        expanded ? 'w-full' : 'lg:flex-col lg:w-[180px] lg:border-l lg:border-t-0'
+                    }`}
+                >
+                    {/* Heart button — desktop only, inline. Hidden once expanded: it
+                        assumes the column layout's "full width, own line" shape, which
+                        no longer applies once this rail sits in a row below the card. */}
+                    <div className={expanded ? 'hidden' : 'hidden lg:flex justify-end w-full mb-1 relative z-10'}>
                         <SaveButton
                             type="flight"
                             title={`${primary.departure.airport} → ${outboundLast?.arrival?.airport} · ${primary.departure.time?.slice(0, 10) ?? ''}`}
@@ -427,7 +482,7 @@ export const FlightCard: React.FC<FlightCardProps> = ({ offer, index = 0, onSele
                     <div className="flex items-center gap-2 lg:mt-auto">
                         <button
                             onClick={() => onSelect?.(offer)}
-                            className="px-5 lg:px-8 py-1.5 lg:py-2 rounded-full lg:rounded-md bg-blue-600 hover:bg-blue-700 text-white font-medium text-[11px] lg:text-sm transition-colors flex items-center justify-center gap-1 shrink-0"
+                            className="px-5 lg:px-8 py-1.5 lg:py-2 rounded-full lg:rounded-md bg-blue-600 hover:bg-blue-700 text-white font-medium text-[11px] lg:text-sm transition-colors flex items-center justify-center gap-1 shrink-0 cursor-pointer"
                         >
                             {t('select')}
                             <ArrowRight className="w-3 h-3 lg:w-4 lg:h-4" />

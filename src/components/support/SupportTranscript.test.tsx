@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { NextIntlClientProvider } from 'next-intl';
 import { SupportTranscript } from './SupportTranscript';
 import type { SupportMessageView } from './types';
@@ -18,6 +18,13 @@ const messages = {
         sender: { guest: 'You', ai: 'CheapestGo', agent: 'Support', system: 'Support' },
         typing: 'CheapestGo is typing',
         empty: 'Ask us anything about your trip.',
+        translation: {
+            translated: 'LOCALISED machine-made label',
+            showOriginal: 'LOCALISED show original',
+            showTranslation: 'LOCALISED show translation',
+            pending: 'LOCALISED translating',
+            untranslated: 'LOCALISED not translated',
+        },
         notice: {
             // Deliberately not the English in `body`, so a test can tell which one rendered.
             budget_spent: 'LOCALISED handover notice',
@@ -37,6 +44,7 @@ const message = (over: Partial<SupportMessageView>): SupportMessageView => ({
     id: 'm1',
     senderType: 'guest',
     body: 'hello',
+    translatedBody: null,
     attachments: [],
     noticeCode: null,
     createdAt: '2026-09-06T10:00:00.000Z',
@@ -136,3 +144,115 @@ describe('SupportTranscript', () => {
         expect(screen.getByRole('log')).toHaveAttribute('aria-live', 'polite');
     });
 });
+
+/**
+ * The stored rendering, shown to the customer.
+ *
+ * Per ADR-0033 a translation is never presented as the message: it is shown marked as
+ * machine-made, because storing it makes it look like authored content and the label is
+ * what stops a customer reading a mistranslated policy as CheapestGo's considered wording.
+ *
+ * The null branch is not an edge case — an English conversation and an outage both produce
+ * it, and the reader has to get the author's own words in both.
+ */
+describe('a machine translation', () => {
+    /** An Agent's English reply, translated into Korean for this customer. */
+    const agentReply = message({
+        senderType: 'agent',
+        body: 'Your refund has been approved.',
+        translatedBody: 'MACHINE KOREAN REFUND LINE',
+        translatedLang: 'ko',
+        translationStatus: 'translated',
+    });
+
+    it("shows the Agent's reply rendered into the customer's language, marked machine-made", () => {
+        render(<SupportTranscript messages={[agentReply]} isTyping={false} />, { wrapper: Wrapper });
+
+        expect(screen.getByText('MACHINE KOREAN REFUND LINE')).toBeInTheDocument();
+        expect(screen.getByText('LOCALISED machine-made label')).toBeInTheDocument();
+    });
+
+    it("keeps the Agent's own words one click away, because those are what was actually written", () => {
+        // ADR-0033: the original stays authoritative wherever the two disagree, so it is
+        // never replaced — a customer disputing what they were promised has to be able to
+        // see the sentence an Agent actually sent.
+        render(<SupportTranscript messages={[agentReply]} isTyping={false} />, { wrapper: Wrapper });
+
+        fireEvent.click(screen.getByRole('button', { name: 'LOCALISED show original' }));
+        expect(screen.getByText('Your refund has been approved.')).toBeInTheDocument();
+    });
+
+    it('shows the original alone, unmarked, when there is no rendering', () => {
+        render(
+            <SupportTranscript
+                messages={[message({ senderType: 'agent', body: 'Your refund has been approved.' })]}
+                isTyping={false}
+            />,
+            { wrapper: Wrapper },
+        );
+
+        expect(screen.getByText('Your refund has been approved.')).toBeInTheDocument();
+        expect(screen.queryByText('LOCALISED machine-made label')).not.toBeInTheDocument();
+    });
+
+    it('says so when the reply could not be translated, rather than showing nothing', () => {
+        render(
+            <SupportTranscript
+                messages={[message({
+                    senderType: 'agent',
+                    body: 'Your refund has been approved.',
+                    translatedLang: 'ko',
+                    translationStatus: 'untranslated',
+                })]}
+                isTyping={false}
+            />,
+            { wrapper: Wrapper },
+        );
+
+        expect(screen.getByText('Your refund has been approved.')).toBeInTheDocument();
+        expect(screen.getByText('LOCALISED not translated')).toBeInTheDocument();
+    });
+
+    it('does not show the customer an English rendering of their own words', () => {
+        // A guest row's translation exists for the Agent to read. Showing it back to the
+        // person who wrote the original is noise at best, and at worst invites them to
+        // correct a rendering that is not addressed to them.
+        render(
+            <SupportTranscript
+                messages={[message({
+                    senderType: 'guest',
+                    body: '환불 언제 되나요?',
+                    translatedBody: 'MACHINE ENGLISH FOR THE AGENT',
+                    translatedLang: 'en',
+                    translationStatus: 'translated',
+                })]}
+                isTyping={false}
+            />,
+            { wrapper: Wrapper },
+        );
+
+        expect(screen.queryByText('MACHINE ENGLISH FOR THE AGENT')).not.toBeInTheDocument();
+    });
+
+    it("gives a Korean-speaking Agent's Korean reply to the customer exactly as typed", () => {
+        // Its translation is English, for the Agent's colleagues — not for this reader.
+        render(
+            <SupportTranscript
+                messages={[message({
+                    senderType: 'agent',
+                    body: '예약을 확인했습니다.',
+                    translatedBody: 'I have confirmed your booking.',
+                    translatedLang: 'en',
+                    translationStatus: 'translated',
+                })]}
+                isTyping={false}
+            />,
+            { wrapper: Wrapper },
+        );
+
+        expect(screen.getByText('예약을 확인했습니다.')).toBeInTheDocument();
+        expect(screen.queryByText('I have confirmed your booking.')).not.toBeInTheDocument();
+        expect(screen.queryByText('LOCALISED machine-made label')).not.toBeInTheDocument();
+    });
+});
+

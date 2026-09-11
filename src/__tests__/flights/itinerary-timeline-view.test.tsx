@@ -152,3 +152,93 @@ describe('FlightItineraryTimeline', () => {
         expect(screen.getByText('ZZZ')).toBeTruthy();
     });
 });
+
+describe('FlightItineraryTimeline — terminals', () => {
+    // CRK → DOH → LHR, every end terminal-tagged: T1 out of Clark, T1 both sides at
+    // Doha, T4 into Heathrow.
+    const withTerminals = {
+        ...oneStop,
+        segments: [
+            seg('CRK', 'DOH', '2026-09-23T18:40:00', '2026-09-23T22:30:00', {
+                duration: 530,
+                flightNumber: 'QR0927',
+                departure: { airport: 'CRK', terminal: '1', time: '2026-09-23T18:40:00' },
+                arrival: { airport: 'DOH', terminal: '1', time: '2026-09-23T22:30:00' },
+            }),
+            seg('DOH', 'LHR', '2026-09-24T01:15:00', '2026-09-24T06:30:00', {
+                duration: 470,
+                flightNumber: 'QR0003',
+                departure: { airport: 'DOH', terminal: '1', time: '2026-09-24T01:15:00' },
+                arrival: { airport: 'LHR', terminal: '4', time: '2026-09-24T06:30:00' },
+            }),
+        ],
+    } as FlightOffer;
+
+    it('names the terminal beneath each end that has one', () => {
+        renderIntl(<FlightItineraryTimeline slice={offerSlices(withTerminals)[0]} />);
+
+        // CRK depart, DOH arrive, DOH depart — three ends at Terminal 1.
+        expect(screen.getAllByText('Terminal 1')).toHaveLength(3);
+        expect(screen.getByText('Terminal 4')).toBeTruthy();
+    });
+
+    it('sits the terminal with the airport it belongs to, not loose in the row', () => {
+        renderIntl(<FlightItineraryTimeline slice={offerSlices(withTerminals)[0]} />);
+
+        // The arrival end of the first flight: Heathrow, then its terminal, in one column.
+        const heathrow = screen.getByText('Heathrow Airport (LHR)');
+        expect(heathrow.parentElement!.textContent).toContain('Terminal 4');
+    });
+
+    it('says terminal info comes closer to departure at an untracked airport with none stated', () => {
+        renderIntl(<FlightItineraryTimeline slice={offerSlices(oneStop)[0]} />);
+
+        // Four ends in this leg (CRK depart, DOH arrive, DOH depart, LHR arrive), none
+        // tracked — every one gets the note rather than sitting blank.
+        expect(screen.getAllByText('Terminal available closer to departure')).toHaveLength(4);
+    });
+
+    it('fills a missing terminal from the standing assignment for the operating carrier', () => {
+        // Korean Air ICN→MNL: Duffel gives no terminal, but ICN T2 is where KE flies from.
+        const koreanAir = {
+            ...oneStop,
+            segments: [
+                seg('ICN', 'MNL', '2026-09-23T20:00:00', '2026-09-24T00:00:00', {
+                    duration: 240,
+                    flightNumber: 'KE621',
+                    airline: { code: 'KE', name: 'Korean Air' },
+                }),
+            ],
+            sliceDurations: [240],
+        } as FlightOffer;
+
+        renderIntl(<FlightItineraryTimeline slice={offerSlices(koreanAir)[0]} />);
+
+        expect(screen.getByText('Terminal 2')).toBeTruthy();
+    });
+
+    it('shows a terminal change across a layover — land at one, leave from another', () => {
+        const terminalChange = {
+            ...oneStop,
+            segments: [
+                seg('CRK', 'DOH', '2026-09-23T18:40:00', '2026-09-23T22:30:00', {
+                    duration: 530,
+                    flightNumber: 'QR0927',
+                    departure: { airport: 'CRK', time: '2026-09-23T18:40:00' },
+                    arrival: { airport: 'DOH', terminal: '1', time: '2026-09-23T22:30:00' },
+                }),
+                seg('DOH', 'LHR', '2026-09-24T01:15:00', '2026-09-24T06:30:00', {
+                    duration: 470,
+                    flightNumber: 'QR0003',
+                    departure: { airport: 'DOH', terminal: '2', time: '2026-09-24T01:15:00' },
+                    arrival: { airport: 'LHR', time: '2026-09-24T06:30:00' },
+                }),
+            ],
+        } as FlightOffer;
+
+        renderIntl(<FlightItineraryTimeline slice={offerSlices(terminalChange)[0]} />);
+
+        expect(screen.getByText('Terminal 1')).toBeTruthy();
+        expect(screen.getByText('Terminal 2')).toBeTruthy();
+    });
+});
