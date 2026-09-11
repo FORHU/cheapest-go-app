@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { initialSupportState, supportReducer, visibleMessages } from './supportReducer';
+import { awaitingTranslation, initialSupportState, supportReducer, visibleMessages } from './supportReducer';
 import type { SupportConversationView, SupportMessageView } from './types';
 
 /**
@@ -331,5 +331,141 @@ describe('supportReducer', () => {
 
         expect(visibleMessages(failed)).toHaveLength(0);
         expect(failed.isTyping).toBe(false);
+    });
+});
+
+/**
+ * A message's translation arrives after the message does, as the same row sent again.
+ *
+ * Reported 2026-09-11: an Agent replied "im handsome too", the server translated it into
+ * Korean, and the customer's widget kept showing the English with no label at all — it had
+ * kept the first copy of the message and dropped every later one.
+ */
+describe('supportReducer — a translation arriving', () => {
+    const reply = (over: Partial<SupportMessageView>) => serverMessage({
+        id: 'a1',
+        senderType: 'agent',
+        body: 'im handsome too',
+        ...over,
+    });
+
+    const delivered = supportReducer(opened, { type: 'received', message: reply({}) });
+
+    it("replaces the Agent's reply with its translated copy", () => {
+        const translated = supportReducer(delivered, {
+            type: 'received',
+            message: reply({ translationStatus: 'translated', translatedLang: 'ko', translatedBody: '저도 잘생겼어요.' }),
+        });
+
+        const shown = visibleMessages(translated);
+        expect(shown).toHaveLength(1);
+        expect(shown[0].translatedBody).toBe('저도 잘생겼어요.');
+        expect(shown[0].translationStatus).toBe('translated');
+    });
+
+    it('holds the reply back while it is translated for the customer, then shows it', () => {
+        // Decided 2026-09-11: the customer reads the reply once, in Korean — not in English
+        // first and Korean a few seconds later.
+        const held = supportReducer(opened, {
+            type: 'received',
+            message: reply({ translationStatus: 'pending', translatedLang: 'ko' }),
+        });
+        expect(visibleMessages(held)).toEqual([]);
+        expect(awaitingTranslation(held)).toBe(true);
+
+        const translated = supportReducer(held, {
+            type: 'received',
+            message: reply({ translationStatus: 'translated', translatedLang: 'ko', translatedBody: '저도 잘생겼어요.' }),
+        });
+        expect(visibleMessages(translated).map(m => m.translatedBody)).toEqual(['저도 잘생겼어요.']);
+        expect(awaitingTranslation(translated)).toBe(false);
+    });
+
+    it("shows the Agent's own words, marked, when translating fails", () => {
+        const held = supportReducer(opened, {
+            type: 'received',
+            message: reply({ translationStatus: 'pending', translatedLang: 'ko' }),
+        });
+        const failed = supportReducer(held, {
+            type: 'received',
+            message: reply({ translationStatus: 'untranslated', translatedLang: 'ko' }),
+        });
+
+        expect(visibleMessages(failed).map(m => [m.body, m.translationStatus])).toEqual([['im handsome too', 'untranslated']]);
+    });
+
+    it("does not hold the customer's own message while its English is made for the inbox", () => {
+        const own = supportReducer(opened, {
+            type: 'received',
+            message: serverMessage({ id: 'g1', body: '재스퍼는 정말 잘생겼어요.', translationStatus: 'pending', translatedLang: 'en' }),
+        });
+
+        expect(visibleMessages(own)).toHaveLength(1);
+        expect(awaitingTranslation(own)).toBe(false);
+    });
+
+    it('resumes a dropped stream from before a held reply, so its translation is not missed', () => {
+        // The backfill sends only what follows the cursor. A cursor past the held reply
+        // would never hear that it was translated, and it would stay hidden for good.
+        const first = supportReducer(opened, {
+            type: 'received',
+            message: serverMessage({ id: 'g1', body: '안녕하세요', createdAt: '2026-09-06T10:00:00.000Z' }),
+        });
+        const held = supportReducer(first, {
+            type: 'received',
+            message: reply({ translationStatus: 'pending', translatedLang: 'ko', createdAt: '2026-09-06T10:00:02.000Z' }),
+        });
+        const after = supportReducer(held, {
+            type: 'received',
+            message: serverMessage({ id: 'g2', body: '감사합니다', createdAt: '2026-09-06T10:00:03.000Z' }),
+        });
+
+        expect(after.cursor).toBe('g1');
+
+        const settled = supportReducer(after, {
+            type: 'received',
+            message: reply({ translationStatus: 'translated', translatedLang: 'ko', translatedBody: '저도요.', createdAt: '2026-09-06T10:00:02.000Z' }),
+        });
+        expect(settled.cursor).toBe('g2');
+    });
+
+    it('never lets an older copy arriving late undo a translation', () => {
+        // The POST response for the customer's own message can land after the stream has
+        // already delivered it translated.
+        const translated = supportReducer(delivered, {
+            type: 'received',
+            message: reply({ translationStatus: 'translated', translatedLang: 'ko', translatedBody: '저도 잘생겼어요.' }),
+        });
+        const late = supportReducer(translated, { type: 'received', message: reply({ translationStatus: null }) });
+
+        expect(visibleMessages(late)[0].translatedBody).toBe('저도 잘생겼어요.');
+    });
+
+    it('keeps the message where it was in the conversation', () => {
+        const withNext = supportReducer(delivered, {
+            type: 'received',
+            message: serverMessage({ id: 'g2', body: 'ok', createdAt: '2026-09-06T10:00:05.000Z' }),
+        });
+        const translated = supportReducer(withNext, {
+            type: 'received',
+            message: reply({ translationStatus: 'translated', translatedLang: 'ko', translatedBody: '저도 잘생겼어요.' }),
+        });
+
+        expect(visibleMessages(translated).map(m => m.id)).toEqual(['a1', 'g2']);
+    });
+
+    it('does not count the translation as another unread reply', () => {
+        const closed = supportReducer(opened, { type: 'closed' });
+        const replied = supportReducer(closed, { type: 'received', message: reply({}) });
+        const pending = supportReducer(replied, {
+            type: 'received',
+            message: reply({ translationStatus: 'pending', translatedLang: 'ko' }),
+        });
+        const translated = supportReducer(pending, {
+            type: 'received',
+            message: reply({ translationStatus: 'translated', translatedLang: 'ko', translatedBody: '저도 잘생겼어요.' }),
+        });
+
+        expect(translated.unread).toBe(1);
     });
 });

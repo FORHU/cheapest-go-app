@@ -15,7 +15,7 @@ import { UrgencyOverride } from '@/components/support/UrgencyOverride';
 import { LinkedBookings } from '@/components/support/LinkedBookings';
 import { AgentNotes } from '@/components/support/AgentNotes';
 import { TranslatedText } from '@/components/support/TranslatedText';
-import { readerView } from '@/components/support/translationView';
+import { readerView, customerReadsView, type CustomerReadsView } from '@/components/support/translationView';
 import { MAX_MESSAGE_LENGTH, MESSAGE_COUNTER_FROM } from '@/lib/support/limits';
 
 /**
@@ -59,6 +59,39 @@ const AGENT_TRANSLATION_LABELS = {
     pending: 'Translating…',
     untranslated: 'Could not translate — this is the customer’s original',
 };
+
+/**
+ * Under an Agent's own reply that went to the customer in another language: what the
+ * customer actually read, translated back. The Agent cannot read the translation itself, and
+ * this is how they catch one that changed their meaning.
+ */
+function CustomerReadsLine({ view }: { view: CustomerReadsView | null }) {
+    if (!view) return null;
+
+    const base = 'mt-1 block text-[11px] text-slate-500 dark:text-slate-400';
+    switch (view.state) {
+        case 'translating':
+            return <span className={base}>{`Translating into ${view.language}…`}</span>;
+        case 'checking':
+            return <span className={base}>{`Sent in ${view.language} — checking how it reads…`}</span>;
+        case 'unchecked':
+            return <span className={base}>{`Sent in ${view.language} — could not check how it reads`}</span>;
+        case 'untranslated':
+            // Amber: the customer did not get their language, and the Agent should know.
+            return (
+                <span className="mt-1 block text-[11px] text-amber-600 dark:text-amber-400">
+                    {`Could not translate into ${view.language} — the customer received your English`}
+                </span>
+            );
+        case 'reads-as':
+            return (
+                <span className={base}>
+                    {`Sent in ${view.language} — reads back as: `}
+                    <q className="italic text-slate-700 dark:text-slate-300">{view.readsAs}</q>
+                </span>
+            );
+    }
+}
 
 interface SupportInboxClientProps {
     initialFilter: InboxFilterView;
@@ -433,6 +466,8 @@ export function SupportInboxClient({
                                                 labels={AGENT_TRANSLATION_LABELS}
                                             />
                                         </p>
+
+                                        <CustomerReadsLine view={customerReadsView(message)} />
 
                                         {message.attachments.length > 0 && (
                                             <ul className="mt-1.5 flex flex-col gap-1">

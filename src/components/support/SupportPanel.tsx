@@ -127,7 +127,7 @@ export function SupportPanel({ chat, onClose }: SupportPanelProps) {
                 </button>
             </header>
 
-            <SupportTranscript messages={chat.messages} isTyping={chat.isTyping} />
+            <SupportTranscript messages={chat.messages} isTyping={chat.isTyping} isReplying={chat.isReplying} />
 
             {chat.needsDetails ? (
                 <EscalationForm

@@ -45,6 +45,9 @@ const FILES = [
 
     // Machine translation stored beside each message (ADR-0033).
     '20260911000001_support_message_translation.sql',
+
+    // An Agent's translated reply, translated back so the Agent sees what the customer read.
+    '20260911000002_support_message_back_translation.sql',
 ];
 
 const dry = process.argv.includes('--dry');

@@ -12,7 +12,7 @@
  * real hotels and told the user the destination had no availability. The user's
  * workaround was to search again, which worked once the caches had warmed.
  *
- * Mocks mirror tgx-search-swr.test.ts.
+ * Mocks mirror tgx-search-live.test.ts.
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
@@ -108,9 +108,9 @@ describe('Unanswered Search — the supplier never answered', () => {
             runTgxSearch({ ...BASE_PARAMS, cityName: 'UnansweredNoCache' }),
         ).rejects.toBeInstanceOf(UnansweredSearchError);
 
-        // A cache write would interpolate the search key into the statement. Nothing
-        // that reaches the DB may mention this city — otherwise the next user is
-        // pinned to zero hotels for the whole TTL by a transient supplier blip.
+        // Search results are never stored, so nothing that reaches the DB may mention
+        // this city — a stored unanswered search would pin the next customer to zero
+        // hotels because of one transient supplier blip.
         const everyStatement = sql.mock.calls.map((c: any[]) => JSON.stringify(c)).join(' ');
         expect(everyStatement).not.toContain('UnansweredNoCache');
     });

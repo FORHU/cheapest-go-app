@@ -71,6 +71,8 @@ export interface InboxMessage {
     translatedBody?: string | null;
     translatedLang?: string | null;
     translationStatus?: 'pending' | 'translated' | 'untranslated' | null;
+    /** An Agent's translated reply, translated back — what the customer read. '' = could not check. */
+    backTranslatedBody?: string | null;
     /**
      * Files on this message. Never a URL - the bytes are behind a route that re-checks the
      * Agent on every fetch and mints a short-lived link (ADR-0040).

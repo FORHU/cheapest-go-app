@@ -12,6 +12,10 @@
 # src/app/api/flights/book/route.ts); add it back with the route when they do.
 
 # ── High-frequency ────────────────────────────────────────────────────────────
+# A customer's widget holds an Agent's reply until its translation settles, so a
+# translation a deploy interrupted must be finished promptly — a customer is waiting.
+# Does nothing (one indexed query) on almost every run.
+*    * * * * curl -sf -X GET  $APP_URL/api/cron/resume-support-translations    -H "Authorization: Bearer $CRON_SECRET" -o /dev/null
 */5  * * * * curl -sf -X GET  $APP_URL/api/cron/poll-pending-tickets           -H "Authorization: Bearer $CRON_SECRET" -o /dev/null
 */10 * * * * curl -sf -X POST $APP_URL/api/internal/auto-recover               -H "Authorization: Bearer $CRON_SECRET" -o /dev/null
 */10 * * * * curl -sf -X GET  $APP_URL/api/cron/cleanup-orphaned-duffel-orders -H "Authorization: Bearer $CRON_SECRET" -o /dev/null

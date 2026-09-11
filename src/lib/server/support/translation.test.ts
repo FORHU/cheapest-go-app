@@ -33,6 +33,8 @@ describe('guardTranslation — refusals are never stored', () => {
         'I’m sorry, but I cannot assist with that.',
         'I cannot assist with your request.',
         "I'm sorry, but I cannot fulfill that request.",
+        // Captured translating "저도 잘 생겼어요." back into English.
+        'I am sorry, but the context does not contain any relevant information for translation.',
     ];
 
     it.each(REFUSALS)('rejects "%s"', reply => {
@@ -224,6 +226,17 @@ describe('guardTranslation — a reply missing most of the message is refused', 
 
     it('keeps a complete translation, at the ratio measured', () => {
         expect(guardTranslation('x'.repeat(Math.round(LONG_KO.length * 1.9)), LONG_KO, 'en')).not.toBeNull();
+    });
+
+    it('rejects a reply far longer than any translation of a short message could be', () => {
+        // Whatever it says: the engine answering instead of translating runs long.
+        const essay = 'This phrase expresses that the speaker considers themselves attractive as well, often said playfully.';
+        expect(guardTranslation(essay, '저도 잘 생겼어요.', 'en')).toBeNull();
+    });
+
+    it('keeps the widest translation measured — Chinese into English at 3.3×', () => {
+        expect(guardTranslation('I cannot find my flight reservation.', '我找不到我的航班预订。', 'en'))
+            .toBe('I cannot find my flight reservation.');
     });
 
     it('keeps a terse reply to a short message — too short to judge', () => {

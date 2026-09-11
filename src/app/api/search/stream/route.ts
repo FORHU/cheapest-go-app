@@ -442,7 +442,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Default dates when not provided (e.g. landing card clicks).
-    // Use next Friday → Sunday so results match the prewarm cache and OTV has inventory.
+    // Use next Friday → Sunday so OTV has inventory.
     // Same-day / next-day defaults have near-zero OTV coverage.
     if (!body.checkin && !body.checkIn) {
         const now = new Date();

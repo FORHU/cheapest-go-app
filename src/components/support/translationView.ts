@@ -67,6 +67,49 @@ export function readerView(message: TranslatableMessage, readerIsAgent: boolean)
     };
 }
 
+/** The customer's languages, as an Agent reads their names. */
+const LANGUAGE_NAME: Record<string, string> = { ko: 'Korean', ja: 'Japanese', zh: 'Chinese' };
+
+export interface CustomerReadsView {
+    /** Where the translation of this reply stands, from the Agent's side. */
+    state: 'translating' | 'checking' | 'reads-as' | 'unchecked' | 'untranslated';
+    /** The customer's language, named — "Korean". */
+    language: string;
+    /** The reply as the customer read it, in English. Only when state is 'reads-as'. */
+    readsAs: string | null;
+}
+
+/**
+ * What an Agent is told about their own reply when it went to the customer in another
+ * language — or null when it did not.
+ *
+ * An Agent cannot read the Korean their English became, so on its own "Machine-translated"
+ * tells them nothing about whether it said what they meant. "im handsome too" reached a
+ * customer as "(you're) handsome". Translated back, the drift is visible, and the Agent can
+ * say it again.
+ */
+export function customerReadsView(
+    message: TranslatableMessage & { backTranslatedBody?: string | null },
+): CustomerReadsView | null {
+    if (message.senderType !== 'agent') return null;
+    if (!message.translatedLang || message.translatedLang === AGENT_LANG) return null;
+
+    const language = LANGUAGE_NAME[message.translatedLang] ?? message.translatedLang;
+
+    switch (message.translationStatus) {
+        case 'pending':
+            return { state: 'translating', language, readsAs: null };
+        case 'untranslated':
+            return { state: 'untranslated', language, readsAs: null };
+        case 'translated':
+            if (message.backTranslatedBody) return { state: 'reads-as', language, readsAs: message.backTranslatedBody };
+            if (message.backTranslatedBody === '') return { state: 'unchecked', language, readsAs: null };
+            return { state: 'checking', language, readsAs: null };
+        default:
+            return null;
+    }
+}
+
 function isForThisReader(message: TranslatableMessage, readerIsAgent: boolean): boolean {
     if (message.translatedLang) {
         const forAgent = message.translatedLang === AGENT_LANG;

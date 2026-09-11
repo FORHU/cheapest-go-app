@@ -123,9 +123,12 @@ describe('appendMessage translation', () => {
 
         const message = await appendMessage({ conversationId, senderType: 'guest', body: '환불 언제 되나요?' });
 
-        // Delivered in the customer's own words, without waiting on the translator.
+        // Delivered in the customer's own words, without waiting on the translator — and
+        // saying from the very first copy that a translation is coming, and into what.
         expect(message.body).toBe('환불 언제 되나요?');
         expect(message.translatedBody).toBeNull();
+        expect(message.translationStatus).toBe('pending');
+        expect(message.translatedLang).toBe('en');
 
         // Read back rather than trust an object: the column is the point.
         const row = await settledRow(message.id);
@@ -194,6 +197,94 @@ describe('appendMessage translation', () => {
         expect(await settledRow(message.id)).toMatchObject({
             translated_body: null,
             translation_status: 'untranslated',
+        });
+    });
+
+    it("marks an Agent's reply to a Korean customer as translating from its first copy", async (ctx) => {
+        // The customer's widget holds a reply until its translation settles. A first copy
+        // with no status would be shown in English at once — the flash holding prevents.
+        if (!(await databaseReachable())) return ctx.skip();
+        vi.stubEnv('TRANSLATION_BASE_URL', 'https://translate.test');
+        boxAnswers('저도 잘생겼어요.');
+
+        const { appendMessage } = await import('./messages');
+        const conversationId = await makeConversation('en');
+        await appendMessage({ conversationId, senderType: 'guest', body: '재스퍼는 정말 잘생겼어요.' });
+
+        const db = await sql();
+        const [admin] = await db<{ id: string }[]>`SELECT id FROM users LIMIT 1`;
+        if (!admin) return ctx.skip();
+
+        const reply = await appendMessage({
+            conversationId, senderType: 'agent', senderAdminId: admin.id, body: 'im handsome too',
+        });
+
+        expect(reply.translationStatus).toBe('pending');
+        expect(reply.translatedLang).toBe('ko');
+        expect(await settledRow(reply.id)).toMatchObject({
+            translated_body: '저도 잘생겼어요.',
+            translation_status: 'translated',
+        });
+    });
+
+    it("stores the Agent's reply translated back, after the customer already has it", async (ctx) => {
+        if (!(await databaseReachable())) return ctx.skip();
+        vi.stubEnv('TRANSLATION_BASE_URL', 'https://translate.test');
+        // Answers by the language asked for: the prompt ends on the target's label.
+        vi.stubGlobal('fetch', vi.fn(async (url: string, init?: RequestInit) => {
+            if (String(url).endsWith('/session-id')) return new Response(JSON.stringify({ session_id: 's' }));
+            const input = JSON.parse(String(init?.body)).user_input as string;
+            const response = input.trimEnd().endsWith('Korean:') ? '잘생겼어요.' : "(You're) handsome.";
+            return new Response(JSON.stringify({ response }));
+        }));
+
+        const { appendMessage } = await import('./messages');
+        const conversationId = await makeConversation('en');
+        await appendMessage({ conversationId, senderType: 'guest', body: '재스퍼는 정말 잘생겼어요.' });
+
+        const db = await sql();
+        const [admin] = await db<{ id: string }[]>`SELECT id FROM users LIMIT 1`;
+        if (!admin) return ctx.skip();
+
+        const reply = await appendMessage({
+            conversationId, senderType: 'agent', senderAdminId: admin.id, body: 'im handsome too',
+        });
+
+        const back = await vi.waitFor(async () => {
+            const [row] = await db<{ back_translated_body: string | null; translated_body: string | null }[]>`
+                SELECT back_translated_body, translated_body FROM support_messages WHERE id = ${reply.id}::uuid
+            `;
+            if (row.back_translated_body === null) throw new Error('not yet');
+            return row;
+        }, { timeout: 5_000, interval: 50 });
+
+        expect(back.translated_body).toBe('잘생겼어요.');
+        expect(back.back_translated_body).toBe("(You're) handsome.");
+    });
+
+    it('finishes a translation a stopped process left pending', async (ctx) => {
+        // A deploy that restarts the app mid-translation leaves the row pending with
+        // nothing coming to settle it — and the customer's widget would hold that reply
+        // for good. The every-minute sweep picks it up.
+        if (!(await databaseReachable())) return ctx.skip();
+        vi.stubEnv('TRANSLATION_BASE_URL', 'https://translate.test');
+        boxAnswers('When will the refund be processed?');
+
+        const { resumeStalledTranslations, STALLED_TRANSLATION_MS } = await import('./messages');
+        const conversationId = await makeConversation('ko');
+        const db = await sql();
+        const [row] = await db<{ id: string }[]>`
+            INSERT INTO support_messages
+                (conversation_id, sender_type, body, translation_status, translated_lang, created_at)
+            VALUES (${conversationId}, 'guest', '환불 언제 되나요?', 'pending', 'en',
+                    now() - (${STALLED_TRANSLATION_MS + 60_000} * interval '1 millisecond'))
+            RETURNING id
+        `;
+
+        expect(await resumeStalledTranslations()).toBeGreaterThanOrEqual(1);
+        expect(await readRow(row.id)).toMatchObject({
+            translated_body: 'When will the refund be processed?',
+            translation_status: 'translated',
         });
     });
 

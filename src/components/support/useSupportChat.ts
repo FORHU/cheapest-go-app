@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useReducer, useRef, useState } from 'react';
 import { useLocale } from 'next-intl';
 import {
+    awaitingTranslation,
     initialSupportState,
     supportReducer,
     visibleMessages,
@@ -272,6 +273,8 @@ export function useSupportChat(isOpen: boolean) {
         removeAttachment,
         nextOpening,
         isTyping: state.isTyping,
+        // A reply has arrived and is held until its translation settles.
+        isReplying: awaitingTranslation(state),
         needsDetails: state.needsDetails,
         assistantOffline: state.assistantOffline,
         unread: state.unread,

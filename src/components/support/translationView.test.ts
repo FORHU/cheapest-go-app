@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { readerView } from './translationView';
+import { readerView, customerReadsView } from './translationView';
 
 /**
  * What each reader sees first. One rule for both screens: the translation's language says
@@ -126,5 +126,45 @@ describe('nothing to translate', () => {
         // empty bubble because a field was missing.
         const v = readerView({ ...customerMsg, translatedBody: null, translationStatus: 'translated' }, true);
         expect(v.primary).toBe(customerMsg.body);
+    });
+});
+
+/**
+ * What an Agent is told about their own reply when it went out in the customer's language.
+ * Reported 2026-09-11: "im handsome too" reached the customer as "(you're) handsome", and
+ * the Agent, who cannot read Korean, had no way to know.
+ */
+describe('customerReadsView — what the customer actually read', () => {
+    const sent = {
+        senderType: 'agent',
+        body: 'im handsome too',
+        translatedBody: '잘생겼어요.',
+        translatedLang: 'ko',
+        translationStatus: 'translated' as const,
+    };
+
+    it('shows the reply translated back, so a changed meaning is visible', () => {
+        expect(customerReadsView({ ...sent, backTranslatedBody: "(You're) handsome." }))
+            .toEqual({ state: 'reads-as', language: 'Korean', readsAs: "(You're) handsome." });
+    });
+
+    it('says it is checking until the back-translation arrives', () => {
+        expect(customerReadsView({ ...sent, backTranslatedBody: null })?.state).toBe('checking');
+    });
+
+    it('says it could not check, rather than checking forever', () => {
+        expect(customerReadsView({ ...sent, backTranslatedBody: '' })?.state).toBe('unchecked');
+    });
+
+    it('warns when the customer got the English because translating failed', () => {
+        expect(customerReadsView({ ...sent, translatedBody: null, translationStatus: 'untranslated' })?.state)
+            .toBe('untranslated');
+    });
+
+    it('says nothing about a reply that needed no translation, or about the customer', () => {
+        expect(customerReadsView({ senderType: 'agent', body: 'Hello', translationStatus: null })).toBeNull();
+        expect(customerReadsView({ ...sent, senderType: 'guest' })).toBeNull();
+        // A Korean-speaking Agent's Korean reply: its translation is English, for colleagues.
+        expect(customerReadsView({ ...sent, translatedLang: 'en' })).toBeNull();
     });
 });

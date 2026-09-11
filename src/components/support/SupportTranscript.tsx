@@ -19,15 +19,20 @@ import { readerView } from './translationView';
 interface SupportTranscriptProps {
     messages: SupportMessageView[];
     isTyping: boolean;
+    /**
+     * An Agent's reply has arrived and is being translated for this customer. It is held
+     * back until then, so this is what tells them one is on its way.
+     */
+    isReplying?: boolean;
 }
 
-export function SupportTranscript({ messages, isTyping }: SupportTranscriptProps) {
+export function SupportTranscript({ messages, isTyping, isReplying = false }: SupportTranscriptProps) {
     const t = useTranslations('support');
     const endRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
         endRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
-    }, [messages, isTyping]);
+    }, [messages, isTyping, isReplying]);
 
     return (
         <div
@@ -36,7 +41,7 @@ export function SupportTranscript({ messages, isTyping }: SupportTranscriptProps
             aria-relevant="additions"
             className="flex-1 min-h-0 overflow-y-auto px-4 py-3"
         >
-            {messages.length === 0 && !isTyping && (
+            {messages.length === 0 && !isTyping && !isReplying && (
                 <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
                     {t('empty')}
                 </p>
@@ -50,6 +55,10 @@ export function SupportTranscript({ messages, isTyping }: SupportTranscriptProps
 
             {isTyping && (
                 <p className="mt-3 text-xs text-slate-500 dark:text-slate-400">{t('typing')}</p>
+            )}
+
+            {isReplying && !isTyping && (
+                <p className="mt-3 text-xs text-slate-500 dark:text-slate-400">{t('replying')}</p>
             )}
 
             <div ref={endRef} />

@@ -876,8 +876,6 @@ async function backgroundSeedEtgContent(hotelId: string, hotelName: string): Pro
               AND ratehawk_hid IS NULL
         `;
         console.log(`[etg-bg-seed] ${hotelId} (${hotelName}) → ${hid}: ${hotelImages.length} imgs, ${roomGroups.length} room groups`);
-        // Invalidate any cached search results so next request picks up the new room photos
-        await sql`DELETE FROM hotel_search_cache WHERE cache_key LIKE ${'hotel:' + hotelId + '|%'}`;
     } catch (e: any) {
         console.warn(`[etg-bg-seed] ${hotelId}: ${e.message?.slice(0, 80)}`);
     }
@@ -1187,24 +1185,23 @@ async function searchEtgCity(
     }
 }
 
-// ─── Hotel search cache ───────────────────────────────────────────────────────
+// ─── Search identity ──────────────────────────────────────────────────────────
 
-export const POPULAR_CITIES = new Set([
-    'tokyo', 'bangkok', 'seoul', 'singapore', 'paris',
-    'london', 'new york', 'dubai', 'barcelona', 'bali',
-]);
-
-export function isPopularCity(cityName: string): boolean {
-    return POPULAR_CITIES.has(cityName.toLowerCase().trim());
-}
-
-export function getEffectiveTtl(cityName?: string): number {
-    const standardTtl = parseInt(process.env.HOTEL_SEARCH_CACHE_TTL_MINUTES          ?? '120', 10);
-    const popularTtl  = parseInt(process.env.HOTEL_SEARCH_CACHE_TTL_POPULAR_MINUTES   ?? '360', 10);
-    return cityName && isPopularCity(cityName) ? popularTtl : standardTtl;
-}
-
-function buildHotelCacheKey(p: TgxSearchParams): string {
+/**
+ * What makes two searches the same search — used only to let identical searches that are
+ * in flight at the same moment share one supplier call.
+ *
+ * There is deliberately no result cache behind this any more. Search results used to be
+ * kept in `hotel_search_cache` for two hours (six for popular cities) and then served
+ * *stale* for as long again while refreshing in the background — so the first search after
+ * expiry showed rates up to twelve hours old, and the next showed the refreshed ones. A
+ * hotel's rate is its cheapest room, and cheap rooms are what sell, so a replayed rate was
+ * often a room already gone: customers searched, searched again, and watched every price
+ * rise. Measured on live 2026-09-11: Tokyo 7.7h old, Paris 7.1h, Manila 3.8h; against a live
+ * search of the same Manila stay, two hotels were 45% and 47% higher. CONTEXT.md, "Nightly
+ * Rate": always live.
+ */
+function buildSearchKey(p: TgxSearchParams): string {
     const location = p.hotelCode
         ? `hotel:${p.hotelCode}`
         : (p.rung === 'country' || p.rung === 'province')
@@ -1220,38 +1217,6 @@ function buildHotelCacheKey(p: TgxSearchParams): string {
         String(p.children ?? 0),
         p.guest_nationality ?? 'US',
     ].join('|');
-}
-
-async function getHotelSearchCache(key: string, ttlMinutes: number): Promise<{ result: any; stale: boolean } | null> {
-    try {
-        const sql = getSqlAdmin();
-        const rows = await sql`
-            SELECT result, (expires_at <= now()) AS stale
-            FROM hotel_search_cache
-            WHERE cache_key = ${key}
-              AND expires_at > now() - (${ttlMinutes} * interval '1 minute')
-            LIMIT 1
-        `;
-        if (!rows[0]) return null;
-        return { result: rows[0].result, stale: Boolean(rows[0].stale) };
-    } catch {
-        return null;
-    }
-}
-
-async function setHotelSearchCache(key: string, result: any, ttlMinutes: number): Promise<void> {
-    try {
-        const sql = getSqlAdmin();
-        await sql`
-            INSERT INTO hotel_search_cache (cache_key, result, expires_at)
-            VALUES (${key}, ${sql.json(result)}, now() + ${`${ttlMinutes} minutes`}::interval)
-            ON CONFLICT (cache_key) DO UPDATE
-                SET result = EXCLUDED.result, expires_at = EXCLUDED.expires_at, created_at = now()
-        `;
-        console.log(`[hotel-cache] WRITE ${key} (ttl=${ttlMinutes}min)`);
-    } catch (e: any) {
-        console.error('[hotel-cache] Write failed (key:', key, '):', e.message);
-    }
 }
 
 // ─── GraphQL queries ──────────────────────────────────────────────────────────
@@ -1379,8 +1344,7 @@ export type DestinationRung = 'country' | 'province' | 'city' | 'district' | 'po
  * pruned. An Unanswered Search has learned nothing about availability, so the
  * catalog must stay on screen.
  *
- * Thrown rather than returned so `runTgxSearch`'s `.then(cache)` is skipped and an
- * unanswered search can never be written to `hotel_search_cache`.
+ * Thrown rather than returned so no caller can mistake it for a real empty result.
  */
 export class UnansweredSearchError extends Error {
     readonly cityName: string;
@@ -1414,8 +1378,9 @@ export interface TgxSearchParams {
     lng?: number;
     /** Mapbox bounding box [minLng, minLat, maxLng, maxLat] — sizes a district's circle. */
     bbox?: [number, number, number, number];
-    /** Skip the DB cache read — always does a live TGX call. Used by prebook to get genuinely
-     *  fresh tokens; result is still written to cache to benefit subsequent requests. */
+    /** Do not join an identical search already in flight — run a separate supplier call.
+     *  Used by prebook, which needs option tokens minted for its own request. Every search
+     *  is live either way; there is no result cache to bypass any more. */
     bypassCache?: boolean;
 }
 
@@ -1652,14 +1617,10 @@ function persistFailedDestCode(destCode: string, cityName = ''): void {
     `.catch((e: any) => console.warn('[tgx-search] Could not persist failed dest code:', e.message));
 }
 
-// In-flight deduplication: when two requests arrive with the same cache key before
-// either has written a result (cache stampede), the second waits for the first
-// promise instead of firing a second TGX call that OTV will throttle.
+// In-flight deduplication: when two identical searches arrive while the first is still
+// running, the second waits for the first promise instead of firing a second TGX call that
+// OTV will throttle. Both still get a live answer — this shares a call, it stores nothing.
 const _inflight = new Map<string, Promise<any>>();
-
-// Tracks keys currently being refreshed in the background (stale-while-revalidate).
-// Prevents duplicate background refreshes when multiple requests hit a stale entry.
-const _backgroundRefreshing = new Set<string>();
 
 // ─── City search fallback ─────────────────────────────────────────────────────
 // Called for every city-name search (OTV never accepts free-text city names as
@@ -1992,71 +1953,35 @@ async function runCityFallback(
     return buildCityResults([], cityName, countryCode);
 }
 
+/**
+ * Search hotels, live, every time.
+ *
+ * Every caller — the search stream, the property page, a booking re-quote — gets the
+ * supplier's answer as of now. Nothing is replayed from an earlier search; see
+ * `buildSearchKey` for why the result cache was removed.
+ *
+ * The one sharing left: an identical search already in flight is joined rather than
+ * duplicated, so a customer double-clicking, or two tabs opening together, cost one supplier
+ * call and both get the same live answer. Prebook opts out (`bypassCache`) because it needs
+ * option tokens minted for its own request.
+ */
 export async function runTgxSearch(params: TgxSearchParams) {
-    const key = buildHotelCacheKey(params);
-    const ttl = getEffectiveTtl(params.cityName);
+    const key = buildSearchKey(params);
 
-    // 1. DB cache hit (fresh or stale-within-grace)
-    // Skipped when bypassCache=true so prebook always gets live tokens.
-    if (ttl > 0 && !params.bypassCache) {
-        const cached = await getHotelSearchCache(key, ttl);
-        if (cached !== null) {
-            if (!cached.stale) {
-                console.log(`[hotel-cache] HIT ${key}`);
-                return cached.result;
-            }
-            // Stale hit: return immediately, kick off background refresh
-            console.log(`[hotel-cache] STALE ${key} — serving stale result, refreshing in background`);
-            if (!_inflight.has(key) && !_backgroundRefreshing.has(key)) {
-                _backgroundRefreshing.add(key);
-                _runTgxSearch(params)
-                    .then(result => {
-                        const hasCityResults = Array.isArray(result?.data) && result.data.length > 0;
-                        const hasHotelRooms  = !Array.isArray(result?.data)
-                            && Array.isArray(result?.data?.roomTypes)
-                            && result.data.roomTypes.length > 0;
-                        if (hasCityResults || hasHotelRooms) {
-                            setHotelSearchCache(key, result, ttl).catch(() => {});
-                        }
-                    })
-                    .catch((e: any) => console.error('[hotel-cache] Background refresh failed:', e.message))
-                    .finally(() => _backgroundRefreshing.delete(key));
-            }
-            return cached.result;
-        }
-    }
-
-    // 2. In-flight dedup: attach to existing search for the same key.
-    // Also skipped for bypassCache so each prebook gets its own fresh search.
     if (!params.bypassCache) {
         const existing = _inflight.get(key);
         if (existing) {
-            console.log(`[hotel-cache] INFLIGHT ${key} — waiting for in-progress search`);
+            console.log(`[tgx-search] JOIN ${key} — sharing the live search already in flight`);
             return existing;
         }
     }
 
-    // 3. Start new search, register in-flight promise
-    const promise = _runTgxSearch(params)
-        .then(result => {
-            if (ttl > 0) {
-                // Only cache NON-EMPTY results. City search: result.data is an array;
-                // single-hotel: result.data is an object with roomTypes. Caching an empty
-                // roomTypes:[] would pin a hotel to "0 rooms" for the whole TTL even after
-                // the supplier recovers, so require at least one room/result.
-                const hasCityResults = Array.isArray(result?.data) && result.data.length > 0;
-                const hasHotelRooms  = !Array.isArray(result?.data)
-                    && Array.isArray(result?.data?.roomTypes)
-                    && result.data.roomTypes.length > 0;
-                if (hasCityResults || hasHotelRooms) {
-                    setHotelSearchCache(key, result, ttl).catch(() => {});
-                }
-                // Empty results are NOT cached — a transient TGX error or OTV availability gap
-                // would otherwise pin 0 hotels for all users until the TTL expires.
-            }
-            return result;
-        })
-        .finally(() => { _inflight.delete(key); });
+    // One line per supplier search, so volume is visible now that every search is one.
+    console.log(`[tgx-search] LIVE ${key}${params.bypassCache ? ' (own call)' : ''}`);
+
+    const promise = _runTgxSearch(params).finally(() => {
+        if (_inflight.get(key) === promise) _inflight.delete(key);
+    });
 
     if (!params.bypassCache) {
         _inflight.set(key, promise);

@@ -215,6 +215,9 @@ const META_REPLY = [
     /\bhow you would like to proceed\b/i,
     /\bprovide your (?:request|message|text) in\b/i,
     /\bI would like to inform you that I\b/i,
+    // Captured 2026-09-11, translating "저도 잘 생겼어요." back into English.
+    /\bcontext (?:does not|doesn['’]t) contain\b/i,
+    /\brelevant information for translation\b/i,
     // The prompt read back as the answer — captured 2026-09-11, from an earlier wording.
     /\btranslation engine, not an assistant\b/i,
     /\bnot addressed to you\b/i,
@@ -321,6 +324,12 @@ export function guardTranslation(
         return null;
     }
 
+    // Far too long to be a rendering of it — the engine talking instead of translating. The
+    // shortfall check above catches a reply that lost the message; this catches one that
+    // added an essay to it, in any wording: "I am sorry, but the context does not contain any
+    // relevant information for translation." came back for a ten-character message.
+    if (out.length > Math.max(MAX_LENGTH_FLOOR, source.trim().length * MAX_LENGTH_RATIO)) return null;
+
     // Every figure an Agent acts on must survive as digits. Measured: now and then a piece came
     // back with "10,453원" as "ten thousand four hundred fifty-three won", or without it.
     const outNumbers = new Set(bigNumbers(out));
@@ -351,6 +360,14 @@ const MIN_LENGTH_RATIO = { toEnglish: 0.8, fromEnglish: 0.12 } as const;
 
 /** Below this, lengths vary too much to judge ("네." is "Yes."), and nothing is dropped anyway. */
 const COMPLETENESS_MIN_SOURCE = 60;
+
+/**
+ * The longest a translation may be, as a multiple of its source — with a floor, so a
+ * two-character message may still become a short sentence. The widest measured was Chinese
+ * into English at 3.3× ("我找不到我的航班预订。" → "I cannot find my flight reservation.").
+ */
+const MAX_LENGTH_RATIO = 6;
+const MAX_LENGTH_FLOOR = 60;
 
 /**
  * The most sent to the engine in one request.
