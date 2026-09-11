@@ -15,52 +15,92 @@ const PAGE_SIZE = 15;
 function FlightCardSkeleton({ index = 0 }: { index?: number }) {
     return (
         <div
-            className="flex flex-col lg:flex-row bg-white dark:bg-slate-900 rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 animate-pulse"
+            className="relative w-full bg-white dark:bg-slate-900 rounded-2xl overflow-hidden border border-slate-200/70 dark:border-slate-700 shadow-[0_10px_30px_-14px_rgba(15,23,42,0.14)] animate-pulse"
             style={{ animationDelay: `${index * 150}ms` }}
         >
-            {/* Left: flight info skeleton */}
-            <div className="flex-1 px-2.5 pt-2.5 pb-2 lg:p-5">
-                {/* Airline header */}
-                <div className="flex items-center gap-1.5 lg:gap-3 mb-1.5 lg:mb-4">
-                    <Skeleton width={28} height={28} rounded="md" className="lg:!w-10 lg:!h-10" />
-                    <div>
-                        <Skeleton width={90} height={12} className="mb-0.5 lg:!w-[120px] lg:!h-4" />
-                        <Skeleton width={60} height={9} className="lg:!w-20 lg:!h-3" />
-                    </div>
-                </div>
-
-                {/* Route timeline */}
-                <div className="flex items-center gap-1.5 lg:gap-3 mb-1.5 lg:mb-4">
-                    <div className="text-center">
-                        <Skeleton width={42} height={16} className="mb-0.5 lg:!w-14 lg:!h-6" />
-                        <Skeleton width={24} height={9} className="lg:!w-8 lg:!h-3" />
-                    </div>
-                    <div className="flex-1 flex flex-col items-center gap-0.5">
-                        <Skeleton width={36} height={9} className="lg:!w-12 lg:!h-3" />
-                        <Skeleton width="100%" height={2} />
-                        <Skeleton width={40} height={9} className="lg:!w-[52px] lg:!h-3" />
-                    </div>
-                    <div className="text-center">
-                        <Skeleton width={42} height={16} className="mb-0.5 lg:!w-14 lg:!h-6" />
-                        <Skeleton width={24} height={9} className="lg:!w-8 lg:!h-3" />
-                    </div>
-                </div>
-
-                {/* Tags */}
-                <div className="flex gap-0.5 lg:gap-2">
-                    <Skeleton width={50} height={14} rounded="full" className="lg:!w-20 lg:!h-[22px]" />
-                    <Skeleton width={44} height={14} rounded="full" className="lg:!w-[72px] lg:!h-[22px]" />
-                    <Skeleton width={38} height={14} rounded="full" className="lg:!w-16 lg:!h-[22px]" />
-                </div>
+            {/* Save/heart button placeholder (mobile only — top-right corner), mirrors
+                FlightCard's absolutely-positioned SaveButton in the same spot. */}
+            <div className="absolute top-2 right-2 z-10 lg:hidden">
+                <Skeleton width={28} height={28} rounded="full" />
             </div>
 
-            {/* Right: price skeleton */}
-            <div className="flex flex-row lg:flex-col items-center lg:items-end justify-between lg:justify-center gap-1.5 lg:gap-2 lg:w-[180px] px-2.5 py-2 lg:p-5 lg:border-l border-t lg:border-t-0 border-slate-100 dark:border-slate-800">
-                <div>
-                    <Skeleton width={70} height={20} className="mb-0.5 lg:!w-[100px] lg:!h-7" />
-                    <Skeleton width={50} height={10} className="lg:!w-[72px] lg:!h-3.5" />
+            <div className="flex flex-col lg:flex-row">
+                {/* ─── Flight info (left) ─── */}
+                <div className="flex-1 min-w-0">
+                    <div className="p-4 lg:p-6">
+                        {/* Airline logo/name/flight-number + tag pills */}
+                        <div className="flex flex-wrap items-start gap-x-3 gap-y-2 mb-3 lg:mb-4">
+                            <div className="flex items-center gap-2 shrink-0">
+                                <Skeleton width={32} height={32} rounded="full" className="shrink-0 lg:!w-10 lg:!h-10" />
+                                <div className="min-w-0">
+                                    <Skeleton width={90} height={12} className="mb-1 lg:!w-[120px] lg:!h-[14px]" />
+                                    <Skeleton width={55} height={10} className="lg:!w-[72px] lg:!h-[12px]" />
+                                </div>
+                            </div>
+
+                            {/* Tag pills — carry-on bag, checked bag, refundability, cabin class */}
+                            <div className="flex flex-wrap items-center gap-1 lg:gap-1.5 min-w-0">
+                                <Skeleton width={72} height={17} rounded="full" className="lg:!w-[96px] lg:!h-[22px]" />
+                                <Skeleton width={64} height={17} rounded="full" className="lg:!w-[84px] lg:!h-[22px]" />
+                                <Skeleton width={92} height={17} rounded="full" className="lg:!w-[124px] lg:!h-[22px]" />
+                                <Skeleton width={56} height={17} rounded="full" className="lg:!w-[72px] lg:!h-[22px]" />
+                            </div>
+                        </div>
+
+                        {/* Route timeline — departure / duration-stops / arrival */}
+                        <div className="flex items-start justify-between gap-1 lg:gap-3">
+                            {/* Departure column */}
+                            <div className="flex w-[34%] shrink-0 flex-col gap-0.5 sm:w-[26%]">
+                                <Skeleton width={56} height={20} className="lg:!w-[72px] lg:!h-[28px]" />
+                                <Skeleton width={46} height={9} className="lg:!w-[58px] lg:!h-[11px]" />
+                                <Skeleton width="100%" height={11} className="lg:!h-[13px]" />
+                                <Skeleton width="75%" height={10} className="lg:!h-[12px]" />
+                            </div>
+
+                            {/* Middle: total duration + dotted divider + stops */}
+                            <div className="flex min-w-0 flex-1 flex-col items-center gap-1 px-1 pt-1.5 lg:px-2">
+                                <Skeleton width={92} height={10} className="lg:!w-[124px] lg:!h-[12px]" />
+                                {/* Static dotted rule, not a pulsing placeholder shape, so it
+                                    stays a plain border echoing the real card's dotted divider
+                                    rather than going through Skeleton. */}
+                                <div className="w-full border-t border-dotted border-slate-200 dark:border-white/10" />
+                                <Skeleton width={70} height={10} className="lg:!w-[96px] lg:!h-[12px]" />
+                            </div>
+
+                            {/* Arrival column */}
+                            <div className="flex w-[34%] shrink-0 flex-col items-end gap-0.5 text-right sm:w-[26%]">
+                                <Skeleton width={56} height={20} className="lg:!w-[72px] lg:!h-[28px]" />
+                                <Skeleton width={46} height={9} className="lg:!w-[58px] lg:!h-[11px]" />
+                                <Skeleton width="100%" height={11} className="lg:!h-[13px]" />
+                                <Skeleton width="60%" height={10} className="lg:!h-[12px]" />
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* "Show all segments" toggle placeholder — sibling of the content
+                        wrapper above, same as the real button's own bottom padding. */}
+                    <div className="flex items-center gap-1 px-4 lg:px-6 pb-4 lg:pb-6">
+                        <Skeleton width={14} height={14} rounded="sm" />
+                        <Skeleton width={92} height={10} className="lg:!w-[112px] lg:!h-[12px]" />
+                    </div>
                 </div>
-                <Skeleton width={76} height={28} rounded="full" className="lg:!rounded-lg lg:!w-full lg:!h-[38px]" />
+
+                {/* ─── Price rail (right when collapsed) ─── */}
+                <div className="relative flex flex-row items-center justify-between gap-1 lg:gap-1.5 p-4 lg:p-6 border-t border-slate-100 dark:border-slate-800 lg:flex-col lg:w-[180px] lg:border-l lg:border-t-0">
+                    {/* Save/heart button placeholder — desktop only, inline at the top */}
+                    <div className="hidden lg:flex justify-end w-full mb-1">
+                        <Skeleton width={28} height={28} rounded="full" />
+                    </div>
+
+                    <div>
+                        <Skeleton width={70} height={20} className="mb-0.5 lg:!w-[100px] lg:!h-7" />
+                        <Skeleton width={50} height={10} className="lg:!w-[72px] lg:!h-3.5" />
+                    </div>
+
+                    <div className="flex items-center gap-2 lg:mt-auto">
+                        <Skeleton width={76} height={30} rounded="full" className="lg:!rounded-md lg:!w-[112px] lg:!h-[38px]" />
+                    </div>
+                </div>
             </div>
         </div>
     );
