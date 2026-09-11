@@ -305,6 +305,34 @@ export function setDestCodeCache(cityKey: string, destCode: string): void {
 }
 
 /**
+ * Drop entries from the in-process cache so the next lookup re-reads the database.
+ *
+ * This Map has no TTL and no eviction: an entry survives for the life of the process. That
+ * is right for a code that never changes, and wrong the moment a code turns out to have
+ * been incorrect — on 2026-09-09 `paris:fr` was resolved to a ZONE for Alpine-Casparis
+ * Municipal Airport, the database was then repaired to the real code 2734, and Paris kept
+ * returning the wrong hotels because the repair could not reach the running process. The
+ * only remedy was to restart the container.
+ *
+ * A prefix clears one city across every country ("paris"), no argument clears everything.
+ * Returns the number of entries removed so a caller can report it.
+ */
+export function clearDestCodeCache(prefix?: string): number {
+    if (!prefix) {
+        const n = _destCodeCache.size;
+        _destCodeCache.clear();
+        return n;
+    }
+    const p = prefix.toLowerCase().trim();
+    let n = 0;
+    // Matches the bare key and every "city:cc" scoped key beneath it.
+    for (const key of [..._destCodeCache.keys()]) {
+        if (key === p || key.startsWith(`${p}:`)) { _destCodeCache.delete(key); n++; }
+    }
+    return n;
+}
+
+/**
  * Resolve a TravelgateX destination code for a given city.
  * Checks in-process cache → DB → TGX API (in that order).
  * Writes back to DB so future lookups skip the TGX API call entirely.
@@ -343,16 +371,42 @@ export async function resolveTgxDestinationCode(cityName: string, countryCode?: 
             row.destination_code === 'NONE' &&
             Date.now() - new Date(row.created_at).getTime() < NONE_TTL_DAYS * 86_400_000;
 
-        type DestRow = { destination_code: string; created_at: Date | string };
-        const readKey = async (k: string): Promise<string | undefined | null> => {
+        type DestRow = { destination_code: string; created_at: Date | string; parent_code: string | null };
+
+        /**
+         * The country a cached row belongs to, or null when the row cannot say.
+         *
+         * `parent_code` is either "Country Name#CC" or a numeric parent id. Only the
+         * named form identifies a country; `11218` and `-` say nothing, and a row we
+         * cannot judge is left alone rather than guessed at.
+         */
+        const rowCountry = (parentCode: string | null): string | null =>
+            /#([A-Z]{2})$/.exec(parentCode ?? '')?.[1] ?? null;
+
+        /**
+         * @param requireCountry when set, a row belonging to a *different* country is
+         *        treated as a miss. Used only for the unscoped fallback below, where the
+         *        key carries no country and the row may be any country's.
+         */
+        const readKey = async (k: string, requireCountry?: string): Promise<string | undefined | null> => {
             const rows = await sql<DestRow[]>`
-                SELECT destination_code, created_at FROM tgx_destination_cache
+                SELECT destination_code, created_at, parent_code FROM tgx_destination_cache
                 WHERE city_key = ${k} LIMIT 1`;
             if (rows.length === 0) return null;                       // no row — keep looking
             const row = rows[0];
             if (row.destination_code === 'NONE') {
                 if (isLiveNone(row)) { _destCodeCache.set(key, 'NONE'); return undefined; }
                 return null;                                          // stale NONE — re-ask TGX
+            }
+            if (requireCountry) {
+                const belongsTo = rowCountry(row.parent_code);
+                if (belongsTo && belongsTo !== requireCountry.toUpperCase()) {
+                    console.warn(
+                        `[dest-resolve] ignoring cached "${k}" → ${row.destination_code} (${belongsTo}); ` +
+                        `asked for ${requireCountry.toUpperCase()}`,
+                    );
+                    return null;                                      // wrong country — re-ask TGX
+                }
             }
             _destCodeCache.set(key, row.destination_code);
             return row.destination_code;
@@ -362,8 +416,14 @@ export async function resolveTgxDestinationCode(cityName: string, countryCode?: 
         if (hit !== null) return hit;
         // Fallback: sync-dest-cache stores codes without the ":countryCode" suffix.
         // When the scoped key misses, check the city-only key so we don't re-hit TGX.
+        //
+        // Country-checked, because the unscoped key holds exactly one row per city name
+        // worldwide and city names collide. Unchecked, "Paris, France" was answered with
+        // code 143485 — Paris, Texas — which TGX honestly reported as having no
+        // availability, and the search then pruned all 300 catalog hotels and rendered
+        // "no hotels found". Bali and Rome failed the same way on 2026-09-09.
         if (key !== cityOnlyKey) {
-            const cityHit = await readKey(cityOnlyKey);
+            const cityHit = await readKey(cityOnlyKey, countryCode);
             if (cityHit !== null) return cityHit;
         }
     } catch { /* non-fatal — fall through to TGX */ }

@@ -1,7 +1,7 @@
 import { getBookingsList } from '@/lib/server/admin';
 import { getAdminSettings } from '@/lib/server/admin/settings';
 import { RevenueClient } from './RevenueClient';
-import { calculateStripeFee } from '@/lib/pricing';
+import { calculateStripeFee, STRIPE_RATE, STRIPE_FLAT_FEE } from '@/lib/pricing';
 
 export const dynamic = 'force-dynamic';
 
@@ -29,19 +29,24 @@ export default async function AdminRevenuePage({
         getAdminSettings()
     ]);
 
-    // Set fixed markup percentages based on type as per policy, not calculated from raw numbers
     const enrichedBookings = rawData.bookings.map(booking => {
         // The booking is already enriched by getBookingsList, but we add revenue-dashboard specific splits here
         const b = booking as any;
         const markupAmount = b.markupAmount;
-        
-        // Logical split for display: 70% Platform, 30% Operational Margin
-        const markupPlatform = markupAmount * 0.7;
-        const markupMargin = markupAmount * 0.3;
 
-        // Strip processing/fixed breakdown
-        const stripeFeeProcessing = b.totalAmount * 0.029;
-        const stripeFeeFixed = 0.30;
+        // The whole markup is cost recovery, so all of it is "platform" and none of it is
+        // margin. This used to split it 70/30 into "Platform" and "Operational Margin",
+        // which was a display convention with nothing behind it — the 30% was never earned
+        // and, since the markup does not even cover Duffel's monthly invoice on the old
+        // rates, was money already spent. See ADR-0036.
+        const markupPlatform = markupAmount;
+        const markupMargin = 0;
+
+        // Stripe processing/fixed breakdown. Derived from the same constants the pricing
+        // model uses, so a corrected STRIPE_RATE moves reporting and pricing together
+        // rather than leaving the dashboard quoting a rate nothing charges.
+        const stripeFeeFixed = STRIPE_FLAT_FEE;
+        const stripeFeeProcessing = b.totalAmount * STRIPE_RATE;
 
         return {
             ...b,

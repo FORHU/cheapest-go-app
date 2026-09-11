@@ -4,6 +4,7 @@ import {
     mintBookingReference,
     isBookingReference,
     mintUniqueBookingReference,
+    BOOKING_REFERENCE_PATTERN,
 } from './bookingReference';
 
 describe('booking reference', () => {
@@ -11,13 +12,23 @@ describe('booking reference', () => {
         // FORHU- was the old prefix. It identifies the entity every project shares, so it
         // could never answer "which project did this money come from".
         expect(mintBookingReference('CheapestGo')).toMatch(/^CG-/);
-        expect(mintBookingReference('GeomeeGo')).toMatch(/^GG-/);
+        expect(mintBookingReference('AirangGo')).toMatch(/^GG-/);
         expect(mintBookingReference('CheapestGo')).not.toMatch(/FORHU/);
+    });
+
+    it('keeps minting GG- for the Korean brand under its pre-rebrand name', () => {
+        // The Korean instance runs with NEXT_PUBLIC_BRAND_NAME=GeomeeGo until it is
+        // redeployed. Without this entry the lookup misses and the fallback files those
+        // sales under CG-, attributing Korean revenue to CheapestGo in Stripe — the exact
+        // confusion the prefix exists to prevent. The prefix stays GG so references
+        // already issued keep resolving to one brand.
+        expect(brandPrefix('GeomeeGo')).toBe('GG');
+        expect(mintBookingReference('GeomeeGo')).toMatch(/^GG-/);
     });
 
     it('derives the prefix from the brand so the two cannot drift apart', () => {
         expect(brandPrefix('CheapestGo')).toBe('CG');
-        expect(brandPrefix('GeomeeGo')).toBe('GG');
+        expect(brandPrefix('AirangGo')).toBe('GG');
         // An unknown or missing brand still yields a usable reference rather than throwing
         // mid-checkout — source_brand stays the authority on which brand it really was.
         expect(brandPrefix('Unknown')).toBe('CG');
@@ -46,6 +57,28 @@ describe('booking reference', () => {
         expect(isBookingReference('CG-7K2M9QQ')).toBe(false); // too long
         expect(isBookingReference('CG-7K2M9I')).toBe(false);  // excluded letter
         expect(isBookingReference('FORHU-1786965181655-TOD6S')).toBe(false);
+    });
+
+    it('is anchored, so a reference embedded in other text is not one of ours', () => {
+        // An unanchored pattern would match a reference inside a longer string — a log
+        // line, a URL, a pasted email — and treat the surrounding text as ours.
+        expect(BOOKING_REFERENCE_PATTERN.test('xxGG-7K2M9Q')).toBe(false);
+        expect(BOOKING_REFERENCE_PATTERN.test('GG-7K2M9Qxx')).toBe(false);
+        expect(BOOKING_REFERENCE_PATTERN.test('ref: CG-7K2M9Q')).toBe(false);
+    });
+
+    it('rejects values that are not strings at all', () => {
+        expect(isBookingReference(null)).toBe(false);
+        expect(isBookingReference(undefined)).toBe(false);
+        expect(isBookingReference(123456)).toBe(false);
+        expect(isBookingReference({ ref: 'CG-7K2M9Q' })).toBe(false);
+    });
+
+    it('tolerates whitespace around the brand, which env vars pick up easily', () => {
+        // NEXT_PUBLIC_BRAND_NAME is read straight from the environment, and a trailing
+        // space there would otherwise silently mint CG- for a Korean sale.
+        expect(brandPrefix('  AirangGo  ')).toBe('GG');
+        expect(brandPrefix('\tCheapestGo\n')).toBe('CG');
     });
 
     it('does not repeat itself', () => {

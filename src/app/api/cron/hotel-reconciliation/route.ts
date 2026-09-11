@@ -15,6 +15,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createNotification } from '@/lib/server/admin/notify';
+import { fromStripeAmount } from '@/lib/pricing';
 import {
     findUnrecordedReservations,
     filterAlreadyNotified,
@@ -45,7 +46,11 @@ export async function GET(req: NextRequest) {
     const fresh = await filterAlreadyNotified(result.unrecorded);
 
     for (const item of fresh) {
-        const amount = (item.amount / 100).toFixed(2);
+        // fromStripeAmount, not `/ 100` — a KRW charge has no subunit, and an
+        // unrecorded-charge alert that understates the money by 100× reads as noise.
+        // Formatted rather than toFixed(2) so ₩1,200,000 does not render ".00".
+        const amount = fromStripeAmount(item.amount, item.currency)
+            .toLocaleString('en-US', { maximumFractionDigits: 2 });
         createNotification(
             UNRECORDED_NOTIFICATION_TITLE,
             `${item.bookingReference} — ${item.currency.toUpperCase()} ${amount} charged ${item.created.slice(0, 10)} ` +

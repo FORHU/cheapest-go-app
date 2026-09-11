@@ -8,6 +8,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useTheme } from '../../context/ThemeContext';
 import { useUserCurrency, useUserCountry, useSearchActions } from '@/stores/searchStore';
 import { useAuthStore } from '@/stores/authStore';
+import { brandWordmark, canonicalBrandName } from '@/lib/brand';
 import SignInDropdown from '../../auth/SignInDropdown';
 import CurrencySelector, { CURRENCIES } from '@/components/common/CurrencySelector';
 import { cn } from '@/utils/cn';
@@ -45,7 +46,7 @@ type Locale = (typeof LOCALES)[number];
 
 const LOCALE_COOKIE = 'locale';
 const LOCKED_LOCALE = process.env.NEXT_PUBLIC_LOCALE;
-const BRAND_NAME = process.env.NEXT_PUBLIC_BRAND_NAME ?? 'CheapestGo';
+const BRAND_NAME = canonicalBrandName(process.env.NEXT_PUBLIC_BRAND_NAME);
 
 function getLocaleCookie(): Locale | undefined {
   if (typeof document === 'undefined') return undefined;
@@ -102,11 +103,8 @@ const HeaderContent = () => {
           {/* Logo */}
           <Link href="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity shrink-0">
             <h1 className="text-base sm:text-lg md:text-xl text-slate-900 dark:text-white font-display font-bold tracking-tight truncate max-w-[120px] sm:max-w-none">
-              {BRAND_NAME === 'CheapestGo'
-                ? <>Cheapest<span className="text-alabaster-accent dark:text-obsidian-accent">Go</span></>
-                : BRAND_NAME === 'GeomeeGo'
-                ? <>Geomee<span className="text-alabaster-accent dark:text-obsidian-accent">Go</span></>
-                : BRAND_NAME}
+              {brandWordmark(BRAND_NAME).head}
+              <span className="text-alabaster-accent dark:text-obsidian-accent">{brandWordmark(BRAND_NAME).tail}</span>
             </h1>
           </Link>
 

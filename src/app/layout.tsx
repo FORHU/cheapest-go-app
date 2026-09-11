@@ -19,13 +19,14 @@ import { hreflangAlternates } from '@/lib/seo/hreflang';
 import { ClientOnly } from '@/components/common/ClientOnly';
 import { MobileBottomNav } from '@/components/common/MobileBottomNav';
 import { ScrollToTop } from '@/components/common/ScrollToTop';
+import { canonicalBrandName } from '@/lib/brand';
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-sans' });
 const interTight = Inter_Tight({ subsets: ['latin'], variable: '--font-display' });
 const jetbrainsMono = JetBrains_Mono({ subsets: ['latin'], variable: '--font-mono', display: 'optional' });
 
 const SITE_URL = env.SITE_URL;
-const BRAND_NAME = process.env.NEXT_PUBLIC_BRAND_NAME ?? 'CheapestGo';
+const BRAND_NAME = canonicalBrandName(process.env.NEXT_PUBLIC_BRAND_NAME);
 const BRAND_FAVICON = process.env.NEXT_PUBLIC_BRAND_FAVICON ?? '/Fav_Icon_Light.png';
 
 export const viewport: Viewport = {

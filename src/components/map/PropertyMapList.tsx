@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
 import React, { useCallback, useRef } from 'react';
 import { Hotel, List } from 'lucide-react';
 import { MapPropertyCard } from './MapPropertyCard';
@@ -22,6 +23,7 @@ const PropertyMapList = React.memo(function PropertyMapList({
     onHover,
     title,
 }: PropertyMapListProps) {
+    const tMap = useTranslations('map');
     const scrollRef = useRef<HTMLDivElement>(null);
 
     return (
@@ -59,10 +61,10 @@ const PropertyMapList = React.memo(function PropertyMapList({
                     <div className="flex flex-col items-center justify-center py-16 px-4 text-center">
                         <List className="w-8 h-8 text-slate-300 dark:text-slate-600 mb-3" />
                         <p className="text-sm font-medium text-slate-500 dark:text-slate-400">
-                            No properties to show
+                            {tMap('noProperties')}
                         </p>
                         <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">
-                            Try adjusting your search filters
+                            {tMap('adjustFilters')}
                         </p>
                     </div>
                 )}

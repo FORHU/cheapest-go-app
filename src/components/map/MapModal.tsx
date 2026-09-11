@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
 import React from 'react';
 import { createPortal } from 'react-dom';
 import { X, MapPin } from 'lucide-react';
@@ -42,6 +43,7 @@ export function MapModal({
     onHoverId,
     onViewDetails,
 }: MapModalProps) {
+    const tMap = useTranslations('map');
     useBodyScrollLock(isOpen);
 
     // Create portal to ensure it's on top of everything
@@ -74,7 +76,7 @@ export function MapModal({
                         <button
                             onClick={onClose}
                             className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-md p-2.5 rounded-full shadow-lg border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-white dark:hover:bg-slate-800 transition-all active:scale-95"
-                            aria-label="Close map"
+                            aria-label={tMap('closeMap')}
                         >
                             <X size={20} />
                         </button>

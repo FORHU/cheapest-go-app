@@ -10,10 +10,11 @@ import {
   DealsSectionStream,
 } from "./_sections";
 import { getTranslations } from 'next-intl/server';
+import { canonicalBrandName } from '@/lib/brand';
 
 export default async function Home() {
   const t = await getTranslations('seo');
-  const brandName = process.env.NEXT_PUBLIC_BRAND_NAME ?? 'CheapestGo';
+  const brandName = canonicalBrandName(process.env.NEXT_PUBLIC_BRAND_NAME);
   const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL ?? 'https://cheapestgo.com').replace(/\/$/, '');
   const organizationJsonLd = {
     '@context': 'https://schema.org',

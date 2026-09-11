@@ -324,9 +324,9 @@ const HorizontalCard: React.FC<PropertyCardProps> = ({
     // and client (live rates from a previous page visit), causing hydration mismatches.
     // Divide by nights: TGX returns gross as a total-stay amount, not per-night.
     const sourceCurrency = property.currency || 'USD';
-    const displayPrice = mounted ? convertCurrency(property.price, sourceCurrency, targetCurrency) / nights : property.price;
+    const displayPrice = mounted ? convertCurrency(property.price, sourceCurrency, targetCurrency) : property.price;
     const displayOriginalPrice = property.originalPrice
-        ? (mounted ? convertCurrency(property.originalPrice, sourceCurrency, targetCurrency) / nights : property.originalPrice)
+        ? (mounted ? convertCurrency(property.originalPrice, sourceCurrency, targetCurrency) : property.originalPrice)
         : undefined;
     const symbol = getCurrencySymbol(mounted ? targetCurrency : sourceCurrency);
 
@@ -468,7 +468,7 @@ const HorizontalCard: React.FC<PropertyCardProps> = ({
                                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
                                         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"/>
                                     </svg>
-                                    <span className="text-[9px] lg:text-xs font-medium">Fetching prices…</span>
+                                    <span className="text-[9px] lg:text-xs font-medium">{tCard('fetchingPrices')}</span>
                                 </div>
                                 <div className="h-3 w-16 bg-slate-100 dark:bg-slate-800 rounded animate-pulse" />
                             </div>

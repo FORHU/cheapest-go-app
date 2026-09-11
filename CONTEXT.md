@@ -27,15 +27,19 @@ _Avoid_: setting `redirect_uri` to the frontend URL — Google would land on a p
 
 **Cutover** — the moment traffic switches from v1 to v2. Has not happened yet. Until it does, v2 runs on its own database and never writes a migration — dbmate in v1 stays the sole author of schema, and v2's database is rebuilt from v1's. See [ADR-0018](docs/adr/0018-v2-has-its-own-database.md).
 
-**GeomeeGo** — a white-label deployment of CheapestGo targeting Korean users, served at `geomeego.com`. It is the same codebase, same database, and same feature set as CheapestGo — not a separate product. It differs only in brand name, logo, favicon, email sender, and locale (locked to Korean, no language switcher). Runs as a second EC2 instance pointing at the same repo and the same `DATABASE_URL`. See [ADR-0005](docs/adr/0005-geomeego-white-label-deployment.md).
-_Avoid_: treating GeomeeGo as a separate product or separate codebase — it shares all suppliers, inventory, users, and admin with CheapestGo. _Avoid_: adding Korean-specific features or business logic to the codebase without making them brand-configurable.
+**AirangGo** — a white-label deployment of CheapestGo targeting Korean users, served at `airanggo.com`. It is the same codebase, same database, and same feature set as CheapestGo — not a separate product. It differs only in brand name, logo, favicon, email sender, and locale (locked to Korean, no language switcher). Runs as a second **container on the same EC2 instance** as CheapestGo — port 3001 beside 3000, one nginx routing both by hostname, one database. See [ADR-0005](docs/adr/0005-geomeego-white-label-deployment.md).
+_Avoid_: looking for a second instance — there is one box, and stopping the container named `geomeego` takes airanggo.com down.
+_Avoid_: treating AirangGo as a separate product or separate codebase — it shares all suppliers, inventory, users, and admin with CheapestGo. _Avoid_: adding Korean-specific features or business logic to the codebase without making them brand-configurable.
 
-**White-label Deployment** — a Coolify service running the same `cheapest-go-app` repo with a different set of brand env vars (`NEXT_PUBLIC_BRAND_NAME`, `NEXT_PUBLIC_BRAND_LOGO_URL`, `NEXT_PUBLIC_BRAND_FAVICON`, `NEXT_PUBLIC_BRAND_EMAIL`, `NEXT_PUBLIC_LOCALE`, `NEXT_PUBLIC_SITE_URL`). The brand env vars are the single source of truth for which site is being served. No runtime domain detection.
+**GeomeeGo** — what **AirangGo** was called before the 2026-09 rebrand, and the second name this brand has had. Not a separate brand and never was. The name survives in running configuration rather than in intent: the Korean instance is still started with it until redeployed, `geomeego.com` still resolves until DNS moves, and admin cookies still hold it — so both names are accepted at once, on purpose. Infrastructure named after it (GitHub secrets, the EC2 container, `~/.env.geomeego`) is deliberately untouched, because those names live outside this repo.
+_Avoid_: renaming an infrastructure identifier to match the brand as a tidy-up — a secret reference renamed on only one side resolves to empty and deploys a broken container. _Avoid_: reading a `GG-` **Booking Reference** as belonging to a defunct brand; the prefix was kept through the rename so one brand's references stay one series.
+
+**White-label Deployment** — a second EC2 instance running the same `cheapest-go-app` repo with a different set of brand env vars (`NEXT_PUBLIC_BRAND_NAME`, `NEXT_PUBLIC_BRAND_LOGO_URL`, `NEXT_PUBLIC_BRAND_FAVICON`, `NEXT_PUBLIC_BRAND_EMAIL`, `NEXT_PUBLIC_LOCALE`, `NEXT_PUBLIC_SITE_URL`). The brand env vars are the single source of truth for which site is being served. No runtime domain detection.
 _Avoid_: reading `req.headers.host` to decide which brand to render — all brand config comes from env vars baked in at build/start time.
 
 ## Deployment
 
-**AWS EC2** — the Next.js app runs as a persistent Node.js process on EC2. Not serverless. Connection pools are shared across requests within one process. Each brand deployment (CheapestGo, GeomeeGo) is a separate EC2 instance with its own env vars pointing at the same RDS database.
+**AWS EC2** — the Next.js app runs as a persistent Node.js process on EC2. Not serverless. Connection pools are shared across requests within one process. Both brands run as separate containers on **one** EC2 instance, each with its own env file and host port, behind a single nginx that routes on hostname. One RDS database serves both.
 
 **Dev environment** — Docker Compose with PostgreSQL 17 + pgAdmin 4. One port means one thing: v1 dev on **3000**, the v1 container (live RDS) on **3001**, app-v2 on **3002**, api-v2 on **4000**. v1's Postgres is **5433**; v2's is **5434** ([ADR-0018](docs/adr/0018-v2-has-its-own-database.md)), with Redis on 6380. Local only. pgAdmin available at `http://localhost:5050` (admin@cheapestgo.local / cheapestgo).
 
@@ -87,12 +91,12 @@ _Avoid_: refunding one on discovery. The stay is real, so the charge is owed; wh
 
 **Stale Booking** — a **Booking** still reading `confirmed` whose **Reservation** has been cancelled at the supplier. The opposite direction of drift from an **Unrecorded Reservation**, and the more common one, since any dashboard cancellation creates one.
 
-**Booking Reference** — the identifier CheapestGo puts on a **sale**, `CG-XXXXXX` for CheapestGo and `GG-XXXXXX` for GeomeeGo. Minted before the charge and written onto the PaymentIntent, so it exists even where a booking was never confirmed — a payment that took money and then failed still has to be attributable. The prefix is derived from **Source Brand** at mint time rather than stored beside it, so the two cannot disagree.
+**Booking Reference** — the identifier CheapestGo puts on a **sale**, `CG-XXXXXX` for CheapestGo and `GG-XXXXXX` for AirangGo. Minted before the charge and written onto the PaymentIntent, so it exists even where a booking was never confirmed — a payment that took money and then failed still has to be attributable. The prefix is derived from **Source Brand** at mint time rather than stored beside it, so the two cannot disagree.
 _Avoid_: calling a **PNR** a reference, and reading a `CG` prefix as ours without the hyphen — `CG2MTN` is an airline PNR that begins with those letters by coincidence. The retired `FORHU-` prefix named FORHU Inc, the company every project shares, and so identified nothing.
 
 **PNR** — the airline's own record locator for a booking, six characters, assigned by the carrier. The traveller needs it at the airport and the airline will not recognise anything else, so it is displayed alongside the **Booking Reference**, never in place of it. Not unique to this platform and not ours to change.
 
-**Source Brand** — which storefront made the sale: `CheapestGo` or `GeomeeGo`. Stored on every booking table and the authority on brand; the **Booking Reference** prefix is a second representation of it, never an independent one.
+**Source Brand** — which storefront made the sale: `CheapestGo` or `AirangGo`. Stored on every booking table and the authority on brand; the **Booking Reference** prefix is a second representation of it, never an independent one.
 _Avoid_: treating brand as the same thing as project — FORHU Inc runs products beyond this platform, and they share one Stripe account and one pooled payout.
 
 **Edge Function** → **API Route** — all 47 Deno functions formerly hosted on Supabase Edge Functions have been converted or deleted. All active endpoints are Next.js API routes.
@@ -118,6 +122,9 @@ _Avoid_: treating it as fraud or error — a positioning flight on a separate ti
 
 **Settlement Currency** — the **Supplier Currency** of the specific offer being bought, and the denomination of every figure derived from the supplier order. The currency a charge is converted *from*.
 _Avoid_: converting from the currency in the client’s booking payload — that is a **Display Currency** value and a display artefact, never the basis for an amount charged.
+
+**Supplier Attempt** — one call to a supplier's booking or cancellation API, recorded before it is made rather than after. Distinct from a **Booking Reference**, which records a *sale*: an attempt records that we *asked*, which is the fact that survives a timeout, a crash, or a caller that never intended to write a booking at all. An attempt with no completion means the supplier was asked and the answer was never heard — not that nothing happened.
+_Avoid_: treating the `bookings` table as the record of what a supplier holds. On 2026-09-06 a live OTV reservation existed with no row here, and six of seven live Duffel orders had none either; the supplier's own list is the authority, and an attempt is our side of it. _Avoid_: logging a supplier call on success — the calls worth having are the ones that did not obviously succeed.
 
 **Orphaned Order** — a **Pre-Order** whose customer never completed payment, leaving airline inventory held against no sale. Reclaimed automatically only if the booking session recorded it; one that was created but never recorded is invisible to the platform and survives until the airline's own hold expires.
 _Avoid_: calling it a failed booking — the order succeeded, it is the payment that did not.
@@ -159,6 +166,9 @@ _Avoid_: showing no-availability hotels to users — TGX explicitly recommends a
 
 **NONE Sentinel** — a row in `tgx_destination_cache` whose `destination_code` is the literal `NONE`, meaning TGX's destinationSearcher has no destination code for that city. A city carrying one skips **Search by Destination** entirely and is served by **Hotel-Code Fallback**, at roughly half the inventory (measured: Seoul, 89 hotels via fallback against 185 via destination code `3124`).
 _Avoid_: treating a NONE Sentinel as a statement about supplier coverage — it records only that one destinationSearcher call failed, and it is written on any TGX `5xx`, including a transient one. _Avoid_: assuming a city recovers on its own once TGX is healthy — nothing expires or overwrites the sentinel, unlike the 7-day window on `tgx_failed_dest_codes`.
+
+**Destination Code** — the supplier's identifier for a place, and what a hotel search is actually asked in terms of. A city name does not identify one: Paris, Rome, Bali, Cambridge and Valencia each name several places in different countries, so a code is only meaningful together with the country it belongs to. Resolved once and cached, because asking the supplier costs an 18-second round trip.
+_Avoid_: keying a cached code on the city name alone. A single global row per name means the first country resolved wins forever, and every other country silently inherits it — on 2026-09-09 "Paris, France" searched Paris, Texas, "Bali, Indonesia" searched Bali in Crete, and "Rome, Italy" returned eight hotels in Rome, Georgia. _Avoid_: reading a zero from a wrong-country code as a **No-Availability Hotel** result; the supplier answered honestly about a place nobody asked for.
 
 **Unanswered Search** — a hotel search that ended without the supplier ever giving a usable answer: a TGX timeout, a `513` handler overload, a destination code that never resolved, or an empty catalog to fall back on. Distinct from a **No-Availability Hotel**, where the supplier *did* answer and reported no inventory. Only the latter justifies pruning the Phase 1 catalog — an Unanswered Search has learned nothing about availability, so the catalog stays on screen and the user is told prices could not be loaded.
 _Avoid_: rendering an Unanswered Search as "no hotels found" or as the destination lacking supplier coverage — the destination was never actually asked. _Avoid_: caching an Unanswered Search's empty result, or recording its destination code as an OTV miss. _Avoid_: letting a clean zero from the **Hotel-Code Fallback** cancel a destination that was never resolved — asking by hotel code is not the same question as asking by destination, and on 2026-09-02 a Phuket search where the fallback answered zero was followed seconds later by a destination-code search that returned real availability for the same city and dates.
@@ -225,10 +235,13 @@ _Avoid_: conflating with **Supplier Currency** — the two differ on most bookin
 _Avoid_: treating a converted display price as a quote.
 
 **Display Currency** — what a price is *shown* in across the storefront. Converted server-side, so the figure on screen is the same one that will be charged; the browser renders prices, it does not compute them.
-_Avoid_: converting prices in the browser — two independent conversions drift apart and put the customer in front of a price-changed prompt. _Avoid_: using the admin's own currency selector (a per-viewer display preference) as if it were the **Reporting Currency**.
+The guarantee is about **conversion**, not about the total: a displayed price is the supplier's price in the viewer's currency, and the markup is added at booking by deliberate choice, so the checkout total is knowingly higher than the search figure.
+_Avoid_: converting prices in the browser — two independent conversions drift apart and put the customer in front of a price-changed prompt. _Avoid_: using the admin's own currency selector (a per-viewer display preference) as if it were the **Reporting Currency**. _Avoid_: reading the search figure as an all-in quote, or the gap at checkout as a fault — it is the markup, and it widens as the markup grows.
 
 **Nightly Rate** — a room's price for one night. What the storefront advertises and what a guest compares between hotels, so it is the figure on a search card and on a room card. Always derived, never quoted: suppliers price stays, not nights.
 _Avoid_: showing a **Stay Total** with a "per night" label — the same number means something different to a supplier and to a guest, and the guest reads it as the cheaper of the two.
+_Note_: derived exactly once, and the search stream is where. A price that has already been divided looks no different from one that has not — both are numbers, and dividing a second time is silent — so a Nightly Rate arriving from a search is rendered and converted, never divided. On 2026-09-10 seven display surfaces divided again and the whole storefront advertised half: ₱1,587 on a map marker for a room the property page sold at ₱3,173. It showed on no one-night stay, which is why it survived.
+_Avoid_: a helper named for the conversion rather than for what it takes. "To per night" reads as safe to apply to anything, including a figure that is already per night; the name is what invited the second division after the first had been fixed.
 
 **Stay Total** — what a room costs for the whole date range asked about. This is what OTV/TGX actually quotes and what prebook confirms, so it is the only hotel price the platform receives directly and the basis of every charge.
 _Avoid_: passing one as a bare number. A price and the stay it covers travel together; a figure that has lost its night count cannot be restated per night by whoever renders it next, only guessed at.
@@ -238,11 +251,23 @@ _Avoid_: recomputing a past period at today's rate — a closed month never move
 
 **Locked Rate** — the exchange rate captured alongside a payment, and the evidence for its **Booked Amount**. Stored with the booking rather than looked up later, because a rate that was not recorded at the time cannot be recovered.
 
+**Price Promise** — the competitive claim the brand name makes, and it is measured **against other online travel agencies** — Trip.com, Agoda, Expedia, Kiwi — never against an airline's or hotel's own website. Chosen because the fares Duffel and OTV expose carry no commission a direct channel has to pay, so beating direct is not a promise that can be kept; beating an OTA is.
+_Avoid_: reading it as a promise to beat a **Home-Market Fare** — a local consolidator on domestic inventory sits outside the claim, and the glossary already records CheapestGo landing multiples above one. _Avoid_: treating a metasearch results row as the benchmark — those compare a raw number, which a per-booking flat fee will always lose on cheap fares.
+
 **Gross Booking Value** — the total customer-facing value of bookings taken, including the supplier's share. A volume measure: it says how much money moved through the platform, not how much the platform earned.
 _Avoid_: calling this "revenue" — most of it belongs to the airline or hotel.
 
-**Net Revenue** — what CheapestGo keeps: **Gross Booking Value** less supplier cost. Equal to the markup, which is deliberately sized to cover Stripe fees rather than to earn a margin.
-_Avoid_: "profit" — the markup is a cost-recovery buffer, and labelling it profit implies a margin the pricing model does not intend to make.
+**Platform Cost** — the third-party cost of operating a booking over and above what the airline or hotel is owed, and the closed set the markup exists to recover: payment processing (Stripe) plus a supplier platform's own fees. Deliberately excludes hosting, monitoring, mapping and every other running cost of the business — those scale with the product rather than with bookings, so recovering them through a fare would be a margin under another name.
+_Avoid_: treating **Platform Cost** as equal to supplier cost — the fare or room rate owed to the provider is not a platform fee. _Avoid_: assuming every supplier carries one. It is presently a **flights-only** cost: Duffel bills FORHU monthly for order and content fees, whereas the OTV monthly invoice is the room cost itself drawn on a credit line, not a fee on top of it.
+_Avoid_: reading it as a single percentage. It is **part flat and part proportional** — Duffel bills a fixed fee on each paid order plus a share of the order's value, and Stripe does the same shape again — so a recovery expressed only as a percentage is too thin on cheap fares and too fat on expensive ones.
+_Avoid_: assuming a cancelled booking costs nothing. Both suppliers charge on the order as created; the customer's refund returns the markup in full, so a cancellation is a **Platform Cost** with no recovery attached to it.
+_Avoid_: conflating the **estimated** and **recorded** figures. A booking has to be priced before it is charged, so the markup is set against an estimate; what each party actually took is only knowable afterwards, from Stripe's balance transaction and the supplier's monthly invoice. Both are **Platform Cost**, and the gap between them is the thing worth watching — a pricing model that is never compared against the recorded figure will keep charging a number that stopped being right without anyone learning of it.
+
+**Net Revenue** — what CheapestGo keeps: **Gross Booking Value** less supplier cost. Equal to the markup, which is deliberately sized to recover **Platform Cost** rather than to earn a margin.
+_Avoid_: "profit" — the markup is a cost-recovery buffer, and labelling it profit implies a margin the pricing model does not intend to make. _Avoid_: reading a positive **Net Revenue** as money kept — the monthly platform invoices are settled out of it and are not visible on any single booking.
+
+**Price Hold** — the short window in which a supplier's quote stays chargeable, after which it lapses and the traveller re-quotes. It is a countdown, not a commitment: expiry is the designed behaviour, and nothing about it promises the price will still be available afterwards or that it is the lowest anywhere.
+_Avoid_: "price guarantee", and its translations — `가격 보장` and `料金の保証` both read as a promise the product does not make, on a banner shown mid-checkout beside money. Chinese `价格保留` is the right shape. _Avoid_: conflating it with the **Price Promise**, which is a competitive claim about other agencies and has nothing to do with a quote's lifetime.
 
 **Reversal** — the accounting undo of a refunded booking, carried out at that booking's own **Locked Rate** so the sale and the refund cancel to nothing. The customer is returned exactly what they paid in their **Charge Currency**, so no gain or loss arises to report.
 _Avoid_: revaluing a refund at the current rate — that manufactures an FX movement out of a transaction that had none.
@@ -263,11 +288,17 @@ _Avoid_: re-introducing any cron that calls a hotel availability API without a r
 ## Support
 
 **Support Chat** — a conversation between one customer and CheapestGo about a trip they have or are trying to book, answered by an **Agent**. Opening one requires signing in, so every Support Chat has an account behind it and therefore a way to reach whoever started it.  A customer has at most one open Support Chat at a time; asking again resumes the one they have rather than starting a second.
-_Avoid_: "ticket" — a Support Chat is not numbered, not closed by the customer, and nothing about it is promised to be answered off-line. _Avoid_: calling it a "session" — it outlives the browser tab it was opened in.
+_Avoid_: "ticket" — it is not closed by the customer, nothing about it is promised to be answered off-line, and it is not a unit of work that can be handed on while the customer waits somewhere else. A **Chat Reference** now names one, so "not numbered" is no longer the reason; being numbered is what lets a customer cite a conversation, not what turns it into a queue item. _Avoid_: calling it a "session" — it outlives the browser tab it was opened in.
 _Note_: until 2026-09-07 a Support Chat was answered first by a model and reached an Agent only on hand-over. The model is gone and the vocabulary of hand-over went with it — a reader who finds `escalation_reason` or a `senderType` of `ai` in the schema is looking at residue, not at a capability.
 
-**Support Widget** — the floating launcher and panel that hosts a Support Chat on the site. The widget is the surface; the Support Chat is the thing it shows. One can exist without the other: the chat continues when the widget is closed. A signed-out visitor sees the launcher and is asked to sign in; the widget is never a box a stranger types into.
+**Support Widget** — the panel that hosts a Support Chat on the site. The widget is the surface; the Support Chat is the thing it shows. One can exist without the other: the chat continues when the widget is closed. It is never a box a stranger types into — a signed-out visitor is sent to the **Help Page** instead, and signs in from there if they want a person.
+_Note_: there is no floating launcher any more. Support is entered from the account menu and from the footer, so no page carries a permanent button, and what the entry point does depends on who is asking.
 _Avoid_: using "widget" for the conversation, or "chat" for the button.
+
+**Help Page** — the public answers, at `/help`: what to do when a confirmation has not arrived, how refunds and cancellations work, why the checkout total is higher than the search figure. Readable by anyone, in the domain's language, and indexed.
+_Why it exists_: a Support Chat requires an account, so before this page "Support" led a signed-out visitor to a sign-in form and stopped. Being reachable and being usable are different things, and only the first was true — which reads to a visitor as support being unavailable. It is also the ordinary shape for the industry: help articles are public everywhere, and a conversation about *your* booking needs to know whose booking it is.
+_Note_: it is the destination of the support entry point for anyone not signed in, and it carries the way to a person at the bottom rather than the top — most of what support is asked is answered by the article above the button.
+_Avoid_: confusing it with `/support/login`, which is the staff door and has no customer content on it. _Avoid_: treating it as policy — the **Refund Policy** and the terms are the documents, and this links to them rather than restating them, which is also why it carries no effective date.
 
 **Waiting** — a Support Chat nobody has answered yet. Every Support Chat begins here, at any hour, from its first message. It is a state, not an event: nothing *happens* to put a chat in the queue, because the queue is where a chat starts.
 _Avoid_: "escalated", "raised", "handed over" — all three imply a prior owner, and there is never one. _Avoid_: treating an out-of-hours chat as a different kind of thing; it is the same state, differently explained.
@@ -300,5 +331,36 @@ _Avoid_: treating Assignment as permission — any Agent can read any Support Ch
 **Resolved** — an Agent's statement that a Support Chat is finished. It is not an ending: a customer who writes again reopens the conversation, with the same transcript, and it returns to **Waiting** exactly as a fresh one would. Only an Agent resolves; the customer closing the widget means nothing.
 _Avoid_: "closed" — nothing is prevented afterwards. _Avoid_: reading a Resolved chat as one the customer agreed was finished; it records what the Agent believed.
 
+**Chat Reference** — the short code that names one Support Chat out loud, `CS-` and six characters, e.g. `CS-9QM2K7`. It exists so a customer writing from their own mail client, or an Agent naming a case to a colleague, can point at a conversation without a link.
+_Avoid_: treating it as a credential. Holding a Chat Reference grants nothing: a Support Chat is reached by signing in, and the reference only names the thing you must already be entitled to see. This is the deliberate difference from helpdesks whose reference number *is* the way in.
+_Avoid_: reading it as a booking reference. Bookings are `CG-` and `GG-`, one prefix per brand, because a booking has to be attributed to a brand inside one shared Stripe account. A chat has no money in it and the queue is deliberately blind to brand, so one prefix serves both.
+_Avoid_: "ticket number" — see the note under **Support Chat** on why the conversation is not a ticket.
+
+**Linked Booking** — a trip a Support Chat is about, named by its booking reference. A chat has any number of them, including none: a customer has at most one open Support Chat, so the single chat that is open has to carry every question they have, and a trip is often a flight and a hotel bought separately. A general question about how refunds work has no Linked Booking at all and is not incomplete for lacking one.
+_Note_: the link records who made it. A customer chooses from their own bookings when opening the chat; an Agent can add or remove one afterwards. Nothing is linked by inference — a booking attached because it merely happened to be upcoming is a guess presented as a fact, and the place it would surface is a refund dispute.
+_Avoid_: calling it "the booking" as though there were one.
+
+**Urgency** — how close a Support Chat's customer is to travelling, and therefore how badly waiting hurts them. It is read from the **Linked Booking**, not declared: someone in a hotel tonight or at an airport in three hours outranks someone asking about a receipt, whatever order they wrote in. A chat with several Linked Bookings takes the most urgent of them; a chat with none is ordinary, which is right — a question with no trip attached is rarely the one that cannot wait.
+_Why it is not asked_: a customer offered a box marked "urgent" ticks it, and a queue sorted by self-assessment is sorted by nothing. Departure dates are already known, already true, and cannot be argued with.
+_Note_: an Agent can overrule it, and the override is what is stored — Urgency itself is computed at read time and never written down, because a booking that was three weeks away when the chat opened is three days away later and the queue must know that without anyone revisiting the row.
+_Avoid_: "priority" as though it were a property of the conversation. It is a property of the *trip*, and it changes on its own as the date approaches.
+
+**Internal Note** — something an Agent writes on a Support Chat for other Agents. It has no recipient: it is never delivered, never translated, never shown to the customer, and its arrival does not change the customer's place in the queue.
+_Avoid_: thinking of it as a message with the audience turned off. A Note is an annotation on the conversation, which is why it is kept apart from the transcript rather than filtered out of it — the customer's view of a Support Chat cannot omit a Note it is incapable of reading.
+
 **AI Search** — the hero's natural-language mode, which turns one sentence into search parameters and runs a search. Distinct from a Support Chat: it is a single turn, it holds no history, and it is about finding a trip rather than fixing one.
 _Avoid_: calling it a chat or an assistant. _Note_: as of 2026-09-05 it is a mock — a two-second delay and a hardcoded result — so treat it as a design placeholder, not a capability.
+
+## Localization
+
+**Interface Language** — the words CheapestGo itself authors on the **storefront**: buttons, labels, map controls, policy headings, and the amenity vocabulary its own code maps supplier codes onto. Everything here is translatable by the team, into every locale the storefront offers, and English appearing in it reads as an unfinished product rather than an imported one. The back office is deliberately outside it — the only people who see admin are the team, so it stays English however many locales the storefront gains.
+_Avoid_: treating a screen as translated because its keys exist — a string that was never given a key is invisible to any coverage count, and those are the ones a customer notices first, because they sit in the booking funnel rather than in the settings.
+
+**Supplier Content** — the words a provider wrote: property descriptions, room names, bed notes, cancellation prose. It arrives in whatever language the supplier holds and is passed through unchanged, so it stays English on a Korean storefront. Deliberate: the content cache keeps one description per property with no language dimension, and a machine translation of a description sitting beside a price someone is being asked to pay is worse than the original.
+_Avoid_: counting it as a translation gap. It is a supplier capability question — whether OTV holds Korean text at all — not a missing key.
+
+**Storefront Locale** — the language a page is written in. It selects the **Interface Language** and nothing else: not **Supplier Content**, not the **Charge Currency**, not which properties are returned.
+_Avoid_: inferring the market from it — locale is what a page is written in, not who may buy.
+
+**Language Territory** — the set of languages one domain is allowed to serve, and the rule that no language is served by two domains. `airanggo.com` holds Korean alone; `cheapestgo.com` holds English, Japanese and Chinese. A language has exactly one home, so two of our own URLs never compete for the same query and `hreflang` has a single alternate to name per language.
+_Avoid_: adding a locale to a domain because the routing already supports it — the constraint is commercial, not technical, and the cost of breaking it is that a brand competes with itself for its own market. _Avoid_: reading it as a restriction on visitors; anyone may buy from any storefront, in any **Charge Currency** offered.

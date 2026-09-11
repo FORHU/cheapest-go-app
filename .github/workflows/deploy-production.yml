@@ -1,87 +1,206 @@
-name: Deploy Production
+# Deploy CheapestGo to production.
+#
+# Flow: docker build -> push to ECR -> SSM RunCommand writes the runtime env file,
+# pulls the image, restarts the app and its cron sidecar.
+# NEXT_PUBLIC_* is inlined at build time (Next.js client + many server routes),
+# so those values are build args as well as runtime env.
+#
+# ---------------------------------------------------------------------------
+# Two containers, one image repository:
+#   - CONTAINER_NAME      cheapestgo        port 3000, the app
+#   - CRON_CONTAINER_NAME cheapestgo-cron   --network host, runs docker/cron/crontab
+# The sidecar is rebuilt and recreated on every deploy so the schedule on the box is
+# always the crontab in this commit. It reaches the app on localhost:3000 rather than
+# the public URL, because /api/internal/* is not meant to be called from outside.
+#
+# No --platform: the instances are x86 and the runner is x86, so a native build
+# matches. Do not copy an arm64 build arg from another repo without checking the
+# instance type — an arch mismatch fails at container start, not at build.
+#
+# ---------------------------------------------------------------------------
+# One-time AWS setup:
+#
+# 1. IAM role for this repo (OIDC). Trust:
+#      aud = sts.amazonaws.com
+#      sub = repo:FORHU/cheapest-go-app:environment:production
+#    Permissions: ECR push/pull on the repository below; ssm:SendCommand on
+#      arn:aws:ssm:REGION::document/AWS-RunShellScript and the instance ARN;
+#      plus ssm:ListCommands / ListCommandInvocations / GetCommandInvocation.
+#
+# 2. Instance role: AmazonSSMManagedInstanceCore + ECR pull on the repository.
+#    Without the first, SSM cannot reach the box and this workflow cannot run.
+#
+# ---------------------------------------------------------------------------
+# Environment: production
+#
+# Variables (non-secret):
+#   AWS_REGION            e.g. ap-southeast-1
+#   ECR_REPOSITORY        e.g. cheapestgo
+#   EC2_TARGET_TAG_KEY    Name
+#   EC2_TARGET_TAG_VALUE  production-cheapestgo
+#   CONTAINER_PORT        e.g. 3000
+#   ENV_FILE_PATH         e.g. /opt/cheapestgo/.env
+#
+# Secrets: AWS_DEPLOY_ROLE_ARN plus the 43 runtime values listed in the deploy job.
+#
+# NOTE ON SECRETS: the runtime env is base64-encoded into the SSM command, which
+# means those values are retrievable from SSM command history and CloudTrail by
+# anyone with ssm:GetCommandInvocation on this account. That is acceptable for a
+# repo whose variables are all public; ours are not. Moving the env file to an SSM
+# Parameter Store SecureString the instance reads for itself would remove that
+# exposure and is the intended follow-up.
+# ---------------------------------------------------------------------------
+
+name: Deploy to Production
 
 on:
   push:
     branches: [main]
-  workflow_dispatch:
+  workflow_dispatch: {}
+
+permissions:
+  id-token: write
+  contents: read
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+env:
+  CONTAINER_NAME: cheapestgo
+  CRON_CONTAINER_NAME: cheapestgo-cron
 
 jobs:
   ci:
+    name: Typecheck and tests
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      # pnpm, not npm. Both lockfiles used to be committed and neither tool updated the
+      # other, so a dependency added with one left CI installing from a stale lockfile —
+      # which is how the AWS SDK reached main with a package-lock.json that did not have
+      # it. package-lock.json is gone; pnpm-lock.yaml is the only lockfile now.
+      #
+      # Pinned to the version the lockfile was produced by, and kept in step with the
+      # Dockerfile: pnpm 10 changed lockfile handling mid-series, so an unpinned install
+      # can fail on a lockfile nobody has touched.
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.32.1
       - uses: actions/setup-node@v4
         with:
           node-version: 24
-      - run: npm ci --ignore-scripts
-      - run: npx tsc --noEmit
-      - run: npm test -- --run
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile --ignore-scripts
+      - run: pnpm exec tsc --noEmit
+      - run: pnpm test -- --run
 
-  deploy:
+  build-and-push:
+    name: Build and push image
     needs: ci
     runs-on: ubuntu-latest
     environment: production
-
+    env:
+      AWS_REGION: ${{ vars.AWS_REGION }}
+      ECR_REPOSITORY: ${{ vars.ECR_REPOSITORY }}
+    outputs:
+      image_tag: ${{ steps.meta.outputs.image_tag }}
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ secrets.AWS_REGION }}
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
 
       - name: Login to Amazon ECR
-        id: login-ecr
+        id: ecr-login
         uses: aws-actions/amazon-ecr-login@v2
 
-      - name: Build and push image to ECR
+      - name: Set image metadata
+        id: meta
+        run: echo "image_tag=${GITHUB_SHA::12}" >> "$GITHUB_OUTPUT"
+
+      - name: Require public build args
         env:
-          REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-          REPOSITORY: ${{ secrets.ECR_REPOSITORY }}
-          SHA: ${{ github.sha }}
+          NEXT_PUBLIC_SITE_URL: ${{ secrets.NEXT_PUBLIC_SITE_URL }}
+          NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY }}
         run: |
+          set -euo pipefail
+          MISSING=""
+          require_env() { if [[ -z "$2" ]]; then MISSING="${MISSING} $1"; fi; }
+          require_env NEXT_PUBLIC_SITE_URL "$NEXT_PUBLIC_SITE_URL"
+          require_env NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY "$NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY"
+          if [[ -n "$MISSING" ]]; then
+            echo "Missing required secrets:${MISSING}" >&2
+            exit 1
+          fi
+
+      - name: Build and push app image
+        env:
+          ECR_REGISTRY: ${{ steps.ecr-login.outputs.registry }}
+          IMAGE_TAG: ${{ steps.meta.outputs.image_tag }}
+        run: |
+          set -euo pipefail
           docker build \
             --build-arg NEXT_PUBLIC_MAPBOX_TOKEN="${{ secrets.NEXT_PUBLIC_MAPBOX_TOKEN }}" \
             --build-arg NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY="${{ secrets.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY }}" \
             --build-arg NEXT_PUBLIC_SITE_URL="${{ secrets.NEXT_PUBLIC_SITE_URL }}" \
-            -t $REGISTRY/$REPOSITORY:$SHA \
-            -t $REGISTRY/$REPOSITORY:latest \
+            --tag "$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" \
+            --tag "$ECR_REGISTRY/$ECR_REPOSITORY:latest" \
             .
-          docker push $REGISTRY/$REPOSITORY:$SHA
-          docker push $REGISTRY/$REPOSITORY:latest
+          docker push "$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
+          docker push "$ECR_REGISTRY/$ECR_REPOSITORY:latest"
 
-      # The cron sidecar runs the 12 operational jobs in docker/cron/crontab —
-      # ticket polling, orphaned-order cleanup, email retries, session and cache
-      # expiry, deal refreshes. docker-compose starts it locally, but the
-      # production deploy used to start the app alone, so on production it only
-      # ever existed as state someone created on the box by hand: a reboot or a
-      # fresh instance would have silently lost every one of those jobs.
-      # Same ECR repository, distinct tag — no second repo or secret needed.
-      - name: Build and push cron sidecar to ECR
+      # The sidecar runs the operational jobs in docker/cron/crontab — ticket polling,
+      # orphaned-order cleanup, email retries, session and cache expiry, destination
+      # cache fills. Same repository, distinct tag: no second repo or variable needed.
+      - name: Build and push cron sidecar
         env:
-          REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-          REPOSITORY: ${{ secrets.ECR_REPOSITORY }}
-          SHA: ${{ github.sha }}
+          ECR_REGISTRY: ${{ steps.ecr-login.outputs.registry }}
+          IMAGE_TAG: ${{ steps.meta.outputs.image_tag }}
         run: |
+          set -euo pipefail
           docker build \
-            -t $REGISTRY/$REPOSITORY:cron-$SHA \
-            -t $REGISTRY/$REPOSITORY:cron-latest \
+            --tag "$ECR_REGISTRY/$ECR_REPOSITORY:cron-$IMAGE_TAG" \
+            --tag "$ECR_REGISTRY/$ECR_REPOSITORY:cron-latest" \
             ./docker/cron
-          docker push $REGISTRY/$REPOSITORY:cron-$SHA
-          docker push $REGISTRY/$REPOSITORY:cron-latest
+          docker push "$ECR_REGISTRY/$ECR_REPOSITORY:cron-$IMAGE_TAG"
+          docker push "$ECR_REGISTRY/$ECR_REPOSITORY:cron-latest"
 
-      - name: Setup SSH
-        run: |
-          mkdir -p ~/.ssh
-          echo "${{ secrets.SSH_KEY }}" > ~/.ssh/id_rsa
-          chmod 600 ~/.ssh/id_rsa
-          ssh-keyscan -H "${{ secrets.EC2_HOST }}" >> ~/.ssh/known_hosts || true
-          echo "StrictHostKeyChecking no" >> ~/.ssh/config
+  deploy:
+    name: Deploy via SSM
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    environment: production
+    env:
+      AWS_REGION: ${{ vars.AWS_REGION }}
+      ECR_REPOSITORY: ${{ vars.ECR_REPOSITORY }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
 
-      - name: Write .env to EC2
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Resolve ECR registry
+        id: ecr-login
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Send deploy command via SSM
+        id: send-command
         env:
+          ECR_REGISTRY: ${{ steps.ecr-login.outputs.registry }}
+          IMAGE_TAG: ${{ needs.build-and-push.outputs.image_tag }}
+          CONTAINER_PORT: ${{ vars.CONTAINER_PORT }}
+          ENV_FILE_PATH: ${{ vars.ENV_FILE_PATH }}
+          TAG_KEY: ${{ vars.EC2_TARGET_TAG_KEY }}
+          TAG_VALUE: ${{ vars.EC2_TARGET_TAG_VALUE }}
           V_DATABASE_URL: ${{ secrets.DATABASE_URL }}
           V_DATABASE_URL_UNPOOLED: ${{ secrets.DATABASE_URL_UNPOOLED }}
           V_DATABASE_SSL: ${{ secrets.DATABASE_SSL }}
@@ -105,14 +224,19 @@ jobs:
           V_GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
           V_GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
           V_RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
-          V_AWS_VOICE_REGION: ${{ secrets.AWS_VOICE_REGION }}
-          V_AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY }}
-          V_AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          V_AWS_S3_BUCKET_NAME: ${{ secrets.AWS_S3_BUCKET_NAME }}
           V_NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION: ${{ secrets.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION }}
           V_FOURSQUARE_SERVICE_API_KEY: ${{ secrets.FOURSQUARE_SERVICE_API_KEY }}
           V_FLIGHT_MARKUP_PERCENTAGE: ${{ secrets.FLIGHT_MARKUP_PERCENTAGE }}
           V_HOTEL_MARKUP_PERCENTAGE: ${{ secrets.HOTEL_MARKUP_PERCENTAGE }}
+          # Added with ADR-0031. The markup is no longer one percentage per product:
+          # it has a flat component and a cap, and it is sized against a MEASURED
+          # STRIPE_RATE rather than Stripe's headline 2.9%. Shipping only the two
+          # percentages leaves the rest on code defaults, which mixes old and new.
+          V_FLIGHT_MARKUP_FLAT_USD: ${{ secrets.FLIGHT_MARKUP_FLAT_USD }}
+          V_HOTEL_MARKUP_FLAT_USD: ${{ secrets.HOTEL_MARKUP_FLAT_USD }}
+          V_MARKUP_CAP: ${{ secrets.MARKUP_CAP }}
+          V_STRIPE_RATE: ${{ secrets.STRIPE_RATE }}
+          V_STRIPE_FLAT_FEE: ${{ secrets.STRIPE_FLAT_FEE }}
           V_OTV_CREDIT_LIMIT: ${{ secrets.OTV_CREDIT_LIMIT }}
           V_OTV_CREDIT_UTILIZATION_ALERT_PCT: ${{ secrets.OTV_CREDIT_UTILIZATION_ALERT_PCT }}
           V_OTV_DEADLINE_ALERT_HOURS: ${{ secrets.OTV_DEADLINE_ALERT_HOURS }}
@@ -129,102 +253,225 @@ jobs:
           V_MYSTIFLY_PASSWORD: ${{ secrets.MYSTIFLY_PASSWORD }}
           V_MYSTIFLY_USERNAME: ${{ secrets.MYSTIFLY_USERNAME }}
           V_JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          # Support attachments (ADR-0040). The bucket is a var, not a secret: a bucket
+          # name is not one, and the credentials that reach it come from the instance role
+          # rather than from anything shipped here.
+          #
+          # AWS_REGION was already used by this workflow for ECR and SSM, but it never
+          # reached the container — so the S3 client had no region and attachments read as
+          # unconfigured however the bucket was set up.
+          V_SUPPORT_ATTACHMENTS_BUCKET: ${{ vars.SUPPORT_ATTACHMENTS_BUCKET }}
+          V_AWS_REGION: ${{ vars.AWS_REGION }}
         run: |
-          printf '%s\n' \
-            "DATABASE_URL=$V_DATABASE_URL" \
-            "DATABASE_URL_UNPOOLED=$V_DATABASE_URL_UNPOOLED" \
-            "DATABASE_SSL=$V_DATABASE_SSL" \
-            "NEXT_PUBLIC_SITE_URL=$V_NEXT_PUBLIC_SITE_URL" \
-            "DUFFEL_ACCESS_TOKEN=$V_DUFFEL_ACCESS_TOKEN" \
-            "STRIPE_SECRET_KEY=$V_STRIPE_SECRET_KEY" \
-            "NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=$V_NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY" \
-            "STRIPE_WEBHOOK_SECRET=$V_STRIPE_WEBHOOK_SECRET" \
-            "TRAVELGATEX_API_KEY=$V_TRAVELGATEX_API_KEY" \
-            "TRAVELGATEX_CODE=$V_TRAVELGATEX_CODE" \
-            "TRAVELGATEX_SUPPLIER=$V_TRAVELGATEX_SUPPLIER" \
-            "TRAVELGATEX_CONTEXT=$V_TRAVELGATEX_CONTEXT" \
-            "TRAVELGATEX_CLIENT=$V_TRAVELGATEX_CLIENT" \
-            "TRAVELGATEX_ENDPOINT_URL=$V_TRAVELGATEX_ENDPOINT_URL" \
-            "RATEHAWK_KEY_ID=$V_RATEHAWK_KEY_ID" \
-            "RATEHAWK_API_KEY=$V_RATEHAWK_API_KEY" \
-            "ETG_KEY_ID=$V_ETG_KEY_ID" \
-            "ETG_API_KEY=$V_ETG_API_KEY" \
-            "NEXT_PUBLIC_MAPBOX_TOKEN=$V_NEXT_PUBLIC_MAPBOX_TOKEN" \
-            "GOOGLE_PLACES_API_KEY=$V_GOOGLE_PLACES_API_KEY" \
-            "GOOGLE_CLIENT_ID=$V_GOOGLE_CLIENT_ID" \
-            "GOOGLE_CLIENT_SECRET=$V_GOOGLE_CLIENT_SECRET" \
-            "RESEND_API_KEY=$V_RESEND_API_KEY" \
-            "AWS_VOICE_REGION=$V_AWS_VOICE_REGION" \
-            "AWS_ACCESS_KEY_ID=$V_AWS_ACCESS_KEY_ID" \
-            "AWS_SECRET_ACCESS_KEY=$V_AWS_SECRET_ACCESS_KEY" \
-            "AWS_S3_BUCKET_NAME=$V_AWS_S3_BUCKET_NAME" \
-            "NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION=$V_NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION" \
-            "FOURSQUARE_SERVICE_API_KEY=$V_FOURSQUARE_SERVICE_API_KEY" \
-            "FLIGHT_MARKUP_PERCENTAGE=$V_FLIGHT_MARKUP_PERCENTAGE" \
-            "HOTEL_MARKUP_PERCENTAGE=$V_HOTEL_MARKUP_PERCENTAGE" \
-            "OTV_CREDIT_LIMIT=$V_OTV_CREDIT_LIMIT" \
-            "OTV_CREDIT_UTILIZATION_ALERT_PCT=$V_OTV_CREDIT_UTILIZATION_ALERT_PCT" \
-            "OTV_DEADLINE_ALERT_HOURS=$V_OTV_DEADLINE_ALERT_HOURS" \
-            "DUFFEL_BALANCE_ALERT_THRESHOLD=$V_DUFFEL_BALANCE_ALERT_THRESHOLD" \
-            "INTERNAL_SECRET=$V_INTERNAL_SECRET" \
-            "MOBILE_API_KEY=$V_MOBILE_API_KEY" \
-            "CRON_SECRET=$V_CRON_SECRET" \
-            "FUNCTIONS_SECRET=$V_FUNCTIONS_SECRET" \
-            "CHAT_WONDER_API_URL=$V_CHAT_WONDER_API_URL" \
-            "NEXT_PUBLIC_CHAT_WONDER_WS_URL=$V_NEXT_PUBLIC_CHAT_WONDER_WS_URL" \
-            "NEXT_PUBLIC_CHAT_WONDER_API_URL=$V_NEXT_PUBLIC_CHAT_WONDER_API_URL" \
-            "MYSTIFLY_ACCOUNT_NUMBER=$V_MYSTIFLY_ACCOUNT_NUMBER" \
-            "MYSTIFLY_BASE_URL=$V_MYSTIFLY_BASE_URL" \
-            "MYSTIFLY_PASSWORD=$V_MYSTIFLY_PASSWORD" \
-            "MYSTIFLY_USERNAME=$V_MYSTIFLY_USERNAME" \
-            "JWT_SECRET=$V_JWT_SECRET" \
-          | ssh -i ~/.ssh/id_rsa ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} \
-              "cat > ~/.env && chmod 600 ~/.env"
+          set -euo pipefail
 
-      - name: Deploy to EC2
-        env:
-          REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-          REPOSITORY: ${{ secrets.ECR_REPOSITORY }}
-          REGION: ${{ secrets.AWS_REGION }}
-          HOST: ${{ secrets.EC2_HOST }}
-          USER: ${{ secrets.EC2_USER }}
-        run: |
-          ECR_PASSWORD=$(aws ecr get-login-password --region "$REGION")
-          IMAGE="$REGISTRY/$REPOSITORY:latest"
-          CRON_IMAGE="$REGISTRY/$REPOSITORY:cron-latest"
+          IMAGE="$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
+          CRON_IMAGE="$ECR_REGISTRY/$ECR_REPOSITORY:cron-$IMAGE_TAG"
 
-          ssh -i ~/.ssh/id_rsa "$USER@$HOST" bash -s << EOF
-            echo "$ECR_PASSWORD" | docker login --username AWS --password-stdin $REGISTRY
-            docker pull $IMAGE
-            docker stop cheapestgo 2>/dev/null || true
-            docker rm   cheapestgo 2>/dev/null || true
-            docker run -d \
-              --name cheapestgo \
-              --restart=always \
-              -p 3000:3000 \
-              --env-file ~/.env \
-              $IMAGE
+          MISSING=""
+          require_env() { if [[ -z "$2" ]]; then MISSING="${MISSING} $1"; fi; }
+          require_env CONTAINER_PORT "$CONTAINER_PORT"
+          require_env ENV_FILE_PATH "$ENV_FILE_PATH"
+          require_env EC2_TARGET_TAG_KEY "$TAG_KEY"
+          require_env EC2_TARGET_TAG_VALUE "$TAG_VALUE"
+          require_env DATABASE_URL "$V_DATABASE_URL"
+          require_env JWT_SECRET "$V_JWT_SECRET"
+          require_env STRIPE_SECRET_KEY "$V_STRIPE_SECRET_KEY"
+          if [[ -n "$MISSING" ]]; then
+            echo "Missing required GitHub variables/secrets:${MISSING}" >&2
+            exit 1
+          fi
 
-            # Cron sidecar. Recreated on every deploy so the schedule on the box is
-            # always the crontab in this commit — the app container is replaced above
-            # and a sidecar left running would keep curling a container that no
-            # longer exists.
-            #
-            # Host networking, not a shared bridge: the app publishes 3000 on the
-            # host, so localhost:3000 reaches it without changing the app's own run
-            # command. Routes under /api/internal/* are not meant to be called from
-            # outside the box, so this deliberately does not go via the public URL.
-            # CRON_SECRET is already in ~/.env; APP_URL is the only override.
-            docker pull $CRON_IMAGE
-            docker stop cheapestgo-cron 2>/dev/null || true
-            docker rm   cheapestgo-cron 2>/dev/null || true
-            docker run -d \
-              --name cheapestgo-cron \
-              --restart=always \
-              --network host \
-              --env-file ~/.env \
-              -e APP_URL=http://localhost:3000 \
-              $CRON_IMAGE
+          NL=$'\n'
+          ENV_CONTENT=""
+          # Empty values are skipped rather than written blank: an env key set to the
+          # empty string reads as configured-but-empty, which is how a missing secret
+          # becomes a runtime failure far from its cause.
+          append_env() { if [[ -n "$2" ]]; then ENV_CONTENT="${ENV_CONTENT}${1}=${2}${NL}"; fi; }
 
-            docker image prune -f
+          append_env NODE_ENV production
+          # 3000 is the port the app listens on INSIDE the container, always. CONTAINER_PORT
+          # is the host port it is published on, which differs per brand (AirangGo uses 3001
+          # on a shared box). Setting PORT from CONTAINER_PORT would make the app listen on
+          # the host port inside the container, leaving the published mapping pointing at
+          # nothing — and it would look like a healthy deploy.
+          append_env PORT 3000
+          append_env DATABASE_URL "$V_DATABASE_URL"
+          append_env DATABASE_URL_UNPOOLED "$V_DATABASE_URL_UNPOOLED"
+          append_env DATABASE_SSL "$V_DATABASE_SSL"
+          append_env NEXT_PUBLIC_SITE_URL "$V_NEXT_PUBLIC_SITE_URL"
+          append_env DUFFEL_ACCESS_TOKEN "$V_DUFFEL_ACCESS_TOKEN"
+          append_env STRIPE_SECRET_KEY "$V_STRIPE_SECRET_KEY"
+          append_env NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY "$V_NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY"
+          append_env STRIPE_WEBHOOK_SECRET "$V_STRIPE_WEBHOOK_SECRET"
+          append_env TRAVELGATEX_API_KEY "$V_TRAVELGATEX_API_KEY"
+          append_env TRAVELGATEX_CODE "$V_TRAVELGATEX_CODE"
+          append_env TRAVELGATEX_SUPPLIER "$V_TRAVELGATEX_SUPPLIER"
+          append_env TRAVELGATEX_CONTEXT "$V_TRAVELGATEX_CONTEXT"
+          append_env TRAVELGATEX_CLIENT "$V_TRAVELGATEX_CLIENT"
+          append_env TRAVELGATEX_ENDPOINT_URL "$V_TRAVELGATEX_ENDPOINT_URL"
+          append_env RATEHAWK_KEY_ID "$V_RATEHAWK_KEY_ID"
+          append_env RATEHAWK_API_KEY "$V_RATEHAWK_API_KEY"
+          append_env ETG_KEY_ID "$V_ETG_KEY_ID"
+          append_env ETG_API_KEY "$V_ETG_API_KEY"
+          append_env NEXT_PUBLIC_MAPBOX_TOKEN "$V_NEXT_PUBLIC_MAPBOX_TOKEN"
+          append_env GOOGLE_PLACES_API_KEY "$V_GOOGLE_PLACES_API_KEY"
+          append_env GOOGLE_CLIENT_ID "$V_GOOGLE_CLIENT_ID"
+          append_env GOOGLE_CLIENT_SECRET "$V_GOOGLE_CLIENT_SECRET"
+          append_env RESEND_API_KEY "$V_RESEND_API_KEY"
+          append_env NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION "$V_NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION"
+          append_env FOURSQUARE_SERVICE_API_KEY "$V_FOURSQUARE_SERVICE_API_KEY"
+          append_env FLIGHT_MARKUP_PERCENTAGE "$V_FLIGHT_MARKUP_PERCENTAGE"
+          append_env HOTEL_MARKUP_PERCENTAGE "$V_HOTEL_MARKUP_PERCENTAGE"
+          append_env FLIGHT_MARKUP_FLAT_USD "$V_FLIGHT_MARKUP_FLAT_USD"
+          append_env HOTEL_MARKUP_FLAT_USD "$V_HOTEL_MARKUP_FLAT_USD"
+          append_env MARKUP_CAP "$V_MARKUP_CAP"
+          append_env STRIPE_RATE "$V_STRIPE_RATE"
+          append_env STRIPE_FLAT_FEE "$V_STRIPE_FLAT_FEE"
+          append_env OTV_CREDIT_LIMIT "$V_OTV_CREDIT_LIMIT"
+          append_env OTV_CREDIT_UTILIZATION_ALERT_PCT "$V_OTV_CREDIT_UTILIZATION_ALERT_PCT"
+          append_env OTV_DEADLINE_ALERT_HOURS "$V_OTV_DEADLINE_ALERT_HOURS"
+          append_env DUFFEL_BALANCE_ALERT_THRESHOLD "$V_DUFFEL_BALANCE_ALERT_THRESHOLD"
+          append_env INTERNAL_SECRET "$V_INTERNAL_SECRET"
+          append_env MOBILE_API_KEY "$V_MOBILE_API_KEY"
+          append_env CRON_SECRET "$V_CRON_SECRET"
+          append_env FUNCTIONS_SECRET "$V_FUNCTIONS_SECRET"
+          append_env CHAT_WONDER_API_URL "$V_CHAT_WONDER_API_URL"
+          append_env NEXT_PUBLIC_CHAT_WONDER_WS_URL "$V_NEXT_PUBLIC_CHAT_WONDER_WS_URL"
+          append_env NEXT_PUBLIC_CHAT_WONDER_API_URL "$V_NEXT_PUBLIC_CHAT_WONDER_API_URL"
+          append_env MYSTIFLY_ACCOUNT_NUMBER "$V_MYSTIFLY_ACCOUNT_NUMBER"
+          append_env MYSTIFLY_BASE_URL "$V_MYSTIFLY_BASE_URL"
+          append_env MYSTIFLY_PASSWORD "$V_MYSTIFLY_PASSWORD"
+          append_env MYSTIFLY_USERNAME "$V_MYSTIFLY_USERNAME"
+          append_env JWT_SECRET "$V_JWT_SECRET"
+          append_env SUPPORT_ATTACHMENTS_BUCKET "$V_SUPPORT_ATTACHMENTS_BUCKET"
+          append_env AWS_REGION "$V_AWS_REGION"
+
+          ENV_CONTENT_B64=$(printf '%s' "$ENV_CONTENT" | base64 | tr -d '\n')
+          ENV_DIR=$(dirname "$ENV_FILE_PATH")
+
+          cat > deploy-remote.sh <<EOF
+          set -euo pipefail
+          aws ecr get-login-password --region ${AWS_REGION} | docker login --username AWS --password-stdin ${ECR_REGISTRY}
+
+          sudo mkdir -p ${ENV_DIR}
+          echo "${ENV_CONTENT_B64}" | base64 -d | sudo tee ${ENV_FILE_PATH} > /dev/null
+          sudo chmod 600 ${ENV_FILE_PATH}
+
+          # Reclaim disk BEFORE pulling, not after.
+          #
+          # On 2026-09-09 this deploy died on `no space left on device` while pulling the
+          # app image, and because the script is `set -e` the containers were never
+          # replaced — the previous image kept serving under `--restart unless-stopped`, so
+          # the site answered 200 throughout while main had moved on. CI reported the
+          # failure correctly; what misled was the healthy site, which is the only signal
+          # anyone checks by hand.
+          #
+          # The cause is that the cleanup below was `docker image prune -f`, which drops
+          # only DANGLING images. Every deploy pulls a new `:$IMAGE_TAG` and that tag keeps
+          # the old image alive forever, at 1-2 GB each. Cleanup also ran last, after both
+          # pulls, so it could never free space for the pull that needed it.
+          #
+          # `-a` removes every image no CONTAINER references. The running app and cron
+          # containers reference theirs, so this cannot pull the site out from under itself;
+          # it only reclaims the images previous deploys left behind.
+          echo "disk before prune:"; df -h /var/lib/docker | tail -1
+          docker image prune -af || true
+          docker builder prune -af || true
+          echo "disk after prune:"; df -h /var/lib/docker | tail -1
+
+          docker pull ${IMAGE}
+          docker stop ${CONTAINER_NAME} >/dev/null 2>&1 || true
+          docker rm ${CONTAINER_NAME} >/dev/null 2>&1 || true
+          docker run -d \
+            --name ${CONTAINER_NAME} \
+            --restart unless-stopped \
+            -p ${CONTAINER_PORT}:3000 \
+            --env-file ${ENV_FILE_PATH} \
+            ${IMAGE}
+
+          docker pull ${CRON_IMAGE}
+          docker stop ${CRON_CONTAINER_NAME} >/dev/null 2>&1 || true
+          docker rm ${CRON_CONTAINER_NAME} >/dev/null 2>&1 || true
+          docker run -d \
+            --name ${CRON_CONTAINER_NAME} \
+            --restart unless-stopped \
+            --network host \
+            --env-file ${ENV_FILE_PATH} \
+            -e APP_URL=http://localhost:${CONTAINER_PORT} \
+            ${CRON_IMAGE}
+
+          # Again afterwards: the image the old container was holding is unreferenced now
+          # that the new one is running, so this is what actually reclaims the last deploy.
+          docker image prune -af || true
+          echo "disk after deploy:"; df -h /var/lib/docker | tail -1
           EOF
+
+          PARAMS=$(jq -n --rawfile script deploy-remote.sh \
+            '{commands: ($script | split("\n") | map(select(length > 0)))}')
+
+          COMMAND_ID=$(aws ssm send-command \
+            --document-name "AWS-RunShellScript" \
+            --comment "Deploy ${CONTAINER_NAME} ${IMAGE_TAG}" \
+            --targets "Key=tag:${TAG_KEY},Values=${TAG_VALUE}" \
+            --parameters "$PARAMS" \
+            --timeout-seconds 600 \
+            --output text \
+            --query "Command.CommandId")
+
+          echo "command_id=$COMMAND_ID" >> "$GITHUB_OUTPUT"
+          echo "Sent SSM command $COMMAND_ID targeting tag:${TAG_KEY}=${TAG_VALUE}"
+
+      - name: Wait for deploy to finish
+        env:
+          COMMAND_ID: ${{ steps.send-command.outputs.command_id }}
+          TAG_KEY: ${{ vars.EC2_TARGET_TAG_KEY }}
+          TAG_VALUE: ${{ vars.EC2_TARGET_TAG_VALUE }}
+        run: |
+          set -euo pipefail
+
+          sleep 8
+
+          STATUS="Pending"
+          for i in $(seq 1 40); do
+            STATUS=$(aws ssm list-commands --command-id "$COMMAND_ID" \
+              --query "Commands[0].Status" --output text 2>/dev/null || echo "Pending")
+            if [[ "$STATUS" != "Pending" && "$STATUS" != "InProgress" ]]; then
+              break
+            fi
+            echo "Deploy status: $STATUS (attempt $i/40)"
+            sleep 10
+          done
+
+          echo "Final command status: $STATUS"
+
+          FAILED=0
+          INSTANCE_IDS=$(aws ssm list-command-invocations --command-id "$COMMAND_ID" \
+            --query "CommandInvocations[].InstanceId" --output text)
+
+          if [[ -z "$INSTANCE_IDS" ]]; then
+            echo "No instances matched tag:${TAG_KEY}=${TAG_VALUE} for this SSM command."
+            exit 1
+          fi
+
+          for INSTANCE_ID in $INSTANCE_IDS; do
+            echo "::group::Instance $INSTANCE_ID"
+            aws ssm get-command-invocation \
+              --command-id "$COMMAND_ID" \
+              --instance-id "$INSTANCE_ID" \
+              --query "{Status:Status,Stdout:StandardOutputContent,Stderr:StandardErrorContent}" \
+              --output json > invocation.json
+            cat invocation.json
+            INV_STATUS=$(jq -r ".Status" invocation.json)
+            if [[ "$INV_STATUS" != "Success" ]]; then
+              FAILED=1
+            fi
+            echo "::endgroup::"
+          done
+
+          if [[ "$FAILED" -ne 0 ]]; then
+            echo "One or more instances failed to deploy."
+            exit 1
+          fi
+
+          echo "Deploy succeeded on: $INSTANCE_IDS"

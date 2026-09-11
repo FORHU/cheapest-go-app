@@ -1,14 +1,15 @@
 import { ImageResponse } from 'next/og';
 import fs from 'fs';
 import path from 'path';
+import { canonicalBrandName } from '@/lib/brand';
 
 export const runtime = 'nodejs';
-export const alt = process.env.NEXT_PUBLIC_BRAND_NAME ?? 'CheapestGo';
+export const alt = canonicalBrandName(process.env.NEXT_PUBLIC_BRAND_NAME);
 export const size = { width: 1200, height: 630 };
 export const contentType = 'image/png';
 
 export default function Image() {
-    const brandName = process.env.NEXT_PUBLIC_BRAND_NAME ?? 'CheapestGo';
+    const brandName = canonicalBrandName(process.env.NEXT_PUBLIC_BRAND_NAME);
     const brandLogo = process.env.NEXT_PUBLIC_BRAND_LOGO ?? '/Web_Logo_Light.png';
     const tagline = process.env.NEXT_PUBLIC_BRAND_TAGLINE ?? 'Book Flights & Hotels at the Lowest Price';
 

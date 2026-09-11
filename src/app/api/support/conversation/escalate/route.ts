@@ -37,6 +37,20 @@ export async function POST(req: NextRequest) {
     });
     if (!rl.success) return NextResponse.json({ error: 'Too many requests' }, { status: 429 });
 
+    // Requires an account, like every other write to a Support Chat (ADR-0032).
+    //
+    // This route once had a second purpose: collecting a guest's name and email so there
+    // was some way to answer them. That was the "one moment a guest is asked for them",
+    // and ADR-0032 removed the need for it by requiring an account from the first message —
+    // which is why it called the escalation form dead code. It was left reachable. Closing
+    // it here means the name/email branch below can no longer be entered by anyone.
+    if (!caller.userId) {
+        return NextResponse.json(
+            { error: 'Sign in to ask for a person.', authRequired: true },
+            { status: 401 },
+        );
+    }
+
     let conversation = await findConversation(caller);
     if (!conversation) return NextResponse.json({ error: 'No conversation' }, { status: 404 });
 

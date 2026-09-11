@@ -5,12 +5,17 @@ import { SupportWidget } from './SupportWidget';
 import { useSupportWidgetStore } from '@/stores/supportWidgetStore';
 
 /**
- * The widget assembled: launcher, panel, and the conversation opening behind them.
+ * The widget assembled: the panel, and the conversation opening behind it.
  *
- * The pieces are covered on their own; what this adds is that they are wired together —
- * that the button opens the panel, that opening it is what creates the conversation
- * rather than page load, and that the panel can be dismissed by keyboard.
+ * There is no launcher any more — support is entered from the account menu, which lives
+ * outside this portal and asks through the store. So every test here opens the same way
+ * the real entry point does. What this file adds over the piece-by-piece tests is that
+ * opening is what creates the conversation rather than page load, that the panel can be
+ * dismissed by keyboard, and that the stream outlives the panel being shut.
  */
+
+/** The only way in now: the account menu sets this, the portal reacts. */
+const openSupport = () => act(() => useSupportWidgetStore.getState().open());
 
 const messages = {
     support: {
@@ -71,6 +76,7 @@ beforeEach(() => {
                 guestName: null,
                 createdAt: '2026-09-06T10:00:00.000Z',
                 lastMessageAt: '2026-09-06T10:00:00.000Z',
+                reference: 'CS-9QM2K7',
                 escalationNeedsDetails: true,
             },
             messages: [],
@@ -84,10 +90,12 @@ afterEach(() => {
 });
 
 describe('SupportWidget', () => {
-    it('shows the launcher and nothing else at first', () => {
+    it('renders nothing at all until support is asked for', () => {
+        // The floating launcher is gone: the widget draws no chrome of its own, so a page
+        // that mounts it looks exactly as it did before support existed.
         render(<SupportWidget />, { wrapper: Wrapper });
 
-        expect(screen.getByRole('button', { name: 'Get help' })).toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: 'Get help' })).not.toBeInTheDocument();
         expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     });
 
@@ -99,10 +107,10 @@ describe('SupportWidget', () => {
         expect(fetchMock).not.toHaveBeenCalled();
     });
 
-    it('opens the panel and starts a conversation when pressed', async () => {
+    it('opens the panel and starts a conversation when asked', async () => {
         render(<SupportWidget />, { wrapper: Wrapper });
 
-        fireEvent.click(screen.getByRole('button', { name: 'Get help' }));
+        openSupport();
 
         expect(screen.getByRole('dialog', { name: 'Support' })).toBeInTheDocument();
         await waitFor(() =>
@@ -113,10 +121,10 @@ describe('SupportWidget', () => {
         );
     });
 
-    it('closes again when the launcher is pressed a second time', async () => {
+    it('closes from its own close button', async () => {
         render(<SupportWidget />, { wrapper: Wrapper });
 
-        fireEvent.click(screen.getByRole('button', { name: 'Get help' }));
+        openSupport();
         await waitFor(() => expect(screen.getByRole('dialog')).toBeInTheDocument());
 
         fireEvent.click(screen.getByRole('button', { name: 'Close support' }));
@@ -126,7 +134,7 @@ describe('SupportWidget', () => {
     it('closes on Escape, as the app\'s other overlays do', async () => {
         render(<SupportWidget />, { wrapper: Wrapper });
 
-        fireEvent.click(screen.getByRole('button', { name: 'Get help' }));
+        openSupport();
         await waitFor(() => expect(screen.getByRole('dialog')).toBeInTheDocument());
 
         fireEvent.keyDown(document, { key: 'Escape' });
@@ -134,20 +142,20 @@ describe('SupportWidget', () => {
     });
 
     it('holds no stream until support has actually been used', async () => {
-        // A visitor who never clicks the bubble costs nothing. Once a conversation
-        // exists the stream is kept even with the panel shut, because that is the only
-        // way a reply can announce itself on the launcher.
+        // A visitor who never opens support costs nothing. Once a conversation exists the
+        // stream is kept even with the panel shut, so a reply that arrives meanwhile is
+        // still counted.
         render(<SupportWidget />, { wrapper: Wrapper });
         expect(FakeEventSource.instances).toHaveLength(0);
 
-        fireEvent.click(screen.getByRole('button', { name: 'Get help' }));
+        openSupport();
         await waitFor(() => expect(FakeEventSource.instances).toHaveLength(1));
     });
 
     it('keeps the stream after the panel is closed, so a reply can be announced', async () => {
         render(<SupportWidget />, { wrapper: Wrapper });
 
-        fireEvent.click(screen.getByRole('button', { name: 'Get help' }));
+        openSupport();
         await waitFor(() => expect(FakeEventSource.instances).toHaveLength(1));
 
         fireEvent.click(screen.getByRole('button', { name: 'Close support' }));

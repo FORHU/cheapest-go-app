@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireAdmin, isAuthError } from '@/lib/server/admin';
 import { rateLimit } from '@/lib/server/rate-limit';
 import { getStripe } from '@/lib/stripe/server';
+import { fromStripeAmount } from '@/lib/pricing';
 import { createAdminClient } from '@/utils/postgres/admin';
 
 export const dynamic = 'force-dynamic';
@@ -29,15 +30,17 @@ export async function GET(req: NextRequest) {
     ]);
 
     // ── Balance ─────────────────────────────────────────────────────────────
-    const available = balance.available.map(b => ({ amount: b.amount / 100, currency: b.currency.toUpperCase() }));
-    const pending   = balance.pending.map(b => ({ amount: b.amount / 100, currency: b.currency.toUpperCase() }));
+    // fromStripeAmount, not `/ 100`: the balance is reported per currency and KRW
+    // has no subunit, so a won balance divided by a hundred understates it 100×.
+    const available = balance.available.map(b => ({ amount: fromStripeAmount(b.amount, b.currency), currency: b.currency.toUpperCase() }));
+    const pending   = balance.pending.map(b => ({ amount: fromStripeAmount(b.amount, b.currency), currency: b.currency.toUpperCase() }));
 
     // ── Payment intents ──────────────────────────────────────────────────────
     const payments = charges.data.map(pi => {
         const charge = (pi as any).latest_charge as any;
         return {
             id:          pi.id,
-            amount:      pi.amount / 100,
+            amount:      fromStripeAmount(pi.amount, pi.currency),
             currency:    pi.currency.toUpperCase(),
             status:      pi.status,
             description: pi.description ?? charge?.description ?? null,
@@ -52,7 +55,7 @@ export async function GET(req: NextRequest) {
     // ── Refunds ──────────────────────────────────────────────────────────────
     const refundList = refunds.data.map(r => ({
         id:       r.id,
-        amount:   r.amount / 100,
+        amount:   fromStripeAmount(r.amount, r.currency),
         currency: r.currency.toUpperCase(),
         status:   r.status,
         reason:   r.reason ?? null,
@@ -63,7 +66,7 @@ export async function GET(req: NextRequest) {
     // ── Disputes ─────────────────────────────────────────────────────────────
     const disputeList = disputes.data.map(d => ({
         id:       d.id,
-        amount:   d.amount / 100,
+        amount:   fromStripeAmount(d.amount, d.currency),
         currency: d.currency.toUpperCase(),
         status:   d.status,
         reason:   d.reason,
@@ -74,7 +77,7 @@ export async function GET(req: NextRequest) {
     // ── Payouts ──────────────────────────────────────────────────────────────
     const payoutList = payouts.data.map(p => ({
         id:          p.id,
-        amount:      p.amount / 100,
+        amount:      fromStripeAmount(p.amount, p.currency),
         currency:    p.currency.toUpperCase(),
         status:      p.status,
         arrivalDate: p.arrival_date * 1000,
@@ -200,7 +203,7 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({
             success: true,
             refundId: refund.id,
-            amount: refund.amount / 100,
+            amount: fromStripeAmount(refund.amount, refund.currency),
             currency: refund.currency.toUpperCase(),
             status: refund.status,
         });

@@ -6,7 +6,13 @@ import type { MappableProperty } from './types';
 
 interface MapMarkerProps {
     property: MappableProperty;
-    /** Per-night amount, already converted to displayCurrency (see toPerNight). */
+    /**
+     * Per-night amount, already converted to displayCurrency.
+     *
+     * Already per night when it arrives: the search stream divides the supplier stay total
+     * before sending it. Do not divide again — that is the bug that put half the real rate
+     * on every marker.
+     */
     displayPrice: number;
     displayCurrency: string;
     isSelected: boolean;

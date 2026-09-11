@@ -3,12 +3,11 @@
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useSupportWidgetStore } from '@/stores/supportWidgetStore';
-import { SupportLauncher } from './SupportLauncher';
 import { SupportPanel } from './SupportPanel';
 import { useSupportChat } from './useSupportChat';
 
 /**
- * The Support Widget: a floating launcher and the panel it opens.
+ * The Support Widget: the panel, and nothing that opens it.
  *
  * Mounted once in the customer layout, so it follows people through search, a property,
  * checkout and their trips rather than living only on the landing page. Support is needed
@@ -16,6 +15,17 @@ import { useSupportChat } from './useSupportChat';
  *
  * Rendered through a portal so no ancestor's `overflow` or `transform` can clip a fixed
  * element — the landing page has several of both.
+ *
+ * There is no longer a floating launcher. Support is entered from the account menu, under
+ * Account Settings, which puts it where a signed-in customer already goes to deal with
+ * their own affairs and takes a permanently floating button off every page.
+ *
+ * The trade-off is deliberate and worth knowing, because it reverses part of ADR-0032:
+ * that decision kept the launcher visible to signed-out visitors — "hiding it would make
+ * support look absent" — and had it open a sign-in prompt. With the entry point inside the
+ * account menu, a signed-out visitor has no route to support at all. Since a Support Chat
+ * requires an account anyway, what they lose is the invitation rather than the capability;
+ * if support ever needs to be visible before signing in, this is the file that hid it.
  */
 
 export function SupportWidget() {
@@ -45,17 +55,7 @@ export function SupportWidget() {
     if (!mounted) return null;
 
     return createPortal(
-        <>
-            {isOpen && <SupportPanel chat={chat} onClose={close} />}
-
-            {/*
-              * Hidden while the panel is up, rather than turned into a second close
-              * button. Two controls announcing themselves as "Close support" is ambiguous
-              * to anyone navigating by name — and under `sm` the panel is full-screen, so
-              * a launcher behind it would be unreachable anyway.
-              */}
-            {!isOpen && <SupportLauncher unread={chat.unread} onOpen={open} />}
-        </>,
+        <>{isOpen && <SupportPanel chat={chat} onClose={close} />}</>,
         document.body,
     );
 }

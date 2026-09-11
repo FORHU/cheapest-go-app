@@ -775,13 +775,13 @@ function BookingContent() {
                                     <div className="absolute -top-6 -right-6 w-24 h-24 bg-white/10 rounded-full" />
                                     <div className="absolute -bottom-4 -left-4 w-16 h-16 bg-white/10 rounded-full" />
 
-                                    {/* Bundle badge */}
-                                    <div className="absolute top-3 right-3 z-20">
-                                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-400 text-amber-900 text-[10px] font-normal shadow-md">
-                                            {t('success.bundleDealBadge')}
-                                        </span>
-                                    </div>
-
+                                    {/*
+                                      * The "✦ BUNDLE DEAL" badge was removed with the discount itself
+                                      * (ADR-0036). Its ko/ja/zh translations render as "bundle discount"
+                                      * outright, so it claimed a price advantage checkout no longer gives.
+                                      * The strings are left in the locale files for whenever a real,
+                                      * funded bundle discount exists to badge.
+                                      */}
                                     <div className="relative z-10 p-4">
                                         <div className="flex items-start gap-3 mb-3">
                                             <div className="w-11 h-11 rounded-md bg-white/20 backdrop-blur-sm flex items-center justify-center shrink-0">
@@ -797,18 +797,15 @@ function BookingContent() {
                                             </div>
                                         </div>
 
-                                        <div className="flex items-center gap-2 mb-3 px-1">
-                                            <div className="flex-1 bg-white/10 rounded-md p-2 text-center">
-                                                <p className="text-[9px] text-violet-200 font-normal">{t('success.bookSeparately')}</p>
-                                                <p className="text-sm font-normal text-white/60 line-through">{t('success.standardRate')}</p>
-                                            </div>
-                                            <div className="text-white/50 text-lg">→</div>
-                                            <div className="flex-1 bg-amber-400/20 border border-amber-400/40 rounded-md p-2 text-center">
-                                                <p className="text-[9px] text-amber-200 font-normal">{t('success.addToThisTrip')}</p>
-                                                <p className="text-sm font-normal text-amber-300">{t('success.bundleSavings')}</p>
-                                            </div>
-                                        </div>
-
+                                        {/*
+                                          * The "book separately → bundle savings" comparison that sat here was
+                                          * removed with the bundle discount (ADR-0036). Bundling never had a cost
+                                          * saving behind it — it swapped the hotel rate for a lower one, spending
+                                          * a provision that is now committed to TravelgateX's incoming fee — so
+                                          * the strip advertised a discount the checkout no longer applies.
+                                          * The cross-sell itself stands: adding a hotel is still useful, just not
+                                          * cheaper. Restore the comparison only alongside a real, funded discount.
+                                          */}
                                         <button
                                             onClick={() => router.push(hotelUrl)}
                                             className="w-full py-2.5 rounded-md bg-white text-violet-700 font-normal text-sm flex items-center justify-center gap-2 hover:bg-violet-50 active:scale-[0.98] transition-all shadow-md"

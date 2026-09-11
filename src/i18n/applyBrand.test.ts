@@ -26,19 +26,19 @@ describe('applyBrand', () => {
     });
 
     it('renames the brand in prose', async () => {
-        const applyBrand = await load('GeomeeGo');
+        const applyBrand = await load('AirangGo');
         expect(applyBrand({ title: 'Checkout | CheapestGo' }))
-            .toEqual({ title: 'Checkout | GeomeeGo' });
+            .toEqual({ title: 'Checkout | AirangGo' });
     });
 
     it('renames it in a policy that says who collects the data', async () => {
-        const applyBrand = await load('GeomeeGo');
+        const applyBrand = await load('AirangGo');
         expect(applyBrand({ p: 'How CheapestGo collects, uses, and protects your personal information.' }))
-            .toEqual({ p: 'How GeomeeGo collects, uses, and protects your personal information.' });
+            .toEqual({ p: 'How AirangGo collects, uses, and protects your personal information.' });
     });
 
     it('leaves email addresses and hosts untouched', async () => {
-        const applyBrand = await load('GeomeeGo');
+        const applyBrand = await load('AirangGo');
         expect(applyBrand({
             email: 'support@cheapestgo.com',
             site:  'https://www.cheapestgo.com/terms',
@@ -49,14 +49,14 @@ describe('applyBrand', () => {
     });
 
     it('renames every occurrence in one string', async () => {
-        const applyBrand = await load('GeomeeGo');
-        expect(applyBrand({ s: 'CheapestGo and CheapestGo' })).toEqual({ s: 'GeomeeGo and GeomeeGo' });
+        const applyBrand = await load('AirangGo');
+        expect(applyBrand({ s: 'CheapestGo and CheapestGo' })).toEqual({ s: 'AirangGo and AirangGo' });
     });
 
     it('walks nested objects and arrays', async () => {
-        const applyBrand = await load('GeomeeGo');
+        const applyBrand = await load('AirangGo');
         expect(applyBrand({ a: { b: ['Book with CheapestGo', 'x'] }, n: 3, z: null }))
-            .toEqual({ a: { b: ['Book with GeomeeGo', 'x'] }, n: 3, z: null });
+            .toEqual({ a: { b: ['Book with AirangGo', 'x'] }, n: 3, z: null });
     });
 
     it('is a no-op for the primary brand, including its ICU placeholders', async () => {
@@ -66,8 +66,8 @@ describe('applyBrand', () => {
     });
 
     it('preserves ICU placeholders when rebranding', async () => {
-        const applyBrand = await load('GeomeeGo');
+        const applyBrand = await load('AirangGo');
         expect(applyBrand({ t: 'Hotels in {city}, {country} — Cheapest Rates | CheapestGo' }))
-            .toEqual({ t: 'Hotels in {city}, {country} — Cheapest Rates | GeomeeGo' });
+            .toEqual({ t: 'Hotels in {city}, {country} — Cheapest Rates | AirangGo' });
     });
 });

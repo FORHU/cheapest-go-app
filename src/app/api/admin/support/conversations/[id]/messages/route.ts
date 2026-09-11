@@ -23,6 +23,10 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         return NextResponse.json({ error: 'A message body is required.' }, { status: 400 });
     }
 
+    const attachmentIds = Array.isArray(body.attachmentIds)
+        ? body.attachmentIds.filter((value): value is string => typeof value === 'string' && isUuid(value))
+        : [];
+
     try {
         // senderType is fixed here, as it is on the customer route: letting a caller name
         // its own sender is how a message ends up attributed to the wrong side.
@@ -30,6 +34,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
             conversationId: id,
             adminId: agent.id,
             body: body.body,
+            attachmentIds,
         });
         return NextResponse.json({ message }, { status: 201 });
     } catch (err) {
@@ -39,4 +44,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         console.error('[admin/support] reply failed:', err);
         return NextResponse.json({ error: 'Could not send the reply.' }, { status: 500 });
     }
+}
+
+function isUuid(value: string): boolean {
+    return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
 }

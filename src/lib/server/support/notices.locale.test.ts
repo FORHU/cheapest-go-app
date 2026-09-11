@@ -11,7 +11,7 @@ import zh from '@/locales/zh.json';
  *
  * Nothing in the type system connects a `SupportNoticeCode` to a key in a JSON file, so
  * the failure mode is silent and one-sided: add a notice, ship it, and a Korean customer
- * on GeomeeGo — a brand locked to Korean — sees a missing-translation key or English
+ * on AirangGo — a brand locked to Korean — sees a missing-translation key or English
  * where a sentence should be. This is the check that stops that reaching them.
  */
 

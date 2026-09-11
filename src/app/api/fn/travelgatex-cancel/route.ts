@@ -5,6 +5,8 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
+import { requireInternalSecret } from '@/lib/server/internalAuth';
+import { startSupplierAttempt, finishSupplierAttempt } from '@/lib/server/supplierAttempt';
 import { tgxGraphQL, getTgxSettings, getTgxConfig } from '@/lib/server/stays/travelgatex/client';
 
 export const dynamic = 'force-dynamic';
@@ -24,14 +26,14 @@ mutation TgxCancel($input: HotelCancelInput!, $settings: HotelSettingsInput!) {
   }
 }`;
 
-function checkAuth(req: NextRequest): boolean {
-    const secret = process.env.FUNCTIONS_SECRET || process.env.INTERNAL_SECRET;
-    if (!secret) return true;
-    return req.headers.get('authorization') === `Bearer ${secret}`;
-}
-
 export async function POST(req: NextRequest) {
-    if (!checkAuth(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const authError = requireInternalSecret(req, 'travelgatex-cancel');
+    if (authError) return authError;
+
+    // Declared outside the try so the catch can close it. A throw is exactly when the row
+    // matters most, and a row left open by a crash reads as "we asked and never found out".
+    let attemptId: string | null = null;
+
     try {
         const { clientReference, supplierReference, tgxBookingId, hotelCode } = await req.json();
 
@@ -71,6 +73,20 @@ export async function POST(req: NextRequest) {
                 },
             }));
 
+        // Recorded for the same reason as the book route, and with more urgency: OTV
+        // monitors cancellation rates and has raised them with us, so a cancellation this
+        // platform cannot see is one it cannot account for. One row per request, not per
+        // reference attempt — the loop below is a single logical cancellation tried under
+        // two addressings.
+        attemptId = await startSupplierAttempt({
+            provider: 'travelgatex',
+            operation: 'cancel',
+            clientReference,
+            supplierReference,
+            hotelCode,
+            headers: req.headers,
+        });
+
         let cancellation: any = null;
         let lastErrorMsg = '';
 
@@ -96,20 +112,30 @@ export async function POST(req: NextRequest) {
         if (!cancellation && lastErrorMsg && lastErrorMsg !== 'No cancellation returned from TravelgateX') {
             // Check if already cancelled
             const alreadyCancelled = lastErrorMsg.toLowerCase().includes('cancel') || lastErrorMsg.toLowerCase().includes('not found');
+            await finishSupplierAttempt(attemptId, { status: 'failed', error: lastErrorMsg });
             return NextResponse.json({ success: false, error: lastErrorMsg, alreadyCancelled }, { status: 409 });
         }
 
         if (!cancellation) {
+            await finishSupplierAttempt(attemptId, { status: 'failed', error: 'no cancellation returned' });
             return NextResponse.json({ success: false, error: 'No cancellation returned from TravelgateX' }, { status: 502 });
         }
 
         if (cancellation.status !== 'CANCELLED') {
+            await finishSupplierAttempt(attemptId, { status: 'failed', error: 'status ' + cancellation.status, supplierReference: cancellation.reference?.supplier });
             return NextResponse.json({
                 success: false,
                 error: `Cancellation not confirmed — status: ${cancellation.status}`,
                 status: cancellation.status,
             }, { status: 409 });
         }
+
+        await finishSupplierAttempt(attemptId, {
+            status: 'confirmed',
+            supplierReference: cancellation.reference?.supplier,
+            priceGross: cancellation.price?.gross,
+            currency: cancellation.price?.currency,
+        });
 
         return NextResponse.json({
             success:        true,
@@ -121,7 +147,11 @@ export async function POST(req: NextRequest) {
             currency:       cancellation.price?.currency ?? 'USD',
         });
     } catch (err: any) {
+        // Reached from a throw anywhere above, including inside the attempt loop. The row
+        // is closed as failed rather than left open, because an open row means "we do not
+        // know" and here we do: the request ended in an exception.
         console.error('[travelgatex-cancel] Error:', err.message);
+        await finishSupplierAttempt(attemptId, { status: 'failed', error: `threw: ${err?.message}` });
         return NextResponse.json({ success: false, error: err.message }, { status: 502 });
     }
 }

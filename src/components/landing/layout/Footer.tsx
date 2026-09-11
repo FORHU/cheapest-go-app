@@ -3,8 +3,10 @@
 import React, { Suspense } from 'react';
 import { usePathname, useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
+import { canonicalBrandName } from '@/lib/brand';
+import { SupportEntryLink } from '@/components/support/SupportEntryLink';
 
-const BRAND_NAME = process.env.NEXT_PUBLIC_BRAND_NAME ?? 'CheapestGo';
+const BRAND_NAME = canonicalBrandName(process.env.NEXT_PUBLIC_BRAND_NAME);
 const BRAND_EMAIL = process.env.NEXT_PUBLIC_BRAND_EMAIL ?? 'support@cheapestgo.com';
 
 const StandardFooter = () => {
@@ -35,6 +37,7 @@ const StandardFooter = () => {
             <span className="text-slate-900 dark:text-white font-bold font-display uppercase tracking-wider text-[9px] lg:text-xs">{t('company')}</span>
             <div className="flex flex-col gap-1.5 lg:gap-3">
               <a href="/about" className="text-slate-500 hover:text-indigo-500 transition-colors">{t('aboutUs')}</a>
+              <SupportEntryLink label={t('support')} className="text-left text-slate-500 hover:text-indigo-500 transition-colors" />
               <a href={`mailto:${BRAND_EMAIL}`} className="text-slate-500 hover:text-indigo-500 transition-colors">{t('enterprise')}</a>
             </div>
           </div>
@@ -79,6 +82,7 @@ const MinimalFooter = () => {
                         </div>
 
         <div className="flex flex-wrap justify-center gap-x-4 gap-y-1.5 text-[9px] lg:text-xs lg:gap-6">
+          <SupportEntryLink label={t('support')} className="hover:text-slate-900 dark:hover:text-slate-200 transition-colors underline-offset-2 hover:underline" />
           <a href="/terms-of-service" className="hover:text-slate-900 dark:hover:text-slate-200 transition-colors underline-offset-2 hover:underline">{t('termsMinimal')}</a>
           <a href="/privacy-policy" className="hover:text-slate-900 dark:hover:text-slate-200 transition-colors underline-offset-2 hover:underline">{t('privacyMinimal')}</a>
           <a href="/cookie-policy" className="hover:text-slate-900 dark:hover:text-slate-200 transition-colors underline-offset-2 hover:underline">{t('cookiesMinimal')}</a>

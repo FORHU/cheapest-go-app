@@ -34,3 +34,39 @@ When `NEXT_PUBLIC_LOCALE` is set, the locale is locked and the language switcher
 - GeomeeGo can be deployed, rolled back, and scaled independently of CheapestGo.
 - New white-label brands in the future follow the same pattern: new Coolify service, new env vars, no code changes required (unless brand-specific features are needed).
 - `geomeego.com` must be added as a verified sending domain in the email provider (Resend/SendGrid) for `NEXT_PUBLIC_BRAND_EMAIL` to work.
+
+---
+
+## Amendment — 2026-09-06: the brand is now AirangGo
+
+GeomeeGo was renamed **AirangGo**, serving `airanggo.com`, at the direction of the Korean
+partner. This is the second rename of this brand.
+
+The decision recorded above is unchanged and is what made the rename cheap: because the
+brand is env vars over one codebase, renaming it touched no product logic. What it did
+touch is everywhere the old *name* had been written down as a value rather than derived:
+
+- `source_brand` on the three booking tables, migrated by
+  `20260906000001_rename_geomeego_to_airanggo.sql`
+- the admin brand filter, the brand switcher and its cookie
+- the booking reference prefix map — the prefix stays **GG** so references already
+  issued keep resolving to one brand
+- the CSRF origin allowlist, which now permits both domains
+
+Both names are deliberately still accepted in code. The Korean instance keeps running with
+`NEXT_PUBLIC_BRAND_NAME=GeomeeGo` until it is redeployed, and `geomeego.com` keeps
+resolving until DNS moves; a hard cutover would have made Korean bookings invisible in
+admin and misfiled their Stripe attribution during that window. The tolerance is removable
+once no deployment serves the old name — see `RENAMED_BRANDS` in `src/lib/brand.ts`.
+
+Two things the original Consequences got wrong or left stale, corrected here rather than
+edited above:
+
+- "new Coolify service" — deployment is AWS EC2, as the Decision section itself says.
+  Coolify is not used.
+- the verified sending domain requirement now applies to `airanggo.com`, and
+  `geomeego.com` must stay verified until it stops sending.
+
+A third rename should not require a third pass over the codebase. The remaining
+name-shaped values are listed above; anything new that hardcodes a brand name instead of
+reading it from configuration is a defect.

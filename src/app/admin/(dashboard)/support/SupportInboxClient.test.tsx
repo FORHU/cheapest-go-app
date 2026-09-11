@@ -23,6 +23,9 @@ const conversation = (over: Partial<InboxConversation> = {}): InboxConversation 
     userId: null,
     assignedAdminId: null,
     escalationReason: null,
+    reference: 'CS-9QM2K7',
+    priority: null,
+    urgency: 'normal',
     lastMessageAt: '2026-09-06T10:00:00.000Z',
     createdAt: '2026-09-06T09:00:00.000Z',
     ...over,
@@ -70,7 +73,7 @@ afterEach(() => {
 
 const waiting = [
     conversation({ id: 'a', guestName: 'Ana Reyes', sourceBrand: 'CheapestGo' }),
-    conversation({ id: 'b', guestName: '김민준', sourceBrand: 'GeomeeGo' }),
+    conversation({ id: 'b', guestName: '김민준', sourceBrand: 'AirangGo' }),
 ];
 
 describe('SupportInboxClient', () => {
@@ -81,6 +84,7 @@ describe('SupportInboxClient', () => {
                 initialFilter="waiting"
                 initialConversations={waiting}
                 initialCounts={{ waiting: 2, mine: 0 }}
+                currentAdminId="admin-1"
             />,
         );
 
@@ -96,10 +100,11 @@ describe('SupportInboxClient', () => {
                 initialFilter="waiting"
                 initialConversations={waiting}
                 initialCounts={{ waiting: 2, mine: 0 }}
+                currentAdminId="admin-1"
             />,
         );
 
-        expect(screen.getByText('GeomeeGo')).toBeInTheDocument();
+        expect(screen.getByText('AirangGo')).toBeInTheDocument();
         expect(screen.getByText('CheapestGo')).toBeInTheDocument();
     });
 
@@ -110,6 +115,7 @@ describe('SupportInboxClient', () => {
                 initialFilter="waiting"
                 initialConversations={[]}
                 initialCounts={{ waiting: 0, mine: 0 }}
+                currentAdminId="admin-1"
             />,
         );
 
@@ -120,7 +126,7 @@ describe('SupportInboxClient', () => {
         mockApi({
             conversation: conversation({ id: 'a' }),
             messages: [
-                { id: 'm1', senderType: 'guest', body: 'I want a refund.', noticeCode: null, createdAt: '2026-09-06T10:00:00.000Z' },
+                { id: 'm1', senderType: 'guest', body: 'I want a refund.', noticeCode: null, createdAt: '2026-09-06T10:00:00.000Z', attachments: [] },
             ],
             bookings: null,
         });
@@ -130,6 +136,7 @@ describe('SupportInboxClient', () => {
                 initialFilter="waiting"
                 initialConversations={waiting}
                 initialCounts={{ waiting: 2, mine: 0 }}
+                currentAdminId="admin-1"
             />,
         );
 
@@ -154,6 +161,7 @@ describe('SupportInboxClient', () => {
                 initialFilter="waiting"
                 initialConversations={waiting}
                 initialCounts={{ waiting: 2, mine: 0 }}
+                currentAdminId="admin-1"
             />,
         );
 
@@ -170,13 +178,14 @@ describe('SupportInboxClient', () => {
                 initialFilter="waiting"
                 initialConversations={waiting}
                 initialCounts={{ waiting: 2, mine: 0 }}
+                currentAdminId="admin-1"
             />,
         );
 
         fireEvent.click(screen.getByText('Ana Reyes'));
-        await waitFor(() => expect(screen.getByRole('textbox')).toBeInTheDocument());
+        await waitFor(() => expect(screen.getByRole('textbox', { name: /reply to the customer/i })).toBeInTheDocument());
 
-        fireEvent.change(screen.getByRole('textbox'), { target: { value: 'Looking into it.' } });
+        fireEvent.change(screen.getByRole('textbox', { name: /reply to the customer/i }), { target: { value: 'Looking into it.' } });
         fireEvent.click(screen.getByRole('button', { name: /send/i }));
 
         await waitFor(() =>
@@ -201,12 +210,13 @@ describe('SupportInboxClient', () => {
                 initialFilter="assistant"
                 initialConversations={[conversation({ id: 'a', status: 'ai_active' })]}
                 initialCounts={{ waiting: 0, mine: 0 }}
+                currentAdminId="admin-1"
             />,
         );
 
         fireEvent.click(screen.getByText('Ana Reyes'));
 
-        await waitFor(() => expect(screen.getByRole('textbox')).not.toBeDisabled());
+        await waitFor(() => expect(screen.getByRole('textbox', { name: /reply to the customer/i })).not.toBeDisabled());
     });
 
     it('resolves a conversation', async () => {
@@ -217,6 +227,7 @@ describe('SupportInboxClient', () => {
                 initialFilter="waiting"
                 initialConversations={waiting}
                 initialCounts={{ waiting: 2, mine: 0 }}
+                currentAdminId="admin-1"
             />,
         );
 
@@ -240,6 +251,7 @@ describe('SupportInboxClient', () => {
                 initialFilter="waiting"
                 initialConversations={waiting}
                 initialCounts={{ waiting: 2, mine: 0 }}
+                currentAdminId="admin-1"
             />,
         );
 

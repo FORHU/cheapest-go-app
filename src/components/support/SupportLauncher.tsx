@@ -6,6 +6,13 @@ import { useTranslations } from 'next-intl';
 /**
  * The floating button.
  *
+ * NOT CURRENTLY MOUNTED. Support is entered from the account menu instead (see
+ * SignInDropdown), and `SupportWidget` no longer renders this. It is kept rather than
+ * deleted because the decision it belongs to is genuinely open: ADR-0032 wanted a launcher
+ * visible to signed-out visitors, on the grounds that hiding it makes support look absent,
+ * and with the entry point inside the account menu a signed-out visitor has no route to
+ * support at all. If that gap turns out to matter, this is what goes back.
+ *
  * Only ever shown while the panel is closed — the panel's own header carries the close
  * control, so there is exactly one control with that name at any time.
  *

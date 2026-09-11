@@ -9,7 +9,7 @@ import { logApiCall } from '@/lib/server/api-logger';
 import { rateLimit } from '@/lib/server/rate-limit';
 import { checkCsrf } from '@/lib/server/csrf';
 import { flightBookingSchema } from '@/lib/schemas/flight';
-import { applyMarkup, toStripeAmount, FLIGHT_MARKUP, getFlightPriceTolerance } from '@/lib/pricing';
+import { applyMarkup, toStripeAmount, FLIGHT_MARKUP_SPEC, getFlightPriceTolerance } from '@/lib/pricing';
 import { passengerTypeForBirthDate } from '@/lib/age';
 import { convertCurrencyStrict, refreshExchangeRates } from '@/lib/currency';
 
@@ -34,6 +34,7 @@ import { duffelIdentityDocuments } from '@/lib/server/flights/duffel-identity-do
 import { normalizedToFlightOffer } from '@/utils/flight-utils';
 import { mintBookingReference } from '@/lib/bookingReference';
 import { revalidateFlight } from '@/lib/server/flights/revalidate-flight';
+import { canonicalBrandName } from '@/lib/brand';
 
 export const dynamic = 'force-dynamic';
 
@@ -631,7 +632,7 @@ export async function POST(req: NextRequest) {
         // row written after payment is filed under the same identifier the PaymentIntent
         // carries. Flights had no reference of ours at all until now — admin showed the
         // airline's PNR, which the airline owns and we cannot make unique to this platform.
-        const brand = process.env.NEXT_PUBLIC_BRAND_NAME ?? 'CheapestGo';
+        const brand = canonicalBrandName(process.env.NEXT_PUBLIC_BRAND_NAME);
         const bookingReference = mintBookingReference(brand);
 
         const { data: sessionRow, error: sessionError } = await db
@@ -1454,7 +1455,6 @@ export async function POST(req: NextRequest) {
         const stripeBase = duffelPreOrder
             ? parseFloat(duffelPreOrder.orderTotal)
             : effectiveFlightTotal + Math.max(0, seatTotal ?? 0) + Math.max(0, bagTotal ?? 0);
-        const pricing = applyMarkup(stripeBase, FLIGHT_MARKUP);
 
         // The currency `stripeBase` is denominated in.
         //
@@ -1468,6 +1468,29 @@ export async function POST(req: NextRequest) {
         // read from the offer before any order exists, and is the pair the FX readiness
         // guard already cleared.
         const baseCurrency = (duffelPreOrder?.orderCurrency || settlementCurrency).toLowerCase();
+
+        // Apply the markup, now that the base's currency is known.
+        //
+        // The flat component is denominated in USD because the costs it recovers are:
+        // Duffel's $3.00 order fee and Stripe's $0.30. `stripeBase` is in the supplier's
+        // currency, so it has to be converted first — adding 4.30 to a PHP fare would
+        // charge ₱4.30, about seven US cents.
+        //
+        // Guarded rather than thrown, for the same reason the charge conversion below is:
+        // a live ticket may already exist by this point, and stranding one costs far more
+        // than under-recovering a single booking's flat fee. Falling back to zero loses
+        // ~$4.30; an uncaught throw here loses the ticket.
+        let flatInBaseCurrency = FLIGHT_MARKUP_SPEC.flat;
+        try {
+            flatInBaseCurrency = convertCurrencyStrict(FLIGHT_MARKUP_SPEC.flat, 'usd', baseCurrency);
+        } catch (fxErr: any) {
+            flatInBaseCurrency = 0;
+            console.error(
+                `[/book] Could not convert the flat markup component USD→${baseCurrency} ` +
+                `(${fxErr?.message}) — charging the proportional part only.`,
+            );
+        }
+        const pricing = applyMarkup(stripeBase, FLIGHT_MARKUP_SPEC, flatInBaseCurrency);
 
         // Charge the customer in their selected display currency, not Duffel's USD.
         // This ensures the refund amount exactly matches what they paid — no FX drift.
@@ -1505,7 +1528,7 @@ export async function POST(req: NextRequest) {
         }
         const flightStripeAmount = toStripeAmount(chargePrice, chargeInCurrency);
 
-        console.log(`[/book] Pricing: original=${pricing.originalPrice} ${baseCurrency}, charged=${pricing.chargedPrice}, markup=${(pricing.markupRate * 100).toFixed(1)}%, markupAmount=${pricing.markupAmount}`);
+        console.log(`[/book] Pricing: original=${pricing.originalPrice} ${baseCurrency}, charged=${pricing.chargedPrice}, markup=${(pricing.markupRate * 100).toFixed(1)}% effective (${(FLIGHT_MARKUP_SPEC.rate * 100).toFixed(1)}% + ${pricing.markupFlat} ${baseCurrency}${pricing.capped ? `, CAPPED at ${(FLIGHT_MARKUP_SPEC.cap * 100).toFixed(0)}%` : ''}), markupAmount=${pricing.markupAmount}`);
         console.log(`[/book] Stripe charge: ${chargePrice} ${chargeInCurrency} (converted from ${pricing.chargedPrice} ${baseCurrency})`);
 
         // Endpoints of the outbound slice only. Segments carry their slice index, so the

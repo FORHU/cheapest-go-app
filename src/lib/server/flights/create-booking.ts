@@ -32,6 +32,7 @@ import { getSqlAdmin } from '@/lib/db/postgres';
 import { stripe } from '@/lib/stripe/server';
 import { mystiflyRequest } from '@/lib/server/flights/mystifly-client';
 import { lockFx } from '@/lib/bookings/fxLock';
+import { canonicalBrandName } from '@/lib/brand';
 
 // ── Main handler ─────────────────────────────────────────────────────────────
 
@@ -271,7 +272,7 @@ async function handleMystifly(ctx: {
             ${confirmedPrice},
             ${confirmedCurrency},
             ${JSON.stringify(bookData)},
-            ${process.env.NEXT_PUBLIC_BRAND_NAME ?? 'CheapestGo'},
+            ${canonicalBrandName(process.env.NEXT_PUBLIC_BRAND_NAME)},
             ${session.booking_reference ?? null},
             ${fx.usd_amount},
             ${fx.fx_rate},
@@ -381,7 +382,7 @@ async function handleDuffel(ctx: {
             ${JSON.stringify(preOrderTickets)},
             ${farePolicy ? sql.json(farePolicy) : null},
             ${tripType},
-            ${process.env.NEXT_PUBLIC_BRAND_NAME ?? 'CheapestGo'},
+            ${canonicalBrandName(process.env.NEXT_PUBLIC_BRAND_NAME)},
             ${session.booking_reference ?? null},
             ${fx.usd_amount},
             ${fx.fx_rate},

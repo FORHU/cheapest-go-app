@@ -2,12 +2,13 @@ import { HotelResultsClient } from '@/components/search/HotelResultsClient';
 import { MapResultsClient } from '@/components/search/MapResultsClient';
 import { CountryCityPicker } from '@/components/search/CountryCityPicker';
 import { getTranslations } from 'next-intl/server';
+import { canonicalBrandName } from '@/lib/brand';
 
 export const dynamic = 'force-dynamic';
 
 export async function generateMetadata() {
     const t = await getTranslations('hotels.searchPage');
-    const brandName = process.env.NEXT_PUBLIC_BRAND_NAME ?? 'CheapestGo';
+    const brandName = canonicalBrandName(process.env.NEXT_PUBLIC_BRAND_NAME);
     return {
         title: t('title', { brand: brandName }),
         description: t('description', { brand: brandName }),

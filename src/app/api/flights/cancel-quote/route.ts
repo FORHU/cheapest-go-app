@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/utils/postgres/admin';
+import { fromStripeAmount } from '@/lib/pricing';
 import { env } from '@/utils/env';
 import { checkCsrf } from '@/lib/server/csrf';
 import { stripe } from '@/lib/stripe/server';
@@ -161,7 +162,9 @@ export async function POST(req: NextRequest) {
         try {
             if (booking.payment_intent_id) {
                 const pi = await stripe.paymentIntents.retrieve(booking.payment_intent_id);
-                chargedAmount = pi.amount / 100;
+                // Not `/ 100`: KRW has no subunit, so a won amount divided by a
+                // hundred quoted a Korean traveller 1% of the refund they were owed.
+                chargedAmount = fromStripeAmount(pi.amount, pi.currency);
                 refundAmount = Math.round(chargedAmount * refundRatio * 100) / 100;
                 refundCurrency = pi.currency.toUpperCase();
             } else {

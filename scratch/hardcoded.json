@@ -1,0 +1,872 @@
+[
+  {
+    "file": "src\\components\\admin\\CommandPalette.tsx",
+    "line": 261,
+    "text": "Search bookings, customers, users..."
+  },
+  {
+    "file": "src\\components\\admin\\CommandPalette.tsx",
+    "line": 285,
+    "text": "No results found"
+  },
+  {
+    "file": "src\\components\\admin\\CommandPalette.tsx",
+    "line": 286,
+    "text": "Try a different search term"
+  },
+  {
+    "file": "src\\components\\admin\\CommandPalette.tsx",
+    "line": 293,
+    "text": "Start typing to search"
+  },
+  {
+    "file": "src\\components\\admin\\CommandPalette.tsx",
+    "line": 294,
+    "text": "Search by name, email, booking ref, or PNR"
+  },
+  {
+    "file": "src\\components\\admin\\dashboard\\DuffelDashboard.tsx",
+    "line": 82,
+    "text": "No routes yet"
+  },
+  {
+    "file": "src\\components\\admin\\dashboard\\DuffelDashboard.tsx",
+    "line": 110,
+    "text": "No recent orders"
+  },
+  {
+    "file": "src\\components\\admin\\dashboard\\DuffelDashboard.tsx",
+    "line": 156,
+    "text": "Duffel Not Configured"
+  },
+  {
+    "file": "src\\components\\admin\\dashboard\\DuffelDashboard.tsx",
+    "line": 170,
+    "text": "Failed to load Duffel data"
+  },
+  {
+    "file": "src\\components\\admin\\dashboard\\TopRoutes.tsx",
+    "line": 89,
+    "text": "No Route Data"
+  },
+  {
+    "file": "src\\components\\admin\\Sidebar.tsx",
+    "line": 279,
+    "text": "Previous integrations"
+  },
+  {
+    "file": "src\\components\\admin\\Sidebar.tsx",
+    "line": 303,
+    "text": "Next integrations"
+  },
+  {
+    "file": "src\\components\\admin\\TopNav.tsx",
+    "line": 202,
+    "text": "Search bookings, customers..."
+  },
+  {
+    "file": "src\\components\\admin\\TopNav.tsx",
+    "line": 283,
+    "text": "No notifications"
+  },
+  {
+    "file": "src\\components\\booking\\destination\\TimeZonePicker.tsx",
+    "line": 104,
+    "text": "Back to clocks"
+  },
+  {
+    "file": "src\\components\\booking\\destination\\TimeZonePicker.tsx",
+    "line": 119,
+    "text": "Search city or zone"
+  },
+  {
+    "file": "src\\components\\booking\\hotel-confirmed\\HotelConfirmedContent.tsx",
+    "line": 123,
+    "text": "Confirming your booking…"
+  },
+  {
+    "file": "src\\components\\booking\\hotel-confirmed\\HotelConfirmedContent.tsx",
+    "line": 132,
+    "text": "Go to My Trips"
+  },
+  {
+    "file": "src\\components\\common\\ScrollToTop.tsx",
+    "line": 45,
+    "text": "Scroll to top"
+  },
+  {
+    "file": "src\\components\\flights\\ResponsiveFlightHeader.tsx",
+    "line": 109,
+    "text": "Finding flights…"
+  },
+  {
+    "file": "src\\components\\flights\\search-fetcher.tsx",
+    "line": 335,
+    "text": "Refine your search"
+  },
+  {
+    "file": "src\\components\\flights\\search-fetcher.tsx",
+    "line": 502,
+    "text": "No flights match your filters"
+  },
+  {
+    "file": "src\\components\\Hero.tsx",
+    "line": 49,
+    "text": "Machined for You."
+  },
+  {
+    "file": "src\\components\\Hero.tsx",
+    "line": 88,
+    "text": "City or Airport"
+  },
+  {
+    "file": "src\\components\\landing\\header\\Navbar.tsx",
+    "line": 123,
+    "text": "Open app"
+  },
+  {
+    "file": "src\\components\\landing\\header\\Navbar.tsx",
+    "line": 134,
+    "text": "Select currency"
+  },
+  {
+    "file": "src\\components\\landing\\hero\\AIResultsPreview.tsx",
+    "line": 82,
+    "text": "Search with these details"
+  },
+  {
+    "file": "src\\components\\landing\\sections\\ExploreVacationPackages.tsx",
+    "line": 105,
+    "text": "Prices may change"
+  },
+  {
+    "file": "src\\components\\landing\\sections\\LastMinuteWeekendDeals.tsx",
+    "line": 141,
+    "text": "Prices may change"
+  },
+  {
+    "file": "src\\components\\landing\\sections\\PopularDestinationsSection.tsx",
+    "line": 41,
+    "text": "Scroll left"
+  },
+  {
+    "file": "src\\components\\landing\\sections\\PopularDestinationsSection.tsx",
+    "line": 48,
+    "text": "Scroll right"
+  },
+  {
+    "file": "src\\components\\login\\LoginContent.tsx",
+    "line": 152,
+    "text": "Sign In as"
+  },
+  {
+    "file": "src\\components\\map\\MapModal.tsx",
+    "line": 77,
+    "text": "Close map"
+  },
+  {
+    "file": "src\\components\\map\\PropertyMapView.tsx",
+    "line": 549,
+    "text": "Click for details"
+  },
+  {
+    "file": "src\\components\\places\\PlaceList.tsx",
+    "line": 58,
+    "text": "Select a place from the list to view rich details"
+  },
+  {
+    "file": "src\\components\\places\\PlaceList.tsx",
+    "line": 128,
+    "text": "Failed to load details"
+  },
+  {
+    "file": "src\\components\\places\\PlaceList.tsx",
+    "line": 129,
+    "text": "Please try again later."
+  },
+  {
+    "file": "src\\components\\property\\components\\MapOverlay.tsx",
+    "line": 109,
+    "text": "Get directions..."
+  },
+  {
+    "file": "src\\components\\property\\components\\MapOverlay.tsx",
+    "line": 122,
+    "text": "Where from?"
+  },
+  {
+    "file": "src\\components\\property\\components\\MapOverlay.tsx",
+    "line": 222,
+    "text": "View on Maps"
+  },
+  {
+    "file": "src\\components\\property\\PoiDetailsModal.tsx",
+    "line": 292,
+    "text": "Your Rating"
+  },
+  {
+    "file": "src\\components\\property\\PoiDetailsModal.tsx",
+    "line": 311,
+    "text": "Share your experience..."
+  },
+  {
+    "file": "src\\components\\property\\PoiDetailsModal.tsx",
+    "line": 318,
+    "text": "Add Photo"
+  },
+  {
+    "file": "src\\components\\property\\PoiDetailsModal.tsx",
+    "line": 464,
+    "text": "No direct reviews available for this place yet."
+  },
+  {
+    "file": "src\\components\\property\\PoliciesSection.tsx",
+    "line": 202,
+    "text": "No-Show Penalty:"
+  },
+  {
+    "file": "src\\components\\property\\PropertyMapSidebarContent.tsx",
+    "line": 703,
+    "text": "Map not available"
+  },
+  {
+    "file": "src\\components\\property\\PropertyMapSidebarContent.tsx",
+    "line": 797,
+    "text": "Map not available"
+  },
+  {
+    "file": "src\\components\\property\\ReviewsSection.tsx",
+    "line": 247,
+    "text": "Guest reviews"
+  },
+  {
+    "file": "src\\components\\property\\RoomDetailsView.tsx",
+    "line": 98,
+    "text": "Back to Property"
+  },
+  {
+    "file": "src\\components\\property\\RoomDetailsView.tsx",
+    "line": 197,
+    "text": "No description available for this room."
+  },
+  {
+    "file": "src\\components\\property\\RoomDetailsView.tsx",
+    "line": 238,
+    "text": "Check dates for specific rates"
+  },
+  {
+    "file": "src\\components\\pwa\\InstallPWAPrompt.tsx",
+    "line": 95,
+    "text": "Close guide"
+  },
+  {
+    "file": "src\\components\\search\\HotelResultsClient.tsx",
+    "line": 333,
+    "text": "Live prices didn&apos;t load."
+  },
+  {
+    "file": "src\\components\\search\\HotelResultsClient.tsx",
+    "line": 346,
+    "text": "Neighborhood search"
+  },
+  {
+    "file": "src\\components\\search\\MapResultsClient.tsx",
+    "line": 48,
+    "text": "Live prices didn&apos;t load."
+  },
+  {
+    "file": "src\\components\\search\\MobileSearchAccordion.tsx",
+    "line": 87,
+    "text": "Finding hotels…"
+  },
+  {
+    "file": "src\\components\\shared\\PropertyCard\\PropertyCard.tsx",
+    "line": 471,
+    "text": "Fetching prices…"
+  },
+  {
+    "file": "src\\components\\trips\\CancellationFeeCard.tsx",
+    "line": 29,
+    "text": "You'll Receive"
+  },
+  {
+    "file": "src\\components\\trips\\FlightBookingCard.tsx",
+    "line": 1872,
+    "text": "Void window:"
+  },
+  {
+    "file": "src\\components\\trips\\FlightBookingCard.tsx",
+    "line": 2036,
+    "text": "Select new date"
+  },
+  {
+    "file": "src\\components\\trips\\FlightBookingCard.tsx",
+    "line": 2091,
+    "text": "Price change:"
+  },
+  {
+    "file": "src\\components\\trips\\ShareBookingForm.tsx",
+    "line": 40,
+    "text": "Send to"
+  },
+  {
+    "file": "src\\components\\trips\\SpecialRequestsForm.tsx",
+    "line": 60,
+    "text": "e.g. Late check-in after 10 PM, extra bed, high floor…"
+  },
+  {
+    "file": "src\\components\\trips\\TripMapView.tsx",
+    "line": 206,
+    "text": "Center on hotel"
+  },
+  {
+    "file": "src\\components\\trips\\TripMapView.tsx",
+    "line": 217,
+    "text": "Toggle traffic"
+  },
+  {
+    "file": "src\\components\\trips\\TripMapView.tsx",
+    "line": 268,
+    "text": "Navigation starts when you're within 50 km"
+  },
+  {
+    "file": "src\\components\\trips\\TripMapView.tsx",
+    "line": 287,
+    "text": "Flying in"
+  },
+  {
+    "file": "src\\components\\trips\\TripMapView.tsx",
+    "line": 307,
+    "text": "Determining your location…"
+  },
+  {
+    "file": "src\\components\\ui\\HorizontalScroll.tsx",
+    "line": 42,
+    "text": "Scroll left"
+  },
+  {
+    "file": "src\\components\\ui\\HorizontalScroll.tsx",
+    "line": 51,
+    "text": "Scroll right"
+  },
+  {
+    "file": "src\\app\\(main)\\booking\\hotel-confirmed\\page.tsx",
+    "line": 10,
+    "text": "Loading your booking…"
+  },
+  {
+    "file": "src\\app\\(main)\\flights\\search\\page.tsx",
+    "line": 147,
+    "text": "Where are you flying from?"
+  },
+  {
+    "file": "src\\app\\(main)\\flights\\search\\page.tsx",
+    "line": 166,
+    "text": "Please provide origin, destination and departure date."
+  },
+  {
+    "file": "src\\app\\(main)\\property\\[id]\\error.tsx",
+    "line": 21,
+    "text": "Back to search"
+  },
+  {
+    "file": "src\\app\\(main)\\search\\error.tsx",
+    "line": 21,
+    "text": "Back to Home"
+  },
+  {
+    "file": "src\\app\\(main)\\trips\\[id]\\requests\\page.tsx",
+    "line": 44,
+    "text": "Special requests"
+  },
+  {
+    "file": "src\\app\\(main)\\trips\\[id]\\requests\\page.tsx",
+    "line": 53,
+    "text": "This booking is cancelled, so special requests can no longer be updated."
+  },
+  {
+    "file": "src\\app\\(main)\\trips\\[id]\\share\\page.tsx",
+    "line": 44,
+    "text": "Share booking confirmation"
+  },
+  {
+    "file": "src\\app\\admin\\(dashboard)\\analytics\\AnalyticsClient.tsx",
+    "line": 170,
+    "text": "Pending to Ticketed Time (Avg)"
+  },
+  {
+    "file": "src\\app\\admin\\(dashboard)\\analytics\\AnalyticsClient.tsx",
+    "line": 207,
+    "text": "Average fulfillment time improved by 12% today."
+  },
+  {
+    "file": "src\\app\\admin\\(dashboard)\\analytics\\AnalyticsClient.tsx",
+    "line": 357,
+    "text": "All Providers"
+  },
+  {
+    "file": "src\\app\\admin\\(dashboard)\\analytics\\AnalyticsClient.tsx",
+    "line": 368,
+    "text": "All Status"
+  },
+  {
+    "file": "src\\app\\admin\\(dashboard)\\analytics\\AnalyticsClient.tsx",
+    "line": 376,
+    "text": "Search endpoint..."
+  },
+  {
+    "file": "src\\app\\admin\\(dashboard)\\bookings\\BookingDetailsDialog.tsx",
+    "line": 719,
+    "text": "No refund sessions recorded for this booking."
+  },
+  {
+    "file": "src\\app\\admin\\(dashboard)\\bookings\\BookingDetailsDialog.tsx",
+    "line": 769,
+    "text": "History of automated and manual emails sent to this customer."
+  },
+  {
+    "file": "src\\app\\admin\\(dashboard)\\bookings\\BookingDetailsDialog.tsx",
+    "line": 792,
+    "text": "No email history found for this booking."
+  },
+  {
+    "file": "src\\app\\admin\\(dashboard)\\bookings\\BookingsClient.tsx",
+    "line": 401,
+    "text": "Filter bookings..."
+  },
+  {
+    "file": "src\\app\\admin\\(dashboard)\\bookings\\BookingsClient.tsx",
+    "line": 480,
+    "text": "Toggle columns"
+  },
+  {
+    "file": "src\\app\\admin\\(dashboard)\\bookings\\BookingsClient.tsx",
+    "line": 641,
+    "text": "No bookings found with selected filters."
+  },
+  {
+    "file": "src\\app\\admin\\(dashboard)\\bookings\\BookingsClient.tsx",
+    "line": 645,
+    "text": "Clear All Filters"
+  },
+  {
+    "file": "src\\app\\admin\\(dashboard)\\communication\\CommunicationClient.tsx",
+    "line": 157,
+    "text": "All Types"
+  },
+  {
+    "file": "src\\app\\admin\\(dashboard)\\communication\\CommunicationClient.tsx",
+    "line": 170,
+    "text": "All Statuses"
+  },
+  {
+    "file": "src\\app\\admin\\(dashboard)\\communication\\CommunicationClient.tsx",
+    "line": 220,
+    "text": "This email is not tied to a booking"
+  },
+  {
+    "file": "src\\app\\admin\\(dashboard)\\crons\\CronsClient.tsx",
+    "line": 67,
+    "text": "Manually trigger any scheduled job. Results appear inline."
+  },
+  {
+    "file": "src\\app\\admin\\(dashboard)\\customers\\CustomersClient.tsx",
+    "line": 194,
+    "text": "Search customers..."
+  },
+  {
+    "file": "src\\app\\admin\\(dashboard)\\customers\\CustomersClient.tsx",
+    "line": 235,
+    "text": "All Tiers"
+  },
+  {
+    "file": "src\\app\\admin\\(dashboard)\\customers\\CustomersClient.tsx",
+    "line": 249,
+    "text": "All Statuses"
+  },
+  {
+    "file": "src\\app\\admin\\(dashboard)\\customers\\CustomersClient.tsx",
+    "line": 347,
+    "text": "View Details"
+  },
+  {
+    "file": "src\\app\\admin\\(dashboard)\\customers\\CustomersClient.tsx",
+    "line": 428,
+    "text": "No customers found"
+  },
+  {
+    "file": "src\\app\\admin\\(dashboard)\\customers\\CustomersClient.tsx",
+    "line": 429,
+    "text": "Try adjusting your filters or search term."
+  },
+  {
+    "file": "src\\app\\admin\\(dashboard)\\customers\\CustomersClient.tsx",
+    "line": 565,
+    "text": "and their authentication account. This action"
+  },
+  {
+    "file": "src\\app\\admin\\(dashboard)\\deals\\DealsClient.tsx",
+    "line": 185,
+    "text": "Welcome discount for new users"
+  },
+  {
+    "file": "src\\app\\admin\\(dashboard)\\deals\\DealsClient.tsx",
+    "line": 307,
+    "text": "No items found"
+  },
+  {
+    "file": "src\\app\\admin\\(dashboard)\\deals\\DealsClient.tsx",
+    "line": 308,
+    "text": "Try adjusting your search or switch tabs"
+  },
+  {
+    "file": "src\\app\\admin\\(dashboard)\\destinations\\DestinationsClient.tsx",
+    "line": 124,
+    "text": "On This Page"
+  },
+  {
+    "file": "src\\app\\admin\\(dashboard)\\destinations\\DestinationsClient.tsx",
+    "line": 131,
+    "text": "Search city or country…"
+  },
+  {
+    "file": "src\\app\\admin\\(dashboard)\\destinations\\DestinationsClient.tsx",
+    "line": 194,
+    "text": "Not set"
+  },
+  {
+    "file": "src\\app\\admin\\(dashboard)\\destinations\\DestinationsClient.tsx",
+    "line": 201,
+    "text": "No image"
+  },
+  {
+    "file": "src\\app\\admin\\(dashboard)\\destinations\\DestinationsClient.tsx",
+    "line": 237,
+    "text": "No destinations found"
+  },
+  {
+    "file": "src\\app\\admin\\(dashboard)\\destinations\\DestinationsClient.tsx",
+    "line": 238,
+    "text": "Add your first destination using the button above"
+  },
+  {
+    "file": "src\\app\\admin\\(dashboard)\\duffel\\DuffelAdminClient.tsx",
+    "line": 180,
+    "text": "Search airlines..."
+  },
+  {
+    "file": "src\\app\\admin\\(dashboard)\\duffel\\DuffelAdminClient.tsx",
+    "line": 316,
+    "text": "No sales data found for the last 30 days"
+  },
+  {
+    "file": "src\\app\\admin\\(dashboard)\\duffel\\DuffelAdminClient.tsx",
+    "line": 321,
+    "text": "Top Carriers by Volume"
+  },
+  {
+    "file": "src\\app\\admin\\(dashboard)\\mobile\\MobileClient.tsx",
+    "line": 190,
+    "text": "Live rotation — no redeploy needed"
+  },
+  {
+    "file": "src\\app\\admin\\(dashboard)\\mobile\\MobileClient.tsx",
+    "line": 235,
+    "text": "New key — copy now"
+  },
+  {
+    "file": "src\\app\\admin\\(dashboard)\\mobile\\MobileClient.tsx",
+    "line": 291,
+    "text": "Notification title"
+  },
+  {
+    "file": "src\\app\\admin\\(dashboard)\\mobile\\MobileClient.tsx",
+    "line": 297,
+    "text": "Notification body"
+  },
+  {
+    "file": "src\\app\\admin\\(dashboard)\\mobile\\MobileClient.tsx",
+    "line": 326,
+    "text": "Force-update gate · checked on app launch"
+  },
+  {
+    "file": "src\\app\\admin\\(dashboard)\\mobile\\MobileClient.tsx",
+    "line": 348,
+    "text": "Please update to continue using CheapestGo."
+  },
+  {
+    "file": "src\\app\\admin\\(dashboard)\\mobile\\MobileClient.tsx",
+    "line": 387,
+    "text": "Mobile app endpoint"
+  },
+  {
+    "file": "src\\app\\admin\\(dashboard)\\mobile\\MobileClient.tsx",
+    "line": 388,
+    "text": "GET /api/mobile/version-check"
+  },
+  {
+    "file": "src\\app\\admin\\(dashboard)\\mobile\\MobileClient.tsx",
+    "line": 389,
+    "text": "Public · call on app startup · no auth needed"
+  },
+  {
+    "file": "src\\app\\admin\\(dashboard)\\mobile\\MobileClient.tsx",
+    "line": 453,
+    "text": "No Duffel bookings yet"
+  },
+  {
+    "file": "src\\app\\admin\\(dashboard)\\mobile\\MobileClient.tsx",
+    "line": 454,
+    "text": "Bookings made via the mobile app will appear here"
+  },
+  {
+    "file": "src\\app\\admin\\(dashboard)\\price-alerts\\PriceAlertsClient.tsx",
+    "line": 108,
+    "text": "Search by route or email…"
+  },
+  {
+    "file": "src\\app\\admin\\(dashboard)\\price-alerts\\PriceAlertsClient.tsx",
+    "line": 176,
+    "text": "Any price"
+  },
+  {
+    "file": "src\\app\\admin\\(dashboard)\\price-alerts\\PriceAlertsClient.tsx",
+    "line": 208,
+    "text": "Delete alert"
+  },
+  {
+    "file": "src\\app\\admin\\(dashboard)\\price-alerts\\PriceAlertsClient.tsx",
+    "line": 223,
+    "text": "No price alerts found"
+  },
+  {
+    "file": "src\\app\\admin\\(dashboard)\\price-alerts\\PriceAlertsClient.tsx",
+    "line": 224,
+    "text": "Try adjusting your filters"
+  },
+  {
+    "file": "src\\app\\admin\\(dashboard)\\revenue\\RevenueClient.tsx",
+    "line": 239,
+    "text": "Search revenue items..."
+  },
+  {
+    "file": "src\\app\\admin\\(dashboard)\\revenue\\RevenueClient.tsx",
+    "line": 402,
+    "text": "No Financial Data"
+  },
+  {
+    "file": "src\\app\\admin\\(dashboard)\\reviews\\ReviewsClient.tsx",
+    "line": 34,
+    "text": "No rating"
+  },
+  {
+    "file": "src\\app\\admin\\(dashboard)\\reviews\\ReviewsClient.tsx",
+    "line": 96,
+    "text": "Added This Week"
+  },
+  {
+    "file": "src\\app\\admin\\(dashboard)\\reviews\\ReviewsClient.tsx",
+    "line": 104,
+    "text": "Search by hotel ID or reviewer…"
+  },
+  {
+    "file": "src\\app\\admin\\(dashboard)\\reviews\\ReviewsClient.tsx",
+    "line": 149,
+    "text": "No text"
+  },
+  {
+    "file": "src\\app\\admin\\(dashboard)\\reviews\\ReviewsClient.tsx",
+    "line": 165,
+    "text": "Delete review"
+  },
+  {
+    "file": "src\\app\\admin\\(dashboard)\\reviews\\ReviewsClient.tsx",
+    "line": 179,
+    "text": "No reviews found"
+  },
+  {
+    "file": "src\\app\\admin\\(dashboard)\\reviews\\ReviewsClient.tsx",
+    "line": 180,
+    "text": "Try adjusting your search"
+  },
+  {
+    "file": "src\\app\\admin\\(dashboard)\\saved-trips\\SavedTripsClient.tsx",
+    "line": 99,
+    "text": "Search title or subtitle…"
+  },
+  {
+    "file": "src\\app\\admin\\(dashboard)\\saved-trips\\SavedTripsClient.tsx",
+    "line": 168,
+    "text": "Open offer"
+  },
+  {
+    "file": "src\\app\\admin\\(dashboard)\\saved-trips\\SavedTripsClient.tsx",
+    "line": 183,
+    "text": "No saved trips found"
+  },
+  {
+    "file": "src\\app\\admin\\(dashboard)\\saved-trips\\SavedTripsClient.tsx",
+    "line": 184,
+    "text": "Customers haven't saved any trips yet, or try adjusting filters"
+  },
+  {
+    "file": "src\\app\\admin\\(dashboard)\\settings\\SettingsClient.tsx",
+    "line": 252,
+    "text": "Allow new users to sign up"
+  },
+  {
+    "file": "src\\app\\admin\\(dashboard)\\settings\\SettingsClient.tsx",
+    "line": 404,
+    "text": "Clear All Search Caches"
+  },
+  {
+    "file": "src\\app\\admin\\(dashboard)\\settings\\SettingsClient.tsx",
+    "line": 439,
+    "text": "You have unsaved changes"
+  },
+  {
+    "file": "src\\app\\admin\\(dashboard)\\stripe\\StripeClient.tsx",
+    "line": 123,
+    "text": "Ready to pay out"
+  },
+  {
+    "file": "src\\app\\admin\\(dashboard)\\stripe\\StripeClient.tsx",
+    "line": 127,
+    "text": "No available balance"
+  },
+  {
+    "file": "src\\app\\admin\\(dashboard)\\stripe\\StripeClient.tsx",
+    "line": 144,
+    "text": "Settling in 2–7 days"
+  },
+  {
+    "file": "src\\app\\admin\\(dashboard)\\stripe\\StripeClient.tsx",
+    "line": 148,
+    "text": "No pending balance"
+  },
+  {
+    "file": "src\\app\\admin\\(dashboard)\\stripe\\StripeClient.tsx",
+    "line": 230,
+    "text": "No payments yet"
+  },
+  {
+    "file": "src\\app\\admin\\(dashboard)\\stripe\\StripeClient.tsx",
+    "line": 275,
+    "text": "No refunds"
+  },
+  {
+    "file": "src\\app\\admin\\(dashboard)\\stripe\\StripeClient.tsx",
+    "line": 332,
+    "text": "No disputes"
+  },
+  {
+    "file": "src\\app\\admin\\(dashboard)\\stripe\\StripeClient.tsx",
+    "line": 333,
+    "text": "All clear"
+  },
+  {
+    "file": "src\\app\\admin\\(dashboard)\\stripe\\StripeClient.tsx",
+    "line": 378,
+    "text": "No payouts yet"
+  },
+  {
+    "file": "src\\app\\admin\\(dashboard)\\suppliers\\SuppliersClient.tsx",
+    "line": 86,
+    "text": "Search suppliers..."
+  },
+  {
+    "file": "src\\app\\admin\\(dashboard)\\support\\SupportInboxClient.tsx",
+    "line": 161,
+    "text": "Inbox filters"
+  },
+  {
+    "file": "src\\app\\admin\\(dashboard)\\support\\SupportInboxClient.tsx",
+    "line": 257,
+    "text": "Mark conversation resolved"
+  },
+  {
+    "file": "src\\app\\admin\\(dashboard)\\support\\SupportInboxClient.tsx",
+    "line": 306,
+    "text": "Reply to the customer"
+  },
+  {
+    "file": "src\\app\\admin\\(dashboard)\\support\\SupportInboxClient.tsx",
+    "line": 307,
+    "text": "Reply to the customer"
+  },
+  {
+    "file": "src\\app\\admin\\(dashboard)\\travelgatex\\TravelgateXAdminClient.tsx",
+    "line": 76,
+    "text": "not set"
+  },
+  {
+    "file": "src\\app\\admin\\(dashboard)\\travelgatex\\TravelgateXAdminClient.tsx",
+    "line": 346,
+    "text": "No hotel bookings yet"
+  },
+  {
+    "file": "src\\app\\admin\\(dashboard)\\travelgatex\\TravelgateXAdminClient.tsx",
+    "line": 347,
+    "text": "Bookings placed via OTV will appear here"
+  },
+  {
+    "file": "src\\app\\admin\\(dashboard)\\travelgatex\\TravelgateXAdminClient.tsx",
+    "line": 401,
+    "text": "No API logs"
+  },
+  {
+    "file": "src\\app\\admin\\(dashboard)\\users\\UsersManagementClient.tsx",
+    "line": 184,
+    "text": "Search users by name or email..."
+  },
+  {
+    "file": "src\\app\\admin\\desk\\DeskMobileNav.tsx",
+    "line": 29,
+    "text": "Support desk"
+  },
+  {
+    "file": "src\\app\\admin\\desk\\DeskNav.tsx",
+    "line": 38,
+    "text": "Support desk"
+  },
+  {
+    "file": "src\\app\\admin\\desk\\DeskNav.tsx",
+    "line": 125,
+    "text": "Full admin"
+  },
+  {
+    "file": "src\\app\\api\\invoice\\[id]\\pdf\\InvoicePdfDocument.tsx",
+    "line": 207,
+    "text": "Your Travel Partner"
+  },
+  {
+    "file": "src\\app\\api\\invoice\\[id]\\pdf\\InvoicePdfDocument.tsx",
+    "line": 223,
+    "text": "Billed to"
+  },
+  {
+    "file": "src\\app\\api\\og\\route.tsx",
+    "line": 82,
+    "text": "for Travel."
+  },
+  {
+    "file": "src\\app\\api\\og\\route.tsx",
+    "line": 169,
+    "text": "The World,"
+  },
+  {
+    "file": "src\\app\\api\\og\\route.tsx",
+    "line": 170,
+    "text": "for Less."
+  },
+  {
+    "file": "src\\app\\test-map\\page.tsx",
+    "line": 296,
+    "text": "Search places..."
+  },
+  {
+    "file": "src\\app\\test-map\\page.tsx",
+    "line": 399,
+    "text": "Map details"
+  }
+]

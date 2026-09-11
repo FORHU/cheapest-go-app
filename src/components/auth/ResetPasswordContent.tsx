@@ -6,8 +6,9 @@ import { ArrowLeft, Lock, Eye, EyeOff, Check, X } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { useAuthStore } from '@/stores/authStore';
 import { usePasswordValidation } from '@/hooks';
+import { brandWordmark, canonicalBrandName } from '@/lib/brand';
 
-const BRAND_NAME = process.env.NEXT_PUBLIC_BRAND_NAME ?? 'CheapestGo';
+const BRAND_NAME = canonicalBrandName(process.env.NEXT_PUBLIC_BRAND_NAME);
 
 export function ResetPasswordContent() {
     const t = useTranslations('auth');
@@ -93,11 +94,7 @@ export function ResetPasswordContent() {
                     <div className="flex justify-center mb-8">
                         <Link href="/" className="flex items-center gap-3">
                             <h1 className="text-slate-900 dark:text-white font-display font-bold text-2xl tracking-tight">
-                                {BRAND_NAME === 'CheapestGo'
-                                    ? <>Cheapest<span className="text-alabaster-accent dark:text-obsidian-accent">Go</span></>
-                                    : BRAND_NAME === 'GeomeeGo'
-                                    ? <>Geomee<span className="text-alabaster-accent dark:text-obsidian-accent">Go</span></>
-                                    : BRAND_NAME}
+                                {brandWordmark(BRAND_NAME).head}<span className="text-alabaster-accent dark:text-obsidian-accent">{brandWordmark(BRAND_NAME).tail}</span>
                             </h1>
                         </Link>
                     </div>

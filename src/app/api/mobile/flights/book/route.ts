@@ -3,7 +3,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { env } from '@/utils/env';
 import { stripe } from '@/lib/stripe/server';
 import { flightBookingSchema } from '@/lib/schemas/flight';
-import { applyMarkup, toStripeAmount, FLIGHT_MARKUP } from '@/lib/pricing';
+import { applyMarkup, toStripeAmount, FLIGHT_MARKUP_SPEC } from '@/lib/pricing';
+import { convertCurrencyStrict, refreshExchangeRates } from '@/lib/currency';
 import { rateLimit } from '@/lib/server/rate-limit';
 import { getMobileApiKey } from '@/lib/server/mobile-auth';
 import { placeDuffelOrder } from '@/lib/server/flights/place-duffel-order';
@@ -351,7 +352,28 @@ export async function POST(req: NextRequest) {
         }).eq('id', sessionId);
 
         // ── Step 5: Create Stripe PaymentIntent ───────────────────────────
-        const pricing = applyMarkup(parseFloat(orderTotal), FLIGHT_MARKUP);
+        // The flat component of the markup is USD-denominated (it recovers Duffel's $3.00
+        // order fee and Stripe's $0.30), while `orderTotal` is in `orderCurrency`, so it
+        // has to be converted before it can be added. Guarded, not thrown: the Duffel
+        // order already exists by this point, and stranding a live ticket costs far more
+        // than under-recovering one booking's flat fee.
+        //
+        // The refresh matters: convertCurrencyStrict refuses outright if rates were
+        // never fetched in this process, and unlike the web /book route this handler
+        // had no FX step at all before now — so without it a cold serverless instance
+        // would silently drop the flat fee on every mobile booking.
+        let flatInOrderCurrency = FLIGHT_MARKUP_SPEC.flat;
+        try {
+            await refreshExchangeRates();
+            flatInOrderCurrency = convertCurrencyStrict(FLIGHT_MARKUP_SPEC.flat, 'usd', orderCurrency);
+        } catch (fxErr: any) {
+            flatInOrderCurrency = 0;
+            console.error(
+                `[mobile/book] Could not convert the flat markup component USD→${orderCurrency} ` +
+                `(${fxErr?.message}) — charging the proportional part only.`,
+            );
+        }
+        const pricing = applyMarkup(parseFloat(orderTotal), FLIGHT_MARKUP_SPEC, flatInOrderCurrency);
         const stripeAmount = toStripeAmount(pricing.chargedPrice, flightCurrency);
 
         const piIdempotencyKey = `mobile-flight-pi-${userId}-${sessionId}`;

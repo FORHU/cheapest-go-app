@@ -1,0 +1,467 @@
+# Deploy AirangGo — the Korean white-label of CheapestGo.
+#
+# Same codebase, same RDS, same suppliers as production. Differs only in brand env
+# vars and locale, so this workflow is deploy-production.yml with brand build args
+# and no cron sidecar: the operational jobs run once, on the CheapestGo box, against
+# the shared database. Running them here too would double every scheduled job.
+#
+# ---------------------------------------------------------------------------
+#   CONTAINER_NAME  geomeego     the container is NOT renamed — see below
+#   CONTAINER_PORT  3001         published on the host; the app listens on 3000 inside
+#   ENV_FILE_PATH   e.g. /opt/airanggo/.env
+#
+# AirangGo was GeomeeGo until the 2026-09 rebrand. The brand VALUES below are the new
+# name; the infrastructure names are not, and must not be renamed here alone:
+#
+#   secrets.*_GEOMEEGO   named in GitHub settings — renaming the reference without
+#                        renaming the secret resolves to empty and deploys a broken
+#                        container
+#   --name geomeego      the running container; the stop/rm below target that name,
+#                        so changing one without the other leaves two containers
+#                        contesting port 3001
+#
+# ---------------------------------------------------------------------------
+# One-time AWS setup:
+#
+# 1. IAM role for this repo (OIDC). Trust — the SAME subject as production, because
+#    both brands deploy from the one environment:
+#      aud = sts.amazonaws.com
+#      sub = repo:FORHU/cheapest-go-app:environment:production
+#    Permissions: ECR push/pull on BOTH repositories; ssm:SendCommand on
+#      arn:aws:ssm:REGION::document/AWS-RunShellScript and both instance ARNs;
+#      plus ssm:ListCommands / ListCommandInvocations / GetCommandInvocation.
+#
+# 2. Instance role: AmazonSSMManagedInstanceCore + ECR pull.
+#
+# ---------------------------------------------------------------------------
+# Environment: production — shared with CheapestGo, not a separate one.
+#
+# 41 of this workflow's 45 secrets are identical to production's: the database, Stripe,
+# every supplier key. A second environment would mean re-entering all 41 by hand and
+# rotating each in two places forever, with the failure mode being a silent drift
+# nobody notices until one brand is authenticating with a stale key.
+#
+# So the brand is distinguished by variable NAME, the same way the existing secrets
+# already are — the _GEOMEEGO suffix is historical and matches its neighbours rather
+# than the current brand name. Renaming it means renaming every sibling at once.
+#
+# Variables (non-secret) read by this workflow:
+#   AWS_REGION                     shared with production
+#   EC2_TARGET_TAG_KEY             shared with production — Name
+#   ECR_REPOSITORY_GEOMEEGO        the AirangGo repository
+#   EC2_TARGET_TAG_VALUE_GEOMEEGO  production-airanggo
+#   CONTAINER_PORT_GEOMEEGO        3001
+#   ENV_FILE_PATH_GEOMEEGO         e.g. /opt/airanggo/.env
+#
+# Secrets: AWS_DEPLOY_ROLE_ARN (shared) plus the runtime values in the deploy job.
+#
+# NOTE ON SECRETS: as in deploy-production.yml, the runtime env is base64-encoded into
+# the SSM command and is therefore retrievable from SSM command history and CloudTrail.
+# Moving it to an SSM Parameter Store SecureString is the intended follow-up.
+# ---------------------------------------------------------------------------
+
+name: Deploy AirangGo
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: {}
+
+permissions:
+  id-token: write
+  contents: read
+
+concurrency:
+  group: deploy-airanggo
+  cancel-in-progress: false
+
+env:
+  CONTAINER_NAME: geomeego
+
+jobs:
+  ci:
+    name: Typecheck and tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # pnpm, not npm. Both lockfiles used to be committed and neither tool updated the
+      # other, so a dependency added with one left CI installing from a stale lockfile —
+      # which is how the AWS SDK reached main with a package-lock.json that did not have
+      # it. package-lock.json is gone; pnpm-lock.yaml is the only lockfile now.
+      #
+      # Pinned to the version the lockfile was produced by, and kept in step with the
+      # Dockerfile: pnpm 10 changed lockfile handling mid-series, so an unpinned install
+      # can fail on a lockfile nobody has touched.
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.32.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile --ignore-scripts
+      - run: pnpm exec tsc --noEmit
+      - run: pnpm test -- --run
+
+  build-and-push:
+    name: Build and push image
+    needs: ci
+    runs-on: ubuntu-latest
+    environment: production
+    env:
+      AWS_REGION: ${{ vars.AWS_REGION }}
+      ECR_REPOSITORY: ${{ vars.ECR_REPOSITORY_GEOMEEGO }}
+    outputs:
+      image_tag: ${{ steps.meta.outputs.image_tag }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: ecr-login
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Set image metadata
+        id: meta
+        run: echo "image_tag=${GITHUB_SHA::12}" >> "$GITHUB_OUTPUT"
+
+      - name: Require public build args
+        env:
+          SITE_URL: ${{ secrets.NEXT_PUBLIC_SITE_URL_GEOMEEGO }}
+          BRAND_EMAIL: ${{ secrets.NEXT_PUBLIC_BRAND_EMAIL_GEOMEEGO }}
+        run: |
+          set -euo pipefail
+          MISSING=""
+          require_env() { if [[ -z "$2" ]]; then MISSING="${MISSING} $1"; fi; }
+          require_env NEXT_PUBLIC_SITE_URL_GEOMEEGO "$SITE_URL"
+          require_env NEXT_PUBLIC_BRAND_EMAIL_GEOMEEGO "$BRAND_EMAIL"
+          if [[ -n "$MISSING" ]]; then
+            echo "Missing required secrets:${MISSING}" >&2
+            exit 1
+          fi
+
+      # Brand identity is inlined at build time — NEXT_PUBLIC_* reaches the client
+      # bundle, and the Dockerfile also promotes each to a runtime ENV, so the image
+      # carries its own brand even before the env file is written.
+      #
+      # Asset filenames are case-sensitive on the build container:
+      #   Airanggo_transparent.png (lowercase g) vs AirangGo.png (capital G).
+      - name: Build and push image
+        env:
+          ECR_REGISTRY: ${{ steps.ecr-login.outputs.registry }}
+          IMAGE_TAG: ${{ steps.meta.outputs.image_tag }}
+        run: |
+          set -euo pipefail
+          docker build \
+            --build-arg NEXT_PUBLIC_BRAND_NAME="AirangGo" \
+            --build-arg NEXT_PUBLIC_LOCALE="ko" \
+            --build-arg NEXT_PUBLIC_DEFAULT_CURRENCY="KRW" \
+            --build-arg NEXT_PUBLIC_DEFAULT_COUNTRY="KR" \
+            --build-arg NEXT_PUBLIC_SITE_URL="${{ secrets.NEXT_PUBLIC_SITE_URL_GEOMEEGO }}" \
+            --build-arg NEXT_PUBLIC_BRAND_EMAIL="${{ secrets.NEXT_PUBLIC_BRAND_EMAIL_GEOMEEGO }}" \
+            --build-arg NEXT_PUBLIC_BRAND_FAVICON="/Airang_Fav.png" \
+            --build-arg NEXT_PUBLIC_BRAND_LOGO="/Airanggo_transparent.png" \
+            --build-arg NEXT_PUBLIC_BRAND_LOGO_DARK="/AirangGo.png" \
+            --build-arg NEXT_PUBLIC_MAPBOX_TOKEN="${{ secrets.NEXT_PUBLIC_MAPBOX_TOKEN }}" \
+            --build-arg NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY="${{ secrets.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY }}" \
+            --tag "$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" \
+            --tag "$ECR_REGISTRY/$ECR_REPOSITORY:latest" \
+            .
+          docker push "$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
+          docker push "$ECR_REGISTRY/$ECR_REPOSITORY:latest"
+
+  deploy:
+    name: Deploy via SSM
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    environment: production
+    env:
+      AWS_REGION: ${{ vars.AWS_REGION }}
+      ECR_REPOSITORY: ${{ vars.ECR_REPOSITORY_GEOMEEGO }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Resolve ECR registry
+        id: ecr-login
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Send deploy command via SSM
+        id: send-command
+        env:
+          ECR_REGISTRY: ${{ steps.ecr-login.outputs.registry }}
+          IMAGE_TAG: ${{ needs.build-and-push.outputs.image_tag }}
+          CONTAINER_PORT: ${{ vars.CONTAINER_PORT_GEOMEEGO }}
+          ENV_FILE_PATH: ${{ vars.ENV_FILE_PATH_GEOMEEGO }}
+          TAG_KEY: ${{ vars.EC2_TARGET_TAG_KEY }}
+          TAG_VALUE: ${{ vars.EC2_TARGET_TAG_VALUE_GEOMEEGO }}
+          V_DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          V_DATABASE_URL_UNPOOLED: ${{ secrets.DATABASE_URL_UNPOOLED }}
+          V_DATABASE_SSL: ${{ secrets.DATABASE_SSL }}
+          V_NEXT_PUBLIC_SITE_URL: ${{ secrets.NEXT_PUBLIC_SITE_URL_GEOMEEGO }}
+          V_DUFFEL_ACCESS_TOKEN: ${{ secrets.DUFFEL_ACCESS_TOKEN }}
+          V_STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
+          V_NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY }}
+          V_STRIPE_WEBHOOK_SECRET: ${{ secrets.STRIPE_WEBHOOK_SECRET_GEOMEEGO }}
+          V_TRAVELGATEX_API_KEY: ${{ secrets.TRAVELGATEX_API_KEY }}
+          V_TRAVELGATEX_CODE: ${{ secrets.TRAVELGATEX_CODE }}
+          V_TRAVELGATEX_SUPPLIER: ${{ secrets.TRAVELGATEX_SUPPLIER }}
+          V_TRAVELGATEX_CONTEXT: ${{ secrets.TRAVELGATEX_CONTEXT }}
+          V_TRAVELGATEX_CLIENT: ${{ secrets.TRAVELGATEX_CLIENT }}
+          V_TRAVELGATEX_ENDPOINT_URL: ${{ secrets.TRAVELGATEX_ENDPOINT_URL }}
+          V_RATEHAWK_KEY_ID: ${{ secrets.RATEHAWK_KEY_ID }}
+          V_RATEHAWK_API_KEY: ${{ secrets.RATEHAWK_API_KEY }}
+          V_ETG_KEY_ID: ${{ secrets.ETG_KEY_ID }}
+          V_ETG_API_KEY: ${{ secrets.ETG_API_KEY }}
+          V_NEXT_PUBLIC_MAPBOX_TOKEN: ${{ secrets.NEXT_PUBLIC_MAPBOX_TOKEN }}
+          V_GOOGLE_PLACES_API_KEY: ${{ secrets.GOOGLE_PLACES_API_KEY }}
+          V_GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
+          V_GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
+          V_RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          V_NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION: ${{ secrets.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION_GEOMEEGO }}
+          V_FOURSQUARE_SERVICE_API_KEY: ${{ secrets.FOURSQUARE_SERVICE_API_KEY }}
+          V_FLIGHT_MARKUP_PERCENTAGE: ${{ secrets.FLIGHT_MARKUP_PERCENTAGE }}
+          V_HOTEL_MARKUP_PERCENTAGE: ${{ secrets.HOTEL_MARKUP_PERCENTAGE }}
+          # Added with ADR-0031. The markup is no longer one percentage per product:
+          # it has a flat component and a cap, and it is sized against a MEASURED
+          # STRIPE_RATE rather than Stripe's headline 2.9%. Shipping only the two
+          # percentages leaves the rest on code defaults, which mixes old and new.
+          V_FLIGHT_MARKUP_FLAT_USD: ${{ secrets.FLIGHT_MARKUP_FLAT_USD }}
+          V_HOTEL_MARKUP_FLAT_USD: ${{ secrets.HOTEL_MARKUP_FLAT_USD }}
+          V_MARKUP_CAP: ${{ secrets.MARKUP_CAP }}
+          V_STRIPE_RATE: ${{ secrets.STRIPE_RATE }}
+          V_STRIPE_FLAT_FEE: ${{ secrets.STRIPE_FLAT_FEE }}
+          V_OTV_CREDIT_LIMIT: ${{ secrets.OTV_CREDIT_LIMIT }}
+          V_OTV_CREDIT_UTILIZATION_ALERT_PCT: ${{ secrets.OTV_CREDIT_UTILIZATION_ALERT_PCT }}
+          V_OTV_DEADLINE_ALERT_HOURS: ${{ secrets.OTV_DEADLINE_ALERT_HOURS }}
+          V_DUFFEL_BALANCE_ALERT_THRESHOLD: ${{ secrets.DUFFEL_BALANCE_ALERT_THRESHOLD }}
+          V_INTERNAL_SECRET: ${{ secrets.INTERNAL_SECRET }}
+          V_MOBILE_API_KEY: ${{ secrets.MOBILE_API_KEY }}
+          V_CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          V_FUNCTIONS_SECRET: ${{ secrets.FUNCTIONS_SECRET }}
+          V_CHAT_WONDER_API_URL: ${{ secrets.CHAT_WONDER_API_URL }}
+          V_NEXT_PUBLIC_CHAT_WONDER_WS_URL: ${{ secrets.NEXT_PUBLIC_CHAT_WONDER_WS_URL }}
+          V_NEXT_PUBLIC_CHAT_WONDER_API_URL: ${{ secrets.NEXT_PUBLIC_CHAT_WONDER_API_URL }}
+          V_MYSTIFLY_ACCOUNT_NUMBER: ${{ secrets.MYSTIFLY_ACCOUNT_NUMBER }}
+          V_MYSTIFLY_BASE_URL: ${{ secrets.MYSTIFLY_BASE_URL }}
+          V_MYSTIFLY_PASSWORD: ${{ secrets.MYSTIFLY_PASSWORD }}
+          V_MYSTIFLY_USERNAME: ${{ secrets.MYSTIFLY_USERNAME }}
+          V_JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          # Support attachments (ADR-0040). The bucket is a var, not a secret: a bucket
+          # name is not one, and the credentials that reach it come from the instance role
+          # rather than from anything shipped here.
+          #
+          # AWS_REGION was already used by this workflow for ECR and SSM, but it never
+          # reached the container — so the S3 client had no region and attachments read as
+          # unconfigured however the bucket was set up.
+          V_SUPPORT_ATTACHMENTS_BUCKET: ${{ vars.SUPPORT_ATTACHMENTS_BUCKET }}
+          V_AWS_REGION: ${{ vars.AWS_REGION }}
+        run: |
+          set -euo pipefail
+
+          IMAGE="$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
+
+          MISSING=""
+          require_env() { if [[ -z "$2" ]]; then MISSING="${MISSING} $1"; fi; }
+          require_env CONTAINER_PORT "$CONTAINER_PORT"
+          require_env ENV_FILE_PATH "$ENV_FILE_PATH"
+          require_env EC2_TARGET_TAG_KEY "$TAG_KEY"
+          require_env EC2_TARGET_TAG_VALUE "$TAG_VALUE"
+          require_env DATABASE_URL "$V_DATABASE_URL"
+          require_env JWT_SECRET "$V_JWT_SECRET"
+          require_env STRIPE_SECRET_KEY "$V_STRIPE_SECRET_KEY"
+          if [[ -n "$MISSING" ]]; then
+            echo "Missing required GitHub variables/secrets:${MISSING}" >&2
+            exit 1
+          fi
+
+          NL=$'\n'
+          ENV_CONTENT=""
+          append_env() { if [[ -n "$2" ]]; then ENV_CONTENT="${ENV_CONTENT}${1}=${2}${NL}"; fi; }
+
+          append_env NODE_ENV production
+          # 3000 inside the container, always. CONTAINER_PORT (3001) is the host port,
+          # so the app must not be told to listen on it.
+          append_env PORT 3000
+
+          # Brand identity. Also baked into the image as ENV by the Dockerfile; repeated
+          # here so the running brand is legible on the box without inspecting the image.
+          append_env NEXT_PUBLIC_BRAND_NAME AirangGo
+          append_env NEXT_PUBLIC_LOCALE ko
+          append_env NEXT_PUBLIC_DEFAULT_CURRENCY KRW
+          append_env NEXT_PUBLIC_DEFAULT_COUNTRY KR
+          append_env NEXT_PUBLIC_BRAND_FAVICON /Airang_Fav.png
+          append_env NEXT_PUBLIC_BRAND_LOGO /Airanggo_transparent.png
+          append_env NEXT_PUBLIC_BRAND_LOGO_DARK /AirangGo.png
+
+          append_env DATABASE_URL "$V_DATABASE_URL"
+          append_env DATABASE_URL_UNPOOLED "$V_DATABASE_URL_UNPOOLED"
+          append_env DATABASE_SSL "$V_DATABASE_SSL"
+          append_env NEXT_PUBLIC_SITE_URL "$V_NEXT_PUBLIC_SITE_URL"
+          append_env DUFFEL_ACCESS_TOKEN "$V_DUFFEL_ACCESS_TOKEN"
+          append_env STRIPE_SECRET_KEY "$V_STRIPE_SECRET_KEY"
+          append_env NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY "$V_NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY"
+          append_env STRIPE_WEBHOOK_SECRET "$V_STRIPE_WEBHOOK_SECRET"
+          append_env TRAVELGATEX_API_KEY "$V_TRAVELGATEX_API_KEY"
+          append_env TRAVELGATEX_CODE "$V_TRAVELGATEX_CODE"
+          append_env TRAVELGATEX_SUPPLIER "$V_TRAVELGATEX_SUPPLIER"
+          append_env TRAVELGATEX_CONTEXT "$V_TRAVELGATEX_CONTEXT"
+          append_env TRAVELGATEX_CLIENT "$V_TRAVELGATEX_CLIENT"
+          append_env TRAVELGATEX_ENDPOINT_URL "$V_TRAVELGATEX_ENDPOINT_URL"
+          append_env RATEHAWK_KEY_ID "$V_RATEHAWK_KEY_ID"
+          append_env RATEHAWK_API_KEY "$V_RATEHAWK_API_KEY"
+          append_env ETG_KEY_ID "$V_ETG_KEY_ID"
+          append_env ETG_API_KEY "$V_ETG_API_KEY"
+          append_env NEXT_PUBLIC_MAPBOX_TOKEN "$V_NEXT_PUBLIC_MAPBOX_TOKEN"
+          append_env GOOGLE_PLACES_API_KEY "$V_GOOGLE_PLACES_API_KEY"
+          append_env GOOGLE_CLIENT_ID "$V_GOOGLE_CLIENT_ID"
+          append_env GOOGLE_CLIENT_SECRET "$V_GOOGLE_CLIENT_SECRET"
+          append_env RESEND_API_KEY "$V_RESEND_API_KEY"
+          append_env NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION "$V_NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION"
+          append_env FOURSQUARE_SERVICE_API_KEY "$V_FOURSQUARE_SERVICE_API_KEY"
+          append_env FLIGHT_MARKUP_PERCENTAGE "$V_FLIGHT_MARKUP_PERCENTAGE"
+          append_env HOTEL_MARKUP_PERCENTAGE "$V_HOTEL_MARKUP_PERCENTAGE"
+          append_env FLIGHT_MARKUP_FLAT_USD "$V_FLIGHT_MARKUP_FLAT_USD"
+          append_env HOTEL_MARKUP_FLAT_USD "$V_HOTEL_MARKUP_FLAT_USD"
+          append_env MARKUP_CAP "$V_MARKUP_CAP"
+          append_env STRIPE_RATE "$V_STRIPE_RATE"
+          append_env STRIPE_FLAT_FEE "$V_STRIPE_FLAT_FEE"
+          append_env OTV_CREDIT_LIMIT "$V_OTV_CREDIT_LIMIT"
+          append_env OTV_CREDIT_UTILIZATION_ALERT_PCT "$V_OTV_CREDIT_UTILIZATION_ALERT_PCT"
+          append_env OTV_DEADLINE_ALERT_HOURS "$V_OTV_DEADLINE_ALERT_HOURS"
+          append_env DUFFEL_BALANCE_ALERT_THRESHOLD "$V_DUFFEL_BALANCE_ALERT_THRESHOLD"
+          append_env INTERNAL_SECRET "$V_INTERNAL_SECRET"
+          append_env MOBILE_API_KEY "$V_MOBILE_API_KEY"
+          append_env CRON_SECRET "$V_CRON_SECRET"
+          append_env FUNCTIONS_SECRET "$V_FUNCTIONS_SECRET"
+          append_env CHAT_WONDER_API_URL "$V_CHAT_WONDER_API_URL"
+          append_env NEXT_PUBLIC_CHAT_WONDER_WS_URL "$V_NEXT_PUBLIC_CHAT_WONDER_WS_URL"
+          append_env NEXT_PUBLIC_CHAT_WONDER_API_URL "$V_NEXT_PUBLIC_CHAT_WONDER_API_URL"
+          append_env MYSTIFLY_ACCOUNT_NUMBER "$V_MYSTIFLY_ACCOUNT_NUMBER"
+          append_env MYSTIFLY_BASE_URL "$V_MYSTIFLY_BASE_URL"
+          append_env MYSTIFLY_PASSWORD "$V_MYSTIFLY_PASSWORD"
+          append_env MYSTIFLY_USERNAME "$V_MYSTIFLY_USERNAME"
+          append_env JWT_SECRET "$V_JWT_SECRET"
+          append_env SUPPORT_ATTACHMENTS_BUCKET "$V_SUPPORT_ATTACHMENTS_BUCKET"
+          append_env AWS_REGION "$V_AWS_REGION"
+
+          ENV_CONTENT_B64=$(printf '%s' "$ENV_CONTENT" | base64 | tr -d '\n')
+          ENV_DIR=$(dirname "$ENV_FILE_PATH")
+
+          cat > deploy-remote.sh <<EOF
+          set -euo pipefail
+          aws ecr get-login-password --region ${AWS_REGION} | docker login --username AWS --password-stdin ${ECR_REGISTRY}
+
+          sudo mkdir -p ${ENV_DIR}
+          echo "${ENV_CONTENT_B64}" | base64 -d | sudo tee ${ENV_FILE_PATH} > /dev/null
+          sudo chmod 600 ${ENV_FILE_PATH}
+
+          # Reclaim disk BEFORE pulling — see the same block in deploy-production.yml.
+          #
+          # This brand shares the instance with CheapestGo, so the two deploys fill one
+          # disk between them and either can be the one that runs out. On 2026-09-09 the
+          # CheapestGo pull failed on `no space left on device` and, because the script is
+          # `set -e`, left the previous containers running and answering 200.
+          #
+          # `-a` removes every image no CONTAINER references, so both brands' running
+          # containers are safe; only images left over from earlier deploys go.
+          echo "disk before prune:"; df -h /var/lib/docker | tail -1
+          docker image prune -af || true
+          docker builder prune -af || true
+          echo "disk after prune:"; df -h /var/lib/docker | tail -1
+
+          docker pull ${IMAGE}
+          docker stop ${CONTAINER_NAME} >/dev/null 2>&1 || true
+          docker rm ${CONTAINER_NAME} >/dev/null 2>&1 || true
+          docker run -d \
+            --name ${CONTAINER_NAME} \
+            --restart unless-stopped \
+            -p ${CONTAINER_PORT}:3000 \
+            --env-file ${ENV_FILE_PATH} \
+            ${IMAGE}
+          # Again afterwards: the image the old container was holding is unreferenced now
+          # that the new one is running, so this is what actually reclaims the last deploy.
+          docker image prune -af || true
+          echo "disk after deploy:"; df -h /var/lib/docker | tail -1
+          EOF
+
+          PARAMS=$(jq -n --rawfile script deploy-remote.sh \
+            '{commands: ($script | split("\n") | map(select(length > 0)))}')
+
+          COMMAND_ID=$(aws ssm send-command \
+            --document-name "AWS-RunShellScript" \
+            --comment "Deploy ${CONTAINER_NAME} ${IMAGE_TAG}" \
+            --targets "Key=tag:${TAG_KEY},Values=${TAG_VALUE}" \
+            --parameters "$PARAMS" \
+            --timeout-seconds 600 \
+            --output text \
+            --query "Command.CommandId")
+
+          echo "command_id=$COMMAND_ID" >> "$GITHUB_OUTPUT"
+          echo "Sent SSM command $COMMAND_ID targeting tag:${TAG_KEY}=${TAG_VALUE}"
+
+      - name: Wait for deploy to finish
+        env:
+          COMMAND_ID: ${{ steps.send-command.outputs.command_id }}
+          TAG_KEY: ${{ vars.EC2_TARGET_TAG_KEY }}
+          TAG_VALUE: ${{ vars.EC2_TARGET_TAG_VALUE_GEOMEEGO }}
+        run: |
+          set -euo pipefail
+
+          sleep 8
+
+          STATUS="Pending"
+          for i in $(seq 1 40); do
+            STATUS=$(aws ssm list-commands --command-id "$COMMAND_ID" \
+              --query "Commands[0].Status" --output text 2>/dev/null || echo "Pending")
+            if [[ "$STATUS" != "Pending" && "$STATUS" != "InProgress" ]]; then
+              break
+            fi
+            echo "Deploy status: $STATUS (attempt $i/40)"
+            sleep 10
+          done
+
+          echo "Final command status: $STATUS"
+
+          FAILED=0
+          INSTANCE_IDS=$(aws ssm list-command-invocations --command-id "$COMMAND_ID" \
+            --query "CommandInvocations[].InstanceId" --output text)
+
+          if [[ -z "$INSTANCE_IDS" ]]; then
+            echo "No instances matched tag:${TAG_KEY}=${TAG_VALUE} for this SSM command."
+            exit 1
+          fi
+
+          for INSTANCE_ID in $INSTANCE_IDS; do
+            echo "::group::Instance $INSTANCE_ID"
+            aws ssm get-command-invocation \
+              --command-id "$COMMAND_ID" \
+              --instance-id "$INSTANCE_ID" \
+              --query "{Status:Status,Stdout:StandardOutputContent,Stderr:StandardErrorContent}" \
+              --output json > invocation.json
+            cat invocation.json
+            INV_STATUS=$(jq -r ".Status" invocation.json)
+            if [[ "$INV_STATUS" != "Success" ]]; then
+              FAILED=1
+            fi
+            echo "::endgroup::"
+          done
+
+          if [[ "$FAILED" -ne 0 ]]; then
+            echo "One or more instances failed to deploy."
+            exit 1
+          fi
+
+          echo "Deploy succeeded on: $INSTANCE_IDS"

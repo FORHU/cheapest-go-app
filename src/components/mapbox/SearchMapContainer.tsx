@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useMemo, useCallback } from 'react';
+import { useTranslations } from 'next-intl';
 import { MappableProperty } from './utils/buildGeoJson';
 import { useMapboxInstance } from './hooks/useMapboxInstance';
 import { useMapInteractions, PoiData } from './hooks/useMapInteractions';
@@ -19,7 +20,6 @@ import { MapSearchOverlay } from './components/MapSearchOverlay';
 import { useRouter } from 'next/navigation';
 import { useUserCurrency } from '@/stores/searchStore';
 import { useNights } from '@/hooks/useNights';
-import { toPerNight } from '@/lib/perNightPrice';
 import { useMapDetails } from './hooks/useMapDetails';
 import { MapDetailsPanel } from './components/MapDetailsPanel';
 import { env } from '@/utils/env';
@@ -31,6 +31,7 @@ import { NearbyPlaceMarker } from '../map/NearbyPlaceMarker';
 import { NearbyPlacePopup } from '../map/NearbyPlacePopup';
 import { useNearbyGems } from '../property/hooks/useNearbyGems';
 import type { NearbyPlace } from '../map/useMapNearbyPlaces';
+import { convertCurrency } from '@/lib/currency';
 
 // Haversine distance — defined outside component to avoid re-creation on every render
 const calculateDistance = (l1: { lat: number; lng: number }, l2: { lat: number; lng: number }) => {
@@ -110,6 +111,7 @@ export const SearchMapContainer = React.memo(({
     isPriceFetching = false,
 }: SearchMapContainerProps) => {
     // 1. Map Instance
+    const tCard = useTranslations('hotels.card');
     const { mapRef, isMapLoaded, handleMapLoad, handleMapStyleChange } = useMapboxInstance();
 
     const isMobile = useIsMobile();
@@ -237,7 +239,7 @@ export const SearchMapContainer = React.memo(({
     const markerPrices = useMemo(() => {
         const prices: Record<string, number> = {};
         for (const p of mappableProperties) {
-            prices[p.id] = toPerNight(p.price, p.currency, targetCurrency, nights);
+            prices[p.id] = convertCurrency(p.price, p.currency || 'USD', targetCurrency);
         }
         return prices;
     }, [mappableProperties, targetCurrency, nights]);
@@ -913,7 +915,7 @@ export const SearchMapContainer = React.memo(({
                 <div className="flex items-center gap-2 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md rounded-full px-4 py-2 shadow-lg border border-slate-200 dark:border-slate-700 whitespace-nowrap">
                     <Loader2 className="w-3.5 h-3.5 text-blue-500 animate-spin shrink-0" />
                     <span className="text-[11px] font-semibold text-slate-700 dark:text-slate-300">
-                        Fetching prices, hang tight…
+                        {tCard('fetchingPricesLong')}
                     </span>
                 </div>
             </div>

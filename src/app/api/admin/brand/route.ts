@@ -3,7 +3,10 @@ import { requireAdmin, isAuthError } from '@/lib/server/admin';
 
 export const dynamic = 'force-dynamic';
 
-const VALID_BRANDS = ['CheapestGo', 'GeomeeGo', 'all'];
+// GeomeeGo is accepted alongside AirangGo, its name until the 2026-09 rebrand: an admin
+// page loaded before the rename can still POST the old value, and rejecting it would fail
+// the switch with no explanation. brand-filter.ts maps it to AirangGo when reading.
+const VALID_BRANDS = ['CheapestGo', 'AirangGo', 'GeomeeGo', 'all'];
 
 export async function POST(req: Request) {
     const auth = await requireAdmin();

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/utils/postgres/admin';
 import { createNotification } from '@/lib/server/admin/notify';
 import { getAdminSettings } from '@/lib/server/admin/settings';
+import { convertCurrencyStrict, refreshExchangeRates } from '@/lib/currency';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 30;
@@ -17,7 +18,16 @@ export async function GET(req: NextRequest) {
 
     // Load operational thresholds from admin_settings, fall back to env vars.
     const cfg = await getAdminSettings();
-    const CREDIT_LIMIT = parseFloat(cfg.otv_credit_limit ?? process.env.OTV_CREDIT_LIMIT ?? '0');
+    // RateHawk denominates the credit line in PHP — 600,000 PHP as of 2026-09.
+    // `supplier_cost` is stored in whatever TGX returns, which TGX_TARGET_CURRENCY
+    // pins to USD, so the two are not comparable as written. They were compared
+    // anyway: a 600,000 PHP line read as $600,000, roughly sixty times the real
+    // ceiling, so the utilisation alert could never fire. That alert is the only
+    // warning before OTV starts silently auto-cancelling refundable bookings at
+    // their free-cancellation deadline.
+    const CREDIT_LIMIT_CURRENCY = (cfg.otv_credit_limit_currency ?? process.env.OTV_CREDIT_LIMIT_CURRENCY ?? 'PHP').toUpperCase();
+    const CREDIT_LIMIT_NATIVE = parseFloat(cfg.otv_credit_limit ?? process.env.OTV_CREDIT_LIMIT ?? '0');
+    const SUPPLIER_COST_CURRENCY = (process.env.TGX_TARGET_CURRENCY ?? 'USD').toUpperCase();
     const UTILIZATION_ALERT_PCT = parseFloat(cfg.otv_credit_utilization_alert_pct ?? process.env.OTV_CREDIT_UTILIZATION_ALERT_PCT ?? '0.8');
     const DEADLINE_WINDOW_HOURS = parseInt(cfg.otv_deadline_alert_hours ?? process.env.OTV_DEADLINE_ALERT_HOURS ?? '48');
 
@@ -28,6 +38,21 @@ export async function GET(req: NextRequest) {
     // Non-refundable: credit consumed at booking.
     // Refundable: credit secured at free_cancel_deadline — tracked here as a
     // conservative estimate (worst case: all refundable bookings use credit).
+    // Convert the limit into the currency the outstanding sum is actually in.
+    // Thrown rather than guessed: a credit check that silently compares the wrong
+    // units is worse than one that does not run, because it reports reassurance.
+    let CREDIT_LIMIT = 0;
+    let limitError: string | null = null;
+    if (CREDIT_LIMIT_NATIVE > 0) {
+        try {
+            await refreshExchangeRates();
+            CREDIT_LIMIT = convertCurrencyStrict(CREDIT_LIMIT_NATIVE, CREDIT_LIMIT_CURRENCY, SUPPLIER_COST_CURRENCY);
+        } catch (e: any) {
+            limitError = `cannot convert ${CREDIT_LIMIT_NATIVE} ${CREDIT_LIMIT_CURRENCY} to ${SUPPLIER_COST_CURRENCY}: ${e?.message}`;
+            console.error('[otv-credit-check]', limitError);
+        }
+    }
+
     if (CREDIT_LIMIT > 0) {
         const { data: creditRows, error: creditErr } = await supabase
             .from('bookings')
@@ -44,9 +69,12 @@ export async function GET(req: NextRequest) {
             );
             const utilization = outstanding / CREDIT_LIMIT;
 
+            // Currencies are named in the output on purpose. The previous version
+            // printed two bare numbers in different units, which read as a healthy
+            // utilisation and was the reason the mismatch went unnoticed.
             results.credit = {
-                outstanding: outstanding.toFixed(2),
-                limit: CREDIT_LIMIT,
+                outstanding: `${outstanding.toFixed(2)} ${SUPPLIER_COST_CURRENCY}`,
+                limit: `${CREDIT_LIMIT.toFixed(2)} ${SUPPLIER_COST_CURRENCY} (${CREDIT_LIMIT_NATIVE} ${CREDIT_LIMIT_CURRENCY})`,
                 utilizationPct: (utilization * 100).toFixed(1) + '%',
                 bookingCount: (creditRows ?? []).length,
             };
@@ -56,11 +84,22 @@ export async function GET(req: NextRequest) {
             if (utilization >= UTILIZATION_ALERT_PCT) {
                 createNotification(
                     'OTV credit limit warning',
-                    `Outstanding OTV credit: ${outstanding.toFixed(2)} of ${CREDIT_LIMIT} limit (${results.credit.utilizationPct} used). New non-refundable bookings may be rejected by RateHawk.`,
+                    `Outstanding OTV credit: ${outstanding.toFixed(2)} ${SUPPLIER_COST_CURRENCY} of a ${CREDIT_LIMIT_NATIVE} ${CREDIT_LIMIT_CURRENCY} limit ` +
+                    `(${CREDIT_LIMIT.toFixed(2)} ${SUPPLIER_COST_CURRENCY}) — ${results.credit.utilizationPct} used. ` +
+                    `New non-refundable bookings may be rejected by RateHawk, and refundable ones can be auto-cancelled at their free-cancellation deadline.`,
                     'alert'
                 );
             }
         }
+    } else if (limitError) {
+        // Loud, not silent. A skipped credit check looks identical to a healthy one
+        // in the job's output unless it says so.
+        results.credit = { skipped: true, reason: limitError };
+        createNotification(
+            'OTV credit check could not run',
+            `The credit limit could not be converted for comparison — ${limitError}. Utilisation is unknown until this is fixed.`,
+            'alert',
+        );
     } else {
         console.warn('[otv-credit-check] OTV_CREDIT_LIMIT not set — skipping utilization check');
         results.credit = { skipped: true, reason: 'OTV_CREDIT_LIMIT env var not set' };

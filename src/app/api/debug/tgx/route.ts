@@ -3,7 +3,7 @@ import { searchTravelgateX } from '@/lib/server/travelgatex';
 import { runTgxSearch } from '@/lib/server/stays/travelgatex/search';
 import { getSqlAdmin } from '@/lib/db/postgres';
 import { tgxGraphQL, getTgxConfig, getTgxSettings } from '@/lib/server/stays/travelgatex/client';
-import { resolveTgxDestinationCode, setDestCodeCache } from '@/lib/server/search';
+import { resolveTgxDestinationCode, setDestCodeCache, clearDestCodeCache } from '@/lib/server/search';
 import { clearFailedDestCodesCache } from '@/lib/server/stays/travelgatex/search';
 
 export const dynamic = 'force-dynamic';
@@ -38,6 +38,20 @@ export async function GET(req: NextRequest) {
             ? await sql`DELETE FROM hotel_search_cache WHERE cache_key LIKE ${'city:' + city + '%'}`
             : await sql`DELETE FROM hotel_search_cache`;
         return NextResponse.json({ ok: true, deleted: Number(result.count ?? 0), filter: city ?? 'all' });
+    }
+
+    // Drop the in-process dest-code cache so the next search re-reads the DB.
+    // Usage: GET /api/debug/tgx?flushDestCode=1  or  ?flushDestCode=paris
+    //
+    // Distinct from flushCache above, which clears the hotel_search_cache TABLE. This one
+    // clears a Map inside the running process, and it exists because repairing the database
+    // was not enough: a wrong code already resolved stays resolved until the container is
+    // restarted. Only reaches the instance that serves this request.
+    const flushDestCode = searchParams.get('flushDestCode');
+    if (flushDestCode !== null) {
+        const prefix = flushDestCode && flushDestCode !== '1' ? flushDestCode : undefined;
+        const cleared = clearDestCodeCache(prefix);
+        return NextResponse.json({ ok: true, cleared, filter: prefix ?? 'all' });
     }
 
     // Show/clear tgx_failed_dest_codes

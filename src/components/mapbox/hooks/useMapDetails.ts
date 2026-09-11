@@ -1,9 +1,11 @@
 'use client';
 
 import { useState, useCallback, useMemo } from 'react';
+import { useLocale } from 'next-intl';
 import { type MapTypeId, type MapDetailToggle } from '../components/MapDetailsPanel';
 
 export function useMapDetails(defaultMapType: MapTypeId = 'default') {
+    const locale = useLocale();
     const [mapType, setMapType] = useState<MapTypeId>(defaultMapType);
     const [showDetailsPanel, setShowDetailsPanel] = useState(false);
     const [showLabels, setShowLabels] = useState(true);
@@ -48,8 +50,13 @@ export function useMapDetails(defaultMapType: MapTypeId = 'default') {
         showTraffic: trafficEnabled,
         showTransit: transitEnabled,
         showCycling: bikingEnabled,
-        language: 'en',
-    }), [showLabels, trafficEnabled, transitEnabled, bikingEnabled]);
+        // Basemap labels follow the Storefront Locale. Hardcoded 'en' put Seoul on a
+        // Korean storefront as "Goyang", "Han River", "World Cup buk-ro" — place names
+        // the reader has to translate back. Mapbox Standard takes a BCP-47 subtag and
+        // falls back to the local name where it has no translation, so an unsupported
+        // locale degrades to the map's own labels rather than to English.
+        language: locale,
+    }), [showLabels, trafficEnabled, transitEnabled, bikingEnabled, locale]);
 
     const handleMapTypeChange = useCallback((type: MapTypeId) => {
         setMapType(type);

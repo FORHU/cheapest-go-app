@@ -9,3 +9,10 @@ onlyBuiltDependencies:
   - '@sentry/cli'
   - '@prisma/engines'
   - prisma
+
+# Explicitly declined, not merely absent. pnpm treats a dependency that appears in
+# neither list as *undecided* and stops rather than guessing — so leaving one out
+# fails the build instead of skipping it. unrs-resolver is a transitive resolver
+# used by lint tooling; nothing in src/ needs its native binary at runtime.
+ignoredBuiltDependencies:
+  - unrs-resolver

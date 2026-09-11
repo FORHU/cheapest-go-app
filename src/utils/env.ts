@@ -49,10 +49,17 @@ export const env = {
     //Onda
     ONDA_SECRET_KEY: process.env.ONDA_SECRET_KEY,
 
-    // Markup pricing (see src/lib/pricing.ts for full documentation)
-    // Markup disabled — restore to 0.08 (flights) / 0.15 (hotels) when client is ready to charge
+    // Markup pricing (see src/lib/pricing.ts for full documentation).
+    //
+    // Mirrored here for visibility only — pricing.ts reads process.env directly and
+    // applies its own defaults and clamps, so the '0' fallbacks below do NOT disable
+    // markup and never did. The stale note that once sat here said markup was disabled
+    // pending the client; it has been charged all along, at pricing.ts's defaults.
     FLIGHT_MARKUP_PERCENTAGE: process.env.FLIGHT_MARKUP_PERCENTAGE || '0',
+    FLIGHT_MARKUP_FLAT_USD: process.env.FLIGHT_MARKUP_FLAT_USD || '0',
     HOTEL_MARKUP_PERCENTAGE: process.env.HOTEL_MARKUP_PERCENTAGE || '0',
+    HOTEL_MARKUP_FLAT_USD: process.env.HOTEL_MARKUP_FLAT_USD || '0',
+    MARKUP_CAP: process.env.MARKUP_CAP || '0',
     // TravelgateX
     TRAVELGATE_API_KEY: process.env.TRAVELGATEX_API_KEY || process.env.TRAVELGATE_API_KEY,
     TRAVELGATE_CODE: process.env.TRAVELGATEX_CODE || process.env.TRAVELGATE_CODE,

@@ -1,5 +1,8 @@
 import { getSqlAdmin } from '@/lib/db/postgres';
 import { appendMessage, type SupportMessage } from './messages';
+import { URGENCY_SQL, urgencyFromRank, type Urgency } from './urgency';
+import type { SupportNote } from './notes';
+import type { LinkedBooking } from './linked-bookings';
 
 /**
  * The Agent's side of a Support Chat: what is waiting, and answering it.
@@ -21,6 +24,15 @@ export interface InboxRow {
     userId: string | null;
     assignedAdminId: string | null;
     escalationReason: string | null;
+    /** The Chat Reference, e.g. CS-9QM2K7. Names the conversation; grants nothing (ADR-0038). */
+    reference: string;
+    /** An Agent overruling computed Urgency. NULL means the trip dates decide (ADR-0039). */
+    priority: string | null;
+    /**
+     * What the queue actually sorted by: the override if there is one, otherwise the tier
+     * read from the linked trips. Computed per read, never stored — see ADR-0039.
+     */
+    urgency: Urgency;
     lastMessageAt: string;
     createdAt: string;
 }
@@ -35,6 +47,9 @@ const ROW_COLUMNS = `
     c.user_id            AS "userId",
     c.assigned_admin_id  AS "assignedAdminId",
     c.escalation_reason  AS "escalationReason",
+    c.reference,
+    c.priority,
+    ${URGENCY_SQL} AS "urgencyRank",
     c.last_message_at    AS "lastMessageAt",
     c.created_at         AS "createdAt"
 `;
@@ -52,11 +67,18 @@ export interface ListInboxInput {
  * The conversations in one view of the inbox.
  *
  * Never filtered by brand. Every other admin screen follows the brand switcher, and this
- * one deliberately does not: a GeomeeGo customer waiting would be invisible on the
+ * one deliberately does not: a AirangGo customer waiting would be invisible on the
  * CheapestGo admin, and nobody would learn the conversation existed. See ADR-0030.
  *
- * `waiting` is oldest-first because the longest wait is the most urgent; everything else
- * is newest-first, which is how you read a list you are browsing rather than working.
+ * `waiting` is ordered by how close the customer is to travelling and only then by how
+ * long they have waited; everything else is newest-first, which is how you read a list you
+ * are browsing rather than working.
+ *
+ * It used to be oldest-first alone, on the reasoning that the longest wait is the most
+ * urgent. That holds only while nothing distinguishes the people in the queue, and in
+ * travel something does: a customer at an airport and a customer asking about a receipt
+ * are not interchangeable, and the dates that say so are already known. Waiting time is
+ * still the tie-break, so within a tier the rule is exactly what it was. See ADR-0039.
  */
 export async function listInbox({ filter, adminId }: ListInboxInput): Promise<InboxRow[]> {
     const sql = getSqlAdmin();
@@ -68,10 +90,12 @@ export async function listInbox({ filter, adminId }: ListInboxInput): Promise<In
         resolved: `c.status = 'resolved'`,
     }[filter];
 
-    const order = filter === 'waiting' ? 'c.last_message_at ASC' : 'c.last_message_at DESC';
+    const order = filter === 'waiting'
+        ? `${URGENCY_SQL} DESC, c.last_message_at ASC`
+        : 'c.last_message_at DESC';
     const params = filter === 'mine' ? [adminId ?? null] : [];
 
-    const rows = await sql.unsafe<InboxRow[]>(
+    const rows = await sql.unsafe<(InboxRow & { urgencyRank?: number })[]>(
         `SELECT ${ROW_COLUMNS}
            FROM support_conversations c
           WHERE ${where}
@@ -79,7 +103,17 @@ export async function listInbox({ filter, adminId }: ListInboxInput): Promise<In
           LIMIT ${INBOX_PAGE_SIZE}`,
         params,
     );
-    return rows;
+    return rows.map(toInboxRow);
+}
+
+/**
+ * The query sorts by a number and the screen shows a word, so the rank is translated here
+ * and the raw column dropped. Callers get the tier the queue actually used — not a second
+ * computation that could disagree with the ordering they are looking at.
+ */
+function toInboxRow(row: InboxRow & { urgencyRank?: number }): InboxRow {
+    const { urgencyRank, ...rest } = row;
+    return { ...rest, urgency: urgencyFromRank(urgencyRank) };
 }
 
 export interface InboxCounts {
@@ -119,6 +153,16 @@ export interface AgentConversationDetail {
      * not happen is a stranger's trips appearing on screen because they typed an address.
      */
     bookings: unknown[] | null;
+    /** The trips this chat is about. Any number, including none — see ADR-0039. */
+    linkedBookings: LinkedBooking[];
+    /**
+     * What Agents have written to each other here.
+     *
+     * Loaded on this path and no other. The customer's routes read `listMessages`, which
+     * cannot reach the notes table at all — that separation is the whole reason a Note is
+     * not a `sender_type`.
+     */
+    notes: SupportNote[];
 }
 
 /** One conversation, with everything an Agent needs to answer it without leaving. */
@@ -126,16 +170,25 @@ export async function getConversationForAgent(
     conversationId: string,
 ): Promise<AgentConversationDetail | null> {
     const sql = getSqlAdmin();
-    const rows = await sql.unsafe<InboxRow[]>(
+    const rows = await sql.unsafe<(InboxRow & { urgencyRank?: number })[]>(
         `SELECT ${ROW_COLUMNS} FROM support_conversations c WHERE c.id = $1`,
         [conversationId],
     );
 
-    const conversation = rows[0];
-    if (!conversation) return null;
+    const raw = rows[0];
+    if (!raw) return null;
+    const conversation = toInboxRow(raw);
 
-    const { listMessages } = await import('./messages');
-    const messages = await listMessages(conversationId);
+    const [{ listMessages }, { listNotes }, { listLinkedBookings }] = await Promise.all([
+        import('./messages'),
+        import('./notes'),
+        import('./linked-bookings'),
+    ]);
+    const [messages, notes, linkedBookings] = await Promise.all([
+        listMessages(conversationId),
+        listNotes(conversationId),
+        listLinkedBookings(conversationId),
+    ]);
 
     let bookings: unknown[] | null = null;
     if (conversation.userId) {
@@ -157,13 +210,15 @@ export async function getConversationForAgent(
         }
     }
 
-    return { conversation, messages, bookings };
+    return { conversation, messages, bookings, notes, linkedBookings };
 }
 
 export interface AgentReplyInput {
     conversationId: string;
     adminId: string;
     body: string;
+    /** Files the Agent uploaded to this conversation, to go out with the reply. */
+    attachmentIds?: string[];
 }
 
 /**
@@ -200,6 +255,7 @@ export async function agentReply(input: AgentReplyInput): Promise<SupportMessage
         senderType: 'agent',
         senderAdminId: input.adminId,
         body: input.body,
+        attachmentIds: input.attachmentIds,
     });
 }
 

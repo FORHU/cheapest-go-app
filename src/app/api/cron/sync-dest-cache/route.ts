@@ -55,7 +55,17 @@ export async function GET(req: NextRequest) {
 
     let token: string | null = null;
     let page = 0;
-    const MAX_PAGES = 100; // 100 pages × 10,000 = 1M max
+    // A stop, not a budget. The 2026-09-09 run ended on exactly 100 pages with TGX still
+    // handing back a token, so the catalog was truncated at whatever page 100 happened to
+    // reach and the run reported `ok: true` regardless — the one number that would have
+    // revealed it, `pages`, sat in the response looking like a statistic. Destinations
+    // beyond the cut simply never got a row, which is indistinguishable from TGX not
+    // having them.
+    //
+    // Raised far above what the catalog needs so the loop ends when the token runs out,
+    // which is the real terminating condition, and `truncated` is reported below so a run
+    // that does hit the ceiling says so instead of being read as complete.
+    const MAX_PAGES = 500;
 
     do {
         page++;
@@ -98,6 +108,31 @@ export async function GET(req: NextRequest) {
                     type:        dest.type as string,
                     parent_code: (dest.parent as string | null) ?? null,
                 });
+            }
+
+            // The same name under its own country, so a name two countries share keeps both.
+            //
+            // The bare key above holds one row per name worldwide, and "first-seen wins" is
+            // decided by TGX's paging order rather than by anything about the place. The
+            // United States supplies 4,699 of these names — more than any other country — so
+            // it wins most collisions: `paris` resolved to Paris, Texas, `rome` to Rome,
+            // Georgia, `bali` to Bali in Crete. The French Paris was in the very same
+            // response and was dropped on the floor; 2,282 other French cities were kept.
+            //
+            // A search that knows its country reads `paris:fr` and gets the real code from
+            // TGX's own list. The bare key stays exactly as it was, so an unscoped search is
+            // unaffected and no existing row changes meaning.
+            const cc = /#([A-Z]{2})$/.exec((dest.parent as string | null) ?? '')?.[1];
+            if (cc) {
+                const scopedKey = `${key}:${cc.toLowerCase()}`;
+                const scopedExisting = destMap.get(scopedKey);
+                if (!scopedExisting || (scopedExisting.type !== 'CITY' && dest.type === 'CITY')) {
+                    destMap.set(scopedKey, {
+                        code:        dest.code as string,
+                        type:        dest.type as string,
+                        parent_code: (dest.parent as string | null) ?? null,
+                    });
+                }
             }
         }
 
@@ -143,11 +178,25 @@ export async function GET(req: NextRequest) {
     }
 
     const elapsed = Date.now() - t0;
+    // TGX still had more to give when the page ceiling stopped us, so this run saw only
+    // part of the catalog. Said out loud, because a truncated sync and a complete one are
+    // otherwise identical from the outside: both return ok, both upsert thousands of rows,
+    // and the destinations that were cut off look exactly like destinations TGX does not
+    // carry — a city that resolves to nothing for a reason nobody can see.
+    const truncated = Boolean(token) && page >= MAX_PAGES;
+    if (truncated) {
+        console.warn(
+            `[sync-dest-cache] TRUNCATED at the ${MAX_PAGES}-page ceiling with a token still ` +
+            `outstanding — the catalog is incomplete and destinations past this point have no row.`,
+        );
+    }
+
     console.log(`[sync-dest-cache] Done: ${upserted}/${destMap.size} upserted in ${elapsed}ms`);
 
     return NextResponse.json({
         ok: true,
         pages: page,
+        truncated,
         totalMapped: destMap.size,
         upserted,
         elapsedMs: elapsed,

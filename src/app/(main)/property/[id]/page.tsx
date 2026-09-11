@@ -150,8 +150,10 @@ export default async function PropertyPage({
 
     const currency = (searchParamsResult.currency as string) || 'KRW';
     const bundleFlightId = (searchParamsResult.bundleFlightId as string) || null;
-    // Derived from the live markup rates, not a fixed figure — see bundleSavingPercent().
-    // Reads server-only env, which is fine here: this is a server component.
+    // Always 0 since ADR-0036 retired the bundle discount: bundling was a swap to a
+    // lower hotel rate rather than a discount line, and there is no cost saving behind
+    // it to pass on. Kept as a call rather than inlined so reinstating a real, funded
+    // discount is one change in one place — see bundleSavingPercent().
     const bundleSaving = bundleSavingPercent();
 
     const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://cheapestgo.com';

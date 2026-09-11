@@ -5,6 +5,7 @@ import { getAuthenticatedUser } from '@/lib/server/auth';
 import { formatCurrency, calculateNights } from '@/lib/utils';
 import { PrintButton } from './PrintButton';
 import { getTranslations } from 'next-intl/server';
+import { canonicalBrandName } from '@/lib/brand';
 
 export const metadata: Metadata = {
     robots: { index: false, follow: false },
@@ -139,7 +140,9 @@ export default async function InvoicePage({ params, searchParams }: PageProps) {
                 {/* Header */}
                 <div className="flex items-start justify-between px-8 pt-8 pb-6 border-b border-slate-100 dark:border-slate-800">
                     <div>
-                        <h1 className="text-2xl font-extrabold text-indigo-600 tracking-tight">CheapestGo</h1>
+                        {/* The brand the customer actually paid. This was the literal "CheapestGo" on every
+                            receipt, including those issued by the Korean storefront. */}
+                        <h1 className="text-2xl font-extrabold text-indigo-600 tracking-tight">{canonicalBrandName(process.env.NEXT_PUBLIC_BRAND_NAME)}</h1>
                         <p className="text-xs text-slate-400 mt-0.5">{t('yourTravelPartner')}</p>
                     </div>
                     <div className="text-right">
