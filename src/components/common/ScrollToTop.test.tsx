@@ -1,6 +1,13 @@
+import React from 'react';
 import { describe, it, expect, afterEach } from 'vitest';
-import { render, screen, fireEvent, act } from '@testing-library/react';
+import { render as renderBare, screen, fireEvent, act } from '@testing-library/react';
+import { NextIntlClientProvider } from 'next-intl';
+import messages from '@/locales/en.json';
 import { ScrollToTop } from './ScrollToTop';
+
+/** The button's label comes from next-intl, so it needs the provider around it. */
+const render = (ui: React.ReactElement) =>
+    renderBare(<NextIntlClientProvider locale="en" messages={messages}>{ui}</NextIntlClientProvider>);
 
 /**
  * The scroll-to-top button and the Support Widget's launcher (SupportLauncher.tsx) both

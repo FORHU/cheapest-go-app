@@ -266,6 +266,14 @@
       "liveRates": "실시간 환율",
       "updating": "업데이트 중…",
       "rate": "1 {from} = {rate} {to}"
+    },
+    "timeZone": {
+      "backToClocks": "시계로 돌아가기",
+      "searchPlaceholder": "도시 또는 시간대 검색",
+      "noMatch": "일치하는 시간대가 없습니다",
+      "default": "기본",
+      "auto": "자동",
+      "allZones": "모든 시간대"
     }
   },
   "checkout": {
@@ -446,7 +454,12 @@
       "total": "총계",
       "updateDates": "날짜 업데이트",
       "youSave": "이 프로모션으로 {amount} 절약",
-      "yourRoom": "객실"
+      "yourRoom": "객실",
+      "freeCancellationBefore": "{date} 이전 무료 취소",
+      "freeCancellationShort": "무료 취소",
+      "nonRefundable": "환불 불가",
+      "termsNotProvided": "공급사가 취소 조건을 제공하지 않았습니다 — 예약 전 숙소에 확인하세요",
+      "fetchingPolicy": "취소 정책을 불러오는 중…"
     },
     "title": "결제 | {brand}",
     "userDetails": {
@@ -536,7 +549,32 @@
       "description": "인증 요청을 처리하는 중 오류가 발생했습니다. 링크가 만료되었거나 이미 사용된 경우 발생할 수 있습니다.",
       "goHome": "홈으로 이동",
       "signInAgain": "다시 로그인해 보기",
-      "title": "인증 오류"
+      "title": "인증 오류",
+      "retryDescription": "인증 중 문제가 발생했습니다. 다시 시도해 주세요."
+    },
+    "page": {
+      "title": "문제가 발생했습니다",
+      "description": "예기치 않은 오류가 발생했습니다. 다시 시도해 주세요."
+    },
+    "search": {
+      "title": "검색에 실패했습니다",
+      "description": "검색 결과를 불러오지 못했습니다. 네트워크 문제이거나 검색 조건이 올바르지 않을 수 있습니다."
+    },
+    "property": {
+      "title": "숙소를 이용할 수 없습니다",
+      "description": "이 숙소를 불러오지 못했습니다. 더 이상 예약할 수 없거나 연결에 문제가 있을 수 있습니다."
+    },
+    "trips": {
+      "title": "여행 정보를 불러오지 못했습니다",
+      "description": "예약 내역을 불러오는 중 오류가 발생했습니다. 다시 시도해 주세요."
+    },
+    "actions": {
+      "tryAgain": "다시 시도",
+      "retry": "다시 시도",
+      "retrySearch": "검색 다시 시도",
+      "backToHome": "홈으로 돌아가기",
+      "backToSearch": "검색으로 돌아가기",
+      "goHome": "홈으로"
     }
   },
   "flightBook": {
@@ -945,7 +983,9 @@
       "sortBy": "정렬 기준",
       "stops": "경유",
       "upToOneStop": "최대 1회 경유",
-      "ndc": "NDC"
+      "ndc": "NDC",
+      "resetAll": "필터 모두 초기화",
+      "noRefundableFares": "이 노선에는 환불 가능한 운임이 없습니다."
     },
     "priceAlert": {
       "active": "알림 활성화됨",
@@ -980,7 +1020,10 @@
         "twoPlus": "경유 2회 이상"
       },
       "tryAgain": "다시 시도",
-      "searchFlights": "항공편 검색"
+      "searchFlights": "항공편 검색",
+      "findingFlights": "항공편을 찾는 중…",
+      "clearAll": "모두 지우기",
+      "searchLabel": "검색"
     },
     "search": {
       "adult": "성인 {count}명",
@@ -1102,7 +1145,8 @@
       "reviews": "리뷰 {count}개",
       "viewDeal": "요금 보기",
       "fetchingPrices": "요금 조회 중…",
-      "fetchingPricesLong": "요금을 불러오는 중입니다. 잠시만 기다려 주세요…"
+      "fetchingPricesLong": "요금을 불러오는 중입니다. 잠시만 기다려 주세요…",
+      "fetchingShort": "불러오는 중…"
     },
     "collapse": "접기 ↑",
     "filters": {
@@ -1214,7 +1258,8 @@
       "where": "위치",
       "whereQuestion": "어디로?",
       "who": "인원",
-      "whoQuestion": "누가 여행하나요?"
+      "whoQuestion": "누가 여행하나요?",
+      "findingHotels": "호텔을 찾는 중…"
     },
     "perNight": "/박",
     "poiPopup": {
@@ -1307,7 +1352,12 @@
       "staysIn": "{destination} 숙소",
       "supplierUnavailable": "현재 공급사가 이 목적지를 지원하지 않을 수 있습니다. 다른 날짜, 필터 조정 또는 근처 도시로 검색해 보세요.",
       "supplierUnavailableShort": "현재 공급사가 이 목적지를 지원하지 않을 수 있습니다. 다른 날짜나 근처 도시를 시도해 보세요.",
-      "tryDifferentDates": "다른 날짜나 근처 도시를 시도해 보세요."
+      "tryDifferentDates": "다른 날짜나 근처 도시를 시도해 보세요.",
+      "neighborhoodBanner": "<strong>지역 검색</strong> — 표시된 요금은 둘러보기용입니다. 호텔을 예약하려면 도시 이름(예: 서울, 방콕)으로 검색하세요.",
+      "stillLoadingHotels": "호텔을 계속 불러오는 중",
+      "stillLoadingIn": "{destination}의 호텔을 계속 불러오는 중",
+      "firstTimeIndexing": "이 목적지를 처음 등록하는 중입니다. 다시 검색하시면 결과가 표시됩니다.",
+      "searchAgainButton": "다시 검색"
     },
     "subtitleDefault": "엄선된 호텔을 최저가에 제공",
     "subtitlePersonalized": "{country} 인기 호텔 · 매일 업데이트"
@@ -1461,6 +1511,25 @@
       "whereTo": "어디로?",
       "year": "연도",
       "yearsOld": "{age}세"
+    },
+    "quickAccess": "빠른 접근",
+    "ai": {
+      "understood": "AI가 이해했어요",
+      "searchWithDetails": "이 조건으로 검색",
+      "chips": {
+        "beachEscape": "해변 휴양",
+        "luxuryStay": "럭셔리 숙박",
+        "romanticTrip": "로맨틱 여행",
+        "quickGetaway": "짧은 여행",
+        "adventure": "액티비티 여행"
+      },
+      "cards": {
+        "destination": "목적지",
+        "dates": "날짜",
+        "guests": "인원",
+        "budget": "예산"
+      },
+      "heresWhatIFound": "이렇게 이해했어요"
     }
   },
   "languagePicker": {
@@ -2015,7 +2084,8 @@
           "address": "🏢 FORHU Inc. · 미국 뉴욕주 뉴욕시 10005 Wall Street 30번지 8층"
         }
       }
-    }
+    },
+    "scrollToContinue": "계속하려면 끝까지 스크롤하세요"
   },
   "nav": {
     "account": "계정",
@@ -2030,11 +2100,14 @@
     "signIn": "로그인",
     "signOut": "로그아웃",
     "support": "고객지원",
-    "trips": "여행"
+    "trips": "여행",
+    "scrollToTop": "맨 위로 이동"
   },
   "popularDestinations": {
     "subtitle": "아시아 태평양의 인기 명소를 둘러보세요 — 몇 초 만에 항공편과 호텔을 검색하세요.",
-    "title": "인기 여행지"
+    "title": "인기 여행지",
+    "scrollLeft": "왼쪽으로 이동",
+    "scrollRight": "오른쪽으로 이동"
   },
   "propertyGallery": {
     "alt": {
@@ -2163,6 +2236,19 @@
       "dismiss": "나중에",
       "install": "설치",
       "title": "{brand} 앱 받기"
+    },
+    "iosGuide": {
+      "title": "홈 화면에 추가",
+      "close": "안내 닫기",
+      "step1Title": "공유 버튼을 누르세요",
+      "step1Body": "Safari 화면 아래쪽의 공유 아이콘을 찾으세요",
+      "step2Title": "메뉴를 아래로 스크롤하세요",
+      "step2Body": "공유 시트의 항목을 살펴보세요",
+      "step3Title": "\"홈 화면에 추가\"를 누르세요",
+      "step3Body": "플러스 기호가 있는 아이콘을 찾으세요",
+      "step4Title": "\"추가\"를 눌러 확인하세요",
+      "step4Body": "CheapestGo가 홈 화면에 나타납니다",
+      "hint": "Safari 하단 가운데의 <icon>공유</icon> 아이콘을 눌러 시작하세요"
     }
   },
   "search": {
@@ -2310,7 +2396,9 @@
       "etgNotice": {
         "title": "온라인 예약이 아직 불가합니다",
         "description": "이 숙소는 파트너 예약 시스템을 통해 운영됩니다. 아래 가격은 참고용입니다. 가용성 확인 및 예약 완료를 위해 문의해 주세요."
-      }
+      },
+      "showLess": "간략히 보기",
+      "checkAtCheckout": "결제 단계에서 확인"
     },
     "savePercent": "{percent}% 절약",
     "weather": {
@@ -2329,6 +2417,52 @@
         "veryHigh": "높음"
       },
       "wind": "바람"
+    },
+    "mapOverlay": {
+      "getDirections": "길찾기...",
+      "whereFrom": "출발지는 어디인가요?",
+      "layers": "레이어",
+      "kmAway": "{distance}km 거리",
+      "viewOnMaps": "지도에서 보기",
+      "details": "상세 정보",
+      "recenterMap": "지도 중심 맞추기",
+      "fullscreen": "전체 화면",
+      "exitFullscreen": "전체 화면 종료",
+      "selectMode": "모드 선택"
+    },
+    "policies": {
+      "title": "이용 정책",
+      "checkInOut": "체크인 및 체크아웃",
+      "checkIn": "체크인",
+      "checkOut": "체크아웃",
+      "contactProperty": "숙소에 문의",
+      "cancellationPolicy": "취소 정책",
+      "refundable": "환불 가능",
+      "nonRefundable": "환불 불가",
+      "cancelBefore": "<time>{time}</time> 이전 취소",
+      "feeSuffix": " - 수수료: <fee>{amount}</fee>",
+      "noShowPenalty": "노쇼 위약금:",
+      "noShowBody": "취소하지 않고 체크인하지 않으면 {amount}이 부과됩니다.",
+      "earlyDepartureFee": "조기 퇴실 수수료:",
+      "earlyDepartureBody": "예정일보다 일찍 체크아웃하면 {amount}이 부과됩니다.",
+      "importantInformation": "중요 안내"
+    },
+    "poiDetails": {
+      "openingHours": "영업시간",
+      "openNow": "영업 중",
+      "closed": "영업 종료",
+      "yourRating": "내 평점",
+      "commentPlaceholder": "경험을 공유해 주세요...",
+      "addPhoto": "사진 추가",
+      "justNow": "방금 전",
+      "you": "나",
+      "postReview": "리뷰 등록",
+      "communityPhotos": "커뮤니티 사진",
+      "brandReviews": "CheapestGo 리뷰",
+      "googleFoursquareReviews": "Google·Foursquare 리뷰",
+      "foursquareRecommendations": "Foursquare 추천",
+      "googleReviews": "Google 리뷰",
+      "noReviews": "아직 이 장소에 대한 리뷰가 없습니다."
     }
   },
   "reviewsSection": {
@@ -2478,7 +2612,10 @@
     "closeMap": "지도 닫기",
     "placesWithin": "반경 내 장소",
     "noProperties": "표시할 숙소가 없습니다",
-    "adjustFilters": "검색 필터를 조정해 보세요"
+    "adjustFilters": "검색 필터를 조정해 보세요",
+    "imageUnavailable": "이미지를 불러올 수 없습니다",
+    "clickForDetails": "클릭하면 자세히 볼 수 있습니다",
+    "notAvailable": "지도를 사용할 수 없습니다"
   },
   "help": {
     "title": "고객지원 | AirangGo",
@@ -2777,6 +2914,14 @@
           "refundFailed": "환불에 실패했습니다.",
           "reissueQuote": "재발행 견적을 가져오지 못했습니다."
         }
+      },
+      "passengersHeading": "탑승객",
+      "ticketDetails": {
+        "grandTotal": "총 결제 금액:",
+        "totalFare": "총 운임:",
+        "fareCalc": "운임 계산:",
+        "endorsements": "제한 사항:",
+        "itinerary": "여정:"
       }
     },
     "labels": {
@@ -2840,7 +2985,8 @@
       "refunded": "환불 완료",
       "ticketed": "확정",
       "ticketing": "발권 중",
-      "unknown": "알 수 없음"
+      "unknown": "알 수 없음",
+      "cancellationStuck": "취소 처리 지연"
     },
     "subtitle": "예약을 확인하고 관리하세요",
     "tabs": {
@@ -2859,7 +3005,68 @@
       "removeError": "항목을 삭제하지 못했습니다. 다시 시도해 주세요.",
       "removeFromWishlist": "위시리스트에서 삭제",
       "savedOn": "{date} 저장",
-      "searchAgain": "다시 검색"
+      "searchAgain": "다시 검색",
+      "saveToWishlist": "위시리스트에 저장"
+    },
+    "tripMap": {
+      "navigate": "길안내",
+      "tooFar": "차로 바로 가기에는 너무 멉니다",
+      "flyingIn": "항공편으로 이동",
+      "locating": "위치 확인 중…",
+      "findingHotel": "호텔을 찾는 중…",
+      "gettingLocation": "현재 위치를 가져오는 중…",
+      "centerOnHotel": "호텔 중심으로 보기",
+      "toggleTraffic": "교통 정보 표시",
+      "driving": "자동차",
+      "walking": "도보",
+      "away": "{distance} 거리",
+      "calculatingDistance": "거리를 계산하는 중…",
+      "navigationStarts": "50km 이내에 들어오면 길안내가 시작됩니다",
+      "openInMaps": "지도에서 열기",
+      "navigationReady": "근처에 도착하면 길안내를 이용할 수 있습니다",
+      "saveInMaps": "지도에 저장",
+      "determiningLocation": "위치를 확인하는 중…",
+      "close": "지도 닫기"
+    },
+    "cancellationFeeCard": {
+      "ifYouCancelNow": "지금 취소하면:",
+      "fee": "취소 수수료",
+      "youllReceive": "환불 금액"
+    },
+    "pages": {
+      "backToBooking": "예약으로 돌아가기",
+      "ref": "예약번호:"
+    },
+    "requestsPage": {
+      "title": "요청 사항",
+      "note": "요청 사항은 숙소에 전달되지만 보장되지는 않으며, 호텔 사정에 따라 달라집니다.",
+      "cancelled": "이 예약은 취소되어 요청 사항을 더 이상 변경할 수 없습니다."
+    },
+    "requestsForm": {
+      "label": "숙소에 전달할 메시지",
+      "placeholder": "예: 오후 10시 이후 늦은 체크인, 엑스트라 베드, 고층 객실…",
+      "saved": "저장되었습니다 — 숙소에 전달했습니다.",
+      "saveError": "요청 사항을 저장하지 못했습니다. 다시 시도해 주세요.",
+      "submit": "요청 저장"
+    },
+    "sharePage": {
+      "title": "예약 확인서 공유",
+      "note": "확인 이메일을 본인이나 다른 사람에게 다시 보낼 수 있습니다. 동행자에게 전달하거나 기록용으로 유용합니다."
+    },
+    "shareForm": {
+      "sendTo": "받는 사람",
+      "sentTo": "{email}(으)로 보냈습니다.",
+      "sendError": "전송하지 못했습니다. 다시 시도해 주세요.",
+      "submit": "확인서 보내기"
+    },
+    "hotelConfirmed": {
+      "confirming": "예약을 확정하는 중…",
+      "loading": "예약 정보를 불러오는 중…"
+    },
+    "invoice": {
+      "downloadPdf": "PDF 내려받기",
+      "generating": "생성 중…",
+      "print": "인쇄"
     }
   }
 }

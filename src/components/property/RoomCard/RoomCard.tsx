@@ -361,7 +361,7 @@ export const RoomCard: React.FC<RoomCardProps> = ({
                             </div>
                             {amenities.length > 8 && (
                                 <button type="button" onClick={() => setShowAllAmenities(v => !v)} className="mt-1.5 text-[8px] md:text-[9px] text-blue-500 dark:text-blue-400 hover:underline">
-                                    {showAllAmenities ? 'Show less' : `+${amenities.length - 8} more`}
+                                    {showAllAmenities ? t('showLess') : `+${amenities.length - 8} more`}
                                 </button>
                             )}
                         </div>
@@ -377,7 +377,7 @@ export const RoomCard: React.FC<RoomCardProps> = ({
                                     : t('freeCancellation'))
                                 : rate.refundable === false
                                     ? t('nonRefundablePill')
-                                    : 'Check at checkout';
+                                    : t('checkAtCheckout');
                             const cancelColor = rate.refundable === true
                                 ? 'text-emerald-600 dark:text-emerald-400'
                                 : rate.refundable === false

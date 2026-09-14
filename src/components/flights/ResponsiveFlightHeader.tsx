@@ -106,7 +106,7 @@ export const ResponsiveFlightHeader = ({
                                 <div className="absolute inset-0 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
                             </div>
                             <div className="text-center px-4">
-                                <p className="text-base font-bold text-slate-900 dark:text-white">Finding flights…</p>
+                                <p className="text-base font-bold text-slate-900 dark:text-white">{t('findingFlights')}</p>
                                 {(flightState.flights[0]?.origin?.title && flightState.flights[0]?.destination?.title) && (
                                     <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
                                         {flightState.flights[0].origin.title} to {flightState.flights[0].destination.title}
@@ -137,7 +137,7 @@ export const ResponsiveFlightHeader = ({
                                     onClick={() => useSearchStore.getState().reset()}
                                     className="px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 text-[10px] font-bold uppercase tracking-wider hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
                                 >
-                                    Clear all
+                                    {t('clearAll')}
                                 </motion.button>
                             )}
                         </AnimatePresence>
@@ -163,7 +163,7 @@ export const ResponsiveFlightHeader = ({
                                 }}
                                 isLoading={isSearching}
                                 className="w-full h-10 rounded-xl !bg-blue-600 hover:!bg-blue-700 !text-white font-medium text-sm shadow-lg shadow-blue-500/25"
-                                label="Search"
+                                label={t('searchLabel')}
                             />
                         </div>
                     </div>

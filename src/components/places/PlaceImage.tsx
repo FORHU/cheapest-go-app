@@ -3,6 +3,7 @@
 import React from 'react';
 import Image from 'next/image';
 import { useQuery } from '@tanstack/react-query';
+import { useTranslations } from 'next-intl';
 
 interface PlaceImageProps {
     photoReference: string;
@@ -16,6 +17,7 @@ interface PlaceImageProps {
  * Renders a skeleton while the optimized URL is being derived/cached.
  */
 export function PlaceImage({ photoReference, maxWidth = 400, alt, className = '' }: PlaceImageProps) {
+    const t = useTranslations('map');
     // 1. Fetch the optimized URL from our backend cache layer
     const { data, isLoading, error } = useQuery({
         queryKey: ['placePhotoUrl', photoReference, maxWidth],
@@ -38,7 +40,7 @@ export function PlaceImage({ photoReference, maxWidth = 400, alt, className = ''
         // Render Error/Fallback state
         return (
             <div className={`flex items-center justify-center bg-slate-100 dark:bg-slate-900 text-slate-400 text-xs ${className}`}>
-                Image unavailable
+                {t('imageUnavailable')}
             </div>
         );
     }

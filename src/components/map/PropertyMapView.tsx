@@ -5,6 +5,7 @@ import type { MapRef, MapMouseEvent } from 'react-map-gl/mapbox';
 import { NavigationControl, Popup, Source, Layer } from 'react-map-gl/mapbox';
 import { Navigation, Layers } from 'lucide-react';
 import { Map } from '@/components/ui/map';
+import { useTranslations } from 'next-intl';
 import { useMapDetails } from '@/components/mapbox/hooks/useMapDetails';
 import { MapDetailsPanel } from '@/components/mapbox/components/MapDetailsPanel';
 import { MapMarker } from './MapMarker';
@@ -125,6 +126,7 @@ const PropertyMapView = React.memo(function PropertyMapView({
     onHover,
     onViewDetails,
 }: PropertyMapViewProps) {
+    const tMap = useTranslations('map');
     const mapRef = useRef<MapRef>(null);
     const [isMapLoaded, setIsMapLoaded] = useState(false);
     const [poiPopup, setPoiPopup] = useState<POIState | null>(null);
@@ -546,7 +548,7 @@ const PropertyMapView = React.memo(function PropertyMapView({
                                     <span>{formatDistance(hoverDistanceKm)}</span>
                                 </div>
                             )}
-                            <p className="text-[9px] text-slate-400 mt-1">Click for details</p>
+                            <p className="text-[9px] text-slate-400 mt-1">{tMap('clickForDetails')}</p>
                         </div>
                     </Popup>
                 )}

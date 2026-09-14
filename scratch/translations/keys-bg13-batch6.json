@@ -1,0 +1,140 @@
+{
+  "checkout.summary.freeCancellationBefore": {
+    "en": "Free cancellation before {date}",
+    "ko": "{date} 이전 무료 취소",
+    "ja": "{date} まで無料キャンセル",
+    "zh": "{date} 前可免费取消"
+  },
+  "checkout.summary.freeCancellationShort": {
+    "en": "Free cancellation",
+    "ko": "무료 취소",
+    "ja": "無料キャンセル",
+    "zh": "免费取消"
+  },
+  "checkout.summary.nonRefundable": {
+    "en": "Non-refundable",
+    "ko": "환불 불가",
+    "ja": "返金不可",
+    "zh": "不可退款"
+  },
+  "checkout.summary.termsNotProvided": {
+    "en": "Cancellation terms not provided by supplier — confirm with property before booking",
+    "ko": "공급사가 취소 조건을 제공하지 않았습니다 — 예약 전 숙소에 확인하세요",
+    "ja": "サプライヤーからキャンセル条件の提供がありません — 予約前に施設にご確認ください",
+    "zh": "供应商未提供取消条款 — 预订前请与住宿方确认"
+  },
+  "checkout.summary.fetchingPolicy": {
+    "en": "Fetching cancellation policy…",
+    "ko": "취소 정책을 불러오는 중…",
+    "ja": "キャンセルポリシーを取得中…",
+    "zh": "正在获取取消政策…"
+  },
+  "flights.filtersPanel.resetAll": {
+    "en": "Reset all filters",
+    "ko": "필터 모두 초기화",
+    "ja": "フィルターをすべてリセット",
+    "zh": "重置所有筛选"
+  },
+  "flights.filtersPanel.noRefundableFares": {
+    "en": "No refundable fares available for this route.",
+    "ko": "이 노선에는 환불 가능한 운임이 없습니다.",
+    "ja": "この路線に返金可能な運賃はありません。",
+    "zh": "该航线暂无可退款的票价。"
+  },
+  "flights.results.findingFlights": {
+    "en": "Finding flights…",
+    "ko": "항공편을 찾는 중…",
+    "ja": "フライトを検索中…",
+    "zh": "正在查找航班…"
+  },
+  "flights.results.clearAll": {
+    "en": "Clear all",
+    "ko": "모두 지우기",
+    "ja": "すべてクリア",
+    "zh": "全部清除"
+  },
+  "flights.results.searchLabel": {
+    "en": "Search",
+    "ko": "검색",
+    "ja": "検索",
+    "zh": "搜索"
+  },
+  "hotels.searchResults.stillLoadingHotels": {
+    "en": "Still loading hotels",
+    "ko": "호텔을 계속 불러오는 중",
+    "ja": "ホテルを読み込んでいます",
+    "zh": "仍在加载酒店"
+  },
+  "hotels.searchResults.stillLoadingIn": {
+    "en": "Still loading hotels in {destination}",
+    "ko": "{destination}의 호텔을 계속 불러오는 중",
+    "ja": "{destination} のホテルを読み込んでいます",
+    "zh": "仍在加载{destination}的酒店"
+  },
+  "hotels.searchResults.firstTimeIndexing": {
+    "en": "This destination is being indexed for the first time. Please search again — results should appear now.",
+    "ko": "이 목적지를 처음 등록하는 중입니다. 다시 검색하시면 결과가 표시됩니다.",
+    "ja": "この目的地は初回の登録中です。もう一度検索すると結果が表示されます。",
+    "zh": "该目的地正在首次建立索引。请再搜索一次，结果应该就会出现。"
+  },
+  "hotels.searchResults.searchAgainButton": {
+    "en": "Search again",
+    "ko": "다시 검색",
+    "ja": "もう一度検索",
+    "zh": "重新搜索"
+  },
+  "landing.ai.understood": {
+    "en": "AI Understood",
+    "ko": "AI가 이해했어요",
+    "ja": "AI が理解しました",
+    "zh": "AI 已理解"
+  },
+  "landing.ai.searchWithDetails": {
+    "en": "Search with these details",
+    "ko": "이 조건으로 검색",
+    "ja": "この条件で検索",
+    "zh": "按这些条件搜索"
+  },
+  "landing.ai.chips.beachEscape": {
+    "en": "Beach Escape",
+    "ko": "해변 휴양",
+    "ja": "ビーチ旅行",
+    "zh": "海滨度假"
+  },
+  "landing.ai.chips.luxuryStay": {
+    "en": "Luxury Stay",
+    "ko": "럭셔리 숙박",
+    "ja": "ラグジュアリーステイ",
+    "zh": "奢华住宿"
+  },
+  "landing.ai.chips.romanticTrip": {
+    "en": "Romantic Trip",
+    "ko": "로맨틱 여행",
+    "ja": "ロマンティック旅行",
+    "zh": "浪漫之旅"
+  },
+  "landing.ai.chips.quickGetaway": {
+    "en": "Quick Getaway",
+    "ko": "짧은 여행",
+    "ja": "ちょい旅",
+    "zh": "短途出游"
+  },
+  "landing.ai.chips.adventure": {
+    "en": "Adventure",
+    "ko": "액티비티 여행",
+    "ja": "アドベンチャー",
+    "zh": "探险之旅"
+  },
+  "property.rooms.showLess": {
+    "en": "Show less",
+    "ko": "간략히 보기",
+    "ja": "表示を減らす",
+    "zh": "收起"
+  },
+  "property.rooms.checkAtCheckout": {
+    "en": "Check at checkout",
+    "ko": "결제 단계에서 확인",
+    "ja": "お支払い画面で確認",
+    "zh": "结账时查看"
+  }
+}

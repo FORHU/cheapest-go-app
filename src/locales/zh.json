@@ -266,6 +266,14 @@
       "liveRates": "实时汇率",
       "updating": "更新中…",
       "rate": "1 {from} = {rate} {to}"
+    },
+    "timeZone": {
+      "backToClocks": "返回时钟",
+      "searchPlaceholder": "搜索城市或时区",
+      "noMatch": "没有匹配的时区",
+      "default": "默认",
+      "auto": "自动",
+      "allZones": "所有时区"
     }
   },
   "checkout": {
@@ -446,7 +454,12 @@
       "total": "总计",
       "updateDates": "更新日期",
       "youSave": "使用此优惠节省{amount}",
-      "yourRoom": "您的房间"
+      "yourRoom": "您的房间",
+      "freeCancellationBefore": "{date} 前可免费取消",
+      "freeCancellationShort": "免费取消",
+      "nonRefundable": "不可退款",
+      "termsNotProvided": "供应商未提供取消条款 — 预订前请与住宿方确认",
+      "fetchingPolicy": "正在获取取消政策…"
     },
     "title": "结算 | {brand}",
     "userDetails": {
@@ -536,7 +549,32 @@
       "description": "处理身份验证请求时出错。可能是链接已过期或已被使用。",
       "goHome": "前往首页",
       "signInAgain": "重新登录",
-      "title": "身份验证错误"
+      "title": "身份验证错误",
+      "retryDescription": "身份验证过程中出现问题，请重试。"
+    },
+    "page": {
+      "title": "出现问题",
+      "description": "发生意外错误，请重试。"
+    },
+    "search": {
+      "title": "搜索失败",
+      "description": "无法加载搜索结果，可能是网络问题或搜索条件无效。"
+    },
+    "property": {
+      "title": "无法显示该住宿",
+      "description": "无法加载该住宿，可能已下架或连接出现问题。"
+    },
+    "trips": {
+      "title": "无法加载您的行程",
+      "description": "加载预订记录时出错，请重试。"
+    },
+    "actions": {
+      "tryAgain": "重试",
+      "retry": "重试",
+      "retrySearch": "重新搜索",
+      "backToHome": "返回首页",
+      "backToSearch": "返回搜索",
+      "goHome": "返回首页"
     }
   },
   "flightBook": {
@@ -945,7 +983,9 @@
       "sortBy": "排序方式",
       "stops": "中转",
       "upToOneStop": "最多 1 次中转",
-      "ndc": "NDC"
+      "ndc": "NDC",
+      "resetAll": "重置所有筛选",
+      "noRefundableFares": "该航线暂无可退款的票价。"
     },
     "priceAlert": {
       "active": "提醒已启用",
@@ -980,7 +1020,10 @@
         "twoPlus": "经停2次以上"
       },
       "tryAgain": "重试",
-      "searchFlights": "搜索航班"
+      "searchFlights": "搜索航班",
+      "findingFlights": "正在查找航班…",
+      "clearAll": "全部清除",
+      "searchLabel": "搜索"
     },
     "search": {
       "adult": "{count} 位成人",
@@ -1102,7 +1145,8 @@
       "reviews": "{count} 条评论",
       "viewDeal": "查看优惠",
       "fetchingPrices": "正在获取价格…",
-      "fetchingPricesLong": "正在获取价格，请稍候…"
+      "fetchingPricesLong": "正在获取价格，请稍候…",
+      "fetchingShort": "获取中…"
     },
     "collapse": "收起 ↑",
     "filters": {
@@ -1214,7 +1258,8 @@
       "where": "位置",
       "whereQuestion": "去哪里？",
       "who": "住客",
-      "whoQuestion": "谁将出行？"
+      "whoQuestion": "谁将出行？",
+      "findingHotels": "正在查找酒店…"
     },
     "perNight": "/晚",
     "poiPopup": {
@@ -1307,7 +1352,12 @@
       "staysIn": "{destination} 的住宿",
       "supplierUnavailable": "当前供应商可能暂不覆盖此目的地。请尝试其他日期、调整筛选条件，或搜索附近城市。",
       "supplierUnavailableShort": "当前供应商可能暂不覆盖此目的地。请尝试其他日期或附近城市。",
-      "tryDifferentDates": "请尝试其他日期或附近城市。"
+      "tryDifferentDates": "请尝试其他日期或附近城市。",
+      "neighborhoodBanner": "<strong>区域搜索</strong> — 显示的价格仅供浏览参考。如需预订酒店，请按城市名称搜索（例如首尔、曼谷）。",
+      "stillLoadingHotels": "仍在加载酒店",
+      "stillLoadingIn": "仍在加载{destination}的酒店",
+      "firstTimeIndexing": "该目的地正在首次建立索引。请再搜索一次，结果应该就会出现。",
+      "searchAgainButton": "重新搜索"
     },
     "subtitleDefault": "精心挑选，价格无可比拟",
     "subtitlePersonalized": "{country} 的高分住宿 · 每日更新"
@@ -1461,6 +1511,25 @@
       "whereTo": "去哪里？",
       "year": "年份",
       "yearsOld": "{age}岁"
+    },
+    "quickAccess": "快速访问",
+    "ai": {
+      "understood": "AI 已理解",
+      "searchWithDetails": "按这些条件搜索",
+      "chips": {
+        "beachEscape": "海滨度假",
+        "luxuryStay": "奢华住宿",
+        "romanticTrip": "浪漫之旅",
+        "quickGetaway": "短途出游",
+        "adventure": "探险之旅"
+      },
+      "cards": {
+        "destination": "目的地",
+        "dates": "日期",
+        "guests": "人数",
+        "budget": "预算"
+      },
+      "heresWhatIFound": "这是我理解的内容"
     }
   },
   "languagePicker": {
@@ -2015,7 +2084,8 @@
           "address": "🏢 FORHU Inc. · 美国纽约州纽约市华尔街30号8楼 10005"
         }
       }
-    }
+    },
+    "scrollToContinue": "请滚动到底部以继续"
   },
   "nav": {
     "account": "账户",
@@ -2030,11 +2100,14 @@
     "signIn": "登录",
     "signOut": "退出登录",
     "support": "客服支持",
-    "trips": "行程"
+    "trips": "行程",
+    "scrollToTop": "回到顶部"
   },
   "popularDestinations": {
     "subtitle": "探索亚太地区热门景点 — 秒速搜索航班和酒店。",
-    "title": "热门目的地"
+    "title": "热门目的地",
+    "scrollLeft": "向左滚动",
+    "scrollRight": "向右滚动"
   },
   "propertyGallery": {
     "alt": {
@@ -2163,6 +2236,19 @@
       "dismiss": "暂不",
       "install": "安装",
       "title": "获取 {brand} 应用"
+    },
+    "iosGuide": {
+      "title": "添加到主屏幕",
+      "close": "关闭指南",
+      "step1Title": "点按“共享”按钮",
+      "step1Body": "在 Safari 浏览器底部找到共享图标",
+      "step2Title": "向下滚动菜单",
+      "step2Body": "浏览共享面板中的选项",
+      "step3Title": "点按“添加到主屏幕”",
+      "step3Body": "找到带加号的图标",
+      "step4Title": "点按“添加”以确认",
+      "step4Body": "CheapestGo 将出现在您的主屏幕上",
+      "hint": "点按 Safari 底部中间的<icon>共享</icon>图标即可开始"
     }
   },
   "search": {
@@ -2310,7 +2396,9 @@
       "etgNotice": {
         "title": "暂不支持在线预订",
         "description": "该住宿由我们的合作伙伴预订系统管理。以下显示的为参考价格。请联系我们确认可用性并完成预订。"
-      }
+      },
+      "showLess": "收起",
+      "checkAtCheckout": "结账时查看"
     },
     "savePercent": "节省{percent}%",
     "weather": {
@@ -2329,6 +2417,52 @@
         "veryHigh": "非常强"
       },
       "wind": "风速"
+    },
+    "mapOverlay": {
+      "getDirections": "获取路线...",
+      "whereFrom": "从哪里出发？",
+      "layers": "图层",
+      "kmAway": "距离 {distance} 公里",
+      "viewOnMaps": "在地图上查看",
+      "details": "详情",
+      "recenterMap": "重新居中地图",
+      "fullscreen": "全屏",
+      "exitFullscreen": "退出全屏",
+      "selectMode": "选择模式"
+    },
+    "policies": {
+      "title": "政策",
+      "checkInOut": "入住与退房",
+      "checkIn": "入住",
+      "checkOut": "退房",
+      "contactProperty": "请联系住宿方",
+      "cancellationPolicy": "取消政策",
+      "refundable": "可退款",
+      "nonRefundable": "不可退款",
+      "cancelBefore": "在<time>{time}</time>之前取消",
+      "feeSuffix": " - 费用：<fee>{amount}</fee>",
+      "noShowPenalty": "未入住罚金：",
+      "noShowBody": "若未取消也未入住，将收取 {amount}。",
+      "earlyDepartureFee": "提前退房费用：",
+      "earlyDepartureBody": "若早于预定日期退房，将收取 {amount}。",
+      "importantInformation": "重要信息"
+    },
+    "poiDetails": {
+      "openingHours": "营业时间",
+      "openNow": "正在营业",
+      "closed": "已打烊",
+      "yourRating": "您的评分",
+      "commentPlaceholder": "分享您的体验...",
+      "addPhoto": "添加照片",
+      "justNow": "刚刚",
+      "you": "您",
+      "postReview": "发布评价",
+      "communityPhotos": "社区照片",
+      "brandReviews": "CheapestGo 评价",
+      "googleFoursquareReviews": "Google 与 Foursquare 评价",
+      "foursquareRecommendations": "Foursquare 推荐",
+      "googleReviews": "Google 评价",
+      "noReviews": "该地点暂无评价。"
     }
   },
   "reviewsSection": {
@@ -2478,7 +2612,10 @@
     "closeMap": "关闭地图",
     "placesWithin": "范围内的地点",
     "noProperties": "没有可显示的住宿",
-    "adjustFilters": "请尝试调整搜索筛选条件"
+    "adjustFilters": "请尝试调整搜索筛选条件",
+    "imageUnavailable": "图片不可用",
+    "clickForDetails": "点击查看详情",
+    "notAvailable": "地图不可用"
   },
   "help": {
     "title": "客服支持 | CheapestGo",
@@ -2777,6 +2914,14 @@
           "refundFailed": "退款失败。",
           "reissueQuote": "无法获取改签报价。"
         }
+      },
+      "passengersHeading": "乘客",
+      "ticketDetails": {
+        "grandTotal": "总计：",
+        "totalFare": "票价合计：",
+        "fareCalc": "票价计算：",
+        "endorsements": "背书/限制：",
+        "itinerary": "行程："
       }
     },
     "labels": {
@@ -2840,7 +2985,8 @@
       "refunded": "已退款",
       "ticketed": "已确认",
       "ticketing": "出票中",
-      "unknown": "未知"
+      "unknown": "未知",
+      "cancellationStuck": "取消处理受阻"
     },
     "subtitle": "查看并管理您的预订",
     "tabs": {
@@ -2859,7 +3005,68 @@
       "removeError": "无法删除该项目，请重试。",
       "removeFromWishlist": "从心愿单移除",
       "savedOn": "保存于 {date}",
-      "searchAgain": "重新搜索"
+      "searchAgain": "重新搜索",
+      "saveToWishlist": "加入心愿单"
+    },
+    "tripMap": {
+      "navigate": "导航",
+      "tooFar": "距离太远，无法直接驾车前往",
+      "flyingIn": "乘飞机前往",
+      "locating": "正在定位…",
+      "findingHotel": "正在查找酒店…",
+      "gettingLocation": "正在获取您的位置…",
+      "centerOnHotel": "以酒店为中心",
+      "toggleTraffic": "显示路况",
+      "driving": "驾车",
+      "walking": "步行",
+      "away": "距离 {distance}",
+      "calculatingDistance": "正在计算距离…",
+      "navigationStarts": "进入 50 公里范围内即可开始导航",
+      "openInMaps": "在地图中打开",
+      "navigationReady": "抵达附近后即可开始导航",
+      "saveInMaps": "保存到地图",
+      "determiningLocation": "正在确定您的位置…",
+      "close": "关闭地图"
+    },
+    "cancellationFeeCard": {
+      "ifYouCancelNow": "如果现在取消：",
+      "fee": "取消费用",
+      "youllReceive": "您将收到"
+    },
+    "pages": {
+      "backToBooking": "返回预订",
+      "ref": "预订号："
+    },
+    "requestsPage": {
+      "title": "特殊要求",
+      "note": "我们会将您的要求转达给住宿方，但不保证一定满足，需视酒店情况而定。",
+      "cancelled": "该预订已取消，无法再修改特殊要求。"
+    },
+    "requestsForm": {
+      "label": "给住宿方的留言",
+      "placeholder": "例如：晚上 10 点后入住、加床、高楼层…",
+      "saved": "已保存 — 已通知住宿方。",
+      "saveError": "保存失败，请重试。",
+      "submit": "保存要求"
+    },
+    "sharePage": {
+      "title": "分享预订确认",
+      "note": "可将确认邮件重新发送给自己或他人，方便同行者查看或留作记录。"
+    },
+    "shareForm": {
+      "sendTo": "发送至",
+      "sentTo": "已发送至 {email}。",
+      "sendError": "发送失败，请重试。",
+      "submit": "发送确认"
+    },
+    "hotelConfirmed": {
+      "confirming": "正在确认您的预订…",
+      "loading": "正在加载您的预订…"
+    },
+    "invoice": {
+      "downloadPdf": "下载 PDF",
+      "generating": "生成中…",
+      "print": "打印"
     }
   }
 }

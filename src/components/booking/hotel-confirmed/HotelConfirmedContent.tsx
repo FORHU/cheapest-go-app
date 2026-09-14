@@ -11,6 +11,7 @@ import {
 import { useUserCurrency } from '@/stores/searchStore';
 import { HotelBookingConfirmed } from '@/components/checkout/HotelBookingConfirmed';
 import { Loader2 } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { apiFetch } from '@/lib/api/client';
 import { useBookingStore } from '@/stores/bookingStore';
 
@@ -47,6 +48,8 @@ function readCheckoutSession(): CheckoutSession | null {
  * Holder/guest data for 3DS recovery is read from sessionStorage (set in CheckoutContent).
  */
 export function HotelConfirmedContent() {
+    const t = useTranslations('trips.hotelConfirmed');
+    const tDestination = useTranslations('bookingDestination');
     const searchParams = useSearchParams();
     const paymentIntentFromUrl = searchParams.get('payment_intent');
     const redirectStatus = searchParams.get('redirect_status');
@@ -120,7 +123,7 @@ export function HotelConfirmedContent() {
         return (
             <div className="min-h-screen flex flex-col items-center justify-center gap-4">
                 <Loader2 className="w-10 h-10 text-indigo-500 animate-spin" />
-                <p className="text-sm text-slate-500">Confirming your booking…</p>
+                <p className="text-sm text-slate-500">{t('confirming')}</p>
             </div>
         );
     }
@@ -129,7 +132,7 @@ export function HotelConfirmedContent() {
         return (
             <div className="min-h-screen flex flex-col items-center justify-center gap-4 px-6 text-center">
                 <p className="text-red-600 font-medium">{confirmError}</p>
-                <a href="/trips" className="text-indigo-600 underline text-sm">Go to My Trips</a>
+                <a href="/trips" className="text-indigo-600 underline text-sm">{tDestination('goToTrips')}</a>
             </div>
         );
     }

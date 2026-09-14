@@ -2,6 +2,7 @@
 
 import { useEffect } from 'react';
 import Link from 'next/link';
+import { useTranslations } from 'next-intl';
 
 export default function AuthError({
     error,
@@ -10,6 +11,8 @@ export default function AuthError({
     error: Error & { digest?: string };
     reset: () => void;
 }) {
+    const t = useTranslations('errors');
+
     useEffect(() => {
         console.error('[AuthError]', error.digest ?? error.message);
     }, [error]);
@@ -20,22 +23,22 @@ export default function AuthError({
                 <div className="w-16 h-16 mx-auto bg-red-100 dark:bg-red-900/20 rounded-full flex items-center justify-center">
                     <span className="text-2xl text-red-600 dark:text-red-400">!</span>
                 </div>
-                <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Authentication Error</h2>
+                <h2 className="text-2xl font-bold text-slate-900 dark:text-white">{t('auth.title')}</h2>
                 <p className="text-slate-500 dark:text-slate-400">
-                    Something went wrong during authentication. Please try again.
+                    {t('auth.retryDescription')}
                 </p>
                 <div className="flex gap-3 justify-center">
                     <button
                         onClick={reset}
                         className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-full transition-colors"
                     >
-                        Try again
+                        {t('actions.tryAgain')}
                     </button>
                     <Link
                         href="/"
                         className="px-6 py-3 bg-slate-100 hover:bg-slate-200 dark:bg-white/10 dark:hover:bg-white/20 text-slate-700 dark:text-white font-medium rounded-full transition-colors"
                     >
-                        Go home
+                        {t('actions.goHome')}
                     </Link>
                 </div>
             </div>

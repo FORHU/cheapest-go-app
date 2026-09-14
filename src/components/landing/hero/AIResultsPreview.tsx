@@ -3,6 +3,7 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { MapPin, Calendar, Users, Wallet, Check, ArrowRight } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 
 interface ParsedResult {
     destination: string;
@@ -17,13 +18,14 @@ interface AIResultsPreviewProps {
 }
 
 const paramCards = [
-    { key: 'destination' as const, icon: MapPin, label: 'Destination', color: 'text-blue-500 dark:text-blue-400' },
-    { key: 'dates' as const, icon: Calendar, label: 'Dates', color: 'text-emerald-500 dark:text-emerald-400' },
-    { key: 'guests' as const, icon: Users, label: 'Guests', color: 'text-purple-500 dark:text-purple-400' },
-    { key: 'budget' as const, icon: Wallet, label: 'Budget', color: 'text-amber-500 dark:text-amber-400' },
+    { key: 'destination' as const, icon: MapPin, color: 'text-blue-500 dark:text-blue-400' },
+    { key: 'dates' as const, icon: Calendar, color: 'text-emerald-500 dark:text-emerald-400' },
+    { key: 'guests' as const, icon: Users, color: 'text-purple-500 dark:text-purple-400' },
+    { key: 'budget' as const, icon: Wallet, color: 'text-amber-500 dark:text-amber-400' },
 ];
 
 const AIResultsPreview: React.FC<AIResultsPreviewProps> = ({ result, onSearch }) => {
+    const t = useTranslations('landing.ai');
     return (
         <motion.div
             initial={{ opacity: 0, y: 20, scale: 0.98 }}
@@ -37,11 +39,11 @@ const AIResultsPreview: React.FC<AIResultsPreviewProps> = ({ result, onSearch })
                 <div className="flex items-center gap-1.5 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 px-2.5 py-1 rounded-full">
                     <Check size={12} strokeWidth={3} />
                     <span className="text-[10px] font-mono font-semibold uppercase tracking-wider">
-                        AI Understood
+                        {t('understood')}
                     </span>
                 </div>
                 <span className="text-sm text-slate-500 dark:text-slate-400">
-                    Here&apos;s what I found
+                    {t('heresWhatIFound')}
                 </span>
             </div>
 
@@ -61,7 +63,7 @@ const AIResultsPreview: React.FC<AIResultsPreviewProps> = ({ result, onSearch })
                             <div className="flex items-center gap-1.5 mb-1">
                                 <Icon size={12} className={param.color} />
                                 <span className="text-[10px] font-mono text-slate-400 dark:text-slate-500 uppercase tracking-wider">
-                                    {param.label}
+                                    {t(`cards.${param.key}`)}
                                 </span>
                             </div>
                             <div className="text-sm font-semibold text-slate-900 dark:text-white truncate">
@@ -79,7 +81,7 @@ const AIResultsPreview: React.FC<AIResultsPreviewProps> = ({ result, onSearch })
                 whileTap={{ scale: 0.99 }}
                 className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-lg font-display font-bold text-sm tracking-wide transition-all duration-300 bg-gradient-to-r from-blue-600 to-cyan-500 dark:from-blue-500 dark:to-cyan-400 text-white shadow-[0_0_20px_rgba(37,99,235,0.3)] dark:shadow-[0_0_20px_rgba(34,211,238,0.3)] hover:shadow-[0_0_30px_rgba(37,99,235,0.4)] dark:hover:shadow-[0_0_30px_rgba(34,211,238,0.4)]"
             >
-                <span>Search with these details</span>
+                <span>{t('searchWithDetails')}</span>
                 <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
             </motion.button>
         </motion.div>

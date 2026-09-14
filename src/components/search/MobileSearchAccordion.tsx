@@ -84,7 +84,7 @@ export const MobileSearchAccordion: React.FC<MobileSearchAccordionProps> = ({ on
             {isSearching && (
                 <div className="absolute inset-0 z-50 flex flex-col bg-white/95 dark:bg-slate-900/95 backdrop-blur-sm rounded-xl">
                     <div className="shrink-0 text-center px-6 pt-8 pb-4">
-                        <p className="text-base font-bold text-slate-900 dark:text-white">Finding hotels…</p>
+                        <p className="text-base font-bold text-slate-900 dark:text-white">{t('findingHotels')}</p>
                         {(destination?.title || query) && (
                             <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
                                 {destination?.title || query}

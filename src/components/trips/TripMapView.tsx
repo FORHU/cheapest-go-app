@@ -12,6 +12,7 @@ import { GpsMarker } from '@/components/mapbox/components/GpsMarker';
 import { TripRouteLayer } from '@/components/mapbox/components/TripRouteLayer';
 import { TripDestinationPin } from '@/components/mapbox/components/TripDestinationPin';
 import { env } from '@/utils/env';
+import { useTranslations, useLocale } from 'next-intl';
 import { Source, Layer } from 'react-map-gl/mapbox';
 
 interface TripMapViewProps {
@@ -32,11 +33,11 @@ function formatMins(mins: number | null): string {
 }
 
 const MODE_LABELS = {
-    ground:    { icon: Navigation, color: 'text-emerald-600 dark:text-emerald-400', label: 'Navigate' },
-    regional:  { icon: MapPin,     color: 'text-amber-600 dark:text-amber-400',     label: 'Too far to drive directly' },
-    air:       { icon: Plane,      color: 'text-blue-600 dark:text-blue-400',        label: 'Flying in' },
-    resolving: { icon: Loader2,    color: 'text-slate-500 dark:text-slate-400',      label: 'Locating…' },
-};
+    ground:    { icon: Navigation, color: 'text-emerald-600 dark:text-emerald-400', labelKey: 'navigate' },
+    regional:  { icon: MapPin,     color: 'text-amber-600 dark:text-amber-400',     labelKey: 'tooFar' },
+    air:       { icon: Plane,      color: 'text-blue-600 dark:text-blue-400',        labelKey: 'flyingIn' },
+    resolving: { icon: Loader2,    color: 'text-slate-500 dark:text-slate-400',      labelKey: 'locating' },
+} as const;
 
 const TRAFFIC_COLORS = [
     ['low',    '#4ade80'],
@@ -46,6 +47,8 @@ const TRAFFIC_COLORS = [
 ] as const;
 
 export default function TripMapView({ booking, onClose }: TripMapViewProps) {
+    const t                       = useTranslations('trips.tripMap');
+    const locale                  = useLocale();
     const mapRef                  = useRef<MapRef | null>(null);
     const [trafficOn, setTrafficOn] = useState(false);
 
@@ -109,6 +112,7 @@ export default function TripMapView({ booking, onClose }: TripMapViewProps) {
             <div className="relative z-10 flex items-center gap-3 px-4 py-3 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700">
                 <button
                     onClick={onClose}
+                    aria-label={t('close')}
                     className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
                 >
                     <X className="w-5 h-5 text-slate-600 dark:text-slate-300" />
@@ -120,17 +124,17 @@ export default function TripMapView({ booking, onClose }: TripMapViewProps) {
                     </p>
                     <p className="text-slate-500 dark:text-slate-400 text-xs truncate">
                         {booking.check_in
-                            ? new Date(booking.check_in).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+                            ? new Date(booking.check_in).toLocaleDateString(locale, { month: 'short', day: 'numeric', year: 'numeric' })
                             : ''
                         }
-                        {booking.check_out ? ` → ${new Date(booking.check_out).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}` : ''}
+                        {booking.check_out ? ` → ${new Date(booking.check_out).toLocaleDateString(locale, { month: 'short', day: 'numeric', year: 'numeric' })}` : ''}
                     </p>
                 </div>
 
                 {/* Mode badge */}
                 <div className={`flex items-center gap-1.5 text-xs font-medium ${MODE_LABELS[mode].color}`}>
                     <ModeIcon className={`w-3.5 h-3.5 ${mode === 'resolving' ? 'animate-spin' : ''}`} />
-                    <span className="hidden sm:inline">{MODE_LABELS[mode].label}</span>
+                    <span className="hidden sm:inline">{t(MODE_LABELS[mode].labelKey)}</span>
                 </div>
             </div>
 
@@ -140,7 +144,7 @@ export default function TripMapView({ booking, onClose }: TripMapViewProps) {
                     <div className="absolute inset-0 z-20 flex items-center justify-center bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm">
                         <div className="flex flex-col items-center gap-3 text-slate-600 dark:text-slate-300">
                             <Loader2 className="w-8 h-8 animate-spin" />
-                            <span className="text-sm">{isGeocoding ? 'Finding hotel…' : 'Getting your location…'}</span>
+                            <span className="text-sm">{isGeocoding ? t('findingHotel') : t('gettingLocation')}</span>
                         </div>
                     </div>
                 )}
@@ -203,7 +207,7 @@ export default function TripMapView({ booking, onClose }: TripMapViewProps) {
                         onClick={flyToHotel}
                         disabled={!hotelCoords}
                         className="p-2 rounded-xl bg-white/90 dark:bg-slate-800/90 backdrop-blur-md border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-40 transition-all shadow-lg"
-                        title="Center on hotel"
+                        title={t('centerOnHotel')}
                     >
                         <LocateFixed className="w-4 h-4" />
                     </button>
@@ -214,7 +218,7 @@ export default function TripMapView({ booking, onClose }: TripMapViewProps) {
                                 ? 'bg-amber-500/20 border-amber-500/40 text-amber-600 dark:text-amber-400'
                                 : 'bg-white/90 dark:bg-slate-800/90 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700'
                         }`}
-                        title="Toggle traffic"
+                        title={t('toggleTraffic')}
                     >
                         <TrafficCone className="w-4 h-4" />
                     </button>
@@ -229,7 +233,7 @@ export default function TripMapView({ booking, onClose }: TripMapViewProps) {
                     <div className="flex items-center gap-4">
                         <div className="flex-1 grid grid-cols-2 gap-3">
                             <div className="bg-slate-50 dark:bg-slate-800 rounded-xl px-3 py-2">
-                                <p className="text-[10px] text-slate-500 dark:text-slate-400 font-medium uppercase tracking-wider mb-0.5">Driving</p>
+                                <p className="text-[10px] text-slate-500 dark:text-slate-400 font-medium uppercase tracking-wider mb-0.5">{t('driving')}</p>
                                 <p className="text-slate-900 dark:text-white font-bold text-lg leading-tight">
                                     {isFetchingRoute ? <Loader2 className="w-4 h-4 animate-spin text-slate-400" /> : formatMins(travelTime)}
                                 </p>
@@ -238,7 +242,7 @@ export default function TripMapView({ booking, onClose }: TripMapViewProps) {
                                 )}
                             </div>
                             <div className="bg-slate-50 dark:bg-slate-800 rounded-xl px-3 py-2">
-                                <p className="text-[10px] text-slate-500 dark:text-slate-400 font-medium uppercase tracking-wider mb-0.5">Walking</p>
+                                <p className="text-[10px] text-slate-500 dark:text-slate-400 font-medium uppercase tracking-wider mb-0.5">{t('walking')}</p>
                                 <p className="text-slate-900 dark:text-white font-bold text-lg leading-tight">
                                     {isFetchingRoute ? <Loader2 className="w-4 h-4 animate-spin text-slate-400" /> : formatMins(walkingTime)}
                                 </p>
@@ -250,7 +254,7 @@ export default function TripMapView({ booking, onClose }: TripMapViewProps) {
                             className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-40 text-white font-semibold text-sm px-5 py-3 rounded-xl transition-colors shadow-md"
                         >
                             <Navigation className="w-4 h-4" />
-                            Navigate
+                            {t('navigate')}
                         </button>
                     </div>
                 )}
@@ -263,16 +267,16 @@ export default function TripMapView({ booking, onClose }: TripMapViewProps) {
                         </div>
                         <div className="flex-1">
                             <p className="text-slate-900 dark:text-white font-semibold text-sm">
-                                {distanceKm !== null ? `${formatKm(distanceKm)} away` : 'Calculating distance…'}
+                                {distanceKm !== null ? t('away', { distance: formatKm(distanceKm) }) : t('calculatingDistance')}
                             </p>
-                            <p className="text-slate-500 dark:text-slate-400 text-xs">Navigation starts when you're within 50 km</p>
+                            <p className="text-slate-500 dark:text-slate-400 text-xs">{t('navigationStarts')}</p>
                         </div>
                         <button
                             onClick={openGoogleMaps}
                             disabled={!hotelCoords}
                             className="text-blue-600 dark:text-blue-400 text-xs font-medium border border-blue-200 dark:border-blue-800 rounded-lg px-3 py-1.5 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors disabled:opacity-40"
                         >
-                            Open in Maps
+                            {t('openInMaps')}
                         </button>
                     </div>
                 )}
@@ -284,10 +288,10 @@ export default function TripMapView({ booking, onClose }: TripMapViewProps) {
                             <Plane className="w-4 h-4 text-blue-600 dark:text-blue-400" />
                         </div>
                         <div className="flex-1">
-                            <p className="text-slate-900 dark:text-white font-semibold text-sm">Flying in</p>
+                            <p className="text-slate-900 dark:text-white font-semibold text-sm">{t('flyingIn')}</p>
                             <p className="text-slate-500 dark:text-slate-400 text-xs">
-                                {distanceKm !== null ? `${formatKm(distanceKm)} away · ` : ''}
-                                Navigation ready when you land nearby
+                                {distanceKm !== null ? `${t('away', { distance: formatKm(distanceKm) })} · ` : ''}
+                                {t('navigationReady')}
                             </p>
                         </div>
                         <button
@@ -295,7 +299,7 @@ export default function TripMapView({ booking, onClose }: TripMapViewProps) {
                             disabled={!hotelCoords}
                             className="text-blue-600 dark:text-blue-400 text-xs font-medium border border-blue-200 dark:border-blue-800 rounded-lg px-3 py-1.5 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors disabled:opacity-40"
                         >
-                            Save in Maps
+                            {t('saveInMaps')}
                         </button>
                     </div>
                 )}
@@ -304,7 +308,7 @@ export default function TripMapView({ booking, onClose }: TripMapViewProps) {
                 {mode === 'resolving' && (
                     <div className="flex items-center gap-3 text-slate-500 dark:text-slate-400">
                         <Loader2 className="w-4 h-4 animate-spin" />
-                        <span className="text-sm">Determining your location…</span>
+                        <span className="text-sm">{t('determiningLocation')}</span>
                     </div>
                 )}
             </div>

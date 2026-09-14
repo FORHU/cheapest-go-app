@@ -1,0 +1,20 @@
+{
+  "trips.tripMap.navigate":            { "en": "Navigate", "ko": "길안내", "ja": "ナビを開始", "zh": "导航" },
+  "trips.tripMap.tooFar":              { "en": "Too far to drive directly", "ko": "차로 바로 가기에는 너무 멉니다", "ja": "車で直接向かうには遠すぎます", "zh": "距离太远，无法直接驾车前往" },
+  "trips.tripMap.flyingIn":            { "en": "Flying in", "ko": "항공편으로 이동", "ja": "飛行機で移動", "zh": "乘飞机前往" },
+  "trips.tripMap.locating":            { "en": "Locating…", "ko": "위치 확인 중…", "ja": "位置を確認中…", "zh": "正在定位…" },
+  "trips.tripMap.findingHotel":        { "en": "Finding hotel…", "ko": "호텔을 찾는 중…", "ja": "ホテルを検索中…", "zh": "正在查找酒店…" },
+  "trips.tripMap.gettingLocation":     { "en": "Getting your location…", "ko": "현재 위치를 가져오는 중…", "ja": "現在地を取得中…", "zh": "正在获取您的位置…" },
+  "trips.tripMap.centerOnHotel":       { "en": "Center on hotel", "ko": "호텔 중심으로 보기", "ja": "ホテルを中央に表示", "zh": "以酒店为中心" },
+  "trips.tripMap.toggleTraffic":       { "en": "Toggle traffic", "ko": "교통 정보 표시", "ja": "交通状況を表示", "zh": "显示路况" },
+  "trips.tripMap.driving":             { "en": "Driving", "ko": "자동차", "ja": "車", "zh": "驾车" },
+  "trips.tripMap.walking":             { "en": "Walking", "ko": "도보", "ja": "徒歩", "zh": "步行" },
+  "trips.tripMap.away":                { "en": "{distance} away", "ko": "{distance} 거리", "ja": "{distance} 先", "zh": "距离 {distance}" },
+  "trips.tripMap.calculatingDistance": { "en": "Calculating distance…", "ko": "거리를 계산하는 중…", "ja": "距離を計算中…", "zh": "正在计算距离…" },
+  "trips.tripMap.navigationStarts":    { "en": "Navigation starts when you're within 50 km", "ko": "50km 이내에 들어오면 길안내가 시작됩니다", "ja": "50km 以内に近づくとナビが開始されます", "zh": "进入 50 公里范围内即可开始导航" },
+  "trips.tripMap.openInMaps":          { "en": "Open in Maps", "ko": "지도에서 열기", "ja": "マップで開く", "zh": "在地图中打开" },
+  "trips.tripMap.navigationReady":     { "en": "Navigation ready when you land nearby", "ko": "근처에 도착하면 길안내를 이용할 수 있습니다", "ja": "近くに到着するとナビを利用できます", "zh": "抵达附近后即可开始导航" },
+  "trips.tripMap.saveInMaps":          { "en": "Save in Maps", "ko": "지도에 저장", "ja": "マップに保存", "zh": "保存到地图" },
+  "trips.tripMap.determiningLocation": { "en": "Determining your location…", "ko": "위치를 확인하는 중…", "ja": "現在地を確認中…", "zh": "正在确定您的位置…" },
+  "trips.tripMap.close":               { "en": "Close map", "ko": "지도 닫기", "ja": "地図を閉じる", "zh": "关闭地图" }
+}

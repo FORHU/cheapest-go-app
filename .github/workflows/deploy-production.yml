@@ -253,6 +253,9 @@ jobs:
           V_MYSTIFLY_PASSWORD: ${{ secrets.MYSTIFLY_PASSWORD }}
           V_MYSTIFLY_USERNAME: ${{ secrets.MYSTIFLY_USERNAME }}
           V_JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          # Proves a request came through Cloudflare (a Transform Rule adds it as X-Origin-Auth), so
+          # rate limits can key on cf-connecting-ip per client. Unset = one shared bucket for all.
+          V_CF_ORIGIN_SECRET: ${{ secrets.CF_ORIGIN_SECRET }}
           # Support attachments (ADR-0040). The bucket is a var, not a secret: a bucket
           # name is not one, and the credentials that reach it come from the instance role
           # rather than from anything shipped here.
@@ -344,6 +347,7 @@ jobs:
           append_env MYSTIFLY_PASSWORD "$V_MYSTIFLY_PASSWORD"
           append_env MYSTIFLY_USERNAME "$V_MYSTIFLY_USERNAME"
           append_env JWT_SECRET "$V_JWT_SECRET"
+          append_env CF_ORIGIN_SECRET "$V_CF_ORIGIN_SECRET"
           append_env SUPPORT_ATTACHMENTS_BUCKET "$V_SUPPORT_ATTACHMENTS_BUCKET"
           append_env AWS_REGION "$V_AWS_REGION"
 

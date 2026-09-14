@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from 'react';
-import { useTranslations } from 'next-intl';
+import { useTranslations, useLocale } from 'next-intl';
 import { Calendar, Star, MapPin, Tag, Pencil, Check, X, ChevronDown, CheckCircle, AlertCircle, HelpCircle } from 'lucide-react';
 import { CancellationPolicySection } from './CancellationPolicySection';
 import { CancellationPolicy } from '@/services/booking.service';
@@ -88,6 +88,7 @@ export function BookingSummary({
     roomSize,
 }: BookingSummaryProps) {
     const t = useTranslations('checkout.summary');
+    const locale = useLocale();
     const rt = useTranslations('checkout.rating');
     const currency = useCheckoutStore((state) => state.selectedCurrency);
     const symbol = getCurrencySymbol(currency);
@@ -255,19 +256,19 @@ export function BookingSummary({
                                     <CheckCircle size={13} />
                                     <span>
                                         {cancellationDeadline
-                                            ? `Free cancellation before ${new Date(cancellationDeadline).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`
-                                            : 'Free cancellation'}
+                                            ? t('freeCancellationBefore', { date: new Date(cancellationDeadline).toLocaleDateString(locale, { month: 'short', day: 'numeric' }) })
+                                            : t('freeCancellationShort')}
                                     </span>
                                 </div>
                             ) : refundable === false ? (
                                 <div className="flex items-center gap-1.5 text-amber-600 dark:text-amber-400 text-[11px] lg:text-xs font-medium">
                                     <AlertCircle size={13} />
-                                    <span>Non-refundable</span>
+                                    <span>{t('nonRefundable')}</span>
                                 </div>
                             ) : (
                                 <div className="flex items-center gap-1.5 text-slate-400 dark:text-slate-500 text-[11px] lg:text-xs font-medium">
                                     <HelpCircle size={13} />
-                                    <span>{prebookId ? 'Cancellation terms not provided by supplier — confirm with property before booking' : 'Fetching cancellation policy…'}</span>
+                                    <span>{prebookId ? t('termsNotProvided') : t('fetchingPolicy')}</span>
                                 </div>
                             )}
                         </div>

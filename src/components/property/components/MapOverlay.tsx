@@ -3,6 +3,7 @@ import { Navigation, X, Search, Layers, Car, Bike, Footprints, Bus, ChevronRight
 import { WeatherWidget } from '../WeatherWidget';
 import { formatDuration } from '@/utils/format';
 import { GOOGLE_MAPS_SEARCH_URL } from '@/config/map-discovery';
+import { useTranslations } from 'next-intl';
 
 interface MapOverlayProps {
     isFullscreen: boolean;
@@ -87,6 +88,7 @@ export const MapOverlay: React.FC<MapOverlayProps> = ({
     setIsFullscreen,
     handleRecenter
 }) => {
+    const t = useTranslations('property.mapOverlay');
     return (
         <>
             <div className={`absolute top-3 left-4 z-40 flex flex-col items-start gap-2 md:top-4 transition-all duration-300
@@ -106,7 +108,7 @@ export const MapOverlay: React.FC<MapOverlayProps> = ({
                                 `}
                             >
                                 <Navigation size={isFullscreen ? 14 : 12} className="text-blue-600 dark:text-blue-400 shrink-0" />
-                                <span className="truncate">Get directions...</span>
+                                <span className="truncate">{t('getDirections')}</span>
                             </button>
                         ) : (
                             <div className="bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border border-slate-200 dark:border-slate-700 rounded-xl shadow-lg overflow-hidden transition-all duration-300">
@@ -119,7 +121,7 @@ export const MapOverlay: React.FC<MapOverlayProps> = ({
                                             onChange={(e) => handleOriginSearch(e.target.value)}
                                             onBlur={() => setTimeout(() => setShowOriginResults(false), 150)}
                                             onFocus={() => originResults.length > 0 && setShowOriginResults(true)}
-                                            placeholder="Where from?"
+                                            placeholder={t('whereFrom')}
                                             autoFocus
                                             className="w-full text-[10px] sm:text-xs text-slate-800 dark:text-slate-200 bg-transparent placeholder-slate-400 focus:outline-none py-0.5"
                                         />
@@ -197,7 +199,7 @@ export const MapOverlay: React.FC<MapOverlayProps> = ({
                         className={`bg-white/95 dark:bg-slate-900/95 backdrop-blur-md rounded-xl shadow-lg border border-slate-200 p-1.5 flex items-center gap-2 group ${isFullscreen ? 'px-3 py-2' : 'px-2.5 py-1.5'}`}
                     >
                         <Layers className="w-3.5 h-3.5 text-slate-700" />
-                        <span className="text-[10px] font-semibold text-slate-700">Layers</span>
+                        <span className="text-[10px] font-semibold text-slate-700">{t('layers')}</span>
                     </button>
                 )}
 
@@ -208,7 +210,7 @@ export const MapOverlay: React.FC<MapOverlayProps> = ({
                             <div className="mt-1 space-y-1">
                                 <h3 className="font-bold text-slate-900 dark:text-white text-[10px] sm:text-xs leading-tight">{displayInfo.name}</h3>
                                 <p className="text-[9px] sm:text-[10px] text-slate-500">{displayInfo.address}</p>
-                                {displayInfo.distance > 0 && <p className="text-[9px] text-slate-600 font-medium">{displayInfo.distance.toFixed(2)} km away</p>}
+                                {displayInfo.distance > 0 && <p className="text-[9px] text-slate-600 font-medium">{t('kmAway', { distance: displayInfo.distance.toFixed(2) })}</p>}
                                 
                                 {(poiTravelTime !== null || poiWalkingTime !== null || poiCyclingTime !== null) && (
                                     <div className="flex flex-wrap gap-1.5 pt-1">
@@ -219,9 +221,9 @@ export const MapOverlay: React.FC<MapOverlayProps> = ({
                                 )}
 
                                 <div className="pt-2 flex flex-col gap-1">
-                                    <a href={`${GOOGLE_MAPS_SEARCH_URL}&query=${encodeURIComponent(displayInfo.name)}`} target="_blank" className="text-[9px] font-bold text-blue-600 flex items-center gap-1 hover:underline">View on Maps <ChevronRight size={8} /></a>
+                                    <a href={`${GOOGLE_MAPS_SEARCH_URL}&query=${encodeURIComponent(displayInfo.name)}`} target="_blank" className="text-[9px] font-bold text-blue-600 flex items-center gap-1 hover:underline">{t('viewOnMaps')} <ChevronRight size={8} /></a>
                                     {displayInfo.name !== hotelName && (
-                                        <button onClick={() => setModalPoiId(displayInfo.name)} className="w-full py-1 bg-slate-100 dark:bg-slate-800 rounded text-[9px] font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors flex items-center justify-center gap-1">Details <Star size={8} /></button>
+                                        <button onClick={() => setModalPoiId(displayInfo.name)} className="w-full py-1 bg-slate-100 dark:bg-slate-800 rounded text-[9px] font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors flex items-center justify-center gap-1">{t('details')} <Star size={8} /></button>
                                     )}
                                 </div>
                             </div>
@@ -235,14 +237,14 @@ export const MapOverlay: React.FC<MapOverlayProps> = ({
                     <button
                         onClick={() => setIsFullscreen(f => !f)}
                         className="bg-white/95 dark:bg-slate-900/95 backdrop-blur-md text-slate-700 dark:text-slate-300 rounded-full shadow-lg border border-slate-200 dark:border-slate-700 p-1.5 hover:bg-white dark:hover:bg-slate-800 transition-all active:scale-95 flex items-center justify-center group"
-                        title={isFullscreen ? 'Exit fullscreen' : 'Fullscreen'}
+                        title={isFullscreen ? t('exitFullscreen') : t('fullscreen')}
                     >
                         {isFullscreen ? <Minimize size={14} className="group-hover:scale-110 transition-transform" /> : <Maximize size={14} className="group-hover:scale-110 transition-transform" />}
                     </button>
                     <button
                         onClick={handleRecenter}
                         className="bg-white/95 dark:bg-slate-900/95 backdrop-blur-md text-blue-600 rounded-full shadow-lg border border-slate-200 dark:border-slate-700 p-1.5 hover:bg-white dark:hover:bg-slate-800 transition-all active:scale-95 flex items-center justify-center group"
-                        title="Recenter Map"
+                        title={t('recenterMap')}
                     >
                         <Navigation size={14} fill="currentColor" className="group-hover:scale-110 transition-transform" />
                     </button>

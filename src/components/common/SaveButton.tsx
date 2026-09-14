@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { Heart } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useUser } from '@/stores/authStore';
+import { useTranslations } from 'next-intl';
 import { loginUrlFor } from '@/lib/auth/returnTo';
 
 /**
@@ -41,6 +42,7 @@ export default function SaveButton({
     type, title, subtitle, price, currency = 'USD',
     imageUrl, deepLink, snapshot, size = 'md', className = '',
 }: SaveButtonProps) {
+    const tWishlist = useTranslations('trips.wishlist');
     const [saved, setSaved] = useState(false);
     const [savedId, setSavedId] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
@@ -149,8 +151,8 @@ export default function SaveButton({
         <button
             onClick={toggle}
             disabled={loading || !checked}
-            aria-label={saved ? 'Remove from wishlist' : 'Save to wishlist'}
-            title={saved ? 'Remove from wishlist' : 'Save to wishlist'}
+            aria-label={saved ? tWishlist('removeFromWishlist') : tWishlist('saveToWishlist')}
+            title={saved ? tWishlist('removeFromWishlist') : tWishlist('saveToWishlist')}
             className={`${btnSize} flex items-center justify-center rounded-full transition-all
                 ${saved
                     ? 'bg-rose-50 dark:bg-rose-900/30 text-rose-500 hover:bg-rose-100 dark:hover:bg-rose-900/50'

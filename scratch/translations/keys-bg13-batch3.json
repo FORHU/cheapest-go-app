@@ -1,0 +1,35 @@
+{
+  "property.mapOverlay.getDirections":  { "en": "Get directions...", "ko": "길찾기...", "ja": "ルートを検索...", "zh": "获取路线..." },
+  "property.mapOverlay.whereFrom":      { "en": "Where from?", "ko": "출발지는 어디인가요?", "ja": "出発地は？", "zh": "从哪里出发？" },
+  "property.mapOverlay.layers":         { "en": "Layers", "ko": "레이어", "ja": "レイヤー", "zh": "图层" },
+  "property.mapOverlay.kmAway":         { "en": "{distance} km away", "ko": "{distance}km 거리", "ja": "{distance}km 先", "zh": "距离 {distance} 公里" },
+  "property.mapOverlay.viewOnMaps":     { "en": "View on Maps", "ko": "지도에서 보기", "ja": "マップで見る", "zh": "在地图上查看" },
+  "property.mapOverlay.details":        { "en": "Details", "ko": "상세 정보", "ja": "詳細", "zh": "详情" },
+  "property.mapOverlay.recenterMap":    { "en": "Recenter Map", "ko": "지도 중심 맞추기", "ja": "地図を中央に戻す", "zh": "重新居中地图" },
+  "property.mapOverlay.fullscreen":     { "en": "Fullscreen", "ko": "전체 화면", "ja": "全画面表示", "zh": "全屏" },
+  "property.mapOverlay.exitFullscreen": { "en": "Exit fullscreen", "ko": "전체 화면 종료", "ja": "全画面を終了", "zh": "退出全屏" },
+  "property.mapOverlay.selectMode":     { "en": "Select Mode", "ko": "모드 선택", "ja": "モードを選択", "zh": "选择模式" },
+
+  "trips.cancellationFeeCard.ifYouCancelNow": { "en": "If you cancel now:", "ko": "지금 취소하면:", "ja": "今キャンセルした場合：", "zh": "如果现在取消：" },
+  "trips.cancellationFeeCard.fee":            { "en": "Cancellation Fee", "ko": "취소 수수료", "ja": "キャンセル料", "zh": "取消费用" },
+  "trips.cancellationFeeCard.youllReceive":   { "en": "You'll Receive", "ko": "환불 금액", "ja": "返金額", "zh": "您将收到" },
+
+  "bookingDestination.timeZone.backToClocks":  { "en": "Back to clocks", "ko": "시계로 돌아가기", "ja": "時計に戻る", "zh": "返回时钟" },
+  "bookingDestination.timeZone.searchPlaceholder": { "en": "Search city or zone", "ko": "도시 또는 시간대 검색", "ja": "都市またはタイムゾーンを検索", "zh": "搜索城市或时区" },
+  "bookingDestination.timeZone.noMatch":       { "en": "No matching time zone", "ko": "일치하는 시간대가 없습니다", "ja": "該当するタイムゾーンがありません", "zh": "没有匹配的时区" },
+  "bookingDestination.timeZone.default":       { "en": "Default", "ko": "기본", "ja": "デフォルト", "zh": "默认" },
+  "bookingDestination.timeZone.auto":          { "en": "Auto", "ko": "자동", "ja": "自動", "zh": "自动" },
+  "bookingDestination.timeZone.allZones":      { "en": "All time zones", "ko": "모든 시간대", "ja": "すべてのタイムゾーン", "zh": "所有时区" },
+
+  "pwa.iosGuide.title":       { "en": "Add to Home Screen", "ko": "홈 화면에 추가", "ja": "ホーム画面に追加", "zh": "添加到主屏幕" },
+  "pwa.iosGuide.close":       { "en": "Close guide", "ko": "안내 닫기", "ja": "ガイドを閉じる", "zh": "关闭指南" },
+  "pwa.iosGuide.step1Title":  { "en": "Tap the Share button", "ko": "공유 버튼을 누르세요", "ja": "共有ボタンをタップ", "zh": "点按“共享”按钮" },
+  "pwa.iosGuide.step1Body":   { "en": "Find the share icon at the bottom of your Safari browser", "ko": "Safari 화면 아래쪽의 공유 아이콘을 찾으세요", "ja": "Safari の画面下部にある共有アイコンを探します", "zh": "在 Safari 浏览器底部找到共享图标" },
+  "pwa.iosGuide.step2Title":  { "en": "Scroll down the menu", "ko": "메뉴를 아래로 스크롤하세요", "ja": "メニューを下にスクロール", "zh": "向下滚动菜单" },
+  "pwa.iosGuide.step2Body":   { "en": "Scroll through the share sheet options", "ko": "공유 시트의 항목을 살펴보세요", "ja": "共有シートの項目をスクロールします", "zh": "浏览共享面板中的选项" },
+  "pwa.iosGuide.step3Title":  { "en": "Tap \"Add to Home Screen\"", "ko": "\"홈 화면에 추가\"를 누르세요", "ja": "「ホーム画面に追加」をタップ", "zh": "点按“添加到主屏幕”" },
+  "pwa.iosGuide.step3Body":   { "en": "Look for the icon with a plus symbol", "ko": "플러스 기호가 있는 아이콘을 찾으세요", "ja": "プラス記号のアイコンを探します", "zh": "找到带加号的图标" },
+  "pwa.iosGuide.step4Title":  { "en": "Tap \"Add\" to confirm", "ko": "\"추가\"를 눌러 확인하세요", "ja": "「追加」をタップして確定", "zh": "点按“添加”以确认" },
+  "pwa.iosGuide.step4Body":   { "en": "CheapestGo will appear on your home screen", "ko": "CheapestGo가 홈 화면에 나타납니다", "ja": "CheapestGo がホーム画面に表示されます", "zh": "CheapestGo 将出现在您的主屏幕上" },
+  "pwa.iosGuide.hint":        { "en": "Tap the <icon>Share</icon> icon at the bottom center of Safari to get started", "ko": "Safari 하단 가운데의 <icon>공유</icon> 아이콘을 눌러 시작하세요", "ja": "Safari の下部中央にある <icon>共有</icon> アイコンをタップして始めます", "zh": "点按 Safari 底部中间的<icon>共享</icon>图标即可开始" }
+}

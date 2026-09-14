@@ -389,7 +389,7 @@ export const FlightDatePicker: React.FC<FlightDatePickerProps> = ({
                                 {/* Year Picker Overlay */}
                                 {view === 'year' && (
                                     <div className="absolute inset-0 bg-white dark:bg-obsidian z-20 overflow-y-auto custom-scrollbar pr-1 animate-in fade-in zoom-in-95 duration-200">
-                                        <div className="text-[10px] font-normal text-slate-400 uppercase tracking-widest mb-3 sticky top-0 bg-white dark:bg-obsidian py-1">Year</div>
+                                        <div className="text-[10px] font-normal text-slate-400 uppercase tracking-widest mb-3 sticky top-0 bg-white dark:bg-obsidian py-1">{t('year')}</div>
                                         <div className="grid grid-cols-3 gap-2">
                                             {years.map((y) => (
                                                 <button

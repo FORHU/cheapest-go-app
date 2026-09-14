@@ -9,11 +9,16 @@
  */
 import path from 'path';
 import { createRequire } from 'module';
+import fs from 'fs';
+import postgres from 'postgres';
+import { hash } from '@node-rs/argon2';
 
 const SCRATCH = 'C:/Users/USER/AppData/Local/Temp/claude/c--Users-USER-Documents-GitHub-cheapest-go-app/fdb429a2-c340-4b41-8500-3b60a45c8b2a/scratchpad/shots';
 const require = createRequire(path.join(SCRATCH, 'package.json'));
 const { chromium } = require('playwright-core');
 const BASE = 'http://localhost:3000';
+const WAIT = Number(process.env.WAIT ?? 7000);   // dev recompiles can outlast a short wait
+const ONLY = process.env.ONLY ? new RegExp(process.env.ONLY) : null;
 
 const inDays = (n) => new Date(Date.now() + n * 864e5).toISOString().slice(0, 10);
 const PAGES = [
@@ -41,12 +46,22 @@ const browser = await chromium.launch({ executablePath: 'C:/Program Files/Google
 const context = await browser.newContext({ viewport: { width: 1366, height: 900 } });
 const page = await context.newPage();
 
+// Trips and account need a signed-in customer (a throwaway local one, removed at the end).
+const dbUrl = fs.readFileSync('.env', 'utf8').match(/^\s*DATABASE_URL\s*=\s*(.*?)\s*$/m)[1].replace(/^["']|["']$/g, '');
+if (!/@(localhost|127\.0\.0\.1)[:/]/.test(dbUrl)) throw new Error('Refusing: DATABASE_URL is not local.');
+const sql = postgres(dbUrl, { ssl: false, max: 1 });
+const email = `switchers-${Date.now()}@example.test`;
+const [u] = await sql`INSERT INTO users (email, password_hash, role, first_name, last_name) VALUES (${email}, ${await hash('Smoke-password-1!')}, 'user', 'Sam', 'Switch') RETURNING id`;
+const login = await fetch(`${BASE}/api/auth/login`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Requested-By': 'cheapestgo-client', Origin: BASE }, body: JSON.stringify({ email, password: 'Smoke-password-1!' }) });
+await context.addCookies(login.headers.getSetCookie().map(c => { const [pair] = c.split(';'); const [name, ...rest] = pair.split('='); return { name, value: rest.join('='), url: BASE }; }));
+
 for (const [label, url] of PAGES) {
+    if (ONLY && !ONLY.test(label)) continue;
     try {
         // Always start from English + USD.
         await context.addCookies([{ name: 'locale', value: 'en', url: BASE }]);
         await page.goto(BASE + url, { waitUntil: 'domcontentloaded', timeout: 180_000 });
-        await page.waitForTimeout(9000);
+        await page.waitForTimeout(WAIT + 2000);
         const before = await stats(page);
 
         // ── Language: navbar → 한국어
@@ -62,8 +77,8 @@ for (const [label, url] of PAGES) {
         try {
             await clickish(page.locator('header button').filter({ hasText: /^(US|KR|CN|JP)\s*(EN|KO|ZH|JA)$/ }).first());
             await page.waitForTimeout(800);
-            await clickish(page.getByRole('menuitem', { name: /한국어/ }).first());
-            await page.waitForTimeout(7000);
+            await clickish(page.locator('[data-slot="dropdown-menu-item"]:visible', { hasText: /한국어/ }).first());
+            await page.waitForTimeout(WAIT);
         } catch (e) { langNote += ` (switcher: ${e.message.split('\n')[0].slice(0, 60)})`; }
         const afterLang = await stats(page);
 
@@ -72,13 +87,13 @@ for (const [label, url] of PAGES) {
         try {
             await clickish(page.locator('header button').filter({ hasText: /USD|KRW|PHP|JPY|CNY/ }).first());
             await page.waitForTimeout(800);
-            await clickish(page.getByRole('menuitem', { name: /PHP/ }).first());
-            await page.waitForTimeout(7000);
+            await clickish(page.locator('[data-slot="dropdown-menu-item"]:visible', { hasText: afterLang.peso > 0 ? /USD/ : /PHP/ }).first());
+            await page.waitForTimeout(WAIT);
         } catch (e) { curNote = ` (switcher: ${e.message.split('\n')[0].slice(0, 60)})`; }
         const afterCur = await stats(page);
 
         const langChanged = afterLang.hangul > before.hangul + 5;
-        const curChanged = afterCur.peso > afterLang.peso || (afterLang.dollar > 0 && afterCur.dollar < afterLang.dollar);
+        const curChanged = afterLang.peso > 0 ? (afterCur.dollar > 0 && afterCur.peso < afterLang.peso) : (afterCur.peso > afterLang.peso);
         const hadPrices = afterLang.dollar > 0 || afterLang.peso > 0;
         console.log(
             `${langChanged ? '✓' : '✗'} language  ${curChanged ? '✓' : hadPrices ? '✗' : '–'} price   ${label}` +
@@ -89,3 +104,5 @@ for (const [label, url] of PAGES) {
     }
 }
 await browser.close();
+await sql`DELETE FROM users WHERE id = ${u.id}`;
+await sql.end();

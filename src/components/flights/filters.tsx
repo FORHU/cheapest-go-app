@@ -105,7 +105,7 @@ export default function FlightFilters({
                     className="flex items-center gap-1.5 text-[11px] lg:text-xs font-normal text-red-500 dark:text-red-400 hover:text-red-600 dark:hover:text-red-300 transition-colors self-start"
                 >
                     <RotateCcw className="w-3 h-3" />
-                    Reset all filters
+                    {t('resetAll')}
                 </button>
             )}
 
@@ -180,7 +180,7 @@ export default function FlightFilters({
                 {/* Warn when the toggle would wipe most/all results */}
                 {state.refundableOnly && refundableCount === 0 && allOffers.length > 0 && (
                     <p className="text-[10px] text-amber-600 dark:text-amber-400 px-1">
-                        No refundable fares available for this route.
+                        {t('noRefundableFares')}
                     </p>
                 )}
             </div>

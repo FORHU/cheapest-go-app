@@ -1,0 +1,4 @@
+{
+  "trips.invoice.generating": { "en": "Generating…", "ko": "생성 중…", "ja": "作成中…", "zh": "生成中…" },
+  "trips.invoice.print":      { "en": "Print", "ko": "인쇄", "ja": "印刷", "zh": "打印" }
+}

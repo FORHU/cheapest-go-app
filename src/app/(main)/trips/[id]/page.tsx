@@ -123,7 +123,7 @@ function HotelDetail({ booking, t }: { booking: any; t: TFunc }) {
                     )}
                     <div className={!booking.property_image ? 'shrink-0' : 'w-full flex justify-between items-center'}>
                         <StatusBadge status={booking.status} map={HOTEL_STATUS_MAP} t={t} />
-                        <p className="text-xs text-slate-400 mt-1">Ref: <span className="font-mono">{booking.booking_id}</span></p>
+                        <p className="text-xs text-slate-400 mt-1">{t('pages.ref')} <span className="font-mono">{booking.booking_id}</span></p>
                     </div>
                 </div>
             </div>

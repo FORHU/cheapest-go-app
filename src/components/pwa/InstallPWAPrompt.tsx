@@ -5,35 +5,17 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { X, Download, Share, Plus, ArrowDownToLine } from 'lucide-react';
 import Image from 'next/image';
 import { usePWAInstall } from '@/contexts/PWAInstallContext';
+import { useTranslations } from 'next-intl';
 
 const IOS_STEPS = [
-  {
-    number: 1,
-    title: 'Tap the Share button',
-    description: 'Find the share icon at the bottom of your Safari browser',
-    Icon: Share,
-  },
-  {
-    number: 2,
-    title: 'Scroll down the menu',
-    description: 'Scroll through the share sheet options',
-    Icon: ArrowDownToLine,
-  },
-  {
-    number: 3,
-    title: 'Tap "Add to Home Screen"',
-    description: 'Look for the icon with a plus symbol',
-    Icon: Plus,
-  },
-  {
-    number: 4,
-    title: 'Tap "Add" to confirm',
-    description: 'CheapestGo will appear on your home screen',
-    Icon: Download,
-  },
+  { number: 1, titleKey: 'step1Title', bodyKey: 'step1Body', Icon: Share },
+  { number: 2, titleKey: 'step2Title', bodyKey: 'step2Body', Icon: ArrowDownToLine },
+  { number: 3, titleKey: 'step3Title', bodyKey: 'step3Body', Icon: Plus },
+  { number: 4, titleKey: 'step4Title', bodyKey: 'step4Body', Icon: Download },
 ] as const;
 
 export default function InstallPWAPrompt() {
+  const t = useTranslations('pwa.iosGuide');
   const { isInstalled, isGuideOpen, closeGuide } = usePWAInstall();
 
   if (isInstalled) return null;
@@ -84,7 +66,7 @@ export default function InstallPWAPrompt() {
                     </div>
                     <div>
                       <h3 className="font-display font-bold text-base text-slate-900 dark:text-white">
-                        Add to Home Screen
+                        {t('title')}
                       </h3>
                       <p className="text-xs text-slate-500 dark:text-slate-400">CheapestGo · iOS Safari</p>
                     </div>
@@ -92,7 +74,7 @@ export default function InstallPWAPrompt() {
                   <button
                     onClick={closeGuide}
                     className="p-2 rounded-full hover:bg-black/5 dark:hover:bg-white/10 transition-colors"
-                    aria-label="Close guide"
+                    aria-label={t('close')}
                   >
                     <X size={18} className="text-slate-500 dark:text-slate-400" />
                   </button>
@@ -100,7 +82,7 @@ export default function InstallPWAPrompt() {
 
                 {/* Steps */}
                 <div className="space-y-4">
-                  {IOS_STEPS.map(({ number, title, description, Icon }) => (
+                  {IOS_STEPS.map(({ number, titleKey, bodyKey, Icon }) => (
                     <motion.div
                       key={number}
                       initial={{ opacity: 0, x: -12 }}
@@ -115,8 +97,8 @@ export default function InstallPWAPrompt() {
 
                       {/* Text */}
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-semibold text-slate-900 dark:text-white">{title}</p>
-                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{description}</p>
+                        <p className="text-sm font-semibold text-slate-900 dark:text-white">{t(titleKey)}</p>
+                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{t(bodyKey)}</p>
                       </div>
 
                       {/* Icon */}
@@ -131,11 +113,13 @@ export default function InstallPWAPrompt() {
                 <div className="mt-6 flex items-center gap-2.5 p-3.5 bg-blue-50 dark:bg-blue-500/10 rounded-2xl border border-blue-100 dark:border-blue-500/20">
                   <Share size={15} className="text-blue-600 dark:text-blue-400 flex-shrink-0" />
                   <p className="text-xs text-blue-700 dark:text-blue-300 leading-snug">
-                    Tap the{' '}
-                    <span className="font-semibold">
-                      <Share size={11} className="inline mb-0.5" /> Share
-                    </span>{' '}
-                    icon at the bottom center of Safari to get started
+                    {t.rich('hint', {
+                      icon: (chunks) => (
+                        <span className="font-semibold">
+                          <Share size={11} className="inline mb-0.5" /> {chunks}
+                        </span>
+                      ),
+                    })}
                   </p>
                 </div>
               </div>

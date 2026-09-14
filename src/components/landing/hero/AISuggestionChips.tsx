@@ -3,21 +3,23 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { Palmtree, Gem, Heart, Plane, Mountain } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 
 interface Suggestion {
     icon: React.ReactNode;
-    label: string;
+    /** Key under landing.ai.chips — the prompt stays English because it is sent to the AI. */
+    labelKey: 'beachEscape' | 'luxuryStay' | 'romanticTrip' | 'quickGetaway' | 'adventure';
     prompt: string;
 }
 
 // DEMO ONLY — these are example prompts to inspire AI search queries.
 // They are not real deals or live pricing. The ₱15,000 figure is illustrative.
 const suggestions: Suggestion[] = [
-    { icon: <Palmtree size={12} />, label: 'Beach Escape', prompt: 'Beachfront resort in Boracay for 2, this weekend' },
-    { icon: <Gem size={12} />, label: 'Luxury Stay', prompt: '5-star hotel in Manila under ₱15,000/night' },
-    { icon: <Heart size={12} />, label: 'Romantic Trip', prompt: "Couple's retreat in Tagaytay with spa" },
-    { icon: <Plane size={12} />, label: 'Quick Getaway', prompt: 'Last-minute deal in Cebu, 3 nights' },
-    { icon: <Mountain size={12} />, label: 'Adventure', prompt: 'Mountain lodge in Baguio for a group of 4' },
+    { icon: <Palmtree size={12} />, labelKey: 'beachEscape', prompt: 'Beachfront resort in Boracay for 2, this weekend' },
+    { icon: <Gem size={12} />, labelKey: 'luxuryStay', prompt: '5-star hotel in Manila under ₱15,000/night' },
+    { icon: <Heart size={12} />, labelKey: 'romanticTrip', prompt: "Couple's retreat in Tagaytay with spa" },
+    { icon: <Plane size={12} />, labelKey: 'quickGetaway', prompt: 'Last-minute deal in Cebu, 3 nights' },
+    { icon: <Mountain size={12} />, labelKey: 'adventure', prompt: 'Mountain lodge in Baguio for a group of 4' },
 ];
 
 const containerVariants = {
@@ -45,6 +47,7 @@ interface AISuggestionChipsProps {
 }
 
 const AISuggestionChips: React.FC<AISuggestionChipsProps> = ({ onSuggestionClick }) => {
+    const t = useTranslations('landing.ai');
     return (
         <motion.div
             variants={containerVariants}
@@ -54,7 +57,7 @@ const AISuggestionChips: React.FC<AISuggestionChipsProps> = ({ onSuggestionClick
         >
             {suggestions.map((suggestion) => (
                 <motion.button
-                    key={suggestion.label}
+                    key={suggestion.labelKey}
                     variants={chipVariants}
                     onClick={() => onSuggestionClick(suggestion.prompt)}
                     whileHover={{ scale: 1.04, y: -2 }}
@@ -71,7 +74,7 @@ const AISuggestionChips: React.FC<AISuggestionChipsProps> = ({ onSuggestionClick
                     <span className="text-slate-400 dark:text-slate-500 group-hover:text-blue-500">
                         {suggestion.icon}
                     </span>
-                    {suggestion.label}
+                    {t(`chips.${suggestion.labelKey}`)}
                 </motion.button>
             ))}
         </motion.div>

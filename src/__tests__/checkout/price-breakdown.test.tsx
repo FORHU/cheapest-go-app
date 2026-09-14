@@ -45,6 +45,7 @@ vi.mock('next-intl', () => ({
         if (typeof node !== 'string') return path.join('.');
         return node.replace(/\{(\w+)\}/g, (_m, name) => String(vars?.[name] ?? `{${name}}`));
     },
+    useLocale: () => 'en',
 }));
 
 vi.mock('@/components/checkout/CancellationPolicySection', () => ({

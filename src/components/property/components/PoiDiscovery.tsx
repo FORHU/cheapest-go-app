@@ -59,6 +59,7 @@ export const PoiDiscovery: React.FC<PoiDiscoveryProps> = ({
     onRadiusChange,
 }) => {
     const t = useTranslations('hotels.searchResults');
+    const tOverlay = useTranslations('property.mapOverlay');
     return (
         <div className={`transition-all duration-500 ease-in-out group/nearby flex flex-col gap-1 sm:gap-1.5
             ${isFullscreen
@@ -88,7 +89,7 @@ export const PoiDiscovery: React.FC<PoiDiscoveryProps> = ({
                             <div className="fixed inset-0 z-40" onClick={() => setIsCategoryDropdownOpen(false)} />
                             <div className="absolute bottom-full left-0 mb-2 w-48 bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border border-slate-200 dark:border-slate-700 rounded-2xl shadow-2xl overflow-hidden z-50 animate-in fade-in slide-in-from-bottom-4 duration-300">
                                 <div className="p-1.5 space-y-0.5">
-                                    <div className="px-3 py-1.5 mb-1 text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">Select Mode</div>
+                                    <div className="px-3 py-1.5 mb-1 text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">{tOverlay('selectMode')}</div>
                                     {POI_FILTERS.map(filter => {
                                         const isSelected = selectedCategory === filter.id;
                                         const Icon = filter.icon;
@@ -148,14 +149,14 @@ export const PoiDiscovery: React.FC<PoiDiscoveryProps> = ({
                         <button
                             onClick={() => setIsFullscreen(f => !f)}
                             className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-sm text-slate-700 dark:text-slate-300 rounded-full shadow-sm border border-slate-200 dark:border-slate-700 p-1.5 hover:bg-white dark:hover:bg-slate-800 transition-all active:scale-95 flex items-center justify-center"
-                            title={isFullscreen ? 'Exit fullscreen' : 'Fullscreen'}
+                            title={isFullscreen ? tOverlay('exitFullscreen') : tOverlay('fullscreen')}
                         >
                             {isFullscreen ? <Minimize size={14} /> : <Maximize size={14} />}
                         </button>
                         <button
                             onClick={handleRecenter}
                             className="bg-white/95 dark:bg-slate-900/95 backdrop-blur-sm text-blue-600 rounded-full shadow-sm border border-slate-200 dark:border-slate-700 p-1.5 hover:bg-white dark:hover:bg-slate-800 transition-all active:scale-95 flex items-center justify-center"
-                            title="Recenter Map"
+                            title={tOverlay('recenterMap')}
                         >
                             <Navigation size={14} fill="currentColor" />
                         </button>

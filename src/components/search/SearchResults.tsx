@@ -277,16 +277,16 @@ const SearchResultsContent = ({ initialProperties = [], totalCount: initialTotal
                             <>
                                 <div className="text-3xl mb-3">⏳</div>
                                 <h3 className="text-lg font-medium text-slate-900 dark:text-white">
-                                    Still loading {destination ? `hotels in ${destination}` : 'hotels'}
+                                    {destination ? t('stillLoadingIn', { destination }) : t('stillLoadingHotels')}
                                 </h3>
                                 <p className="text-slate-500 dark:text-slate-400 mt-1 text-sm max-w-xs mx-auto">
-                                    This destination is being indexed for the first time. Please search again — results should appear now.
+                                    {t('firstTimeIndexing')}
                                 </p>
                                 <button
                                     onClick={() => window.location.reload()}
                                     className="mt-4 px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-full transition-colors cursor-pointer"
                                 >
-                                    Search again
+                                    {t('searchAgainButton')}
                                 </button>
                             </>
                         ) : (

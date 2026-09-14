@@ -4,8 +4,10 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import { SectionHeader } from '@/components/ui';
 import { type RecentSearch } from '@/types';
+import { useTranslations } from 'next-intl';
 
 export const YourRecentSearches: React.FC<{ searches?: RecentSearch[] }> = ({ searches }) => {
+  const t = useTranslations('landing');
   const displaySearches = searches || [];
   
   if (displaySearches.length === 0) return null;
@@ -14,7 +16,7 @@ export const YourRecentSearches: React.FC<{ searches?: RecentSearch[] }> = ({ se
     <section className="w-full pb-4">
       <div className="max-w-[1400px] mx-auto px-4 sm:px-6 mt-6 sm:mt-8 landscape-compact:mt-2">
         <SectionHeader
-          title="Quick Access"
+          title={t('quickAccess')}
           size="sm"
         />
 

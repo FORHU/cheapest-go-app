@@ -2,8 +2,10 @@
 import { Printer, Download, Loader2 } from 'lucide-react';
 import { useState } from 'react';
 import { usePathname, useSearchParams } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 
 export function PrintButton() {
+    const t = useTranslations('trips.invoice');
     const [downloading, setDownloading] = useState(false);
     const pathname = usePathname();
     const searchParams = useSearchParams();
@@ -48,14 +50,14 @@ export function PrintButton() {
                 ) : (
                     <Download className="w-4 h-4" />
                 )}
-                {downloading ? 'Generating…' : 'Download PDF'}
+                {downloading ? t('generating') : t('downloadPdf')}
             </button>
             <button
                 onClick={() => window.print()}
                 className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold rounded-xl transition-colors"
             >
                 <Printer className="w-4 h-4" />
-                Print
+                {t('print')}
             </button>
         </div>
     );

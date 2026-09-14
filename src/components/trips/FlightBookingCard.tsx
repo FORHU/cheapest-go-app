@@ -34,19 +34,20 @@ const flightStatusColors: Record<string, string> = {
     cancelled_provider_missing: 'bg-slate-100 text-slate-700 dark:bg-white/10 dark:text-slate-400',
 };
 
-const flightStatusLabels: Record<string, string> = {
-    booked: 'Processing',
-    pnr_created: 'Booked',
-    awaiting_ticket: 'Ticketing',
-    ticketed: 'Confirmed',
-    failed: 'Failed',
-    cancel_requested: 'Cancellation Stuck',
-    cancel_failed: 'Cancel Failed',
-    cancelled: 'Cancelled',
-    refund_pending: 'Refund Pending',
-    refund_failed: 'Refund Failed',
-    refunded: 'Refunded',
-    cancelled_provider_missing: 'Cancelled',
+/** Booking state → key under `trips.status`, so the badge speaks the reader's language. */
+const flightStatusLabelKeys: Record<string, string> = {
+    booked: 'processing',
+    pnr_created: 'booked',
+    awaiting_ticket: 'ticketing',
+    ticketed: 'confirmed',
+    failed: 'failed',
+    cancel_requested: 'cancellationStuck',
+    cancel_failed: 'cancelFailed',
+    cancelled: 'cancelled',
+    refund_pending: 'refundPending',
+    refund_failed: 'refundFailed',
+    refunded: 'refunded',
+    cancelled_provider_missing: 'cancelledProviderMissing',
 };
 
 // Statuses that allow initiating (or retrying) a cancellation request
@@ -1179,7 +1180,7 @@ export default function FlightBookingCard({ booking, onCancelled }: FlightBookin
                         </div>
                         <div className="absolute top-1 left-1">
                             <span className={`text-[clamp(0.5rem,1.5vw,0.5625rem)] font-semibold px-1.5 py-0.5 rounded shadow ${flightStatusColors[localStatus] || flightStatusColors.booked}`}>
-                                {flightStatusLabels[localStatus] || t('status.unknown')}
+                                {flightStatusLabelKeys[localStatus] ? t(`status.${flightStatusLabelKeys[localStatus]}`) : t('status.unknown')}
                             </span>
                         </div>
                     </div>
@@ -1187,7 +1188,7 @@ export default function FlightBookingCard({ booking, onCancelled }: FlightBookin
                     {/* Content */}
                     <div className="flex-1 p-2.5 flex flex-col min-w-0">
                         <h3 className="text-[clamp(0.75rem,2vw,0.875rem)] font-bold text-slate-900 dark:text-white mb-0.5 leading-tight truncate">
-                            {firstSegment ? `${origin} to ${mainDestination}` : 'Flight Booking'}
+                            {firstSegment ? `${origin} to ${mainDestination}` : t('flightBookingCard.flightBooking')}
                         </h3>
                         {firstSegment && lastSegment && (
                             <div className="text-[clamp(0.625rem,1.5vw,0.75rem)] text-slate-500 dark:text-slate-400 mb-1 flex items-center gap-1.5 truncate">
@@ -1284,7 +1285,7 @@ export default function FlightBookingCard({ booking, onCancelled }: FlightBookin
                         {/* Status badge — sits on top of the logo */}
                         <div className="absolute top-1.5 left-1.5 z-20">
                             <span className={`text-[clamp(0.5625rem,1.5vw,0.625rem)] font-semibold px-1.5 py-0.5 rounded shadow ${flightStatusColors[localStatus] || flightStatusColors.booked}`}>
-                                {flightStatusLabels[localStatus] || t('status.unknown')}
+                                {flightStatusLabelKeys[localStatus] ? t(`status.${flightStatusLabelKeys[localStatus]}`) : t('status.unknown')}
                             </span>
                         </div>
                         {/* Logo fills entire panel */}
@@ -1697,7 +1698,7 @@ export default function FlightBookingCard({ booking, onCancelled }: FlightBookin
                                     {hasNewStructure ? (
                                         passengerInfos.length > 0 && (
                                             <div>
-                                                <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide mb-1">Passengers</p>
+                                                <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide mb-1">{t('flightBookingCard.passengersHeading')}</p>
                                                 <div className="space-y-2">
                                                     {passengerInfos.map((p: any, i: number) => {
                                                         const pax = p.Passenger ?? p;
@@ -1738,31 +1739,31 @@ export default function FlightBookingCard({ booking, onCancelled }: FlightBookin
                                                                             <>
                                                                                 {tktData.GrandTotal && (
                                                                                     <div className="flex gap-2">
-                                                                                        <span className="text-slate-500">Grand Total:</span>
+                                                                                        <span className="text-slate-500">{t('flightBookingCard.ticketDetails.grandTotal')}</span>
                                                                                         <span className="font-semibold text-slate-800 dark:text-slate-200">{tktData.GrandTotal} {tktData.GrandTotalCurrency}</span>
                                                                                     </div>
                                                                                 )}
                                                                                 {tktData.TotalFare && (
                                                                                     <div className="flex gap-2">
-                                                                                        <span className="text-slate-500">Total Fare:</span>
+                                                                                        <span className="text-slate-500">{t('flightBookingCard.ticketDetails.totalFare')}</span>
                                                                                         <span className="text-slate-700 dark:text-slate-300">{tktData.TotalFare} {tktData.TotalTaxCurrency}</span>
                                                                                     </div>
                                                                                 )}
                                                                                 {tktData.FareCalculationLine && (
                                                                                     <div>
-                                                                                        <span className="text-slate-500 block mb-0.5">Fare Calc:</span>
+                                                                                        <span className="text-slate-500 block mb-0.5">{t('flightBookingCard.ticketDetails.fareCalc')}</span>
                                                                                         <span className="font-mono text-slate-600 dark:text-slate-400 break-all">{tktData.FareCalculationLine}</span>
                                                                                     </div>
                                                                                 )}
                                                                                 {tktData.EndorsementRestrictions && (
                                                                                     <div className="flex gap-2">
-                                                                                        <span className="text-slate-500 shrink-0">Endorsements:</span>
+                                                                                        <span className="text-slate-500 shrink-0">{t('flightBookingCard.ticketDetails.endorsements')}</span>
                                                                                         <span className="text-slate-700 dark:text-slate-300">{tktData.EndorsementRestrictions}</span>
                                                                                     </div>
                                                                                 )}
                                                                                 {Array.isArray(tktData.ItineraryDetails) && tktData.ItineraryDetails.length > 0 && (
                                                                                     <div>
-                                                                                        <span className="text-slate-500 block mb-0.5">Itinerary:</span>
+                                                                                        <span className="text-slate-500 block mb-0.5">{t('flightBookingCard.ticketDetails.itinerary')}</span>
                                                                                         {tktData.ItineraryDetails.map((seg: any, si: number) => (
                                                                                             <div key={si} className="flex items-center gap-1.5 text-slate-600 dark:text-slate-400">
                                                                                                 <Plane className="w-2.5 h-2.5 text-indigo-400 shrink-0" />
@@ -1786,7 +1787,7 @@ export default function FlightBookingCard({ booking, onCancelled }: FlightBookin
                                     ) : (
                                         legacyCustomers.length > 0 && (
                                             <div>
-                                                <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide mb-1">Passengers</p>
+                                                <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide mb-1">{t('flightBookingCard.passengersHeading')}</p>
                                                 <div className="space-y-1">
                                                     {legacyCustomers.map((c: any, i: number) => (
                                                         <div key={i} className="flex items-center justify-between gap-2">

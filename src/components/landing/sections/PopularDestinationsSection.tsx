@@ -38,14 +38,14 @@ export function PopularDestinationsSection() {
                     <button
                         onClick={() => scroll('left')}
                         className="p-2 rounded-full border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 hover:bg-slate-50 dark:hover:bg-white/10 transition-colors"
-                        aria-label="Scroll left"
+                        aria-label={t('scrollLeft')}
                     >
                         <ChevronLeft className="w-4 h-4 text-slate-600 dark:text-slate-300" />
                     </button>
                     <button
                         onClick={() => scroll('right')}
                         className="p-2 rounded-full border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 hover:bg-slate-50 dark:hover:bg-white/10 transition-colors"
-                        aria-label="Scroll right"
+                        aria-label={t('scrollRight')}
                     >
                         <ChevronRight className="w-4 h-4 text-slate-600 dark:text-slate-300" />
                     </button>

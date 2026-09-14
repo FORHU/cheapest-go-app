@@ -3,6 +3,7 @@ import Image from 'next/image';
 import { createPortal } from 'react-dom';
 import { X, Star, MapPin, Globe, Phone, Clock, User, Quote, Camera, Image as ImageIcon, Plus } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { useTranslations } from 'next-intl';
 
 interface Review {
     author_name: string;
@@ -97,6 +98,7 @@ interface PoiDetailsModalProps {
 }
 
 export function PoiDetailsModal({ isOpen, onClose, poi }: PoiDetailsModalProps) {
+    const t = useTranslations('property.poiDetails');
     const [mounted, setMounted] = useState(false);
     const [userReviews, setUserReviews] = useState<Review[]>([]);
     const [isAddingReview, setIsAddingReview] = useState(false);
@@ -245,11 +247,11 @@ export function PoiDetailsModal({ isOpen, onClose, poi }: PoiDetailsModalProps) 
                             <div className="flex items-center justify-between mb-2">
                                 <div className="flex items-center gap-2 text-slate-900 dark:text-white font-bold text-sm">
                                     <Clock size={16} className="text-blue-500" />
-                                    Opening Hours
+                                    {t('openingHours')}
                                 </div>
                                 {openingHours.open_now !== undefined && (
                                     <span className={`text-[10px] uppercase font-black px-2 py-0.5 rounded-full ${openingHours.open_now ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'}`}>
-                                        {openingHours.open_now ? 'Open Now' : 'Closed'}
+                                        {openingHours.open_now ? t('openNow') : t('closed')}
                                     </span>
                                 )}
                             </div>
@@ -289,7 +291,7 @@ export function PoiDetailsModal({ isOpen, onClose, poi }: PoiDetailsModalProps) 
                                 className="bg-blue-50/50 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-900/30 rounded-xl p-4 mb-4"
                             >
                                 <div className="flex items-center justify-between mb-3">
-                                    <span className="text-xs font-bold text-slate-700 dark:text-slate-300">Your Rating</span>
+                                    <span className="text-xs font-bold text-slate-700 dark:text-slate-300">{t('yourRating')}</span>
                                     <div className="flex gap-1">
                                         {[1, 2, 3, 4, 5].map((star) => (
                                             <button 
@@ -308,14 +310,14 @@ export function PoiDetailsModal({ isOpen, onClose, poi }: PoiDetailsModalProps) 
                                 <textarea 
                                     value={newComment}
                                     onChange={(e) => setNewComment(e.target.value)}
-                                    placeholder="Share your experience..."
+                                    placeholder={t('commentPlaceholder')}
                                     className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-3 text-sm min-h-[100px] focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all dark:text-white mb-3"
                                 />
                                 <div className="flex flex-wrap gap-2 mb-4">
                                     <label className="flex flex-col items-center justify-center w-20 h-20 border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-xl cursor-pointer hover:border-blue-500 hover:bg-blue-50/50 dark:hover:bg-blue-900/20 transition-all group">
                                         <div className="flex flex-col items-center justify-center pt-5 pb-6">
                                             <Plus size={20} className="text-slate-400 group-hover:text-blue-500" />
-                                            <span className="text-[10px] text-slate-400 group-hover:text-blue-500 mt-1 font-medium">Add Photo</span>
+                                            <span className="text-[10px] text-slate-400 group-hover:text-blue-500 mt-1 font-medium">{t('addPhoto')}</span>
                                         </div>
                                         <input 
                                             type="file" 
@@ -377,9 +379,9 @@ export function PoiDetailsModal({ isOpen, onClose, poi }: PoiDetailsModalProps) 
                                         onClick={() => {
                                             if (!newComment.trim()) return;
                                             const review: Review = {
-                                                author_name: 'You',
+                                                author_name: t('you'),
                                                 rating: newRating,
-                                                relative_time_description: 'Just now',
+                                                relative_time_description: t('justNow'),
                                                 text: newComment,
                                                 time: Math.floor(Date.now() / 1000),
                                             };
@@ -399,7 +401,7 @@ export function PoiDetailsModal({ isOpen, onClose, poi }: PoiDetailsModalProps) 
                                         disabled={!newComment.trim()}
                                         className="px-4 py-1.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white text-xs font-bold rounded-lg transition-colors"
                                     >
-                                        Post Review
+                                        {t('postReview')}
                                     </button>
                                 </div>
                             </motion.div>
@@ -410,7 +412,7 @@ export function PoiDetailsModal({ isOpen, onClose, poi }: PoiDetailsModalProps) 
                             <div className="space-y-4 mb-8">
                                 <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
                                     <Camera size={18} className="text-blue-500" />
-                                    Community Photos
+                                    {t('communityPhotos')}
                                 </h3>
                                 <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
                                     {userImages.map((img, i) => (
@@ -427,7 +429,7 @@ export function PoiDetailsModal({ isOpen, onClose, poi }: PoiDetailsModalProps) 
                             <div className="space-y-4 mb-6">
                                 <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
                                     <Star size={18} className="text-blue-500 fill-blue-500" />
-                                    Cheapest Go Reviews
+                                    {t('brandReviews')}
                                 </h3>
                                 <div className="grid gap-4">
                                     {userReviews.map((r: Review, idx: number) => (
@@ -442,9 +444,9 @@ export function PoiDetailsModal({ isOpen, onClose, poi }: PoiDetailsModalProps) 
                             <div className="space-y-4">
                                 <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
                                     <Quote size={18} className="text-slate-400" />
-                                    {props.source === 'fsq-google' ? 'Google & Foursquare Reviews' :
-                                    props.source === 'foursquare' ? 'Foursquare Recommendations' : 
-                                    'Google Reviews'}
+                                    {props.source === 'fsq-google' ? t('googleFoursquareReviews') :
+                                    props.source === 'foursquare' ? t('foursquareRecommendations') :
+                                    t('googleReviews')}
                                 </h3>
                                 <div className="grid gap-4">
                                     {initialReviews.map((r: Review, idx: number) => (
@@ -461,7 +463,7 @@ export function PoiDetailsModal({ isOpen, onClose, poi }: PoiDetailsModalProps) 
                                 <div className="w-12 h-12 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-3">
                                     <Star className="text-slate-400" size={20} />
                                 </div>
-                                <p className="text-sm text-slate-500 dark:text-slate-400">No direct reviews available for this place yet.</p>
+                                <p className="text-sm text-slate-500 dark:text-slate-400">{t('noReviews')}</p>
                             </div>
                         ) : null}
                     </div>

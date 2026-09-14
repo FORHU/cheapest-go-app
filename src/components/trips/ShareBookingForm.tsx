@@ -6,6 +6,7 @@ import { Mail } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { apiFetch } from '@/lib/api/client';
+import { useTranslations } from 'next-intl';
 
 interface ShareBookingFormProps {
     dbId: string;
@@ -13,6 +14,7 @@ interface ShareBookingFormProps {
 }
 
 export default function ShareBookingForm({ dbId, defaultEmail }: ShareBookingFormProps) {
+    const t = useTranslations('trips.shareForm');
     const [email, setEmail] = useState(defaultEmail);
     const [isSending, setIsSending] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -30,14 +32,14 @@ export default function ShareBookingForm({ dbId, defaultEmail }: ShareBookingFor
         if (result.success) {
             setSentTo(email.trim());
         } else {
-            setError(result.error || 'Failed to send. Please try again.');
+            setError(result.error || t('sendError'));
         }
     };
 
     return (
         <form onSubmit={handleSubmit} className="mt-6 space-y-4">
             <Input
-                label="Send to"
+                label={t('sendTo')}
                 type="email"
                 icon={Mail}
                 required
@@ -49,12 +51,12 @@ export default function ShareBookingForm({ dbId, defaultEmail }: ShareBookingFor
             {error && <p className="text-sm text-rose-600 dark:text-rose-400">{error}</p>}
             {sentTo && (
                 <p className="flex items-center gap-1.5 text-sm text-emerald-600 dark:text-emerald-400">
-                    <CheckCircle2 size={15} /> Sent to {sentTo}.
+                    <CheckCircle2 size={15} /> {t('sentTo', { email: sentTo })}
                 </p>
             )}
 
             <Button type="submit" isLoading={isSending} fullWidth>
-                Send confirmation
+                {t('submit')}
             </Button>
         </form>
     );

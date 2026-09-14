@@ -3,6 +3,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { ArrowLeft, Check, Search } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useTranslations } from 'next-intl';
 
 /** Fallback for runtimes without Intl.supportedValuesOf (pre-2022 browsers). */
 const FALLBACK_ZONES = [
@@ -66,6 +67,7 @@ export function TimeZonePicker({
     onSelect,
     onBack,
 }: TimeZonePickerProps) {
+    const t = useTranslations('bookingDestination.timeZone');
     const [query, setQuery] = useState('');
     const inputRef = useRef<HTMLInputElement>(null);
     const allZones = useMemo(listZones, []);
@@ -101,7 +103,7 @@ export function TimeZonePicker({
                 <button
                     onClick={onBack}
                     className="p-1 -ml-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors cursor-pointer"
-                    aria-label="Back to clocks"
+                    aria-label={t('backToClocks')}
                 >
                     <ArrowLeft size={14} />
                 </button>
@@ -116,7 +118,7 @@ export function TimeZonePicker({
                     ref={inputRef}
                     value={query}
                     onChange={(e) => setQuery(e.target.value)}
-                    placeholder="Search city or zone"
+                    placeholder={t('searchPlaceholder')}
                     className="flex-1 min-w-0 bg-transparent text-xs text-slate-800 dark:text-white focus:outline-none"
                 />
             </div>
@@ -124,14 +126,14 @@ export function TimeZonePicker({
             <div className="max-h-52 overflow-y-auto">
                 {results.length === 0 && !pinnedDefault && (
                     <p className="px-2 py-3 text-[11px] text-slate-400 text-center">
-                        No matching time zone
+                        {t('noMatch')}
                     </p>
                 )}
 
                 {pinnedDefault && (
                     <>
                         <p className="px-2 pt-1 pb-1 text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
-                            Default
+                            {t('default')}
                         </p>
                         <button
                             onClick={() => onSelect(pinnedDefault.zone, pinnedDefault.city)}
@@ -160,12 +162,12 @@ export function TimeZonePicker({
                                 ? <Check size={12} className="shrink-0 text-white" />
                                 : (
                                     <span className="shrink-0 text-[8px] font-bold uppercase tracking-wide text-slate-400 border border-slate-200 dark:border-slate-700 rounded px-1 py-0.5">
-                                        Auto
+                                        {t('auto')}
                                     </span>
                                 )}
                         </button>
                         <p className="px-2 pt-2 pb-1 text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
-                            All time zones
+                            {t('allZones')}
                         </p>
                     </>
                 )}

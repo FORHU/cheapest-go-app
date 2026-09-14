@@ -1,0 +1,17 @@
+{
+  "errors.page.title":        { "en": "Something went wrong", "ko": "문제가 발생했습니다", "ja": "問題が発生しました", "zh": "出现问题" },
+  "errors.page.description":  { "en": "An unexpected error occurred. Please try again.", "ko": "예기치 않은 오류가 발생했습니다. 다시 시도해 주세요.", "ja": "予期しないエラーが発生しました。もう一度お試しください。", "zh": "发生意外错误，请重试。" },
+  "errors.search.title":       { "en": "Search failed", "ko": "검색에 실패했습니다", "ja": "検索に失敗しました", "zh": "搜索失败" },
+  "errors.search.description": { "en": "We couldn't load the search results. This may be due to a network issue or invalid search parameters.", "ko": "검색 결과를 불러오지 못했습니다. 네트워크 문제이거나 검색 조건이 올바르지 않을 수 있습니다.", "ja": "検索結果を読み込めませんでした。ネットワークの問題か、検索条件が正しくない可能性があります。", "zh": "无法加载搜索结果，可能是网络问题或搜索条件无效。" },
+  "errors.property.title":       { "en": "Property unavailable", "ko": "숙소를 이용할 수 없습니다", "ja": "この宿泊施設は表示できません", "zh": "无法显示该住宿" },
+  "errors.property.description": { "en": "We couldn't load this property. It may no longer be available or there was a connection issue.", "ko": "이 숙소를 불러오지 못했습니다. 더 이상 예약할 수 없거나 연결에 문제가 있을 수 있습니다.", "ja": "この宿泊施設を読み込めませんでした。提供が終了したか、接続に問題がある可能性があります。", "zh": "无法加载该住宿，可能已下架或连接出现问题。" },
+  "errors.trips.title":       { "en": "Couldn't load your trips", "ko": "여행 정보를 불러오지 못했습니다", "ja": "旅程を読み込めませんでした", "zh": "无法加载您的行程" },
+  "errors.trips.description": { "en": "There was an error loading your booking history. Please try again.", "ko": "예약 내역을 불러오는 중 오류가 발생했습니다. 다시 시도해 주세요.", "ja": "予約履歴の読み込み中にエラーが発生しました。もう一度お試しください。", "zh": "加载预订记录时出错，请重试。" },
+  "errors.auth.retryDescription": { "en": "Something went wrong during authentication. Please try again.", "ko": "인증 중 문제가 발생했습니다. 다시 시도해 주세요.", "ja": "認証中に問題が発生しました。もう一度お試しください。", "zh": "身份验证过程中出现问题，请重试。" },
+  "errors.actions.tryAgain":    { "en": "Try again", "ko": "다시 시도", "ja": "再試行", "zh": "重试" },
+  "errors.actions.retry":       { "en": "Retry", "ko": "다시 시도", "ja": "再試行", "zh": "重试" },
+  "errors.actions.retrySearch": { "en": "Retry search", "ko": "검색 다시 시도", "ja": "検索をやり直す", "zh": "重新搜索" },
+  "errors.actions.backToHome":  { "en": "Back to Home", "ko": "홈으로 돌아가기", "ja": "ホームに戻る", "zh": "返回首页" },
+  "errors.actions.backToSearch": { "en": "Back to search", "ko": "검색으로 돌아가기", "ja": "検索に戻る", "zh": "返回搜索" },
+  "errors.actions.goHome":      { "en": "Go home", "ko": "홈으로", "ja": "ホームへ", "zh": "返回首页" }
+}

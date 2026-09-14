@@ -266,6 +266,14 @@
       "liveRates": "Live rates",
       "updating": "Updating…",
       "rate": "1 {from} = {rate} {to}"
+    },
+    "timeZone": {
+      "backToClocks": "Back to clocks",
+      "searchPlaceholder": "Search city or zone",
+      "noMatch": "No matching time zone",
+      "default": "Default",
+      "auto": "Auto",
+      "allZones": "All time zones"
     }
   },
   "checkout": {
@@ -446,7 +454,12 @@
       "total": "Total",
       "updateDates": "Update dates",
       "youSave": "You save {amount} with this promo",
-      "yourRoom": "Your Room"
+      "yourRoom": "Your Room",
+      "freeCancellationBefore": "Free cancellation before {date}",
+      "freeCancellationShort": "Free cancellation",
+      "nonRefundable": "Non-refundable",
+      "termsNotProvided": "Cancellation terms not provided by supplier — confirm with property before booking",
+      "fetchingPolicy": "Fetching cancellation policy…"
     },
     "title": "Checkout | CheapestGo",
     "userDetails": {
@@ -541,11 +554,36 @@
       "description": "There was an error processing your authentication request. This could happen if the link expired or was already used.",
       "goHome": "Go to homepage",
       "signInAgain": "Try signing in again",
-      "title": "Authentication Error"
+      "title": "Authentication Error",
+      "retryDescription": "Something went wrong during authentication. Please try again."
     },
     "generic": "Something went wrong. Please try again.",
     "notFound": "Page not found.",
-    "searchFailed": "Search failed. Check your connection and try again."
+    "searchFailed": "Search failed. Check your connection and try again.",
+    "page": {
+      "title": "Something went wrong",
+      "description": "An unexpected error occurred. Please try again."
+    },
+    "search": {
+      "title": "Search failed",
+      "description": "We couldn't load the search results. This may be due to a network issue or invalid search parameters."
+    },
+    "property": {
+      "title": "Property unavailable",
+      "description": "We couldn't load this property. It may no longer be available or there was a connection issue."
+    },
+    "trips": {
+      "title": "Couldn't load your trips",
+      "description": "There was an error loading your booking history. Please try again."
+    },
+    "actions": {
+      "tryAgain": "Try again",
+      "retry": "Retry",
+      "retrySearch": "Retry search",
+      "backToHome": "Back to Home",
+      "backToSearch": "Back to search",
+      "goHome": "Go home"
+    }
   },
   "flightBook": {
     "address": {
@@ -957,7 +995,9 @@
       "refundableFaresDescription": "Fares that allow cancellation with a refund",
       "sortBy": "Sort By",
       "stops": "Stops",
-      "upToOneStop": "Up to 1 stop"
+      "upToOneStop": "Up to 1 stop",
+      "resetAll": "Reset all filters",
+      "noRefundableFares": "No refundable fares available for this route."
     },
     "priceAlert": {
       "active": "Alert active",
@@ -992,7 +1032,10 @@
         "twoPlus": "2+ stops"
       },
       "tryAgain": "Try Again",
-      "searchFlights": "Search Flights"
+      "searchFlights": "Search Flights",
+      "findingFlights": "Finding flights…",
+      "clearAll": "Clear all",
+      "searchLabel": "Search"
     },
     "search": {
       "adult": "{count} adult",
@@ -1110,7 +1153,8 @@
       "reviews": "{count} reviews",
       "viewDeal": "View",
       "fetchingPrices": "Fetching prices…",
-      "fetchingPricesLong": "Fetching prices, hang tight…"
+      "fetchingPricesLong": "Fetching prices, hang tight…",
+      "fetchingShort": "Fetching…"
     },
     "collapse": "Collapse ↑",
     "filters": {
@@ -1222,7 +1266,8 @@
       "where": "Where",
       "whereQuestion": "Where?",
       "who": "Who",
-      "whoQuestion": "Who&apos;s coming?"
+      "whoQuestion": "Who&apos;s coming?",
+      "findingHotels": "Finding hotels…"
     },
     "perNight": "/night",
     "poiPopup": {
@@ -1315,7 +1360,12 @@
       "staysIn": "Stays in {destination}",
       "supplierUnavailable": "Our supplier may not cover this destination yet. Try different dates, adjust your filters, or search a nearby city.",
       "supplierUnavailableShort": "Our current supplier may not cover this destination yet. Try different dates or a nearby city.",
-      "tryDifferentDates": "Try different dates or a nearby city."
+      "tryDifferentDates": "Try different dates or a nearby city.",
+      "neighborhoodBanner": "<strong>Neighborhood search</strong> — prices shown are for browsing only. To book a hotel, search by city name (e.g. Seoul, Bangkok).",
+      "stillLoadingHotels": "Still loading hotels",
+      "stillLoadingIn": "Still loading hotels in {destination}",
+      "firstTimeIndexing": "This destination is being indexed for the first time. Please search again — results should appear now.",
+      "searchAgainButton": "Search again"
     },
     "subtitleDefault": "Handpicked stays at unbeatable prices",
     "subtitlePersonalized": "Top-rated stays in {country} · updated daily"
@@ -1491,6 +1541,25 @@
       "whereTo": "Where to?",
       "year": "Year",
       "yearsOld": "{age} years old"
+    },
+    "quickAccess": "Quick Access",
+    "ai": {
+      "understood": "AI Understood",
+      "searchWithDetails": "Search with these details",
+      "chips": {
+        "beachEscape": "Beach Escape",
+        "luxuryStay": "Luxury Stay",
+        "romanticTrip": "Romantic Trip",
+        "quickGetaway": "Quick Getaway",
+        "adventure": "Adventure"
+      },
+      "cards": {
+        "destination": "Destination",
+        "dates": "Dates",
+        "guests": "Guests",
+        "budget": "Budget"
+      },
+      "heresWhatIFound": "Here's what I found"
     }
   },
   "languagePicker": {
@@ -2045,7 +2114,8 @@
           "address": "🏢 FORHU Inc. · 30 Wall Street, 8th Floor · New York, NY 10005 · USA"
         }
       }
-    }
+    },
+    "scrollToContinue": "Scroll to the bottom to continue"
   },
   "nav": {
     "account": "Account",
@@ -2060,11 +2130,14 @@
     "signIn": "Sign in",
     "signOut": "Sign out",
     "support": "Support",
-    "trips": "Trips"
+    "trips": "Trips",
+    "scrollToTop": "Scroll to top"
   },
   "popularDestinations": {
     "subtitle": "Explore top spots across Asia-Pacific — search flights and hotels in seconds.",
-    "title": "Popular Destinations"
+    "title": "Popular Destinations",
+    "scrollLeft": "Scroll left",
+    "scrollRight": "Scroll right"
   },
   "property": {
     "addressNotAvailable": "Address not available",
@@ -2144,7 +2217,9 @@
       "etgNotice": {
         "title": "Online booking not yet available",
         "description": "This property is managed by our partner booking system. Indicative prices are shown below. Please contact us to confirm availability and complete your reservation."
-      }
+      },
+      "showLess": "Show less",
+      "checkAtCheckout": "Check at checkout"
     },
     "savePercent": "SAVE {percent}%",
     "weather": {
@@ -2163,6 +2238,52 @@
         "veryHigh": "Very High"
       },
       "wind": "Wind"
+    },
+    "mapOverlay": {
+      "getDirections": "Get directions...",
+      "whereFrom": "Where from?",
+      "layers": "Layers",
+      "kmAway": "{distance} km away",
+      "viewOnMaps": "View on Maps",
+      "details": "Details",
+      "recenterMap": "Recenter Map",
+      "fullscreen": "Fullscreen",
+      "exitFullscreen": "Exit fullscreen",
+      "selectMode": "Select Mode"
+    },
+    "policies": {
+      "title": "Policies",
+      "checkInOut": "Check-in & Check-out",
+      "checkIn": "Check-in",
+      "checkOut": "Check-out",
+      "contactProperty": "Contact property",
+      "cancellationPolicy": "Cancellation Policy",
+      "refundable": "Refundable",
+      "nonRefundable": "Non-refundable",
+      "cancelBefore": "Cancel before <time>{time}</time>",
+      "feeSuffix": " - Fee: <fee>{amount}</fee>",
+      "noShowPenalty": "No-Show Penalty:",
+      "noShowBody": "{amount} if you don't check in without cancelling.",
+      "earlyDepartureFee": "Early Departure Fee:",
+      "earlyDepartureBody": "{amount} if you check out before your scheduled date.",
+      "importantInformation": "Important Information"
+    },
+    "poiDetails": {
+      "openingHours": "Opening Hours",
+      "openNow": "Open Now",
+      "closed": "Closed",
+      "yourRating": "Your Rating",
+      "commentPlaceholder": "Share your experience...",
+      "addPhoto": "Add Photo",
+      "justNow": "Just now",
+      "you": "You",
+      "postReview": "Post Review",
+      "communityPhotos": "Community Photos",
+      "brandReviews": "Cheapest Go Reviews",
+      "googleFoursquareReviews": "Google & Foursquare Reviews",
+      "foursquareRecommendations": "Foursquare Recommendations",
+      "googleReviews": "Google Reviews",
+      "noReviews": "No direct reviews available for this place yet."
     }
   },
   "propertyGallery": {
@@ -2292,6 +2413,19 @@
       "dismiss": "Not now",
       "install": "Install",
       "title": "Get the CheapestGo app"
+    },
+    "iosGuide": {
+      "title": "Add to Home Screen",
+      "close": "Close guide",
+      "step1Title": "Tap the Share button",
+      "step1Body": "Find the share icon at the bottom of your Safari browser",
+      "step2Title": "Scroll down the menu",
+      "step2Body": "Scroll through the share sheet options",
+      "step3Title": "Tap \"Add to Home Screen\"",
+      "step3Body": "Look for the icon with a plus symbol",
+      "step4Title": "Tap \"Add\" to confirm",
+      "step4Body": "CheapestGo will appear on your home screen",
+      "hint": "Tap the <icon>Share</icon> icon at the bottom center of Safari to get started"
     }
   },
   "reviewsSection": {
@@ -2625,6 +2759,14 @@
           "refundFailed": "Refund failed.",
           "reissueQuote": "Could not get reissue quote."
         }
+      },
+      "passengersHeading": "Passengers",
+      "ticketDetails": {
+        "grandTotal": "Grand Total:",
+        "totalFare": "Total Fare:",
+        "fareCalc": "Fare Calc:",
+        "endorsements": "Endorsements:",
+        "itinerary": "Itinerary:"
       }
     },
     "labels": {
@@ -2688,7 +2830,8 @@
       "refunded": "Refunded",
       "ticketed": "Confirmed",
       "ticketing": "Ticketing",
-      "unknown": "Unknown"
+      "unknown": "Unknown",
+      "cancellationStuck": "Cancellation Stuck"
     },
     "subtitle": "View and manage your bookings",
     "tabs": {
@@ -2707,7 +2850,68 @@
       "removeError": "Couldn't remove that item. Please try again.",
       "removeFromWishlist": "Remove from wishlist",
       "savedOn": "Saved {date}",
-      "searchAgain": "Search again"
+      "searchAgain": "Search again",
+      "saveToWishlist": "Save to wishlist"
+    },
+    "tripMap": {
+      "navigate": "Navigate",
+      "tooFar": "Too far to drive directly",
+      "flyingIn": "Flying in",
+      "locating": "Locating…",
+      "findingHotel": "Finding hotel…",
+      "gettingLocation": "Getting your location…",
+      "centerOnHotel": "Center on hotel",
+      "toggleTraffic": "Toggle traffic",
+      "driving": "Driving",
+      "walking": "Walking",
+      "away": "{distance} away",
+      "calculatingDistance": "Calculating distance…",
+      "navigationStarts": "Navigation starts when you're within 50 km",
+      "openInMaps": "Open in Maps",
+      "navigationReady": "Navigation ready when you land nearby",
+      "saveInMaps": "Save in Maps",
+      "determiningLocation": "Determining your location…",
+      "close": "Close map"
+    },
+    "cancellationFeeCard": {
+      "ifYouCancelNow": "If you cancel now:",
+      "fee": "Cancellation Fee",
+      "youllReceive": "You'll Receive"
+    },
+    "pages": {
+      "backToBooking": "Back to booking",
+      "ref": "Ref:"
+    },
+    "requestsPage": {
+      "title": "Special requests",
+      "note": "Requests are passed to the property but aren't guaranteed — availability depends on the hotel.",
+      "cancelled": "This booking is cancelled, so special requests can no longer be updated."
+    },
+    "requestsForm": {
+      "label": "Message to the property",
+      "placeholder": "e.g. Late check-in after 10 PM, extra bed, high floor…",
+      "saved": "Saved — the property has been notified.",
+      "saveError": "Failed to save your request. Please try again.",
+      "submit": "Save request"
+    },
+    "sharePage": {
+      "title": "Share booking confirmation",
+      "note": "Resend the confirmation email to yourself or anyone else — useful for a travel companion or your own records."
+    },
+    "shareForm": {
+      "sendTo": "Send to",
+      "sentTo": "Sent to {email}.",
+      "sendError": "Failed to send. Please try again.",
+      "submit": "Send confirmation"
+    },
+    "hotelConfirmed": {
+      "confirming": "Confirming your booking…",
+      "loading": "Loading your booking…"
+    },
+    "invoice": {
+      "downloadPdf": "Download PDF",
+      "generating": "Generating…",
+      "print": "Print"
     }
   },
   "about": {
@@ -2828,7 +3032,10 @@
     "closeMap": "Close map",
     "placesWithin": "Places within",
     "noProperties": "No properties to show",
-    "adjustFilters": "Try adjusting your search filters"
+    "adjustFilters": "Try adjusting your search filters",
+    "imageUnavailable": "Image unavailable",
+    "clickForDetails": "Click for details",
+    "notAvailable": "Map not available"
   },
   "help": {
     "title": "Help | CheapestGo",

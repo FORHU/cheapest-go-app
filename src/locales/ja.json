@@ -266,6 +266,14 @@
       "liveRates": "リアルタイムレート",
       "updating": "更新中…",
       "rate": "1 {from} = {rate} {to}"
+    },
+    "timeZone": {
+      "backToClocks": "時計に戻る",
+      "searchPlaceholder": "都市またはタイムゾーンを検索",
+      "noMatch": "該当するタイムゾーンがありません",
+      "default": "デフォルト",
+      "auto": "自動",
+      "allZones": "すべてのタイムゾーン"
     }
   },
   "checkout": {
@@ -446,7 +454,12 @@
       "total": "合計",
       "updateDates": "日程を更新",
       "youSave": "このプロモで{amount}お得",
-      "yourRoom": "客室"
+      "yourRoom": "客室",
+      "freeCancellationBefore": "{date} まで無料キャンセル",
+      "freeCancellationShort": "無料キャンセル",
+      "nonRefundable": "返金不可",
+      "termsNotProvided": "サプライヤーからキャンセル条件の提供がありません — 予約前に施設にご確認ください",
+      "fetchingPolicy": "キャンセルポリシーを取得中…"
     },
     "title": "チェックアウト | {brand}",
     "userDetails": {
@@ -536,7 +549,32 @@
       "description": "認証リクエストの処理中にエラーが発生しました。リンクの有効期限が切れているか、すでに使用された可能性があります。",
       "goHome": "ホームへ移動",
       "signInAgain": "もう一度ログインする",
-      "title": "認証エラー"
+      "title": "認証エラー",
+      "retryDescription": "認証中に問題が発生しました。もう一度お試しください。"
+    },
+    "page": {
+      "title": "問題が発生しました",
+      "description": "予期しないエラーが発生しました。もう一度お試しください。"
+    },
+    "search": {
+      "title": "検索に失敗しました",
+      "description": "検索結果を読み込めませんでした。ネットワークの問題か、検索条件が正しくない可能性があります。"
+    },
+    "property": {
+      "title": "この宿泊施設は表示できません",
+      "description": "この宿泊施設を読み込めませんでした。提供が終了したか、接続に問題がある可能性があります。"
+    },
+    "trips": {
+      "title": "旅程を読み込めませんでした",
+      "description": "予約履歴の読み込み中にエラーが発生しました。もう一度お試しください。"
+    },
+    "actions": {
+      "tryAgain": "再試行",
+      "retry": "再試行",
+      "retrySearch": "検索をやり直す",
+      "backToHome": "ホームに戻る",
+      "backToSearch": "検索に戻る",
+      "goHome": "ホームへ"
     }
   },
   "flightBook": {
@@ -945,7 +983,9 @@
       "sortBy": "並び替え",
       "stops": "乗り継ぎ",
       "upToOneStop": "乗り継ぎ1回まで",
-      "ndc": "NDC"
+      "ndc": "NDC",
+      "resetAll": "フィルターをすべてリセット",
+      "noRefundableFares": "この路線に返金可能な運賃はありません。"
     },
     "priceAlert": {
       "active": "アラート有効",
@@ -980,7 +1020,10 @@
         "twoPlus": "乗り継ぎ2回以上"
       },
       "tryAgain": "再試行",
-      "searchFlights": "フライトを検索"
+      "searchFlights": "フライトを検索",
+      "findingFlights": "フライトを検索中…",
+      "clearAll": "すべてクリア",
+      "searchLabel": "検索"
     },
     "search": {
       "adult": "{count} 名様",
@@ -1102,7 +1145,8 @@
       "reviews": "{count}件のレビュー",
       "viewDeal": "料金を見る",
       "fetchingPrices": "料金を取得中…",
-      "fetchingPricesLong": "料金を取得しています。少々お待ちください…"
+      "fetchingPricesLong": "料金を取得しています。少々お待ちください…",
+      "fetchingShort": "取得中…"
     },
     "collapse": "折りたたむ ↑",
     "filters": {
@@ -1214,7 +1258,8 @@
       "where": "場所",
       "whereQuestion": "どこに行きますか？",
       "who": "人数",
-      "whoQuestion": "どなたが旅行されますか？"
+      "whoQuestion": "どなたが旅行されますか？",
+      "findingHotels": "ホテルを検索中…"
     },
     "perNight": "/泊",
     "poiPopup": {
@@ -1307,7 +1352,12 @@
       "staysIn": "{destination}の宿泊施設",
       "supplierUnavailable": "現在のサプライヤーはこの目的地に対応していない可能性があります。日程を変える、フィルターを調整する、または近くの都市で検索してください。",
       "supplierUnavailableShort": "現在のサプライヤーはこの目的地に対応していない可能性があります。別の日程または近くの都市をお試しください。",
-      "tryDifferentDates": "別の日程または近くの都市をお試しください。"
+      "tryDifferentDates": "別の日程または近くの都市をお試しください。",
+      "neighborhoodBanner": "<strong>エリア検索</strong> — 表示料金は参考用です。ホテルを予約するには都市名（例：ソウル、バンコク）で検索してください。",
+      "stillLoadingHotels": "ホテルを読み込んでいます",
+      "stillLoadingIn": "{destination} のホテルを読み込んでいます",
+      "firstTimeIndexing": "この目的地は初回の登録中です。もう一度検索すると結果が表示されます。",
+      "searchAgainButton": "もう一度検索"
     },
     "subtitleDefault": "厳選されたホテルをお得な価格で",
     "subtitlePersonalized": "{country} の高評価ホテル · 毎日更新"
@@ -1461,6 +1511,25 @@
       "whereTo": "どこへ？",
       "year": "年",
       "yearsOld": "{age}歳"
+    },
+    "quickAccess": "クイックアクセス",
+    "ai": {
+      "understood": "AI が理解しました",
+      "searchWithDetails": "この条件で検索",
+      "chips": {
+        "beachEscape": "ビーチ旅行",
+        "luxuryStay": "ラグジュアリーステイ",
+        "romanticTrip": "ロマンティック旅行",
+        "quickGetaway": "ちょい旅",
+        "adventure": "アドベンチャー"
+      },
+      "cards": {
+        "destination": "目的地",
+        "dates": "日程",
+        "guests": "人数",
+        "budget": "予算"
+      },
+      "heresWhatIFound": "こちらが検索条件です"
     }
   },
   "languagePicker": {
@@ -2015,7 +2084,8 @@
           "address": "🏢 FORHU Inc. · 米国ニューヨーク州ニューヨーク市ウォールストリート30番地8階 10005"
         }
       }
-    }
+    },
+    "scrollToContinue": "続けるには最後までスクロールしてください"
   },
   "nav": {
     "account": "アカウント",
@@ -2030,11 +2100,14 @@
     "signIn": "ログイン",
     "signOut": "ログアウト",
     "support": "サポート",
-    "trips": "旅行"
+    "trips": "旅行",
+    "scrollToTop": "トップへ戻る"
   },
   "popularDestinations": {
     "subtitle": "アジア太平洋の人気スポットを探索 — 数秒でフライトとホテルを検索。",
-    "title": "人気の目的地"
+    "title": "人気の目的地",
+    "scrollLeft": "左へスクロール",
+    "scrollRight": "右へスクロール"
   },
   "propertyGallery": {
     "alt": {
@@ -2163,6 +2236,19 @@
       "dismiss": "後で",
       "install": "インストール",
       "title": "{brand} アプリを入手"
+    },
+    "iosGuide": {
+      "title": "ホーム画面に追加",
+      "close": "ガイドを閉じる",
+      "step1Title": "共有ボタンをタップ",
+      "step1Body": "Safari の画面下部にある共有アイコンを探します",
+      "step2Title": "メニューを下にスクロール",
+      "step2Body": "共有シートの項目をスクロールします",
+      "step3Title": "「ホーム画面に追加」をタップ",
+      "step3Body": "プラス記号のアイコンを探します",
+      "step4Title": "「追加」をタップして確定",
+      "step4Body": "CheapestGo がホーム画面に表示されます",
+      "hint": "Safari の下部中央にある <icon>共有</icon> アイコンをタップして始めます"
     }
   },
   "search": {
@@ -2310,7 +2396,9 @@
       "etgNotice": {
         "title": "オンライン予約は現在ご利用いただけません",
         "description": "この施設はパートナー予約システムで管理されています。以下の料金は目安価格です。ご予約の確認と完了については、お問い合わせください。"
-      }
+      },
+      "showLess": "表示を減らす",
+      "checkAtCheckout": "お支払い画面で確認"
     },
     "savePercent": "{percent}%お得",
     "weather": {
@@ -2329,6 +2417,52 @@
         "veryHigh": "非常に強い"
       },
       "wind": "風速"
+    },
+    "mapOverlay": {
+      "getDirections": "ルートを検索...",
+      "whereFrom": "出発地は？",
+      "layers": "レイヤー",
+      "kmAway": "{distance}km 先",
+      "viewOnMaps": "マップで見る",
+      "details": "詳細",
+      "recenterMap": "地図を中央に戻す",
+      "fullscreen": "全画面表示",
+      "exitFullscreen": "全画面を終了",
+      "selectMode": "モードを選択"
+    },
+    "policies": {
+      "title": "ポリシー",
+      "checkInOut": "チェックイン・チェックアウト",
+      "checkIn": "チェックイン",
+      "checkOut": "チェックアウト",
+      "contactProperty": "施設にお問い合わせください",
+      "cancellationPolicy": "キャンセルポリシー",
+      "refundable": "返金可能",
+      "nonRefundable": "返金不可",
+      "cancelBefore": "<time>{time}</time> までにキャンセル",
+      "feeSuffix": " - 手数料: <fee>{amount}</fee>",
+      "noShowPenalty": "ノーショー料金：",
+      "noShowBody": "キャンセルせずにチェックインしなかった場合は {amount} がかかります。",
+      "earlyDepartureFee": "早期チェックアウト料金：",
+      "earlyDepartureBody": "予定日より早くチェックアウトした場合は {amount} がかかります。",
+      "importantInformation": "重要なお知らせ"
+    },
+    "poiDetails": {
+      "openingHours": "営業時間",
+      "openNow": "営業中",
+      "closed": "営業時間外",
+      "yourRating": "あなたの評価",
+      "commentPlaceholder": "体験を書いてみましょう...",
+      "addPhoto": "写真を追加",
+      "justNow": "たった今",
+      "you": "あなた",
+      "postReview": "レビューを投稿",
+      "communityPhotos": "みんなの写真",
+      "brandReviews": "CheapestGo のレビュー",
+      "googleFoursquareReviews": "Google・Foursquare のレビュー",
+      "foursquareRecommendations": "Foursquare のおすすめ",
+      "googleReviews": "Google のレビュー",
+      "noReviews": "この場所のレビューはまだありません。"
     }
   },
   "reviewsSection": {
@@ -2478,7 +2612,10 @@
     "closeMap": "地図を閉じる",
     "placesWithin": "この範囲内の場所",
     "noProperties": "表示できる宿泊施設がありません",
-    "adjustFilters": "検索条件を変更してみてください"
+    "adjustFilters": "検索条件を変更してみてください",
+    "imageUnavailable": "画像を表示できません",
+    "clickForDetails": "クリックで詳細を表示",
+    "notAvailable": "地図を表示できません"
   },
   "help": {
     "title": "サポート | CheapestGo",
@@ -2777,6 +2914,14 @@
           "refundFailed": "返金に失敗しました。",
           "reissueQuote": "再発行の見積もりを取得できませんでした。"
         }
+      },
+      "passengersHeading": "搭乗者",
+      "ticketDetails": {
+        "grandTotal": "合計金額：",
+        "totalFare": "運賃合計：",
+        "fareCalc": "運賃計算：",
+        "endorsements": "制限事項：",
+        "itinerary": "旅程："
       }
     },
     "labels": {
@@ -2840,7 +2985,8 @@
       "refunded": "返金済み",
       "ticketed": "確定",
       "ticketing": "発券中",
-      "unknown": "不明"
+      "unknown": "不明",
+      "cancellationStuck": "キャンセル処理が停止"
     },
     "subtitle": "ご予約の確認・管理",
     "tabs": {
@@ -2859,7 +3005,68 @@
       "removeError": "削除できませんでした。もう一度お試しください。",
       "removeFromWishlist": "お気に入りから削除",
       "savedOn": "{date}に保存",
-      "searchAgain": "もう一度検索"
+      "searchAgain": "もう一度検索",
+      "saveToWishlist": "ウィッシュリストに保存"
+    },
+    "tripMap": {
+      "navigate": "ナビを開始",
+      "tooFar": "車で直接向かうには遠すぎます",
+      "flyingIn": "飛行機で移動",
+      "locating": "位置を確認中…",
+      "findingHotel": "ホテルを検索中…",
+      "gettingLocation": "現在地を取得中…",
+      "centerOnHotel": "ホテルを中央に表示",
+      "toggleTraffic": "交通状況を表示",
+      "driving": "車",
+      "walking": "徒歩",
+      "away": "{distance} 先",
+      "calculatingDistance": "距離を計算中…",
+      "navigationStarts": "50km 以内に近づくとナビが開始されます",
+      "openInMaps": "マップで開く",
+      "navigationReady": "近くに到着するとナビを利用できます",
+      "saveInMaps": "マップに保存",
+      "determiningLocation": "現在地を確認中…",
+      "close": "地図を閉じる"
+    },
+    "cancellationFeeCard": {
+      "ifYouCancelNow": "今キャンセルした場合：",
+      "fee": "キャンセル料",
+      "youllReceive": "返金額"
+    },
+    "pages": {
+      "backToBooking": "予約に戻る",
+      "ref": "予約番号："
+    },
+    "requestsPage": {
+      "title": "特別リクエスト",
+      "note": "リクエストは施設に伝えられますが、確約はできません。ホテルの状況によります。",
+      "cancelled": "この予約はキャンセル済みのため、特別リクエストは変更できません。"
+    },
+    "requestsForm": {
+      "label": "施設へのメッセージ",
+      "placeholder": "例：22時以降のレイトチェックイン、エキストラベッド、高層階…",
+      "saved": "保存しました — 施設に通知しました。",
+      "saveError": "リクエストを保存できませんでした。もう一度お試しください。",
+      "submit": "リクエストを保存"
+    },
+    "sharePage": {
+      "title": "予約確認書を共有",
+      "note": "確認メールをご自身や他の方に再送できます。同行者への共有や記録用に便利です。"
+    },
+    "shareForm": {
+      "sendTo": "送信先",
+      "sentTo": "{email} に送信しました。",
+      "sendError": "送信できませんでした。もう一度お試しください。",
+      "submit": "確認書を送信"
+    },
+    "hotelConfirmed": {
+      "confirming": "予約を確定しています…",
+      "loading": "予約情報を読み込んでいます…"
+    },
+    "invoice": {
+      "downloadPdf": "PDF をダウンロード",
+      "generating": "作成中…",
+      "print": "印刷"
     }
   }
 }
