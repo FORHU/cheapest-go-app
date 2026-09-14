@@ -117,7 +117,7 @@ export const ResponsiveFlightHeader = ({
                     )}
 
                     <div className="flex justify-between items-center px-6 pt-5 pb-4 shrink-0">
-                        <h2 className="text-lg font-medium text-slate-900 dark:text-white">Search Flights</h2>
+                        <h2 className="text-lg font-medium text-slate-900 dark:text-white">{t('searchFlights')}</h2>
                         <button
                             onClick={() => setIsSearchModalOpen(false)}
                             className="p-1.5 rounded-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm"

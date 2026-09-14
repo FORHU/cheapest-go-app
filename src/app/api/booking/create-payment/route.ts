@@ -8,7 +8,7 @@ import { convertCurrencyStrict, refreshExchangeRates } from '@/lib/currency';
 import { resolveHotelChargeBase } from '@/lib/bookings/hotelChargeBase';
 import { createAdminClient } from '@/utils/postgres/admin';
 import { env } from '@/utils/env';
-import { mintBookingReference } from '@/lib/bookingReference';
+import { bookingReferenceFromBytes } from '@/lib/bookingReference';
 import { createHash } from 'crypto';
 import { canonicalBrandName } from '@/lib/brand';
 
@@ -182,8 +182,13 @@ export async function POST(req: NextRequest) {
         // to be attributed — those are the hardest rows to trace, and giving them no
         // reference would leave exactly the wrong gap. The confirm route reads this back
         // off the PaymentIntent it already retrieves, so the client never carries it.
+        //
+        // Derived from the idempotency key, never random: this request is replayed whenever
+        // the customer steps back from payment and proceeds again, and Stripe only replays
+        // a key whose parameters are identical. A random reference made every retry a
+        // "different request" under the same key — a 500, and no way to pay (QA BG-19).
         const brand = canonicalBrandName(process.env.NEXT_PUBLIC_BRAND_NAME);
-        const bookingReference = mintBookingReference(brand);
+        const bookingReference = bookingReferenceFromBytes(createHash('sha256').update(idempotencyKey).digest(), brand);
 
         const paymentIntent = await stripe.paymentIntents.create({
             amount: stripeAmount,

@@ -3,7 +3,7 @@
 import { useRef, useState } from 'react';
 import { Paperclip, Send, X } from 'lucide-react';
 import { useTranslations } from 'next-intl';
-import { MAX_MESSAGE_LENGTH, MESSAGE_COUNTER_FROM } from '@/lib/support/limits';
+import { ATTACHMENT_ACCEPT, MAX_MESSAGE_LENGTH, MESSAGE_COUNTER_FROM } from '@/lib/support/limits';
 import { formatFileSize } from './formatFileSize';
 import type { SupportAttachmentView } from './types';
 
@@ -19,7 +19,7 @@ import type { SupportAttachmentView } from './types';
  */
 
 /** Mirrors the server allowlist. A picker offering types the route refuses wastes a trip. */
-const ACCEPTED_TYPES = 'image/jpeg,image/png,image/webp,image/gif,image/heic,application/pdf';
+const ACCEPTED_TYPES = ATTACHMENT_ACCEPT;
 
 interface SupportComposerProps {
     canSend: boolean;

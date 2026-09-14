@@ -255,6 +255,8 @@ function CancelModal({ booking, onConfirm, onClose, isLoading, error, displayCur
 
 export default function FlightBookingCard({ booking, onCancelled }: FlightBookingCardProps) {
     const t = useTranslations('trips');
+    // The post-ticketing panels (void, refund, change flight) — hardcoded English until BG-13.
+    const tm = useTranslations('trips.flightBookingCard.manage');
     const [showCancelModal, setShowCancelModal] = useState(false);
     const [isCancelling, setIsCancelling] = useState(false);
     const [cancelError, setCancelError] = useState<string | null>(null);
@@ -582,7 +584,7 @@ export default function FlightBookingCard({ booking, onCancelled }: FlightBookin
             if (data.success) {
                 setTicketDisplayData(prev => ({ ...prev, [ticketNumber]: data.ticketData }));
             } else {
-                setTicketDisplayData(prev => ({ ...prev, [ticketNumber]: { error: data.error || 'Could not load ticket details' } }));
+                setTicketDisplayData(prev => ({ ...prev, [ticketNumber]: { error: data.error || tm('errors.ticketDetails') } }));
             }
         } catch {
             setTicketDisplayData(prev => ({ ...prev, [ticketNumber]: { error: 'Network error. Please try again.' } }));
@@ -611,7 +613,7 @@ export default function FlightBookingCard({ booking, onCancelled }: FlightBookin
                 setNoteText('');
                 fetchNotes();
             } else {
-                setNoteError(data.error || 'Could not add note');
+                setNoteError(data.error || tm('errors.addNote'));
             }
         } catch {
             setNoteError('Network error. Please try again.');
@@ -641,7 +643,7 @@ export default function FlightBookingCard({ booking, onCancelled }: FlightBookin
                     resolvedTripDetails = detailsData.travelItinerary;
                     setTripDetails(resolvedTripDetails);
                 } else {
-                    setVoidQuoteError(detailsData.error || 'Could not load trip details to get e-ticket numbers.');
+                    setVoidQuoteError(detailsData.error || tm('errors.detailsForTickets'));
                     setLoadingVoidQuote(false);
                     return;
                 }
@@ -715,7 +717,7 @@ export default function FlightBookingCard({ booking, onCancelled }: FlightBookin
             if (data.success) {
                 setVoidQuoteData(data);
             } else {
-                setVoidQuoteError(data.error || 'Could not get void quote');
+                setVoidQuoteError(data.error || tm('errors.voidQuote'));
             }
         } catch {
             setVoidQuoteError('Network error. Please try again.');
@@ -807,7 +809,7 @@ export default function FlightBookingCard({ booking, onCancelled }: FlightBookin
                     resolvedTripDetails = detailsData.travelItinerary;
                     setTripDetails(resolvedTripDetails);
                 } else {
-                    setRefundError('Could not load trip details.');
+                    setRefundError(tm('errors.tripDetails'));
                     setRefundStep('idle');
                     return;
                 }
@@ -903,7 +905,7 @@ export default function FlightBookingCard({ booking, onCancelled }: FlightBookin
                 setRefundStep('accepted');
                 setLocalStatus('cancelled');
             } else {
-                setRefundError(data.error || 'Refund failed.');
+                setRefundError(data.error || tm('errors.refundFailed'));
                 setRefundStep('got');
             }
         } catch {
@@ -971,7 +973,7 @@ export default function FlightBookingCard({ booking, onCancelled }: FlightBookin
                 });
                 const d = await r.json();
                 if (d.success) { resolvedTripDetails = d.travelItinerary; setTripDetails(resolvedTripDetails); }
-                else { setReissueError(d.error || 'Could not load trip details.'); setReissueStep('idle'); return; }
+                else { setReissueError(d.error || tm('errors.tripDetails')); setReissueStep('idle'); return; }
             }
             let passengers: any[] = (resolvedTripDetails?.PassengerInfos ?? []).map((p: any, idx: number) => {
                 const pax = p.Passenger ?? p; const name = pax.PaxName ?? pax;
@@ -1011,7 +1013,7 @@ export default function FlightBookingCard({ booking, onCancelled }: FlightBookin
                 setReissuePtrId(data.ptrId ?? null);
                 setReissueStep('got');
             } else {
-                setReissueError(data.error || 'Could not get reissue quote.');
+                setReissueError(data.error || tm('errors.reissueQuote'));
                 setReissueStep('idle');
             }
         } catch {
@@ -1805,7 +1807,7 @@ export default function FlightBookingCard({ booking, onCancelled }: FlightBookin
                                         const items = hasNewStructure ? reservationItems : legacyItems;
                                         return items.length > 0 && (
                                             <div>
-                                                <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide mb-1">Flight Segments</p>
+                                                <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide mb-1">{tm('segments')}</p>
                                                 <div className="space-y-1.5">
                                                     {items.map((seg: any, i: number) => (
                                                         <div key={i} className="flex items-center gap-2 text-slate-600 dark:text-slate-400">
@@ -1824,20 +1826,20 @@ export default function FlightBookingCard({ booking, onCancelled }: FlightBookin
                                     {hasNewStructure ? (
                                         totalFare && (
                                             <div>
-                                                <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide mb-1">Pricing</p>
+                                                <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide mb-1">{tm('pricing')}</p>
                                                 <div className="flex gap-4 text-slate-600 dark:text-slate-400">
-                                                    <span>Total: <strong className="text-slate-800 dark:text-slate-200">{totalFare.Amount} {totalFare.CurrencyCode}</strong></span>
+                                                    <span>{tm('total')} <strong className="text-slate-800 dark:text-slate-200">{totalFare.Amount} {totalFare.CurrencyCode}</strong></span>
                                                 </div>
                                             </div>
                                         )
                                     ) : (
                                         legacyPricing && (
                                             <div>
-                                                <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide mb-1">Pricing</p>
+                                                <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide mb-1">{tm('pricing')}</p>
                                                 <div className="flex gap-4 text-slate-600 dark:text-slate-400">
-                                                    {legacyPricing.TotalFare && <span>Total: <strong className="text-slate-800 dark:text-slate-200">{legacyPricing.TotalFare} {legacyPricing.CurrencyCode}</strong></span>}
-                                                    {legacyPricing.BaseFare && <span>Base: {legacyPricing.BaseFare}</span>}
-                                                    {legacyPricing.Taxes && <span>Taxes: {legacyPricing.Taxes}</span>}
+                                                    {legacyPricing.TotalFare && <span>{tm('total')} <strong className="text-slate-800 dark:text-slate-200">{legacyPricing.TotalFare} {legacyPricing.CurrencyCode}</strong></span>}
+                                                    {legacyPricing.BaseFare && <span>{tm('base')} {legacyPricing.BaseFare}</span>}
+                                                    {legacyPricing.Taxes && <span>{tm('taxes')} {legacyPricing.Taxes}</span>}
                                                 </div>
                                             </div>
                                         )
@@ -1851,10 +1853,10 @@ export default function FlightBookingCard({ booking, onCancelled }: FlightBookin
                 {/* ── Void Quote Panel ── */}
                 {showVoidQuote && (
                     <div className="border-t border-amber-100 dark:border-amber-900/30 px-3 lg:px-5 py-3 bg-amber-50/40 dark:bg-amber-900/10">
-                        <p className="text-[10px] font-semibold text-amber-600 dark:text-amber-400 uppercase tracking-wide mb-2">Void Quote</p>
+                        <p className="text-[10px] font-semibold text-amber-600 dark:text-amber-400 uppercase tracking-wide mb-2">{t('flightBookingCard.voidQuote')}</p>
                         {loadingVoidQuote && (
                             <div className="flex items-center gap-2 text-xs text-slate-500">
-                                <Loader2 className="w-3.5 h-3.5 animate-spin" /> Fetching void quote…
+                                <Loader2 className="w-3.5 h-3.5 animate-spin" /> {tm('fetchingVoidQuote')}
                             </div>
                         )}
                         {voidQuoteError && (
@@ -1866,18 +1868,18 @@ export default function FlightBookingCard({ booking, onCancelled }: FlightBookin
                             <div className="space-y-2 text-xs">
                                 <div className="flex flex-wrap gap-3 text-slate-600 dark:text-slate-400">
                                     {voidQuoteData.ptrStatus && (
-                                        <span>Status: <strong className="text-slate-800 dark:text-slate-200">{voidQuoteData.ptrStatus}</strong></span>
+                                        <span>{tm('status')} <strong className="text-slate-800 dark:text-slate-200">{voidQuoteData.ptrStatus}</strong></span>
                                     )}
                                     {voidQuoteData.voidingWindow && (
-                                        <span>Void window: <strong className="text-slate-800 dark:text-slate-200">{new Date(voidQuoteData.voidingWindow).toLocaleString()}</strong></span>
+                                        <span>{tm('voidWindow')} <strong className="text-slate-800 dark:text-slate-200">{new Date(voidQuoteData.voidingWindow).toLocaleString()}</strong></span>
                                     )}
                                     {voidQuoteData.slaMinutes > 0 && (
-                                        <span>SLA: <strong className="text-slate-800 dark:text-slate-200">{voidQuoteData.slaMinutes} min</strong></span>
+                                        <span>{tm('sla')} <strong className="text-slate-800 dark:text-slate-200">{tm('minutes', { count: voidQuoteData.slaMinutes })}</strong></span>
                                     )}
                                 </div>
                                 {voidQuoteData.voidQuotes?.length > 0 && (
                                     <div>
-                                        <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide mb-1">Refund Breakdown</p>
+                                        <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide mb-1">{tm('refundBreakdown')}</p>
                                         <div className="space-y-1">
                                             {voidQuoteData.voidQuotes.map((q: any, i: number) => {
                                                 // RefundDetails fields per Mystifly doc: TotalRefund, CancellationCharge, AdminFee
@@ -1887,11 +1889,11 @@ export default function FlightBookingCard({ booking, onCancelled }: FlightBookin
                                                 const label = [q.TicketNumber, q.PassengerType].filter(Boolean).join(' · ');
                                                 return (
                                                     <div key={i} className="flex items-center justify-between gap-2 bg-white dark:bg-slate-800/60 rounded-lg px-2.5 py-2 border border-amber-100 dark:border-amber-800/30">
-                                                        <span className="text-slate-700 dark:text-slate-300 font-mono text-[10px]">{label || `Pax ${i + 1}`}</span>
+                                                        <span className="text-slate-700 dark:text-slate-300 font-mono text-[10px]">{label || tm('paxNumber', { number: i + 1 })}</span>
                                                         <div className="text-right shrink-0">
                                                             <span className="font-semibold text-emerald-600 dark:text-emerald-400">{refundAmt ?? '—'} {q.Currency}</span>
                                                             {fee > 0 && (
-                                                                <p className="text-[10px] text-slate-400">Fee: {fee} {q.Currency}</p>
+                                                                <p className="text-[10px] text-slate-400">{tm('fee')} {fee} {q.Currency}</p>
                                                             )}
                                                         </div>
                                                     </div>
@@ -1905,7 +1907,10 @@ export default function FlightBookingCard({ booking, onCancelled }: FlightBookin
                                 {voidResult ? (
                                     <div className="flex items-center gap-2 text-xs text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 rounded-lg px-3 py-2 border border-emerald-200 dark:border-emerald-800/40">
                                         <CheckCircle className="w-3.5 h-3.5 shrink-0" />
-                                        Void submitted (PTR: {voidResult.ptrId ?? '—'}). Refund will be processed within {voidResult.slaMinutes > 0 ? `${voidResult.slaMinutes} min` : 'the SLA window'}.
+                                        {tm('voidSubmitted', {
+                                            ptr: voidResult.ptrId ?? '—',
+                                            window: voidResult.slaMinutes > 0 ? tm('minutes', { count: voidResult.slaMinutes }) : tm('slaWindow'),
+                                        })}
                                     </div>
                                 ) : (
                                     <div className="pt-1 space-y-1.5">
@@ -1920,7 +1925,7 @@ export default function FlightBookingCard({ booking, onCancelled }: FlightBookin
                                             className="w-full flex items-center justify-center gap-1.5 text-xs font-semibold text-white bg-red-600 hover:bg-red-500 disabled:opacity-60 rounded-lg px-3 py-2 transition-colors"
                                         >
                                             {confirmingVoid ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RotateCcw className="w-3.5 h-3.5" />}
-                                            {confirmingVoid ? 'Processing void…' : 'Confirm Void & Refund'}
+                                            {confirmingVoid ? tm('processingVoid') : tm('confirmVoid')}
                                         </button>
                                     </div>
                                 )}
@@ -1932,12 +1937,12 @@ export default function FlightBookingCard({ booking, onCancelled }: FlightBookin
                 {/* ── Refund Quote Panel ── */}
                 {showRefundQuote && (
                     <div className="border-t border-blue-100 dark:border-blue-900/30 px-3 lg:px-5 py-3 bg-blue-50/40 dark:bg-blue-900/10">
-                        <p className="text-[10px] font-semibold text-blue-600 dark:text-blue-400 uppercase tracking-wide mb-2">Refund Quote</p>
+                        <p className="text-[10px] font-semibold text-blue-600 dark:text-blue-400 uppercase tracking-wide mb-2">{t('flightBookingCard.refundQuote')}</p>
 
                         {refundStep === 'quoting' && (
                             <div className="flex items-center gap-2 text-xs text-slate-500">
                                 <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                                Requesting refund quote…
+                                {tm('requestingRefundQuote')}
                             </div>
                         )}
 
@@ -1950,20 +1955,20 @@ export default function FlightBookingCard({ booking, onCancelled }: FlightBookin
                         {refundStep === 'accepted' ? (
                             <div className="flex items-center gap-2 text-xs text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 rounded-lg px-3 py-2 border border-emerald-200 dark:border-emerald-800/40">
                                 <CheckCircle className="w-3.5 h-3.5 shrink-0" />
-                                Refund accepted (PTR: {refundPtrId ?? '—'}). Your refund will be processed shortly.
+                                {tm('refundAccepted', { ptr: refundPtrId ?? '—' })}
                             </div>
                         ) : (refundStep === 'got' || refundStep === 'accepting') && refundQuoteData ? (
                             <div className="space-y-2 text-xs">
                                 {refundQuoteData.ptrFee > 0 && (
                                     <div className="flex flex-wrap gap-3 text-slate-600 dark:text-slate-400">
-                                        <span>PTR Fee: <strong className="text-slate-800 dark:text-slate-200">{refundQuoteData.ptrFee}</strong></span>
-                                        <span>PTR ID: <strong className="font-mono text-slate-800 dark:text-slate-200">{refundPtrId}</strong></span>
+                                        <span>{tm('ptrFee')} <strong className="text-slate-800 dark:text-slate-200">{refundQuoteData.ptrFee}</strong></span>
+                                        <span>{tm('ptrId')} <strong className="font-mono text-slate-800 dark:text-slate-200">{refundPtrId}</strong></span>
                                     </div>
                                 )}
 
                                 {refundQuoteData.passengerChanges?.length > 0 && (
                                     <div>
-                                        <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide mb-1">Refund Breakdown</p>
+                                        <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide mb-1">{tm('refundBreakdown')}</p>
                                         <div className="space-y-1">
                                             {refundQuoteData.passengerChanges.map((p: any, i: number) => {
                                                 // RefundDetails fields per Mystifly doc: TotalRefund, CancellationCharge
@@ -1973,11 +1978,11 @@ export default function FlightBookingCard({ booking, onCancelled }: FlightBookin
                                                 const label = [p.TicketNumber, p.PassengerType].filter(Boolean).join(' · ');
                                                 return (
                                                     <div key={i} className="flex items-center justify-between gap-2 bg-white dark:bg-slate-800/60 rounded-lg px-2.5 py-2 border border-blue-100 dark:border-blue-800/30">
-                                                        <span className="text-slate-700 dark:text-slate-300 font-mono text-[10px]">{label || `Pax ${i + 1}`}</span>
+                                                        <span className="text-slate-700 dark:text-slate-300 font-mono text-[10px]">{label || tm('paxNumber', { number: i + 1 })}</span>
                                                         <div className="text-right shrink-0">
                                                             <span className="font-semibold text-emerald-600 dark:text-emerald-400">{refundAmt ?? '—'} {p.Currency}</span>
                                                             {penalty > 0 && (
-                                                                <p className="text-[10px] text-slate-400">Penalty: {penalty} {p.Currency}</p>
+                                                                <p className="text-[10px] text-slate-400">{tm('penalty')} {penalty} {p.Currency}</p>
                                                             )}
                                                         </div>
                                                     </div>
@@ -1999,7 +2004,7 @@ export default function FlightBookingCard({ booking, onCancelled }: FlightBookin
                                         className="w-full flex items-center justify-center gap-1.5 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-500 disabled:opacity-60 rounded-lg px-3 py-2 transition-colors"
                                     >
                                         {(['accepting'] as string[]).includes(refundStep) ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle className="w-3.5 h-3.5" />}
-                                        {(['accepting'] as string[]).includes(refundStep) ? 'Processing refund…' : 'Accept & Submit Refund'}
+                                        {(['accepting'] as string[]).includes(refundStep) ? tm('processingRefund') : tm('acceptRefund')}
                                     </button>
                                 </div>
                             </div>
@@ -2010,17 +2015,17 @@ export default function FlightBookingCard({ booking, onCancelled }: FlightBookin
                 {/* ── Reissue / Change Flight Panel ── */}
                 {showReissue && (
                     <div className="border-t border-violet-100 dark:border-violet-900/30 px-3 lg:px-5 py-3 bg-violet-50/40 dark:bg-violet-900/10">
-                        <p className="text-[10px] font-semibold text-violet-600 dark:text-violet-400 uppercase tracking-wide mb-2">Change Flight (Reissue)</p>
+                        <p className="text-[10px] font-semibold text-violet-600 dark:text-violet-400 uppercase tracking-wide mb-2">{tm('reissueTitle')}</p>
                         {reissueStep === 'accepted' ? (
                             <div className="flex items-center gap-2 text-xs text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 rounded-lg px-3 py-2 border border-emerald-200 dark:border-emerald-800/40">
                                 <CheckCircle className="w-3.5 h-3.5 shrink-0" />
-                                Reissue submitted. Your updated itinerary will be confirmed shortly.
+                                {tm('reissueSubmitted')}
                             </div>
                         ) : (
                             <div className="space-y-3 text-xs">
                                 {/* Segment editors */}
                                 <div className="space-y-2">
-                                    <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide">New Flight Details</p>
+                                    <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide">{tm('newFlightDetails')}</p>
                                     {reissueNewSegments.map((seg, i) => (
                                         <div key={i} className="bg-white dark:bg-slate-800/60 rounded-lg px-2.5 py-2.5 border border-violet-100 dark:border-violet-800/30 space-y-2">
                                             <p className="text-[10px] font-semibold text-slate-500 dark:text-slate-400">
@@ -2028,16 +2033,16 @@ export default function FlightBookingCard({ booking, onCancelled }: FlightBookin
                                             </p>
                                             <div className="grid grid-cols-2 gap-2">
                                                 <div className="col-span-2">
-                                                    <label className="text-[10px] text-slate-400 block mb-0.5">New Departure Date</label>
+                                                    <label className="text-[10px] text-slate-400 block mb-0.5">{tm('newDepartureDate')}</label>
                                                     <FormDatePicker
                                                         value={seg.departureDate}
                                                         onChange={val => setReissueNewSegments(prev => prev.map((s, idx) => idx === i ? { ...s, departureDate: val } : s))}
                                                         className="h-8 bg-slate-50 dark:bg-slate-700"
-                                                        placeholder="Select new date"
+                                                        placeholder={tm('selectNewDate')}
                                                     />
                                                 </div>
                                                 <div>
-                                                    <label className="text-[10px] text-slate-400 block mb-0.5">Airline Code</label>
+                                                    <label className="text-[10px] text-slate-400 block mb-0.5">{tm('airlineCode')}</label>
                                                     <input
                                                         type="text"
                                                         maxLength={3}
@@ -2048,16 +2053,16 @@ export default function FlightBookingCard({ booking, onCancelled }: FlightBookin
                                                     />
                                                 </div>
                                                 <div>
-                                                    <label className="text-[10px] text-slate-400 block mb-0.5">Cabin</label>
+                                                    <label className="text-[10px] text-slate-400 block mb-0.5">{tm('cabin')}</label>
                                                     <select
                                                         value={seg.cabinPreference}
                                                         onChange={e => setReissueNewSegments(prev => prev.map((s, idx) => idx === i ? { ...s, cabinPreference: e.target.value } : s))}
                                                         className="w-full text-xs bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-md px-2 py-1.5 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-violet-400"
                                                     >
-                                                        <option value="Y">Economy (Y)</option>
-                                                        <option value="C">Business (C)</option>
-                                                        <option value="F">First (F)</option>
-                                                        <option value="S">Premium Eco (S)</option>
+                                                        <option value="Y">{tm('cabinY')}</option>
+                                                        <option value="C">{tm('cabinC')}</option>
+                                                        <option value="F">{tm('cabinF')}</option>
+                                                        <option value="S">{tm('cabinS')}</option>
                                                     </select>
                                                 </div>
                                             </div>
@@ -2079,7 +2084,7 @@ export default function FlightBookingCard({ booking, onCancelled }: FlightBookin
                                         className="w-full flex items-center justify-center gap-1.5 text-xs font-semibold text-white bg-violet-600 hover:bg-violet-500 disabled:opacity-60 rounded-lg px-3 py-2 transition-colors"
                                     >
                                         {reissueStep === 'quoting' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <ArrowLeftRight className="w-3.5 h-3.5" />}
-                                        {reissueStep === 'quoting' ? 'Getting quote…' : 'Get Reissue Quote'}
+                                        {reissueStep === 'quoting' ? tm('gettingQuote') : tm('getReissueQuote')}
                                     </button>
                                 )}
 
@@ -2088,21 +2093,21 @@ export default function FlightBookingCard({ booking, onCancelled }: FlightBookin
                                     <div className="space-y-2">
                                         <div className="flex flex-wrap gap-3 text-slate-600 dark:text-slate-400">
                                             {reissueQuoteData.priceChange != null && (
-                                                <span>Price change: <strong className={reissueQuoteData.priceChange >= 0 ? 'text-amber-600 dark:text-amber-400' : 'text-emerald-600 dark:text-emerald-400'}>
+                                                <span>{tm('priceChange')} <strong className={reissueQuoteData.priceChange >= 0 ? 'text-amber-600 dark:text-amber-400' : 'text-emerald-600 dark:text-emerald-400'}>
                                                     {reissueQuoteData.priceChange >= 0 ? '+' : ''}{reissueQuoteData.priceChange}
                                                 </strong></span>
                                             )}
                                         </div>
                                         {reissueQuoteData.passengerChanges?.length > 0 && (
                                             <div>
-                                                <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide mb-1">Change Breakdown</p>
+                                                <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide mb-1">{tm('changeBreakdown')}</p>
                                                 <div className="space-y-1">
                                                     {reissueQuoteData.passengerChanges.map((p: any, i: number) => {
                                                         const changeAmt = p.PriceChange ?? p.TotalChange ?? p.TotalFare;
                                                         const label = [p.TicketNumber, p.PassengerType].filter(Boolean).join(' · ');
                                                         return (
                                                             <div key={i} className="flex items-center justify-between gap-2 bg-white dark:bg-slate-800/60 rounded-lg px-2.5 py-2 border border-violet-100 dark:border-violet-800/30">
-                                                                <span className="text-slate-700 dark:text-slate-300 font-mono text-[10px]">{label || `Pax ${i + 1}`}</span>
+                                                                <span className="text-slate-700 dark:text-slate-300 font-mono text-[10px]">{label || tm('paxNumber', { number: i + 1 })}</span>
                                                                 <span className={`font-semibold text-[11px] ${(changeAmt ?? 0) >= 0 ? 'text-amber-600 dark:text-amber-400' : 'text-emerald-600 dark:text-emerald-400'}`}>
                                                                     {changeAmt != null ? `${changeAmt >= 0 ? '+' : ''}${changeAmt}` : '—'} {p.Currency}
                                                                 </span>
@@ -2119,13 +2124,13 @@ export default function FlightBookingCard({ booking, onCancelled }: FlightBookin
                                                 className="w-full flex items-center justify-center gap-1.5 text-xs font-semibold text-white bg-violet-600 hover:bg-violet-500 disabled:opacity-60 rounded-lg px-3 py-2 transition-colors"
                                             >
                                                 {reissueStep === 'accepting' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle className="w-3.5 h-3.5" />}
-                                                {reissueStep === 'accepting' ? 'Processing change…' : 'Confirm Flight Change'}
+                                                {reissueStep === 'accepting' ? tm('processingChange') : tm('confirmChange')}
                                             </button>
                                             <button
                                                 onClick={() => { setReissueStep('idle'); setReissueQuoteData(null); setReissueError(null); }}
                                                 className="w-full text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 py-1 transition-colors"
                                             >
-                                                ← Edit and get new quote
+                                                {tm('editAndRequote')}
                                             </button>
                                         </div>
                                     </div>

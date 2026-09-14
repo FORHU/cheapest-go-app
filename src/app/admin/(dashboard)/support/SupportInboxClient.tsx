@@ -21,7 +21,25 @@ import { LinkedBookings } from '@/components/support/LinkedBookings';
 import { AgentNotes } from '@/components/support/AgentNotes';
 import { TranslatedText } from '@/components/support/TranslatedText';
 import { readerView, customerReadsView, type CustomerReadsView } from '@/components/support/translationView';
-import { MAX_MESSAGE_LENGTH, MESSAGE_COUNTER_FROM } from '@/lib/support/limits';
+import {
+    ATTACHMENT_ACCEPT,
+    MAX_MESSAGE_LENGTH,
+    MESSAGE_COUNTER_FROM,
+    checkAttachment,
+    describeUploadFailure,
+    type AttachmentRefusal,
+    type UploadFailure,
+} from '@/lib/support/limits';
+
+/** The inbox is English-only; the customer's widget says the same things in their language. */
+const ATTACHMENT_REFUSALS: Record<AttachmentRefusal | UploadFailure, string> = {
+    empty: 'That file is empty.',
+    tooLarge: 'Files must be 10 MB or smaller.',
+    unsupported: 'That file type is not supported. Send an image or a PDF.',
+    tooMany: 'Too many uploads. Please wait a moment and try again.',
+    unavailable: 'Attachments are not available right now.',
+    failed: 'Could not upload that file. Please try again.',
+};
 
 /**
  * The Agent's inbox: the queue on the left, the conversation on the right.
@@ -254,9 +272,15 @@ export function SupportInboxClient({
      */
     const attach = async (file: File) => {
         if (!openId) return;
-        setUploading(true);
         setUploadError(null);
 
+        const refusal = checkAttachment(file);
+        if (refusal) {
+            setUploadError(ATTACHMENT_REFUSALS[refusal]);
+            return;
+        }
+
+        setUploading(true);
         try {
             const form = new FormData();
             form.append('file', file);
@@ -265,18 +289,21 @@ export function SupportInboxClient({
                 method: 'POST',
                 body: form,
             });
-            const data = (await response.json()) as {
+            // Production's proxy answers an oversized upload with an HTML 413 page, not JSON
+            // (QA BG-16); read the status when there is no message to read.
+            const data = (await response.json().catch(() => ({}))) as {
                 attachment?: SupportAttachmentView;
                 error?: string;
             };
 
             if (!response.ok || !data.attachment) {
-                setUploadError(data.error ?? 'Could not upload that file.');
+                const failure = describeUploadFailure(response.status, data.error);
+                setUploadError('message' in failure ? failure.message : ATTACHMENT_REFUSALS[failure.reason]);
                 return;
             }
             setPendingFiles(current => [...current, data.attachment as SupportAttachmentView]);
         } catch {
-            setUploadError('Could not upload that file.');
+            setUploadError(ATTACHMENT_REFUSALS.failed);
         } finally {
             setUploading(false);
         }
@@ -619,7 +646,7 @@ export function SupportInboxClient({
                                 <input
                                     ref={fileInput}
                                     type="file"
-                                    accept="image/jpeg,image/png,image/webp,image/gif,image/heic,application/pdf"
+                                    accept={ATTACHMENT_ACCEPT}
                                     className="hidden"
                                     tabIndex={-1}
                                     onChange={event => {

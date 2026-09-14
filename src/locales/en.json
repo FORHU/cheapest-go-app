@@ -991,7 +991,8 @@
         "oneStop": "1 stop",
         "twoPlus": "2+ stops"
       },
-      "tryAgain": "Try Again"
+      "tryAgain": "Try Again",
+      "searchFlights": "Search Flights"
     },
     "search": {
       "adult": "{count} adult",
@@ -1006,7 +1007,35 @@
       "total_count": "({count} total)",
       "tryAgain": "Try Again",
       "providersUnreachable": "We couldn’t reach our flight partners",
-      "providersUnreachableDescription": "This is a problem on our side, not a sign that the route is unavailable. Try the search again."
+      "providersUnreachableDescription": "This is a problem on our side, not a sign that the route is unavailable. Try the search again.",
+      "bundle": {
+        "whereFrom": "Where are you flying from?",
+        "description": "Your hotel is booked. Search for a flight to complete your bundle and save up to 8%.",
+        "cta": "Search flights",
+        "active": "Flight + Hotel Bundle Active",
+        "hint": "Select a flight below — your bundle discount will be applied at checkout.",
+        "save": "Save up to 8%"
+      },
+      "invalid": {
+        "title": "Invalid Search Parameters",
+        "description": "Please provide origin, destination and departure date.",
+        "back": "Return to search"
+      },
+      "refine": {
+        "title": "Refine your search",
+        "description": "We couldn't resolve <strong>{origin}</strong> or <strong>{destination}</strong> to an airport code. Use the search bar to pick airports directly.",
+        "cta": "Search with Airport Picker"
+      },
+      "error": {
+        "title": "Search Error",
+        "tryAnother": "Try another search"
+      },
+      "filtersTitle": "Flight Filters",
+      "noMatch": {
+        "title": "No flights match your filters",
+        "description": "{count} flights found — your filters are hiding all of them.",
+        "reset": "Reset all filters"
+      }
     },
     "validation": {
       "fields": {
@@ -2543,7 +2572,60 @@
       },
       "voidNotAvailable": "Void not available",
       "voidNotAvailablePolicy": "Void not available (airline policy)",
-      "voidQuote": "Void quote"
+      "voidQuote": "Void quote",
+      "manage": {
+        "segments": "Flight Segments",
+        "pricing": "Pricing",
+        "total": "Total:",
+        "base": "Base:",
+        "taxes": "Taxes:",
+        "fetchingVoidQuote": "Fetching void quote…",
+        "status": "Status:",
+        "voidWindow": "Void window:",
+        "sla": "SLA:",
+        "minutes": "{count} min",
+        "refundBreakdown": "Refund Breakdown",
+        "paxNumber": "Pax {number}",
+        "fee": "Fee:",
+        "penalty": "Penalty:",
+        "voidSubmitted": "Void submitted (PTR: {ptr}). Refund will be processed within {window}.",
+        "slaWindow": "the SLA window",
+        "processingVoid": "Processing void…",
+        "confirmVoid": "Confirm Void & Refund",
+        "requestingRefundQuote": "Requesting refund quote…",
+        "refundAccepted": "Refund accepted (PTR: {ptr}). Your refund will be processed shortly.",
+        "ptrFee": "PTR Fee:",
+        "ptrId": "PTR ID:",
+        "processingRefund": "Processing refund…",
+        "acceptRefund": "Accept & Submit Refund",
+        "reissueTitle": "Change Flight (Reissue)",
+        "reissueSubmitted": "Reissue submitted. Your updated itinerary will be confirmed shortly.",
+        "newFlightDetails": "New Flight Details",
+        "newDepartureDate": "New Departure Date",
+        "selectNewDate": "Select new date",
+        "airlineCode": "Airline Code",
+        "cabin": "Cabin",
+        "cabinY": "Economy (Y)",
+        "cabinC": "Business (C)",
+        "cabinF": "First (F)",
+        "cabinS": "Premium Eco (S)",
+        "gettingQuote": "Getting quote…",
+        "getReissueQuote": "Get Reissue Quote",
+        "priceChange": "Price change:",
+        "changeBreakdown": "Change Breakdown",
+        "processingChange": "Processing change…",
+        "confirmChange": "Confirm Flight Change",
+        "editAndRequote": "← Edit and get new quote",
+        "errors": {
+          "ticketDetails": "Could not load ticket details",
+          "addNote": "Could not add note",
+          "detailsForTickets": "Could not load trip details to get e-ticket numbers.",
+          "voidQuote": "Could not get void quote",
+          "tripDetails": "Could not load trip details.",
+          "refundFailed": "Refund failed.",
+          "reissueQuote": "Could not get reissue quote."
+        }
+      }
     },
     "labels": {
       "afterDatePenalty": "After {date}: penalty of {amount}",
@@ -2663,7 +2745,15 @@
       "attach": "Attach a file",
       "uploading": "Uploading…",
       "remove": "Remove {name}",
-      "download": "Download {name}"
+      "download": "Download {name}",
+      "errors": {
+        "empty": "That file is empty.",
+        "tooLarge": "Files must be 10 MB or smaller.",
+        "unsupported": "That file type is not supported. Send an image or a PDF.",
+        "tooMany": "Too many uploads. Please wait a moment and try again.",
+        "unavailable": "Attachments are not available right now.",
+        "failed": "Could not upload that file. Please try again."
+      }
     },
     "title": "Support",
     "subtitle": "Ask about a booking or anything else.",

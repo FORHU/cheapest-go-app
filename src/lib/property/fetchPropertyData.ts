@@ -10,6 +10,7 @@ import { otvCodeToLabel, normalizeStoredAmenity } from '@/lib/server/stays/trave
 import { toRefundableTag } from '@/lib/server/stays/travelgatex/client';
 import { type Property } from '@/types';
 import { getSqlAdmin } from '@/lib/db/postgres';
+import { hotelCountry } from '@/lib/geo/territories';
 export type PropertyData = Property;
 
 export interface StaticHotelResult {
@@ -36,7 +37,7 @@ export async function fetchHotelStatic(id: string): Promise<StaticHotelResult | 
         const r = rows[0];
         const images: string[] = Array.isArray(r.images) ? r.images : [];
         const city = r.city || '';
-        const country = r.country || '';
+        const country = hotelCountry(r.country, city, r.lat, r.lng);
         const address = r.address || '';
         // hotel_content.amenities is jsonb in two shapes: a real array, and — for every
         // row that actually has amenities — a JSON *string* containing the array, written
@@ -481,7 +482,7 @@ async function fetchETGPropertyData(
         }
 
         const city    = (db?.city    as string) || '';
-        const country = (db?.country as string) || '';
+        const country = hotelCountry(db?.country as string, city, db?.lat as number, db?.lng as number);
 
         // ETG per-hotel availability — direct slug lookup via serp/hotels/.
         // ETG IDs are string slugs (e.g. "au_royal_mad") that TGX/OTV can't resolve,

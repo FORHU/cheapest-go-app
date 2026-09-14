@@ -2,6 +2,7 @@ import { unstable_cache } from 'next/cache';
 import { extractCountryCode, COUNTRY_SEARCH_LIST } from '@/lib/constants/countries';
 import { getSqlAdmin } from '@/lib/db/postgres';
 import { CITY_ALIASES, matchAliasQuery, resolveHotelDbCities } from '@/lib/constants/cityAliases';
+import { storedCountryCodes } from '@/lib/geo/territories';
 
 /** Where a searched place sits on the granularity ladder. See CONTEXT.md
  *  ("Destination granularity") and ADR-0006. Area rungs (country/province/city)
@@ -107,8 +108,14 @@ async function fetchCitiesFromMapbox(query: string, locale?: string): Promise<Au
                 ? rawCode.toUpperCase().slice(0, 2)
                 : extractCountryCode(placeName, cityName);
 
-            // place_type is an array (most-specific first); its first entry drives the rung.
-            const placeType: string = (feature.place_type ?? [])[0] ?? 'place';
+            // The feature's own layer is the prefix of its id ("place.8801"). place_type is not
+            // most-specific-first: a city-state lists every layer it fills, broadest first —
+            // Hong Kong is ["country","region","place"] — so reading its first entry made the
+            // "Hong Kong" city suggestion a country search whose wide box let Shenzhen in
+            // (QA BG-8). The id is authoritative; place_type is only the fallback.
+            const idLayer = String(feature.id ?? '').split('.')[0];
+            const placeTypes: string[] = feature.place_type ?? [];
+            const placeType: string = placeTypes.includes(idLayer) ? idLayer : (placeTypes[0] ?? 'place');
             const rung = mapboxTypeToRung(placeType);
             // Mapbox center is [lng, lat]; bbox is [minLng, minLat, maxLng, maxLat].
             const center: [number, number] | undefined = Array.isArray(feature.center) ? feature.center : undefined;
@@ -252,8 +259,10 @@ async function filterCitiesWithHotels(
         // Return canonical names (what callers look up) for cities that matched
         const result = new Set<string>();
         for (const p of pairs) {
-            // Any one spelling having hotels means we cover the city.
-            if (p.dbCities.some(n => matched.has(`${n}|${p.country}`))) {
+            // Any one spelling having hotels means we cover the city. A territory's hotels
+            // may be stored under its parent's code (Hong Kong as CN, Guam as US) — BG-8.
+            const codes = storedCountryCodes(p.country);
+            if (p.dbCities.some(n => codes.some(cc => matched.has(`${n}|${cc}`)))) {
                 result.add(p.canonical);
             }
         }
@@ -284,7 +293,7 @@ async function filterCitiesWithHotels(
                         WHERE lat BETWEEN ${minLat} AND ${maxLat}
                           AND lng BETWEEN ${minLng} AND ${maxLng}
                           AND lat != 0 AND lng != 0
-                          AND LOWER(country) = LOWER(${area.countryCode})
+                          AND LOWER(country) = ANY(${storedCountryCodes(area.countryCode)})
                     ) AS present
                 `;
                 if (row?.present) result.add((area.canonicalCity ?? area.title).toLowerCase());

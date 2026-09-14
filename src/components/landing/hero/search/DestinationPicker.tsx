@@ -89,20 +89,11 @@ export const DestinationPicker: React.FC<DestinationPickerProps> = ({ hideIcon, 
         if (onSelect) onSelect(destination);
         onClose();
 
-        // Resolve TGX destination code in background after selection (City rung only).
-        // Province/district/landmark picks must NOT get an OTV destination code — they
-        // resolve via ETG (region or serp/geo), and a stale code would hijack routing.
-        if (destination.type === 'city' && (destination.rung ?? 'city') === 'city' && !destination.code) {
-            apiFetch('/api/autocomplete/resolve', { cityName: destination.canonicalCity ?? destination.title })
-                .then((res: any) => {
-                    if (res?.success && res.code) {
-                        const enriched = { ...destination, code: res.code };
-                        setDestination(enriched);
-                        addRecentSearch(enriched);
-                    }
-                })
-                .catch(() => { });
-        }
+        // Choosing a destination does no supplier work. This used to resolve the city's
+        // TravelgateX destination code here, to have it ready before Search was pressed —
+        // a supplier lookup for a city the visitor might never search, and QA saw it go out
+        // with no search behind it (BG-10). The search resolves the code itself when the
+        // client has none (runTgxSearch), so nothing is lost but the head start.
     };
 
     const getIcon = (type: Destination['type']) => {

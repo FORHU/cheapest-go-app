@@ -4,6 +4,20 @@ import { useState, useEffect } from 'react';
 import { Heart } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useUser } from '@/stores/authStore';
+import { loginUrlFor } from '@/lib/auth/returnTo';
+
+/**
+ * A heart clicked while signed out. Sign-in used to be a dead end — `/login` with no `next`,
+ * so the visitor landed somewhere else and the item was never saved (QA BG-7). Now they come
+ * back to the page they were on, and the heart they clicked finishes saving. Session storage:
+ * it belongs to this tab's sign-in detour, not to the browser.
+ */
+const PENDING_SAVE_KEY = 'cheapestgo-pending-save';
+
+function sendToLogin(router: ReturnType<typeof useRouter>, deepLink: string) {
+    try { sessionStorage.setItem(PENDING_SAVE_KEY, deepLink); } catch { /* still worth signing in */ }
+    router.push(loginUrlFor(window.location.pathname + window.location.search));
+}
 
 interface SaveButtonProps {
     type: 'flight' | 'hotel';
@@ -18,7 +32,10 @@ interface SaveButtonProps {
     className?: string;
 }
 
+// One saved-trips fetch shared by every heart on the page — per account, so a list fetched
+// signed out (empty) is not what the hearts check against after signing in.
 let tripsPromise: Promise<any> | null = null;
+let tripsPromiseFor: string | null = null;
 
 export default function SaveButton({
     type, title, subtitle, price, currency = 'USD',
@@ -35,9 +52,13 @@ export default function SaveButton({
     // On mount, check if this item is already saved
     useEffect(() => {
         let cancelled = false;
+        // Not "checked" again until this account's list is in, or the pending save below
+        // could re-save something that is already saved.
+        setChecked(false);
         (async () => {
             try {
-                if (!tripsPromise) {
+                if (!tripsPromise || tripsPromiseFor !== (user?.id ?? null)) {
+                    tripsPromiseFor = user?.id ?? null;
                     tripsPromise = fetch('/api/saved-trips').then(r => r.ok ? r.json() : { data: [] });
                 }
                 const json = await tripsPromise;
@@ -50,23 +71,34 @@ export default function SaveButton({
             } catch { if (!cancelled) setChecked(true); }
         })();
         return () => { cancelled = true; };
-    }, [deepLink]);
+    }, [deepLink, user?.id]);
+
+    // Back from signing in: finish the save this heart started (see PENDING_SAVE_KEY).
+    useEffect(() => {
+        if (!user || !checked) return;
+        let pending: string | null = null;
+        try { pending = sessionStorage.getItem(PENDING_SAVE_KEY); } catch { return; }
+        if (pending !== deepLink) return;
+        try { sessionStorage.removeItem(PENDING_SAVE_KEY); } catch { /* ignore */ }
+        if (!saved) void persist(false, null);
+    }, [user, checked, deepLink]); // eslint-disable-line react-hooks/exhaustive-deps
 
     const toggle = async (e: React.MouseEvent) => {
         e.preventDefault();
         e.stopPropagation();
 
         if (!user) {
-            router.push('/login');
+            sendToLogin(router, deepLink);
             return;
         }
 
         if (loading || !checked) return;
+        await persist(saved, savedId);
+    };
+
+    const persist = async (previousSaved: boolean, previousSavedId: string | null) => {
 
         // Optimistic update
-        const previousSaved = saved;
-        const previousSavedId = savedId;
-        
         setSaved(!previousSaved);
         setLoading(true);
 
@@ -83,7 +115,8 @@ export default function SaveButton({
                 });
 
                 if (res.status === 401) {
-                    router.push('/login');
+                    setSaved(previousSaved);
+                    sendToLogin(router, deepLink);
                     return;
                 }
 

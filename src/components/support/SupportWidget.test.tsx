@@ -49,10 +49,17 @@ class FakeEventSource {
     static instances: FakeEventSource[] = [];
     static closed = 0;
     onerror: (() => void) | null = null;
+    private listeners = new Map<string, ((event: { data: string }) => void)[]>();
     constructor(public url: string) {
         FakeEventSource.instances.push(this);
     }
-    addEventListener() {}
+    addEventListener(type: string, listener: (event: { data: string }) => void) {
+        this.listeners.set(type, [...(this.listeners.get(type) ?? []), listener]);
+    }
+    /** What the server would send down this stream. */
+    emit(type: string, data: unknown) {
+        for (const listener of this.listeners.get(type) ?? []) listener({ data: JSON.stringify(data) });
+    }
     close() { FakeEventSource.closed++; }
 }
 
@@ -255,5 +262,134 @@ describe('SupportWidget — previous conversations', () => {
         fireEvent.click(screen.getByRole('button', { name: 'Back to your current chat' }));
         expect(screen.queryByText('Your refund was sent.')).not.toBeInTheDocument();
         expect(screen.getByRole('textbox')).toBeInTheDocument();
+    });
+});
+
+describe('when the team resolves the chat (QA BG-17)', () => {
+    const conversationPosts = () => fetchMock.mock.calls.filter(([url, init]) => url === '/api/support/conversation' && init?.method === 'POST').length;
+    const historyReads = () => fetchMock.mock.calls.filter(([url]) => url === '/api/support/conversation/history').length;
+
+    it('refreshes by itself: the finished chat goes to history and a new one opens', async () => {
+        render(<SupportWidget />, { wrapper: Wrapper });
+        openSupport();
+        await waitFor(() => expect(FakeEventSource.instances).toHaveLength(1));
+        expect(conversationPosts()).toBe(1);
+        const historyBefore = historyReads();
+
+        act(() => FakeEventSource.instances[0].emit('status', { conversationId: 'conv-1', status: 'resolved' }));
+
+        // A second open: the server starts the next chat because the last one is resolved.
+        await waitFor(() => expect(conversationPosts()).toBe(2));
+        // And the previous-conversations list is read again, so the resolved chat shows there.
+        await waitFor(() => expect(historyReads()).toBeGreaterThan(historyBefore));
+    });
+
+    it('does not create a chat for nobody while the panel is shut — it opens on the next look', async () => {
+        render(<SupportWidget />, { wrapper: Wrapper });
+        openSupport();
+        await waitFor(() => expect(FakeEventSource.instances).toHaveLength(1));
+        fireEvent.click(screen.getByRole('button', { name: 'Close support' }));
+
+        act(() => FakeEventSource.instances[0].emit('status', { conversationId: 'conv-1', status: 'resolved' }));
+        await new Promise(r => setTimeout(r, 50));
+        expect(conversationPosts()).toBe(1);
+
+        openSupport();
+        await waitFor(() => expect(conversationPosts()).toBe(2));
+    });
+
+    it('also refreshes when the stream opens on an already-resolved chat — resolved while connecting', async () => {
+        render(<SupportWidget />, { wrapper: Wrapper });
+        openSupport();
+        await waitFor(() => expect(FakeEventSource.instances).toHaveLength(1));
+
+        act(() => FakeEventSource.instances[0].emit('ready', { conversationId: 'conv-1', status: 'resolved' }));
+        await waitFor(() => expect(conversationPosts()).toBe(2));
+    });
+
+    it('ignores other status frames', async () => {
+        render(<SupportWidget />, { wrapper: Wrapper });
+        openSupport();
+        await waitFor(() => expect(FakeEventSource.instances).toHaveLength(1));
+
+        act(() => FakeEventSource.instances[0].emit('status', { conversationId: 'conv-1', status: 'human_active' }));
+        await new Promise(r => setTimeout(r, 50));
+        expect(conversationPosts()).toBe(1);
+    });
+});
+
+describe('attachment failures always say why (QA BG-16)', () => {
+    const attachMessages = {
+        ...messages,
+        support: {
+            ...messages.support,
+            attachments: {
+                attach: 'Attach a file', uploading: 'Uploading…', remove: 'Remove {name}', download: 'Download {name}',
+                errors: {
+                    empty: 'That file is empty.',
+                    tooLarge: 'Files must be 10 MB or smaller.',
+                    unsupported: 'That file type is not supported. Send an image or a PDF.',
+                    tooMany: 'Too many uploads. Please wait a moment and try again.',
+                    unavailable: 'Attachments are not available right now.',
+                    failed: 'Could not upload that file. Please try again.',
+                },
+            },
+        },
+    };
+    const AttachWrapper = ({ children }: { children: React.ReactNode }) => (
+        <NextIntlClientProvider locale="en" messages={attachMessages}>{children}</NextIntlClientProvider>
+    );
+
+    /** A conversation with attachments on, and whatever the upload route should answer. */
+    function serve(upload: () => Promise<unknown>) {
+        fetchMock.mockImplementation(async (url: string) => {
+            if (url === '/api/support/conversation/attachments') return upload();
+            return {
+                ok: true,
+                json: async () => ({
+                    conversation: {
+                        id: 'conv-1', status: 'waiting_human', locale: 'en', guestName: null,
+                        createdAt: '2026-09-06T10:00:00.000Z', lastMessageAt: '2026-09-06T10:00:00.000Z',
+                        reference: 'CS-9QM2K7', escalationNeedsDetails: false, attachmentsEnabled: true,
+                    },
+                    messages: [],
+                }),
+            };
+        });
+    }
+
+    async function pick(file: File) {
+        render(<SupportWidget />, { wrapper: AttachWrapper });
+        openSupport();
+        const input = await waitFor(() => {
+            const el = document.querySelector('input[type="file"]');
+            if (!el) throw new Error('no picker yet');
+            return el as HTMLInputElement;
+        });
+        await act(async () => { fireEvent.change(input, { target: { files: [file] } }); });
+    }
+
+    it('explains a proxy\'s HTML 413 instead of showing nothing', async () => {
+        // What production actually answers for anything over 1 MB: an nginx page, not JSON.
+        serve(async () => ({ ok: false, status: 413, json: async () => { throw new SyntaxError('Unexpected token <'); } }));
+        await pick(new File([new Uint8Array(2 * 1024 * 1024)], 'passport.jpg', { type: 'image/jpeg' }));
+
+        expect(await screen.findByRole('alert')).toHaveTextContent('Files must be 10 MB or smaller.');
+    });
+
+    it('refuses a Word document before uploading it, and says so', async () => {
+        const uploads = vi.fn();
+        serve(async () => { uploads(); return { ok: true, status: 201, json: async () => ({}) }; });
+        await pick(new File(['PK'], 'itinerary.docx', { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' }));
+
+        expect(await screen.findByRole('alert')).toHaveTextContent('That file type is not supported. Send an image or a PDF.');
+        expect(uploads).not.toHaveBeenCalled();
+    });
+
+    it('passes on the server\'s own reason when it gives one', async () => {
+        serve(async () => ({ ok: false, status: 400, json: async () => ({ error: 'A message can carry at most 5 files.' }) }));
+        await pick(new File(['%PDF-1.4'], 'receipt.pdf', { type: 'application/pdf' }));
+
+        expect(await screen.findByRole('alert')).toHaveTextContent('A message can carry at most 5 files.');
     });
 });

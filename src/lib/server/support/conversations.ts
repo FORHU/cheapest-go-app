@@ -85,6 +85,15 @@ export async function getSupportCaller(): Promise<SupportCaller> {
     };
 }
 
+/** A conversation's current status, read fresh — for a stream told only that it changed. */
+export async function getConversationStatus(conversationId: string): Promise<SupportStatus | null> {
+    const sql = getSqlAdmin();
+    const rows = await sql<{ status: SupportStatus }[]>`
+        SELECT status FROM support_conversations WHERE id = ${conversationId}
+    `;
+    return rows[0]?.status ?? null;
+}
+
 /**
  * The caller's conversation, or null if they have none.
  *

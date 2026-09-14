@@ -8,12 +8,17 @@ import { seedHotelRoomGroupsById, parseRoomGroups } from '@/lib/server/stays/etg
 import { getSqlAdmin } from '@/lib/db/postgres';
 import { resolveTgxDestinationCode, backgroundResolveDestCode } from '@/lib/server/search';
 import { resolveHotelDbCities } from '@/lib/constants/cityAliases';
+import { hotelCountry, storedCountryCodes, hasLandBorder, landTerritoryOfCity, territoryCityNames } from '@/lib/geo/territories';
 import { otvCodeToLabel } from './amenityCodes';
 
 // ─── Country bounding boxes for geographic hotel filtering ───────────────────
-// Used to reject OTV portfolio hotels that are in the wrong country.
-// Bounding boxes are intentionally generous (±2° buffer) to avoid false negatives.
-// Hotels with lat=0/lng=0 (no OTV coordinates) are always kept regardless.
+// Used, with a hotel's stored country, to reject OTV portfolio hotels that are in the wrong
+// country — see isConfirmedOutOfCountry. Read these as rough outlines, not borders: the
+// "±2° buffer" this comment used to promise was never there. An audit of live content on
+// 2026-09-14 found many drawn at the border or leaving out islands, and as the only test
+// they dropped real hotels: 170 of Uruguay's 313 (Montevideo, Punta del Este), all of
+// Galápagos, Montego Bay, Dakar, Penghu and Kinmen. The buffer is now applied where the
+// boxes are used, and a hotel whose stored country matches is never dropped by a box.
 const COUNTRY_BBOX: Record<string, { minLat: number; maxLat: number; minLng: number; maxLng: number }> = {
     // ── Asia-Pacific ──────────────────────────────────────────────────────────
     TH: { minLat: 3.6,   maxLat: 22.5,  minLng: 95.3,   maxLng: 107.7  },
@@ -223,6 +228,54 @@ const COUNTRY_BBOX: Record<string, { minLat: number; maxLat: number; minLng: num
     AR: { minLat: -55.1, maxLat: -21.8, minLng: -73.6,  maxLng: -53.6  },
     UY: { minLat: -34.9, maxLat: -30.1, minLng: -58.4,  maxLng: -53.1  },
 };
+
+/** Degrees added on every side of a COUNTRY_BBOX box where it is used. */
+const BBOX_BUFFER_DEG = 1;
+
+/**
+ * Whether a hotel returned for a search in `searchedCountry` is confirmed to be somewhere
+ * else — the OTV destination code for "Paris" that also returns Paris, Texas.
+ *
+ * Two kinds of evidence, and a hotel is dropped only when they agree:
+ *  - its stored country, corrected for territories filed under a parent (Guam as US);
+ *  - its coordinates against the country's box, buffered.
+ *
+ * Neither is enough alone. Boxes miss islands and cut border cities (Montevideo, Galápagos —
+ * see COUNTRY_BBOX), so a hotel whose country matches is never dropped for its coordinates.
+ * And a supplier row with no country is stamped with the searched one (parseTgxHotelData),
+ * so a matching country proves little — which is fine, since matching keeps the hotel.
+ *
+ * Land-border territories (Hong Kong, Macao) are decided by country alone: Shenzhen is
+ * inside Hong Kong's box, so coordinates cannot separate them.
+ *
+ * Anything unknown is kept — a hotel not yet catalogued may well be valid.
+ */
+export function isConfirmedOutOfCountry(
+    hotel: { country?: string | null; city?: string | null; lat?: number | string | null; lng?: number | string | null },
+    searchedCountry: string | null | undefined,
+): boolean {
+    const searched = (searchedCountry ?? '').trim().toUpperCase();
+    if (!searched) return false;
+
+    const lat = Number(hotel.lat ?? 0), lng = Number(hotel.lng ?? 0);
+    const hasCoords = Number.isFinite(lat) && Number.isFinite(lng) && !(lat === 0 && lng === 0);
+    const country = hotelCountry(hotel.country, hotel.city, lat, lng).toUpperCase();
+
+    if (country === searched) return false;
+    if (hasLandBorder(searched)) return !!country;
+
+    const box = COUNTRY_BBOX[searched];
+    const outsideBox = !!box && hasCoords && !(
+        lat >= box.minLat - BBOX_BUFFER_DEG && lat <= box.maxLat + BBOX_BUFFER_DEG &&
+        lng >= box.minLng - BBOX_BUFFER_DEG && lng <= box.maxLng + BBOX_BUFFER_DEG
+    );
+
+    // A different country alone is not enough, whether or not one is stored: some of it is
+    // noise from `hotel_content` rows seeded by an earlier search, and 32 countries have no
+    // box to check against. Only the coordinates decide — the leniency this filter has
+    // always had, now applied to the country too.
+    return outsideBox;
+}
 
 // ─── TGX hotel content (on-demand per-hotel lookup) ─────────────────────────
 
@@ -1450,14 +1503,8 @@ async function fetchOtvHotelCodesByCity(
             // Before persisting, drop hotels whose coordinates are confirmed outside the
             // expected country — TGX destination codes sometimes return wrong-country hotels.
             // Hotels with 0,0 coords (OTV data gap) are kept since we can't verify them.
-            const bbox = countryCode ? COUNTRY_BBOX[countryCode.toUpperCase()] : null;
-            const backfillMap = bbox
-                ? new Map([...contentMap].filter(([, c]) => {
-                    const lat = Number(c.lat ?? 0);
-                    const lng = Number(c.lng ?? 0);
-                    if (!lat && !lng) return true;
-                    return lat >= bbox.minLat && lat <= bbox.maxLat && lng >= bbox.minLng && lng <= bbox.maxLng;
-                }))
+            const backfillMap = countryCode
+                ? new Map([...contentMap].filter(([, c]) => !isConfirmedOutOfCountry(c, countryCode)))
                 : contentMap;
             backfillHotelContent(backfillMap).catch((err: any) =>
                 console.warn('[tgx-search] hotel_content backfill failed:', err.message)
@@ -1852,13 +1899,16 @@ async function runCityFallback(
                 // spelling (e.g. "Rome" → "Rom", "Seoul" → "Seoul" and "Seúl") so
                 // the query matches however ETG/OTV seeded hotel_content. A city
                 // filed under two spellings needs both, or half its hotels vanish.
-                const cityNames = resolveHotelDbCities(cityName.split(',')[0].trim(), countryCode ?? '')
-                    .map((c: string) => c.toLowerCase());
+                const baseCity = cityName.split(',')[0].trim();
+                const landTerritory = landTerritoryOfCity(baseCity, countryCode);
+                const cityNames = landTerritory
+                    ? territoryCityNames(landTerritory)
+                    : resolveHotelDbCities(baseCity, countryCode ?? '').map((c: string) => c.toLowerCase());
                 catalogRows = countryCode
                     ? await sqlAdmin<{ hotel_id: string }[]>`
                         SELECT hotel_id FROM hotel_content
                         WHERE LOWER(TRIM(city)) = ANY(${cityNames})
-                          AND LOWER(country) = LOWER(${countryCode})
+                          AND LOWER(country) = ANY(${storedCountryCodes(countryCode)})
                           AND hotel_id ~ '^[0-9]+$'
                           AND lat != 0 AND lng != 0
                         LIMIT 300`
@@ -2163,7 +2213,7 @@ async function _runTgxSearch(params: TgxSearchParams): Promise<any> {
                 coordinates: { lat: Number(content?.lat ?? 0), lng: Number(content?.lng ?? 0) },
                 address:     content?.address ?? '',
                 city:        content?.city ?? '',
-                country:     content?.country ?? '',
+                country:     hotelCountry(content?.country, content?.city, content?.lat, content?.lng),
                 description:         content?.description ?? '',
                 amenities:           content?.amenities ?? [],
                 amenityGroups:       content?.amenity_groups ?? [],
@@ -2216,14 +2266,15 @@ async function buildCityResults(
     // no DB/OTV entry, or with zero coordinates, are included — they may be valid hotels
     // we haven't catalogued yet. Excluding them causes "No hotels found" for major cities
     // on first search before hotel_content is seeded.
-    const bbox = countryCode ? COUNTRY_BBOX[countryCode.toUpperCase()] : null;
-    const filteredCodes = !bbox ? hotelCodes : hotelCodes.filter(code => {
+    const filteredCodes = !countryCode ? hotelCodes : hotelCodes.filter(code => {
         const c = contentMap.get(code) ?? preloadedContent.get(code);
         if (!c) return true; // not catalogued yet — include
-        const lat = Number(c.lat ?? c.latitude ?? 0);
-        const lng = Number(c.lng ?? c.longitude ?? 0);
-        if (!lat && !lng) return true; // no coordinates — include
-        return lat >= bbox.minLat && lat <= bbox.maxLat && lng >= bbox.minLng && lng <= bbox.maxLng;
+        return !isConfirmedOutOfCountry({
+            country: c.country,
+            city:    c.city,
+            lat:     c.lat ?? c.latitude,
+            lng:     c.lng ?? c.longitude,
+        }, countryCode);
     });
     if (filteredCodes.length < hotelCodes.length) {
         console.warn(`[tgx-search] buildCityResults: filtered ${hotelCodes.length - filteredCodes.length} confirmed out-of-country hotels for "${cityName}" (${countryCode})`);
@@ -2280,7 +2331,7 @@ async function buildCityResults(
             address:      content?.address ?? '',
             location:     content?.address ?? '',
             city:         content?.city ?? cityName ?? '',
-            country:      content?.country ?? countryCode ?? '',
+            country:      content?.country ? hotelCountry(content.country, content.city, content.lat, content.lng) : (countryCode ?? ''),
             description:  content?.description ?? '',
             amenities:    content?.amenities ?? [],
             reviewRating,

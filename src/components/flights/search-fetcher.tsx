@@ -363,14 +363,17 @@ export function SearchFetcher({
         return (
             <div className="bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-2xl p-10 text-center space-y-4">
                 <div className="text-5xl">✈️</div>
-                <h2 className="text-xl font-bold text-slate-800 dark:text-white">Refine your search</h2>
+                <h2 className="text-xl font-bold text-slate-800 dark:text-white">{t('refine.title')}</h2>
                 <p className="text-sm text-slate-500 dark:text-slate-400 max-w-sm mx-auto">
-                    We couldn&apos;t resolve <strong>{state.originRaw}</strong> or <strong>{state.destinationRaw}</strong> to an airport code.
-                    Use the search bar to pick airports directly.
+                    {t.rich('refine.description', {
+                        origin: state.originRaw,
+                        destination: state.destinationRaw,
+                        strong: (chunks) => <strong>{chunks}</strong>,
+                    })}
                 </p>
                 <a href="/"
                     className="inline-block px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-full transition-colors">
-                    Search with Airport Picker
+                    {t('refine.cta')}
                 </a>
             </div>
         );
@@ -427,11 +430,11 @@ export function SearchFetcher({
     if (state.status === 'error') {
         return (
             <div className="bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 p-8 rounded-2xl text-center space-y-3">
-                <p className="text-lg font-bold text-red-700 dark:text-red-400">Search Error</p>
+                <p className="text-lg font-bold text-red-700 dark:text-red-400">{t('error.title')}</p>
                 <p className="text-sm text-red-600 dark:text-red-300">{state.message}</p>
                 <a href="/"
                     className="block mt-2 text-sm font-semibold text-red-700 dark:text-red-400 hover:underline">
-                    Try another search
+                    {t('error.tryAnother')}
                 </a>
             </div>
         );
@@ -474,7 +477,7 @@ export function SearchFetcher({
                             >
                                 <X size={16} className="text-slate-700 dark:text-slate-300" />
                             </button>
-                            <h2 className="text-sm font-bold text-slate-900 dark:text-white absolute left-1/2 -translate-x-1/2">Flight Filters</h2>
+                            <h2 className="text-sm font-bold text-slate-900 dark:text-white absolute left-1/2 -translate-x-1/2">{t('filtersTitle')}</h2>
                             <div className="w-8" />
                         </div>
 
@@ -555,13 +558,13 @@ export function SearchFetcher({
                     <div className="min-w-0">
                         {hasResults && filteredOffers.length === 0 && allOffers.length > 0 ? (
                             <div className="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl p-10 text-center space-y-3">
-                                <p className="text-lg font-bold text-slate-700 dark:text-slate-300">No flights match your filters</p>
-                                <p className="text-sm text-slate-500">{allOffers.length} flights found — your filters are hiding all of them.</p>
+                                <p className="text-lg font-bold text-slate-700 dark:text-slate-300">{t('noMatch.title')}</p>
+                                <p className="text-sm text-slate-500">{t('noMatch.description', { count: allOffers.length })}</p>
                                 <button
                                     onClick={resetFilters}
                                     className="mt-1 inline-flex items-center gap-2 px-5 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium transition-colors"
                                 >
-                                    Reset all filters
+                                    {t('noMatch.reset')}
                                 </button>
                             </div>
                         ) : (

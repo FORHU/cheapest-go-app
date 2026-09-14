@@ -78,13 +78,18 @@ const MapMarker = React.memo(function MapMarker({
                         )}
                     </div>
 
-                    {/* Price Label */}
-                    <div className="pr-2 text-[11px] font-bold text-slate-800 dark:text-white whitespace-nowrap tracking-tight">
-                        {(property as any).priceLoading
-                            ? <span className="text-slate-400 tracking-widest">···</span>
-                            : formatCurrency(displayPrice, displayCurrency)
-                        }
-                    </div>
+                    {/* Price Label. No price is not a price of zero: a hotel that came back
+                        without a rate used to read "₱0" on the map (QA BG-3), which looks
+                        free. Show nothing rather than a number nobody can book at. */}
+                    {(property as any).priceLoading ? (
+                        <div className="pr-2 text-[11px] font-bold whitespace-nowrap tracking-tight">
+                            <span className="text-slate-400 tracking-widest">···</span>
+                        </div>
+                    ) : displayPrice > 0 ? (
+                        <div className="pr-2 text-[11px] font-bold text-slate-800 dark:text-white whitespace-nowrap tracking-tight">
+                            {formatCurrency(displayPrice, displayCurrency)}
+                        </div>
+                    ) : null}
                 </div>
 
                 {/* Triangle Tail */}

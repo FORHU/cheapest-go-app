@@ -11,7 +11,9 @@
       "savePreferences": "保存偏好",
       "subheading": "设置您要接收的通知和邮件",
       "tripReminders": "旅行提醒",
-      "tripRemindersDesc": "在即将到来的旅行前获取提醒"
+      "tripRemindersDesc": "在即将到来的旅行前获取提醒",
+      "preferencesSaveError": "偏好设置保存失败，请重试。",
+      "saving": "保存中..."
     },
     "help": {
       "emailSupport": "邮件支持",
@@ -23,7 +25,8 @@
       "heading": "帮助与支持",
       "liveChat": "在线客服",
       "liveChatDesc": "与支持团队在线聊天",
-      "subheading": "获取账户和预订相关帮助"
+      "subheading": "获取账户和预订相关帮助",
+      "emailSupportAddress": "support@cheapestgo.com"
     },
     "nav": {
       "communications": {
@@ -91,8 +94,10 @@
       "promoSubtitle": "接收 {brand} 的优惠、小贴士和见解",
       "promoTitle": "获取旅行灵感和优惠",
       "signOut": "退出登录",
-      "viewRewardsActivity": "查看奖励活动"
-    }
+      "viewRewardsActivity": "查看奖励活动",
+      "pointsInfo": "积分价值是您已获得奖励积分的现金价值。符合条件的预订可累积积分，并可用于日后的行程。"
+    },
+    "title": "账户设置 | CheapestGo"
   },
   "ai": {
     "prompts": {
@@ -128,7 +133,115 @@
     },
     "actions": {
       "showPassword": "显示密码",
-      "hidePassword": "隐藏密码"
+      "hidePassword": "隐藏密码",
+      "back": "返回",
+      "backToHome": "返回首页",
+      "backToLogin": "返回登录",
+      "continue": "继续",
+      "createAccount": "创建账户",
+      "createOne": "立即创建",
+      "forgotPassword": "忘记密码？",
+      "resendConfirmation": "重新发送确认邮件",
+      "resetPassword": "重置密码",
+      "sendResetLink": "发送重置链接",
+      "signIn": "登录",
+      "tryAgain": "重试"
+    },
+    "closeModal": "关闭",
+    "emailStep": {
+      "createWithEmail": "使用邮箱创建",
+      "hasAccount": "已有账户？",
+      "noAccount": "还没有账户？",
+      "otherWays": "其他登录方式",
+      "privacyLink": "隐私声明",
+      "subtitle": "一个账户，畅享所有旅行服务",
+      "terms": "登录即表示您同意我们的<terms>条款与条件</terms>和<privacy>隐私声明</privacy>。",
+      "termsLink": "条款与条件",
+      "title": "登录或创建账户"
+    },
+    "forgotPasswordStep": {
+      "checkInbox": "请查收邮件",
+      "emailPlaceholder": "your@email.com",
+      "notReceived": "没有收到？请检查垃圾邮件文件夹，或",
+      "sentDescription": "我们已将密码重置链接发送至 {email}。请点击邮件中的链接设置新密码。",
+      "subtitle": "输入您的邮箱，我们会发送重置链接。",
+      "title": "重置您的密码"
+    },
+    "labels": {
+      "birthDate": "出生日期",
+      "birthDateHint": "创建账户需年满 18 周岁。",
+      "confirmPassword": "确认密码",
+      "confirmPasswordPlaceholder": "请再次输入密码",
+      "email": "邮箱",
+      "emailPlaceholder": "请输入邮箱",
+      "firstName": "名字",
+      "firstNamePlaceholder": "名字",
+      "lastName": "姓氏",
+      "lastNamePlaceholder": "姓氏",
+      "password": "密码",
+      "passwordPlaceholder": "设置密码",
+      "passwordPlaceholderSignIn": "请输入密码"
+    },
+    "messages": {
+      "acceptTerms": "请接受条款与条件及隐私政策后继续。",
+      "accountCreated": "账户创建成功！",
+      "accountExists": "账户已存在，正在尝试登录…",
+      "accountExistsSignIn": "账户已存在，请登录。",
+      "authFailed": "验证失败，请重试。",
+      "failedToReset": "密码重置失败，请重试。",
+      "invalidCredentials": "邮箱或密码不正确。",
+      "invalidEmail": "邮箱无效",
+      "invalidLink": "重置链接无效，请重新申请。",
+      "passwordsDoNotMatch": "两次输入的密码不一致",
+      "registrationFailed": "注册失败，请重试。",
+      "requirementsNotMet": "密码未满足全部要求",
+      "resendFailed": "邮件重发失败，请重试。",
+      "resentSuccess": "确认邮件已重新发送！",
+      "sendResetFailed": "重置邮件发送失败，请重试。",
+      "verificationSent": "请查收邮件，验证链接已发送。",
+      "welcomeBack": "欢迎回来！",
+      "wrongPassword": "密码错误，或该账户是通过 Google 创建的。请尝试 Google 登录或重置密码。"
+    },
+    "passwordRequirements": {
+      "lowercase": "小写字母",
+      "minLength": "至少 8 个字符",
+      "number": "数字",
+      "uppercase": "大写字母"
+    },
+    "passwordStep": {
+      "for": "账户：",
+      "keepSignedIn": "保持登录状态",
+      "noAccount": "还没有账户？",
+      "title": "请输入密码"
+    },
+    "registerStep": {
+      "for": "账户：",
+      "hasAccount": "已有账户？",
+      "keepSignedIn": "保持登录状态",
+      "privacyLink": "隐私声明",
+      "terms": "创建账户即表示您同意我们的<terms>条款与条件</terms>和<privacy>隐私声明</privacy>。",
+      "termsLink": "条款与条件",
+      "title": "创建您的账户"
+    },
+    "resetPassword": {
+      "confirmPasswordLabel": "确认密码",
+      "confirmPasswordPlaceholder": "请再次输入新密码",
+      "newPasswordLabel": "新密码",
+      "newPasswordPlaceholder": "请输入新密码",
+      "subtitle": "请在下方输入新密码",
+      "successDescription": "您的密码已更新，现在可以使用新密码登录。",
+      "successTitle": "密码重置成功",
+      "title": "重置您的密码"
+    },
+    "social": {
+      "appleAriaLabel": "使用 Apple 登录",
+      "facebookAriaLabel": "使用 Facebook 登录",
+      "signInWithGoogle": "使用 Google 登录"
+    },
+    "verifyEmailStep": {
+      "description": "我们已将确认链接发送至",
+      "description2": "请点击邮件中的链接登录。",
+      "title": "请查收邮件"
     }
   },
   "bookingDestination": {
@@ -297,7 +410,17 @@
       "sent": "已发送",
       "stayDuration": "入住时长",
       "viewMyTrips": "查看我的行程",
-      "openingDestination": "正在打开目的地页面…"
+      "openingDestination": "正在打开目的地页面…",
+      "checkIn": "入住",
+      "checkOut": "退房",
+      "emailInfo": "预订确认将在几分钟内通过邮件发送给您。",
+      "freeCancellationInfo": "如为免费取消的预订，可在“我的行程”中取消或修改。",
+      "hotel": "酒店",
+      "hotelCheckInInfo": "抵达时请向酒店前台出示您的预订编号。",
+      "hotelSuccess": "您的酒店已成功预订。",
+      "room": "房型",
+      "total": "总计",
+      "whatsNext": "接下来"
     },
     "summary": {
       "adult": "位成人",
@@ -398,12 +521,23 @@
     "roundTrip": "往返",
     "searchFlights": "搜索航班",
     "subtitleDefault": "热门路线的超低票价",
-    "subtitlePersonalized": "从 {city} 出发的超低票价"
+    "subtitlePersonalized": "从 {city} 出发的超低票价",
+    "backButton": "返回首页",
+    "noDealsDescription": "敬请期待新的独家旅行优惠。",
+    "noDealsTitle": "暂无进行中的优惠",
+    "pageSubtitle": "精选限时旅行优惠。价格经常更新且可能变动，建议尽早预订以锁定最优价格。",
+    "pageTitle": "独家优惠"
   },
   "errors": {
     "generic": "出现错误，请重试。",
     "notFound": "页面未找到。",
-    "searchFailed": "搜索失败，请检查网络连接后重试。"
+    "searchFailed": "搜索失败，请检查网络连接后重试。",
+    "auth": {
+      "description": "处理身份验证请求时出错。可能是链接已过期或已被使用。",
+      "goHome": "前往首页",
+      "signInAgain": "重新登录",
+      "title": "身份验证错误"
+    }
   },
   "flightBook": {
     "address": {
@@ -730,13 +864,6 @@
       "returnToHome": "返回首页",
       "route": "航线",
       "standardRate": "标准价格",
-      "checkIn": "入住",
-      "checkOut": "退房",
-      "freeCancellationInfo": "如果您的预订可免费取消，可在「我的行程」中取消或修改。",
-      "hotel": "酒店",
-      "hotelCheckInInfo": "抵达时请在酒店前台出示您的预订ID。",
-      "hotelSuccess": "您的酒店已成功预订。",
-      "room": "客房",
       "total": "总计",
       "viewMyTrips": "查看我的行程",
       "whatsNext": "下一步"
@@ -817,7 +944,8 @@
       "refundableFaresDescription": "允许取消并退款的票价",
       "sortBy": "排序方式",
       "stops": "中转",
-      "upToOneStop": "最多 1 次中转"
+      "upToOneStop": "最多 1 次中转",
+      "ndc": "NDC"
     },
     "priceAlert": {
       "active": "提醒已启用",
@@ -851,7 +979,8 @@
         "oneStop": "经停1次",
         "twoPlus": "经停2次以上"
       },
-      "tryAgain": "重试"
+      "tryAgain": "重试",
+      "searchFlights": "搜索航班"
     },
     "search": {
       "adult": "{count} 位成人",
@@ -866,7 +995,35 @@
       "total_count": "（共 {count} 个）",
       "tryAgain": "重试",
       "providersUnreachable": "无法连接到航空公司",
-      "providersUnreachableDescription": "这是我们这边的问题，并不表示该航线不可用。请重新搜索。"
+      "providersUnreachableDescription": "这是我们这边的问题，并不表示该航线不可用。请重新搜索。",
+      "bundle": {
+        "whereFrom": "您从哪里出发？",
+        "description": "酒店已预订成功。搜索航班完成套餐，最高可省 8%。",
+        "cta": "搜索航班",
+        "active": "机票 + 酒店套餐已启用",
+        "hint": "请在下方选择航班，套餐折扣将在结账时自动应用。",
+        "save": "最高省 8%"
+      },
+      "invalid": {
+        "title": "搜索参数无效",
+        "description": "请提供出发地、目的地和出发日期。",
+        "back": "返回搜索"
+      },
+      "refine": {
+        "title": "请调整搜索条件",
+        "description": "无法将 <strong>{origin}</strong> 或 <strong>{destination}</strong> 识别为机场代码。请使用搜索栏直接选择机场。",
+        "cta": "使用机场选择器搜索"
+      },
+      "error": {
+        "title": "搜索出错",
+        "tryAnother": "换个条件搜索"
+      },
+      "filtersTitle": "航班筛选",
+      "noMatch": {
+        "title": "没有符合筛选条件的航班",
+        "description": "找到 {count} 个航班，但全部被筛选条件隐藏了。",
+        "reset": "重置所有筛选"
+      }
     },
     "validation": {
       "fields": {
@@ -892,6 +1049,10 @@
       "terminal": "{terminal} 号航站楼",
       "terminalUnavailable": "航站楼信息将在临近出发时提供",
       "totalFlightDuration": "总飞行时长"
+    },
+    "book": {
+      "loading": "正在加载预订信息...",
+      "title": "预订机票 | CheapestGo"
     }
   },
   "footer": {
@@ -976,7 +1137,8 @@
       "showPlaces": "查看结果",
       "starCount": "{count} 星",
       "starRating": "星级",
-      "strictAmenitiesDescription": "启用后，仅显示包含所有已选设施的酒店"
+      "strictAmenitiesDescription": "启用后，仅显示包含所有已选设施的酒店",
+      "mealPlan": "餐食安排"
     },
     "fromPrice": "{price} 起",
     "guestFavorite": "房客最爱",
@@ -1305,7 +1467,8 @@
     "zh": "中文",
     "ja": "日本語",
     "ko": "한국어",
-    "label": "选择语言"
+    "label": "选择语言",
+    "en": "English"
   },
   "legal": {
     "layout": {
@@ -1356,7 +1519,13 @@
       "privacyLink": "隐私政策",
       "opensInNewTab": "将在新标签页中打开 — 不会丢失当前进度。",
       "checkboxLabel": "我已阅读并同意服务条款和隐私政策。",
-      "acceptButton": "同意并继续"
+      "acceptButton": "同意并继续",
+      "checkboxPrefix": "我同意",
+      "checkboxTerms": "条款与条件",
+      "checkboxConnector": "和",
+      "checkboxPrivacy": "隐私政策",
+      "checkboxSuffix": "。",
+      "checkboxAriaLabel": "我同意条款与条件和隐私政策"
     },
     "termsOfService": {
       "description": "规范您使用CheapestGo的条款和条件。",
@@ -1857,7 +2026,6 @@
     "membersSave": "会员可省夐10%或更多",
     "membersSaveSubtitle": "登录后可享选定住宿折扣",
     "myTrips": "我的行程",
-    "openApp": "打开应用",
     "profile": "个人资料",
     "signIn": "登录",
     "signOut": "退出登录",
@@ -1985,7 +2153,9 @@
       "Smoking Areas": "吸烟区",
       "Security Guard": "保安",
       "Lobby TV": "大堂电视"
-    }
+    },
+    "noReviewsYet": "暂无评价",
+    "verifiedReviewCount": "{count, plural, other {# 条认证评价}}"
   },
   "pwa": {
     "installPrompt": {
@@ -2006,6 +2176,28 @@
       },
       "listSeparator": "、",
       "selectField": "请选择{field}"
+    },
+    "results": {
+      "activeFilters": "已选筛选：",
+      "amenitiesSuffix": "{count} 项设施",
+      "anyWeek": "任意一周",
+      "anywhere": "任意目的地",
+      "boardTypes": {
+        "AI": "全包式",
+        "BB": "含早餐",
+        "FB": "全膳",
+        "HB": "半膳",
+        "RO": "仅住宿"
+      },
+      "freeCancellation": "免费取消",
+      "guestCount": "{count, plural, other {# 位住客}}",
+      "namePrefix": "名称：{name}",
+      "otherCities": "其他城市：",
+      "ratingPrefix": "评分 {rating} 以上",
+      "reviewsSuffix": "{count}+ 条评价",
+      "showingHotelsIn": "以下地区的酒店：",
+      "starSuffix": "{stars} 星级",
+      "whereTo": "想去哪里？"
     }
   },
   "seo": {
@@ -2203,7 +2395,15 @@
       "attach": "添加附件",
       "uploading": "正在上传…",
       "remove": "移除 {name}",
-      "download": "下载 {name}"
+      "download": "下载 {name}",
+      "errors": {
+        "empty": "该文件为空。",
+        "tooLarge": "文件大小不能超过 10 MB。",
+        "unsupported": "不支持该文件类型，请发送图片或 PDF。",
+        "tooMany": "上传次数过多，请稍后再试。",
+        "unavailable": "暂时无法添加附件。",
+        "failed": "文件上传失败，请重试。"
+      }
     },
     "title": "客服支持",
     "subtitle": "有关预订或其他问题，欢迎咨询。",
@@ -2310,6 +2510,356 @@
         "title": "已扣款但预订失败",
         "body": "该笔扣款是一次未完成的授权，通常会由您的银行在数日内自动释放。如果长时间未释放，或存在您并未打算完成的预订却已扣款，请提供预订编号联系我们，我们会为您追查。"
       }
+    }
+  },
+  "destinations": {
+    "browseHotels": "浏览 {country}{city} 最便宜的可订酒店，放心预订。",
+    "description": "查找并预订 {country}{city} 最便宜的酒店。在 CheapestGo 比较价格，获取最优惠的价格。",
+    "findHotelsIn": "查找 {city} 的酒店",
+    "hotelsFrom": "每晚 {price} 起",
+    "searchHotels": "搜索 {city} 的酒店",
+    "title": "{country}{city}酒店 – 最低价 | CheapestGo"
+  },
+  "invoice": {
+    "amount": "金额",
+    "billedTo": "账单开具给",
+    "bookingDetails": "预订详情",
+    "bookingRef": "预订编号",
+    "date": "日期",
+    "description": "说明",
+    "flight": "航班",
+    "hotel": "酒店",
+    "hotelPartner": "酒店合作方",
+    "issued": "开具日期：{date}",
+    "passengers": "乘客",
+    "payment": "付款",
+    "paymentMethod": "Stripe（银行卡）",
+    "provider": "供应商",
+    "receipt": "收据",
+    "route": "航线",
+    "thankYou": "感谢您在 CheapestGo 预订。如需帮助，请联系",
+    "totalPaid": "已付总额",
+    "type": "类型",
+    "yourTravelPartner": "您的旅行伙伴"
+  },
+  "trips": {
+    "bookingCard": {
+      "actions": {
+        "cancel": "取消",
+        "details": "详情",
+        "map": "地图",
+        "modify": "修改",
+        "receipt": "收据",
+        "retryRefund": "重试退款"
+      },
+      "adult": "{count} 位成人",
+      "adults": "{count} 位成人",
+      "cancelled": "已取消",
+      "child": "{count} 位儿童",
+      "children": "{count} 位儿童",
+      "night": "{count} 晚",
+      "nights": "{count} 晚",
+      "policyBadges": {
+        "freeCancellation": "免费取消",
+        "nonRefundable": "不可退款",
+        "partialRefund": "部分退款"
+      },
+      "ratings": {
+        "excellent": "优秀",
+        "exceptional": "卓越",
+        "good": "良好",
+        "pleasant": "尚可",
+        "veryGood": "很好"
+      },
+      "reviews": "{count} 条评价",
+      "total": "总计",
+      "tripCompleted": "行程已完成"
+    },
+    "cancellationModal": {
+      "bookingId": "预订编号：{id}",
+      "cancelBooking": "取消预订",
+      "cancelling": "正在取消...",
+      "close": "关闭",
+      "keepBooking": "保留预订",
+      "loadingPolicy": "正在加载取消政策...",
+      "policyTimeline": "取消政策时间表",
+      "retryRefund": "重试退款",
+      "retryRefundTitle": "重试退款",
+      "retrying": "正在重试...",
+      "title": "取消预订",
+      "tryAgain": "重试",
+      "unableToLoadPolicy": "无法加载政策"
+    },
+    "cancellationPolicies": {
+      "before": "截止：",
+      "cancellationFee": "取消费用：{amount}",
+      "earlyDepartureDescription": "如提前于预定日期退房，将收取 {amount} 的费用。",
+      "earlyDepartureFee": "提前退房费用",
+      "importantNotes": "重要提示",
+      "noPolicy": "没有特定的取消政策，适用标准条款。",
+      "noShowDescription": "若未取消且未入住，将收取 {amount}。",
+      "noShowPenalty": "未入住罚金",
+      "passed": "已过期："
+    },
+    "emptyState": {
+      "allTitle": "暂无行程",
+      "otherDesc": "开始探索，预订您的第一次旅行",
+      "pastTitle": "暂无过往行程",
+      "upcomingDesc": "是时候计划下一次旅行了！",
+      "upcomingTitle": "暂无即将出行的行程"
+    },
+    "exploreDestinations": "探索目的地",
+    "flightBookingCard": {
+      "addBookingNote": "添加预订备注",
+      "airlineBookingDetails": "航司预订详情",
+      "airlineDetails": "航司信息",
+      "amErrors": {
+        "cancelFailed": "取消失败，请联系客服。",
+        "duffelCannotCancel": "此预订无法在线取消。请联系 crm@cheapestgo.com 申请人工取消。",
+        "mystiflyCannotCancel": "此已出票预订无法通过 API 取消。请发送邮件至 crm@myfarebox.com 申请取消。",
+        "networkError": "网络错误，请重试。"
+      },
+      "assignedSeats": "已分配座位",
+      "bookingNotes": "预订备注",
+      "cancel": "取消",
+      "cancelBooking": "取消预订",
+      "cancelModal": {
+        "baseFareNonRefundable": "基础票价不可退款，仅退还税费。",
+        "cancelling": "正在取消…",
+        "cannotCancelOnline": "此预订无法在线取消，请联系客服。",
+        "cannotUndo": "此操作无法撤销。",
+        "checkingRefund": "正在向航司查询实时退款金额…",
+        "confirmCancel": "是的，取消预订",
+        "estimatedPenalty": "预计航司罚金：{amount}",
+        "fareRulesNonRefundable": "根据票价规则，此机票不可退款。",
+        "keepBooking": "保留预订",
+        "loading": "加载中…",
+        "networkError": "获取取消报价时发生网络错误。",
+        "noQuote": "无法从航司获取取消报价。",
+        "noRefund": "无退款 — 根据航司政策，此票价不可退款。",
+        "penaltiesDeducted": "将扣除航司规定的取消罚金。",
+        "pnr": "PNR：{pnr}",
+        "refundEligibility": "退款资格与金额完全由航司的票价规则决定。",
+        "refundPolicy": "退款政策：",
+        "refundTiming": "如已办理退款，通常需要 5–10 个工作日。",
+        "taxesRefund": "税费退款：{amount}",
+        "title": "要取消预订吗？",
+        "willReceive": "您将收到 {amount} 退款。",
+        "zeroRefund": "如果取消，您将收到 $0 退款。"
+      },
+      "cancellationFailed": "取消失败",
+      "changeFlight": "更改航班",
+      "couldNotLoadTripDetails": "无法加载行程详情",
+      "details": "详情",
+      "eTicket": "电子客票",
+      "fareBadges": {
+        "changeable": "可更改",
+        "checkingFarePolicy": "正在查询票价规则…",
+        "fareRulesNonRefundable": "票价规则：不可退款",
+        "freeCancellation": "免费取消",
+        "nonRefundable": "不可退款",
+        "refundable": "可退款"
+      },
+      "flightBooking": "机票预订",
+      "flightItinerary": "航班行程",
+      "hideChangeFlight": "隐藏更改航班",
+      "hideDetails": "隐藏详情",
+      "hideFlightItinerary": "隐藏航班行程",
+      "hideRefundQuote": "隐藏退款报价",
+      "hideVoidQuote": "隐藏作废报价",
+      "issuedTickets": "已出票机票",
+      "layover": "在 {airport} 中转 {duration}",
+      "loadingTripDetails": "正在加载航司信息…",
+      "networkError": "网络错误，请重试。",
+      "noRefund": "未发放退款",
+      "nonstop": "直飞",
+      "noteAdded": "备注添加成功。",
+      "notePlaceholder": "为此预订输入备注…",
+      "originTo": "{origin} 至 {destination}",
+      "passenger": "{count} 位乘客",
+      "passengers": "{count} 位乘客",
+      "pax": "{count} 人",
+      "penaltyApplied": "已扣罚金：{amount}",
+      "pnr": "PNR",
+      "receipt": "收据",
+      "refundFailed": "退款失败",
+      "refundNotAvailable": "无法退款",
+      "refundNotAvailablePolicy": "无法退款（航司政策）",
+      "refundQuote": "退款报价",
+      "retry": "重试",
+      "save": "保存",
+      "seat": "座位",
+      "stateChips": {
+        "awaitingConfirmation": "等待确认",
+        "cancelFailed": "取消失败 — 请在下方重试",
+        "cancelStuck": "取消处理卡住 — 请在下方重试",
+        "cancelled": "已取消",
+        "contactSupport": "如需取消请联系客服",
+        "emailToCancel": "如需取消请发送邮件至 crm@myfarebox.com",
+        "flightCompleted": "航班已完成",
+        "refundFailed": "退款失败",
+        "refundProcessing": "退款处理中",
+        "refunded": "已退款",
+        "supplierNotFound": "未找到供应商记录",
+        "upcomingFlight": "即将出发的航班"
+      },
+      "stop": "{count} 次中转",
+      "stops": "{count} 次中转",
+      "successBanners": {
+        "cancelled": "预订已成功取消。",
+        "refundProcessed": "预订已取消，退款已处理。",
+        "refundProcessing": "预订已取消，退款正在处理中，请稍后查看。"
+      },
+      "totalPaid": "已付总额",
+      "totalRefund": "退款总额",
+      "tripLegs": {
+        "leg": "第 {number} 段",
+        "outbound": "去程",
+        "return": "返程"
+      },
+      "tripTypes": {
+        "multiCity": "多程",
+        "oneWay": "单程",
+        "roundTrip": "往返"
+      },
+      "voidNotAvailable": "无法作废",
+      "voidNotAvailablePolicy": "无法作废（航司政策）",
+      "voidQuote": "作废报价",
+      "manage": {
+        "segments": "航段",
+        "pricing": "价格",
+        "total": "总计：",
+        "base": "基础票价：",
+        "taxes": "税费：",
+        "fetchingVoidQuote": "正在获取作废报价…",
+        "status": "状态：",
+        "voidWindow": "作废期限：",
+        "sla": "处理时限：",
+        "minutes": "{count} 分钟",
+        "refundBreakdown": "退款明细",
+        "paxNumber": "乘客 {number}",
+        "fee": "手续费：",
+        "penalty": "罚金：",
+        "voidSubmitted": "作废申请已提交（PTR：{ptr}）。退款将在 {window} 内处理。",
+        "slaWindow": "处理时限",
+        "processingVoid": "正在作废…",
+        "confirmVoid": "确认作废并退款",
+        "requestingRefundQuote": "正在申请退款报价…",
+        "refundAccepted": "退款已受理（PTR：{ptr}），将很快处理。",
+        "ptrFee": "PTR 手续费：",
+        "ptrId": "PTR 编号：",
+        "processingRefund": "正在处理退款…",
+        "acceptRefund": "接受并提交退款",
+        "reissueTitle": "更改航班（改签）",
+        "reissueSubmitted": "改签申请已提交，更新后的行程将很快确认。",
+        "newFlightDetails": "新航班详情",
+        "newDepartureDate": "新出发日期",
+        "selectNewDate": "选择新日期",
+        "airlineCode": "航司代码",
+        "cabin": "舱位",
+        "cabinY": "经济舱 (Y)",
+        "cabinC": "商务舱 (C)",
+        "cabinF": "头等舱 (F)",
+        "cabinS": "超级经济舱 (S)",
+        "gettingQuote": "正在获取报价…",
+        "getReissueQuote": "获取改签报价",
+        "priceChange": "价格变动：",
+        "changeBreakdown": "变更明细",
+        "processingChange": "正在处理变更…",
+        "confirmChange": "确认更改航班",
+        "editAndRequote": "← 修改并重新报价",
+        "errors": {
+          "ticketDetails": "无法加载机票详情",
+          "addNote": "无法添加备注",
+          "detailsForTickets": "无法加载行程详情以获取电子客票号。",
+          "voidQuote": "无法获取作废报价",
+          "tripDetails": "无法加载行程详情。",
+          "refundFailed": "退款失败。",
+          "reissueQuote": "无法获取改签报价。"
+        }
+      }
+    },
+    "labels": {
+      "afterDatePenalty": "{date} 之后：罚金 {amount}",
+      "bookedOn": "预订日期",
+      "checkIn": "入住",
+      "checkOut": "退房",
+      "duration": "时长",
+      "email": "邮箱",
+      "freeCancelUntil": "免费取消截止",
+      "freeCancellation": "可免费取消",
+      "guests": "住客",
+      "name": "姓名",
+      "nonRefundable": "不可退款",
+      "paymentMethod": "付款方式",
+      "policyNotAvailable": "暂无取消政策详情。",
+      "provider": "供应商",
+      "room": "房型",
+      "specialRequests": "特殊要求",
+      "totalPaid": "已付总额"
+    },
+    "modificationModal": {
+      "discard": "放弃",
+      "email": "邮箱",
+      "emailPlaceholder": "email@example.com",
+      "firstName": "名字",
+      "firstNamePlaceholder": "名字",
+      "infoBanner": "您可以更新预订人的姓名、邮箱和特殊要求。",
+      "lastName": "姓氏",
+      "lastNamePlaceholder": "姓氏",
+      "optional": "（选填）",
+      "remarksPlaceholder": "例如：延迟入住、加枕头...",
+      "saveChanges": "保存更改",
+      "saving": "保存中...",
+      "specialRequests": "特殊要求",
+      "title": "修改预订"
+    },
+    "myTrips": "我的行程",
+    "noSegmentDetails": "暂无航段详情。",
+    "sections": {
+      "cancellationPolicy": "取消政策",
+      "guestInformation": "住客信息",
+      "itinerary": "行程",
+      "passengers": "乘客",
+      "payment": "付款",
+      "stayDetails": "住宿详情"
+    },
+    "status": {
+      "booked": "已预订",
+      "cancelFailed": "取消失败",
+      "cancelPending": "取消待处理",
+      "cancelled": "已取消",
+      "cancelledProviderMissing": "已取消",
+      "completed": "已完成",
+      "confirmed": "已确认",
+      "failed": "失败",
+      "pending": "待处理",
+      "processing": "处理中",
+      "refundFailed": "退款失败",
+      "refundPending": "退款待处理",
+      "refunded": "已退款",
+      "ticketed": "已确认",
+      "ticketing": "出票中",
+      "unknown": "未知"
+    },
+    "subtitle": "查看并管理您的预订",
+    "tabs": {
+      "all": "全部",
+      "past": "过往",
+      "upcoming": "即将出行",
+      "wishlist": "心愿单"
+    },
+    "title": "我的行程 | CheapestGo",
+    "viewMore": "查看更多（剩余 {count} 个）",
+    "viewReceipt": "查看收据",
+    "wishlist": {
+      "emptyDesc": "点击任意航班或酒店上的爱心图标即可保存到这里。",
+      "emptyTitle": "暂无收藏的行程",
+      "perPerson": "每人",
+      "removeError": "无法删除该项目，请重试。",
+      "removeFromWishlist": "从心愿单移除",
+      "savedOn": "保存于 {date}",
+      "searchAgain": "重新搜索"
     }
   }
 }

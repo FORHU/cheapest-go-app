@@ -51,6 +51,29 @@ export const DEFINITIVE_FAILURE_CODES = new Set([
     'FX_UNAVAILABLE',
 ]);
 
+/** How long after reaching payment a reload is still treated as "mid-payment". */
+export const PAYMENT_RECOVERY_WINDOW_MS = 30 * 60 * 1000;
+
+/**
+ * Should the booking page resume a payment it finds in session storage?
+ *
+ * Only for a reload during payment: recent, both ids present, and no offer freshly chosen —
+ * reaching payment removes `selectedFlight`, so a new one means the customer went back and is
+ * booking again. Resuming then confirmed an abandoned, unpaid session and discarded the new
+ * choice (QA BG-19).
+ */
+export function shouldRecoverPaymentStep(input: {
+    sessionId: string | null;
+    paymentIntentId: string | null;
+    startedAt: number;
+    now: number;
+    hasSelectedFlight: boolean;
+}): boolean {
+    if (!input.sessionId || !input.paymentIntentId) return false;
+    if (input.hasSelectedFlight) return false;
+    return input.now - input.startedAt < PAYMENT_RECOVERY_WINDOW_MS;
+}
+
 /** Should a retry present a fresh idempotency key? Only when nothing was created. */
 export function shouldRegenerateIdempotencyKey(code: string): boolean {
     return DEFINITIVE_FAILURE_CODES.has(code);
@@ -293,14 +316,25 @@ export function useFlightBooking() {
     // Auto-confirm so the booking isn't left in limbo.
     // Only recover if the payment was initiated within the last 30 minutes — prevents
     // stale keys from a previous failed/expired booking from re-triggering confirm.
+    //
+    // Only when there is no offer freshly chosen. Proceeding to payment removes
+    // `selectedFlight`, so its absence is what a refresh mid-payment looks like. Its presence
+    // means the customer went back and picked a flight to book again — and recovering then
+    // "confirmed" the payment they had abandoned, deleted the offer they had just chosen and
+    // bounced them to search, every time, for 30 minutes (QA BG-19). That session was never
+    // paid; drop it and let them book.
     useEffect(() => {
         if (typeof window === 'undefined') return;
         const recoverySessionId = sessionStorage.getItem('flightBookingSessionId');
         const recoveryPaymentIntentId = sessionStorage.getItem('flightPaymentIntentId');
-        const ts = Number(sessionStorage.getItem('flightBookingTs') || '0');
-        const ageMs = Date.now() - ts;
-        const THIRTY_MIN = 30 * 60 * 1000;
-        if (recoverySessionId && recoveryPaymentIntentId && ageMs < THIRTY_MIN) {
+        const recover = shouldRecoverPaymentStep({
+            sessionId: recoverySessionId,
+            paymentIntentId: recoveryPaymentIntentId,
+            startedAt: Number(sessionStorage.getItem('flightBookingTs') || '0'),
+            now: Date.now(),
+            hasSelectedFlight: Boolean(sessionStorage.getItem('selectedFlight')),
+        });
+        if (recover && recoverySessionId && recoveryPaymentIntentId) {
             console.log('[useFlightBooking] Detected payment-step refresh — auto-confirming booking');
             bookingSessionIdRef.current = recoverySessionId;
             pollForBooking(recoveryPaymentIntentId);

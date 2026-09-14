@@ -3,6 +3,8 @@ import { runTgxSearch } from '@/lib/server/stays/travelgatex/search';
 import { getSqlAdmin } from '@/lib/db/postgres';
 import { tgxGraphQL, getTgxConfig } from '@/lib/server/stays/travelgatex/client';
 import { CITY_ALIASES, resolveHotelDbCities } from '@/lib/constants/cityAliases';
+import { hotelCountry, storedCountryCodes, isTerritory } from '@/lib/geo/territories';
+import { rateLimit } from '@/lib/server/rate-limit';
 
 const COUNTRY_NAME_TO_ISO: Record<string, string> = {
     'indonesia': 'ID', 'france': 'FR', 'italy': 'IT', 'spain': 'ES', 'germany': 'DE',
@@ -211,6 +213,16 @@ async function getInstantHotelCatalog(body: any): Promise<any[]> {
                 const a = Math.sin(dLat / 2) ** 2 + Math.cos((centerLat * Math.PI) / 180) * Math.cos((Number(r.lat) * Math.PI) / 180) * Math.sin(dLng / 2) ** 2;
                 return 6371 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)) <= RADIUS_KM;
             });
+            // The circle ignores borders on purpose (Jeju must reach Seogwipo), but a
+            // territory's border is a customs line. 50km from central Hong Kong is all of
+            // Shenzhen plus Dongguan and Zhuhai: a "Hong Kong" search returned 601 Shenzhen
+            // hotels of 1,287 (QA BG-8); Jersey's circle reaches Guernsey. A territory keeps
+            // to its own side, judged by the territory-corrected country. Deliberately not
+            // every country: across ordinary land borders the circle is the point.
+            if (isTerritory(countryCode)) {
+                const own = countryCode.toUpperCase();
+                rows = rows.filter((r: any) => hotelCountry(r.country, r.city, r.lat, r.lng).toUpperCase() === own);
+            }
         } else {
             // Fallback: city-string ILIKE match when no coordinates available.
             const cityOnly = cityName.split(',')[0].trim();
@@ -227,7 +239,7 @@ async function getInstantHotelCatalog(body: any): Promise<any[]> {
                            review_rating, review_count
                     FROM hotel_content
                     WHERE city ILIKE ANY(${patterns})
-                      AND LOWER(country) = LOWER(${isoCode})
+                      AND LOWER(country) = ANY(${storedCountryCodes(isoCode)})
                       AND (hotel_id ~ '^[0-9]+$' OR hotel_id ~ '^[A-Z]{2}[0-9]+$')
                       AND (content_source IS NULL OR content_source != 'etg')
                     ORDER BY review_count DESC NULLS LAST
@@ -277,7 +289,7 @@ async function getInstantHotelCatalog(body: any): Promise<any[]> {
             address:      '',
             location:     r.address ?? '',
             city:         r.city ?? cityName,
-            country:      r.country ?? '',
+            country:      hotelCountry(r.country, r.city, r.lat, r.lng),
             // Not selected. Nothing in the search UI reads either: the card renders
             // neither, the amenities filter is a URL param re-queried server-side, and
             // SearchMapView overwrites both with empty values when it builds its own
@@ -330,6 +342,14 @@ function ndjsonLine(obj: unknown): Uint8Array {
  * whichever resolves first by enqueueing from each Promise independently.
  */
 export async function POST(req: NextRequest) {
+    // Every search here reaches TravelgateX and ETG. This was the one supplier-facing route
+    // with no limit at all — flight search allows 20 a minute, this allowed anyone any
+    // number (found while fixing QA BG-10). Same budget as flights.
+    const rl = await rateLimit(req, { limit: 20, windowMs: 60_000, prefix: 'hotel-search' });
+    if (!rl.success) {
+        return Response.json({ error: 'Too many requests. Please wait before trying again.' }, { status: 429 });
+    }
+
     const body = await req.json().catch(() => ({}));
 
     // When canonicalCity differs from destination, the destinationCode was resolved
@@ -461,6 +481,14 @@ export async function POST(req: NextRequest) {
     // can normalise all prices to per-night before streaming to the client.
     const _checkin  = body.checkin  ?? body.checkIn  ?? '';
     const _checkout = body.checkout ?? body.checkOut ?? '';
+
+    // A check-out on or before check-in is not a stay. `Math.max(1, …)` below used to hide
+    // it — the reversed dates went to the suppliers as a "1 night" search. The calendar no
+    // longer offers such a range (QA BG-5), but a pasted or edited URL still can.
+    const inTime = Date.parse(_checkin), outTime = Date.parse(_checkout);
+    if (Number.isFinite(inTime) && Number.isFinite(outTime) && outTime <= inTime) {
+        return Response.json({ error: 'Check-out must be after check-in.' }, { status: 400 });
+    }
     const nights = (_checkin && _checkout)
         ? Math.max(1, Math.round((new Date(_checkout).getTime() - new Date(_checkin).getTime()) / 86_400_000))
         : 1;

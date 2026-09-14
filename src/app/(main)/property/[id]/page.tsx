@@ -265,7 +265,7 @@ export default async function PropertyPage({
 
                         <div className="lg:hidden" id="location-mobile">
                             <FadeInUp delay={0.28}>
-                                <div className="w-full"><PropertyMapSidebar {...mapProps} /></div>
+                                <div className="w-full"><PropertyMapSidebar {...mapProps} showAt="below-lg" /></div>
                             </FadeInUp>
                         </div>
 
@@ -325,7 +325,7 @@ export default async function PropertyPage({
 
                     <div className="hidden lg:block lg:w-[45%] xl:w-[40%] shrink-0 sticky top-[80px] self-start" id="location">
                         <div className="h-[calc(100vh-120px)] rounded-xl overflow-hidden shadow-sm border border-slate-200/60 dark:border-white/10">
-                            <PropertyMapSidebar {...mapProps} />
+                            <PropertyMapSidebar {...mapProps} showAt="lg-up" />
                         </div>
                     </div>
                 </div>

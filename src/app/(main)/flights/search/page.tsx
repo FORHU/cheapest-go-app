@@ -124,7 +124,10 @@ export default async function SearchPage({
     const adults = Math.max(1, parseInt(sp.adults as string) || 1);
     const children = Math.max(0, parseInt(sp.children as string) || 0);
     const infants = Math.max(0, parseInt(sp.infants as string) || 0);
-    const cabinClass = (sp.cabin as CabinClass) || "economy";
+    // Only a cabin we know. An unknown value ("econom") used to reach the translator as a key
+    // that does not exist and render as "landing.search.cabinClass.econom" (QA BG-2).
+    const CABINS: CabinClass[] = ['economy', 'premium_economy', 'business', 'first'];
+    const cabinClass: CabinClass = CABINS.includes(sp.cabin as CabinClass) ? sp.cabin as CabinClass : 'economy';
     const bundleHotelId = sp.bundleHotelId as string | undefined;
 
     const fs = await getTranslations('flights.search');
@@ -144,16 +147,16 @@ export default async function SearchPage({
                         <div className="w-14 h-14 mx-auto bg-violet-100 dark:bg-violet-900/30 rounded-full flex items-center justify-center">
                             <Hotel size={24} className="text-violet-600 dark:text-violet-400" />
                         </div>
-                        <h1 className="text-xl font-bold text-slate-900 dark:text-white">Where are you flying from?</h1>
+                        <h1 className="text-xl font-bold text-slate-900 dark:text-white">{fs('bundle.whereFrom')}</h1>
                         <p className="text-slate-500 dark:text-slate-400 text-sm">
-                            Your hotel is booked. Search for a flight to complete your bundle and save up to 8%.
+                            {fs('bundle.description')}
                         </p>
                         <Link
                             href={`/?${homeParams.toString()}`}
                             className="inline-flex items-center gap-2 px-5 py-2.5 bg-violet-600 hover:bg-violet-700 text-white text-sm font-bold rounded-full transition-colors"
                         >
                             <Sparkles size={14} />
-                            Search flights
+                            {fs('bundle.cta')}
                         </Link>
                     </div>
                 </div>
@@ -162,10 +165,10 @@ export default async function SearchPage({
         return (
             <div className="min-h-screen flex items-center justify-center">
                 <div className="text-center space-y-4">
-                    <h1 className="text-2xl font-bold">Invalid Search Parameters</h1>
-                    <p className="text-gray-500">Please provide origin, destination and departure date.</p>
+                    <h1 className="text-2xl font-bold">{fs('invalid.title')}</h1>
+                    <p className="text-gray-500">{fs('invalid.description')}</p>
                     <Link href="/" className="text-blue-600 hover:underline">
-                        Return to search
+                        {fs('invalid.back')}
                     </Link>
                 </div>
             </div>
@@ -209,14 +212,14 @@ export default async function SearchPage({
                             <div className="flex-1 min-w-0">
                                 <p className="text-xs font-bold text-violet-700 dark:text-violet-300 flex items-center gap-1">
                                     <Sparkles size={11} />
-                                    Flight + Hotel Bundle Active
+                                    {fs('bundle.active')}
                                 </p>
                                 <p className="text-[11px] text-violet-600/80 dark:text-violet-400/80">
-                                    Select a flight below — your bundle discount will be applied at checkout.
+                                    {fs('bundle.hint')}
                                 </p>
                             </div>
                             <span className="shrink-0 px-2 py-0.5 text-[10px] font-bold bg-amber-400 text-amber-900 rounded-full">
-                                Save up to 8%
+                                {fs('bundle.save')}
                             </span>
                         </div>
                     )}

@@ -3,6 +3,7 @@ import { rateLimit } from '@/lib/server/rate-limit';
 import { getCached, setCache } from '@/lib/server/poi-cache';
 import { tryGooglePlaces } from '@/lib/server/poi-google';
 import { getPlaceholderUrl } from '@/lib/server/poi-placeholder';
+import { withoutInventedRating } from '@/lib/server/poi-rating';
 
 function makePlaceholderSvg(name: string, category: string): string {
     const lowerCat = category.toLowerCase();
@@ -68,7 +69,7 @@ export async function GET(req: NextRequest) {
     const cached = await getCached(cacheKey);
     if (cached) {
         try {
-            const parsedMeta = typeof cached === 'string' ? JSON.parse(cached) : cached;
+            const parsedMeta = withoutInventedRating(typeof cached === 'string' ? JSON.parse(cached) : cached);
             if (full) return NextResponse.json(parsedMeta);
 
             const targetUrl = parsedMeta.photoUrl || (typeof parsedMeta === 'string' ? parsedMeta : null);
@@ -206,13 +207,9 @@ async function buildMetadata(
         }
     }
 
-    // Rating fallback
-    if (!meta.rating) {
-        meta.rating = 4.0 + Math.random() * 0.9;
-        meta.userRatingsTotal = Math.floor(50 + Math.random() * 500);
-        meta.vicinity = meta.vicinity || 'Recommended Local Spot';
-        if (meta.source === 'none') meta.source = 'mock-fallback';
-    }
+    // No rating stays no rating. This used to invent one — a random 4.0–4.9 with 50–550
+    // "reviews" and the vicinity "Recommended Local Spot" — and show it to customers as
+    // real. The nearby-places UI already hides the star when there is no rating.
 
     // Photo fallback
     if (!meta.photoUrl) {

@@ -44,9 +44,26 @@ export function brandPrefix(brand?: string | null): string {
 export function mintBookingReference(brand?: string | null): string {
     const bytes = new Uint8Array(LENGTH);
     crypto.getRandomValues(bytes);
+    return bookingReferenceFromBytes(bytes, brand);
+}
+
+/**
+ * The reference for a given seed — the same seed always yields the same reference.
+ *
+ * For a charge created under an idempotency key. Stripe replays an idempotent request only
+ * when its parameters are identical; a reference minted at random on each attempt made a
+ * retry's metadata differ, and Stripe refused it outright ("Keys for idempotent requests can
+ * only be used with the same parameters"). A customer who went to payment, stepped back and
+ * proceeded again could not pay at all (QA BG-19). Seeded from a hash of the key, a retry
+ * sends the same reference and gets the same PaymentIntent back.
+ *
+ * Pass at least LENGTH bytes of a cryptographic hash, so references stay unpredictable.
+ */
+export function bookingReferenceFromBytes(bytes: Uint8Array, brand?: string | null): string {
+    if (bytes.length < LENGTH) throw new Error(`A booking reference needs at least ${LENGTH} bytes.`);
     // 256 is an exact multiple of 32, so the modulo is unbiased.
     let suffix = '';
-    for (const b of bytes) suffix += ALPHABET[b % ALPHABET.length];
+    for (const b of bytes.subarray(0, LENGTH)) suffix += ALPHABET[b % ALPHABET.length];
     return `${brandPrefix(brand)}-${suffix}`;
 }
 

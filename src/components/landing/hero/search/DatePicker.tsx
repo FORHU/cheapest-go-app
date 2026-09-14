@@ -7,6 +7,8 @@ import { useSearchStore, useDates, useActiveDropdown } from '@/stores/searchStor
 import { cn } from '@/lib/utils';
 import { useTranslations, useLocale } from 'next-intl';
 
+const startOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+
 
 interface DatePickerProps {
     inline?: boolean;
@@ -51,12 +53,12 @@ export const DatePicker: React.FC<DatePickerProps> = ({ inline, forceOpen, onDon
 
     // Reset selecting mode when picker opens based on which card triggered it
     useEffect(() => {
-        if (isOpen) {
-            if (initialCheckOutMode) setSelectingCheckOut(true);
-            else if (!checkIn) setSelectingCheckOut(false);
-            else if (checkIn && !checkOut) setSelectingCheckOut(true);
-            else setSelectingCheckOut(false);
-        }
+        // The mode follows the card that was tapped. It used to jump to check-out whenever
+        // check-in was set without a check-out, even from the check-in card — harmless while
+        // an earlier day silently restarted the range, a dead end now that those days are
+        // disabled while choosing check-out (BG-5). Picking check-in still moves on to
+        // check-out by itself, in handleDateClick.
+        if (isOpen) setSelectingCheckOut(!!initialCheckOutMode);
     }, [isOpen, initialCheckOutMode]);
     const onClose = () => {
         if (onDone) onDone();
@@ -115,8 +117,17 @@ export const DatePicker: React.FC<DatePickerProps> = ({ inline, forceOpen, onDon
         setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1));
     };
 
+    /**
+     * While choosing check-out, nothing on or before check-in can be it (QA BG-5). Those days
+     * used to look pickable: an earlier one silently restarted the range as a new check-in,
+     * and check-in's own day became a zero-night stay. To move check-in, open check-in.
+     */
+    const isBeforeCheckOutWindow = (date: Date) =>
+        selectingCheckOut && !!checkIn && startOfDay(date) <= startOfDay(checkIn);
+
     const handleDateClick = (date: Date) => {
-        if (!selectingCheckOut || !checkIn || date < checkIn) {
+        if (isBeforeCheckOutWindow(date)) return;
+        if (!selectingCheckOut || !checkIn) {
             setDates({ checkIn: date, checkOut: null });
             setSelectingCheckOut(true);
         } else {
@@ -146,16 +157,18 @@ export const DatePicker: React.FC<DatePickerProps> = ({ inline, forceOpen, onDon
             const isCheckIn = checkIn && dateObj.toDateString() === checkIn.toDateString();
             const isCheckOut = checkOut && dateObj.toDateString() === checkOut.toDateString();
             const isInRange = checkIn && checkOut && dateObj > checkIn && dateObj < checkOut;
+            // Check-in's own day stays highlighted, but not clickable, while choosing check-out.
+            const isUnavailable = isPast || isToday || (isBeforeCheckOutWindow(dateObj) && !isCheckIn);
 
             days.push(
                 <button
                     key={day}
                     type="button"
-                    disabled={isPast || isToday}
+                    disabled={isPast || isToday || isBeforeCheckOutWindow(dateObj)}
                     onClick={() => handleDateClick(dateObj)}
                     className={cn(
                         "size-9 sm:size-10 mx-auto my-0.5 flex items-center justify-center text-[11px] sm:text-sm font-normal rounded-xl transition-all relative",
-                        (isPast || isToday)
+                        isUnavailable
                             ? "text-slate-300 dark:text-slate-600 cursor-not-allowed opacity-20"
                             : "cursor-pointer hover:bg-slate-100 dark:hover:bg-white/5",
                         (isCheckIn || isCheckOut)

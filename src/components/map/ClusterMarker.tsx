@@ -52,8 +52,14 @@ export const ClusterMarker = React.memo(function ClusterMarker({
                         <span className="text-slate-500 dark:text-slate-400 font-semibold">
                             {count} {count === 1 ? 'hotel' : 'hotels'}
                         </span>
-                        <span className="mx-1 text-slate-300 dark:text-slate-600">·</span>
-                        <span>{formattedPrice}+</span>
+                        {/* Only when a member has a rate: `reduce` leaves 0 when none do,
+                            and "₱0+" advertises a free room (QA BG-3). */}
+                        {minPrice > 0 && (
+                            <>
+                                <span className="mx-1 text-slate-300 dark:text-slate-600">·</span>
+                                <span>{formattedPrice}+</span>
+                            </>
+                        )}
                     </div>
                 </div>
 

@@ -3,6 +3,7 @@
 import React from 'react';
 import { User } from 'lucide-react';
 import { useTranslations } from 'next-intl';
+import { NAME_MAX_LENGTH } from '@/lib/schemas/auth';
 
 interface NameFieldsProps {
     firstName: string;
@@ -42,6 +43,7 @@ export function NameFields({
                         value={firstName}
                         onChange={(e) => { onFirstNameChange(e.target.value); onFirstNameErrorClear(); }}
                         placeholder={t('labels.firstNamePlaceholder')}
+                        maxLength={NAME_MAX_LENGTH}
                         className={`w-full pl-10 pr-4 py-3 border rounded-lg bg-white dark:bg-white/5 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 ${firstNameError ? 'border-red-500' : 'border-slate-200 dark:border-white/10'}`}
                         disabled={disabled}
                     />
@@ -56,6 +58,7 @@ export function NameFields({
                     value={lastName}
                     onChange={(e) => { onLastNameChange(e.target.value); onLastNameErrorClear(); }}
                     placeholder={t('labels.lastNamePlaceholder')}
+                    maxLength={NAME_MAX_LENGTH}
                     className={`w-full px-4 py-3 border rounded-lg bg-white dark:bg-white/5 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 ${lastNameError ? 'border-red-500' : 'border-slate-200 dark:border-white/10'}`}
                     disabled={disabled}
                 />

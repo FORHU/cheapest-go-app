@@ -71,7 +71,8 @@ export interface SupportAttachmentView {
  * bytes cross the app process on their way to S3, and the ceiling is what stops one upload
  * deciding how much memory a request can cost.
  */
-export const MAX_ATTACHMENT_BYTES = 10 * 1024 * 1024;
+export { MAX_ATTACHMENT_BYTES } from '@/lib/support/limits';
+import { MAX_ATTACHMENT_BYTES } from '@/lib/support/limits';
 
 /**
  * Most files on one message. Five covers "here is the whole email thread" without letting

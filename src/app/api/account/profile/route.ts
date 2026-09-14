@@ -10,6 +10,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthenticatedUser } from '@/lib/server/auth';
 import { getSqlAdmin } from '@/lib/db/postgres';
+import { profileSchema } from '@/lib/schemas/auth';
 
 export const dynamic = 'force-dynamic';
 
@@ -26,11 +27,18 @@ export async function PATCH(req: NextRequest) {
     if (firstName === undefined && lastName === undefined) {
         return NextResponse.json({ error: 'Nothing to update.' }, { status: 400 });
     }
-    if (firstName !== undefined && firstName.length === 0) {
-        return NextResponse.json({ error: 'First name cannot be empty.' }, { status: 400 });
-    }
-    if (lastName !== undefined && lastName.length === 0) {
-        return NextResponse.json({ error: 'Last name cannot be empty.' }, { status: 400 });
+
+    // The same rule the forms use, enforced here because this route is the authority: a
+    // 13,708-character first name reached the database through it (QA BG-9). Each field is
+    // checked on its own, since either may be absent from a partial update.
+    const nameField = profileSchema.shape.firstName;
+    for (const [label, value] of [['First name', firstName], ['Last name', lastName]] as const) {
+        if (value === undefined) continue;
+        const parsed = nameField.safeParse(value);
+        if (!parsed.success) {
+            const message = parsed.error.issues[0]?.message ?? 'Invalid name';
+            return NextResponse.json({ error: message.replace('First name', label) }, { status: 400 });
+        }
     }
 
     const sql = getSqlAdmin();
