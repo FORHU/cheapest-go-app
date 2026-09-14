@@ -1,0 +1,21 @@
+{
+  "flights.search.bundle.whereFrom": { "en": "Where are you flying from?", "ko": "어디에서 출발하시나요?", "ja": "どこから出発しますか？", "zh": "您从哪里出发？" },
+  "flights.search.bundle.description": { "en": "Your hotel is booked. Search for a flight to complete your bundle and save up to 8%.", "ko": "호텔 예약이 완료되었습니다. 항공편을 검색해 번들을 완성하고 최대 8% 절약하세요.", "ja": "ホテルのご予約が完了しました。フライトを検索してセットを完成させると、最大8%お得になります。", "zh": "酒店已预订成功。搜索航班完成套餐，最高可省 8%。" },
+  "flights.search.bundle.cta": { "en": "Search flights", "ko": "항공편 검색", "ja": "フライトを検索", "zh": "搜索航班" },
+  "flights.search.bundle.active": { "en": "Flight + Hotel Bundle Active", "ko": "항공 + 호텔 번들 적용 중", "ja": "航空券＋ホテルのセット適用中", "zh": "机票 + 酒店套餐已启用" },
+  "flights.search.bundle.hint": { "en": "Select a flight below — your bundle discount will be applied at checkout.", "ko": "아래에서 항공편을 선택하세요. 번들 할인은 결제 시 적용됩니다.", "ja": "下からフライトを選択してください。セット割引はお支払い時に適用されます。", "zh": "请在下方选择航班，套餐折扣将在结账时自动应用。" },
+  "flights.search.bundle.save": { "en": "Save up to 8%", "ko": "최대 8% 절약", "ja": "最大8%お得", "zh": "最高省 8%" },
+  "flights.search.invalid.title": { "en": "Invalid Search Parameters", "ko": "검색 조건이 올바르지 않습니다", "ja": "検索条件が正しくありません", "zh": "搜索参数无效" },
+  "flights.search.invalid.description": { "en": "Please provide origin, destination and departure date.", "ko": "출발지, 도착지, 출발일을 입력해 주세요.", "ja": "出発地、目的地、出発日を入力してください。", "zh": "请提供出发地、目的地和出发日期。" },
+  "flights.search.invalid.back": { "en": "Return to search", "ko": "검색으로 돌아가기", "ja": "検索に戻る", "zh": "返回搜索" },
+  "flights.search.refine.title": { "en": "Refine your search", "ko": "검색 조건을 수정해 주세요", "ja": "検索条件を見直してください", "zh": "请调整搜索条件" },
+  "flights.search.refine.description": { "en": "We couldn't resolve <strong>{origin}</strong> or <strong>{destination}</strong> to an airport code. Use the search bar to pick airports directly.", "ko": "<strong>{origin}</strong> 또는 <strong>{destination}</strong>을(를) 공항 코드로 찾을 수 없습니다. 검색창에서 공항을 직접 선택해 주세요.", "ja": "<strong>{origin}</strong> または <strong>{destination}</strong> を空港コードに変換できませんでした。検索バーから空港を直接選択してください。", "zh": "无法将 <strong>{origin}</strong> 或 <strong>{destination}</strong> 识别为机场代码。请使用搜索栏直接选择机场。" },
+  "flights.search.refine.cta": { "en": "Search with Airport Picker", "ko": "공항 선택으로 검색", "ja": "空港を選んで検索", "zh": "使用机场选择器搜索" },
+  "flights.search.error.title": { "en": "Search Error", "ko": "검색 오류", "ja": "検索エラー", "zh": "搜索出错" },
+  "flights.search.error.tryAnother": { "en": "Try another search", "ko": "다른 조건으로 검색", "ja": "別の条件で検索", "zh": "换个条件搜索" },
+  "flights.search.filtersTitle": { "en": "Flight Filters", "ko": "항공편 필터", "ja": "フライトの絞り込み", "zh": "航班筛选" },
+  "flights.search.noMatch.title": { "en": "No flights match your filters", "ko": "필터에 맞는 항공편이 없습니다", "ja": "条件に合うフライトはありません", "zh": "没有符合筛选条件的航班" },
+  "flights.search.noMatch.description": { "en": "{count} flights found — your filters are hiding all of them.", "ko": "항공편 {count}개를 찾았지만 필터 때문에 모두 숨겨져 있습니다.", "ja": "{count}件のフライトが見つかりましたが、すべて絞り込み条件で非表示になっています。", "zh": "找到 {count} 个航班，但全部被筛选条件隐藏了。" },
+  "flights.search.noMatch.reset": { "en": "Reset all filters", "ko": "필터 모두 초기화", "ja": "条件をすべてリセット", "zh": "重置所有筛选" },
+  "flights.results.searchFlights": { "en": "Search Flights", "ko": "항공편 검색", "ja": "フライトを検索", "zh": "搜索航班" }
+}
