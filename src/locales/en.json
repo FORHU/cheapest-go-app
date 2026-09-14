@@ -2500,7 +2500,7 @@
       "pax": "{count} pax",
       "penaltyApplied": "Penalty applied: {amount}",
       "pnr": "PNR",
-      "receipt": "Receipt",
+      "receipt": "Download receipt",
       "refundFailed": "Refund failed",
       "refundNotAvailable": "Refund not available",
       "refundNotAvailablePolicy": "Refund not available (airline policy)",
@@ -2520,7 +2520,8 @@
         "refundProcessing": "Refund processing",
         "refunded": "Refunded",
         "supplierNotFound": "Supplier record not found",
-        "upcomingFlight": "Upcoming Flight"
+        "upcomingFlight": "Upcoming Flight",
+        "flightInProgress": "Flight in progress"
       },
       "stop": "{count} stop",
       "stops": "{count} stops",
@@ -2543,7 +2544,10 @@
       },
       "voidNotAvailable": "Void not available",
       "voidNotAvailablePolicy": "Void not available (airline policy)",
-      "voidQuote": "Void quote"
+      "voidQuote": "Void quote",
+      "departFrom": "Depart from",
+      "arriveAt": "Arrive at",
+      "totalFlightDuration": "Total Flight Duration"
     },
     "labels": {
       "afterDatePenalty": "After {date}: penalty of {amount}",

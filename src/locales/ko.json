@@ -2411,5 +2411,15 @@
         "body": "해당 결제는 완료되지 않은 승인 건이며, 보통 며칠 안에 카드사에서 자동으로 취소됩니다. 기간이 지나도 취소되지 않았거나, 의도하지 않은 예약이 결제와 함께 존재한다면 예약 번호와 함께 문의해 주세요. 저희가 추적해 드리겠습니다."
       }
     }
+  },
+  "trips": {
+    "flightBookingCard": {
+      "departFrom": "출발",
+      "arriveAt": "도착",
+      "stateChips": {
+        "flightInProgress": "비행 중"
+      },
+      "totalFlightDuration": "총 비행 시간"
+    }
   }
 }

@@ -2294,5 +2294,15 @@
         "body": "その請求は完了しなかった与信枠の確保で、通常は数日以内にご利用の金融機関側で自動的に解除されます。解除されない場合、またはご意図のない予約が請求とともに存在する場合は、予約番号を添えてお問い合わせください。当社で追跡いたします。"
       }
     }
+  },
+  "trips": {
+    "flightBookingCard": {
+      "departFrom": "出発",
+      "arriveAt": "到着",
+      "stateChips": {
+        "flightInProgress": "フライト中"
+      },
+      "totalFlightDuration": "総飛行時間"
+    }
   }
 }

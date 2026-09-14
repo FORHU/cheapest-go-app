@@ -2297,5 +2297,15 @@
         "body": "该笔扣款是一次未完成的授权，通常会由您的银行在数日内自动释放。如果长时间未释放，或存在您并未打算完成的预订却已扣款，请提供预订编号联系我们，我们会为您追查。"
       }
     }
+  },
+  "trips": {
+    "flightBookingCard": {
+      "departFrom": "出发",
+      "arriveAt": "抵达",
+      "stateChips": {
+        "flightInProgress": "航班进行中"
+      },
+      "totalFlightDuration": "总飞行时长"
+    }
   }
 }

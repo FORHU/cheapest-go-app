@@ -48,7 +48,7 @@ export function FlightItineraryDetails({ offer }: { offer: FlightOffer }) {
                                     trip's outbound and return rarely run the same length, and the
                                     traveller reading one leg's segments wants that leg's number,
                                     not a sum of both directions or a value borrowed from the other. */}
-                                {twoWay && (
+                                {twoWay && slice.durationMinutes != null && (
                                     <span className="normal-case tracking-normal text-slate-400 dark:text-slate-500">
                                         {t('totalFlightDuration')}{' '}
                                         <span className="font-semibold text-slate-700 dark:text-slate-200">

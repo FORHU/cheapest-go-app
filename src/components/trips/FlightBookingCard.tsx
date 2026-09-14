@@ -1,16 +1,21 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { motion } from 'framer-motion';
-import { useTranslations } from 'next-intl';
+import { useTranslations, useLocale } from 'next-intl';
 import { Calendar, Clock, Users, CheckCircle, XCircle, AlertTriangle, Loader2, RefreshCw, RotateCcw, ChevronDown, ChevronUp, Plane, Receipt, ArrowLeftRight, ChevronRight } from 'lucide-react';
 import type { FlightBookingRecord } from '@/services/booking.service';
 import { formatDate, formatCurrency } from '@/lib/utils';
-import { formatDuration, getAirlineName } from '@/utils/flight-utils';
+import { formatDurationLong, getAirlineName } from '@/utils/flight-utils';
 import { convertCurrency } from '@/lib/currency';
 import { useUserCurrency } from '@/stores/searchStore';
 import { FormDatePicker } from '@/components/common/FormDatePicker';
+import { bookingToFlightOffer, durationMinutes } from '@/lib/trips/booking-itinerary';
+import { offerSlices } from '@/lib/flights/offer-slices';
+import { segmentTerminal } from '@/lib/flights/terminal-fallback';
+import { getAirportByCode } from '@/lib/airports';
+import { FlightItineraryDetails } from '@/components/flights/FlightItineraryDetails';
 
 interface FlightBookingCardProps {
     booking: FlightBookingRecord;
@@ -255,6 +260,7 @@ function CancelModal({ booking, onConfirm, onClose, isLoading, error, displayCur
 
 export default function FlightBookingCard({ booking, onCancelled }: FlightBookingCardProps) {
     const t = useTranslations('trips');
+    const locale = useLocale();
     const [showCancelModal, setShowCancelModal] = useState(false);
     const [isCancelling, setIsCancelling] = useState(false);
     const [cancelError, setCancelError] = useState<string | null>(null);
@@ -448,39 +454,34 @@ export default function FlightBookingCard({ booking, onCancelled }: FlightBookin
     const fmtTime = (iso: string) =>
         formatDate(new Date(iso), { hour: '2-digit', minute: '2-digit', hour12: false }, 'en-US').split(', ')[1]
         || new Date(iso).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
-    const segMinutes = (dep: string, arr: string) =>
-        Math.round((new Date(arr).getTime() - new Date(dep).getTime()) / 60000);
 
-    // Segments grouped by leg (outbound/return/multi-city) for the itinerary panel —
-    // each leg's own hops stay together so a layover is never confused with the
-    // days-long gap between an outbound arrival and a return departure.
-    //
-    // segment_index is what insertFlightSegments() actually sets per leg; itinerary_index
-    // is a legacy column the current insert path never writes, so it's 0 on every row and
-    // can't be trusted alone. A gap over 24h is also treated as a leg boundary, mirroring
-    // the same heuristic the confirmation email's groupFlightSlices() uses.
-    const itineraryLegs = (() => {
-        if (segments.length === 0) return [];
-        const legIndex = (seg: (typeof segments)[number]) => seg.segment_index ?? seg.itinerary_index;
-        const sorted = [...segments].sort((a, b) => new Date(a.departure).getTime() - new Date(b.departure).getTime());
-        const legs: (typeof segments)[] = [[sorted[0]]];
-        for (let i = 1; i < sorted.length; i++) {
-            const prev = sorted[i - 1];
-            const cur = sorted[i];
-            const indexChanged = legIndex(cur) !== legIndex(prev);
-            const gapHours = (new Date(cur.departure).getTime() - new Date(prev.arrival).getTime()) / 3_600_000;
-            if (indexChanged || gapHours > 24) legs.push([cur]);
-            else legs[legs.length - 1].push(cur);
-        }
-        return legs.map((legSegments, i) => ({
-            label: legs.length > 1
-                ? (i === 0 ? t('flightBookingCard.tripLegs.outbound')
-                    : i === 1 ? t('flightBookingCard.tripLegs.return')
-                    : t('flightBookingCard.tripLegs.leg', { number: i + 1 }))
-                : null,
-            segments: legSegments,
-        }));
-    })();
+    // The booking's segments, in the shape the shared itinerary components already know
+    // how to draw — the same component the search card and the book page use. Handles its
+    // own leg-grouping (segment_index, falling back to a 24h-gap boundary for legacy rows)
+    // — see booking-itinerary.ts — so this file no longer needs its own copy of that rule.
+    const bookingOffer = useMemo(() => bookingToFlightOffer(booking), [booking]);
+
+    // The outbound leg's own first and last flight — the turnaround point for a round
+    // trip, matching what `mainDestination` above already identifies as the headline
+    // destination. Read through segmentTerminal() rather than the raw DB column, so the
+    // header names the same terminal the expanded panel below it does, standing-table
+    // fallback included, rather than disagreeing with it for a carrier that reports none.
+    const outboundSlice = bookingOffer ? offerSlices(bookingOffer)[0] : undefined;
+    const outboundFirstSeg = outboundSlice?.segments[0];
+    const outboundLastSeg = outboundSlice?.segments[outboundSlice.segments.length - 1];
+    const headerDepartureTerminal = outboundFirstSeg ? segmentTerminal(outboundFirstSeg, 'departure') : undefined;
+    const headerArrivalTerminal = outboundLastSeg ? segmentTerminal(outboundLastSeg, 'arrival') : undefined;
+    const headerDepartureAirport = outboundFirstSeg ? getAirportByCode(outboundFirstSeg.origin) : undefined;
+    const headerArrivalAirport = outboundLastSeg ? getAirportByCode(outboundLastSeg.destination) : undefined;
+    // Wheels-up to wheels-down across the whole outbound, connections included. Safe to
+    // subtract: these are stored as `timestamp with time zone`, so both are real instants.
+    const outboundTotalMinutes = outboundFirstSeg && outboundLastSeg
+        ? durationMinutes(outboundFirstSeg.departure.time, outboundLastSeg.arrival.time)
+        : 0;
+    // Every flight number the traveller boards, in order — "QR0927, QR0103" reads as one
+    // trip's worth of tickets, not one flight repeated. flight_number already carries the
+    // airline prefix (set from marketing_carrier.iata_code + number at booking time).
+    const allFlightNumbers = Array.from(new Set(segments.map(s => s.flight_number))).join(', ');
 
     // ── Cancel handler ──────────────────────────────────────────────
     const handleCancelConfirm = async (cancellationId?: string) => {
@@ -1099,6 +1100,19 @@ export default function FlightBookingCard({ booking, onCancelled }: FlightBookin
                 </span>
             );
         }
+        // Neither upcoming nor past: departure has happened, arrival hasn't — the window
+        // renderStateChip previously had no branch for, so nothing was shown at all.
+        //
+        // Requires segments: with none, isUpcoming and isPast are both undefined rather
+        // than false, and a booking whose flights we cannot see would claim to be in the
+        // air on the strength of two missing values.
+        if (localStatus === 'ticketed' && segments.length > 0 && !isUpcoming && !isPast) {
+            return (
+                <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-amber-50 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 border border-amber-200 dark:border-amber-800 whitespace-nowrap">
+                    <CheckCircle className="w-3 h-3 shrink-0" /> {t('flightBookingCard.stateChips.flightInProgress')}
+                </span>
+            );
+        }
         if (localStatus === 'awaiting_ticket') {
             return (
                 <span className="inline-flex items-center gap-1 text-[10px] text-amber-600 dark:text-amber-400 font-medium whitespace-nowrap">
@@ -1277,81 +1291,148 @@ export default function FlightBookingCard({ booking, onCancelled }: FlightBookin
 
                 {/* ── DESKTOP layout ── */}
                 <div className="hidden md:flex flex-row min-h-[140px]">
-                    {/* Visual Header */}
-                    <div className="relative w-36 lg:w-44 flex-shrink-0 bg-white dark:bg-slate-800 flex flex-col items-center justify-center rounded-l-lg border-r border-slate-100 dark:border-slate-700 transition-colors overflow-hidden">
-                        {/* Status badge — sits on top of the logo */}
-                        <div className="absolute top-1.5 left-1.5 z-20">
-                            <span className={`text-[clamp(0.5625rem,1.5vw,0.625rem)] font-semibold px-1.5 py-0.5 rounded shadow ${flightStatusColors[localStatus] || flightStatusColors.booked}`}>
-                                {flightStatusLabels[localStatus] || t('status.unknown')}
-                            </span>
-                        </div>
-                        {/* Logo fills entire panel */}
-                        <div className="absolute inset-0 flex items-center justify-center p-4">
-                            <img
-                                src={`https://images.kiwi.com/airlines/64/${firstSegment?.airline}.png`}
-                                alt={firstSegment?.airline ?? ''}
-                                className="w-full h-full object-contain group-hover:scale-110 transition-transform duration-300"
-                                onError={(e) => {
-                                    e.currentTarget.style.display = 'none';
-                                    (e.currentTarget.nextSibling as HTMLElement)?.style.removeProperty('display');
-                                }}
-                            />
-                            <span className="hidden text-2xl font-bold text-slate-900 dark:text-white uppercase">
-                                {firstSegment?.airline}
-                            </span>
-                        </div>
-                    </div>
-
                     {/* Content */}
                     <div className="flex-1 p-3 flex flex-col min-w-0">
-                        <div className="flex items-center gap-2 mb-1">
-                            <span className="bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider shrink-0">{tripType}</span>
-                            <h3 className="text-[clamp(0.75rem,2vw,0.875rem)] font-bold text-slate-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors truncate">
-                            {firstSegment ? t('flightBookingCard.originTo', { origin, destination: mainDestination }) : t('flightBookingCard.flightBooking')}
-                            </h3>
+                        {/* Airline, its flight numbers, and the fare's facts on one row —
+                            the design leads with who is flying and what was bought. The
+                            route is not restated as a heading here: DEPART FROM and
+                            ARRIVE AT below already name both ends, in full. */}
+                        <div className="flex flex-wrap items-start gap-x-3 gap-y-2 mb-2">
+                            <div className="flex items-center gap-2 shrink-0">
+                                <div className="relative w-9 h-9 rounded-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center shrink-0 overflow-hidden">
+                                    <img
+                                        src={`https://images.kiwi.com/airlines/64/${firstSegment?.airline}.png`}
+                                        alt={firstSegment?.airline ?? ''}
+                                        className="w-6 h-6 object-contain"
+                                        onError={(e) => {
+                                            e.currentTarget.style.display = 'none';
+                                            (e.currentTarget.nextSibling as HTMLElement)?.style.removeProperty('display');
+                                        }}
+                                    />
+                                    <span className="hidden text-[10px] font-bold text-slate-900 dark:text-white uppercase">
+                                        {firstSegment?.airline}
+                                    </span>
+                                </div>
+                                <div className="min-w-0">
+                                    <span className="block text-[clamp(0.75rem,2vw,0.875rem)] font-bold text-blue-600 dark:text-blue-400 truncate">
+                                        {getAirlineName(firstSegment?.airline ?? '')}
+                                    </span>
+                                    {allFlightNumbers && (
+                                        <span className="block text-[10px] font-mono text-slate-400 dark:text-slate-500 truncate">
+                                            {allFlightNumbers}
+                                        </span>
+                                    )}
+                                </div>
+                            </div>
+
+                            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[clamp(0.625rem,1.5vw,0.75rem)] text-slate-500 dark:text-slate-400 pt-1">
+                                <span className="flex items-center gap-1.5">
+                                    <span className="text-indigo-500 font-bold px-1 py-0.5 rounded bg-indigo-50 dark:bg-indigo-900/30 text-[9px] uppercase border border-indigo-100 dark:border-indigo-800 shrink-0">PNR</span>
+                                    <span className="font-mono font-medium">{booking.pnr}</span>
+                                </span>
+                                <span className="flex items-center gap-1.5">
+                                    <Users className="w-3.5 h-3.5 text-green-500 shrink-0" />
+                                    {/* One traveller is a passenger, not "1 passengers". */}
+                                    <span>
+                                        {t(
+                                            (booking.passengers?.length ?? 0) === 1
+                                                ? 'flightBookingCard.passenger'
+                                                : 'flightBookingCard.passengers',
+                                            { count: booking.passengers?.length || 0 },
+                                        )}
+                                    </span>
+                                </span>
+                                {segments.length > 0 && (() => {
+                                    // Group hops by itinerary_index (outbound=0, return=1, etc.)
+                                    // Stops per direction = hops in that direction - 1
+                                    const byItinerary = segments.reduce<Record<number, typeof segments>>((acc, seg) => {
+                                        const idx = seg.itinerary_index ?? 0;
+                                        (acc[idx] ??= []).push(seg);
+                                        return acc;
+                                    }, {});
+                                    const itineraryKeys = Object.keys(byItinerary).map(Number).sort();
+                                    const stopLabels = itineraryKeys.map(k => {
+                                        const count = byItinerary[k].length - 1;
+                                        return count === 0 ? t('flightBookingCard.nonstop') : t(count === 1 ? 'flightBookingCard.stop' : 'flightBookingCard.stops', { count });
+                                    });
+                                    return (
+                                        <span className="flex items-center gap-1.5">
+                                            <Clock className="w-3.5 h-3.5 text-purple-500 shrink-0" />
+                                            <span>{stopLabels.join(' / ')}</span>
+                                        </span>
+                                    );
+                                })()}
+                            </div>
                         </div>
 
-                        <div className="flex flex-wrap items-start gap-4 text-[clamp(0.625rem,1.5vw,0.75rem)] text-slate-500 dark:text-slate-400 mb-2">
-                            {firstSegment && (
-                                <div className="flex items-center gap-1.5">
-                                    <Calendar className="w-3.5 h-3.5 text-blue-500 shrink-0" />
-                                    <div>
-                                        <span className="font-medium text-slate-700 dark:text-slate-300 mr-1.5">{fmtDate(firstSegment.departure)}</span>
-                                        <span>
-                                            {fmtTime(firstSegment.departure)} <span className="text-[10px]">({firstSegment.origin})</span> → {fmtTime(lastSegment.arrival)} <span className="text-[10px]">({lastSegment.destination})</span>
+                        {/* Both ends dated in full, so a red-eye says which day it lands. */}
+                        {firstSegment && lastSegment && (
+                            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mb-2 text-[clamp(0.625rem,1.5vw,0.75rem)] text-slate-500 dark:text-slate-400">
+                                <Calendar className="w-3.5 h-3.5 text-blue-500 shrink-0" />
+                                <span>{fmtDate(firstSegment.departure)}, {fmtTime(firstSegment.departure)}</span>
+                                <span aria-hidden="true" className="text-slate-300 dark:text-slate-600">→</span>
+                                <span>{fmtDate(lastSegment.arrival)}, {fmtTime(lastSegment.arrival)}</span>
+                            </div>
+                        )}
+
+                        {/* The outbound leg's own clocks and elapsed time — its turnaround,
+                            not an offer-wide figure a round trip's return never flew.
+                            Formatted with the same fmtTime the rows above and the mobile
+                            layout use: it briefly used a different formatter, and the card
+                            stated two different departure times for the same flight. */}
+                        {outboundFirstSeg && outboundLastSeg && (
+                            <div className="flex items-center gap-3 mb-2">
+                                <span className="text-xl font-semibold leading-tight text-slate-900 dark:text-white shrink-0">
+                                    {fmtTime(outboundFirstSeg.departure.time)}
+                                </span>
+                                <div className="flex-1 min-w-0 flex flex-col items-center gap-1">
+                                    {outboundTotalMinutes > 0 && (
+                                        <span className="text-center text-[10px] text-slate-400 dark:text-slate-500">
+                                            {t('flightBookingCard.totalFlightDuration')}{' '}
+                                            <span className="font-semibold text-slate-900 dark:text-white">
+                                                {formatDurationLong(outboundTotalMinutes)}
+                                            </span>
                                         </span>
-                                    </div>
+                                    )}
+                                    <div className="w-full border-t border-dotted border-blue-300 dark:border-blue-800/60" />
                                 </div>
-                            )}
-                            <div className="flex items-center gap-1.5">
-                                <span className="text-indigo-500 font-bold px-1 py-0.5 rounded bg-indigo-50 dark:bg-indigo-900/30 text-[9px] uppercase border border-indigo-100 dark:border-indigo-800 shrink-0">PNR</span>
-                                <span className="font-mono font-medium">{booking.pnr}</span>
+                                <span className="text-xl font-semibold leading-tight text-slate-900 dark:text-white shrink-0">
+                                    {fmtTime(outboundLastSeg.arrival.time)}
+                                </span>
                             </div>
-                            <div className="flex items-center gap-1.5">
-                                <Users className="w-3.5 h-3.5 text-green-500 shrink-0" />
-                                <span>{t('flightBookingCard.passengers', { count: booking.passengers?.length || 0 })}</span>
+                        )}
+
+                        {/* Depart from / arrive at — airport in full, and the same terminal
+                            (standing-table fallback included) the expanded panel below
+                            shows, so the two never disagree about the same flight. */}
+                        {outboundFirstSeg && outboundLastSeg && (
+                            <div className="flex items-start justify-between gap-2 mb-2 text-[clamp(0.625rem,1.5vw,0.75rem)]">
+                                <div className="min-w-0">
+                                    <span className="block text-[9px] uppercase tracking-wider text-slate-400 dark:text-slate-500">
+                                        {t('flightBookingCard.departFrom')}
+                                    </span>
+                                    <span className="block text-slate-800 dark:text-slate-200 truncate">
+                                        {headerDepartureAirport?.name ?? outboundFirstSeg.origin}
+                                    </span>
+                                    {/* The code and terminal lead: it is what the traveller
+                                        reads off the card on the way to the airport. */}
+                                    <span className="block text-lg font-bold leading-tight text-slate-900 dark:text-white">
+                                        {outboundFirstSeg.origin}{headerDepartureTerminal ? ` T${headerDepartureTerminal}` : ''}
+                                    </span>
+                                </div>
+                                <div className="min-w-0 text-right">
+                                    <span className="block text-[9px] uppercase tracking-wider text-slate-400 dark:text-slate-500">
+                                        {t('flightBookingCard.arriveAt')}
+                                    </span>
+                                    <span className="block text-slate-800 dark:text-slate-200 truncate">
+                                        {headerArrivalAirport?.name ?? outboundLastSeg.destination}
+                                    </span>
+                                    <span className="block text-lg font-bold leading-tight text-slate-900 dark:text-white">
+                                        {outboundLastSeg.destination}{headerArrivalTerminal ? ` T${headerArrivalTerminal}` : ''}
+                                    </span>
+                                </div>
                             </div>
-                            {segments.length > 0 && (() => {
-                                // Group hops by itinerary_index (outbound=0, return=1, etc.)
-                                // Stops per direction = hops in that direction - 1
-                                const byItinerary = segments.reduce<Record<number, typeof segments>>((acc, seg) => {
-                                    const idx = seg.itinerary_index ?? 0;
-                                    (acc[idx] ??= []).push(seg);
-                                    return acc;
-                                }, {});
-                                const itineraryKeys = Object.keys(byItinerary).map(Number).sort();
-                                const stopLabels = itineraryKeys.map(k => {
-                                    const count = byItinerary[k].length - 1;
-                                    return count === 0 ? t('flightBookingCard.nonstop') : t(count === 1 ? 'flightBookingCard.stop' : 'flightBookingCard.stops', { count });
-                                });
-                                return (
-                                    <div className="flex items-center gap-1.5">
-                                        <Clock className="w-3.5 h-3.5 text-purple-500 shrink-0" />
-                                        <span>{stopLabels.join(' / ')}</span>
-                                    </div>
-                                );
-                            })()}
-                        </div>
+                        )}
 
                         {/* eTickets + fare policy badges */}
                         <div className="mt-auto space-y-1.5">
@@ -1574,47 +1655,12 @@ export default function FlightBookingCard({ booking, onCancelled }: FlightBookin
                         {showFlightItinerary ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
                     </button>
                 )}
-                {showFlightItinerary && (
-                    <div className="border-t border-slate-100 dark:border-slate-800 px-3 lg:px-5 py-3 space-y-4">
-                        {itineraryLegs.map((leg, legIdx) => (
-                            <div key={legIdx}>
-                                {leg.label && (
-                                    <div className="text-[9px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-1.5">{leg.label}</div>
-                                )}
-                                {leg.segments.map((seg, i) => {
-                                    const flightMins = segMinutes(seg.departure, seg.arrival);
-                                    const next = leg.segments[i + 1];
-                                    const layoverMins = next ? segMinutes(seg.arrival, next.departure) : 0;
-                                    return (
-                                        <div key={seg.id ?? i} className="flex items-start gap-2.5">
-                                            <div className="flex flex-col items-center pt-1 shrink-0">
-                                                <div className="w-1.5 h-1.5 rounded-full bg-blue-500" />
-                                                {i < leg.segments.length - 1 && <div className="w-px flex-1 bg-slate-200 dark:bg-slate-700 my-1 min-h-[20px]" />}
-                                            </div>
-                                            <div className="flex-1 min-w-0 pb-2.5">
-                                                <div className="flex items-center justify-between gap-2">
-                                                    <span className="text-xs font-bold text-slate-900 dark:text-white">{seg.origin} → {seg.destination}</span>
-                                                    <span className="text-[10px] font-mono text-slate-500 dark:text-slate-400 shrink-0">{seg.airline} {seg.flight_number}</span>
-                                                </div>
-                                                <div className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">
-                                                    {fmtDate(seg.departure)} · {fmtTime(seg.departure)} → {fmtTime(seg.arrival)}
-                                                </div>
-                                                <div className="text-[10px] text-slate-400 dark:text-slate-500 mt-0.5 flex items-center gap-1">
-                                                    <Plane className="w-2.5 h-2.5 shrink-0" />
-                                                    <span className="truncate">{getAirlineName(seg.airline)}</span>
-                                                    {flightMins > 0 && <span className="shrink-0">· {formatDuration(flightMins)}</span>}
-                                                </div>
-                                                {next && layoverMins > 0 && (
-                                                    <div className="text-[10px] text-amber-600 dark:text-amber-400 mt-1.5 font-medium">
-                                                        {t('flightBookingCard.layover', { duration: formatDuration(layoverMins), airport: seg.destination })}
-                                                    </div>
-                                                )}
-                                            </div>
-                                        </div>
-                                    );
-                                })}
-                            </div>
-                        ))}
+                {showFlightItinerary && bookingOffer && (
+                    <div className="border-t border-slate-100 dark:border-slate-800 px-3 lg:px-5 py-3">
+                        {/* The same component the search card and the book page draw a
+                            journey with, fed from bookingToFlightOffer() — one description
+                            of the flight instead of a second one that can drift from it. */}
+                        <FlightItineraryDetails offer={bookingOffer} />
                     </div>
                 )}
 
