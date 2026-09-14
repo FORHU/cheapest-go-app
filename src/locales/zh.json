@@ -766,7 +766,7 @@
       "currentlySelected": "当前已选",
       "direct": "直飞",
       "freeCancellation": "免费取消",
-      "hideDetails": "隐藏详情",
+      "hideDetails": "隐藏航班行程",
       "legLabel": "第{number}段",
       "moreSegments": "+ {count} 个",
       "operatedBy": "由 {airline} 执飞",

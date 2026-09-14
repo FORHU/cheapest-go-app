@@ -876,7 +876,7 @@
       "currentlySelected": "현재 선택됨",
       "direct": "직항",
       "freeCancellation": "무료 취소",
-      "hideDetails": "상세 정보 숨기기",
+      "hideDetails": "항공편 여정 숨기기",
       "legLabel": "{number}번째 구간",
       "moreSegments": "+ {count} 더",
       "operatedBy": "{airline} 운항",

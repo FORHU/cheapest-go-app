@@ -91,6 +91,19 @@ describe('sliceTimeline', () => {
         expect(sliceTimeline(offerSlices(unknown)[0])[0].departure.airportName).toBe('ZZZ');
     });
 
+    it('names the city an end is in, alongside the airport itself', () => {
+        const legs = sliceTimeline(offerSlices(oneStop)[0]);
+
+        expect(legs[0].departure.city).toBe('Clark');
+        expect(legs[1].arrival.city).toBe('London');
+    });
+
+    it('leaves the city unset for an airport it does not know, rather than guessing', () => {
+        const unknown = offer([seg(0, 'ZZZ', 'CRK', '2026-09-23T08:00:00', '2026-09-23T10:00:00', { duration: 120 })]);
+
+        expect(sliceTimeline(offerSlices(unknown)[0])[0].departure.city).toBeUndefined();
+    });
+
     it("takes each leg's duration from the provider's own figure", () => {
         const legs = sliceTimeline(offerSlices(oneStop)[0]);
 

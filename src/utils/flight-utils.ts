@@ -25,6 +25,14 @@ const CLOCK: Record<string, { hour12: boolean; am?: string; pm?: string; markerF
     zh: { hour12: false },
 };
 
+/**
+ * "Economy", "Premium Economy" — title-cased in the text itself rather than by a
+ * `capitalize` class, so the label reads correctly wherever the string is used.
+ */
+export function cabinLabel(cabinClass: string | undefined): string {
+    return (cabinClass || 'economy').replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+}
+
 export function formatTimeIn(iso: string | undefined, locale = 'en'): string {
     if (!iso) return '--:--';
     // The digits in the string ARE the answer — no Date is constructed, so no runtime

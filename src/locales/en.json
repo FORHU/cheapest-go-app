@@ -905,7 +905,7 @@
       "currentlySelected": "Currently Selected",
       "direct": "Direct",
       "freeCancellation": "Free cancellation",
-      "hideDetails": "Hide details",
+      "hideDetails": "Hide flight itinerary",
       "legLabel": "Leg {number}",
       "moreSegments": "+ {count} more",
       "operatedBy": "Operated by {airline}",

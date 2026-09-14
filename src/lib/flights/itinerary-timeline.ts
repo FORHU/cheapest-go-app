@@ -10,6 +10,8 @@ export interface TimelineStop {
     airportCode: string;
     /** The airport's full name, or the bare code when it is not one we know. */
     airportName: string;
+    /** The city the airport serves. Absent, not guessed, when the airport itself is unknown. */
+    city?: string;
     terminal?: string;
 }
 
@@ -27,12 +29,14 @@ export interface TimelineLeg {
 function stop(seg: FlightSegmentDetail, end: 'departure' | 'arrival'): TimelineStop {
     const point = seg[end];
     const code = point.airport;
+    const airport = getAirportByCode(code);
     return {
         time: point.time,
         airportCode: code,
         // A code we do not carry is shown as itself. Inventing a name would be worse
         // than showing the three letters printed on the boarding pass.
-        airportName: getAirportByCode(code)?.name ?? code,
+        airportName: airport?.name ?? code,
+        city: airport?.city,
         // The provider's terminal if it gave one, else the carrier's standing gate.
         terminal: segmentTerminal(seg, end),
     };

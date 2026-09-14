@@ -764,7 +764,7 @@
       "currentlySelected": "現在選択中",
       "direct": "直行便",
       "freeCancellation": "無料キャンセル",
-      "hideDetails": "詳細を隠す",
+      "hideDetails": "フライトの旅程を隠す",
       "legLabel": "区間 {number}",
       "moreSegments": "+ {count}件",
       "operatedBy": "運航: {airline}",
