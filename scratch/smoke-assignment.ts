@@ -168,23 +168,41 @@ async function main() {
     const of = (id: string) => tally.find((t: any) => t.adminId === id);
     check('the tally credits Ben, not Aida', of(ben.id)?.handled === 1 && of(aida.id)?.handled === 0, JSON.stringify([of(aida.id), of(ben.id)]));
 
-    console.log('\n6. The customer comes back');
-    await C.post('/api/support/conversation/messages', { body: 'One more question, please.' });
-    const reopenedDetail = (await A.get(`/api/admin/support/conversations/${convId}`)).json?.conversation;
-    check('reopened into Unassigned, owner dropped', reopenedDetail?.status === 'waiting_human' && reopenedDetail?.assignedAdminId === null, JSON.stringify(reopenedDetail?.status));
+    console.log('\n6. The customer comes back — a new chat, not a reopen');
+    // The panel is still showing the resolved chat; writing into it starts the next one.
+    const again = await C.post('/api/support/conversation/messages', { body: 'One more question, please.' });
+    const newId: string = again.json?.conversation?.id;
+    const newRef: string = again.json?.conversation?.reference;
+    const oldRef: string = opened.json?.conversation?.reference;
+    check('writing after resolve starts a new chat with a new reference', again.status === 201 && again.json?.started === true && !!newRef && newRef !== oldRef, JSON.stringify(again.json).slice(0, 160));
+    const oldAfter = (await A.get(`/api/admin/support/conversations/${convId}`)).json?.conversation;
+    check('the resolved chat stays resolved, still credited to Ben', oldAfter?.status === 'resolved' && oldAfter?.assignedAdminId === ben.id, JSON.stringify(oldAfter?.status));
+    check('the new chat arrives Unassigned', listIds(await A.get('/api/admin/support/conversations?filter=unassigned')).includes(newId));
+    const reopenWidget = await C.post('/api/support/conversation', { locale: 'en' });
+    check('opening the widget resumes the new chat, not the old one', reopenWidget.json?.conversation?.id === newId, reopenWidget.json?.conversation?.reference);
+    const past = await C.get('/api/support/conversation/history');
+    check('the customer sees the old chat as a previous conversation', (past.json?.conversations ?? []).some((c: any) => c.reference === oldRef), JSON.stringify(past.json));
+    const pastRead = await C.get(`/api/support/conversation/history/${oldRef}`);
+    check('and can read it back', pastRead.status === 200 && (pastRead.json?.messages ?? []).some((m: any) => m.body === 'Hello, I have your chat now.'), String(pastRead.status));
+    const openRead = await C.get(`/api/support/conversation/history/${newRef}`);
+    check('but the open chat is not served as history (404)', openRead.status === 404, String(openRead.status));
+    const earlier = (await A.get(`/api/admin/support/conversations/${newId}`)).json?.previousConversations ?? [];
+    check("the agent sees the customer's earlier chat beside the new one", earlier.some((c: any) => c.reference === oldRef), JSON.stringify(earlier));
 
     console.log('\n7. Aida stops being a Support Agent');
-    await A.post(`/api/admin/support/conversations/${convId}/assign`, { toAdminId: aida.id });
+    await A.post(`/api/admin/support/conversations/${newId}/assign`, { toAdminId: aida.id });
     const demoted = await A.post('/api/admin/promote', { userId: aida.id, newRole: 'user' });
     check('admin changes her role', demoted.status === 200, `${demoted.status} ${demoted.text.slice(0, 100)}`);
-    const afterDemote = (await A.get(`/api/admin/support/conversations/${convId}`)).json?.conversation?.assignedAdminId;
+    const afterDemote = (await A.get(`/api/admin/support/conversations/${newId}`)).json?.conversation?.assignedAdminId;
     check('her open chat went back to Unassigned', afterDemote === null, String(afterDemote));
 
     console.log('\n8. The recorded history');
-    const history = await sql<{ kind: string }[]>`
-        SELECT kind FROM support_assignment_events WHERE conversation_id = ${convId} ORDER BY created_at, id`;
-    const kinds = history.map(h => h.kind).join(' → ');
-    check('every change is on record', kinds === 'assigned → returned → assigned → resolved → reopened → assigned → released', kinds);
+    const kindsOf = async (id: string) => (await sql<{ kind: string }[]>`
+        SELECT kind FROM support_assignment_events WHERE conversation_id = ${id} ORDER BY created_at, id`).map(h => h.kind).join(' → ');
+    const oldKinds = await kindsOf(convId);
+    const newKinds = await kindsOf(newId);
+    check('first chat: assigned → returned → assigned → resolved', oldKinds === 'assigned → returned → assigned → resolved', oldKinds);
+    check('second chat: assigned → released', newKinds === 'assigned → released', newKinds);
 
     console.log('\n9. The pages render');
     const deskAida = await B.get('/admin/desk');

@@ -416,7 +416,7 @@ describe('Assignment on screen', () => {
             />,
         );
         fireEvent.click(screen.getByText('Ana Reyes'));
-        await screen.findByText(/Assigned to|Unassigned/, { selector: 'span' });
+        await screen.findByRole('complementary', { name: 'Conversation details' });
     };
 
     it('lets a Support Agent read an Unassigned chat but not answer it', async () => {
@@ -450,12 +450,46 @@ describe('Assignment on screen', () => {
         mockDetail({ assignedAdminId: null });
         await open('admin', 'admin-1');
 
-        const select = await screen.findByRole('combobox');
-        await waitFor(() => expect(select).toHaveTextContent('Aida Cruz'));
+        const picker = await screen.findByRole('combobox', { name: /assign to/i });
+        await waitFor(() => expect(picker).toBeEnabled());
+        fireEvent.click(picker);
+        expect(await screen.findByRole('option', { name: /Aida Cruz/ })).toBeInTheDocument();
+        expect(screen.getByRole('option', { name: /Boss \(you\)/ })).toBeInTheDocument();
         // An admin writes anywhere — the reply box is there even though it is unassigned.
         expect(screen.getByRole('textbox', { name: /reply to the customer/i })).toBeInTheDocument();
 
         fireEvent.click(screen.getByRole('button', { name: /team · handled in/i }));
         expect(screen.getByText('7')).toBeInTheDocument();
+    });
+
+    it('assigns the person an admin picks from the list', async () => {
+        mockDetail({ assignedAdminId: null });
+        await open('admin', 'admin-1');
+
+        const picker = await screen.findByRole('combobox', { name: /assign to/i });
+        await waitFor(() => expect(picker).toBeEnabled());
+        fireEvent.click(picker);
+        fireEvent.click(await screen.findByRole('option', { name: /Aida Cruz/ }));
+
+        await waitFor(() => {
+            const calls = vi.mocked(fetch).mock.calls as [string, RequestInit?][];
+            const assign = calls.find(([url]) => url.endsWith('/conversations/a/assign'));
+            expect(assign?.[1]?.body).toBe(JSON.stringify({ toAdminId: 'agent-1' }));
+        });
+    });
+
+    it('closes the list on Escape without assigning anyone', async () => {
+        mockDetail({ assignedAdminId: null });
+        await open('admin', 'admin-1');
+
+        const picker = await screen.findByRole('combobox', { name: /assign to/i });
+        await waitFor(() => expect(picker).toBeEnabled());
+        fireEvent.click(picker);
+        const list = await screen.findByRole('listbox');
+        fireEvent.keyDown(list, { key: 'Escape' });
+
+        expect(screen.queryByRole('listbox')).not.toBeInTheDocument();
+        const calls = vi.mocked(fetch).mock.calls as [string][];
+        expect(calls.some(([url]) => url.endsWith('/assign'))).toBe(false);
     });
 });

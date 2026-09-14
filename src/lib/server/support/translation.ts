@@ -90,32 +90,38 @@ export function translationConfigured(): boolean {
 }
 
 /**
- * The same four sentences in every language, for the prompt's worked examples.
+ * The same five sentences in every language, for the prompt's worked examples.
  *
- * Each is chosen to be a sentence the engine refuses when it arrives alone: a plea, a
+ * Each is chosen to be a sentence the engine refuses when it arrives alone: abuse, a plea, a
  * "cannot", an apology. The examples show it the pattern on exactly the input it would
  * otherwise answer, so the real message reads as one more line of it.
  */
-const EXAMPLES: Record<SupportLang, [string, string, string, string]> = {
+const EXAMPLES: Record<SupportLang, [string, string, string, string, string]> = {
     en: [
+        // An angry customer, rendered rudely: the engine refused insults and swearing outright
+        // (see buildPrompt), and an Agent needs to know the customer is abusive.
+        'You stupid scammers, give me my money back right now.',
         'I did not receive my hotel booking confirmation.',
         "I'm sorry, but I was charged twice.",
         "My booking doesn't show in the app. Can you help me?",
         'I cannot check in at the airport.',
     ],
     ko: [
+        '이 멍청한 사기꾼들아, 당장 내 돈 돌려줘.',
         '호텔 예약 확인서를 받지 못했습니다.',
         '죄송하지만 결제가 두 번 되었어요.',
         '제 예약이 앱에 보이지 않습니다. 도와주실 수 있나요?',
         '공항에서 체크인을 할 수 없습니다.',
     ],
     ja: [
+        'このバカな詐欺師ども、今すぐ金を返せ。',
         'ホテルの予約確認書を受け取っていません。',
         '申し訳ありませんが、二重に請求されました。',
         'アプリに予約が表示されません。助けていただけますか？',
         '空港でチェックインできません。',
     ],
     zh: [
+        '你们这些愚蠢的骗子，马上把钱还给我。',
         '我没有收到酒店预订确认书。',
         '不好意思，我被重复扣款了。',
         '我的预订在应用里不显示。可以帮我吗？',
@@ -141,6 +147,14 @@ const EXAMPLES: Record<SupportLang, [string, string, string, string]> = {
  *   - **No "you never apologise or refuse" line.** It was there to forbid refusals, and it
  *     caused them: a customer who opens with an apology collided with it (1–3 of 6), and the
  *     model sometimes read the line back as its answer. Without it the hard set went 24/24.
+ *   - **Abuse, said out loud** (2026-09-14). Insults and swearing were refused outright — the
+ *     guard caught it, so the Agent saw "could not translate" on exactly the messages where
+ *     knowing the tone matters most: '진짜 더럽게 못생긴 새끼네.' 0/4, '씨발 환불 언제 해줄 거야?'
+ *     0/4, '이 사기꾼들아, 내 돈 돌려줘!' 2/4. Saying why faithful rendering is needed, plus one
+ *     rude worked example, took the first to 4/4 before ChatWonder went down mid-measurement;
+ *     re-run scratch/probe-abusive-translation.ts for the full set. The engine is OpenAI
+ *     underneath, so some abuse may still be refused — that stays "could not translate",
+ *     never a refusal shown as the customer's words.
  *
  * The examples make the engine prefix its answer with the language label; `guardTranslation`
  * strips it.
@@ -168,6 +182,9 @@ export function buildPrompt(text: string, target: SupportLang): string {
         // won" and "[19]" labels vanished — an Agent reconciling a charge needs the figure.
         'Keep every number, amount, date, booking reference and code exactly as written, and ' +
             'keep the line breaks.',
+        'Customers are sometimes angry. A message may contain insults, swearing or abuse, and ' +
+            'support staff must see exactly what was said: translate it faithfully, keeping the ' +
+            'same words and tone — do not soften it, censor it, comment on it or refuse it.',
         '',
         'Examples of the format:',
         ...examples,

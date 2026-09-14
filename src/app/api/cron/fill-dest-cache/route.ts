@@ -46,19 +46,42 @@ export async function GET(req: NextRequest) {
     // picked Paris, Texas — while this very table held 3,933 French Paris hotels against
     // 38 American ones — and "Paris, France" returned nothing until 2026-09-09. The
     // country was always here; it was simply dropped on the way to the resolver.
-    const rows = await sql<{ city: string; country: string; cnt: number }[]>`
-        SELECT lower(hc.city) AS city, upper(hc.country) AS country, count(*) AS cnt
-        FROM hotel_content hc
-        WHERE hc.city IS NOT NULL
-          AND hc.city != ''
-          AND hc.country IS NOT NULL
-          AND hc.country != ''
-          AND lower(hc.city) || ':' || lower(hc.country) NOT IN (SELECT city_key FROM tgx_destination_cache)
-        GROUP BY lower(hc.city), upper(hc.country)
-        HAVING count(*) >= ${minHotels}
-        ORDER BY count(*) DESC
-        LIMIT ${limit}
-    `;
+    //
+    // Grouped into cities first, then checked against the cache with NOT EXISTS on its
+    // primary key. It used to be `... NOT IN (SELECT city_key FROM tgx_destination_cache)`
+    // applied to every hotel row, and once the cache outgrew work_mem Postgres could no
+    // longer hash that list: it scanned all 230k keys once per hotel, 1.1M times over —
+    // planned cost 2.27 billion. It never finished. Each hourly run left one more copy
+    // running while Cloudflare cut the request at ~2 minutes, and on 2026-09-14 four of
+    // them (the oldest 9h in) were holding the lock an app-start ALTER TABLE was queued
+    // for, which put every read of tgx_destination_cache behind it. This shape plans as a
+    // hash anti-join and ran in 2.8s against the same data.
+    //
+    // Capped all the same: a query that might outlive the request must never be allowed
+    // to, because nothing is waiting for its answer.
+    const rows = await sql.begin(async tx => {
+        await tx`SET LOCAL statement_timeout = '60s'`;
+        return tx<{ city: string; country: string; cnt: number }[]>`
+            WITH cities AS (
+                SELECT lower(hc.city) AS city, lower(hc.country) AS cc, count(*) AS cnt
+                  FROM hotel_content hc
+                 WHERE hc.city IS NOT NULL
+                   AND hc.city <> ''
+                   AND hc.country IS NOT NULL
+                   AND hc.country <> ''
+                 GROUP BY lower(hc.city), lower(hc.country)
+                HAVING count(*) >= ${minHotels}
+            )
+            SELECT c.city, upper(c.cc) AS country, c.cnt
+              FROM cities c
+             WHERE NOT EXISTS (
+                    SELECT 1 FROM tgx_destination_cache d
+                     WHERE d.city_key = c.city || ':' || c.cc
+             )
+             ORDER BY c.cnt DESC
+             LIMIT ${limit}
+        `;
+    });
 
     if (rows.length === 0) {
         return NextResponse.json({ ok: true, processed: 0, resolved: 0, message: 'No uncached cities found — all caught up.' });

@@ -113,4 +113,15 @@ export interface ConversationDetail {
     linkedBookings: LinkedBookingView[];
     /** Agent-only. Never reaches the widget — see the notes table's own comment. */
     notes: SupportNoteView[];
+    /** This customer's other chats, newest first — where the earlier context is. */
+    previousConversations?: PreviousConversationView[];
+}
+
+export interface PreviousConversationView {
+    id: string;
+    reference: string;
+    status: string;
+    createdAt: string;
+    lastMessageAt: string;
+    assignedAdminName: string | null;
 }

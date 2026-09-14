@@ -61,6 +61,13 @@ export interface SupportMessageView {
     translationStatus?: 'pending' | 'translated' | 'untranslated' | null;
 }
 
+/** One of the customer's finished chats, for "Previous conversation". */
+export interface PastConversationView {
+    reference: string;
+    createdAt: string;
+    lastMessageAt: string;
+}
+
 export interface SupportConversationView {
     id: string;
     status: SupportStatusView;

@@ -432,12 +432,20 @@ describe('buildPrompt', () => {
         expect(buildPrompt('죄송하지만 날짜를 변경할 수 있을까요?', 'en')).not.toMatch(/apologi[sz]e/i);
     });
 
-    it('ends on an open line in the target language, after four worked examples', () => {
+    it('asks for insults and swearing to be translated faithfully, with a rude example', () => {
+        // Without it the engine refused '진짜 더럽게 못생긴 새끼네.' every time, so the Agent
+        // never learned the customer was being abusive.
+        const p = buildPrompt('진짜 더럽게 못생긴 새끼네.', 'en');
+        expect(p).toMatch(/insults, swearing or abuse/);
+        expect(p).toContain('Korean: 이 멍청한 사기꾼들아, 당장 내 돈 돌려줘.\nEnglish: You stupid scammers, give me my money back right now.');
+    });
+
+    it('ends on an open line in the target language, after five worked examples', () => {
         // The examples are what stopped the engine refusing "I can't find my flight bookings".
         const p = buildPrompt('항공편 예약 내역을 찾을 수 없습니다.', 'en');
         expect(p).toContain('Korean: 죄송하지만 결제가 두 번 되었어요.');
         expect(p).toContain("English: I'm sorry, but I was charged twice.");
-        expect(p.match(/^Korean: /gm)).toHaveLength(5);
+        expect(p.match(/^Korean: /gm)).toHaveLength(6);
         expect(p.endsWith('Korean: 항공편 예약 내역을 찾을 수 없습니다.\nEnglish:')).toBe(true);
     });
 

@@ -3,7 +3,6 @@ import {
     listInbox,
     inboxCounts,
     agentReply,
-    reopenIfResolved,
     getConversationForAgent,
     type InboxFilter,
 } from './inbox';
@@ -60,6 +59,8 @@ interface MakeConversation {
     brand?: string;
     guestName?: string | null;
     minutesAgo?: number;
+    /** Whether the customer has written. A chat is only in the queue once they have. */
+    written?: boolean;
 }
 
 async function makeConversation(over: MakeConversation = {}): Promise<string> {
@@ -69,6 +70,7 @@ async function makeConversation(over: MakeConversation = {}): Promise<string> {
         brand = 'CheapestGo',
         guestName = 'Ana Reyes',
         minutesAgo = 0,
+        written = true,
     } = over;
 
     const rows = await db<{ id: string }[]>`
@@ -86,6 +88,10 @@ async function makeConversation(over: MakeConversation = {}): Promise<string> {
         RETURNING id
     `;
     created.push(rows[0].id);
+    if (written) {
+        await db`INSERT INTO support_messages (conversation_id, sender_type, body)
+                 VALUES (${rows[0].id}, 'guest', 'I need help with my booking.')`;
+    }
     return rows[0].id;
 }
 
@@ -238,16 +244,21 @@ describe('inboxCounts', () => {
     it("shows an admin the Unassigned queue on the badge", async (ctx) => {
         if (!(await databaseReachable())) ctx.skip();
 
-        // A delta: the count is site-wide by design, so other files' rows are in it.
-        const before = await inboxCounts(admin);
-        await makeConversation({ status: 'waiting_human' });
-        await makeConversation({ status: 'waiting_human', brand: 'AirangGo' });
-        await makeConversation({ status: 'ai_active' });
-        await makeConversation({ status: 'resolved' });
+        // The count is site-wide by design, and other test files create and delete support
+        // chats in parallel — a before/after delta measured -1 while this test added two. So
+        // what is counted is checked exactly against this file's own rows, through the queue
+        // the badge summarises; the badge itself must equal that queue's count.
+        const cheapestgo = await makeConversation({ status: 'waiting_human' });
+        const airanggo = await makeConversation({ status: 'waiting_human', brand: 'AirangGo' });
+        const assistant = await makeConversation({ status: 'ai_active' });
+        const done = await makeConversation({ status: 'resolved' });
         const after = await inboxCounts(admin);
 
-        expect(after.unassigned - before.unassigned).toBe(2);
-        expect(after.waiting - before.waiting).toBe(2);
+        expect(after.waiting).toBe(after.unassigned);
+        const queue = ours(await listInbox({ filter: 'unassigned' }));
+        expect(queue.sort()).toEqual([cheapestgo, airanggo].sort());
+        expect(queue).not.toContain(assistant);
+        expect(queue).not.toContain(done);
     });
 
     it('shows a Support Agent only their own unanswered chats on the badge', async (ctx) => {
@@ -430,21 +441,19 @@ describe('resolveConversation — Handled', () => {
             .rejects.toBeInstanceOf(SupportPermissionError);
     });
 
-    it('tallies handled chats per person, counting a reopened chat again', async (ctx) => {
+    it('tallies handled chats per person, one per chat', async (ctx) => {
         if (!(await databaseReachable())) ctx.skip();
 
         const since = new Date(Date.now() - 60_000);
         const first = await makeConversation();
         const second = await makeConversation();
+        const third = await makeConversation(); // the first customer, back with something new
         await assignConversation({ conversationId: first, toAdminId: agentA.id, actor: admin });
         await assignConversation({ conversationId: second, toAdminId: agentB.id, actor: admin });
+        await assignConversation({ conversationId: third, toAdminId: agentB.id, actor: admin });
         await resolveConversation({ conversationId: first, actor: agentA });
         await resolveConversation({ conversationId: second, actor: agentB });
-
-        // The first customer comes back; the admin gives it to Ben this time.
-        await reopenIfResolved(first);
-        await assignConversation({ conversationId: first, toAdminId: agentB.id, actor: admin });
-        await resolveConversation({ conversationId: first, actor: agentB });
+        await resolveConversation({ conversationId: third, actor: agentB });
 
         const tally = await handledTally(since);
         const of = (actor: SupportActor) => tally.find(t => t.adminId === actor.id)!;
@@ -458,7 +467,7 @@ describe('getConversationForAgent', () => {
     it('returns the transcript with the customer and the hand-over reason', async (ctx) => {
         if (!(await databaseReachable())) ctx.skip();
 
-        const id = await makeConversation();
+        const id = await makeConversation({ written: false });
         const db = await sql();
         await db`UPDATE support_conversations SET escalation_reason = 'refund request' WHERE id = ${id}`;
         await agentReply({ conversationId: id, actor: admin, body: 'On it.' });
@@ -501,41 +510,38 @@ describe('getConversationForAgent', () => {
     });
 });
 
-describe('reopenIfResolved', () => {
-    it('hands a resolved conversation back to Unassigned when the customer writes', async (ctx) => {
+describe('the queue only holds chats a customer wrote in', () => {
+    it('keeps a chat nobody has written in out of Unassigned and off the badge', async (ctx) => {
         if (!(await databaseReachable())) ctx.skip();
 
-        const id = await makeConversation({ status: 'resolved' });
+        // The widget creates a chat when the panel opens — and a fresh one each time a
+        // resolved chat's customer comes back. Opening is not asking.
+        const silent = await makeConversation({ written: false });
+        const asked = await makeConversation();
 
-        expect(await reopenIfResolved(id)).toBe(true);
-        expect(await statusOf(id)).toBe('waiting_human');
-        expect(ours(await listInbox({ filter: 'unassigned' }))).toEqual([id]);
+        const queue = ours(await listInbox({ filter: 'unassigned' }));
+        expect(queue).toContain(asked);
+        expect(queue).not.toContain(silent);
     });
+});
 
-    it('drops the previous assignment and records the reopen', async (ctx) => {
+describe("a customer's earlier chats", () => {
+    it('lists the other chats of a signed-in customer beside the current one', async (ctx) => {
         if (!(await databaseReachable())) ctx.skip();
 
-        const id = await makeConversation();
-        await assignConversation({ conversationId: id, toAdminId: agentA.id, actor: admin });
-        await resolveConversation({ conversationId: id, actor: agentA });
-        await reopenIfResolved(id);
+        const db = await sql();
+        const customer = await makeUser('user', 'Customer');
+        const [earlier] = await db<{ id: string; reference: string }[]>`
+            INSERT INTO support_conversations (user_id, source_brand, locale, status)
+            VALUES (${customer.id}, 'CheapestGo', 'en', 'resolved') RETURNING id, reference`;
+        const [current] = await db<{ id: string }[]>`
+            INSERT INTO support_conversations (user_id, source_brand, locale, status)
+            VALUES (${customer.id}, 'CheapestGo', 'en', 'waiting_human') RETURNING id`;
+        created.push(earlier.id, current.id);
 
-        expect(await assigneeOf(id)).toBeNull();
-        expect(ids(await listInbox({ filter: 'mine', adminId: agentA.id }))).not.toContain(id);
-        expect((await eventsOf(id)).at(-1)).toMatchObject({ kind: 'reopened', from_admin_id: agentA.id });
-    });
-
-    it('leaves a conversation that was never resolved exactly as it is', async (ctx) => {
-        if (!(await databaseReachable())) ctx.skip();
-
-        const id = await makeConversation();
-        await assignConversation({ conversationId: id, toAdminId: agentA.id, actor: admin });
-        await agentReply({ conversationId: id, actor: agentA, body: 'On it.' });
-
-        expect(await reopenIfResolved(id)).toBe(false);
-        expect(await statusOf(id)).toBe('human_active');
-        expect(await assigneeOf(id)).toBe(agentA.id);
-    });
+        const detail = await getConversationForAgent(current.id);
+        expect(detail?.previousConversations.map(p => p.reference)).toEqual([earlier.reference]);
+    }, 20_000);
 });
 
 describe('releaseConversationsOf', () => {

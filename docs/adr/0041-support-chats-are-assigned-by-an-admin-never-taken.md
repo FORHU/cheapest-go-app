@@ -33,11 +33,16 @@ timer, not a rota.
 - A Support Agent may **give a chat back**, only back, to Unassigned. Never to a named colleague.
 - An **admin writes anywhere without that changing whose it is**. Help from an admin must not
   quietly move a chat, and the pay with it.
-- A **resolved chat the customer reopens returns to Unassigned**, not to whoever had it. The
-  admin usually gives it back to them — but decides.
+- A **customer who writes after their chat was resolved starts a new chat**, which arrives
+  Unassigned like any other — not with whoever had the last one. The admin usually gives it to
+  them — but decides. (As first written, the resolved chat was reopened instead. Changed on
+  2026-09-14: a reopened reference collected unrelated topics and was credited as Handled
+  again each time. A resolved chat is now never reopened, and its Agents see it listed as
+  the customer's earlier chat.)
 - Someone who **stops being a Support Agent** has their open chats returned to Unassigned.
-- **Every change is recorded** in `support_assignment_events` — assigned, returned, reopened,
-  released, resolved — with who did it. A chat is **Handled** by whoever held it at the moment
+- **Every change is recorded** in `support_assignment_events` — assigned, returned, released,
+  resolved — with who did it. (`reopened` remains a permitted kind for rows written before
+  2026-09-14 and is no longer written.) A chat is **Handled** by whoever held it at the moment
   it was resolved, and the admins' tally reads those records, never `assigned_admin_id`.
 
 ## Consequences

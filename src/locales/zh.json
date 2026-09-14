@@ -2266,6 +2266,12 @@
       "showTranslation": "查看译文",
       "pending": "翻译中…",
       "untranslated": "未翻译"
+    },
+    "history": {
+      "previous": "之前的对话 {reference}",
+      "back": "返回当前对话",
+      "closed": "此对话已结束。如有新的问题，请在当前对话中留言。",
+      "unavailable": "无法加载此对话。"
     }
   },
   "map": {

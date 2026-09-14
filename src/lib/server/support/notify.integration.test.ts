@@ -11,9 +11,9 @@ import type { NotifyDeps } from './notify';
  * transcript and a second one when the question actually arrived. It rings on the
  * customer's first message into a Waiting conversation nobody owns.
  *
- * "First" is per waiting spell, not per conversation. A customer answered weeks ago, whose
- * chat was Resolved, who comes back with something new is a customer nobody is coming to —
- * so both reopen paths clear the mark and the doorbell rings again.
+ * A customer answered weeks ago, whose chat was Resolved, who comes back with something new
+ * is a customer nobody is coming to. A resolved chat is never reopened: coming back starts a
+ * new conversation, which has never rung, so the doorbell rings for it.
  *
  * Integration rather than unit, because the whole of "has it already rung?" is a column and
  * a conditional UPDATE. A fake store would assert whatever it was told and would go on
@@ -146,34 +146,11 @@ describe('the doorbell rings once per waiting spell', () => {
         expect(rings).toBe(1);
     });
 
-    it('rings again when a resolved conversation is reopened by the customer', async (ctx) => {
+    it('rings for the new chat a returning customer starts', async (ctx) => {
         if (!(await databaseReachable())) ctx.skip();
 
-        // Resolved is not an ending. Someone who comes back weeks later with a new
-        // question is a customer nobody is coming to, and the queue is the only place
-        // that shows it — so the reopen has to undo the mark the first spell left.
-        const { notifyWaitingCustomer } = await import('./notify');
-        const { reopenIfResolved } = await import('./inbox');
-        const db = await sql();
-        const conversationId = await makeWaitingConversation(await makeUser());
-
-        await notifyWaitingCustomer(conversationId, fakeDeps());
-        await db`UPDATE support_conversations SET status = 'resolved' WHERE id = ${conversationId}`;
-
-        expect(await reopenIfResolved(conversationId)).toBe(true);
-
-        const again = fakeDeps();
-        await notifyWaitingCustomer(conversationId, again);
-
-        expect(again.send).toHaveBeenCalledTimes(1);
-    });
-
-    it('rings again when the widget reopens a resolved conversation on open', async (ctx) => {
-        if (!(await databaseReachable())) ctx.skip();
-
-        // The other way back in: the panel opens before the customer types, and
-        // `openConversation` revives the resolved row it finds. Both reopens clear the
-        // mark, or which door the customer came through would decide whether anyone knew.
+        // A resolved chat is finished; coming back starts a new one, which nobody has been
+        // told about — so it rings, whatever the finished one's mark says.
         const { notifyWaitingCustomer } = await import('./notify');
         const { openConversation } = await import('./conversations');
         const db = await sql();
@@ -183,11 +160,12 @@ describe('the doorbell rings once per waiting spell', () => {
         await notifyWaitingCustomer(conversationId, fakeDeps());
         await db`UPDATE support_conversations SET status = 'resolved' WHERE id = ${conversationId}`;
 
-        const reopened = await openConversation({ caller: { userId, guestToken: null }, locale: 'en' });
-        expect(reopened.conversation.id).toBe(conversationId);
+        const next = await openConversation({ caller: { userId, guestToken: null }, locale: 'en' });
+        createdConversations.push(next.conversation.id);
+        expect(next.conversation.id).not.toBe(conversationId);
 
         const again = fakeDeps();
-        await notifyWaitingCustomer(conversationId, again);
+        await notifyWaitingCustomer(next.conversation.id, again);
 
         expect(again.send).toHaveBeenCalledTimes(1);
     });

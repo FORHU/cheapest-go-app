@@ -9,7 +9,12 @@ import {
     visibleMessages,
 } from './supportReducer';
 import type { EscalationDetails } from './EscalationForm';
-import type { SupportAttachmentView, SupportConversationView, SupportMessageView } from './types';
+import type {
+    PastConversationView,
+    SupportAttachmentView,
+    SupportConversationView,
+    SupportMessageView,
+} from './types';
 import type { ReopenOpening } from './reopenTime';
 
 /**
@@ -47,6 +52,26 @@ export function useSupportChat(isOpen: boolean) {
     const [uploadError, setUploadError] = useState<string | null>(null);
 
     cursorRef.current = state.cursor;
+
+    /**
+     * The customer's finished chats, newest first. A resolved chat is never reopened — the
+     * next question starts a new one — so this is how an earlier answer stays reachable.
+     */
+    const [past, setPast] = useState<PastConversationView[]>([]);
+    const loadPast = useCallback(async () => {
+        try {
+            const response = await fetch('/api/support/conversation/history');
+            if (!response.ok) return;
+            const data = (await response.json()) as { conversations?: PastConversationView[] };
+            setPast(data.conversations ?? []);
+        } catch {
+            // History is a convenience; the chat works without it.
+        }
+    }, []);
+
+    useEffect(() => {
+        if (state.conversation?.id) void loadPast();
+    }, [state.conversation?.id, loadPast]);
 
     // Open or resume, once, the first time the panel is opened.
     useEffect(() => {
@@ -195,14 +220,25 @@ export function useSupportChat(isOpen: boolean) {
                     return;
                 }
 
-                const data = (await response.json()) as { message: SupportMessageView };
+                const data = (await response.json()) as {
+                    message: SupportMessageView;
+                    conversation?: SupportConversationView;
+                    started?: boolean;
+                };
+                // The chat had been resolved while the panel was open, so this message
+                // started a new one. Switch to it: its reference, an empty transcript, then
+                // this message — which also clears the optimistic copy.
+                if (data.started && data.conversation) {
+                    dispatch({ type: 'opened', conversation: data.conversation, messages: [] });
+                    void loadPast();
+                }
                 dispatch({ type: 'confirmed', clientId, message: data.message });
             } catch {
                 dispatch({ type: 'send_failed', clientId });
                 setAttachments(current => [...sending, ...current]);
             }
         })();
-    }, [attachments]);
+    }, [attachments, loadPast]);
 
     /**
      * Ask for a person. Called with no details first; the server answers
@@ -273,6 +309,8 @@ export function useSupportChat(isOpen: boolean) {
         removeAttachment,
         nextOpening,
         isTyping: state.isTyping,
+        /** Finished chats other than the current one, newest first. */
+        past: past.filter(p => p.reference !== state.conversation?.reference),
         // A reply has arrived and is held until its translation settles.
         isReplying: awaitingTranslation(state),
         needsDetails: state.needsDetails,

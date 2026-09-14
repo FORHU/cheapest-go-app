@@ -3,11 +3,12 @@ import { rateLimit } from '@/lib/server/rate-limit';
 import {
     findConversation,
     getSupportCaller,
+    openConversation,
     rateLimitIdentity,
     SupportValidationError,
+    toPublicConversation,
 } from '@/lib/server/support/conversations';
 import { appendMessage, listMessages } from '@/lib/server/support/messages';
-import { reopenIfResolved } from '@/lib/server/support/inbox';
 import { liveNotifyDeps, notifyWaitingCustomer } from '@/lib/server/support/notify';
 
 export const dynamic = 'force-dynamic';
@@ -68,8 +69,17 @@ export async function POST(req: NextRequest) {
         );
     }
 
-    const conversation = await findConversation(caller);
+    let conversation = await findConversation(caller);
     if (!conversation) return NextResponse.json({ error: 'No conversation' }, { status: 404 });
+
+    // Written into a chat that was resolved while the panel was open. A resolved chat is
+    // finished (CONTEXT.md, "Support Chat"): this message starts the next one instead of
+    // reopening it, and the widget is told so it can switch to the new chat.
+    let started = false;
+    if (conversation.status === 'resolved') {
+        conversation = (await openConversation({ caller, locale: conversation.locale })).conversation;
+        started = true;
+    }
 
     let body: Record<string, unknown>;
     try {
@@ -99,15 +109,6 @@ export async function POST(req: NextRequest) {
             attachmentIds,
         });
 
-        // Resolved is not an ending: writing again reopens the conversation into the
-        // Agent queue, wherever the panel happens to be. Per ADR-0031 there is nobody to
-        // hand it to first — reopening onto `waiting_human` is the whole of it. Without
-        // this a message typed into an already-open panel lands nowhere: it is stored,
-        // but the conversation stays resolved and no queue shows it.
-        if (conversation.status === 'resolved') {
-            await reopenIfResolved(conversation.id);
-        }
-
         // The doorbell. Per ADR-0031 there is nobody but an Agent to answer this, and
         // nothing else on the site would say so: creation is too early, because the widget
         // opens a conversation the moment the panel does, so this — a customer's message
@@ -116,17 +117,18 @@ export async function POST(req: NextRequest) {
         // UPDATE inside `notifyWaitingCustomer`, so a question typed in three parts is one
         // email and a customer returning months later is a new one.
         //
-        // After the reopen above, never before: the reopen is what clears the mark the
-        // previous spell left, and ringing first would be claiming a spell that is about
-        // to be reset — the ring would be lost and the returning customer would queue in
-        // silence.
+        // A customer returning after a resolved chat is on a new conversation with no mark,
+        // so they ring afresh.
         //
         // Started, not awaited, exactly as the escalate route does it: the message is
         // already stored and the customer is owed their 201 now, not after a mail
         // provider has had its turn. It swallows its own failures for the same reason.
         void notifyWaitingCustomer(conversation.id, liveNotifyDeps());
 
-        return NextResponse.json({ message }, { status: 201 });
+        return NextResponse.json(
+            started ? { message, conversation: toPublicConversation(conversation), started } : { message },
+            { status: 201 },
+        );
     } catch (err) {
         if (err instanceof SupportValidationError) {
             return NextResponse.json({ error: err.message }, { status: 400 });

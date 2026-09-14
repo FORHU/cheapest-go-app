@@ -2726,6 +2726,12 @@
       "showTranslation": "Show translation",
       "pending": "Translating…",
       "untranslated": "Not translated"
+    },
+    "history": {
+      "previous": "Previous conversation {reference}",
+      "back": "Back to your current chat",
+      "closed": "This conversation is closed. Write in your current chat to ask something new.",
+      "unavailable": "This conversation could not be loaded."
     }
   },
   "map": {

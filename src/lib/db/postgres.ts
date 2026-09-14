@@ -54,6 +54,48 @@ export function getSql(): postgres.Sql {
     return _sql;
 }
 
+/** Columns the app adds to tables it does not own a migration for. */
+const STARTUP_COLUMNS: { table: string; column: string; ddl: string }[] = [
+    { table: 'tgx_destination_cache', column: 'dest_type', ddl: `ALTER TABLE public.tgx_destination_cache ADD COLUMN IF NOT EXISTS dest_type text DEFAULT 'CITY'` },
+    { table: 'tgx_destination_cache', column: 'parent_code', ddl: `ALTER TABLE public.tgx_destination_cache ADD COLUMN IF NOT EXISTS parent_code text` },
+    { table: 'hotel_content', column: 'contact_info', ddl: `ALTER TABLE public.hotel_content ADD COLUMN IF NOT EXISTS contact_info jsonb` },
+    { table: 'hotel_content', column: 'chain_code', ddl: `ALTER TABLE public.hotel_content ADD COLUMN IF NOT EXISTS chain_code text` },
+    { table: 'hotel_content', column: 'giata_id', ddl: `ALTER TABLE public.hotel_content ADD COLUMN IF NOT EXISTS giata_id text` },
+];
+
+/**
+ * Add only the columns that are actually missing, and never wait in line for the lock.
+ *
+ * `ALTER TABLE ... ADD COLUMN IF NOT EXISTS` takes an ACCESS EXCLUSIVE lock *before* it
+ * checks whether the column exists. These ran unconditionally on every process start, so
+ * every deploy and restart queued for an exclusive lock on hotel_content and
+ * tgx_destination_cache — and while a statement waits for that lock, Postgres queues every
+ * later reader of the table behind it. On 2026-09-14 one such ALTER sat behind long-running
+ * cron queries and froze reads of tgx_destination_cache, which every city search does.
+ *
+ * So: read information_schema first (no table lock), and when something really is missing,
+ * give the ALTER a short lock_timeout — failing and retrying later is harmless; blocking
+ * the site's searches is not.
+ */
+async function addMissingColumns(sql: postgres.Sql): Promise<void> {
+    const existing = await sql<{ table_name: string; column_name: string }[]>`
+        SELECT table_name, column_name FROM information_schema.columns
+         WHERE table_schema = 'public'
+           AND table_name IN ('tgx_destination_cache', 'hotel_content')
+    `;
+    const have = new Set(existing.map(c => `${c.table_name}.${c.column_name}`));
+
+    for (const col of STARTUP_COLUMNS) {
+        if (have.has(`${col.table}.${col.column}`)) continue;
+        // A table that does not exist in this database at all is not ours to alter here.
+        if (!existing.some(c => c.table_name === col.table)) continue;
+        await sql.begin(async tx => {
+            await tx`SET LOCAL lock_timeout = '5s'`;
+            await tx.unsafe(col.ddl);
+        });
+    }
+}
+
 // Run once per process — creates cache/stats tables that the deploy workflow
 // never provisions (no migration step in CI). Safe to re-run: all DDL uses
 // CREATE TABLE IF NOT EXISTS / CREATE INDEX IF NOT EXISTS.
@@ -90,17 +132,7 @@ function ensureTablesOnce(sql: postgres.Sql): void {
             city_key   text NOT NULL DEFAULT '',
             created_at timestamptz NOT NULL DEFAULT now()
         )
-    `).then(() => sql`
-        ALTER TABLE public.tgx_destination_cache ADD COLUMN IF NOT EXISTS dest_type text DEFAULT 'CITY'
-    `).then(() => sql`
-        ALTER TABLE public.tgx_destination_cache ADD COLUMN IF NOT EXISTS parent_code text
-    `).then(() => sql`
-        ALTER TABLE hotel_content ADD COLUMN IF NOT EXISTS contact_info jsonb
-    `).then(() => sql`
-        ALTER TABLE hotel_content ADD COLUMN IF NOT EXISTS chain_code text
-    `).then(() => sql`
-        ALTER TABLE hotel_content ADD COLUMN IF NOT EXISTS giata_id text
-    `).then(() => {
+    `).then(() => addMissingColumns(sql)).then(() => {
         // Name the host. A local dev server and the RDS-backed container are otherwise
         // indistinguishable from the outside, and picking the wrong one is how a test
         // booking becomes a real airline order.

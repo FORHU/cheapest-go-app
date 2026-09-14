@@ -7,6 +7,7 @@ import { SupportTranscript } from './SupportTranscript';
 import { SupportComposer } from './SupportComposer';
 import { EscalationForm } from './EscalationForm';
 import { SupportBookingPicker } from './SupportBookingPicker';
+import { PastConversation } from './PastConversation';
 import { useSupportChat } from './useSupportChat';
 import { formatReopen } from './reopenTime';
 
@@ -33,6 +34,8 @@ export function SupportPanel({ chat, onClose }: SupportPanelProps) {
     const t = useTranslations('support');
     const panelRef = useRef<HTMLDivElement>(null);
     const [copied, setCopied] = useState(false);
+    /** A finished chat being read back, by reference — or null for the current chat. */
+    const [viewingPast, setViewingPast] = useState<string | null>(null);
 
     // Escape closes, as it does for every other overlay in the app.
     useEffect(() => {
@@ -127,6 +130,25 @@ export function SupportPanel({ chat, onClose }: SupportPanelProps) {
                 </button>
             </header>
 
+            {viewingPast ? (
+                <PastConversation reference={viewingPast} onBack={() => setViewingPast(null)} />
+            ) : (
+            <>
+            {/*
+              * The customer's last finished chat, one tap away. A resolved chat is never
+              * reopened, so the new question starts clean here and the old answer is read
+              * back separately rather than scrolled past.
+              */}
+            {chat.past.length > 0 && (
+                <button
+                    type="button"
+                    onClick={() => setViewingPast(chat.past[0].reference)}
+                    className="shrink-0 border-b border-slate-100 px-4 py-2 text-left text-xs text-slate-500 transition hover:bg-slate-50 hover:text-slate-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-500 dark:border-white/5 dark:text-slate-400 dark:hover:bg-white/5 dark:hover:text-slate-200"
+                >
+                    {t('history.previous', { reference: chat.past[0].reference })}
+                </button>
+            )}
+
             <SupportTranscript messages={chat.messages} isTyping={chat.isTyping} isReplying={chat.isReplying} />
 
             {chat.needsDetails ? (
@@ -185,6 +207,8 @@ export function SupportPanel({ chat, onClose }: SupportPanelProps) {
                         onRemoveAttachment={chat.removeAttachment}
                     />
                 </>
+            )}
+            </>
             )}
         </div>
     );

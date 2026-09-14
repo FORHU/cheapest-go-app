@@ -183,3 +183,77 @@ describe('SupportWidget', () => {
         );
     });
 });
+
+/**
+ * A resolved chat is never reopened — a returning customer starts a new one — so an earlier
+ * answer is read back through "Previous conversation", separately from the new topic.
+ */
+describe('SupportWidget — previous conversations', () => {
+    const withHistory = {
+        support: {
+            ...messages.support,
+            history: {
+                previous: 'Previous conversation {reference}',
+                back: 'Back to your current chat',
+                closed: 'This conversation is closed.',
+                unavailable: 'Could not load it.',
+            },
+        },
+    };
+
+    function HistoryWrapper({ children }: { children: React.ReactNode }) {
+        return <NextIntlClientProvider locale="en" messages={withHistory}>{children}</NextIntlClientProvider>;
+    }
+
+    beforeEach(() => {
+        fetchMock = vi.fn(async (url: string) => {
+            if (url === '/api/support/conversation/history') {
+                return {
+                    ok: true,
+                    json: async () => ({
+                        conversations: [{ reference: 'CS-OLD111', createdAt: '2026-09-01T10:00:00.000Z', lastMessageAt: '2026-09-02T10:00:00.000Z' }],
+                    }),
+                };
+            }
+            if (url === '/api/support/conversation/history/CS-OLD111') {
+                return {
+                    ok: true,
+                    json: async () => ({
+                        messages: [{ id: 'old-1', senderType: 'agent', body: 'Your refund was sent.', noticeCode: null, createdAt: '2026-09-02T10:00:00.000Z', attachments: [] }],
+                    }),
+                };
+            }
+            return {
+                ok: true,
+                json: async () => ({
+                    conversation: {
+                        id: 'conv-new', status: 'waiting_human', locale: 'en', guestName: null,
+                        createdAt: '2026-09-14T10:00:00.000Z', lastMessageAt: '2026-09-14T10:00:00.000Z',
+                        reference: 'CS-NEW222', escalationNeedsDetails: false,
+                    },
+                    messages: [],
+                }),
+            };
+        });
+        vi.stubGlobal('fetch', fetchMock);
+    });
+
+    it('opens on the new chat, with the finished one a tap away and read-only', async () => {
+        render(<SupportWidget />, { wrapper: HistoryWrapper });
+        openSupport();
+
+        const link = await screen.findByRole('button', { name: 'Previous conversation CS-OLD111' });
+        // The new topic starts clean: none of the old transcript is in it.
+        expect(screen.queryByText('Your refund was sent.')).not.toBeInTheDocument();
+
+        fireEvent.click(link);
+        expect(await screen.findByText('Your refund was sent.')).toBeInTheDocument();
+        expect(screen.getByText('This conversation is closed.')).toBeInTheDocument();
+        // Read-only: no box to type into while reading it back.
+        expect(screen.queryByRole('textbox')).not.toBeInTheDocument();
+
+        fireEvent.click(screen.getByRole('button', { name: 'Back to your current chat' }));
+        expect(screen.queryByText('Your refund was sent.')).not.toBeInTheDocument();
+        expect(screen.getByRole('textbox')).toBeInTheDocument();
+    });
+});

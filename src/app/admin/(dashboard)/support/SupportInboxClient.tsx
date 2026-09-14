@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Loader2, Send, Check, Paperclip, FileText, ImageIcon, X } from 'lucide-react';
+import { Loader2, Send, Check, Paperclip, FileText, ImageIcon, X, ChevronLeft, PanelRight } from 'lucide-react';
 import { formatFileSize } from '@/components/support/formatFileSize';
 import type { SupportAttachmentView } from '@/components/support/types';
 import type {
@@ -112,6 +112,16 @@ function CustomerReadsLine({ view }: { view: CustomerReadsView | null }) {
     }
 }
 
+/** A labelled group in the details panel. */
+function DetailSection({ title, children }: { title: string; children: React.ReactNode }) {
+    return (
+        <section className="min-w-0">
+            <h3 className="mb-1.5 text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-400">{title}</h3>
+            {children}
+        </section>
+    );
+}
+
 interface SupportInboxClientProps {
     initialFilter: InboxFilterView;
     initialConversations: InboxConversation[];
@@ -135,6 +145,8 @@ export function SupportInboxClient({
     const [openId, setOpenId] = useState<string | null>(null);
     const [detail, setDetail] = useState<ConversationDetail | null>(null);
     const [loadingDetail, setLoadingDetail] = useState(false);
+    /** The details panel, where it opens over the chat (below `xl`). Always shown beside it above. */
+    const [showDetails, setShowDetails] = useState(false);
     const [reply, setReply] = useState('');
     const [sending, setSending] = useState(false);
     /** Files this Agent has uploaded and not yet sent. Cleared when the reply goes. */
@@ -341,10 +353,10 @@ export function SupportInboxClient({
                 ))}
             </nav>
 
-            <div className="flex min-h-0 flex-1 gap-4">
+            <div className="flex min-h-0 min-w-0 flex-1 gap-4">
                 <section
                     aria-label="Conversations"
-                    className={`min-h-0 w-full overflow-y-auto rounded-xl border border-slate-200 lg:w-80 dark:border-white/10 ${
+                    className={`min-h-0 w-full overflow-y-auto rounded-xl border border-slate-200 lg:w-72 lg:shrink-0 xl:w-80 dark:border-white/10 ${
                         openId ? 'hidden lg:block' : ''
                     }`}
                 >
@@ -375,7 +387,7 @@ export function SupportInboxClient({
                                                 overridden={item.priority !== null}
                                             />
                                         </span>
-                                        <span className="mt-0.5 flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+                                        <span className="mt-0.5 flex min-w-0 items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
                                             {/*
                                               * Monospaced so a reference a customer reads out
                                               * over the phone can be matched character by
@@ -391,9 +403,14 @@ export function SupportInboxClient({
                                               */}
                                             <span className="whitespace-nowrap font-mono">{item.reference}</span>
                                             <span aria-hidden>·</span>
-                                            <span>{item.sourceBrand ?? 'CheapestGo'}</span>
+                                            <span className="truncate">{item.sourceBrand ?? 'CheapestGo'}</span>
                                             <span aria-hidden>·</span>
-                                            <span>{new Date(item.lastMessageAt).toLocaleString()}</span>
+                                            <span
+                                                className="ml-auto shrink-0 whitespace-nowrap"
+                                                title={new Date(item.lastMessageAt).toLocaleString()}
+                                            >
+                                                {new Date(item.lastMessageAt).toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'short' })}
+                                            </span>
                                         </span>
                                         {/* Whose it is, where that is not obvious from the view. */}
                                         {filter !== 'mine' && item.assignedAdminId && (
@@ -412,7 +429,7 @@ export function SupportInboxClient({
 
                 <section
                     aria-label="Conversation"
-                    className={`flex min-h-0 flex-1 flex-col rounded-xl border border-slate-200 dark:border-white/10 ${
+                    className={`relative flex min-h-0 min-w-0 flex-1 overflow-hidden rounded-xl border border-slate-200 dark:border-white/10 ${
                         openId ? '' : 'hidden lg:flex'
                     }`}
                 >
@@ -430,104 +447,66 @@ export function SupportInboxClient({
 
                     {detail && (
                         <>
-                            <header className="shrink-0 border-b border-slate-200 px-4 py-3 dark:border-white/10">
-                                <div className="flex items-start justify-between gap-3">
-                                    <div className="min-w-0">
-                                        <p className="flex items-center gap-2 text-sm font-semibold text-slate-900 dark:text-slate-100">
-                                            <span className="truncate">
-                                                {detail.conversation.guestName ?? 'Signed-in customer'}
-                                            </span>
-                                            <UrgencyBadge
-                                                urgency={detail.conversation.urgency}
-                                                overridden={detail.conversation.priority !== null}
-                                            />
-                                        </p>
-                                        <p className="text-xs text-slate-500 dark:text-slate-400">
-                                            <span className="font-mono">{detail.conversation.reference}</span> ·{' '}
-                                            {detail.conversation.guestEmail ?? '—'} ·{' '}
-                                            {detail.conversation.sourceBrand ?? 'CheapestGo'} ·{' '}
-                                            {detail.conversation.locale}
-                                            {detail.conversation.userId ? ' · signed in' : ' · not signed in'}
-                                        </p>
-                                    </div>
-                                    {/*
-                                      * Named in full for assistive tech: the "Resolved" tab is
-                                      * one word away, and two controls that sound alike is how
-                                      * the wrong one gets pressed.
-                                      */}
-                                    {canWrite && detail.conversation.status !== 'resolved' && (
-                                        <button
-                                            type="button"
-                                            onClick={() => void resolve()}
-                                            aria-label="Mark conversation resolved"
-                                            className="flex shrink-0 items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 transition hover:bg-slate-50 dark:border-white/10 dark:text-slate-300 dark:hover:bg-white/5"
-                                        >
-                                            <Check className="h-3.5 w-3.5" /> Resolve
-                                        </button>
-                                    )}
-                                </div>
-
-                                <AssignmentControls
-                                    conversationId={detail.conversation.id}
-                                    assignedAdminId={detail.conversation.assignedAdminId}
-                                    assignedAdminName={detail.conversation.assignedAdminName}
-                                    resolved={detail.conversation.status === 'resolved'}
-                                    currentAdminId={currentAdminId}
-                                    currentRole={currentRole}
-                                    agents={agents}
-                                    onChanged={() => {
-                                        void loadDetail(detail.conversation.id);
-                                        void loadList(filter);
-                                        void loadTeam();
-                                    }}
-                                />
-
-                                {/*
-                                  * The model's private note. Shown here and nowhere else —
-                                  * it is about the customer, not for them.
-                                  */}
-                                {detail.conversation.escalationReason && (
-                                    <p className="mt-2 rounded-lg bg-amber-50 px-3 py-1.5 text-xs text-amber-900 dark:bg-amber-950/40 dark:text-amber-200">
-                                        Handed over because: {detail.conversation.escalationReason}
+                            {/*
+                              * The conversation column: who, then the messages, then the reply.
+                              * Everything else about the chat is in the details panel beside it,
+                              * so the transcript always has the height — it is what is being read.
+                              */}
+                            <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+                            <header className="flex shrink-0 items-center gap-3 border-b border-slate-200 px-4 py-3 dark:border-white/10">
+                                {/* Back to the list, where the list and the chat do not fit side by side. */}
+                                <button
+                                    type="button"
+                                    onClick={() => { setOpenId(null); setDetail(null); }}
+                                    aria-label="Back to conversations"
+                                    className="-ml-1 rounded-lg p-1 text-slate-500 transition hover:bg-slate-100 lg:hidden dark:hover:bg-white/10"
+                                >
+                                    <ChevronLeft className="h-4 w-4" />
+                                </button>
+                                <div className="min-w-0 flex-1">
+                                    <p className="flex min-w-0 items-center gap-2 text-sm font-semibold text-slate-900 dark:text-slate-100">
+                                        <span className="truncate">
+                                            {detail.conversation.guestName ?? 'Signed-in customer'}
+                                        </span>
+                                        <UrgencyBadge
+                                            urgency={detail.conversation.urgency}
+                                            overridden={detail.conversation.priority !== null}
+                                        />
                                     </p>
-                                )}
-
-                                {detail.bookings && detail.bookings.length > 0 && (
-                                    <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
-                                        {detail.bookings.length} booking
-                                        {detail.bookings.length === 1 ? '' : 's'} on this account
+                                    <p className="truncate text-xs text-slate-500 dark:text-slate-400">
+                                        <span className="font-mono">{detail.conversation.reference}</span> ·{' '}
+                                        {detail.conversation.guestEmail ?? '—'} ·{' '}
+                                        {detail.conversation.sourceBrand ?? 'CheapestGo'} ·{' '}
+                                        {detail.conversation.locale}
+                                        {detail.conversation.userId ? ' · signed in' : ' · not signed in'}
                                     </p>
-                                )}
-
-                                <LinkedBookings
-                                    conversationId={detail.conversation.id}
-                                    bookings={detail.linkedBookings}
-                                    onChanged={() => void loadDetail(detail.conversation.id)}
-                                />
-
-                                {/*
-                                  * The override, offered as plain words rather than a
-                                  * priority dropdown. "Let the dates decide" is a real
-                                  * choice and not the same as picking Normal: it hands the
-                                  * conversation back to a rule that keeps moving as the
-                                  * departure approaches, where Normal freezes it there.
-                                  */}
-                                {canWrite && (
-                                    <UrgencyOverride
-                                        conversationId={detail.conversation.id}
-                                        priority={detail.conversation.priority}
-                                        onChanged={() => void loadDetail(detail.conversation.id)}
-                                    />
-                                )}
-
-                                <div className="mt-2">
-                                    <AgentNotes
-                                        conversationId={detail.conversation.id}
-                                        notes={detail.notes}
-                                        currentAdminId={currentAdminId}
-                                        onChanged={() => void loadDetail(detail.conversation.id)}
-                                    />
                                 </div>
+                                {/*
+                                  * Named in full for assistive tech: the "Resolved" tab is
+                                  * one word away, and two controls that sound alike is how
+                                  * the wrong one gets pressed.
+                                  */}
+                                {canWrite && detail.conversation.status !== 'resolved' && (
+                                    <button
+                                        type="button"
+                                        onClick={() => void resolve()}
+                                        aria-label="Mark conversation resolved"
+                                        className="flex shrink-0 items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 transition hover:bg-slate-50 dark:border-white/10 dark:text-slate-300 dark:hover:bg-white/5"
+                                    >
+                                        <Check className="h-3.5 w-3.5" /> <span className="hidden sm:inline">Resolve</span>
+                                    </button>
+                                )}
+                                {/* Beside the chat on wide screens; below that the panel opens over it. */}
+                                <button
+                                    type="button"
+                                    onClick={() => setShowDetails(v => !v)}
+                                    aria-label="Details"
+                                    aria-expanded={showDetails}
+                                    aria-controls="support-conversation-details"
+                                    className="flex shrink-0 items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 transition hover:bg-slate-50 xl:hidden dark:border-white/10 dark:text-slate-300 dark:hover:bg-white/5"
+                                >
+                                    <PanelRight className="h-3.5 w-3.5" /> <span className="hidden sm:inline">Details</span>
+                                </button>
                             </header>
 
                             <div className="min-h-0 flex-1 space-y-3 overflow-y-auto px-4 py-3">
@@ -683,6 +662,125 @@ export function SupportInboxClient({
                                     </p>
                                 )}
                             </form>}
+                            </div>
+
+                            {/*
+                              * Details: whose it is, what came before, the trips, urgency and the
+                              * notes. A column of its own on wide screens; below `xl` it is opened
+                              * from the header and lies over the conversation rather than pushing
+                              * the transcript into a sliver.
+                              */}
+                            <aside
+                                id="support-conversation-details"
+                                aria-label="Conversation details"
+                                className={`${
+                                    showDetails ? 'absolute inset-y-0 right-0 z-20 flex w-full max-w-sm shadow-2xl' : 'hidden'
+                                } min-h-0 shrink-0 flex-col overflow-y-auto border-l border-slate-200 bg-white xl:static xl:flex xl:w-80 xl:shadow-none 2xl:w-96 dark:border-white/10 dark:bg-slate-950`}
+                            >
+                                <div className="flex items-center justify-between border-b border-slate-200 px-4 py-2.5 xl:hidden dark:border-white/10">
+                                    <span className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">Details</span>
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowDetails(false)}
+                                        aria-label="Close details"
+                                        className="rounded-lg p-1 text-slate-500 transition hover:bg-slate-100 dark:hover:bg-white/10"
+                                    >
+                                        <X className="h-4 w-4" />
+                                    </button>
+                                </div>
+
+                                <div className="flex flex-col gap-4 px-4 py-3">
+                                    <DetailSection title="Assignment">
+                                        <AssignmentControls
+                                            conversationId={detail.conversation.id}
+                                            assignedAdminId={detail.conversation.assignedAdminId}
+                                            assignedAdminName={detail.conversation.assignedAdminName}
+                                            resolved={detail.conversation.status === 'resolved'}
+                                            currentAdminId={currentAdminId}
+                                            currentRole={currentRole}
+                                            agents={agents}
+                                            onChanged={() => {
+                                                void loadDetail(detail.conversation.id);
+                                                void loadList(filter);
+                                                void loadTeam();
+                                            }}
+                                        />
+                                    </DetailSection>
+
+                                    {/*
+                                      * The model's private note. Shown here and nowhere else —
+                                      * it is about the customer, not for them.
+                                      */}
+                                    {detail.conversation.escalationReason && (
+                                        <p className="rounded-lg bg-amber-50 px-3 py-1.5 text-xs text-amber-900 dark:bg-amber-950/40 dark:text-amber-200">
+                                            Handed over because: {detail.conversation.escalationReason}
+                                        </p>
+                                    )}
+
+                                    {/*
+                                      * The customer's earlier chats. A resolved chat is never
+                                      * reopened, so a returning customer arrives in a new one;
+                                      * this is where what was said before is, one click away.
+                                      */}
+                                    {detail.previousConversations && detail.previousConversations.length > 0 && (
+                                        <DetailSection title="Earlier chats">
+                                            <ul className="flex flex-col gap-1">
+                                                {detail.previousConversations.map(previous => (
+                                                    <li key={previous.id}>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => openConversation(previous.id)}
+                                                            className="flex w-full min-w-0 items-center justify-between gap-2 rounded-lg px-2 py-1.5 text-left text-xs transition hover:bg-slate-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:hover:bg-white/5"
+                                                        >
+                                                            <span className="shrink-0 font-mono text-blue-600 dark:text-blue-400">{previous.reference}</span>
+                                                            <span className="min-w-0 truncate text-slate-500 dark:text-slate-400">
+                                                                {previous.status === 'resolved' ? 'Resolved' : 'Open'} · {new Date(previous.lastMessageAt).toLocaleDateString()}
+                                                                {previous.assignedAdminName ? ` · ${previous.assignedAdminName}` : ''}
+                                                            </span>
+                                                        </button>
+                                                    </li>
+                                                ))}
+                                            </ul>
+                                        </DetailSection>
+                                    )}
+
+                                    <DetailSection title="Trips">
+                                        {detail.bookings && detail.bookings.length > 0 && (
+                                            <p className="mb-1 text-xs text-slate-500 dark:text-slate-400">
+                                                {detail.bookings.length} booking
+                                                {detail.bookings.length === 1 ? '' : 's'} on this account
+                                            </p>
+                                        )}
+                                        <LinkedBookings
+                                            conversationId={detail.conversation.id}
+                                            bookings={detail.linkedBookings}
+                                            onChanged={() => void loadDetail(detail.conversation.id)}
+                                        />
+                                    </DetailSection>
+
+                                    {/*
+                                      * The override, offered as plain words rather than a
+                                      * priority dropdown. "Let the dates decide" is a real
+                                      * choice and not the same as picking Normal: it hands the
+                                      * conversation back to a rule that keeps moving as the
+                                      * departure approaches, where Normal freezes it there.
+                                      */}
+                                    {canWrite && (
+                                        <UrgencyOverride
+                                            conversationId={detail.conversation.id}
+                                            priority={detail.conversation.priority}
+                                            onChanged={() => void loadDetail(detail.conversation.id)}
+                                        />
+                                    )}
+
+                                    <AgentNotes
+                                        conversationId={detail.conversation.id}
+                                        notes={detail.notes}
+                                        currentAdminId={currentAdminId}
+                                        onChanged={() => void loadDetail(detail.conversation.id)}
+                                    />
+                                </div>
+                            </aside>
                         </>
                     )}
                 </section>

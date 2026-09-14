@@ -3,7 +3,7 @@ import { appendMessage, type SupportMessage } from './messages';
 import { URGENCY_SQL, urgencyFromRank, type Urgency } from './urgency';
 import type { SupportNote } from './notes';
 import type { LinkedBooking } from './linked-bookings';
-import { assertCanWriteIn, recordReopened, type SupportActor } from './assignment';
+import { assertCanWriteIn, type SupportActor } from './assignment';
 
 /**
  * The Agent's side of a Support Chat: the queues, and answering.
@@ -25,6 +25,15 @@ export type InboxFilter = 'unassigned' | 'mine' | 'assigned' | 'assistant' | 're
 
 /** The statuses of a chat a person is responsible for — not the retired assistant's. */
 const WORKED_STATUSES = `('waiting_human', 'human_active')`;
+
+/**
+ * The customer has actually said something. The widget creates a conversation the moment the
+ * panel opens — and a new one each time a resolved chat's customer opens it again — so without
+ * this the admins' queue fills with chats nobody wrote in. A chat is Waiting from its first
+ * message (CONTEXT.md, "Waiting"), not from a panel being opened.
+ */
+const CUSTOMER_HAS_WRITTEN = `EXISTS (SELECT 1 FROM support_messages m
+                                   WHERE m.conversation_id = c.id AND m.sender_type = 'guest')`;
 
 export interface InboxRow {
     id: string;
@@ -100,7 +109,7 @@ export async function listInbox({ filter, adminId }: ListInboxInput): Promise<In
     const sql = getSqlAdmin();
 
     const where = {
-        unassigned: `c.assigned_admin_id IS NULL AND c.status IN ${WORKED_STATUSES}`,
+        unassigned: `c.assigned_admin_id IS NULL AND c.status IN ${WORKED_STATUSES} AND ${CUSTOMER_HAS_WRITTEN}`,
         mine: `c.assigned_admin_id = $1 AND c.status <> 'resolved'`,
         assigned: `c.assigned_admin_id IS NOT NULL AND c.status <> 'resolved'`,
         assistant: `c.status = 'ai_active'`,
@@ -155,11 +164,13 @@ export async function inboxCounts(actor: { id: string; role: string }): Promise<
     const sql = getSqlAdmin();
     const rows = await sql<{ unassigned: string; mine: string; mineWaiting: string }[]>`
         SELECT
-            count(*) FILTER (WHERE assigned_admin_id IS NULL
-                               AND status IN ('waiting_human', 'human_active')) AS unassigned,
-            count(*) FILTER (WHERE assigned_admin_id = ${actor.id} AND status <> 'resolved') AS mine,
-            count(*) FILTER (WHERE assigned_admin_id = ${actor.id} AND status = 'waiting_human') AS "mineWaiting"
-          FROM support_conversations
+            count(*) FILTER (WHERE c.assigned_admin_id IS NULL
+                               AND c.status IN ('waiting_human', 'human_active')
+                               AND EXISTS (SELECT 1 FROM support_messages m
+                                            WHERE m.conversation_id = c.id AND m.sender_type = 'guest')) AS unassigned,
+            count(*) FILTER (WHERE c.assigned_admin_id = ${actor.id} AND c.status <> 'resolved') AS mine,
+            count(*) FILTER (WHERE c.assigned_admin_id = ${actor.id} AND c.status = 'waiting_human') AS "mineWaiting"
+          FROM support_conversations c
     `;
     const unassigned = Number(rows[0]?.unassigned ?? 0);
     const mineWaiting = Number(rows[0]?.mineWaiting ?? 0);
@@ -192,6 +203,22 @@ export interface AgentConversationDetail {
      * not a `sender_type`.
      */
     notes: SupportNote[];
+    /**
+     * This customer's other Support Chats, newest first. A resolved chat is never reopened —
+     * a returning customer gets a new one — so this is where the Agent finds what was said
+     * before. Empty for a guest: there is no verified identity to link chats by.
+     */
+    previousConversations: PreviousConversation[];
+}
+
+export interface PreviousConversation {
+    id: string;
+    reference: string;
+    status: string;
+    createdAt: string;
+    lastMessageAt: string;
+    /** Who held it — for a resolved chat, who handled it. */
+    assignedAdminName: string | null;
 }
 
 /** One conversation, with everything an Agent needs to answer it without leaving. */
@@ -239,7 +266,20 @@ export async function getConversationForAgent(
         }
     }
 
-    return { conversation, messages, bookings, notes, linkedBookings };
+    const previousConversations = conversation.userId
+        ? await sql<PreviousConversation[]>`
+            SELECT c.id, c.reference, c.status,
+                   c.created_at AS "createdAt", c.last_message_at AS "lastMessageAt",
+                   (SELECT COALESCE(NULLIF(TRIM(CONCAT_WS(' ', a.first_name, a.last_name)), ''), a.email)
+                      FROM users a WHERE a.id = c.assigned_admin_id) AS "assignedAdminName"
+              FROM support_conversations c
+             WHERE c.user_id = ${conversation.userId} AND c.id <> ${conversationId}
+             ORDER BY c.created_at DESC
+             LIMIT 20
+          `
+        : [];
+
+    return { conversation, messages, bookings, notes, linkedBookings, previousConversations };
 }
 
 export interface AgentReplyInput {
@@ -278,48 +318,8 @@ export async function agentReply(input: AgentReplyInput): Promise<SupportMessage
     });
 }
 
-/**
- * Hand a finished conversation back to the queue when the customer writes again.
- *
- * Resolved is not an ending. Someone returning days later usually has a new question, and
- * per ADR-0031 there is no assistant to give it to first — it goes straight to
- * `waiting_human`, the same place a fresh conversation is born into.
- *
- * The old assignment is dropped with it and the reopen recorded: a returning customer goes
- * to Unassigned for an admin to hand out, usually back to the same Support Agent — but
- * decided, not inherited (CONTEXT.md, "Assignment").
- *
- * `waiting_notified_at` is dropped for the same reason: this is a new waiting spell, and
- * the doorbell has not rung for it. Keeping the old mark would mean a customer answered in
- * March and back in June is queued in silence, because a ring that happened three months
- * ago still counts as somebody having been told.
- *
- * Returns whether anything changed. A conversation that was never resolved is untouched:
- * a customer writing to an Agent mid-conversation must not be bounced back to the queue,
- * because Escalation is one-way.
- */
-export async function reopenIfResolved(conversationId: string): Promise<boolean> {
-    const sql = getSqlAdmin();
-    const rows = await sql<{ previousAdminId: string | null }[]>`
-        WITH before AS (
-            SELECT id, assigned_admin_id FROM support_conversations
-             WHERE id = ${conversationId} AND status = 'resolved'
-               FOR UPDATE
-        )
-        UPDATE support_conversations c
-           SET status = 'waiting_human',
-               assigned_admin_id = NULL,
-               escalation_reason = NULL,
-               waiting_notified_at = NULL
-          FROM before
-         WHERE c.id = before.id
-        RETURNING before.assigned_admin_id AS "previousAdminId"
-    `;
-    if (rows.length === 0) return false;
-
-    await recordReopened(conversationId, rows[0].previousAdminId);
-    return true;
-}
+// A resolved chat is never reopened: the customer's next message starts a new one
+// (`openConversation`, CONTEXT.md "Support Chat"). `reopenIfResolved` went with that.
 
 // Resolving lives with the rest of Assignment now, because it records who handled the chat.
 export { resolveConversation } from './assignment';

@@ -62,7 +62,9 @@ async function recordEvent(
     sql: Queryable,
     event: {
         conversationId: string;
-        kind: 'assigned' | 'returned' | 'reopened' | 'released' | 'resolved';
+        // 'reopened' is still allowed by the table but no longer written: a resolved chat is
+        // never reopened — the customer's next message starts a new one.
+        kind: 'assigned' | 'returned' | 'released' | 'resolved';
         fromAdminId?: string | null;
         toAdminId?: string | null;
         actorAdminId?: string | null;
@@ -198,10 +200,6 @@ export async function resolveConversation(input: { conversationId: string; actor
     await publish({ conversationId: input.conversationId, messageId: null });
 }
 
-/** Record that a customer reopened a resolved chat, sending it back to Unassigned. */
-export async function recordReopened(conversationId: string, previousAdminId: string | null): Promise<void> {
-    await recordEvent(getSqlAdmin(), { conversationId, kind: 'reopened', fromAdminId: previousAdminId });
-}
 
 export interface AssignableAgent {
     id: string;

@@ -88,8 +88,9 @@ export async function getSupportCaller(): Promise<SupportCaller> {
 /**
  * The caller's conversation, or null if they have none.
  *
- * A resolved conversation is still returned: the guest should be able to read back what
- * was said, and reopening it is a separate decision made by `openConversation`.
+ * The most recent one, open or not. A resolved conversation is still returned so a caller
+ * whose chat was just resolved reads the end of it; `openConversation` is what decides a
+ * resolved one is finished and starts the next.
  */
 export async function findConversation(caller: SupportCaller): Promise<SupportConversation | null> {
     const sql = getSqlAdmin();
@@ -132,47 +133,24 @@ export interface OpenConversationResult {
 }
 
 /**
- * Open the caller's conversation, or resume the one they already have.
+ * Open the caller's conversation, or resume the one they already have — if it is still open.
  *
- * Resuming a resolved conversation reopens it rather than starting a fresh one, so the
- * agent who picks it up sees what was already said instead of answering a question that
- * looks like it arrived without context.
+ * A resolved conversation is finished, and is never reopened: the caller gets a new one,
+ * with its own Chat Reference, and the resolved one becomes history they can read back
+ * (CONTEXT.md, "Support Chat"). It used to reopen — on merely opening the widget — so one
+ * reference collected unrelated topics across days, each credited again to whoever resolved
+ * it next under Assignment by admin (ADR-0041). The Agent still has the context: the
+ * customer's earlier chats are listed beside the new one.
  *
- * Either way the conversation ends up Waiting. Per ADR-0031 there is no assistant to open
- * against and none to hand a reopened chat back to, so `ai_active` is not a state anything
- * writes any more — new rows take the `waiting_human` DEFAULT, and a reopen names it.
+ * New rows take the `waiting_human` DEFAULT. Per ADR-0031 there is no assistant to open
+ * against, so `ai_active` is not a state anything writes any more.
  */
 export async function openConversation(input: OpenConversationInput): Promise<OpenConversationResult> {
     const sql = getSqlAdmin();
     const existing = await findConversation(input.caller);
 
-    if (existing) {
-        if (existing.status !== 'resolved') {
-            return { conversation: existing, issuedGuestToken: null, created: false };
-        }
-        const rows = await sql.unsafe<SupportConversation[]>(
-            // `waiting_notified_at` goes back to NULL with the assignment: this is a new
-            // waiting spell and nobody has been told about it. Leaving the old mark would
-            // mean a customer answered in March and back in June queues in silence,
-            // because a ring three months ago still counts as somebody having been told.
-            `UPDATE support_conversations
-                SET status = 'waiting_human',
-                    assigned_admin_id = NULL,
-                    waiting_notified_at = NULL,
-                    last_message_at = now()
-              WHERE id = $1
-          RETURNING ${COLUMNS}`,
-            [existing.id],
-        );
-        // Back to Unassigned, recorded — the admin decides who has it next (ADR-0041).
-        // Imported here because assignment.ts imports this module.
-        const { recordReopened } = await import('./assignment');
-        await recordReopened(existing.id, existing.assignedAdminId ?? null);
-        return {
-            conversation: rows[0],
-            issuedGuestToken: null,
-            created: false,
-        };
+    if (existing && existing.status !== 'resolved') {
+        return { conversation: existing, issuedGuestToken: null, created: false };
     }
 
     const locale = normaliseLocale(input.locale);
@@ -206,6 +184,49 @@ export async function openConversation(input: OpenConversationInput): Promise<Op
     // The guest *read* paths stay open on purpose: a returning guest can still see their
     // transcript and the notice that tells them how to come back.
     throw new SupportValidationError('Sign in to start a Support Chat.');
+}
+
+export interface PastConversation {
+    reference: string;
+    createdAt: string;
+    lastMessageAt: string;
+}
+
+/**
+ * The caller's finished chats, newest first — the history the widget offers as "Previous
+ * conversation". Signed-in callers only: a Support Chat requires an account (ADR-0032).
+ */
+export async function listPastConversations(caller: SupportCaller, limit = 10): Promise<PastConversation[]> {
+    if (!caller.userId) return [];
+    const sql = getSqlAdmin();
+    return sql<PastConversation[]>`
+        SELECT reference, created_at AS "createdAt", last_message_at AS "lastMessageAt"
+          FROM support_conversations
+         WHERE user_id = ${caller.userId} AND status = 'resolved'
+         ORDER BY last_message_at DESC
+         LIMIT ${limit}
+    `;
+}
+
+/**
+ * One of the caller's own finished chats, by its Chat Reference — or null.
+ *
+ * The reference names a conversation and grants nothing (ADR-0038): what grants the read is
+ * that the conversation belongs to the signed-in caller. Someone else's reference, or an
+ * open chat, is simply not found.
+ */
+export async function findPastConversation(
+    caller: SupportCaller,
+    reference: string,
+): Promise<SupportConversation | null> {
+    if (!caller.userId) return null;
+    const sql = getSqlAdmin();
+    const rows = await sql.unsafe<SupportConversation[]>(
+        `SELECT ${COLUMNS} FROM support_conversations
+          WHERE user_id = $1 AND reference = $2 AND status = 'resolved'`,
+        [caller.userId, reference],
+    );
+    return rows[0] ?? null;
 }
 
 /** Longest name and email accepted, so a form post cannot write an essay into the row. */

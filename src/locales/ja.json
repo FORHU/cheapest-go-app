@@ -2263,6 +2263,12 @@
       "showTranslation": "翻訳を表示",
       "pending": "翻訳中…",
       "untranslated": "未翻訳"
+    },
+    "history": {
+      "previous": "以前の会話 {reference}",
+      "back": "現在のチャットに戻る",
+      "closed": "この会話は終了しています。新しいご質問は現在のチャットにお書きください。",
+      "unavailable": "この会話を読み込めませんでした。"
     }
   },
   "map": {
