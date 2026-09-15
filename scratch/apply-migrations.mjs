@@ -7,14 +7,15 @@
  *
  * Every file runs inside its own transaction — a failure rolls that file back
  * whole rather than leaving the schema half-changed. Applied files are recorded
- * in schema_migrations, which the live database does not currently have; without
- * it nothing tracks what has run, which is how six migrations went missing.
+ * in schema_migrations; without that ledger nothing tracks what has run, which is
+ * how six migrations went missing.
  *
- * Rows are keyed the way dbmate keys them: on the bare 14-digit version, never on the
- * whole filename. This script disagreed with dbmate on that until 2026-09-15, which made
- * its skip-check dead — no row it looked for could match one dbmate had written, so every
- * file re-ran on every invocation — and made the rows it wrote invisible to dbmate, which
- * would then re-run those migrations in turn.
+ * Rows are keyed the way dbmate keys them — on the version alone, never on the whole
+ * filename — using the shared derivation in db/migration-version.mjs. This script
+ * disagreed with dbmate on that until 2026-09-15, which made its skip-check dead (no row
+ * it looked for could match one dbmate had written, so every file re-ran on every
+ * invocation) and made the rows it wrote invisible to dbmate, which would then re-run
+ * those migrations in turn.
  *
  * Nothing is applied until the whole of db/migrations/ has been checked for two files
  * sharing a version. Because the ledger key is that version alone, a collision means
@@ -26,6 +27,7 @@
 import fs from 'fs';
 import path from 'path';
 import postgres from 'postgres';
+import { versionOf, listMigrationFiles, auditVersions, upSection } from '../db/migration-version.mjs';
 
 const FILES = [
     // Already recorded — these print SKIP. Kept so a run shows the guard working
@@ -37,13 +39,16 @@ const FILES = [
     '20260906000004_email_logs_support_escalation.sql',
     '20260906000005_support_agent_role.sql',
 
-    // Pending. Order matters: support_assistant_retired_notice widens the notice_code
-    // CHECK constraint that start_waiting then inserts 'assistant_retired' against.
+    // Pending. In version order, which is the order dbmate would apply them in — keep it
+    // that way, so this script and `dbmate up` can never produce different results from the
+    // same directory. Order matters within it: support_assistant_retired_notice (…0001)
+    // widens the notice_code CHECK constraint that start_waiting (…0002) then inserts
+    // 'assistant_retired' against, and version order already puts them that way round.
     '20260906000006_rename_geomeego_to_airanggo.sql',
-    '20260907000004_supplier_booking_attempts.sql',
     '20260907000001_support_assistant_retired_notice.sql',
     '20260907000002_support_conversations_start_waiting.sql',
     '20260907000003_support_conversations_waiting_notified_at.sql',
+    '20260907000004_supplier_booking_attempts.sql',
 
     // Chat Reference, Linked Bookings and Internal Notes (ADR-0038, ADR-0039).
     '20260909000001_support_chat_reference_bookings_notes.sql',
@@ -61,54 +66,43 @@ const dry = process.argv.includes('--dry');
 const MIGRATIONS_DIR = 'db/migrations';
 
 /**
- * The ledger key: the bare 14-digit timestamp, exactly as dbmate records it.
- *
- * Defined once and used by both the preflight below and the apply loop, so the two can
- * never drift apart. dbmate keys schema_migrations on this prefix alone and discards the
- * rest of the filename, which is a label for humans.
- */
-const versionOf = (file) => {
-    const m = /^(\d{14})_/.exec(file);
-    if (!m) {
-        console.error(`Cannot derive a version from "${file}" — expected <14 digits>_<label>.sql.`);
-        process.exit(1);
-    }
-    return m[1];
-};
-
-/**
- * Preflight: abort if any two migrations share a version.
+ * Preflight: refuse to start if the directory or the list above is unsound.
  *
  * Loudly, and before touching a database, because a silent skip is the exact failure this
- * guards against. 20260907000001 was shared by two files: the assistant-retired notice
- * ran, the supplier_booking_attempts audit table never did, and the ledger claimed both
- * were applied. That table is the safety net added after booking CG-770AZS went missing,
- * and its absence surfaced nowhere — supplierAttempt.ts swallows its own write failures
- * by design, so it logged "Proceeding untraced" and carried on.
+ * guards against — see the header of 20260907000004_supplier_booking_attempts.sql for what
+ * one cost. Everything wrong is reported in a single pass: finding the second problem
+ * should not cost another run.
  *
- * Scans the directory rather than FILES, so a collision introduced by someone else is
- * caught here even when neither colliding file was going to be applied by this run.
+ * The version audit scans the whole directory rather than FILES, so a collision someone
+ * else introduces is caught here even when neither colliding file was going to be applied.
  */
-const byVersion = new Map();
-for (const f of fs.readdirSync(MIGRATIONS_DIR).filter((n) => n.endsWith('.sql')).sort()) {
-    const v = versionOf(f);
-    byVersion.set(v, [...(byVersion.get(v) ?? []), f]);
-}
-const collisions = [...byVersion.entries()].filter(([, group]) => group.length > 1);
-if (collisions.length) {
-    console.error('ABORT — migrations sharing a version prefix:\n');
-    for (const [v, group] of collisions) console.error(`  ${v} is shared by ${group.join(' and ')}`);
-    console.error('\ndbmate records the version, not the filename, so applying one of these marks');
-    console.error('the other applied forever and it never runs. Renumber whichever file has NOT');
-    console.error('been applied yet to the next free version, then run this again.');
-    process.exit(1);
-}
+const onDisk = listMigrationFiles(MIGRATIONS_DIR);
+const { collisions, malformed } = auditVersions(onDisk);
 
-// A renamed migration must not leave a stale name in FILES: without this the run dies on
-// readFileSync partway through, after earlier files have already been applied.
-const absent = FILES.filter((f) => !fs.existsSync(path.join(MIGRATIONS_DIR, f)));
-if (absent.length) {
-    console.error(`ABORT — listed in FILES but not on disk:\n${absent.map((f) => `  ${f}`).join('\n')}`);
+// Compared against the directory listing, never fs.existsSync: existsSync is
+// case-insensitive on Windows and case-sensitive on Linux, so a case-typo in FILES would
+// pass locally and then die mid-run in CI — precisely what this guard exists to prevent.
+const present = new Set(onDisk);
+const absent = FILES.filter((f) => !present.has(f));
+
+if (collisions.length || malformed.length || absent.length) {
+    console.error('ABORT — db/migrations/ is not in a state worth applying:\n');
+
+    for (const { version, files } of collisions) {
+        console.error(`  version ${version} is shared by ${files.join(' and ')}`);
+    }
+    for (const f of malformed) {
+        console.error(`  ${f} has no leading version digits — dbmate would have nothing to record`);
+    }
+    for (const f of absent) {
+        console.error(`  ${f} is listed in FILES but is not on disk (renamed? case wrong?)`);
+    }
+
+    if (collisions.length) {
+        console.error('\ndbmate records the version, not the filename, so applying one of a colliding');
+        console.error('pair marks the other applied forever and it never runs. Renumber whichever');
+        console.error('file has NOT been applied yet to the next free version, then run this again.');
+    }
     process.exit(1);
 }
 
@@ -144,11 +138,6 @@ const sql = postgres(url, {
     connect_timeout: 25,
 });
 
-const upOnly = (text) => {
-    const body = text.split(/^--\s*migrate:down\s*$/m)[0];
-    return body.replace(/^--\s*migrate:up\s*$/m, '').trim();
-};
-
 if (!dry) {
     await sql`CREATE TABLE IF NOT EXISTS public.schema_migrations (
         version     text PRIMARY KEY,
@@ -163,7 +152,7 @@ for (const f of FILES) {
     const version = versionOf(f);
     if (done.has(version)) { console.log(`SKIP  ${f}  (already recorded)`); continue; }
 
-    const body = upOnly(fs.readFileSync(path.join(MIGRATIONS_DIR, f), 'utf8'));
+    const body = upSection(fs.readFileSync(path.join(MIGRATIONS_DIR, f), 'utf8'));
     if (!body) { console.log(`SKIP  ${f}  (empty up section)`); continue; }
 
     if (dry) {
