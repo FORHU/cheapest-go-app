@@ -119,6 +119,8 @@ export interface ConversationDetail {
     notes: SupportNoteView[];
     /** This customer's other chats, newest first — where the earlier context is. */
     previousConversations?: PreviousConversationView[];
+    /** Help Page articles the widget offered before they wrote (ADR-0043). */
+    suggestionsShown?: string[];
 }
 
 export interface PreviousConversationView {

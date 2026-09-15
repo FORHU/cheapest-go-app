@@ -2606,6 +2606,12 @@
       "back": "返回当前对话",
       "closed": "此对话已结束。如有新的问题，请在当前对话中留言。",
       "unavailable": "无法加载此对话。"
+    },
+    "suggestions": {
+      "heading": "以下内容能解答您的问题吗？",
+      "solved": "已解决",
+      "stillNeedHelp": "仍需要帮助",
+      "solvedNote": "很高兴能帮到您。如还有其他问题，随时联系我们。"
     }
   },
   "map": {

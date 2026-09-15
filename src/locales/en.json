@@ -3026,6 +3026,12 @@
       "back": "Back to your current chat",
       "closed": "This conversation is closed. Write in your current chat to ask something new.",
       "unavailable": "This conversation could not be loaded."
+    },
+    "suggestions": {
+      "heading": "Does one of these answer it?",
+      "solved": "That answered it",
+      "stillNeedHelp": "I still need help",
+      "solvedNote": "Glad that helped. Write to us any time if something else comes up."
     }
   },
   "map": {

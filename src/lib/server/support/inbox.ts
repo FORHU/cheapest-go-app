@@ -209,6 +209,13 @@ export interface AgentConversationDetail {
      * before. Empty for a guest: there is no verified identity to link chats by.
      */
     previousConversations: PreviousConversation[];
+    /**
+     * Help Page articles the widget offered this customer before they wrote (ADR-0043).
+     *
+     * They read these and asked anyway, so the Agent knows which answers have already been
+     * given — and a chat that keeps arriving after the same card is how a bad match is found.
+     */
+    suggestionsShown: string[];
 }
 
 export interface PreviousConversation {
@@ -235,15 +242,19 @@ export async function getConversationForAgent(
     if (!raw) return null;
     const conversation = toInboxRow(raw);
 
-    const [{ listMessages }, { listNotes }, { listLinkedBookings }] = await Promise.all([
+    const [{ listMessages }, { listNotes }, { listLinkedBookings }, { suggestionsShownFor }] = await Promise.all([
         import('./messages'),
         import('./notes'),
         import('./linked-bookings'),
+        import('./suggestions'),
     ]);
-    const [messages, notes, linkedBookings] = await Promise.all([
+    const [messages, notes, linkedBookings, suggestionsShown] = await Promise.all([
         listMessages(conversationId),
         listNotes(conversationId),
         listLinkedBookings(conversationId),
+        // What the widget offered before they wrote (ADR-0043). An Agent who knows the customer
+        // has already read the refund article does not send it to them again.
+        suggestionsShownFor(conversationId).catch(() => [] as string[]),
     ]);
 
     let bookings: unknown[] | null = null;
@@ -286,6 +297,7 @@ export async function getConversationForAgent(
         notes,
         linkedBookings,
         previousConversations,
+        suggestionsShown,
     };
 }
 

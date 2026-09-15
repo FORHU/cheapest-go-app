@@ -1,0 +1,26 @@
+{
+  "support.suggestions.heading": {
+    "en": "Does one of these answer it?",
+    "ko": "아래 내용으로 해결되나요?",
+    "ja": "こちらで解決しますか？",
+    "zh": "以下内容能解答您的问题吗？"
+  },
+  "support.suggestions.solved": {
+    "en": "That answered it",
+    "ko": "네, 해결됐어요",
+    "ja": "解決しました",
+    "zh": "已解决"
+  },
+  "support.suggestions.stillNeedHelp": {
+    "en": "I still need help",
+    "ko": "아직 도움이 필요해요",
+    "ja": "まだ解決していません",
+    "zh": "仍需要帮助"
+  },
+  "support.suggestions.solvedNote": {
+    "en": "Glad that helped. Write to us any time if something else comes up.",
+    "ko": "도움이 되었다니 다행입니다. 궁금한 점이 생기면 언제든 문의해 주세요.",
+    "ja": "お役に立ててよかったです。他にご不明な点があればいつでもご連絡ください。",
+    "zh": "很高兴能帮到您。如还有其他问题，随时联系我们。"
+  }
+}

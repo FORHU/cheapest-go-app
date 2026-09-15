@@ -33,6 +33,8 @@ interface SupportComposerProps {
     uploadError: string | null;
     onAttach: (file: File) => void;
     onRemoveAttachment: (attachmentId: string) => void;
+    /** Every keystroke of the draft, so the panel can offer Help Page articles (ADR-0043). */
+    onDraftChange?: (draft: string) => void;
 }
 
 export function SupportComposer({
@@ -44,6 +46,7 @@ export function SupportComposer({
     uploadError,
     onAttach,
     onRemoveAttachment,
+    onDraftChange,
 }: SupportComposerProps) {
     const t = useTranslations('support');
     const [value, setValue] = useState('');
@@ -59,6 +62,7 @@ export function SupportComposer({
 
         onSend(value.trim());
         setValue('');
+        onDraftChange?.('');
     };
 
     const pick = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -130,7 +134,10 @@ export function SupportComposer({
                 <input
                     type="text"
                     value={value}
-                    onChange={event => setValue(event.target.value)}
+                    onChange={event => {
+                        setValue(event.target.value);
+                        onDraftChange?.(event.target.value);
+                    }}
                     maxLength={MAX_MESSAGE_LENGTH}
                     disabled={!canSend}
                     placeholder={canSend ? t('composer.placeholder') : t('composer.connecting')}

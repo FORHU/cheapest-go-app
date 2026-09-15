@@ -32,6 +32,15 @@ import {
     type UploadFailure,
 } from '@/lib/support/limits';
 
+/** Help Page articles by id, for the "already shown" line. The inbox is English-only. */
+const HELP_ARTICLE_NAMES: Record<string, string> = {
+    confirmation: 'Missing confirmation',
+    refunds: 'Refund timing',
+    changes: 'Changes and cancellations',
+    priceGap: 'Price differences',
+    payment: 'Payment problems',
+};
+
 /** The inbox is English-only; the customer's widget says the same things in their language. */
 const ATTACHMENT_REFUSALS: Record<AttachmentRefusal | UploadFailure, string> = {
     empty: 'That file is empty.',
@@ -536,6 +545,18 @@ export function SupportInboxClient({
                                     <PanelRight className="h-3.5 w-3.5" /> <span className="hidden sm:inline">Details</span>
                                 </button>
                             </header>
+
+                            {/*
+                              * What the widget already offered this customer (ADR-0043). They
+                              * read these and wrote anyway, so sending the same article back is
+                              * the one reply guaranteed to annoy them — and a chat that keeps
+                              * arriving after the same card is how a bad match is found.
+                              */}
+                            {(detail.suggestionsShown?.length ?? 0) > 0 && (
+                                <p className="shrink-0 border-b border-slate-100 px-4 py-1.5 text-[11px] text-slate-500 dark:border-white/5 dark:text-slate-400">
+                                    Already shown: {detail.suggestionsShown!.map(id => HELP_ARTICLE_NAMES[id] ?? id).join(', ')}
+                                </p>
+                            )}
 
                             <Transcript
                                 messages={detail.messages}

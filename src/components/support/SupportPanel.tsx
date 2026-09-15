@@ -5,6 +5,7 @@ import { X, Copy } from 'lucide-react';
 import { useLocale, useTranslations } from 'next-intl';
 import { SupportTranscript } from './SupportTranscript';
 import { SupportComposer } from './SupportComposer';
+import { SuggestedAnswers, useSuggestedAnswers } from './SuggestedAnswers';
 import { EscalationForm } from './EscalationForm';
 import { SupportBookingPicker } from './SupportBookingPicker';
 import { PastConversation } from './PastConversation';
@@ -36,6 +37,11 @@ export function SupportPanel({ chat, onClose }: SupportPanelProps) {
     const [copied, setCopied] = useState(false);
     /** A finished chat being read back, by reference — or null for the current chat. */
     const [viewingPast, setViewingPast] = useState<string | null>(null);
+
+    // What the customer is typing, and the Help Page articles it matches (ADR-0043). Offered
+    // only before anyone has written: once a chat is under way the customer has a person.
+    const [draft, setDraft] = useState('');
+    const suggested = useSuggestedAnswers(draft, chat.messages.length === 0);
 
     // Escape closes, as it does for every other overlay in the app.
     useEffect(() => {
@@ -195,10 +201,24 @@ export function SupportPanel({ chat, onClose }: SupportPanelProps) {
                       * read as one action. Above the transcript it would push the newest
                       * message out of view; below the composer nobody would see it at all.
                       */}
+                    {/*
+                      * Between the transcript and the composer, where what the customer is
+                      * writing is: an offer they can read, not a reply anyone sent them
+                      * (ADR-0043). Only while the chat is still empty — once a person is in
+                      * the conversation, handing out leaflets is an insult.
+                      */}
+                    <SuggestedAnswers
+                        articles={suggested.articles}
+                        solved={suggested.solved}
+                        onOpen={suggested.markOpened}
+                        onSolved={suggested.markSolved}
+                        onDismiss={suggested.dismiss}
+                    />
                     <SupportBookingPicker conversationId={chat.conversation?.id ?? null} />
                     <SupportComposer
                         canSend={chat.canSend}
-                        onSend={chat.send}
+                        onDraftChange={setDraft}
+                        onSend={body => { suggested.reportSent(); chat.send(body); }}
                         attachments={chat.attachments}
                         canAttach={chat.canAttach}
                         uploading={chat.uploading}

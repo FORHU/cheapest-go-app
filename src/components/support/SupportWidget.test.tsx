@@ -393,3 +393,127 @@ describe('attachment failures always say why (QA BG-16)', () => {
         expect(await screen.findByRole('alert')).toHaveTextContent('A message can carry at most 5 files.');
     });
 });
+
+/**
+ * Suggested Answers (ADR-0043): the widget offers a Help Page article while the customer types.
+ * The rules that matter are the ones about restraint — it never writes in the chat, it never
+ * gets in the way of sending, and it goes quiet once a conversation is under way.
+ */
+describe('suggested answers (ADR-0043)', () => {
+    const helpMessages = {
+        ...messages,
+        support: {
+            ...messages.support,
+            suggestions: {
+                heading: 'Does one of these answer it?',
+                solved: 'That answered it',
+                stillNeedHelp: 'I still need help',
+                solvedNote: 'Glad that helped.',
+            },
+        },
+        help: {
+            sections: {
+                refunds: { title: 'When do I get my refund?', body: 'A refund goes back to the card that paid.' },
+                confirmation: { title: 'I booked, but I have no confirmation', body: 'Check Trips while signed in.' },
+                changes: { title: 'Changing or cancelling', body: 'What you can change depends on the fare.' },
+                priceGap: { title: 'The price changed', body: 'Live prices move.' },
+                payment: { title: 'Payment problems', body: 'A pending authorisation is not a charge.' },
+            },
+        },
+    };
+
+    function HelpWrapper({ children }: { children: React.ReactNode }) {
+        return (
+            <NextIntlClientProvider locale="en" messages={helpMessages}>
+                {children}
+            </NextIntlClientProvider>
+        );
+    }
+
+    const type = (text: string) =>
+        fireEvent.change(screen.getByRole('textbox', { name: /type a message|message/i }), { target: { value: text } });
+
+    /** The debounce before a card appears. */
+    const settle = async () => { await act(async () => { await new Promise(r => setTimeout(r, 500)); }); };
+
+    it('offers the article that answers what is being typed', async () => {
+        render(<SupportWidget />, { wrapper: HelpWrapper });
+        openSupport();
+        await waitFor(() => expect(screen.getByRole('textbox')).toBeInTheDocument());
+
+        type('when do I get my refund for the hotel');
+        await settle();
+
+        expect(await screen.findByText('When do I get my refund?')).toBeInTheDocument();
+        // An offer, not a reply: nothing was written into the conversation.
+        expect(fetchMock.mock.calls.filter(([url, init]) =>
+            url === '/api/support/conversation/messages' && init?.method === 'POST')).toHaveLength(0);
+    });
+
+    it('says nothing while the customer is still typing a word', async () => {
+        render(<SupportWidget />, { wrapper: HelpWrapper });
+        openSupport();
+        await waitFor(() => expect(screen.getByRole('textbox')).toBeInTheDocument());
+
+        type('refund');
+        await settle();
+
+        expect(screen.queryByText('When do I get my refund?')).not.toBeInTheDocument();
+    });
+
+    it('never gets between the customer and sending', async () => {
+        render(<SupportWidget />, { wrapper: HelpWrapper });
+        openSupport();
+        await waitFor(() => expect(screen.getByRole('textbox')).toBeInTheDocument());
+
+        type('when do I get my refund for the hotel');
+        await settle();
+        expect(screen.getByText('When do I get my refund?')).toBeInTheDocument();
+
+        fireEvent.click(screen.getByRole('button', { name: /send/i }));
+
+        await waitFor(() => expect(fetchMock.mock.calls.some(([url, init]) =>
+            url === '/api/support/conversation/messages' && init?.method === 'POST')).toBe(true));
+        // And the team is told the cards did not answer it.
+        await waitFor(() => expect(fetchMock.mock.calls.some(([url, init]) =>
+            url === '/api/support/suggestions' && String(init?.body).includes('sent_anyway'))).toBe(true));
+    });
+
+    it('lets the customer say it answered them, and then stops offering', async () => {
+        render(<SupportWidget />, { wrapper: HelpWrapper });
+        openSupport();
+        await waitFor(() => expect(screen.getByRole('textbox')).toBeInTheDocument());
+
+        type('when do I get my refund for the hotel');
+        await settle();
+
+        fireEvent.click(screen.getByRole('button', { name: 'When do I get my refund?' }));
+        expect(screen.getByText('A refund goes back to the card that paid.')).toBeInTheDocument();
+        await waitFor(() => expect(fetchMock.mock.calls.some(([url, init]) =>
+            url === '/api/support/suggestions' && String(init?.body).includes('opened'))).toBe(true));
+
+        fireEvent.click(screen.getByRole('button', { name: 'That answered it' }));
+
+        expect(await screen.findByText('Glad that helped.')).toBeInTheDocument();
+        expect(screen.queryByText('When do I get my refund?')).not.toBeInTheDocument();
+        await waitFor(() => expect(fetchMock.mock.calls.some(([url, init]) =>
+            url === '/api/support/suggestions' && String(init?.body).includes('solved'))).toBe(true));
+    });
+
+    it('stops offering once someone is in the conversation', async () => {
+        render(<SupportWidget />, { wrapper: HelpWrapper });
+        openSupport();
+        await waitFor(() => expect(FakeEventSource.instances).toHaveLength(1));
+
+        act(() => FakeEventSource.instances[0].emit('message', {
+            id: 'm1', senderType: 'agent', body: 'Hello, I can help with that.', noticeCode: null,
+            createdAt: new Date().toISOString(), attachments: [],
+        }));
+
+        type('when do I get my refund for the hotel');
+        await settle();
+
+        // Handing someone a leaflet while an Agent is talking to them is the insult this avoids.
+        expect(screen.queryByText('When do I get my refund?')).not.toBeInTheDocument();
+    });
+});
