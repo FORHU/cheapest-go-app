@@ -356,6 +356,11 @@ async function handleDuffel(ctx: {
     const fx = await lockFx(confirmedPrice, confirmedCurrency);
 
     // ── Insert flight_bookings ───────────────────────────────────────────
+    // ticket_numbers is text[], not jsonb — the array itself is bound below, not
+    // JSON.stringify(preOrderTickets). The stringified form is the string '["1234..."]',
+    // which Postgres rejects as array input ("malformed array literal") whenever the order
+    // already carried e-tickets at pre-order time. See issue-ticket.ts for the same defect
+    // caught with a real DB round-trip test; this call site has the identical shape.
     const bookingRows = await sql`
         INSERT INTO flight_bookings (
             user_id, session_id, provider, pnr, status,
@@ -379,7 +384,7 @@ async function handleDuffel(ctx: {
             ${confirmedPrice},
             ${session.original_price ?? confirmedPrice},
             ${preOrderId},
-            ${JSON.stringify(preOrderTickets)},
+            ${preOrderTickets},
             ${farePolicy ? sql.json(farePolicy) : null},
             ${tripType},
             ${canonicalBrandName(process.env.NEXT_PUBLIC_BRAND_NAME)},

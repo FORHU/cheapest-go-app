@@ -129,11 +129,15 @@ export async function issueTicket(bookingId: string): Promise<IssueTicketResult>
         console.log(`[issue-ticket] Order ${orderId}: ${tickets.length} tickets, ${seatsFound} seat(s) assigned — status → ${newStatus}`);
 
         // ── Update flight_bookings ───────────────────────────────────────
+        // ticket_numbers is text[], not jsonb — pass the array itself and let postgres.js
+        // serialise it. JSON.stringify(tickets) here bound the STRING '["1234..."]', and
+        // Postgres rejects that as array input (it wants `{1234...}`, not `[...]`):
+        // "malformed array literal". Every call with a non-empty tickets array failed.
         await sql`
             UPDATE flight_bookings
             SET
                 status = ${newStatus},
-                ticket_numbers = ${JSON.stringify(tickets)}
+                ticket_numbers = ${tickets}
             WHERE id = ${bookingId}
         `;
 
