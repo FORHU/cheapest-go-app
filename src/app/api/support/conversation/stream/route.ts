@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { findConversation, getConversationStatus, getSupportCaller } from '@/lib/server/support/conversations';
 import { subscribe } from '@/lib/server/support/events';
-import { getMessage, listMessages } from '@/lib/server/support/messages';
+import { getMessage, listMessages, toPublicMessage } from '@/lib/server/support/messages';
 
 export const dynamic = 'force-dynamic';
 
@@ -62,7 +62,7 @@ export async function GET(req: NextRequest) {
             // the client never has to reorder around a gap.
             try {
                 const backfill = await listMessages(conversationId, since);
-                for (const message of backfill) send('message', message);
+                for (const message of backfill) send('message', toPublicMessage(message));
             } catch (err) {
                 console.error('[support/stream] backfill failed:', err);
             }
@@ -84,7 +84,7 @@ export async function GET(req: NextRequest) {
                     // The notify carries ids only; the row is read here so a long message
                     // never has to fit through the 8000-byte NOTIFY payload.
                     getMessage(event.messageId)
-                        .then(message => { if (message) send('message', message); })
+                        .then(message => { if (message) send('message', toPublicMessage(message)); })
                         .catch(err => console.error('[support/stream] read failed:', err));
                 });
             } catch (err) {

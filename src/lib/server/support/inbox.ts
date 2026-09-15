@@ -279,7 +279,36 @@ export async function getConversationForAgent(
           `
         : [];
 
-    return { conversation, messages, bookings, notes, linkedBookings, previousConversations };
+    return {
+        conversation,
+        messages: await withAuthorNames(messages),
+        bookings,
+        notes,
+        linkedBookings,
+        previousConversations,
+    };
+}
+
+/**
+ * Who wrote each Agent reply, by name.
+ *
+ * The transcript puts staff replies on one side and names their author above each run, and
+ * the name matters: an admin may write in a chat they do not own without taking it, so two
+ * colleagues' words sit in one column and only the caption tells them apart (CONTEXT.md,
+ * "Assignment"). One query for the distinct authors rather than a join on the messages
+ * select — a chat is answered by one or two people, however long it runs.
+ */
+async function withAuthorNames<T extends { senderAdminId?: string | null }>(messages: T[]): Promise<T[]> {
+    const ids = [...new Set(messages.map(m => m.senderAdminId).filter((id): id is string => !!id))];
+    if (ids.length === 0) return messages;
+
+    const sql = getSqlAdmin();
+    const rows = await sql<{ id: string; name: string }[]>`
+        SELECT id, COALESCE(NULLIF(TRIM(CONCAT_WS(' ', first_name, last_name)), ''), email) AS name
+          FROM users WHERE id = ANY(${ids}::uuid[])
+    `;
+    const names = new Map(rows.map(r => [r.id, r.name]));
+    return messages.map(m => (m.senderAdminId ? { ...m, senderName: names.get(m.senderAdminId) ?? null } : m));
 }
 
 export interface AgentReplyInput {

@@ -6,7 +6,7 @@ import {
     rateLimitIdentity,
     toPublicConversation,
 } from '@/lib/server/support/conversations';
-import { listMessages } from '@/lib/server/support/messages';
+import { listMessages, toPublicMessage } from '@/lib/server/support/messages';
 
 export const dynamic = 'force-dynamic';
 
@@ -34,6 +34,6 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ reference: 
 
     return NextResponse.json({
         conversation: toPublicConversation(conversation),
-        messages: await listMessages(conversation.id),
+        messages: (await listMessages(conversation.id)).map(toPublicMessage),
     });
 }

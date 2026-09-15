@@ -493,3 +493,89 @@ describe('Assignment on screen', () => {
         expect(calls.some(([url]) => url.endsWith('/assign'))).toBe(false);
     });
 });
+
+/**
+ * The transcript reads like a messenger: the customer down the left, CheapestGo down the
+ * right, and the support side captioned with who wrote it. The caption is not decoration —
+ * an admin may write in a chat they do not own without taking it (CONTEXT.md, "Assignment"),
+ * so two colleagues' replies share that column and only the name tells them apart.
+ */
+describe('the transcript reads like a messenger', () => {
+    const msg = (over: Record<string, unknown>) => ({
+        id: 'm', senderType: 'guest', body: '', noticeCode: null,
+        createdAt: '2026-09-06T10:00:00.000Z', attachments: [], ...over,
+    });
+
+    /** The element that carries the row's alignment, for a message's text. */
+    const rowOf = (text: string) => screen.getByText(text).closest('div.flex.flex-col');
+
+    async function open(messages: unknown[]) {
+        mockApi({ conversation: conversation({ id: 'a' }), messages, bookings: null });
+        render(
+            <SupportInboxClient
+                initialFilter="unassigned"
+                initialConversations={waiting}
+                initialCounts={{ unassigned: 2, mine: 0, waiting: 2 }}
+                currentAdminId="admin-1"
+            />,
+        );
+        fireEvent.click(screen.getByText('Ana Reyes'));
+        await waitFor(() => expect(fetchMock).toHaveBeenCalled());
+    }
+
+    it('puts the customer on the left and support on the right', async () => {
+        await open([
+            msg({ id: 'm1', senderType: 'guest', body: 'I want a refund.' }),
+            msg({ id: 'm2', senderType: 'agent', senderAdminId: 'admin-1', senderName: 'Ada Admin', body: 'Looking now.' }),
+        ]);
+
+        await waitFor(() => expect(screen.getByText('I want a refund.')).toBeInTheDocument());
+        expect(rowOf('I want a refund.')).toHaveClass('items-start');
+        expect(rowOf('Looking now.')).toHaveClass('items-end');
+    });
+
+    it('says "You" over your own replies and names the colleague over theirs', async () => {
+        await open([
+            msg({ id: 'm1', senderType: 'agent', senderAdminId: 'admin-1', senderName: 'Ada Admin', body: 'Mine.' }),
+            msg({ id: 'm2', senderType: 'agent', senderAdminId: 'admin-2', senderName: 'Ben Agent', body: 'Theirs.' }),
+        ]);
+
+        await waitFor(() => expect(screen.getByText('Mine.')).toBeInTheDocument());
+        expect(screen.getByText('You')).toBeInTheDocument();
+        expect(screen.getByText('Ben Agent')).toBeInTheDocument();
+        // Never the reader's own name — the question being answered is "did I write this?"
+        expect(screen.queryByText('Ada Admin')).not.toBeInTheDocument();
+    });
+
+    it('captions a run of replies once, not every bubble', async () => {
+        await open([
+            msg({ id: 'm1', senderType: 'agent', senderAdminId: 'admin-2', senderName: 'Ben Agent', body: 'One moment.' }),
+            msg({ id: 'm2', senderType: 'agent', senderAdminId: 'admin-2', senderName: 'Ben Agent', body: 'Refunded.' }),
+        ]);
+
+        await waitFor(() => expect(screen.getByText('Refunded.')).toBeInTheDocument());
+        expect(screen.getAllByText('Ben Agent')).toHaveLength(1);
+    });
+
+    it('centres a system notice, which nobody said', async () => {
+        await open([
+            msg({ id: 'm1', senderType: 'system', body: 'This chat was resolved.', noticeCode: 'resolved' }),
+        ]);
+
+        await waitFor(() => expect(screen.getByText('This chat was resolved.')).toBeInTheDocument());
+        expect(screen.getByText('This chat was resolved.').closest('p')).toHaveClass('text-center');
+    });
+
+    it('shows a time when the conversation has been sitting, and not between quick replies', async () => {
+        await open([
+            msg({ id: 'm1', senderType: 'guest', body: 'Hello?', createdAt: '2026-09-06T10:00:00.000Z' }),
+            msg({ id: 'm2', senderType: 'guest', body: 'Anyone?', createdAt: '2026-09-06T10:01:00.000Z' }),
+            msg({ id: 'm3', senderType: 'agent', senderAdminId: 'admin-1', body: 'Here now.', createdAt: '2026-09-06T14:00:00.000Z' }),
+        ]);
+
+        await waitFor(() => expect(screen.getByText('Here now.')).toBeInTheDocument());
+        // One for the first message, one for the four-hour gap — never for the minute between.
+        const times = document.querySelectorAll('p > time[dateTime]');
+        expect(times).toHaveLength(2);
+    });
+});

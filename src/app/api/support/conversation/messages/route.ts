@@ -8,7 +8,7 @@ import {
     SupportValidationError,
     toPublicConversation,
 } from '@/lib/server/support/conversations';
-import { appendMessage, listMessages } from '@/lib/server/support/messages';
+import { appendMessage, listMessages, toPublicMessage } from '@/lib/server/support/messages';
 import { liveNotifyDeps, notifyWaitingCustomer } from '@/lib/server/support/notify';
 
 export const dynamic = 'force-dynamic';
@@ -39,7 +39,7 @@ export async function GET(req: NextRequest) {
         return NextResponse.json({ error: 'Invalid cursor' }, { status: 400 });
     }
 
-    const messages = await listMessages(conversation.id, since);
+    const messages = (await listMessages(conversation.id, since)).map(toPublicMessage);
     return NextResponse.json({ messages });
 }
 

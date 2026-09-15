@@ -79,6 +79,10 @@ export interface SupportNoteView {
 export interface InboxMessage {
     id: string;
     senderType: 'guest' | 'ai' | 'agent' | 'system';
+    /** Which staff account wrote it. Set on every 'agent' row; null on everyone else's. */
+    senderAdminId?: string | null;
+    /** That account's name, resolved for the transcript caption. Null if the account is gone. */
+    senderName?: string | null;
     body: string;
     noticeCode: string | null;
     createdAt: string;

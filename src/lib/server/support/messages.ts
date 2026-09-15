@@ -479,3 +479,18 @@ export async function listMessages(
     );
     return withAttachments(rows);
 }
+
+/**
+ * One message as the customer may see it.
+ *
+ * `senderAdminId` and `backTranslatedBody` are staff-only and were reaching the widget:
+ * the first names a colleague by internal id, the second is the Agent's own quality check
+ * on their reply. Neither is anything a customer asked for, and a field nobody prunes is
+ * a field that ends up in someone's devtools.
+ */
+export type PublicSupportMessage = Omit<SupportMessage, 'senderAdminId' | 'backTranslatedBody'>;
+
+export function toPublicMessage(message: SupportMessage): PublicSupportMessage {
+    const { senderAdminId: _admin, backTranslatedBody: _back, ...rest } = message;
+    return rest;
+}

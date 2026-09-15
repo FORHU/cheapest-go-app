@@ -7,6 +7,7 @@ import type { SupportAttachmentView } from '@/components/support/types';
 import type {
     AssignableAgentView,
     ConversationDetail,
+    InboxMessage,
     HandledTallyView,
     InboxConversation,
     InboxCountsView,
@@ -536,63 +537,11 @@ export function SupportInboxClient({
                                 </button>
                             </header>
 
-                            <div className="min-h-0 flex-1 space-y-3 overflow-y-auto px-4 py-3">
-                                {detail.messages.map(message => (
-                                    <div key={message.id}>
-                                        <span className="block text-[11px] font-medium uppercase tracking-[0.12em] text-slate-400">
-                                            {message.senderType}
-                                        </span>
-                                        {/*
-                                          * A customer's message arrives in English for the
-                                          * Agent, marked as a machine translation, with the
-                                          * customer's own words one click away. When the
-                                          * translation failed the original shows with an
-                                          * amber "not translated" — never a refusal the
-                                          * translator produced in the customer's name.
-                                          */}
-                                        <p className="text-sm text-slate-800 dark:text-slate-200">
-                                            <TranslatedText
-                                                view={readerView(message, true)}
-                                                labels={AGENT_TRANSLATION_LABELS}
-                                            />
-                                        </p>
-
-                                        <CustomerReadsLine view={customerReadsView(message)} />
-
-                                        {message.attachments.length > 0 && (
-                                            <ul className="mt-1.5 flex flex-col gap-1">
-                                                {message.attachments.map(file => {
-                                                    const Icon = file.contentType.startsWith('image/')
-                                                        ? ImageIcon
-                                                        : FileText;
-                                                    return (
-                                                        <li key={file.id}>
-                                                            {/*
-                                                              * Links to this app, not to the bucket: the route
-                                                              * re-checks the Agent and mints a URL good for a few
-                                                              * minutes (ADR-0040). Opened in a new tab so reading
-                                                              * an attachment does not lose the queue.
-                                                              */}
-                                                            <a
-                                                                href={`/api/admin/support/conversations/${detail.conversation.id}/attachments/${file.id}`}
-                                                                target="_blank"
-                                                                rel="noopener noreferrer"
-                                                                className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs text-slate-700 ring-1 ring-slate-200 transition hover:bg-slate-50 dark:text-slate-200 dark:ring-white/10 dark:hover:bg-white/10"
-                                                            >
-                                                                <Icon className="h-3.5 w-3.5 shrink-0 text-slate-400" />
-                                                                <span className="max-w-[16rem] truncate">{file.fileName}</span>
-                                                                <span className="shrink-0 text-slate-400">
-                                                                    {formatFileSize(file.sizeBytes)}
-                                                                </span>
-                                                            </a>
-                                                        </li>
-                                                    );
-                                                })}
-                                            </ul>
-                                        )}
-                                    </div>
-                                ))}
-                            </div>
+                            <Transcript
+                                messages={detail.messages}
+                                conversationId={detail.conversation.id}
+                                currentAdminId={currentAdminId}
+                            />
 
                             {/*
                               * Only where this Agent may write: their own chat, or any chat
@@ -814,4 +763,174 @@ export function SupportInboxClient({
             </div>
         </div>
     );
+}
+
+/**
+ * The conversation, read the way a messenger reads it: the customer on the left, CheapestGo
+ * on the right, so an Agent scanning a chat they were handed sees who said what before they
+ * read a word of it. The flat list it replaces put both speakers in one column under an
+ * uppercase GUEST / AGENT caption, which makes a long exchange one undifferentiated wall.
+ *
+ * The customer's own widget has always been laid out this way (components/support/
+ * SupportTranscript.tsx); this is the same idea from the other chair — "me" is support here,
+ * so support is the side on the right.
+ */
+const SIDE: Record<InboxMessage['senderType'], 'left' | 'right' | 'centre'> = {
+    guest: 'left',
+    agent: 'right',
+    // Residue: nothing writes an `ai` row any more (CONTEXT.md, "Support Chat"). Old chats
+    // still carry them — on the support side, but never in the Agent's blue, because a
+    // retired model's words must not read as a colleague's.
+    ai: 'right',
+    // A notice has no author, so it gets no side. Giving it one implies someone said it.
+    system: 'centre',
+};
+
+/** A pause this long between two messages earns a time above the next one. */
+const TIME_GAP_MS = 15 * 60 * 1000;
+
+function Transcript({
+    messages,
+    conversationId,
+    currentAdminId,
+}: {
+    messages: InboxMessage[];
+    conversationId: string;
+    currentAdminId: string;
+}) {
+    return (
+        <div className="min-h-0 flex-1 space-y-1 overflow-y-auto px-4 py-3">
+            {messages.map((message, i) => {
+                const previous = i > 0 ? messages[i - 1] : null;
+                const side = SIDE[message.senderType];
+                const isAgent = message.senderType === 'agent';
+
+                // The caption names the author once per run of their messages: an admin may
+                // write in a chat they do not own without taking it (CONTEXT.md,
+                // "Assignment"), so two colleagues' replies share this column.
+                const author = message.senderAdminId && message.senderAdminId === currentAdminId
+                    ? 'You'
+                    : message.senderName ?? (message.senderType === 'ai' ? 'Assistant' : 'Agent');
+                const startsRun = !previous
+                    || previous.senderType !== message.senderType
+                    || (previous.senderAdminId ?? null) !== (message.senderAdminId ?? null);
+
+                return (
+                    <div key={message.id}>
+                        <TimeSeparator at={message.createdAt} previousAt={previous?.createdAt ?? null} />
+
+                        {side === 'centre' ? (
+                            <p className="my-2 text-center text-[11px] text-slate-500 dark:text-slate-400">
+                                <time dateTime={message.createdAt} title={exactTime(message.createdAt)}>
+                                    {message.body}
+                                </time>
+                            </p>
+                        ) : (
+                            <div className={side === 'right' ? 'flex flex-col items-end' : 'flex flex-col items-start'}>
+                                {side === 'right' && startsRun && (
+                                    <span className="mb-0.5 mt-2 text-[11px] font-medium text-slate-400 dark:text-slate-500">
+                                        {author}
+                                    </span>
+                                )}
+
+                                <div
+                                    title={exactTime(message.createdAt)}
+                                    className={
+                                        'max-w-[85%] rounded-2xl px-3 py-2 text-sm ' + (isAgent
+                                            ? 'bg-blue-600 text-white'
+                                            : 'bg-slate-100 text-slate-900 dark:bg-white/5 dark:text-slate-100')
+                                    }
+                                >
+                                    {/*
+                                      * A customer's message arrives in English for the Agent,
+                                      * marked as a machine translation, with the customer's own
+                                      * words one click away. When the translation failed the
+                                      * original shows with an amber "not translated" — never a
+                                      * refusal the translator produced in the customer's name.
+                                      */}
+                                    <TranslatedText
+                                        view={readerView(message, true)}
+                                        tone={isAgent ? 'dark' : 'light'}
+                                        labels={AGENT_TRANSLATION_LABELS}
+                                    />
+                                </div>
+
+                                {/*
+                                  * Outside the bubble on purpose. This is not what anyone said:
+                                  * it is what the customer received, the Agent's own check on
+                                  * their reply — and it turns amber when it has to warn, which
+                                  * is unreadable on blue.
+                                  */}
+                                <div className={'max-w-[85%] ' + (side === 'right' ? 'text-right' : '')}>
+                                    <CustomerReadsLine view={customerReadsView(message)} />
+                                </div>
+
+                                {message.attachments.length > 0 && (
+                                    <ul className={'mt-1 flex max-w-[85%] flex-col gap-1 ' + (side === 'right' ? 'items-end' : 'items-start')}>
+                                        {message.attachments.map(file => {
+                                            const Icon = file.contentType.startsWith('image/') ? ImageIcon : FileText;
+                                            return (
+                                                <li key={file.id}>
+                                                    {/*
+                                                      * Links to this app, not to the bucket: the route
+                                                      * re-checks the Agent and mints a URL good for a few
+                                                      * minutes (ADR-0040). Opened in a new tab so reading
+                                                      * an attachment does not lose the queue.
+                                                      */}
+                                                    <a
+                                                        href={`/api/admin/support/conversations/${conversationId}/attachments/${file.id}`}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs text-slate-700 ring-1 ring-slate-200 transition hover:bg-slate-50 dark:text-slate-200 dark:ring-white/10 dark:hover:bg-white/10"
+                                                    >
+                                                        <Icon className="h-3.5 w-3.5 shrink-0 text-slate-400" />
+                                                        <span className="max-w-[16rem] truncate">{file.fileName}</span>
+                                                        <span className="shrink-0 text-slate-400">
+                                                            {formatFileSize(file.sizeBytes)}
+                                                        </span>
+                                                    </a>
+                                                </li>
+                                            );
+                                        })}
+                                    </ul>
+                                )}
+                            </div>
+                        )}
+                    </div>
+                );
+            })}
+        </div>
+    );
+}
+
+/**
+ * The clock, only where it says something: the first message, a new day, or a pause long
+ * enough that "how long has this person been waiting" is the question being asked. In the
+ * Agent's own timezone, because the Agent is who reads it.
+ */
+function TimeSeparator({ at, previousAt }: { at: string; previousAt: string | null }) {
+    const now = new Date(at);
+    const before = previousAt ? new Date(previousAt) : null;
+    const show = !before
+        || now.getTime() - before.getTime() >= TIME_GAP_MS
+        || now.toDateString() !== before.toDateString();
+    if (!show) return null;
+
+    const sameDay = before !== null && now.toDateString() === before.toDateString();
+    return (
+        <p className="my-3 text-center text-[11px] text-slate-400 dark:text-slate-500">
+            <time dateTime={at}>
+                {sameDay
+                    ? now.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })
+                    : now.toLocaleString(undefined, {
+                        month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit',
+                    })}
+            </time>
+        </p>
+    );
+}
+
+/** The full timestamp, for a hover and for anything reading the title attribute. */
+function exactTime(at: string): string {
+    return new Date(at).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
 }
