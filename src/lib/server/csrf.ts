@@ -5,7 +5,9 @@
  * Cross-origin requests cannot set custom headers without a CORS preflight, which
  * the browser would block — making this a valid same-origin proof.
  *
- * Fallback: Origin/Referer header must match NEXT_PUBLIC_SITE_URL.
+ * Fallback: Origin/Referer header must match NEXT_PUBLIC_SITE_URL (or one of the other
+ * known-good production origins), or, outside production, be localhost/127.0.0.1 on any
+ * port.
  *
  * Usage:
  *   const csrfError = checkCsrf(req);
@@ -24,13 +26,18 @@ const ALLOWED_ORIGINS = (() => {
     // only once its DNS no longer resolves here.
     origins.add('https://geomeego.com');
     origins.add('https://airanggo.com');
-    // Always allow localhost in development
-    if (process.env.NODE_ENV !== 'production') {
-        origins.add('http://localhost:3000');
-        origins.add('http://127.0.0.1:3000');
-    }
+    // Local dev origins are handled separately, by LOCAL_DEV_ORIGIN below — any port,
+    // not just 3000.
     return origins;
 })();
+
+// A request from the machine running this process, in development, on any port — not
+// just the 3000 the dev script happens to default to. `next dev` falls back to the next
+// free port when 3000 is already taken, more than one dev server can run side by side,
+// and `-p` overrides it outright. Every one of those previously 403'd for any caller that
+// fell through to the Origin fallback instead of sending X-Requested-By, with nothing in
+// the response to say why: same machine, same browser, same app, just the "wrong" port.
+const LOCAL_DEV_ORIGIN = /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/;
 
 export function checkCsrf(req: NextRequest): NextResponse | null {
     // Only enforce on state-mutating methods
@@ -44,13 +51,12 @@ export function checkCsrf(req: NextRequest): NextResponse | null {
     if (requestedBy === 'cheapestgo-client') return null;
 
     // ── Fallback: Origin / Referer header matching ──
-    // ALLOWED_ORIGINS already includes http://localhost:3000 and http://127.0.0.1:3000
-    // so local development continues to work via the origin fallback.
     const origin = req.headers.get('origin');
     const referer = req.headers.get('referer');
     const requestOrigin = origin ?? (referer ? new URL(referer).origin : null);
 
     if (requestOrigin && ALLOWED_ORIGINS.has(requestOrigin)) return null;
+    if (requestOrigin && process.env.NODE_ENV !== 'production' && LOCAL_DEV_ORIGIN.test(requestOrigin)) return null;
 
     console.warn(`[csrf] Blocked request — no valid CSRF proof. origin: ${requestOrigin}, x-requested-by: ${requestedBy}`);
     return NextResponse.json(
