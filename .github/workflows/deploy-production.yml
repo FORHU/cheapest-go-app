@@ -387,13 +387,17 @@ jobs:
           docker pull ${IMAGE}
           docker stop ${CONTAINER_NAME} >/dev/null 2>&1 || true
           docker rm ${CONTAINER_NAME} >/dev/null 2>&1 || true
+          # Published on loopback only: nginx on this box is the one thing that talks to
+          # the app (`proxy_pass http://localhost:3000`), and publishing on 0.0.0.0 left it
+          # reachable on the instance's public IP — around Cloudflare, and so around its
+          # WAF and the header the rate limiter identifies customers by (ADR-0028).
+          #
+          # Keep comments OUT of the command below: a `#` line inside a `\` continuation
+          # ends the command there, so `docker run` ran with no image and the deploy failed
+          # with "docker run requires at least 1 argument".
           docker run -d \
             --name ${CONTAINER_NAME} \
             --restart unless-stopped \
-            # Loopback only: nginx on this box is the one thing that talks to the app
-            # (`proxy_pass http://localhost:3000`), and publishing on 0.0.0.0 left it
-            # reachable on the instance's public IP — around Cloudflare, and so around
-            # its WAF and the header the rate limiter identifies customers by (ADR-0028).
             -p 127.0.0.1:${CONTAINER_PORT}:3000 \
             --env-file ${ENV_FILE_PATH} \
             ${IMAGE}
