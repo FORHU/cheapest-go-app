@@ -804,17 +804,33 @@
     "filtersPanel": {
       "airlines": "航空会社",
       "anyStops": "すべての乗り継ぎ",
+      "arrival": "到着",
+      "arrivalAirports": "到着空港",
       "branded": "ブランド運賃",
       "cheapestFirst": "安い順",
+      "departure": "出発",
+      "direct": "直行",
       "earliestDeparture": "出発が早い順",
       "fareType": "運賃タイプ",
       "fastestFirst": "所要時間が短い順",
+      "flightDuration": "飛行時間",
       "nonStopOnly": "直行便のみ",
+      "oneStop": "経由1回",
+      "pricePerPerson": "1人あたりの料金",
       "provider": "プロバイダー",
+      "refundable": "払い戻し可能",
       "refundableFares": "返金可能な運賃",
       "refundableFaresDescription": "キャンセル時に返金を受けられる運賃",
+      "reset": "リセット",
+      "selectAllAirlines": "すべての航空会社を選択",
+      "selectAllAirports": "すべての空港を選択",
+      "showAll": "すべて表示",
+      "showLess": "表示を減らす",
       "sortBy": "並び替え",
       "stops": "乗り継ぎ",
+      "times": "時刻",
+      "twoStopsPlus": "経由2回以上",
+      "underHours": "{hours}時間以内",
       "upToOneStop": "乗り継ぎ1回まで"
     },
     "priceAlert": {
@@ -830,7 +846,7 @@
     },
     "results": {
       "allSeen": "利用可能なフライト{count}件をすべてご覧いただきました。良い旅を！",
-      "checkingProviders": "複数のプロバイダーを確認しています",
+      "checkingProviders": "複数の航空会社を確認中",
       "discoveringMore": "他のオプションを検索中（{total}件中{shown}件）",
       "duration": "所要時間",
       "empty": "この日程のフライトは見つかりませんでした。",
@@ -841,7 +857,7 @@
       "price": "料金",
       "result": "{count, plural, other {件}}",
       "searchFailedTitle": "検索に失敗しました",
-      "searchingFlights": "フライトを検索中...",
+      "searchingFlights": "フライトを検索しています...",
       "sortBy": "並び替え",
       "stops": {
         "any": "すべて",
@@ -2300,7 +2316,12 @@
       "departFrom": "出発",
       "arriveAt": "到着",
       "stateChips": {
-        "flightInProgress": "フライト中"
+        "flightInProgress": "フライト中",
+        "processing": "処理中",
+        "booked": "予約済み",
+        "bookingFailed": "予約失敗",
+        "reissued": "再発行済み",
+        "unknown": "不明"
       },
       "totalFlightDuration": "総飛行時間"
     }

@@ -38,7 +38,7 @@ export function FlightItineraryDetails({ offer }: { offer: FlightOffer }) {
                 <React.Fragment key={slice.sliceIndex}>
                     <div className="flex flex-col gap-2">
                         {multiLeg && (
-                            <div className="flex items-center justify-between text-[10px] lg:text-[11px] font-medium uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                            <div className="text-[11px] lg:text-[12px] font-bold uppercase text-[#939fb1] dark:text-slate-400">
                                 <span>
                                     {twoWay
                                         ? (i === 0 ? t('outbound') : t('return'))
@@ -49,9 +49,9 @@ export function FlightItineraryDetails({ offer }: { offer: FlightOffer }) {
                                     traveller reading one leg's segments wants that leg's number,
                                     not a sum of both directions or a value borrowed from the other. */}
                                 {twoWay && slice.durationMinutes != null && (
-                                    <span className="normal-case tracking-normal text-slate-400 dark:text-slate-500">
+                                    <span className="ml-2 font-normal normal-case text-[#939fb1] dark:text-slate-500">
                                         {t('totalFlightDuration')}{' '}
-                                        <span className="font-semibold text-slate-700 dark:text-slate-200">
+                                        <span className="text-slate-900 dark:text-slate-200">
                                             {formatDurationLong(slice.durationMinutes)}
                                         </span>
                                     </span>

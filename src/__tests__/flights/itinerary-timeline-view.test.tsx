@@ -239,12 +239,17 @@ describe('FlightItineraryTimeline — terminals', () => {
     it('sits the terminal with the airport it belongs to, not loose in the row', () => {
         renderIntl(<FlightItineraryTimeline slice={offerSlices(withTerminals)[0]} />);
 
-        // The arrival end of the first flight: Heathrow and its terminal share a column —
-        // the airport sits on its own bullet line, the terminal on the line below it, so
-        // the shared ancestor is the column (EndColumn), one level above either line.
+        // The arrival end of the first flight: Heathrow and its terminal share a column.
+        // Asserted as "same column", not as a count of parentElements — the bullet lines
+        // nest their own rows, and how deeply is a layout detail this should survive. The
+        // end column is the nearest div; everything inside a bullet line is a span.
         const heathrow = screen.getByText('Heathrow Airport (LHR)');
-        const column = heathrow.parentElement!.parentElement!;
-        expect(column.textContent).toContain('Terminal 4');
+        const terminal = screen.getByText('Terminal 4');
+        const column = heathrow.closest('div');
+
+        // Guard against a vacuous pass: two nulls would satisfy the comparison below.
+        expect(column).toBeTruthy();
+        expect(column).toBe(terminal.closest('div'));
     });
 
     it('says terminal info comes closer to departure at an untracked airport with none stated', () => {

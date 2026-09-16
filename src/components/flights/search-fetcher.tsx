@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FlightResults } from '@/components/flights/flightResultsList';
 import FlightFilters, { type FilterState } from '@/components/flights/filters';
+import { DEFAULT_FLIGHT_FILTERS, activeFilterCount as countActiveFilters, applyFlightFilters } from '@/lib/flights/filter-offers';
 import type { FlightOffer, CabinClass } from '@/types/flights';
 import { ListFilter, ChevronDown, X } from 'lucide-react';
 import { ResponsiveFlightHeader } from './ResponsiveFlightHeader';
@@ -85,15 +86,6 @@ function getAirlineName(o: FlightOffer): string {
     return o.validatingAirline || o.segments[0]?.airline?.name || o.segments[0]?.airline?.code || o.provider;
 }
 
-function getAirlines(offers: FlightOffer[]): string[] {
-    const set = new Set<string>();
-    for (const o of offers) {
-        const airline = getAirlineName(o);
-        if (airline) set.add(airline);
-    }
-    return Array.from(set).sort();
-}
-
 function getProviderCounts(offers: FlightOffer[]): Record<string, number> {
     const counts: Record<string, number> = {};
     for (const o of offers) {
@@ -158,16 +150,10 @@ export function SearchFetcher({
     const [state, setState] = useState<SearchState>({ status: 'loading' });
     const [retryKey, setRetryKey] = useState(0);
     const [filterResetKey, setFilterResetKey] = useState(0);
-    const [filters, setFilters] = useState<FilterState>({
-        sortBy: 'price',
-        selectedAirlines: [],
-        maxStops: null,
-        refundableOnly: false,
-        selectedProviders: [],
-    });
+    const [filters, setFilters] = useState<FilterState>(DEFAULT_FLIGHT_FILTERS);
 
     const resetFilters = () => {
-        setFilters({ sortBy: 'price', selectedAirlines: [], maxStops: null, refundableOnly: false, selectedProviders: [] });
+        setFilters(DEFAULT_FLIGHT_FILTERS);
         setFilterResetKey(k => k + 1);
     };
     const { isMobileFiltersOpen } = useSearchStore();
@@ -312,46 +298,15 @@ export function SearchFetcher({
 
     // ─── Derived data ─────────────────────────────────────────────────────────
     const rawOffers = state.status === 'success' ? state.offers : [];
-    // Airlines list always from the full unfiltered set so all options stay visible
-    const airlines = useMemo(() => getAirlines(allOffers.length > 0 ? allOffers : rawOffers), [allOffers, rawOffers]);
 
-    // Client-side filtering applied to cached allOffers — no re-fetch needed
-    const filteredOffers = useMemo(() => {
-        const base = allOffers.length > 0 ? allOffers : rawOffers;
-        let offers = [...base];
-        if (filters.maxStops !== null) {
-            offers = offers.filter(o => (o.totalStops ?? 0) <= filters.maxStops!);
-        }
-        if (filters.refundableOnly) {
-            offers = offers.filter(o => (o.farePolicy?.isRefundable ?? o.refundable) === true);
-        }
-        if (filters.selectedProviders.length > 0) {
-            offers = offers.filter(o => filters.selectedProviders.includes(o.provider as any));
-        }
-        if (filters.selectedAirlines.length > 0) {
-            offers = offers.filter(o => {
-                const name = getAirlineName(o);
-                return filters.selectedAirlines.includes(name);
-            });
-        }
-        if (filters.sortBy === 'price') {
-            offers.sort((a, b) => a.price.total - b.price.total);
-        } else if (filters.sortBy === 'duration') {
-            // Rank on the slice the row actually shows, not on a sum of both directions.
-            offers.sort((a, b) => (a.sliceDurations?.[0] ?? a.totalDuration ?? 0) - (b.sliceDurations?.[0] ?? b.totalDuration ?? 0));
-        } else if (filters.sortBy === 'departure') {
-            offers.sort((a, b) =>
-                new Date(a.segments[0]?.departure?.time ?? 0).getTime() -
-                new Date(b.segments[0]?.departure?.time ?? 0).getTime()
-            );
-        }
-        return offers;
-    }, [allOffers, rawOffers, filters]);
+    // Client-side filtering applied to cached allOffers — no re-fetch needed. The rules
+    // themselves live in lib/flights/filter-offers, so they can be tested without a screen.
+    const filteredOffers = useMemo(
+        () => applyFlightFilters(allOffers.length > 0 ? allOffers : rawOffers, filters),
+        [allOffers, rawOffers, filters],
+    );
 
-    const activeFilterCount = filters.selectedAirlines.length +
-        (filters.maxStops !== null ? 1 : 0) +
-        (filters.refundableOnly ? 1 : 0) +
-        filters.selectedProviders.length;
+    const activeFilterCount = countActiveFilters(filters);
 
     const isLoading = state.status === 'loading' || state.status === 'loading_slow';
     const isSlowSearch = state.status === 'loading_slow';
@@ -481,7 +436,6 @@ export function SearchFetcher({
                         {/* Filter Content */}
                         <div className="flex-1 overflow-y-auto p-5 custom-scrollbar relative z-10">
                             <FlightFilters
-                                airlines={airlines}
                                 onFilterChange={setFilters}
                                 allOffers={allOffers.length > 0 ? allOffers : rawOffers}
                                 resetKey={filterResetKey}
@@ -541,8 +495,9 @@ export function SearchFetcher({
                         >
                             <div className="w-full bg-white dark:bg-slate-900 p-6 rounded-md border border-slate-200 dark:border-slate-800 shadow-sm">
                                 <FlightFilters
-                                    airlines={airlines}
                                     onFilterChange={setFilters}
+                                    allOffers={allOffers.length > 0 ? allOffers : rawOffers}
+                                    resetKey={filterResetKey}
                                 />
                             </div>
                         </motion.div>
@@ -569,7 +524,6 @@ export function SearchFetcher({
                                 offers={filteredOffers}
                                 loading={isLoading}
                                 onSelect={handleSelect}
-                                skeletonCount={8}
                             />
                         )}
                     </div>

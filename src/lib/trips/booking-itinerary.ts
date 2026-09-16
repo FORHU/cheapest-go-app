@@ -19,6 +19,35 @@ export function durationMinutes(fromIso: string, toIso: string): number {
     return Number.isFinite(minutes) && minutes > 0 ? minutes : 0;
 }
 
+/** An offset-less timestamp — Local Airport Time, whose digits are already the clock. */
+const CARRIES_OFFSET = /(?:Z|[+-]\d{2}:?\d{2})$/;
+
+/**
+ * A stored timestamp in the shape the itinerary components read.
+ *
+ * Those components take Local Airport Time: offset-less text whose digits ARE the clock,
+ * which they slice straight out of the string. A booking stores `timestamp with time
+ * zone` instead, and the trips list reads it with `SELECT fs.*`, so the SQL driver hands
+ * back a Date — which React serialises to the client as a Date, not a string. Slicing
+ * that threw "iso.slice is not a function" the moment a traveller expanded the itinerary.
+ *
+ * An instant is therefore written out as the wall clock of whatever runtime draws it,
+ * which is the clock FlightSummaryHeader already shows through toLocaleTimeString. The
+ * two halves of the card state the same departure, rather than disagreeing by the
+ * viewer's UTC offset. Text that carries no offset is already in that shape and is passed
+ * through untouched.
+ */
+function toLocalAirportTime(stored: string | Date): string {
+    if (typeof stored === 'string' && !CARRIES_OFFSET.test(stored)) return stored;
+
+    const at = new Date(stored);
+    if (Number.isNaN(at.getTime())) return typeof stored === 'string' ? stored : '';
+
+    const pad = (n: number) => String(n).padStart(2, '0');
+    return `${at.getFullYear()}-${pad(at.getMonth() + 1)}-${pad(at.getDate())}`
+        + `T${pad(at.getHours())}:${pad(at.getMinutes())}:${pad(at.getSeconds())}`;
+}
+
 /** Which leg a row belongs to, before any gap-boundary fallback is applied. */
 function storedLegIndex(seg: FlightSegmentRecord): number {
     return seg.segment_index ?? seg.itinerary_index;
@@ -62,8 +91,8 @@ function toSegmentDetail(seg: FlightSegmentRecord, correctedLegIndex: number): F
         origin: seg.origin,
         destination: seg.destination,
         flightNumber: seg.flight_number,
-        departure: { airport: seg.origin, terminal: seg.origin_terminal ?? undefined, time: seg.departure },
-        arrival: { airport: seg.destination, terminal: seg.destination_terminal ?? undefined, time: seg.arrival },
+        departure: { airport: seg.origin, terminal: seg.origin_terminal ?? undefined, time: toLocalAirportTime(seg.departure) },
+        arrival: { airport: seg.destination, terminal: seg.destination_terminal ?? undefined, time: toLocalAirportTime(seg.arrival) },
         // Subtraction is correct HERE, unlike on the offer side.
         //
         // An offer's times are Local Airport Time with no UTC offset, so subtracting them

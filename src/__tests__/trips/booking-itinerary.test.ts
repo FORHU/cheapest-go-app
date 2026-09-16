@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { bookingToFlightOffer } from '@/lib/trips/booking-itinerary';
+import { formatBookingTime, formatTimeIn } from '@/utils/flight-utils';
 import type { FlightBookingRecord, FlightSegmentRecord } from '@/services/booking.service';
 
 /**
@@ -52,6 +53,42 @@ describe('bookingToFlightOffer', () => {
 
         expect(offer!.segments[0].departure.time).toBe('2026-09-23T18:40:00');
         expect(offer!.segments[0].arrival.time).toBe('2026-09-23T22:30:00');
+    });
+
+    /**
+     * What the trips list actually hands this adapter.
+     *
+     * fetchTripsData reads flight_segments with `SELECT fs.*`, and the SQL driver parses
+     * `timestamp with time zone` into Date objects before React serialises them — Dates
+     * survive the server-to-client boundary intact. The row is typed as a string, so
+     * nothing complained until the itinerary tried to slice one and threw
+     * "iso.slice is not a function".
+     */
+    it('accepts a stored instant as a Date, which is what the trips list passes', () => {
+        const offer = bookingToFlightOffer(booking({
+            flight_segments: [seg({
+                departure: new Date('2026-09-23T10:40:00.000Z') as unknown as string,
+                arrival: new Date('2026-09-23T14:30:00.000Z') as unknown as string,
+            })],
+        }));
+
+        expect(typeof offer!.segments[0].departure.time).toBe('string');
+        expect(typeof offer!.segments[0].arrival.time).toBe('string');
+    });
+
+    /**
+     * The card states each clock twice — once in the summary header, once in the expanded
+     * itinerary — and the two read it through different formatters: the header builds a
+     * Date, the itinerary reads the digits out of the string. An instant handed over
+     * unconverted makes them disagree by the viewer's UTC offset.
+     */
+    it('states an instant as the same clock the summary header shows', () => {
+        const instant = new Date('2026-09-23T10:40:00.000Z');
+        const offer = bookingToFlightOffer(booking({
+            flight_segments: [seg({ departure: instant as unknown as string })],
+        }));
+
+        expect(formatTimeIn(offer!.segments[0].departure.time)).toBe(formatBookingTime(instant.toISOString()));
     });
 
     it('carries the terminal the airline gave, into the shape the itinerary reads', () => {

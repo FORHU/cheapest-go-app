@@ -806,17 +806,33 @@
     "filtersPanel": {
       "airlines": "航空公司",
       "anyStops": "不限中转",
+      "arrival": "到达",
+      "arrivalAirports": "到达机场",
       "branded": "品牌票价",
       "cheapestFirst": "价格最低优先",
+      "departure": "出发",
+      "direct": "直飞",
       "earliestDeparture": "最早出发优先",
       "fareType": "票价类型",
       "fastestFirst": "用时最短优先",
+      "flightDuration": "飞行时长",
       "nonStopOnly": "仅直飞",
+      "oneStop": "1次中转",
+      "pricePerPerson": "每人价格",
       "provider": "供应商",
+      "refundable": "可退款",
       "refundableFares": "可退款票价",
       "refundableFaresDescription": "允许取消并退款的票价",
+      "reset": "重置",
+      "selectAllAirlines": "选择所有航空公司",
+      "selectAllAirports": "选择所有机场",
+      "showAll": "显示全部",
+      "showLess": "收起",
       "sortBy": "排序方式",
       "stops": "中转",
+      "times": "时间",
+      "twoStopsPlus": "2次及以上中转",
+      "underHours": "{hours}小时以内",
       "upToOneStop": "最多 1 次中转"
     },
     "priceAlert": {
@@ -832,7 +848,7 @@
     },
     "results": {
       "allSeen": "您已浏览全部 {count} 个可用航班，祝您旅途愉快！",
-      "checkingProviders": "正在检查多个供应商",
+      "checkingProviders": "正在查询多家航空公司",
       "discoveringMore": "正在发现更多选项（{total} 项中的 {shown} 项）",
       "duration": "飞行时长",
       "empty": "该日期暂无可用航班。",
@@ -843,7 +859,7 @@
       "price": "价格",
       "result": "{count, plural, other {个结果}}",
       "searchFailedTitle": "搜索失败",
-      "searchingFlights": "正在搜索航班...",
+      "searchingFlights": "正在搜索您的航班...",
       "sortBy": "排序方式",
       "stops": {
         "any": "全部",
@@ -2303,7 +2319,12 @@
       "departFrom": "出发",
       "arriveAt": "抵达",
       "stateChips": {
-        "flightInProgress": "航班进行中"
+        "flightInProgress": "航班进行中",
+        "processing": "处理中",
+        "booked": "已预订",
+        "bookingFailed": "预订失败",
+        "reissued": "已改签",
+        "unknown": "未知"
       },
       "totalFlightDuration": "总飞行时长"
     }
