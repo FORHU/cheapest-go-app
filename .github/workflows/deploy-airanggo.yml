@@ -376,10 +376,10 @@ jobs:
           #
           # This brand shares the instance with CheapestGo, so the two deploys fill one
           # disk between them and either can be the one that runs out. On 2026-09-09 the
-          # CheapestGo pull failed on `no space left on device` and, because the script is
-          # `set -e`, left the previous containers running and answering 200.
+          # CheapestGo pull failed on "no space left on device" and, because the script is
+          # "set -e", left the previous containers running and answering 200.
           #
-          # `-a` removes every image no CONTAINER references, so both brands' running
+          # "-a" removes every image no CONTAINER references, so both brands' running
           # containers are safe; only images left over from earlier deploys go.
           echo "disk before prune:"; df -h /var/lib/docker | tail -1
           docker image prune -af || true
@@ -390,13 +390,16 @@ jobs:
           docker stop ${CONTAINER_NAME} >/dev/null 2>&1 || true
           docker rm ${CONTAINER_NAME} >/dev/null 2>&1 || true
           # Published on loopback only: nginx on this box is the one thing that talks to
-          # the app (`proxy_pass http://localhost:3000`), and publishing on 0.0.0.0 left it
-          # reachable on the instance's public IP — around Cloudflare, and so around its
-          # WAF and the header the rate limiter identifies customers by (ADR-0028).
+          # the app, and publishing on 0.0.0.0 left it reachable on the public IP, around
+          # Cloudflare and so around its WAF and the header the rate limiter identifies
+          # customers by (ADR-0028).
           #
-          # Keep comments OUT of the command below: a `#` line inside a `\` continuation
-          # ends the command there, so `docker run` ran with no image and the deploy failed
-          # with "docker run requires at least 1 argument".
+          # Two rules for anything written here, both learned the hard way on 2026-09-15.
+          # This text lands inside an unquoted heredoc that builds the remote script, so
+          # backticks in a comment are run as commands by the runner and the deploy dies
+          # before it starts. And a comment line between two continued lines of a command
+          # ends that command, which is how docker run was once invoked with no image.
+          # No backticks, no dollar signs, and nothing between the lines of the run below.
           docker run -d \
             --name ${CONTAINER_NAME} \
             --restart unless-stopped \

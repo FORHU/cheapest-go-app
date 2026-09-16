@@ -364,19 +364,19 @@ jobs:
 
           # Reclaim disk BEFORE pulling, not after.
           #
-          # On 2026-09-09 this deploy died on `no space left on device` while pulling the
-          # app image, and because the script is `set -e` the containers were never
-          # replaced — the previous image kept serving under `--restart unless-stopped`, so
+          # On 2026-09-09 this deploy died on "no space left on device" while pulling the
+          # app image, and because the script is "set -e" the containers were never
+          # replaced — the previous image kept serving under "--restart unless-stopped", so
           # the site answered 200 throughout while main had moved on. CI reported the
           # failure correctly; what misled was the healthy site, which is the only signal
           # anyone checks by hand.
           #
-          # The cause is that the cleanup below was `docker image prune -f`, which drops
-          # only DANGLING images. Every deploy pulls a new `:$IMAGE_TAG` and that tag keeps
+          # The cause is that the cleanup below was "docker image prune -f", which drops
+          # only DANGLING images. Every deploy pulls a new ":$IMAGE_TAG" and that tag keeps
           # the old image alive forever, at 1-2 GB each. Cleanup also ran last, after both
           # pulls, so it could never free space for the pull that needed it.
           #
-          # `-a` removes every image no CONTAINER references. The running app and cron
+          # "-a" removes every image no CONTAINER references. The running app and cron
           # containers reference theirs, so this cannot pull the site out from under itself;
           # it only reclaims the images previous deploys left behind.
           echo "disk before prune:"; df -h /var/lib/docker | tail -1
@@ -388,13 +388,16 @@ jobs:
           docker stop ${CONTAINER_NAME} >/dev/null 2>&1 || true
           docker rm ${CONTAINER_NAME} >/dev/null 2>&1 || true
           # Published on loopback only: nginx on this box is the one thing that talks to
-          # the app (`proxy_pass http://localhost:3000`), and publishing on 0.0.0.0 left it
-          # reachable on the instance's public IP — around Cloudflare, and so around its
-          # WAF and the header the rate limiter identifies customers by (ADR-0028).
+          # the app, and publishing on 0.0.0.0 left it reachable on the public IP, around
+          # Cloudflare and so around its WAF and the header the rate limiter identifies
+          # customers by (ADR-0028).
           #
-          # Keep comments OUT of the command below: a `#` line inside a `\` continuation
-          # ends the command there, so `docker run` ran with no image and the deploy failed
-          # with "docker run requires at least 1 argument".
+          # Two rules for anything written here, both learned the hard way on 2026-09-15.
+          # This text lands inside an unquoted heredoc that builds the remote script, so
+          # backticks in a comment are run as commands by the runner and the deploy dies
+          # before it starts. And a comment line between two continued lines of a command
+          # ends that command, which is how docker run was once invoked with no image.
+          # No backticks, no dollar signs, and nothing between the lines of the run below.
           docker run -d \
             --name ${CONTAINER_NAME} \
             --restart unless-stopped \
