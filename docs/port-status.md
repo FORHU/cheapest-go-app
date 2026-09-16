@@ -18,17 +18,21 @@ Empty means level. Anything listed must be ported before the watermark advances.
 
 **Path lists include v1's frontend.** A Slice spans both repos, so a slice that cannot see `src/components/` cannot see its own behaviour changing. Measured 2026-09-02: five commits and ~400 insertions of v1 frontend behaviour — including MapResultsClient's streaming prices and unavailability banners — were tracked by no watermark at all. Design does not cross ([ADR-0016](adr/0016-parity-is-functional-not-visual.md)), so a commit in these paths that only moves markup or styling is noted and skipped rather than ported. That filter is a judgement call per commit, not something the delta decides.
 
-| # | Slice | Watermark | Delta (re-run 2026-09-02) | State |
+| # | Slice | Watermark | Delta (re-run 2026-09-16) | State |
 |---|-------|-----------|---------------------------|-------|
-| C0a | Backend consolidation | `12f2af3` | empty | level |
-| C0b | Locale + SEO shell | `791d4e2` | **2 commits** | drifted — see Catch-up |
-| C1 | Hotel search | `791d4e2` | **6 commits, +1418/−125** | drifted — see Catch-up |
-| C2 | Hotel booking | `6b0ced4` | not measured | **in progress** — C2a/C2b done, C2c partly |
-| C3 | Flights | `6b0ced4` | not measured | audited 2026-08-26, not ported |
-| C4 | Account | `6b0ced4` | not measured | not started |
-| C5 | Admin | `6b0ced4` | not measured | not started |
-| C6 | Ops | `6b0ced4` | not measured | not started |
-| C7 | Mobile and misc | `6b0ced4` | not measured | not started |
+| C0a | Backend consolidation | `12f2af3` | 67 commits, but its paths overlap every slice below | level |
+| C0b | Locale + SEO shell | `8ef657b` | empty as of 2026-09-16 | **done** — see below |
+| C1 | Hotel search | `8ef657b` | empty as of 2026-09-16 | **done** — see below |
+| C2 | Hotel booking | `8ef657b` | refund logs + snapshot backfill left | **money rules done** — see below |
+| C3 | Flights | `6b0ced4` | **24 commits** | audited 2026-08-26, not ported |
+| C4 | Account | `6b0ced4` | empty as of 2026-09-16 | **done** — see below |
+| C5 | Admin | `6b0ced4` | one screen blocked on schema | **mostly done** — see below |
+| C6 | Ops | `6b0ced4` | empty as of 2026-09-16 | **done** — see below |
+| C7 | Mobile and misc | `6b0ced4` | mobile flight booking left | **partly done** — see below |
+| C8 | Support Chat | `6b0ced4` | **35 commits** | not started — slice added 2026-09-16 |
+
+Re-measure with `bash scratch/port-delta.sh` (`-v` for the commits themselves). Both v2 repos were
+green on 2026-09-16: api-v2 196 tests, app-v2 147 tests, both typechecking.
 
 A slice's watermark advances only when its delta is empty, so a slice marked done can **drift back out of done** when v1 moves under it. That is not a regression in v2 — it is the measurement working. C0b and C1 are both in that state today.
 
@@ -353,6 +357,342 @@ No TGX-backed cron is in scope at all — TravelgateX prohibits scheduled calls 
 **v2 target:** `src/routes/mobile.route.ts`, `invoices.route.ts`, `weather.route.ts`, `email.route.ts`, `google.route.ts`, `photos.route.ts`
 
 **Gaps:** `google/search` and `og` are absent.
+
+
+## C8 — Support Chat
+
+The capability this plan was blind to until 2026-09-16: 35 commits, and the part of v1 that is
+still being designed week by week.
+
+**In it:** the customer's widget and its live updates over SSE on a Postgres bus; the Agent's
+inbox and the **Support Desk**; **Assignment** by an admin ([ADR-0041](adr/0041-support-chats-are-assigned-by-an-admin-never-taken.md));
+**Translation** stored beside the author's words ([ADR-0033](adr/0033-a-translation-is-stored-never-recomputed.md),
+[ADR-0034](adr/0034-translation-goes-through-chatwonder.md)); attachments
+([ADR-0040](adr/0040-a-support-attachment-is-private-and-is-reached-only-through-the-app.md));
+the **Chat Reference** ([ADR-0038](adr/0038-a-chat-reference-names-a-conversation-but-opens-nothing.md));
+**Urgency** ([ADR-0039](adr/0039-the-support-queue-is-ordered-by-how-close-the-customer-is-to-travelling.md));
+**Support Hours**; the **Help Page**; and Suggested Answers
+([ADR-0043](adr/0043-the-widget-suggests-only-a-person-answers.md),
+[ADR-0044](adr/0044-the-widget-answers-the-common-questions-itself.md)).
+
+**v1 reference:** `src/lib/server/support/`, `src/app/api/support/`, `src/app/api/admin/support/`,
+`src/components/support/`, `src/app/admin/(dashboard)/support/`, `src/app/admin/desk/`,
+`src/lib/support/`, `src/app/(main)/help/`
+
+**v2 target:** `api-v2/src/routes/support.route.ts` and its service and repository layers;
+app-v2's `features/support/`.
+
+**Why it is last (decided 2026-09-16).** Everything above it is settled; Support is not. It
+changed four times on 2026-09-15 alone — a messenger layout for the inbox, a leak of staff ids
+fixed in the customer payload, an SSE ordering fix, and two ADRs about answering the common
+questions. Porting a moving target costs the work twice, so this slice starts when the design
+stops moving, and its watermark is taken on that day rather than today.
+
+**One thing to check before starting:** SSE over Postgres `LISTEN/NOTIFY` assumes a long-lived
+process. api-v2 is one, so this ports across — but confirm the deployment still holds a socket
+open per reader before designing anything on top of it.
+
+---
+
+## Done 2026-09-16 — C4, C6, most of C5, part of C7
+
+Worked in order of cost rather than of number: the slices whose gaps were small enough to close
+whole, so the count of unported capabilities falls before the expensive ones start.
+
+### C4 — Account, done
+
+- **A name has a maximum length**, enforced at all three doors that write one — register, the
+  profile update, and the Google sign-in that takes a name from someone else's system. v1 learned
+  this the expensive way (QA BG-9: a live profile with a 13,708-character first name). A name
+  from Google is *clamped* rather than refused: turning someone away from their own account over
+  the length of their name would be the wrong answer. `src/lib/users/names.ts`.
+- **The password reset email is named for the brand the recipient used**, not a literal
+  "CheapestGo" — a reset arriving from a company they have never heard of reads as phishing, and
+  the sending domain has to match the brand or SPF/DKIM alignment fails. `src/lib/brand.ts`.
+- **`users.route.ts` lifted onto the Layer Contract**: UsersController, UsersService,
+  UsersRepository. It previously held the validation and four raw Prisma calls.
+- Verified: 9 unit tests, plus `scratch/smoke-v2-c4-account.mjs` — 10 checks against a running
+  api-v2, including the 13,708-character name being refused at both doors.
+
+**Not a gap after all:** v1's OAuth `redirect_uri` fix (both legs must quote the same URI) does
+not apply here. api-v2 derives both from `config.API_URL`, so they cannot disagree.
+
+### C6 — Ops, done
+
+All four absent routes ported. `revalidate-flight` stays deliberately absent: api-v2 already has
+that capability as `refreshDuffelOffer` plus the `PRICE_CHANGED` guard.
+
+- **`cron/seed-room-groups`** — fills room photos and amenities ahead of anyone searching, so the
+  first customer to open a property does not pay for the supplier call. Never-seeded hotels
+  first, then the stalest; one hotel per second, because a burst from a cron is indistinguishable
+  from an incident at ETG's end.
+- **`cron/etg-dump-sync`** — the bulk catalog load. v1 carries the `fzstd` package to read
+  Zstandard; **Node 24 decompresses it natively**, so api-v2 needs no dependency for it. Streamed
+  rather than buffered, and a failed batch is retried row by row so one malformed supplier line
+  cannot lose the other 399.
+- **`internal/cheapest-flight`** and **`internal/refresh-flights`** — live price for one route,
+  and cache warming for a popular one.
+- Verified: 4 unit tests over the dump handshake, plus `scratch/smoke-v2-c6-ops.mjs` — 9 checks,
+  including every route refusing an unauthenticated caller and a real ETG seed of one hotel.
+
+### C5 — Admin, all but one screen
+
+Ported: **destinations**, **saved-trips**, **price-alerts**, **notifications**, **settings**,
+**search**, **tgx-health**, **brand**, **run-cron**, **stripe**, **mobile** — through
+AdminContentService / AdminSettingsService / AdminStripeService / AdminMobileService and
+AdminContentRepository, rather than into the route file.
+
+Rules worth naming, because they are what the tests hold:
+
+- **A page size from a query string is capped** at 100. It is otherwise a way to ask for the
+  whole table in one response.
+- **An action with no ids is refused.** The alternative is a `deleteMany` with an empty filter,
+  which empties the table the screen was showing.
+- **Deactivating a price alert is offered before deleting one** — a customer's alert that stops
+  emailing can be turned back on; a deleted one cannot be explained to them.
+- **`run-cron` works from an allowlist**, not a free-form name: an admin session must not become
+  the authority to call any cron, because a cron is a supplier account.
+- **The mobile screen never prints the API key**, only whether one is configured and a masked
+  form — a key printed into an admin page is a key in a screenshot.
+- Verified: 13 unit tests, plus `scratch/smoke-v2-c5-admin.mjs` — 24 checks against a running
+  api-v2, including a customer being refused (403) and an admin accepted.
+
+**`admin/reviews` is blocked on the schema, not on work.** v1's screen lists individual reviews
+— a row per review, with a reviewer name — but v2's `hotel_reviews` is a per-hotel *summary*:
+rating and count, synced from ETG. There is nothing to list or delete. Porting it means first
+deciding whether v2 stores individual reviews at all, which is a schema decision and belongs with
+whoever owns [ADR-0018](adr/0018-v2-has-its-own-database.md).
+
+### C7 — Mobile and misc, part
+
+- **`google/search`** (Places autocomplete) ported into api-v2. It is not the same thing as the
+  existing `/google/discover`, which answers "what is near this point" rather than "what might
+  they be typing" — repointing callers at that would have been a quiet wrong answer.
+- **`og`** — the social preview image — ported into **app-v2**, not api-v2: an OG image is
+  presentation, Next renders it natively, and Express would need a font pipeline to do it worse.
+  v1's several hand-tuned design variants did not cross
+  ([ADR-0016](adr/0016-parity-is-functional-not-visual.md)); v2 draws its own from its own tokens.
+- **Left:** `mobile/flights/book` and `mobile/flights/confirm`, which sit on C3's flight booking
+  and are better done with it than before it.
+
+### What this leaves
+
+C0b (locale and SEO), C1 (hotel search delta), C2 (booking money rules), C3 (flights behavioural
+parity), C7's mobile flight booking, and C8 (Support Chat, deliberately last).
+
+**One standing constraint for C2 and C3:** hotel bookings run against the **live OTV API** — the
+provider has no sandbox standing in for it — so those slices are verified with unit tests, mocked
+supplier responses and read-only calls. No test booking is ever created to prove a code path.
+
+---
+
+## Done 2026-09-16 — C0b and C1
+
+Both had drifted back out of done, which is the measurement working rather than a regression.
+Closing them was a different job from the earlier slices: almost nothing here was a missing
+endpoint, and most of it was a rule v1 had learned the expensive way and v2 had not.
+
+### C0b — the second brand is actually servable
+
+app-v2 could not serve AirangGo. `applyBrand` substituted the brand through the locale messages,
+but every surface naming the brand outside them was a literal: the header and footer wordmarks,
+the landing copyright, the root metadata — the tab title and the share card — and the whole of
+the privacy, cookie, terms and refund pages, which are hardcoded English prose rather than
+translation keys. Those four are the pages that state *which site collects the reader's data*,
+so served from the Korean domain they named the wrong company.
+
+- **`shared/lib/brand.ts`** — `canonicalBrandName` (the GeomeeGo → AirangGo mapping, so the UI
+  reads AirangGo while the Korean instance is still started with the pre-rebrand env var) and
+  `brandWordmark`, which splits the name so the trailing "Go" keeps its accent. Four surfaces
+  were splitting it by hand; v1 shipped "GeomeGo", one `e` short, that way.
+- Wired through `applyBrand`, the header, both footers, the landing wordmark (sized per glyph so
+  a shorter name leaves no dead space inside the link), the root metadata and 13 page files.
+- **The admin back office is deliberately left literal** — it is one shared CheapestGo desk
+  across both storefronts, not a second brand's back office.
+- Verified: 7 unit tests plus the applyBrand suite, and `scratch/smoke-v2-c0b-brand.mjs` — 26
+  checks against app-v2 started as `NEXT_PUBLIC_BRAND_NAME=GeomeeGo`, asserting every page reads
+  AirangGo, none reads CheapestGo, and none still shows the pre-rebrand name. Re-run without the
+  variable, every page reads CheapestGo again.
+
+### C1 — hotel search
+
+**Search results were being replayed.** api-v2 still had v1's `hotel_search_cache`: two hours,
+six for popular cities, then served *stale* for as long again while refreshing behind the reader.
+A hotel's Nightly Rate is its cheapest room and cheap rooms are what sell, so a replayed rate is
+often a room already gone — the customer searches, searches again, and watches every price rise.
+v1 measured it live on 2026-09-11: Tokyo 7.7h old, Paris 7.1h, Manila 3.8h, and two Manila hotels
+45% and 47% under the live rate. The cache is gone. What is left is in-flight deduplication — two
+identical searches at the same moment share one supplier call — and both callers still get a live
+answer. The dead `getSearchCache`/`setSearchCache` repository pair and both admin cache-clear
+routes went with it; a button offering to clear a cache that no longer exists sends the next
+person debugging a price down the wrong path entirely.
+
+**A search for one country was returning another's hotels.** api-v2 had no geographic filter at
+all — the TGX destination code for Paris also answers with Paris, Texas. Ported as
+`lib/geo/countryBoxes.ts` (`isConfirmedOutOfCountry`) and applied in both places that matter:
+before persisting a backfill, and before rendering a result. A hotel is dropped only when its
+stored country *and* its coordinates agree it is somewhere else, because the boxes are rough —
+used alone they dropped 170 of Uruguay's 313 hotels, all of Galápagos, Montego Bay and Dakar.
+
+**A territory could not find its own hotels.** `lib/geo/territories.ts` ported whole: a
+territory's hotels arrive filed under its parent's country code, so all 930 Hong Kong hotels are
+stored `CN`, and its districts are stored as the city — 450 under "Kowloon" alone. Matching
+`country = 'HK'` and `city = 'Hong Kong'` found none of them (QA BG-8). The correction now runs
+through one helper, `lib/geo/hotelLocation.ts`, used by all three places that ask "the hotels in
+this place", plus the destination-coverage check that decides whether a place is offered at all.
+The same border works the other way: a 50 km circle from central Hong Kong takes in Shenzhen,
+Dongguan and Zhuhai, so a territory search keeps to its own side — judged by name, because
+coordinates cannot separate Shenzhen from Hong Kong at the border.
+
+Also closed:
+
+- **Destination codes are resolved per country.** The unscoped cache holds one row per city name
+  worldwide and city names collide: "Paris, France" was answered with Paris, Texas, which TGX
+  truthfully reported as empty, and the search then pruned all 300 catalog hotels and rendered
+  "no hotels found". A cached row that can be *proven* to belong elsewhere is now refused. The
+  NONE sentinel expires after 7 days — left permanent, a single TGX 5xx routes a city to the
+  hotel-code fallback forever at roughly half its inventory.
+- **Supplier budgets match OTV's.** 12,000 ms to the supplier rather than 18,000 — more than it
+  will ever use just buys dead time on a call it was never going to answer, and the fallback
+  chains two of them. HTTP aborts are separate and larger (22 s for a destination, 13 s for one
+  hotel) because they cover the response transfer, not the supplier wait.
+- **The search payload carries what a card renders.** `description` and `amenities` are large
+  TOASTed columns no search card shows, and a card shows one image. The ETG enrichment gate that
+  used to read amenities off those rows now asks the database directly, so trimming them cannot
+  turn into an ETG call for all 300 hotels on every search.
+- **Supplier-facing routes are rate limited.** `searchRateLimit` existed and was applied to
+  nothing, so hotel search, destinations, the property page and both autocomplete routes had only
+  the default 100-per-15-minutes. Same hole v1 closed as QA BG-10.
+- **A reversed stay is refused** at both search doors rather than sent on as a one-night search
+  for dates nobody asked about (QA BG-5).
+- **A Mapbox feature is typed by its id layer**, not by whichever place type happens to be first
+  in the array — getting it wrong puts a city on the wrong rung of the granularity ladder.
+- **app-v2: recent searches belong to an account**, not to a browser. They are persisted and
+  nothing cleared them on sign-out, so the next person at a shared computer saw where the last one
+  had been looking (QA BG-1); clearing them outright loses the history instead (QA BG-12). Filed
+  per account on sign-out, taken back on sign-in, and a list left behind by an expired session is
+  filed under its owner rather than handed to the newcomer. Both of app-v2's two auth stores
+  subscribe, since a sign-in through either has to do it.
+- **app-v2: one derivation of the stay** on the property page, with dates a supplier will accept.
+  A link that has sat in a chat window for a week names dates in the past, which read on the page
+  as the hotel having no rooms at all.
+- **app-v2: signing out wipes the booking in progress.** BG-1's other half is mostly absent here
+  by construction — the booking store is in memory and the checkout form is component state, so
+  none of v1's leaked name, email and phone exists to leak. What remained was the flight someone
+  had picked, in session storage, which survives a sign-out in the same tab, and the wishlist of
+  places they hearted. Both are cleared, and in a `finally` so a failed sign-out request cannot
+  leave them: the person clicked sign out, and the next one at that browser is already sitting
+  down.
+
+**Already in sync, checked rather than assumed:** the amenity vocabulary (api-v2 is ahead — it
+has v1's 170 new non-English supplier codes plus `normalizeAmenityList`), the room-name rules and
+the photo-distinctiveness ordering, the Unanswered Search banner in app-v2, the area-coverage
+probe, and the city-alias dictionary bar one entry (Lisbon, filed as both "Lissabon" and "Lisbon",
+where the one-to-one mapping reached 2,113 of 3,003 hotels).
+
+**Not ported, and named rather than skipped quietly:** v1's translation pass over its search and
+property components. app-v2's locale files hold 248 keys against v1's several hundred, and its
+components still carry hardcoded English. That is the C0b debt this file already records, it spans
+the C1–C3 surfaces, and it is per-slice work rather than part of this one.
+
+**Verified:** api-v2 273 tests (from 222), app-v2 171 (from 147), both typechecking, v1's 1434
+still green, plus `scratch/smoke-v2-c1-search.mjs` — 18 checks against a running api-v2, including
+a Hong Kong search returning 259 hotels with none across the border in China, two identical
+searches answering with different hotel counts (live, not replayed), and an empty
+`hotel_search_cache`.
+
+---
+
+## Done 2026-09-16 — C2, the money rules
+
+C2a–C2e ported the booking *flow*. What had not crossed was the arithmetic: api-v2 was still
+pricing on the model v1 replaced, and the difference is money, not shape.
+
+### api-v2 had four markup implementations, and the live one was wrong
+
+`lib/pricing.ts` (a flat 5% for hotels, 4% for bundles), a second copy in `types/hotels.ts`
+with both rates hardcoded to `0` and marked "disabled", a third inside `flights.service.ts`
+that charged **`FLIGHT_MARKUP = 0`**, and a fourth in app-v2 that nothing imported. So:
+
+- **flights were sold at cost.** Every Duffel booking recovered neither Duffel's $3.00 + 1%
+  nor Stripe's fee.
+- **hotels charged 5%** against a model that says 5.9% — and against a *measured* Stripe rate
+  of 4.4%, 5% covers a hotel only if nobody ever cancels. A $300 stay netted $0.84.
+- `STRIPE_RATE` read 2.9%, Stripe's US domestic-card headline, while this account is
+  US-registered and its customers are not: every live charge settles at 4.4%.
+
+v1's model is now api-v2's: `MarkupSpec` — a rate, a flat component in USD, and a cap on the
+result — with flights at 7.2% + $4.40 capped at 12% and hotels at 5.9%. The flat component is
+converted into the base price's currency at the call site, because adding `4.40` to a peso
+fare charges ₱4.40, about eight US cents. The three duplicate implementations are gone.
+
+**One discrepancy carried over deliberately.** `HOTEL_MARKUP_SPEC.flat` is $0.40 and the call
+site passes `0`, so hotels charge the rate alone. That is exactly what v1 does — it added the
+flat component and passed zero at its only call site in the same commit (`57278e66`).
+Charging it is a decision about what customers pay, not a code fix, so it stays as v1 has it.
+One argument, one line, whenever someone decides.
+
+### Seven places divided a Stripe amount by 100
+
+KRW has no minor unit, so `pi.amount / 100` records a ₩1,200,000 booking as ₩12,000 — and
+AirangGo is Korea-locked, which makes that a primary market rather than an edge case. All
+seven now go through `fromStripeAmount`: the hotel confirm's stored total, three flight refund
+amounts (including the quote a customer sees *before* they cancel), and both flight-ticketing
+confirmations in `internal.route.ts`.
+
+### A charge could not be attributed, and a retry could not be paid
+
+api-v2 minted `FORHU-<millis>-<rand>` at confirm time. FORHU Inc owns the Stripe account every
+FORHU product settles into and Stripe pays out daily as one pooled deposit, so that prefix
+named the one thing every product shares and could answer nothing. It was also minted *after*
+the charge, leaving a failed booking's payment with no reference at all.
+
+`bookingReference.ts` is ported: `CG-7K2M9Q` / `GG-…`, Crockford base32 with no I, L, O or U.
+It is minted **before** the charge, from a hash of the idempotency key — never randomly, because
+Stripe replays an idempotent request only when its parameters are identical, and a customer who
+steps back from payment and proceeds again sends the same request. A random reference made every
+retry a "different request" under the same key: a 500, and no way to pay (QA BG-19). Confirm
+reads it back off the PaymentIntent rather than from the request body — the client must not
+choose the identifier a payment is filed under — and passes it to OTV as the client reference,
+which is what a cancellation has to quote.
+
+### The Stripe fee is now recorded, not just estimated
+
+`STRIPE_RATE` has to be an estimate, because the markup is computed before a charge exists. It
+was never checked against anything. Stripe reports the exact figure per charge, for free, on the
+balance transaction — so confirm captures with `expand: ['latest_charge.balance_transaction']`
+and records what was really taken, with the card's issuing country beside it, which is *why* the
+rate is what it is. Every field is optional: a booking must never fail over a reporting figure.
+
+### A Stripe webhook had no replay guard
+
+Stripe retries a delivery it did not get a 2xx for, with the same event id, and api-v2's handler
+had nothing to stop it running twice. The claim/commit pair is ported: a row claims the event, a
+*completed* claim skips the duplicate, and a claim that was never completed is reprocessed —
+because that is a delivery that died part-way, and skipping it would lose the work. Not committed
+on the error path, so Stripe's retry can still run.
+
+### `/admin/revenue` did not exist
+
+app-v2's revenue screen has been calling it since it was written, and showing its error state.
+`enrichBookingFinances` — the last piece of v1's pricing module — is what turns the stored pieces
+into markup, Stripe's cut and what is left. **A booking with no recorded rate reports zero markup
+rather than an estimated one**: v1 used to invert the *configured* rate, which has no term for a
+flat component and is not the rate that booking was sold at, so it produced plausible wrong
+margins in reporting. A visibly missing figure gets investigated; an invented one gets banked.
+Amounts are summed unconverted and the response says which currency it counted — restating a
+closed period at today's rate is the error ADR-0008 exists to prevent.
+
+**Verified:** api-v2 300 tests (from 273), typecheck clean, plus `scratch/smoke-v2-c2-money.mjs`
+— 17 checks, and `scratch/smoke-v2-c5-admin.mjs` now 29. **No booking was created.** The quote a
+payment prices from is inserted straight into the local database, so the whole charge path runs
+with no supplier call; Stripe is in test mode locally. The smoke confirms a $300 quote is charged
+$317.70, that a client claiming $1 is refused rather than charged $1, that an expired quote
+cannot be charged from, that paying twice returns the same intent, and that a replayed webhook
+leaves one claim.
+
+**Still open in C2:** `refund_logs` (v1's `createRefundRequest`/`processRefund`), the policy
+snapshot backfill for bookings taken before snapshots existed, and a parity read of `/amend`.
 
 ---
 

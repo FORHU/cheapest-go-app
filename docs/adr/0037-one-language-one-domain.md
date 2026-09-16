@@ -22,3 +22,21 @@ The naive reading — each domain serves the one language of its brand — leave
 - **Each brand's sitemap must list only its own territory.** AirangGo's currently advertises `/ja/` and `/zh/`, which it should not serve at all.
 - **Locale prefixes do not currently switch language on AirangGo.** `airanggo.com/ja/about` returns `lang="ko"` and a title reading "About Us — CheapestGo" — wrong language, wrong brand. Under this decision that URL should not exist; the underlying brand leak is a separate defect and is not fixed by removing the route.
 - **Metadata is where this is won or lost.** Of 29 storefront pages, 6 export a static English `metadata` object and 2 call `generateMetadata` without ever translating — among them `property/[id]`, which is one indexable page per hotel and therefore the whole long tail. A page can render in perfect Korean and still present an English title and description to Google, because those are the only two things a result shows.
+
+## Sequencing: AirangGo must be discoverable before `/ko` redirects to it
+
+Amended 2026-09-16.
+
+The consequence above — "`cheapestgo.com/ko` must redirect rather than disappear" — must not be shipped before AirangGo is known to be crawlable and indexed. A 301 from an indexed page into a domain Google cannot or will not index does not pass authority; it removes the only Korean page we have from search and waits.
+
+That precondition was checked on 2026-09-16 and **is met**: Search Console reports `https://airanggo.com/` as "URL is on Google — Page is indexed", and a live test returns "URL is available to Google". Googlebot fetches the homepage, `robots.txt` and `sitemap.xml` cleanly through Cloudflare. The redirect is therefore no longer blocked on discovery.
+
+The remaining check before shipping it is coverage, not existence: the 301's targets are interior Korean pages, so Search Console's Pages report should show more than the homepage indexed. The homepage being on Google proves the domain is reachable, not that the pages the redirect points at are.
+
+Verification belongs in DNS, not in the image. The `NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION_GEOMEEGO` secret is empty and `require_env` does not guard it, so AirangGo serves no verification meta tag — which turned out not to matter. A GSC **Domain** property verified by TXT record covers `airanggo.com` and every subdomain of it, over both http and https, and needs no secret, no build argument and no redeploy, where the meta-tag route costs a full image rebuild for a string that never changes. It does not extend to `geomeego.com`, which is a separate registrable domain and would need a property of its own; since that domain only 301s, one is optional.
+
+A caution on measurement: `site:airanggo.com` typed into a third-party search tool is not evidence. One returned nothing for this domain while Search Console reported it indexed. Search Console is the only authority worth acting on here.
+
+### The `/ko` canonical is wrong independently of this
+
+`cheapestgo.com/ko` emits `<link rel="canonical" href="https://cheapestgo.com">` — it names the *English* homepage as its canonical. The cause is the middleware rewrite of `/ko` to `/`, after which the root layout's `hreflangAlternates('/')` computes metadata for the English path. This is a defect, not a consequence of this decision, and it means the Korean page may already be absorbed into the English one rather than indexed. It should be fixed whichever way the sequencing goes.
