@@ -356,6 +356,10 @@ export function CheckoutContent() {
                     checkIn: checkIn?.toISOString().slice(0, 10),
                     checkOut: checkOut?.toISOString().slice(0, 10),
                     ...(bundleFlightId ? { bundleFlightId } : {}),
+                    // What the summary showed, fee included — nothing is billed above it.
+                    // Not sent with a voucher: create-payment does not apply one, so
+                    // holding the charge to a discounted total would refuse the payment.
+                    ...(appliedVoucher ? {} : { displayedTotal: chargedTotal }),
                 }
             );
 
@@ -412,6 +416,7 @@ export function CheckoutContent() {
                                 checkIn: checkIn?.toISOString().slice(0, 10),
                                 checkOut: checkOut?.toISOString().slice(0, 10),
                                 ...(bundleFlightId ? { bundleFlightId } : {}),
+                                ...(appliedVoucher ? {} : { displayedTotal: chargedTotal }),
                             }
                         );
 
@@ -476,7 +481,7 @@ export function CheckoutContent() {
         } finally {
             setIsCreatingPayment(false);
         }
-    }, [user, prebookId, selectedRoom, formData, bookingFor, priceData, selectedCurrency, property, openAuthModal, totalPrice, clearFormErrors, setFormErrors, appliedVoucher, bundleFlightId]);
+    }, [user, prebookId, selectedRoom, formData, bookingFor, priceData, selectedCurrency, property, openAuthModal, totalPrice, chargedTotal, clearFormErrors, setFormErrors, appliedVoucher, bundleFlightId]);
 
     // Step 2: After Stripe payment succeeds → confirm with LiteAPI
     const handlePaymentSuccess = useCallback(async (stripePaymentIntentId: string) => {

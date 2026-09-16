@@ -356,6 +356,14 @@ jobs:
 
           cat > deploy-remote.sh <<EOF
           set -euo pipefail
+          # Take turns with the other brand. Both deploys land on this one instance from the
+          # same push, and each prunes images; a prune that runs during the other brand's
+          # pull deletes the lease that pull holds, and it fails with "lease not found"
+          # (AirangGo, 2026-09-16). The lock file is shared by deploy-production.yml and
+          # deploy-airanggo.yml and released when this script exits. A deploy takes about
+          # 30s here, so 300s is only reached if the other one is stuck.
+          exec 9>/var/lock/ec2-brand-deploy.lock
+          flock -w 300 9 || { echo "Timed out waiting for the other brand deploy to release the lock" >&2; exit 1; }
           aws ecr get-login-password --region ${AWS_REGION} | docker login --username AWS --password-stdin ${ECR_REGISTRY}
 
           sudo mkdir -p ${ENV_DIR}

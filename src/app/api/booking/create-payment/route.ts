@@ -3,9 +3,9 @@ import { getAuthenticatedUser } from '@/lib/server/auth';
 import { stripe } from '@/lib/stripe/server';
 import { rateLimit } from '@/lib/server/rate-limit';
 import { checkCsrf } from '@/lib/server/csrf';
-import { applyMarkup, toStripeAmount, HOTEL_MARKUP_SPEC } from '@/lib/pricing';
+import { toStripeAmount, hotelServiceFee } from '@/lib/pricing';
 import { convertCurrencyStrict, refreshExchangeRates } from '@/lib/currency';
-import { resolveHotelChargeBase } from '@/lib/bookings/hotelChargeBase';
+import { resolveHotelChargeBase, capAtDisplayedTotal } from '@/lib/bookings/hotelChargeBase';
 import { createAdminClient } from '@/utils/postgres/admin';
 import { env } from '@/utils/env';
 import { bookingReferenceFromBytes } from '@/lib/bookingReference';
@@ -37,7 +37,7 @@ export async function POST(req: NextRequest) {
         }
 
         const body = await req.json();
-        const { prebookId, amount, currency, holderEmail, propertyName, roomName, bundleFlightId, checkIn, checkOut } = body as {
+        const { prebookId, amount, currency, holderEmail, propertyName, roomName, bundleFlightId, checkIn, checkOut, displayedTotal } = body as {
             prebookId: string;
             amount: number;
             currency: string;
@@ -46,8 +46,10 @@ export async function POST(req: NextRequest) {
             roomName?: string;
             checkIn?: string;
             checkOut?: string;
-            /** If set, user is bundling this hotel with a completed flight booking → 12% bundle rate applies instead of 15% standalone */
+            /** Links the hotel to a flight booked alongside it. Charged at the same rate — see ADR-0036. */
             bundleFlightId?: string;
+            /** The total the checkout showed, service fee included. Nothing is billed above it. */
+            displayedTotal?: number;
         };
 
         // Supported currencies — prevents charging in unsupported/invalid currencies
@@ -160,14 +162,34 @@ export async function POST(req: NextRequest) {
         // provision against TravelgateX's incoming connection fee. See ADR-0036.
         // Markup is applied to the server-derived base, never to the client's figure.
         //
-        // No flat-fee conversion here: hotels carry no per-booking supplier fee to
-        // recover, so HOTEL_MARKUP_SPEC.flat is zero and the base's currency does not
-        // matter. Should a flat component ever be added — when TravelgateX starts
-        // billing — it is USD-denominated and must be converted into `currency` first.
-        const pricing = applyMarkup(baseInChargeCurrency, HOTEL_MARKUP_SPEC, 0);
+        // Through hotelServiceFee, which is also what prebook's display block and the
+        // checkout render — so the fee shown and the fee charged are the same function of
+        // the same base. This used to pass `0` for the flat component with a comment saying
+        // it was zero; ADR-0036 sets hotels at $0.40 + 5.9%, and the spec already said so.
+        // The flat part is USD and needs rates whenever the charge currency is not USD.
+        if (currency.toUpperCase() !== 'USD') await refreshExchangeRates();
+        const fee = hotelServiceFee(baseInChargeCurrency, currency, convertCurrencyStrict);
+
+        // The customer is never billed above the total they were shown, fee included.
+        const shown = capAtDisplayedTotal(fee.chargedTotal, displayedTotal, currency);
+        if (!shown.ok) {
+            console.warn(`[create-payment] Rejected (${shown.code}) prebookId=${prebookId.slice(0, 40)} shown=${displayedTotal} server=${shown.serverPrice} ${shown.currency}`);
+            return NextResponse.json({
+                success: false, error: shown.message, code: shown.code,
+                serverPrice: shown.serverPrice, currency: shown.currency,
+            }, { status: 409 });
+        }
+
+        const pricing = {
+            originalPrice: baseInChargeCurrency,
+            chargedPrice:  shown.total,
+            markupAmount:  Math.round((shown.total - baseInChargeCurrency) * 100) / 100,
+            markupRate:    fee.markupRate,
+            capped:        fee.capped,
+        };
         const stripeAmount = toStripeAmount(pricing.chargedPrice, currency);
 
-        console.log(`[create-payment] Hotel pricing: quote=${resolved.quoteGross} ${resolved.quoteCurrency} → base=${pricing.originalPrice} ${currency}, charged=${pricing.chargedPrice}, markup=${(pricing.markupRate * 100).toFixed(1)}%${pricing.capped ? ' (CAPPED)' : ''}${bundleFlightId ? ' (bundled with a flight — no longer discounted)' : ''}`);
+        console.log(`[create-payment] Hotel pricing: quote=${resolved.quoteGross} ${resolved.quoteCurrency} → base=${pricing.originalPrice} ${currency}, fee=${fee.serviceFee} (incl. flat ${fee.markupFlat}), charged=${pricing.chargedPrice}${shown.absorbed ? ` (absorbed ${shown.absorbed} to hold the displayed total)` : ''}, markup=${(pricing.markupRate * 100).toFixed(1)}%${pricing.capped ? ' (CAPPED)' : ''}${bundleFlightId ? ' (bundled with a flight — no longer discounted)' : ''}`);
 
         // Create Stripe PaymentIntent (automatic capture — refund on LiteAPI failure)
         // Include amount+currency in the hash so a price change (prebook refresh) produces a new key
@@ -217,6 +239,11 @@ export async function POST(req: NextRequest) {
             data: {
                 clientSecret: paymentIntent.client_secret,
                 paymentIntentId: paymentIntent.id,
+                // What the intent is for, so a client that did not already hold it can render
+                // the figure it is about to confirm rather than one it worked out itself.
+                chargedTotal: pricing.chargedPrice,
+                serviceFee: pricing.markupAmount,
+                currency: currency.toUpperCase(),
             },
         });
     } catch (err: any) {

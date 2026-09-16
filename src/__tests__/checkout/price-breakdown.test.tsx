@@ -133,7 +133,11 @@ describe('usePricingCalculation', () => {
         expect(result.current.totalPrice).toBe(400);
     });
 
-    it('charges the supplier total plus the 5% platform markup', () => {
+    it('shows the service fee the server will charge, not a hardcoded 5%', () => {
+        // This test used to pin 417.30 — the supplier total plus 5% — while create-payment
+        // charged 5.9%, so it was pinning a checkout that showed less than it billed.
+        // Without the server's display block the page estimates with the same function the
+        // charge uses: 397.43 + 5.9% + $0.40 = 421.28.
         const { result } = renderHook(() =>
             usePricingCalculation({
                 priceData: { price: 397.43, tax: 0, total: 397.43, currency: 'USD' },
@@ -141,6 +145,26 @@ describe('usePricingCalculation', () => {
         );
 
         expect(result.current.totalPrice).toBe(397.43);
-        expect(result.current.chargedTotal).toBe(417.30);
+        expect(result.current.serviceFee).toBe(23.85);
+        expect(result.current.chargedTotal).toBe(421.28);
+    });
+
+    it('renders the server figures when prebook sent them', () => {
+        // The browser renders prices; it does not compute them. When the display block
+        // carries a fee, that is the fee — even where a local estimate would differ.
+        const { result } = renderHook(() =>
+            usePricingCalculation({
+                priceData: {
+                    price: 397.43, tax: 0, total: 397.43, currency: 'USD',
+                    display: {
+                        currency: 'USD', subtotal: 397.43, taxes: 0, total: 397.43,
+                        serviceFee: 23.84, chargedTotal: 421.27, converted: false,
+                    },
+                },
+            })
+        );
+
+        expect(result.current.serviceFee).toBe(23.84);
+        expect(result.current.chargedTotal).toBe(421.27);
     });
 });

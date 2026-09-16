@@ -4,6 +4,7 @@ import { useMemo } from 'react';
 import { useProperty, useSelectedRoom, useBookingDates } from '@/stores/bookingStore';
 import { useCheckoutStore } from '@/stores/checkoutStore';
 import { convertCurrency } from '@/lib/currency';
+import { hotelServiceFee } from '@/lib/pricing';
 
 /** Server-converted figures for the customer's currency, from /api/booking/prebook. */
 interface ServerDisplay {
@@ -11,6 +12,10 @@ interface ServerDisplay {
     subtotal: number;
     taxes: number;
     total: number;
+    /** The service fee create-payment will charge on `total`, from the same function. */
+    serviceFee?: number;
+    /** `total` plus that fee — the figure the customer is billed. */
+    chargedTotal?: number;
     /** false when the supplier already quoted in this currency and no FX was applied. */
     converted: boolean;
 }
@@ -34,7 +39,7 @@ interface UsePricingCalculationReturn {
     roomPrice: number;
     taxes: number;
     totalPrice: number;
-    /** Platform service fee (5% of totalPrice) shown at checkout per §10(d) */
+    /** Platform service fee shown at checkout per §10(d) — the one create-payment charges. */
     serviceFee: number;
     /** Actual amount charged to the customer (totalPrice + serviceFee) */
     chargedTotal: number;
@@ -98,7 +103,16 @@ export function usePricingCalculation({
             : convertCurrency(rawTotal, sourceCurrency, selectedCurrency);
 
         const roundedTotal = Math.round(totalPrice * 100) / 100;
-        const serviceFee   = Math.round(roundedTotal * 0.05 * 100) / 100;
+
+        // The fee comes from the server with the rest of the display block, computed by
+        // the function create-payment charges with. This line used to be a hardcoded 5%
+        // while the server charged 5.9%, so every checkout showed a total below the one
+        // billed. Without the server's figure — no prebook yet, or an FX outage — the same
+        // function runs here as an estimate. It is never the basis for a charge:
+        // create-payment recomputes, and refuses to bill above what this page displayed.
+        const serviceFee = useServer && typeof serverDisplay!.serviceFee === 'number'
+            ? serverDisplay!.serviceFee
+            : hotelServiceFee(roundedTotal, selectedCurrency, convertCurrency).serviceFee;
 
         return {
             displayProperty,
@@ -108,7 +122,9 @@ export function usePricingCalculation({
             taxes: Math.round(taxes * 100) / 100,
             totalPrice: roundedTotal,
             serviceFee,
-            chargedTotal: Math.round((roundedTotal + serviceFee) * 100) / 100,
+            chargedTotal: useServer && typeof serverDisplay!.chargedTotal === 'number'
+                ? serverDisplay!.chargedTotal
+                : Math.round((roundedTotal + serviceFee) * 100) / 100,
         };
     }, [property, selectedRoom, checkIn, checkOut, priceData, selectedCurrency]);
 }

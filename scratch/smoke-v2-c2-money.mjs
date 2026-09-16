@@ -67,17 +67,19 @@ try {
     const stripeKey = process.env.STRIPE_SECRET_KEY ?? readEnv('STRIPE_SECRET_KEY');
     const pi = piId ? await stripeGet(`payment_intents/${piId}`, stripeKey) : null;
 
-    // 300 + 5.9% = 317.70 → 31770 minor units. The old flat 5% would be 31500.
-    check('the customer is charged the hotel rate on the server-derived base',
-        pi?.amount === 31770, `${pi?.amount} ${pi?.currency}`);
+    // 300 + 5.9% + $0.40 = 318.10 → 31810 minor units. The old flat 5% would be 31500,
+    // and the flat component left out would be 31770.
+    check('the customer is charged $0.40 + 5.9% on the server-derived base',
+        pi?.amount === 31810, `${pi?.amount} ${pi?.currency}`);
     // Manual capture: the authorisation is taken now and the money only moves once the
     // supplier has actually confirmed the room. A fresh intent sits at
     // requires_payment_method until the browser confirms it, so the rule to check here is
     // the capture method, not the status.
     check('the money only moves once the room is confirmed',
         pi?.capture_method === 'manual', `${pi?.capture_method} / ${pi?.status}`);
+    // Effective, not configured: $18.10 over $300 is 6.03% once the flat part is in.
     check('the effective markup rate is recorded on the charge',
-        Number(pi?.metadata?.markupRate) === 0.059, String(pi?.metadata?.markupRate));
+        Number(pi?.metadata?.markupRate) === 0.0603, String(pi?.metadata?.markupRate));
 
     // ── The reference exists before the charge does, and is ours, not FORHU's.
     const ref = pi?.metadata?.bookingReference;
@@ -114,6 +116,34 @@ try {
     const lowballBody = await lowball.json().catch(() => ({}));
     check('a client claiming a $1 price is refused, not charged $1',
         lowball.status === 409, `${lowball.status} ${(lowballBody.message ?? lowballBody.error ?? '').slice(0, 60)}`);
+
+    // ── What was shown is what is charged.
+    const payShowing = async (displayedTotal) => {
+        sql(`UPDATE hotel_prebook_quotes SET expires_at = now() + interval '30 minutes' WHERE prebook_id = '${prebookId}'`);
+        const res = await call('/hotels/create-payment', {
+            method: 'POST',
+            headers: { Cookie: cookie },
+            body: JSON.stringify({ prebookId, amount: 300, currency: 'USD', holderEmail: email, displayedTotal }),
+        });
+        return { status: res.status, body: await res.json().catch(() => ({})) };
+    };
+
+    const exact = await payShowing(318.10);
+    check('a checkout showing the server total is charged exactly that',
+        exact.status === 200 && exact.body.data?.chargedTotal === 318.10, `${exact.status} ${exact.body.data?.chargedTotal}`);
+
+    const nudged = await payShowing(318.05);
+    const nudgedPi = nudged.body.data?.paymentIntentId
+        ? await stripeGet(`payment_intents/${nudged.body.data.paymentIntentId}`, stripeKey) : null;
+    check('a total a few cents under the server figure is honoured, not topped up',
+        nudgedPi?.amount === 31805, `${nudged.status} ${nudgedPi?.amount}`);
+
+    const oldCheckout = await payShowing(315.00);
+    check('a checkout still showing the old 5% is asked to re-confirm, not billed more',
+        oldCheckout.status === 409 && oldCheckout.body.error === 'PRICE_CHANGED', `${oldCheckout.status} ${oldCheckout.body.error}`);
+    check('and is told the new total',
+        oldCheckout.body.serverPrice === 318.10 && oldCheckout.body.currency === 'USD',
+        `${oldCheckout.body.serverPrice} ${oldCheckout.body.currency}`);
 
     // ── A webhook delivered twice is handled once.
     const secret = process.env.STRIPE_WEBHOOK_SECRET ?? readEnv('STRIPE_WEBHOOK_SECRET');

@@ -5,7 +5,7 @@ import { quoteTravelgateX } from '@/lib/server/travelgatex';
 import { rateLimit } from '@/lib/server/rate-limit';
 import { getAuthenticatedUser } from '@/lib/server/auth';
 import { createAdminClient } from '@/utils/postgres/admin';
-import { PREBOOK_QUOTE_TTL_MS } from '@/lib/pricing';
+import { PREBOOK_QUOTE_TTL_MS, hotelServiceFee } from '@/lib/pricing';
 import { convertCurrencyStrict, refreshExchangeRates } from '@/lib/currency';
 
 // Worst case is the fresh hotel search (13 s HTTP abort) + OTV's 1.5 s valuation
@@ -301,6 +301,17 @@ export async function POST(req: Request) {
             const quotedTotal = optionQuote.price?.gross || optionQuote.price?.net || 0;
             const displayCurrency = currency.toUpperCase();
 
+            // The service fee rides in the same block, from the same function create-payment
+            // charges with. The checkout used to compute it itself at a hardcoded 5% while the
+            // server charged 5.9%, so every customer was billed more than the total they saw.
+            // Its flat part is quoted in USD, so rates are needed whenever the display
+            // currency is not USD — even when the room itself needs no conversion.
+            if (displayCurrency !== 'USD') await refreshExchangeRates().catch(() => false);
+            const withFee = (total: number) => {
+                const fee = hotelServiceFee(total, displayCurrency, convertCurrencyStrict);
+                return { serviceFee: fee.serviceFee, chargedTotal: fee.chargedTotal };
+            };
+
             let display: object | null = null;
             if (quotedCurrency.toUpperCase() === displayCurrency) {
                 display = {
@@ -308,6 +319,7 @@ export async function POST(req: Request) {
                     subtotal: quotedSubtotal,
                     taxes: quotedTaxes,
                     total: quotedTotal,
+                    ...withFee(quotedTotal),
                     converted: false,
                 };
             } else {
@@ -315,11 +327,13 @@ export async function POST(req: Request) {
                     await refreshExchangeRates();
                     const to = (n: number) =>
                         Math.round(convertCurrencyStrict(n, quotedCurrency, displayCurrency) * 100) / 100;
+                    const total = to(quotedTotal);
                     display = {
                         currency: displayCurrency,
                         subtotal: to(quotedSubtotal),
                         taxes: to(quotedTaxes),
-                        total: to(quotedTotal),
+                        total,
+                        ...withFee(total),
                         converted: true,
                     };
                 } catch (fxErr: any) {

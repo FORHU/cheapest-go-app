@@ -153,3 +153,42 @@ describe('resolveHotelChargeBase', () => {
         expect(res.currency).toBe('USD');
     });
 });
+
+describe('the hotel fee a customer is shown is the fee they are charged', () => {
+    it('charges a hotel the rate plus the flat component ADR-0036 set', async () => {
+        // $0.40 + 5.9%. Both were decided; create-payment used to pass the flat part as zero,
+        // and the checkout showed a hardcoded 5% on top of that.
+        const { hotelServiceFee } = await import('@/lib/pricing');
+        const fee = hotelServiceFee(300, 'USD', (a: number) => a);
+        expect(fee.serviceFee).toBe(18.10);
+        expect(fee.chargedTotal).toBe(318.10);
+    });
+
+    it('drops the flat part rather than refusing the sale when rates are missing', async () => {
+        const { hotelServiceFee } = await import('@/lib/pricing');
+        const fee = hotelServiceFee(17_400, 'PHP', () => { throw new Error('no rates'); });
+        expect(fee.markupFlat).toBe(0);
+        expect(fee.serviceFee).toBe(1026.60);
+    });
+});
+
+describe('capAtDisplayedTotal', () => {
+    it('holds the displayed total when a rate refresh nudged the fee up', async () => {
+        const { capAtDisplayedTotal } = await import('./hotelChargeBase');
+        expect(capAtDisplayedTotal(18_450.12, 18_450.00, 'PHP')).toEqual({ ok: true, total: 18_450.00, absorbed: 0.12 });
+    });
+
+    it('asks the customer to confirm a total that moved beyond tolerance', async () => {
+        // A checkout still showing 5% against a 5.9% charge is not rounding.
+        const { capAtDisplayedTotal } = await import('./hotelChargeBase');
+        const r = capAtDisplayedTotal(318.10, 315.00, 'usd');
+        expect(r.ok).toBe(false);
+        if (!r.ok) expect(r).toMatchObject({ code: 'PRICE_CHANGED', serverPrice: 318.10, currency: 'USD' });
+    });
+
+    it('charges the lower figure, and the server figure when nothing was shown', async () => {
+        const { capAtDisplayedTotal } = await import('./hotelChargeBase');
+        expect(capAtDisplayedTotal(318.00, 318.10, 'USD')).toEqual({ ok: true, total: 318.00, absorbed: 0 });
+        expect(capAtDisplayedTotal(318.10, undefined, 'USD')).toEqual({ ok: true, total: 318.10, absorbed: 0 });
+    });
+});
