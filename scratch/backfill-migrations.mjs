@@ -16,7 +16,9 @@
  */
 import fs from 'fs';
 import postgres from 'postgres';
+import { versionOf, listMigrationFiles } from '../db/migration-version.mjs';
 
+const MIGRATIONS_DIR = 'db/migrations';
 const CUTOFF = '20260905000001';           // exclusive: this file and later are run, not backfilled
 const dry = process.argv.includes('--dry');
 
@@ -40,11 +42,42 @@ const sql = postgres(url, {
     connect_timeout: 25,
 });
 
-const versions = fs.readdirSync('db/migrations')
-    .filter(f => f.endsWith('.sql'))
-    .filter(f => f < CUTOFF)
-    .map(f => f.replace(/\.sql$/, ''))
-    .sort();
+/**
+ * The versions to record, derived the way dbmate derives them.
+ *
+ * This wrote `20260601000001_schema` — the whole filename — until 2026-09-15, which is a
+ * row dbmate does not recognise: it looks for `20260601000001`, would not find it, and
+ * would re-run a migration against a database that already has it. The ledger currently
+ * holds no such row, so nothing needs repairing; this only stops them being minted.
+ *
+ * The cutoff is compared against the version rather than the filename too. `f < CUTOFF`
+ * was measuring a full filename against a bare 14-digit constant and happened to give the
+ * right answer only because `_` sorts after every digit.
+ */
+const malformed = [];
+const found = [];
+
+for (const f of listMigrationFiles(MIGRATIONS_DIR)) {
+    const version = versionOf(f);
+    if (version === null) {
+        malformed.push(f);
+        continue;
+    }
+    // String comparison is sound because every version here is 14 digits — the convention
+    // src/__tests__/db/migrations.test.ts enforces — so lexical and numeric order agree.
+    if (version < CUTOFF) found.push(version);
+}
+
+if (malformed.length) {
+    console.error(`ABORT — these have no leading version digits, so there is nothing to record:\n${malformed.map(f => `  ${f}`).join('\n')}`);
+    process.exit(1);
+}
+
+// Deduplicated, which keying on the version rather than the filename newly makes possible:
+// two files sharing a version collapse to one row, and counting them twice would overstate
+// what this recorded. Such a pair is rejected by the migrations test and by the preflight in
+// apply-migrations.mjs, so reaching here with one means something upstream was bypassed.
+const versions = [...new Set(found)].sort();
 
 await sql`CREATE TABLE IF NOT EXISTS public.schema_migrations (
     version     text PRIMARY KEY,

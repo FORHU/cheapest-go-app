@@ -140,6 +140,60 @@ describe('FlightItineraryTimeline', () => {
         expect(screen.getByText('Heathrow Airport (LHR)')).toBeTruthy();
     });
 
+    it('names the city an end is in, beside the airport itself', () => {
+        renderIntl(<FlightItineraryTimeline slice={offerSlices(oneStop)[0]} />);
+
+        expect(screen.getByText('Clark')).toBeTruthy();
+        // Doha is both the first flight's arrival and the second's departure.
+        expect(screen.getAllByText('Doha')).toHaveLength(2);
+        expect(screen.getByText('London')).toBeTruthy();
+    });
+
+    it('names no city for an airport it does not know, rather than guessing one', () => {
+        const unknown = {
+            ...oneStop,
+            segments: [seg('ZZZ', 'CRK', '2026-09-23T08:00:00', '2026-09-23T10:00:00', { duration: 120 })],
+            sliceDurations: [120],
+        } as FlightOffer;
+
+        const { container } = renderIntl(<FlightItineraryTimeline slice={offerSlices(unknown)[0]} />);
+
+        // Clark's own city still shows; nothing invented for the airport we don't carry.
+        expect(screen.getByText('Clark')).toBeTruthy();
+        expect(screen.getByText('ZZZ')).toBeTruthy();
+        // A lone item still renders as one bullet, not a bullet with an empty city before it.
+        expect(container.textContent).not.toMatch(/•\s*•\s*ZZZ/);
+    });
+
+    it('names the cabin and flight number at both ends of a flight', () => {
+        renderIntl(<FlightItineraryTimeline slice={offerSlices(oneStop)[0]} />);
+
+        // Same flight, so the same identity reads at either end without looking across the row.
+        expect(screen.getAllByText('Economy QR0927')).toHaveLength(2);
+        expect(screen.getAllByText('Economy QR0003')).toHaveLength(2);
+    });
+
+    it('names the aircraft at both ends of a flight, when the provider gave one', () => {
+        renderIntl(<FlightItineraryTimeline slice={offerSlices(oneStop)[0]} />);
+
+        expect(screen.getAllByText('Boeing 787-8')).toHaveLength(2);
+        expect(screen.getAllByText('Airbus A380-800')).toHaveLength(2);
+    });
+
+    it('names no aircraft when the provider gave none, rather than leaving a blank bullet', () => {
+        const noAircraft = {
+            ...oneStop,
+            segments: [seg('CRK', 'LHR', '2026-09-23T18:40:00', '2026-09-24T06:30:00', { duration: 710, flightNumber: 'QR0100' })],
+            sliceDurations: [710],
+        } as FlightOffer;
+
+        const { container } = renderIntl(<FlightItineraryTimeline slice={offerSlices(noAircraft)[0]} />);
+
+        expect(screen.getAllByText('Economy QR0100')).toHaveLength(2);
+        // No trailing "• " with nothing after it.
+        expect(container.textContent).not.toMatch(/•\s*•/);
+    });
+
     it('falls back to the bare code for an airport it does not know', () => {
         const unknown = {
             ...oneStop,
@@ -185,9 +239,17 @@ describe('FlightItineraryTimeline — terminals', () => {
     it('sits the terminal with the airport it belongs to, not loose in the row', () => {
         renderIntl(<FlightItineraryTimeline slice={offerSlices(withTerminals)[0]} />);
 
-        // The arrival end of the first flight: Heathrow, then its terminal, in one column.
+        // The arrival end of the first flight: Heathrow and its terminal share a column.
+        // Asserted as "same column", not as a count of parentElements — the bullet lines
+        // nest their own rows, and how deeply is a layout detail this should survive. The
+        // end column is the nearest div; everything inside a bullet line is a span.
         const heathrow = screen.getByText('Heathrow Airport (LHR)');
-        expect(heathrow.parentElement!.textContent).toContain('Terminal 4');
+        const terminal = screen.getByText('Terminal 4');
+        const column = heathrow.closest('div');
+
+        // Guard against a vacuous pass: two nulls would satisfy the comparison below.
+        expect(column).toBeTruthy();
+        expect(column).toBe(terminal.closest('div'));
     });
 
     it('says terminal info comes closer to departure at an untracked airport with none stated', () => {

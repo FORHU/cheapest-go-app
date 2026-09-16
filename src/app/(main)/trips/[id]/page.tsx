@@ -4,7 +4,9 @@ import { getAuthenticatedUser } from '@/lib/server/auth';
 import { createAdminClient } from '@/utils/postgres/admin';
 import { getSqlAdmin } from '@/lib/db/postgres';
 import { formatCurrency, calculateNights } from '@/lib/utils';
-import { formatDuration, getAirlineName } from '@/utils/flight-utils';
+import { bookingToFlightOffer } from '@/lib/trips/booking-itinerary';
+import { FlightItineraryDetails } from '@/components/flights/FlightItineraryDetails';
+import { FlightSummaryHeader } from '@/components/trips/FlightSummaryHeader';
 import {
     ArrowLeft, Calendar, Users, MapPin, Plane, FileText,
     CheckCircle, XCircle, Clock, AlertTriangle, RotateCcw,
@@ -62,10 +64,6 @@ function StatusBadge({ status, map, t }: { status: string; map: typeof HOTEL_STA
 
 function fmtDate(s: string, opts?: Intl.DateTimeFormatOptions) {
     return new Date(s).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', ...opts });
-}
-
-function fmtTime(s: string) {
-    return new Date(s).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
 }
 
 function InfoRow({ label, value }: { label: string; value: React.ReactNode }) {
@@ -199,112 +197,28 @@ function FlightDetail({ booking, t }: { booking: any; t: TFunc }) {
     const passengers: any[] = booking.passengers ?? [];
     const l = (key: string, params?: Record<string, string | number>) => t(`labels.${key}`, params);
 
-    const origin = segments[0]?.origin ?? '—';
-    const destination = segments[segments.length - 1]?.destination ?? '—';
-    const departDate = segments[0]?.departure ? fmtDate(segments[0].departure) : '—';
-
-    // Segments grouped by leg (outbound/return/multi-city) so a layover is never
-    // confused with the days-long gap between an outbound arrival and a return
-    // departure. segment_index is what insertFlightSegments() actually sets per leg;
-    // itinerary_index is a legacy column the current insert path never writes, so it's
-    // 0 on every row and can't be trusted alone — a gap over 24h is also a leg boundary.
-    const itineraryLegs: { label: string | null; segments: any[] }[] = (() => {
-        if (segments.length === 0) return [];
-        const legIndex = (seg: any) => seg.segment_index ?? seg.itinerary_index;
-        const sorted = [...segments].sort((a, b) => new Date(a.departure).getTime() - new Date(b.departure).getTime());
-        const legs: any[][] = [[sorted[0]]];
-        for (let i = 1; i < sorted.length; i++) {
-            const prev = sorted[i - 1];
-            const cur = sorted[i];
-            const indexChanged = legIndex(cur) !== legIndex(prev);
-            const gapHours = (new Date(cur.departure).getTime() - new Date(prev.arrival).getTime()) / 3_600_000;
-            if (indexChanged || gapHours > 24) legs.push([cur]);
-            else legs[legs.length - 1].push(cur);
-        }
-        return legs.map((legSegments, i) => ({
-            label: legs.length > 1
-                ? (i === 0 ? t('flightBookingCard.tripLegs.outbound')
-                    : i === 1 ? t('flightBookingCard.tripLegs.return')
-                    : t('flightBookingCard.tripLegs.leg', { number: i + 1 }))
-                : null,
-            segments: legSegments,
-        }));
-    })();
+    const bookingOffer = bookingToFlightOffer(booking);
 
     return (
         <div className="space-y-4">
-            {/* Hero */}
+            {/* Hero — the same summary the trips list draws, so a traveller opening a
+                booking reads the same description of it they just clicked on. */}
             <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 px-5 py-4">
-                <div className="flex items-center gap-2 mb-1">
-                    <Plane size={18} className="text-blue-500" />
-                    <h1 className="text-lg font-bold text-slate-900 dark:text-white">
-                        {origin} → {destination}
-                    </h1>
-                </div>
-                <p className="text-sm text-slate-500 mb-3">{departDate} · {booking.trip_type ?? 'one-way'}</p>
-                <div className="flex flex-wrap items-center gap-3">
+                <FlightSummaryHeader booking={booking} />
+                <div className="flex flex-wrap items-center gap-3 mt-3 pt-3 border-t border-slate-100 dark:border-slate-800">
                     <StatusBadge status={booking.status} map={FLIGHT_STATUS_MAP} t={t} />
-                    {booking.pnr && (
-                        <span className="text-xs text-slate-500">
-                            PNR: <span className="font-mono font-semibold text-slate-800 dark:text-white tracking-wider">{booking.pnr}</span>
-                        </span>
-                    )}
                 </div>
             </div>
 
             {/* Itinerary */}
             <Section title={t('sections.itinerary')} icon={<Plane size={15} />}>
-                <div className="py-2 space-y-3">
-                    {itineraryLegs.map((leg, legIdx) => (
-                        <div key={legIdx}>
-                            {leg.label && (
-                                <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">{leg.label}</div>
-                            )}
-                            {leg.segments.map((seg: any, i: number) => {
-                                const next = leg.segments[i + 1];
-                                const layoverMins = next && seg.arrival && next.departure
-                                    ? Math.round((new Date(next.departure).getTime() - new Date(seg.arrival).getTime()) / 60000)
-                                    : 0;
-                                return (
-                                    <div key={seg.id ?? i} className="flex gap-4 py-3 border-b border-slate-100 dark:border-slate-800 last:border-0">
-                                        <div className="flex flex-col items-center pt-1">
-                                            <div className="w-2 h-2 rounded-full bg-blue-500 shrink-0" />
-                                            {i < leg.segments.length - 1 && <div className="w-px flex-1 bg-slate-200 dark:bg-slate-700 my-1" />}
-                                        </div>
-                                        <div className="flex-1 min-w-0">
-                                            <div className="flex items-center justify-between gap-2 mb-0.5">
-                                                <span className="text-sm font-semibold text-slate-900 dark:text-white">
-                                                    {seg.origin} → {seg.destination}
-                                                </span>
-                                                <span className="text-xs font-mono text-slate-500 shrink-0">
-                                                    {seg.airline} {seg.flight_number}
-                                                </span>
-                                            </div>
-                                            <div className="flex items-center gap-2 text-xs text-slate-500">
-                                                {seg.departure && <span>{fmtDate(seg.departure)} · {fmtTime(seg.departure)}</span>}
-                                                {seg.arrival && <><span>→</span><span>{fmtTime(seg.arrival)}</span></>}
-                                            </div>
-                                            <div className="flex items-center gap-1 text-xs text-slate-400 mt-0.5">
-                                                <span>{getAirlineName(seg.airline)}</span>
-                                                {seg.departure && seg.arrival && (() => {
-                                                    const mins = Math.round((new Date(seg.arrival).getTime() - new Date(seg.departure).getTime()) / 60000);
-                                                    return mins > 0 ? <span>· {formatDuration(mins)}</span> : null;
-                                                })()}
-                                            </div>
-                                            {next && layoverMins > 0 && (
-                                                <div className="text-xs text-amber-600 dark:text-amber-400 mt-1.5 font-medium">
-                                                    {t('flightBookingCard.layover', { duration: formatDuration(layoverMins), airport: seg.destination })}
-                                                </div>
-                                            )}
-                                        </div>
-                                    </div>
-                                );
-                            })}
-                        </div>
-                    ))}
-                    {segments.length === 0 && (
-                        <p className="text-sm text-slate-400 py-3">{t('noSegmentDetails')}</p>
-                    )}
+                <div className="py-2">
+                    {/* The same component the search card, the book page and the trips
+                        list draw a journey with — one description of a flight, rather
+                        than a fourth that drifts from the other three. */}
+                    {bookingOffer
+                        ? <FlightItineraryDetails offer={bookingOffer} />
+                        : <p className="text-sm text-slate-400 py-3">{t('noSegmentDetails')}</p>}
                 </div>
             </Section>
 

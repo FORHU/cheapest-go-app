@@ -183,6 +183,25 @@ describe('FlightItineraryDetails', () => {
         expect(screen.getByText('Clark International Airport (CRK)')).toBeTruthy();
     });
 
+    it('omits the total-duration line for a round trip whose leg has no quoted duration', () => {
+        // Every existing fixture in this file sets sliceDurations, so this path was never
+        // exercised before: a booking-derived offer has no provider quote to sum, and
+        // subtracting timestamps across two different airports would be wrong by the
+        // timezone gap between them — so it is left unset, not computed. The label must
+        // not render dangling with nothing after it.
+        const noSliceDurations = {
+            ...roundTrip,
+            sliceDurations: undefined,
+        } as FlightOffer;
+
+        renderIntl(<FlightItineraryDetails offer={noSliceDurations} />);
+
+        expect(screen.queryByText('Total Flight Duration')).toBeNull();
+        // The rest of the round-trip layout is unaffected.
+        expect(screen.getByText('Outbound')).toBeTruthy();
+        expect(screen.getByText('Return')).toBeTruthy();
+    });
+
     it('numbers the legs of a multi-city trip, which has no outbound or return', () => {
         const multiCity = {
             ...base,

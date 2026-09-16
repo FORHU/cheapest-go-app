@@ -25,6 +25,35 @@ const CLOCK: Record<string, { hour12: boolean; am?: string; pm?: string; markerF
     zh: { hour12: false },
 };
 
+/**
+ * A BOOKED flight's clock and date — "6:40 PM", "Wed, Sep 23, 2026".
+ *
+ * Distinct from formatTimeIn/formatDateTimeIn above, and the distinction matters. Those
+ * take an OFFER's times, which providers quote as Local Airport Time with no UTC offset,
+ * and read the digits straight out of the string so no runtime zone can shift them.
+ * These take a BOOKING's times, which Postgres stores as `timestamp with time zone` and
+ * hands back as real instants — so they must go through Date, and they render in the
+ * reader's own zone rather than the airport's. Using the wrong one of these two pairs
+ * silently prints a time that is off by the gap between two timezones.
+ */
+export function formatBookingTime(iso: string): string {
+    return new Date(iso).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+}
+
+export function formatBookingDate(iso: string): string {
+    return new Date(iso).toLocaleDateString('en-US', {
+        weekday: 'short', month: 'short', day: 'numeric', year: 'numeric',
+    });
+}
+
+/**
+ * "Economy", "Premium Economy" — title-cased in the text itself rather than by a
+ * `capitalize` class, so the label reads correctly wherever the string is used.
+ */
+export function cabinLabel(cabinClass: string | undefined): string {
+    return (cabinClass || 'economy').replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+}
+
 export function formatTimeIn(iso: string | undefined, locale = 'en'): string {
     if (!iso) return '--:--';
     // The digits in the string ARE the answer — no Date is constructed, so no runtime

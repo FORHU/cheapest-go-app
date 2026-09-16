@@ -47,7 +47,7 @@ brand is env vars over one codebase, renaming it touched no product logic. What 
 touch is everywhere the old *name* had been written down as a value rather than derived:
 
 - `source_brand` on the three booking tables, migrated by
-  `20260906000001_rename_geomeego_to_airanggo.sql`
+  `20260906000006_rename_geomeego_to_airanggo.sql`
 - the admin brand filter, the brand switcher and its cookie
 - the booking reference prefix map — the prefix stays **GG** so references already
   issued keep resolving to one brand

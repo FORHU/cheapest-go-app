@@ -45,7 +45,8 @@ _Avoid_: reading `req.headers.host` to decide which brand to render — all bran
 
 **Production database** — AWS RDS PostgreSQL (provisioning in progress). Connect via `DATABASE_URL` env var.
 
-**Migration tool** — dbmate. Reads `DATABASE_URL`, runs `.sql` files from `db/migrations/` in timestamp order. Run `npx dbmate up` to apply. dbmate is the schema source of truth — see **Prisma** below for why a second migration tool was deliberately rejected.
+**Migration tool** — dbmate. Reads `DATABASE_URL`, runs `.sql` files from `db/migrations/` in timestamp order. Run `npx dbmate up` to apply. dbmate is the schema source of truth — see **Prisma** below for why a second migration tool was deliberately rejected. It records an applied file in `schema_migrations` under the leading digits of its name alone (`20260907000001`), never the full filename.
+_Avoid_: reusing a 14-digit prefix another migration already has. Applying either file records the shared version, which marks the other applied forever — it silently never runs, with no error and no row. This happened: `20260907000001` was used twice and `supplier_booking_attempts` never ran. `src/__tests__/db/migrations.test.ts` now fails on a duplicate prefix, a missing `-- migrate:up`/`-- migrate:down` marker, or an empty up section; `db/migration-version.mjs` is the one shared definition of how a filename becomes a version.
 
 **Prisma** — used only as a read-only introspection layer (`prisma db pull` + Prisma Studio) for browsing the schema and data. Not a migration tool here: dbmate owns `db/migrations/`, and `schema.prisma` is a generated, re-derivable artifact, never hand-edited.
 _Avoid_: running `prisma migrate`, treating `schema.prisma` as authoritative.

@@ -259,6 +259,11 @@ export interface FlightSegmentRecord {
   itinerary_index: number;
   /** What actually distinguishes legs (outbound=0, return=1, ...) — set by insertFlightSegments(). */
   segment_index?: number;
+  /** Fare class the ticket was issued in. Column default is 'economy'; NOT NULL. */
+  cabin_class: string;
+  /** The provider's own terminal, when it gave one. Absent for most carriers — see terminal-fallback.ts. */
+  origin_terminal?: string | null;
+  destination_terminal?: string | null;
 }
 
 /**

@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plane, Search, ChevronDown } from 'lucide-react';
+import { Search, ChevronDown } from 'lucide-react';
 import { FlightCard } from './flightCard';
 import { Skeleton } from '@/components/shared/Skeleton/Skeleton';
 import type { FlightOffer } from '@/types/flights';
@@ -106,6 +106,30 @@ function FlightCardSkeleton({ index = 0 }: { index?: number }) {
     );
 }
 
+/**
+ * The search spinner: a three-quarter arc, drawn rather than bordered.
+ *
+ * A CSS border spinner gives the same 270° by leaving one side transparent, but only at
+ * the border's own weight — and the design's is a hairline, which is the whole of its
+ * character at 24px.
+ */
+function SearchSpinner() {
+    return (
+        <svg
+            aria-hidden="true"
+            className="h-6 w-6 shrink-0 animate-spin text-blue-600 dark:text-blue-400"
+            viewBox="0 0 25 25"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+        >
+            <path
+                d="M12.5 0.5C5.87258 0.5 0.5 5.87258 0.5 12.5C0.5 19.1274 5.87258 24.5 12.5 24.5C19.1274 24.5 24.5 19.1274 24.5 12.5"
+                stroke="currentColor"
+            />
+        </svg>
+    );
+}
+
 // ─── Props ───────────────────────────────────────────────────────────
 
 export interface FlightResultsProps {
@@ -114,7 +138,6 @@ export interface FlightResultsProps {
     error?: string | null;
     onSelect?: (offer: FlightOffer) => void;
     onRetry?: () => void;
-    skeletonCount?: number;
     emptyMessage?: string;
 }
 
@@ -126,32 +149,25 @@ export const FlightResults: React.FC<FlightResultsProps> = ({
     error = null,
     onSelect,
     onRetry,
-    skeletonCount = 5,
     emptyMessage,
 }) => {
     const t = useTranslations('flights.results');
-    // Loading state — show skeleton cards
+    // Loading state — one card, the search named inside it. The design draws the wait as
+    // a single quiet panel rather than a stack of placeholder rows.
     if (loading) {
         return (
-            <div className="space-y-3">
-                {/* Animated header */}
-                <div className="flex items-center justify-center gap-2 lg:gap-3 py-2 lg:py-4">
-                    <div className="relative">
-                        <div className="w-8 h-8 lg:w-12 lg:h-12 rounded-full bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center">
-                            <Plane className="w-4 h-4 lg:w-6 lg:h-6 text-indigo-500 animate-pulse" />
-                        </div>
-                        <div className="absolute inset-0 w-8 h-8 lg:w-12 lg:h-12 border-2 lg:border-[3px] border-indigo-500 border-t-transparent rounded-full animate-spin" />
-                    </div>
+            <div
+                role="status"
+                aria-live="polite"
+                className="flex min-h-[220px] w-full items-center justify-center rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900"
+            >
+                <div className="flex items-center gap-3">
+                    <SearchSpinner />
                     <div>
-                        <p className="text-[10px] lg:text-sm font-medium text-slate-700 dark:text-slate-200">{t('searchingFlights')}</p>
-                        <p className="text-[9px] lg:text-xs text-slate-400 dark:text-slate-500">{t('checkingProviders')}</p>
+                        <p className="text-[15px] text-slate-900 dark:text-white">{t('searchingFlights')}</p>
+                        <p className="text-[10px] text-[#939fb1] dark:text-slate-400">{t('checkingProviders')}</p>
                     </div>
                 </div>
-
-                {/* Skeleton cards */}
-                {Array.from({ length: skeletonCount }).map((_, i) => (
-                    <FlightCardSkeleton key={i} index={i} />
-                ))}
             </div>
         );
     }

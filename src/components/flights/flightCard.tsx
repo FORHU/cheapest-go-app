@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowRight, Luggage, ShoppingBag, ChevronDown, ChevronUp, Shield, XCircle, BadgeDollarSign, Users } from 'lucide-react';
 import type { FlightOffer } from '@/types/flights';
-import { formatPrice, formatPriceWithCents, formatDuration, formatTimeIn, formatDurationLong } from '@/utils/flight-utils';
+import { formatPrice, formatPriceWithCents, formatDuration, formatTimeIn, formatDurationLong, cabinLabel } from '@/utils/flight-utils';
 import { ArrivalDayOffset } from './ArrivalDayOffset';
 import { offerSlices } from '@/lib/flights/offer-slices';
 import { segmentTerminal } from '@/lib/flights/terminal-fallback';
@@ -29,14 +29,6 @@ function airportLabel(code: string | undefined): string {
     if (!code) return '';
     const name = getAirportByCode(code)?.name;
     return name ? `${name} (${code})` : code;
-}
-
-/**
- * "Economy", "Premium Economy" — title-cased in the text itself rather than by a
- * `capitalize` class, so the badge reads correctly wherever the string is used.
- */
-function cabinLabel(cabinClass: string | undefined): string {
-    return (cabinClass || 'economy').replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
 }
 
 function stopsLabel(stops: number, t: Translator): string {

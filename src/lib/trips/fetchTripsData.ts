@@ -70,12 +70,22 @@ export async function fetchTripsData(): Promise<TripsData> {
     console.error('Failed to fetch hotel bookings:', hotelsResponse.error);
   }
 
-  // Group segments and passengers by booking_id
+  // Group segments and passengers by booking_id.
+  //
+  // The two timestamps are written back out as text because `SELECT fs.*` returns them
+  // as Date objects — the driver parses `timestamp with time zone` — and React hands a
+  // Date to the client as a Date. FlightSegmentRecord declares both as strings, and the
+  // itinerary believes it: it slices the ISO text. Casting the row without converting
+  // made that declaration a lie, which surfaced as "iso.slice is not a function".
   const segmentsByBooking = new Map<string, any[]>();
   for (const seg of rawSegments) {
     const id = seg.booking_id;
     if (!segmentsByBooking.has(id)) segmentsByBooking.set(id, []);
-    segmentsByBooking.get(id)!.push(seg);
+    segmentsByBooking.get(id)!.push({
+      ...seg,
+      departure: seg.departure instanceof Date ? seg.departure.toISOString() : seg.departure,
+      arrival: seg.arrival instanceof Date ? seg.arrival.toISOString() : seg.arrival,
+    });
   }
   const passengersByBooking = new Map<string, any[]>();
   for (const pax of rawPassengers) {
