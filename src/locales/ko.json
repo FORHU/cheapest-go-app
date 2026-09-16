@@ -541,6 +541,14 @@
     "pageSubtitle": "엄선한 기간 한정 여행 특가입니다. 요금은 수시로 변동될 수 있으니 서둘러 예약하세요.",
     "pageTitle": "특가 & 프로모션"
   },
+  "destinations": {
+    "browseHotels": "{city}, {country}에서 가장 저렴한 호텔을 둘러보고 안심하고 예약하세요.",
+    "description": "{city}, {country}의 가장 저렴한 호텔을 찾아 예약하세요. 가격을 비교하고 CheapestGo에서 최고의 특가를 만나보세요.",
+    "findHotelsIn": "{city} 호텔 찾기",
+    "hotelsFrom": "1박 {price}부터",
+    "searchHotels": "{city} 호텔 검색",
+    "title": "{city}, {country} 호텔 – 최저가 | CheapestGo"
+  },
   "errors": {
     "generic": "오류가 발생했습니다. 다시 시도해 주세요.",
     "notFound": "페이지를 찾을 수 없습니다.",
@@ -981,6 +989,7 @@
       "fareType": "요금 유형",
       "fastestFirst": "최단 시간순",
       "flightDuration": "비행 시간",
+      "ndc": "NDC",
       "nonStopOnly": "직항만",
       "oneStop": "경유 1회",
       "pricePerPerson": "1인당 요금",
@@ -1374,6 +1383,28 @@
     },
     "subtitleDefault": "엄선된 호텔을 최저가에 제공",
     "subtitlePersonalized": "{country} 인기 호텔 · 매일 업데이트"
+  },
+  "invoice": {
+    "amount": "금액",
+    "billedTo": "청구 대상",
+    "bookingDetails": "예약 정보",
+    "bookingRef": "예약 번호",
+    "date": "날짜",
+    "description": "내역",
+    "flight": "항공",
+    "hotel": "호텔",
+    "hotelPartner": "호텔 파트너",
+    "issued": "발행일: {date}",
+    "passengers": "탑승객",
+    "payment": "결제",
+    "paymentMethod": "Stripe (카드)",
+    "provider": "공급사",
+    "receipt": "영수증",
+    "route": "여정",
+    "thankYou": "CheapestGo를 이용해 주셔서 감사합니다. 문의 사항은 다음으로 연락해 주세요",
+    "totalPaid": "총 결제 금액",
+    "type": "구분",
+    "yourTravelPartner": "당신의 여행 파트너"
   },
   "landing": {
     "hero": {
@@ -2680,13 +2711,168 @@
   },
   "trips": {
     "bookingCard": {
+      "actions": {
+        "cancel": "취소",
+        "details": "상세",
+        "map": "지도",
+        "modify": "변경",
+        "receipt": "영수증 다운로드",
+        "retryRefund": "환불 재시도"
+      },
+      "adult": "성인 {count}명",
+      "adults": "성인 {count}명",
+      "cancelled": "취소됨",
+      "child": "아동 {count}명",
+      "children": "아동 {count}명",
+      "night": "{count}박",
+      "nights": "{count}박",
+      "policyBadges": {
+        "freeCancellation": "무료 취소",
+        "nonRefundable": "환불 불가",
+        "partialRefund": "부분 환불"
+      },
+      "ratings": {
+        "excellent": "훌륭함",
+        "exceptional": "최고",
+        "good": "좋음",
+        "pleasant": "쾌적함",
+        "veryGood": "매우 좋음"
+      },
+      "reviews": "리뷰 {count}개",
       "stayDates": "{from} ~ {to}",
-      "totalPaid": "총 결제 금액"
+      "total": "총액",
+      "totalPaid": "총 결제 금액",
+      "tripCompleted": "여행 완료"
     },
+    "cancellationModal": {
+      "bookingId": "예약 ID: {id}",
+      "cancelBooking": "예약 취소",
+      "cancelling": "취소 중...",
+      "close": "닫기",
+      "keepBooking": "예약 유지",
+      "loadingPolicy": "취소 정책을 불러오는 중...",
+      "policyTimeline": "취소 정책 일정",
+      "retryRefund": "환불 재시도",
+      "retryRefundTitle": "환불 재시도",
+      "retrying": "재시도 중...",
+      "title": "예약 취소",
+      "tryAgain": "다시 시도",
+      "unableToLoadPolicy": "정책을 불러올 수 없습니다"
+    },
+    "cancellationPolicies": {
+      "before": "이전: ",
+      "cancellationFee": "취소 수수료: {amount}",
+      "earlyDepartureDescription": "예정일보다 일찍 체크아웃하면 {amount}의 수수료가 부과됩니다.",
+      "earlyDepartureFee": "조기 퇴실 수수료",
+      "importantNotes": "중요 안내",
+      "noPolicy": "별도의 취소 정책이 없습니다. 표준 약관이 적용됩니다.",
+      "noShowDescription": "취소 없이 체크인하지 않으면 {amount}이 청구됩니다.",
+      "noShowPenalty": "노쇼 위약금",
+      "passed": "경과: "
+    },
+    "emptyState": {
+      "allTitle": "아직 여행이 없습니다",
+      "otherDesc": "둘러보고 첫 여행을 예약해 보세요",
+      "pastTitle": "지난 여행이 없습니다",
+      "upcomingDesc": "다음 여행을 계획할 시간입니다!",
+      "upcomingTitle": "예정된 여행이 없습니다"
+    },
+    "exploreDestinations": "여행지 둘러보기",
     "flightBookingCard": {
+      "addBookingNote": "예약 메모 추가",
+      "airlineBookingDetails": "항공사 예약 정보",
+      "airlineDetails": "항공사 정보",
+      "amErrors": {
+        "cancelFailed": "취소에 실패했습니다. 고객센터로 문의해 주세요.",
+        "duffelCannotCancel": "이 예약은 온라인으로 취소할 수 없습니다. 수동 취소를 요청하려면 crm@cheapestgo.com으로 연락해 주세요.",
+        "mystiflyCannotCancel": "발권된 이 예약은 API로 취소할 수 없습니다. 취소를 요청하려면 crm@myfarebox.com으로 이메일을 보내주세요.",
+        "networkError": "네트워크 오류입니다. 다시 시도해 주세요."
+      },
+      "assignedSeats": "배정된 좌석",
+      "bookingNotes": "예약 메모",
+      "cancel": "취소",
+      "cancelBooking": "예약 취소",
+      "cancelModal": {
+        "baseFareNonRefundable": "기본 운임은 환불되지 않으며, 세금과 수수료만 반환됩니다.",
+        "cancelling": "취소 중…",
+        "cannotCancelOnline": "이 예약은 온라인으로 취소할 수 없습니다. 고객센터로 문의해 주세요.",
+        "cannotUndo": "이 작업은 되돌릴 수 없습니다.",
+        "checkingRefund": "항공사에 실시간 환불 금액을 확인하는 중…",
+        "confirmCancel": "네, 예약을 취소합니다",
+        "estimatedPenalty": "예상 항공사 위약금: {amount}",
+        "fareRulesNonRefundable": "운임 규정상 이 항공권은 환불이 불가합니다.",
+        "keepBooking": "예약 유지",
+        "loading": "불러오는 중…",
+        "networkError": "취소 견적을 가져오는 중 네트워크 오류가 발생했습니다.",
+        "noQuote": "항공사에서 취소 견적을 가져오지 못했습니다.",
+        "noRefund": "환불 없음 — 항공사 정책상 환불이 불가한 운임입니다.",
+        "penaltiesDeducted": "항공사가 정한 취소 위약금이 차감됩니다.",
+        "pnr": "PNR: {pnr}",
+        "refundEligibility": "환불 가능 여부와 금액은 전적으로 항공사의 운임 규정에 따라 결정됩니다.",
+        "refundPolicy": "환불 정책:",
+        "refundTiming": "환불이 진행되는 경우 보통 영업일 기준 5~10일이 소요됩니다.",
+        "taxesRefund": "세금 및 수수료 환불: {amount}",
+        "title": "예약을 취소할까요?",
+        "willReceive": "{amount}을 돌려받게 됩니다.",
+        "zeroRefund": "취소하면 환불 금액은 $0입니다."
+      },
+      "cancellationFailed": "취소 실패",
+      "changeFlight": "항공편 변경",
+      "couldNotLoadTripDetails": "여행 정보를 불러오지 못했습니다",
+      "details": "상세",
+      "eTicket": "E-TKT",
+      "fareBadges": {
+        "changeable": "변경 가능",
+        "checkingFarePolicy": "운임 정책 확인 중…",
+        "fareRulesNonRefundable": "운임 규정: 환불 불가",
+        "freeCancellation": "무료 취소",
+        "nonRefundable": "24시간 이후 환불 불가",
+        "refundable": "환불 가능"
+      },
+      "flightBooking": "항공 예약",
+      "flightItinerary": "항공 일정 보기",
+      "hideChangeFlight": "항공편 변경 숨기기",
+      "hideDetails": "상세 숨기기",
+      "hideFlightItinerary": "항공 일정 숨기기",
+      "hideRefundQuote": "환불 견적 숨기기",
+      "hideVoidQuote": "보이드 견적 숨기기",
+      "issuedTickets": "발권된 항공권",
+      "layover": "{airport} 경유 {duration}",
+      "loadingTripDetails": "항공사 정보를 불러오는 중…",
+      "networkError": "네트워크 오류입니다. 다시 시도해 주세요.",
+      "noRefund": "환불이 이루어지지 않았습니다",
+      "nonstop": "직항",
+      "noteAdded": "메모가 추가되었습니다.",
+      "notePlaceholder": "이 예약에 대한 메모를 입력하세요…",
+      "originTo": "{origin} → {destination}",
+      "passenger": "탑승객 {count}명",
+      "passengers": "탑승객 {count}명",
+      "pax": "{count}명",
+      "penaltyApplied": "적용된 위약금: {amount}",
+      "pnr": "PNR",
+      "receipt": "영수증 다운로드",
+      "refundFailed": "환불 실패",
+      "refundNotAvailable": "환불 불가",
+      "refundNotAvailablePolicy": "환불 불가 (항공사 정책)",
+      "refundQuote": "환불 견적",
+      "retry": "재시도",
+      "save": "저장",
+      "seat": "좌석",
       "departFrom": "출발",
       "arriveAt": "도착",
       "stateChips": {
+        "awaitingConfirmation": "확정 대기 중",
+        "cancelFailed": "취소 실패 — 아래에서 재시도",
+        "cancelStuck": "취소 처리 지연 — 아래에서 재시도",
+        "cancelled": "취소됨",
+        "contactSupport": "취소하려면 고객센터로 문의",
+        "emailToCancel": "취소하려면 crm@myfarebox.com으로 이메일",
+        "flightCompleted": "운항 완료",
+        "refundFailed": "환불 실패",
+        "refundProcessing": "환불 처리 중",
+        "refunded": "환불 완료",
+        "supplierNotFound": "공급사 기록을 찾을 수 없음",
+        "upcomingFlight": "예정된 항공편",
         "flightInProgress": "비행 중",
         "processing": "처리 중",
         "booked": "예약 완료",
@@ -2694,7 +2880,173 @@
         "reissued": "재발행됨",
         "unknown": "알 수 없음"
       },
+      "stop": "경유 {count}회",
+      "stops": "경유 {count}회",
+      "successBanners": {
+        "cancelled": "예약이 취소되었습니다.",
+        "refundProcessed": "예약이 취소되었습니다. 환불이 처리되었습니다.",
+        "refundProcessing": "예약이 취소되었습니다. 환불이 처리 중입니다 — 잠시 후 다시 확인해 주세요."
+      },
+      "totalPaid": "총 결제 금액",
+      "totalRefund": "총 환불 금액",
+      "tripLegs": {
+        "leg": "{number}구간",
+        "outbound": "가는 편",
+        "return": "오는 편"
+      },
+      "tripTypes": {
+        "multiCity": "다구간",
+        "oneWay": "편도",
+        "roundTrip": "왕복"
+      },
+      "voidNotAvailable": "보이드 불가",
+      "voidNotAvailablePolicy": "보이드 불가 (항공사 정책)",
+      "voidQuote": "보이드 견적",
       "totalFlightDuration": "총 비행 시간"
+    },
+    "labels": {
+      "afterDatePenalty": "{date} 이후: {amount} 위약금",
+      "bookedOn": "예약일",
+      "checkIn": "체크인",
+      "checkOut": "체크아웃",
+      "duration": "기간",
+      "email": "이메일",
+      "freeCancelUntil": "무료 취소 기한",
+      "freeCancellation": "무료 취소 가능",
+      "guests": "투숙객",
+      "name": "이름",
+      "nonRefundable": "환불 불가",
+      "paymentMethod": "결제 수단",
+      "policyNotAvailable": "취소 정책 정보를 확인할 수 없습니다.",
+      "provider": "공급사",
+      "room": "객실",
+      "specialRequests": "요청 사항",
+      "totalPaid": "총 결제 금액"
+    },
+    "modificationModal": {
+      "discard": "취소",
+      "email": "이메일",
+      "emailPlaceholder": "email@example.com",
+      "firstName": "이름",
+      "firstNamePlaceholder": "이름",
+      "infoBanner": "예약자 이름, 이메일, 요청 사항을 수정할 수 있습니다.",
+      "lastName": "성",
+      "lastNamePlaceholder": "성",
+      "optional": "(선택)",
+      "remarksPlaceholder": "예: 늦은 체크인, 베개 추가…",
+      "saveChanges": "변경 사항 저장",
+      "saving": "저장 중...",
+      "specialRequests": "요청 사항",
+      "title": "예약 변경"
+    },
+    "myTrips": "내 여행",
+    "noSegmentDetails": "구간 정보가 없습니다.",
+    "sections": {
+      "cancellationPolicy": "취소 정책",
+      "guestInformation": "투숙객 정보",
+      "itinerary": "여정",
+      "passengers": "탑승객",
+      "payment": "결제",
+      "stayDetails": "숙박 정보"
+    },
+    "status": {
+      "booked": "예약 완료",
+      "cancelFailed": "취소 실패",
+      "cancelPending": "취소 대기 중",
+      "cancelled": "취소됨",
+      "cancelledProviderMissing": "취소됨",
+      "completed": "완료",
+      "confirmed": "확정",
+      "failed": "실패",
+      "pending": "대기 중",
+      "processing": "처리 중",
+      "refundFailed": "환불 실패",
+      "refundPending": "환불 대기 중",
+      "refunded": "환불 완료",
+      "ticketed": "확정",
+      "ticketing": "발권 중",
+      "unknown": "알 수 없음",
+      "cancellationStuck": "취소 처리 지연"
+    },
+    "subtitle": "예약을 확인하고 관리하세요",
+    "tabs": {
+      "all": "전체",
+      "past": "지난 여행",
+      "upcoming": "예정",
+      "wishlist": "위시리스트"
+    },
+    "title": "내 여행 | CheapestGo",
+    "viewMore": "더 보기 ({count}개 남음)",
+    "viewReceipt": "영수증 보기",
+    "wishlist": {
+      "emptyDesc": "항공편이나 호텔의 하트 아이콘을 눌러 여기에 저장하세요.",
+      "emptyTitle": "저장된 여행이 없습니다",
+      "perPerson": "1인당",
+      "removeError": "삭제하지 못했습니다. 다시 시도해 주세요.",
+      "removeFromWishlist": "위시리스트에서 삭제",
+      "savedOn": "{date} 저장됨",
+      "searchAgain": "다시 검색",
+      "saveToWishlist": "위시리스트에 저장"
+    },
+    "tripMap": {
+      "navigate": "길안내",
+      "tooFar": "직접 운전하기에는 너무 멉니다",
+      "flyingIn": "항공 이동",
+      "locating": "위치 확인 중…",
+      "findingHotel": "호텔 찾는 중…",
+      "gettingLocation": "현재 위치를 가져오는 중…",
+      "centerOnHotel": "호텔 중심으로 보기",
+      "toggleTraffic": "교통 정보 표시",
+      "driving": "운전",
+      "walking": "도보",
+      "away": "{distance} 거리",
+      "calculatingDistance": "거리 계산 중…",
+      "navigationStarts": "50km 이내에 들어오면 길안내가 시작됩니다",
+      "openInMaps": "지도에서 열기",
+      "navigationReady": "근처에 도착하면 길안내를 이용할 수 있습니다",
+      "saveInMaps": "지도에 저장",
+      "determiningLocation": "위치를 확인하는 중…",
+      "close": "지도 닫기"
+    },
+    "cancellationFeeCard": {
+      "ifYouCancelNow": "지금 취소하면:",
+      "fee": "취소 수수료",
+      "youllReceive": "환불 금액"
+    },
+    "pages": {
+      "backToBooking": "예약으로 돌아가기",
+      "ref": "예약번호:"
+    },
+    "requestsPage": {
+      "title": "요청 사항",
+      "note": "요청 사항은 호텔에 전달되지만 보장되지는 않으며, 호텔 사정에 따라 달라집니다.",
+      "cancelled": "취소된 예약이므로 요청 사항을 더 이상 수정할 수 없습니다."
+    },
+    "requestsForm": {
+      "label": "호텔에 전달할 메시지",
+      "placeholder": "예: 오후 10시 이후 늦은 체크인, 엑스트라 베드, 고층…",
+      "saved": "저장되었습니다 — 호텔에 전달되었습니다.",
+      "saveError": "요청 사항을 저장하지 못했습니다. 다시 시도해 주세요.",
+      "submit": "요청 사항 저장"
+    },
+    "sharePage": {
+      "title": "예약 확인서 공유",
+      "note": "확인 이메일을 본인 또는 다른 사람에게 다시 보낼 수 있습니다 — 동행자나 기록용으로 유용합니다."
+    },
+    "shareForm": {
+      "sendTo": "받는 사람",
+      "sentTo": "{email}으로 전송했습니다.",
+      "sendError": "전송하지 못했습니다. 다시 시도해 주세요.",
+      "submit": "확인서 보내기"
+    },
+    "hotelConfirmed": {
+      "confirming": "예약을 확정하는 중…",
+      "loading": "예약 정보를 불러오는 중…"
+    },
+    "invoice": {
+      "downloadPdf": "PDF 다운로드",
+      "generating": "생성 중…",
+      "print": "인쇄"
     }
   }
 }
