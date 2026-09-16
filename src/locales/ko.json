@@ -2611,7 +2611,17 @@
       "heading": "아래 내용으로 해결되나요?",
       "solved": "네, 해결됐어요",
       "stillNeedHelp": "아직 도움이 필요해요",
-      "solvedNote": "도움이 되었다니 다행입니다. 궁금한 점이 생기면 언제든 문의해 주세요."
+      "solvedNote": "도움이 되었다니 다행입니다. 궁금한 점이 생기면 언제든 문의해 주세요.",
+      "quickHeading": "자주 묻는 질문",
+      "automated": "도움말 센터 · 자동 응답",
+      "talkToPerson": "상담원과 대화하기",
+      "chips": {
+        "confirmation": "예약 확인서가 안 왔어요",
+        "refunds": "환불은 언제 받나요?",
+        "changes": "예약 취소 또는 변경",
+        "priceGap": "결제 단계에서 가격이 달라졌어요",
+        "payment": "결제 문제가 있어요"
+      }
     }
   },
   "map": {

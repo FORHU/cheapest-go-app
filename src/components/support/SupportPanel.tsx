@@ -209,9 +209,13 @@ export function SupportPanel({ chat, onClose }: SupportPanelProps) {
                       */}
                     <SuggestedAnswers
                         articles={suggested.articles}
+                        answering={suggested.answering}
                         solved={suggested.solved}
+                        showChips={suggested.showChips}
+                        onAsk={suggested.ask}
                         onOpen={suggested.markOpened}
                         onSolved={suggested.markSolved}
+                        onTalkToPerson={question => { suggested.reportSent(); chat.send(question); }}
                         onDismiss={suggested.dismiss}
                     />
                     <SupportBookingPicker conversationId={chat.conversation?.id ?? null} />

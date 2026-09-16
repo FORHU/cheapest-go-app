@@ -3031,7 +3031,17 @@
       "heading": "Does one of these answer it?",
       "solved": "That answered it",
       "stillNeedHelp": "I still need help",
-      "solvedNote": "Glad that helped. Write to us any time if something else comes up."
+      "solvedNote": "Glad that helped. Write to us any time if something else comes up.",
+      "quickHeading": "Common questions",
+      "automated": "Help Centre · automated",
+      "talkToPerson": "Talk to a person",
+      "chips": {
+        "confirmation": "Where's my confirmation?",
+        "refunds": "When do I get my refund?",
+        "changes": "Cancel or change a booking",
+        "priceGap": "The price changed at checkout",
+        "payment": "A payment problem"
+      }
     }
   },
   "map": {

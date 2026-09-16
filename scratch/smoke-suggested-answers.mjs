@@ -58,17 +58,37 @@ try {
         return input && !input.hasAttribute('disabled');
     }, null, { timeout: 30_000 });
 
-    // ── A question the Help Page answers.
-    await box.fill('when do I get my refund for the hotel');
+    // ── The chips an empty chat opens with (ADR-0044).
+    const chip = page.getByRole('button', { name: /when do i get my refund/i }).first();
+    check('an empty chat opens with the common questions', await chip.isVisible().catch(() => false));
+    await chip.click();
+    await page.waitForTimeout(1200);
+    check('tapping one answers it in the chat', await page.getByText(/refund goes back to the card/i).first().isVisible().catch(() => false));
+    check('the answer is labelled automated', await page.getByText(/help centre/i).first().isVisible().catch(() => false));
+    const [afterTap] = await sql`SELECT count(*)::int AS n FROM support_messages m
+        JOIN support_conversations c ON c.id = m.conversation_id WHERE c.user_id = ${row.id}`;
+    check('no message was written by tapping', afterTap.n === 0, `${afterTap.n} messages`);
+    await page.screenshot({ path: path.join(SCRATCH, 'quick-answer.png'), clip: { x: 830, y: 150, width: 540, height: 760 } }).catch(() => {});
+    await page.getByRole('button', { name: /talk to a person/i }).last().click();
+    await page.waitForTimeout(2500);
+    const [afterPerson] = await sql`SELECT count(*)::int AS n FROM support_messages m
+        JOIN support_conversations c ON c.id = m.conversation_id WHERE c.user_id = ${row.id}`;
+    check('talking to a person sends the question', afterPerson.n === 1, `${afterPerson.n} messages`);
+
+    // ── A question the Help Page answers, typed out (ADR-0043). The chat now has a message in
+    // it, so the typing path is checked on the reload below rather than here.
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    await page.waitForTimeout(4000);
+    await page.getByRole('button', { name: /^SS$/ }).first().click({ timeout: 30_000 });
+    await page.waitForTimeout(700);
+    await page.locator('button:has-text("Support"):visible').first().click();
+    const box1b = page.getByRole('textbox', { name: /type a message|message/i }).first();
+    await box1b.waitFor({ timeout: 30_000 });
+    await box1b.fill('when do I get my refund for the hotel');
     await page.waitForTimeout(1500);
     const card = page.getByRole('button', { name: /when do i get my refund/i }).first();
     const offered = await card.waitFor({ timeout: 10_000 }).then(() => true, () => false);
     check('the article is offered while typing', offered);
-
-    // Nothing was written into the conversation.
-    const [{ count: written }] = await sql`SELECT count(*)::int FROM support_messages m
-        JOIN support_conversations c ON c.id = m.conversation_id WHERE c.user_id = ${row.id}`;
-    check('nothing was written into the chat', written === 0, `${written} messages`);
 
     await card.click();
     await page.waitForTimeout(800);

@@ -2611,7 +2611,17 @@
       "heading": "以下内容能解答您的问题吗？",
       "solved": "已解决",
       "stillNeedHelp": "仍需要帮助",
-      "solvedNote": "很高兴能帮到您。如还有其他问题，随时联系我们。"
+      "solvedNote": "很高兴能帮到您。如还有其他问题，随时联系我们。",
+      "quickHeading": "常见问题",
+      "automated": "帮助中心 · 自动回复",
+      "talkToPerson": "联系人工客服",
+      "chips": {
+        "confirmation": "没有收到确认信",
+        "refunds": "退款什么时候到账？",
+        "changes": "取消或更改预订",
+        "priceGap": "结账时价格变了",
+        "payment": "支付出现问题"
+      }
     }
   },
   "map": {

@@ -119,6 +119,24 @@ export function suggestionsFor(query: string, locale: string): SuggestionId[] {
         .map(match => match.id);
 }
 
+/**
+ * The questions an empty chat opens with, in the order a customer meets them (ADR-0044).
+ *
+ * Five is the cap: past that a customer reads a menu instead of recognising their question, and
+ * the fifth is here because a payment problem is the one people look for first and must never be
+ * answered by a machine — tapping it goes straight to a person.
+ */
+export const QUICK_QUESTIONS: SuggestionId[] = ['confirmation', 'refunds', 'changes', 'priceGap', 'payment'];
+
+/**
+ * Questions only a person answers, however well the article reads.
+ *
+ * A customer who believes they have been charged twice is not asking a general question about
+ * pending authorisations, and handing them an article is how a support tool earns its
+ * reputation. Tapping this chip writes their question and calls an Agent.
+ */
+export const ALWAYS_A_PERSON: SuggestionId[] = ['payment'];
+
 /** What happened to a card that was shown. Recorded so the guessing above can be corrected. */
 export type SuggestionOutcome = 'shown' | 'opened' | 'solved' | 'sent_anyway';
 

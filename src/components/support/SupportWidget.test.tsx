@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, act, within } from '@testing-library/react';
 import { NextIntlClientProvider } from 'next-intl';
 import { SupportWidget } from './SupportWidget';
 import { useSupportWidgetStore } from '@/stores/supportWidgetStore';
@@ -515,5 +515,125 @@ describe('suggested answers (ADR-0043)', () => {
 
         // Handing someone a leaflet while an Agent is talking to them is the insult this avoids.
         expect(screen.queryByText('When do I get my refund?')).not.toBeInTheDocument();
+    });
+});
+
+/**
+ * The tappable common questions (ADR-0044). The customer types nothing, gets the answer in the
+ * conversation area, and always has a person one tap away — except on payment, which never gets
+ * an automated answer at all.
+ */
+describe('quick questions (ADR-0044)', () => {
+    const helpMessages = {
+        ...messages,
+        support: {
+            ...messages.support,
+            suggestions: {
+                heading: 'Does one of these answer it?',
+                quickHeading: 'Common questions',
+                automated: 'Help Centre · automated',
+                talkToPerson: 'Talk to a person',
+                solved: 'That answered it',
+                stillNeedHelp: 'I still need help',
+                solvedNote: 'Glad that helped.',
+                chips: {
+                    confirmation: "Where's my confirmation?",
+                    refunds: 'When do I get my refund?',
+                    changes: 'Cancel or change a booking',
+                    priceGap: 'The price changed at checkout',
+                    payment: 'A payment problem',
+                },
+            },
+        },
+        help: {
+            sections: {
+                refunds: { title: 'When do I get my refund?', body: 'A refund goes back to the card that paid.' },
+                confirmation: { title: 'I booked, but I have no confirmation', body: 'Check Trips while signed in.' },
+                changes: { title: 'Changing or cancelling', body: 'What you can change depends on the fare.' },
+                priceGap: { title: 'The price changed', body: 'Live prices move.' },
+                payment: { title: 'Payment problems', body: 'A pending authorisation is not a charge.' },
+            },
+        },
+    };
+
+    function HelpWrapper({ children }: { children: React.ReactNode }) {
+        return (
+            <NextIntlClientProvider locale="en" messages={helpMessages}>
+                {children}
+            </NextIntlClientProvider>
+        );
+    }
+
+    async function open() {
+        render(<SupportWidget />, { wrapper: HelpWrapper });
+        openSupport();
+        await waitFor(() => expect(screen.getByRole('textbox')).toBeInTheDocument());
+    }
+
+    const sentMessages = () =>
+        fetchMock.mock.calls.filter(([url, init]) => url === '/api/support/conversation/messages' && init?.method === 'POST');
+
+    it('opens an empty chat with the common questions', async () => {
+        await open();
+
+        expect(screen.getByText('Common questions')).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: 'When do I get my refund?' })).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: 'A payment problem' })).toBeInTheDocument();
+    });
+
+    it('answers a tapped question in the conversation area, without writing in the chat', async () => {
+        await open();
+
+        fireEvent.click(screen.getByRole('button', { name: 'When do I get my refund?' }));
+
+        expect(await screen.findByText('A refund goes back to the card that paid.')).toBeInTheDocument();
+        expect(screen.getByText('Help Centre · automated')).toBeInTheDocument();
+        // Nothing was said by anyone: no message posted, so no chat in the queue.
+        expect(sentMessages()).toHaveLength(0);
+    });
+
+    it('keeps a person one tap away, and sends the question in the customer\'s words', async () => {
+        await open();
+
+        fireEvent.click(screen.getByRole('button', { name: 'When do I get my refund?' }));
+        const answer = await screen.findByRole('region', { name: 'Help Centre · automated' });
+        fireEvent.click(within(answer).getByRole('button', { name: 'Talk to a person' }));
+
+        await waitFor(() => expect(sentMessages()).toHaveLength(1));
+        expect(String(sentMessages()[0][1]?.body)).toContain('When do I get my refund?');
+    });
+
+    it('never answers a payment problem itself — that goes straight to a person', async () => {
+        await open();
+
+        fireEvent.click(screen.getByRole('button', { name: 'A payment problem' }));
+
+        // No article, no automated answer: an Agent is called with the customer's words.
+        expect(screen.queryByText('A pending authorisation is not a charge.')).not.toBeInTheDocument();
+        await waitFor(() => expect(sentMessages()).toHaveLength(1));
+        expect(String(sentMessages()[0][1]?.body)).toContain('A payment problem');
+    });
+
+    it('records what was shown, read and settled', async () => {
+        await open();
+
+        fireEvent.click(screen.getByRole('button', { name: 'When do I get my refund?' }));
+        fireEvent.click(await screen.findByRole('button', { name: 'That answered it' }));
+
+        expect(await screen.findByText('Glad that helped.')).toBeInTheDocument();
+        const outcomes = fetchMock.mock.calls
+            .filter(([url]) => url === '/api/support/suggestions')
+            .map(([, init]) => JSON.parse(String(init?.body)).outcome);
+        expect(outcomes).toContain('shown');
+        expect(outcomes).toContain('opened');
+        expect(outcomes).toContain('solved');
+    });
+
+    it('puts the chips away once the customer starts typing their own question', async () => {
+        await open();
+
+        fireEvent.change(screen.getByRole('textbox'), { target: { value: 'my flight was delayed by six hours' } });
+
+        await waitFor(() => expect(screen.queryByText('Common questions')).not.toBeInTheDocument());
     });
 });
