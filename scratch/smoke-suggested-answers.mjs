@@ -44,11 +44,13 @@ try {
     await context.addCookies(login.headers.getSetCookie().map(c => { const [pair] = c.split(';'); const [name, ...rest] = pair.split('='); return { name, value: rest.join('='), url: BASE }; }));
     const page = await context.newPage();
 
+    const meSeen = page.waitForResponse(r => r.url().includes('/api/auth/me'), { timeout: 180_000 }).catch(() => null);
     await page.goto(`${BASE}/`, { waitUntil: 'domcontentloaded', timeout: 180_000 });
-    await page.waitForTimeout(4000);
+    await meSeen;
+    await page.waitForTimeout(2500);
 
     // In the customer's way: account menu → Support.
-    await page.getByRole('button', { name: /^SS$/ }).first().click({ timeout: 30_000 });
+    await page.getByRole('button', { name: /^SS$/ }).first().click({ timeout: 90_000 });
     await page.waitForTimeout(700);
     await page.locator('button:has-text("Support"):visible').first().click();
     const box = page.getByRole('textbox', { name: /type a message|message/i }).first();
@@ -79,7 +81,7 @@ try {
     // it, so the typing path is checked on the reload below rather than here.
     await page.reload({ waitUntil: 'domcontentloaded' });
     await page.waitForTimeout(4000);
-    await page.getByRole('button', { name: /^SS$/ }).first().click({ timeout: 30_000 });
+    await page.getByRole('button', { name: /^SS$/ }).first().click({ timeout: 90_000 });
     await page.waitForTimeout(700);
     await page.locator('button:has-text("Support"):visible').first().click();
     const box1b = page.getByRole('textbox', { name: /type a message|message/i }).first();
@@ -108,7 +110,7 @@ try {
     // ── A question only a person should answer.
     await page.reload({ waitUntil: 'domcontentloaded' });
     await page.waitForTimeout(4000);
-    await page.getByRole('button', { name: /^SS$/ }).first().click({ timeout: 30_000 });
+    await page.getByRole('button', { name: /^SS$/ }).first().click({ timeout: 90_000 });
     await page.waitForTimeout(700);
     await page.locator('button:has-text("Support"):visible').first().click();
     const box2 = page.getByRole('textbox', { name: /type a message|message/i }).first();

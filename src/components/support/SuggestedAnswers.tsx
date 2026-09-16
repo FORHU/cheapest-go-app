@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useLocale, useTranslations } from 'next-intl';
-import { ChevronDown, ChevronUp, Info } from 'lucide-react';
+import { ChevronDown, ChevronRight, ChevronUp, Info } from 'lucide-react';
 import {
     suggestionsFor,
     ALWAYS_A_PERSON,
@@ -139,20 +139,20 @@ export function SuggestedAnswers({
     if (answering) {
         return (
             <section aria-label={t('automated')} className="shrink-0 px-4 pb-2">
-                <div className="rounded-2xl bg-slate-100 px-3 py-2 dark:bg-white/5">
-                    <p className="mb-1 flex items-center gap-1 text-[10px] font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                <div className="rounded-2xl rounded-bl-md bg-slate-100 px-3.5 py-3 dark:bg-white/5">
+                    <p className="mb-1.5 flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-400 dark:text-slate-500">
                         <Info className="h-3 w-3" /> {t('automated')}
                     </p>
-                    <p className="text-sm leading-relaxed text-slate-900 dark:text-slate-100">
+                    <p className="text-[13px] leading-relaxed text-slate-800 dark:text-slate-100">
                         {help(`${answering}.body`)}
                     </p>
                 </div>
 
-                <div className="mt-2 flex flex-wrap gap-3">
+                <div className="mt-2 flex flex-wrap items-center gap-2">
                     <button
                         type="button"
                         onClick={() => onSolved(answering)}
-                        className="text-xs font-semibold text-emerald-700 underline-offset-2 transition hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:text-emerald-400"
+                        className="rounded-full bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700 transition hover:bg-emerald-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:bg-emerald-500/10 dark:text-emerald-300 dark:hover:bg-emerald-500/20"
                     >
                         {t('solved')}
                     </button>
@@ -163,7 +163,7 @@ export function SuggestedAnswers({
                     <button
                         type="button"
                         onClick={() => onTalkToPerson(t(`chips.${answering}`))}
-                        className="text-xs font-semibold text-blue-600 underline-offset-2 transition hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:text-blue-400"
+                        className="rounded-full border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:border-blue-300 hover:bg-blue-50 hover:text-blue-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:border-white/10 dark:text-slate-200 dark:hover:bg-white/10 dark:hover:text-white"
                     >
                         {t('talkToPerson')}
                     </button>
@@ -175,9 +175,14 @@ export function SuggestedAnswers({
     // ── An empty chat: the common questions, one tap each.
     if (showChips) {
         return (
-            <section aria-label={t('quickHeading')} className="shrink-0 px-4 pb-2">
-                <p className="mb-1.5 text-[11px] font-medium text-slate-500 dark:text-slate-400">{t('quickHeading')}</p>
-                <ul className="flex flex-wrap gap-1.5">
+            <section
+                aria-label={t('quickHeading')}
+                className="shrink-0 border-t border-slate-100 px-4 pb-2 pt-3 dark:border-white/5"
+            >
+                <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-400 dark:text-slate-500">
+                    {t('quickHeading')}
+                </p>
+                <ul className="flex flex-col gap-1">
                     {QUICK_QUESTIONS.map(id => (
                         <li key={id}>
                             <button
@@ -187,9 +192,10 @@ export function SuggestedAnswers({
                                     // chip: it goes straight to the queue, in the customer's words.
                                     ALWAYS_A_PERSON.includes(id) ? onTalkToPerson(t(`chips.${id}`)) : onAsk(id)
                                 }
-                                className="rounded-full border border-slate-200 px-3 py-1.5 text-xs text-slate-700 transition hover:border-blue-300 hover:bg-blue-50 hover:text-blue-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:border-white/10 dark:text-slate-200 dark:hover:bg-white/10 dark:hover:text-white"
+                                className="group flex w-full items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-left text-[13px] font-medium text-slate-700 transition hover:border-blue-200 hover:bg-blue-50/70 hover:text-blue-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:border-white/10 dark:bg-transparent dark:text-slate-200 dark:hover:border-blue-500/30 dark:hover:bg-white/5 dark:hover:text-white"
                             >
-                                {t(`chips.${id}`)}
+                                <span className="truncate">{t(`chips.${id}`)}</span>
+                                <ChevronRight className="h-3.5 w-3.5 shrink-0 text-slate-300 transition group-hover:translate-x-0.5 group-hover:text-blue-500 dark:text-slate-600" />
                             </button>
                         </li>
                     ))}
