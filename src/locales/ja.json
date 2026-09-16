@@ -2312,6 +2312,10 @@
     }
   },
   "trips": {
+    "bookingCard": {
+      "stayDates": "{from}〜{to}",
+      "totalPaid": "お支払い総額"
+    },
     "flightBookingCard": {
       "departFrom": "出発",
       "arriveAt": "到着",

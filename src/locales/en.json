@@ -2384,7 +2384,7 @@
         "details": "Details",
         "map": "Map",
         "modify": "Modify",
-        "receipt": "Receipt",
+        "receipt": "Download receipt",
         "retryRefund": "Retry refund"
       },
       "adult": "{count} adult",
@@ -2407,7 +2407,9 @@
         "veryGood": "Very Good"
       },
       "reviews": "{count} reviews",
+      "stayDates": "{from} to {to}",
       "total": "total",
+      "totalPaid": "Total Paid",
       "tripCompleted": "Trip completed"
     },
     "cancellationModal": {

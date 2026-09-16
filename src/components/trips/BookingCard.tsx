@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import { motion } from 'framer-motion';
 import { useTranslations } from 'next-intl';
-import { MapPin, XCircle, Pencil, Receipt, CheckCircle, RotateCcw, Ban, AlertTriangle, Map, ChevronRight } from 'lucide-react';
+import { MapPin, XCircle, Pencil, CheckCircle, RotateCcw, Ban, CalendarCheck, User, Download, AlertTriangle, Map, ChevronRight } from 'lucide-react';
 
 const TripMapView = dynamic(() => import('./TripMapView'), { ssr: false });
 import { cn } from '@/lib/utils';
@@ -185,10 +185,11 @@ export default function BookingCard({ booking, onBookingUpdated, index = 0 }: Bo
                     </div>
                 </div>
 
-                {/* ── DESKTOP layout: compact horizontal list ── */}
-                <div className="hidden md:flex flex-row min-h-[112px]">
-                    {/* Image — smaller thumbnail */}
-                    <div className="relative w-32 min-h-[112px] lg:w-36 lg:min-h-[112px] flex-shrink-0 overflow-hidden rounded-l-lg">
+                {/* ── DESKTOP layout ── */}
+                <div className="hidden md:flex flex-row min-h-[212px]">
+                    {/* The photograph runs the full height of the card and carries its left
+                        corners — the design gives it a quarter of the row, not a thumbnail. */}
+                    <div className="relative w-[242px] shrink-0 overflow-hidden rounded-l-lg">
                         {booking.property_image ? (
                             <img
                                 src={booking.property_image}
@@ -200,95 +201,87 @@ export default function BookingCard({ booking, onBookingUpdated, index = 0 }: Bo
                                 <MapPin className="w-8 h-8 text-white/50" />
                             </div>
                         )}
-                        {/* Status badge */}
-                        <div className="absolute top-1.5 left-1.5">
-                            <span className={`text-[clamp(0.5625rem,1.5vw,0.625rem)] font-semibold px-1.5 py-0.5 rounded shadow ${statusColors[normalizedStatus]}`}>
-                                {statusLabels[normalizedStatus]}
-                            </span>
-                        </div>
                     </div>
 
                     {/* Content */}
-                    <div className="flex-1 p-3 flex flex-col min-w-0">
-                        <h3 className="text-[clamp(0.75rem,2vw,0.875rem)] font-bold text-slate-900 dark:text-white mb-0.5 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors truncate">
+                    <div className="flex-1 p-5 flex flex-col min-w-0 gap-2">
+                        <h3 className="text-[15px] font-bold text-slate-900 dark:text-white truncate group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
                             {booking.property_name}
                         </h3>
 
-                        <div className="flex items-center text-[clamp(0.625rem,1.5vw,0.75rem)] text-blue-600 dark:text-blue-400 mb-0.5">
-                            <MapPin size={12} className="mr-1 shrink-0" />
-                            <span className="truncate">{booking.room_name}</span>
+                        {/* What the room is and what its rules are, as plain pills — the
+                            design states them rather than colour-coding them. */}
+                        <div className="flex flex-wrap items-center gap-2">
+                            {booking.cancellation_policy && (
+                                <span className="rounded-full bg-[#eff6ff] dark:bg-blue-900/30 px-3 py-1 text-[10px] text-slate-900 dark:text-slate-200">
+                                    {policyType === 'free_cancellation'
+                                        ? t('bookingCard.policyBadges.freeCancellation')
+                                        : policyType === 'non_refundable'
+                                            ? t('bookingCard.policyBadges.nonRefundable')
+                                            : t('bookingCard.policyBadges.partialRefund')}
+                                </span>
+                            )}
+                            {booking.room_name && (
+                                <span className="rounded-full bg-[#eff6ff] dark:bg-blue-900/30 px-3 py-1 text-[10px] text-slate-900 dark:text-slate-200">
+                                    {booking.room_name}
+                                </span>
+                            )}
                         </div>
 
-                        <div className="text-[clamp(0.625rem,1.5vw,0.75rem)] text-slate-500 dark:text-slate-400 mb-1">
-                            {fmtDate(checkInDate)} → {fmtDate(checkOutDate)} · {t(nights === 1 ? 'bookingCard.night' : 'bookingCard.nights', { count: nights })}
-                        </div>
-
-                        {/* Guests */}
-                        <div className="flex flex-wrap gap-1 mb-1.5">
-                            <span className="inline-flex items-center px-1.5 py-0.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded text-[clamp(0.5625rem,1.5vw,0.625rem)] text-slate-600 dark:text-slate-300">
+                        <div className="mt-1 flex flex-col gap-1.5 text-[12px] text-slate-900 dark:text-slate-200">
+                            <span className="flex items-center gap-2">
+                                <CalendarCheck className="h-4 w-4 shrink-0 text-blue-600 dark:text-blue-400" />
+                                {t('bookingCard.stayDates', { from: fmtDate(checkInDate), to: fmtDate(checkOutDate) })}
+                                <span aria-hidden="true" className="text-slate-300 dark:text-slate-600">•</span>
+                                {t(nights === 1 ? 'bookingCard.night' : 'bookingCard.nights', { count: nights })}
+                            </span>
+                            <span className="flex items-center gap-2">
+                                <User className="h-4 w-4 shrink-0 text-blue-600 dark:text-blue-400" />
                                 {t(booking.guests_adults === 1 ? 'bookingCard.adult' : 'bookingCard.adults', { count: booking.guests_adults })}
                                 {booking.guests_children > 0 && `, ${t(booking.guests_children === 1 ? 'bookingCard.child' : 'bookingCard.children', { count: booking.guests_children })}`}
                             </span>
                         </div>
 
-                        {/* Policy badge (desktop) */}
-                        {booking.cancellation_policy && (
-                            <div className="mb-1.5">
-                                {policyType === 'free_cancellation' ? (
-                                    <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800">
-                                        <CheckCircle className="w-3 h-3 shrink-0" /> {t('bookingCard.policyBadges.freeCancellation')}
-                                    </span>
-                                ) : policyType === 'non_refundable' ? (
-                                    <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-red-50 dark:bg-red-900/30 text-red-500 dark:text-red-400 border border-red-200 dark:border-red-800">
-                                        <Ban className="w-3 h-3 shrink-0" /> {t('bookingCard.policyBadges.nonRefundable')}
-                                    </span>
-                                ) : (
-                                    <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-amber-50 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 border border-amber-200 dark:border-amber-800">
-                                        <RotateCcw className="w-3 h-3 shrink-0" /> {t('bookingCard.policyBadges.partialRefund')}
-                                    </span>
-                                )}
-                            </div>
-                        )}
-
                         {isPast && normalizedStatus === 'confirmed' && (
-                            <span className="mt-auto text-[clamp(0.5625rem,1.5vw,0.625rem)] text-slate-400">{t('bookingCard.tripCompleted')}</span>
+                            <span className="mt-auto text-[11px] text-slate-400">{t('bookingCard.tripCompleted')}</span>
                         )}
                         {normalizedStatus === 'cancelled' && (
-                            <span className="mt-auto text-[clamp(0.5625rem,1.5vw,0.625rem)] text-red-500 dark:text-red-400">{t('bookingCard.cancelled')}</span>
+                            <span className="mt-auto text-[11px] text-red-500 dark:text-red-400">{t('bookingCard.cancelled')}</span>
                         )}
                     </div>
 
-                    {/* Right panel — rating, price & actions */}
-                    <div className="flex flex-col items-end justify-between w-[140px] lg:w-[160px] p-3 border-l border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30 gap-2">
-                        {/* Rating */}
-                        {rating > 0 && (
-                            <div className="flex items-center gap-1.5">
-                                <span className={cn('text-[clamp(0.5625rem,1.5vw,0.625rem)] font-bold text-white px-1.5 py-0.5 rounded', getRatingColor(rating))}>
-                                    {rating.toFixed(1)}
-                                </span>
-                                <div className="text-right">
-                                    <div className="text-[clamp(0.625rem,1.5vw,0.75rem)] font-semibold text-slate-900 dark:text-white leading-none">
-                                        {getRatingLabel(rating, t)}
-                                    </div>
-                                    {(booking as any).reviews != null && (booking as any).reviews > 0 && (
-                                        <div className="text-[clamp(0.5625rem,1.5vw,0.625rem)] text-slate-500 dark:text-slate-400">
-                                            {t('bookingCard.reviews', { count: (booking as any).reviews.toLocaleString() })}
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-                        )}
+                    {/* Right panel — status, price and the actions, behind one divider. */}
+                    <div className="flex w-[200px] shrink-0 flex-col items-end gap-2 border-l border-slate-100 dark:border-slate-800 p-5">
+                        <span className={`rounded-full px-3 py-0.5 text-[10px] whitespace-nowrap ${statusColors[normalizedStatus]}`}>
+                            {statusLabels[normalizedStatus]}
+                        </span>
 
-                        {/* Price */}
-                        <div className="text-right">
-                            <span className="text-[clamp(0.875rem,2.5vw,1rem)] font-bold text-slate-900 dark:text-white">
+                        <p className="text-[10px] font-bold text-[#939fb1] dark:text-slate-400">
+                            {t('bookingCard.totalPaid')}{' '}
+                            <span className="text-slate-900 dark:text-white">
                                 {formatCurrency(displayPrice, displayCurrency)}
                             </span>
-                            <div className="text-[clamp(0.5625rem,1.5vw,0.625rem)] text-slate-500 dark:text-slate-400">{t('bookingCard.total')}</div>
-                        </div>
+                        </p>
 
-                        {/* Action buttons */}
-                        <div className="flex flex-col gap-1.5 w-full">
+                        <a
+                            href={`/trips/${booking.id}`}
+                            className="text-[11px] text-blue-600 dark:text-blue-400 hover:underline"
+                        >
+                            {t('bookingCard.actions.details')}
+                        </a>
+                        <a
+                            href={`/trips/invoice/${booking.id}?type=hotel`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1 text-[11px] text-blue-600 dark:text-blue-400 hover:underline"
+                        >
+                            <Download className="h-3.5 w-3.5 shrink-0" />
+                            {t('bookingCard.actions.receipt')}
+                        </a>
+
+                        {/* The actions that change the booking keep their own weight; only
+                            Map is the design's filled button. */}
+                        <div className="mt-auto flex w-full flex-col gap-1.5">
                             {isUpcoming && normalizedStatus === 'confirmed' && (<>
                                 <button
                                     onClick={(e) => { e.stopPropagation(); setShowModifyModal(true); }}
@@ -316,27 +309,11 @@ export default function BookingCard({ booking, onBookingUpdated, index = 0 }: Bo
                             )}
                             <button
                                 onClick={(e) => { e.stopPropagation(); setShowMapView(true); }}
-                                className="w-full flex items-center justify-center gap-1 text-[10px] font-medium text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg px-2 py-1.5 transition-colors"
+                                className="w-full flex items-center justify-center gap-1.5 rounded-lg bg-blue-600 px-3 py-1.5 text-[11px] text-white transition-colors hover:bg-blue-700"
                             >
-                                <Map className="w-3 h-3" />
+                                <Map className="h-3 w-3" />
                                 {t('bookingCard.actions.map')}
                             </button>
-                            <a
-                                href={`/trips/${booking.id}`}
-                                className="w-full flex items-center justify-center gap-1 text-[10px] font-medium text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg px-2 py-1.5 transition-colors"
-                            >
-                                <ChevronRight className="w-3 h-3" />
-                                {t('bookingCard.actions.details')}
-                            </a>
-                            <a
-                                href={`/trips/invoice/${booking.id}?type=hotel`}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="w-full flex items-center justify-center gap-1 text-[10px] font-medium text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg px-2 py-1.5 transition-colors"
-                            >
-                                <Receipt className="w-3 h-3" />
-                                {t('bookingCard.actions.receipt')}
-                            </a>
                         </div>
                     </div>
                 </div>

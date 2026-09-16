@@ -2315,6 +2315,10 @@
     }
   },
   "trips": {
+    "bookingCard": {
+      "stayDates": "{from} 至 {to}",
+      "totalPaid": "已付总额"
+    },
     "flightBookingCard": {
       "departFrom": "出发",
       "arriveAt": "抵达",
