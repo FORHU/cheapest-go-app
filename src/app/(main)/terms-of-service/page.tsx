@@ -10,7 +10,7 @@ import { hreflangAlternates } from '@/lib/seo/hreflang';
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations('legal.termsOfService');
-  return { title: t('title'), description: t('description'), alternates: hreflangAlternates('/terms-of-service') };
+  return { title: t('title'), description: t('description'), alternates: await hreflangAlternates('/terms-of-service') };
 }
 
 export default async function TermsOfServicePage() {

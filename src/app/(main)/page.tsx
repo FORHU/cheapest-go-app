@@ -11,6 +11,16 @@ import {
 } from "./_sections";
 import { getTranslations } from 'next-intl/server';
 import { canonicalBrandName } from '@/lib/brand';
+import { hreflangAlternates } from '@/lib/seo/hreflang';
+import type { Metadata } from 'next';
+
+/**
+ * Title and description come from the root layout; only the URLs are set here. They used
+ * to be on the layout, where every page without its own canonical inherited them.
+ */
+export async function generateMetadata(): Promise<Metadata> {
+  return { alternates: await hreflangAlternates('/') };
+}
 
 export default async function Home() {
   const t = await getTranslations('seo');

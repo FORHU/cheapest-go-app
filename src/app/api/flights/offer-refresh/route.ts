@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { env } from '@/utils/env';
 import { parseDuffelOffer } from '@/lib/server/flights/providers/duffel';
 import { normalizedToFlightOffer } from '@/utils/flight-utils';
+import { sameItineraryOffers } from '@/lib/server/flights/offer-itinerary-match';
 
 export const dynamic = 'force-dynamic';
 
@@ -119,32 +120,24 @@ export async function POST(req: NextRequest) {
         });
     }
 
-    // Find best match: same airline + flight number → else cheapest
-    let matched = targetFlightNumber
-        ? offers.find(o =>
-            o.slices[0]?.segments[0] &&
-            `${o.slices[0].segments[0].marketing_carrier?.iata_code}${o.slices[0].segments[0].marketing_carrier_flight_number}` === targetFlightNumber
-        )
-        : null;
-
-    if (!matched && targetAirlineCode) {
-        matched = offers.find(o =>
-            o.slices[0]?.segments[0]?.marketing_carrier?.iata_code === targetAirlineCode
-        );
-    }
-
+    // The same journey or nothing — the rule /api/flights/book already applies to its own
+    // refresh. This route kept the old one: the first segment's flight number, then any offer
+    // on the same airline, then simply the cheapest on the route. A traveller who stopped to
+    // choose a seat could come back to a different flight, and book it.
+    const [matched] = sameItineraryOffers(rawOffer, offers);
     if (!matched) {
-        // Fall back to cheapest offer
-        matched = offers.reduce((best: any, o: any) =>
-            parseFloat(o.total_amount) < parseFloat(best.total_amount) ? o : best
-        );
+        return NextResponse.json({
+            success: false,
+            reason: 'no_same_itinerary',
+            error: 'This flight is no longer available at this fare. Please search again.',
+        });
     }
 
     const tripType = matched.slices.length > 1 ? 'round-trip' : 'one-way';
     const normalized = parseDuffelOffer(matched, cabinClass);
     const flightOffer = normalizedToFlightOffer(normalized, tripType);
 
-    console.log(`[offer-refresh] Refreshed offer ${rawOffer.id} → ${matched.id} (${targetFlightNumber ?? 'cheapest'})`);
+    console.log(`[offer-refresh] Refreshed offer ${rawOffer.id} → ${matched.id} (same itinerary as ${targetFlightNumber ?? 'the selection'})`);
 
     return NextResponse.json({ success: true, newOfferId: matched.id, newOffer: flightOffer });
 }

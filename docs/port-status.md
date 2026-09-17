@@ -23,8 +23,8 @@ Empty means level. Anything listed must be ported before the watermark advances.
 | C0a | Backend consolidation | `12f2af3` | 67 commits, but its paths overlap every slice below | level |
 | C0b | Locale + SEO shell | `8ef657b` | empty as of 2026-09-16 | **done** — see below |
 | C1 | Hotel search | `8ef657b` | empty as of 2026-09-16 | **done** — see below |
-| C2 | Hotel booking | `8ef657b` | refund logs + snapshot backfill left | **money rules done** — see below |
-| C3 | Flights | `6b0ced4` | **24 commits** | audited 2026-08-26, not ported |
+| C2 | Hotel booking | `8ef657b` | empty as of 2026-09-16 | **done** — see below |
+| C3 | Flights | `8ef657b` | Mystifly + segment terminals left | **done** — see below |
 | C4 | Account | `6b0ced4` | empty as of 2026-09-16 | **done** — see below |
 | C5 | Admin | `6b0ced4` | one screen blocked on schema | **mostly done** — see below |
 | C6 | Ops | `6b0ced4` | empty as of 2026-09-16 | **done** — see below |
@@ -691,8 +691,164 @@ $317.70, that a client claiming $1 is refused rather than charged $1, that an ex
 cannot be charged from, that paying twice returns the same intent, and that a replayed webhook
 leaves one claim.
 
-**Still open in C2:** `refund_logs` (v1's `createRefundRequest`/`processRefund`), the policy
-snapshot backfill for bookings taken before snapshots existed, and a parity read of `/amend`.
+### C2, closed out
+
+**Customers were billed more than the total they were shown — in v1, live.** The checkout
+rendered a hardcoded 5% service fee (`usePricingCalculation`) while create-payment charged 5.9%
+from `HOTEL_MARKUP_SPEC`, so a $300 room displayed $315.00 and billed $317.70. The rate moved on
+2026-09-08 and the client was never updated. app-v2 had the same shape at a hardcoded 6%.
+
+The fee is now one function, `hotelServiceFee`, in both pricing modules. Prebook returns it in
+its server display block beside the converted total, both checkouts render that block instead of
+doing arithmetic, and create-payment charges with the same function. **Nothing is billed above
+the displayed total**: `capAtDisplayedTotal` applies the rule `resolveHotelChargeBase` already
+applied to the base, one step later, to the figure the customer agrees to — within tolerance the
+displayed total stands, beyond it the customer is shown the new total to re-confirm.
+
+**The $0.40 flat hotel component is charged.** ADR-0036 sets hotels at $0.40 + 5.9%; v1 put
+$0.40 in the spec and passed `0` at its only call site in the same commit, with a comment saying
+the flat part was zero. It is converted into the charge currency, and dropped rather than the
+sale refused if rates are unavailable — a fee shown without it is never higher than one charged
+with it. A $300 stay is now $318.10.
+
+**api-v2's error handler threw away what a client needs to act on a refusal.** Six call sites
+attached fields with `Object.assign` — the price to re-confirm, the booking a duplicate collides
+with, the offer that replaced an expired one — and the handler sent only `error` and `message`.
+`AppError` now carries `details`, the handler sends them (never over `error` or `message`), and
+app-v2's http client exposes the body so the checkout can show the new total.
+
+**Refunds are logged before money moves.** `refund_logs` ported: a `pending` row opens before
+Stripe is asked, and closes as `processed` with the Stripe refund id, or `failed`. v1 closed it as
+`processed` with the full amount approved whether or not Stripe refunded anything — the log
+contradicted the booking on the one fact it exists to record. Fixed in both.
+
+**Bookings from before snapshots existed.** A cancellation refunds what the recorded terms allow,
+and a booking with no snapshot has none — so it refunds nothing, even on a free-cancellation rate.
+`npm run backfill-policy-snapshots` derives the snapshot from `bookings.cancellation_policy` with
+`snapshotFromPolicy`, the function confirm now uses too, so a backfilled booking is held to the
+same rule as one confirmed today. Dry run unless `--apply`, idempotent, names the database it is
+pointed at, and skips a booking with nothing to derive terms from rather than inventing them.
+**Not run against RDS** — both local databases hold one booking each; the real population is live,
+and running it there is the owner's call.
+
+**`/amend` was an open door.** It validated nothing, capped nothing, and put what the customer
+typed into an HTML email to whatever address they typed — from the brand's own no-reply domain.
+Set the email to a stranger's and a link in the name, and it was a phishing relay. Now: names
+through `checkName` (the same 30-character cap as every other name field), a real email required,
+every value escaped, sent under the booking's brand via `fromNoReply`, with v1's before/after diff
+and the admin notification. Lifted onto the Layer Contract. The same escaping went into the `/email`
+endpoint's builders, which only send to the signed-in user but interpolated the body just the same.
+
+**Found and not fixed, because it is a decision rather than a defect:** vouchers do not reduce a
+TravelgateX charge in either system. The client applies the discount "at LiteAPI level", which TGX
+has no equivalent of, and create-payment never applies one — a large voucher reaches the customer
+as a price-changed prompt at the full price. Charging a discount means deciding who funds it and
+whether it comes off the base or the total.
+
+**Verified:** api-v2 327 tests, app-v2 171, v1 1520, all typechecking. Smokes: C2 money **21/21**
+(including a checkout showing the old 5% being asked to re-confirm rather than billed more, and a
+few-cents drift being honoured rather than topped up), policy backfill **14/14** against synthetic
+local bookings. Still no booking created.
+
+---
+
+## Done 2026-09-17 — C3, flights
+
+The audit of 2026-08-26 found the surfaces at parity and left behavioural parity open. That is
+where everything below was hiding: api-v2 had the endpoints and not the rules, and each missing
+rule had already cost v1 something real.
+
+### A traveller could be ticketed onto a different flight
+
+When an offer expires, the order path rebuilds an offer request and books from the results. That
+request carries origin, destination, date and cabin — every flight that airline runs that day
+comes back. api-v2 then filtered by validating carrier and sorted by **how close the price was**,
+and `offerRefresh` fell all the way through to *the cheapest offer on the route*. Price proximity
+is not identity: a 06:00 and a 22:00 departure at one fare are interchangeable to that sort.
+Nothing downstream would notice either, because the segments were written from the itinerary the
+browser posted.
+
+`offerItineraryMatch` is ported — marketing carrier, flight number, origin, destination and
+departure instant, segment by segment, slice shape included — and applied in both places. No
+match means the flight is reported unavailable, never substituted. **v1's own `/offer-refresh`
+route still had the loose match and is fixed too.**
+
+### A second attempt bought a second ticket
+
+The payment step's "Back to details" returns to the form, and re-submitting places another real,
+paid order — which is how v1 issued two EVA tickets 61 seconds apart. `preorderReuse` is ported
+with all four gates: the offer id inside a 30-minute window, the order still live *at Duffel*
+rather than in our own row, the passengers matching this submission, and the total matching this
+attempt's bags and seats. The last two matter as much as the first — "Back to details" is where
+a misspelled name gets fixed, and reusing the order would ticket the uncorrected one. An order
+that fails those gates is cancelled before the replacement is bought.
+
+### Nothing else may strand a paid order
+
+Only one failure — a session update — used to undo a placed order. Everything else (the session
+insert, the rates fetch, Stripe) went to the generic handler and left a confirmed ticket against
+the balance that nothing had recorded. Everything after the order now runs inside one guard that
+cancels it on the way out (ADR-0009, ADR-0013).
+
+### Smaller rules, each with its own history
+
+- **Passport details reach the airline.** The form requires a passport number, expiry and
+  nationality, validates all three, and then sent none of it — the traveller supplied it again at
+  check-in. Sent now, and only where the offer asks for them: some sources reject an order that
+  volunteers them.
+- **A duplicate departure is warned, not refused** (ADR-0011). api-v2 refused outright with no
+  way through; a family on two bookings could not book at all. `acknowledgeDuplicate` is the way
+  through, and the refusal now says so.
+- **One price tolerance.** api-v2 hardcoded its own beside `getFlightPriceTolerance`. When two
+  gates disagree, a fare drifting between them is waved through one and stopped by the other —
+  which is what makes prices look like they change constantly.
+- **The balance guard is off unless asked for.** It calls `/air/payments/balances`, which does
+  not exist: on live it threw on every booking, was swallowed, and cost a round trip.
+- **Segments are written from the order Duffel is holding**, not the browser's payload, so the
+  confirmation email cannot describe a flight the PNR is not for. A segment with no readable
+  times is skipped rather than dated to `new Date()` — today's date on a future leg reads as a
+  real departure everywhere it is shown.
+- **E-ticket numbers are read from `unique_identifier`.** Two places read `document_number`,
+  which Duffel does not send, so `.map()` yielded `[undefined]` — length one, so the "no tickets
+  yet" check passed and the booking was marked ticketed with `[null]` against it. Seat
+  assignments and per-passenger ticket numbers are written too, which is where the trips page and
+  the confirmation email read them from.
+- **A booking half-written by the other path is waited for.** Two callers race by design; the
+  loser used to be told "your card has not been charged" while the winner was issuing the ticket.
+
+### Search: always live, and an outage says so
+
+`searchFlights` served offers from a 10-minute cache. A stored row carries the provider's offer
+id, and a Duffel offer dies 20–30 minutes after it is issued — so a cache hit handed the traveller
+a price whose offer no longer existed, and the booking failed at order placement and re-quoted
+onto a different one. Offers are never served from the database now; `flight_results_cache` is
+still written, and read only by the price calendar.
+
+The same file raced the *whole* of `searchDuffel` — retries included — against the same 12
+seconds `searchDuffel` allows for a **single attempt**, so the retry ladder could never deliver
+and a slightly slow first attempt came back as zero offers. The deadlines now derive from one
+another in `searchBudget`, and a provider that cannot answer **throws** instead of returning an
+empty list: `failedProviders` reaches the page, which offers a retry instead of saying there are
+no flights on the route. A 429 is never retried — it only makes more 429s.
+
+### The fare is checked before the card is entered
+
+api-v2 had no revalidation at all: a price change was discovered at order placement, where the
+only answer left is an error. `POST /flights/revalidate` prices the offer with Duffel's Price
+Action first. Only an **increase** beyond the tolerance interrupts the traveller — comparing the
+absolute difference stopped a booking to ask someone to approve a *cheaper* fare, which is about
+half of all drift — and a drop is adopted at the lower price. A provider that cannot answer
+soft-passes, because the order path re-quotes anyway. app-v2 calls it on selection and says
+"Checking price…" on the card while it does.
+
+**Verified:** api-v2 411 tests (from 320), app-v2 171, both typechecking, plus
+`scratch/smoke-v2-c3-flights.mjs` — 12 checks against live sandbox Duffel, including a replacement
+offer coming back as the same flight (BA0105 → BA0105) and two identical searches returning 234
+brand-new offer ids apiece. **No order was placed.**
+
+**Not ported:** Mystifly's `AirRevalidate` and its stop-parsing, which belong with whatever
+re-enables Mystifly; and `flight_segments.origin_terminal` / `destination_terminal`, which v1
+added and v2's schema does not have — a migration, and migrations here are applied by hand.
 
 ---
 

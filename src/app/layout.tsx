@@ -15,7 +15,6 @@ import { PWAInstallProvider } from '@/contexts/PWAInstallContext';
 import InstallPWAPrompt from '@/components/pwa/InstallPWAPrompt';
 import PWAServiceWorkerRegistrar from '@/components/pwa/PWAServiceWorkerRegistrar';
 import { env } from '@/utils/env';
-import { hreflangAlternates } from '@/lib/seo/hreflang';
 import { ClientOnly } from '@/components/common/ClientOnly';
 import { MobileBottomNav } from '@/components/common/MobileBottomNav';
 import { ScrollToTop } from '@/components/common/ScrollToTop';
@@ -44,7 +43,10 @@ export async function generateMetadata(): Promise<Metadata> {
     metadataBase: new URL(SITE_URL),
     title,
     description,
-    alternates: hreflangAlternates('/'),
+    // No `alternates` here on purpose. Next merges metadata field by field, so a canonical
+    // set on the root layout is inherited by every page that does not set its own — which
+    // had /login, and anything else without its own, declaring itself the homepage. Each
+    // indexable page declares its own; the home page's lives in (main)/page.tsx.
     icons: {
       icon: BRAND_FAVICON,
       apple: BRAND_FAVICON,

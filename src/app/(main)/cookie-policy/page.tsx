@@ -10,7 +10,7 @@ import { hreflangAlternates } from '@/lib/seo/hreflang';
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations('legal.cookiePolicy');
-  return { title: t('title'), description: t('description'), alternates: hreflangAlternates('/cookie-policy') };
+  return { title: t('title'), description: t('description'), alternates: await hreflangAlternates('/cookie-policy') };
 }
 
 export default async function CookiePolicyPage() {

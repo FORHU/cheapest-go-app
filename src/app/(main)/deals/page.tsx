@@ -15,7 +15,7 @@ export async function generateMetadata(): Promise<Metadata> {
     return {
         title: t('pageTitle') + ' | CheapestGo',
         description: t('pageSubtitle'),
-        alternates: hreflangAlternates('/deals'),
+        alternates: await hreflangAlternates('/deals'),
     };
 }
 

@@ -13,12 +13,17 @@ import {
     Mail,
 } from 'lucide-react';
 
-export const metadata: Metadata = {
-    title: 'About Us — CheapestGo',
-    description:
-        'CheapestGo is a modern online travel agency helping travelers across Southeast Asia find and book flights, hotels, and packages at transparent prices.',
-    alternates: hreflangAlternates('/about'),
-};
+// A static `metadata` object cannot await the request's locale, so it produced one
+// canonical for all four languages — the English one. The title and description are still
+// English for every locale; translating them is a separate job (ADR-0037).
+export async function generateMetadata(): Promise<Metadata> {
+    return {
+        title: 'About Us — CheapestGo',
+        description:
+            'CheapestGo is a modern online travel agency helping travelers across Southeast Asia find and book flights, hotels, and packages at transparent prices.',
+        alternates: await hreflangAlternates('/about'),
+    };
+}
 
 const partners = ['Duffel', 'TravelgateX', 'Stripe'];
 

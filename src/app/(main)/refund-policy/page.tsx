@@ -10,7 +10,7 @@ import { hreflangAlternates } from '@/lib/seo/hreflang';
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations('legal.refundPolicy');
-  return { title: t('title'), description: t('description'), alternates: hreflangAlternates('/refund-policy') };
+  return { title: t('title'), description: t('description'), alternates: await hreflangAlternates('/refund-policy') };
 }
 
 export default async function RefundPolicyPage() {

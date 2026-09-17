@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import fs from 'node:fs';
 import path from 'node:path';
 import sitemap from '@/app/sitemap';
+import { servedLocalePaths } from '@/lib/seo/hreflang';
 
 const APP_DIR = path.join(process.cwd(), 'src', 'app');
 const LOCALE_PREFIX = /^\/(ko|ja|zh)(?=\/|$)/;
@@ -59,15 +60,22 @@ describe('sitemap', () => {
         expect(orphans).toEqual([]);
     });
 
-    it('emits every path for the default locale and ko/ja/zh', () => {
+    it('emits every path once per locale this deployment serves', () => {
+        const expected = servedLocalePaths('/').length;
         const byRoute = new Map<string, number>();
         for (const e of entries) {
             const routePath = toRoutePath(e.url);
             byRoute.set(routePath, (byRoute.get(routePath) ?? 0) + 1);
         }
         for (const [routePath, count] of byRoute) {
-            expect(count, `${routePath} should appear 4 times`).toBe(4);
+            expect(count, `${routePath} should appear ${expected} times`).toBe(expected);
         }
+    });
+
+    // Korean is served by airanggo.com (ADR-0037). CheapestGo advertising /ko put the two
+    // domains in competition for the same queries, which is what the ADR exists to stop.
+    it('does not advertise Korean, which belongs to the other domain', () => {
+        expect(entries.filter(e => new URL(e.url).pathname.startsWith('/ko'))).toEqual([]);
     });
 
     it('contains no duplicate URLs', () => {

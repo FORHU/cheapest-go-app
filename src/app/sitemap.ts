@@ -1,24 +1,24 @@
 import { MetadataRoute } from 'next';
+import { servedLocalePaths } from '@/lib/seo/hreflang';
 
 const baseUrl = (process.env.NEXT_PUBLIC_SITE_URL || 'https://cheapestgo.com').replace(/\/$/, '');
-const NON_DEFAULT_LOCALES = ['ko', 'ja', 'zh'] as const;
 const now = new Date();
 
+/**
+ * One entry per locale this deployment actually serves — so AirangGo lists its Korean
+ * pages only, and CheapestGo lists English, Japanese and Chinese.
+ *
+ * The served locales come from `@/lib/seo/hreflang`, the same list the pages build their
+ * canonical and alternate URLs from. This file used to keep its own copy, which is how it
+ * came to advertise a `/ko` that the pages no longer claimed.
+ */
 function localeVariants(path: string, opts?: { changeFrequency?: MetadataRoute.Sitemap[number]['changeFrequency']; priority?: number }): MetadataRoute.Sitemap {
-    const normalised = path === '/' ? '' : path;
-    const base: MetadataRoute.Sitemap[number] = {
-        url: `${baseUrl}${normalised || '/'}`,
+    return servedLocalePaths(path).map(({ path: at }) => ({
+        url: `${baseUrl}${at}`,
         lastModified: now,
         changeFrequency: opts?.changeFrequency ?? 'weekly',
         priority: opts?.priority ?? 0.7,
-    };
-    return [
-        base,
-        ...NON_DEFAULT_LOCALES.map(locale => ({
-            ...base,
-            url: `${baseUrl}/${locale}${normalised || '/'}`,
-        })),
-    ];
+    }));
 }
 
 export default function sitemap(): MetadataRoute.Sitemap {
@@ -31,6 +31,9 @@ export default function sitemap(): MetadataRoute.Sitemap {
 
         // ── About ───────────────────────────────────────────────────────────────
         ...localeVariants('/about', { changeFrequency: 'monthly', priority: 0.6 }),
+
+        // ── Help ────────────────────────────────────────────────────────────────
+        ...localeVariants('/help', { changeFrequency: 'monthly', priority: 0.5 }),
 
         // ── Legal ───────────────────────────────────────────────────────────────
         ...localeVariants('/terms-of-service',  { changeFrequency: 'monthly', priority: 0.4 }),
