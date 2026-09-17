@@ -1088,6 +1088,12 @@
         "title": "没有符合筛选条件的航班",
         "description": "找到 {count} 个航班，但全部被筛选条件隐藏了。",
         "reset": "重置所有筛选"
+      },
+      "meta": {
+        "title": "{origin} → {destination} 机票 | CheapestGo",
+        "titleNoRoute": "机票搜索结果 | CheapestGo",
+        "description": "比较并预订从{origin}到{destination}的最便宜机票。在 CheapestGo 找到最优惠的价格。",
+        "descriptionNoRoute": "比较并预订全球特价机票。在 CheapestGo 找到最优惠的价格。"
       }
     },
     "validation": {
@@ -2507,6 +2513,13 @@
       "foursquareRecommendations": "Foursquare 推荐",
       "googleReviews": "Google 评价",
       "noReviews": "该地点暂无评价。"
+    },
+    "meta": {
+      "title": "{name} – 最低价格 | CheapestGo",
+      "description": "以最低价格预订{name}。",
+      "descriptionIn": "以最低价格预订位于{location}的{name}。",
+      "rated": "评分 {rating}/10。",
+      "closing": "提供可免费取消的酒店超值优惠。"
     }
   },
   "reviewsSection": {
@@ -2566,7 +2579,11 @@
     "startExploring": "开始探索",
     "terms": "服务条款",
     "privacy": "隐私政策",
-    "refund": "退款政策"
+    "refund": "退款政策",
+    "meta": {
+      "title": "关于我们 — CheapestGo",
+      "description": "CheapestGo 是一家现代化的在线旅行社，帮助东南亚旅客以透明的价格查找并预订机票、酒店和套餐。"
+    }
   },
   "support": {
     "attachments": {

@@ -40,3 +40,14 @@ A caution on measurement: `site:airanggo.com` typed into a third-party search to
 ### The `/ko` canonical is wrong independently of this
 
 `cheapestgo.com/ko` emits `<link rel="canonical" href="https://cheapestgo.com">` — it names the *English* homepage as its canonical. The cause is the middleware rewrite of `/ko` to `/`, after which the root layout's `hreflangAlternates('/')` computes metadata for the English path. This is a defect, not a consequence of this decision, and it means the Korean page may already be absorbed into the English one rather than indexed. It should be fixed whichever way the sequencing goes.
+
+## Status
+
+Recorded 2026-09-17. What the consequences above describe as broken, and where each stands:
+
+- **`geomeego.com` 301s to `airanggo.com`** — done, at nginx.
+- **Each brand's sitemap lists only its own territory** — done. `src/lib/seo/hreflang.ts` is the one list of locales a deployment serves, keyed off `NEXT_PUBLIC_LOCALE`, and `src/app/sitemap.ts` reads it: AirangGo publishes its pages once, unprefixed; CheapestGo publishes English, Japanese and Chinese.
+- **`hreflang` over-claims on both domains** — done for the over-claiming: AirangGo declares no alternates, and CheapestGo declares only `en`, `ja`, `zh` and `x-default`.
+- **`hreflang` becomes cross-domain** — **not done.** CheapestGo does not yet name `https://airanggo.com/...` as its Korean alternate.
+- **`cheapestgo.com/ko` must redirect** — **not done**, gated on AirangGo coverage as described under Sequencing. Until then it names itself as canonical rather than the English page.
+- **Metadata is where this is won or lost** — done for every page robots.txt lets Google crawl. The canonical defect was wider than `/ko`: every `/ja` and `/zh` page declared its English counterpart as canonical, and the root layout's canonical was inherited by any page without its own. Both are fixed. `about` and `property/[id]` — the per-hotel long tail — now take their title and description from the translations, and their canonical from the request's locale. Brand names written into page code rather than the translations (`deals`) bypassed the AirangGo rewrite and are read from the brand config instead. Pages behind robots.txt (`/trips`, `/booking`, `/checkout`, `/account`) were left as they are; search results never show them.

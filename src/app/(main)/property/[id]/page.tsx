@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation';
 import type { Metadata } from 'next';
 import { parsePropertySlug, buildPropertySlug } from '@/lib/utils';
 import { getTranslations } from 'next-intl/server';
+import { hreflangAlternates } from '@/lib/seo/hreflang';
 import PropertyGallery from '@/components/property/PropertyGallery';
 import PropertyOverview from '@/components/property/PropertyOverview';
 import PropertyNav from '@/components/property/PropertyNav';
@@ -50,8 +51,19 @@ export async function generateMetadata({
     const city = staticData?.city || '';
     const country = staticData?.country || '';
     const location = [city, country].filter(Boolean).join(', ');
-    const title = `${property.name} – Cheapest Rates | CheapestGo`;
-    const description = `Book ${property.name}${location ? ` in ${location}` : ''} at the cheapest price. ${property.rating ? `Rated ${property.rating}/10.` : ''} Best deals on hotels with free cancellation options.`;
+
+    // One page per hotel is the site's whole long tail, and the title and description are
+    // all a search result shows. They were English template strings in every locale, and
+    // named CheapestGo on AirangGo; through the translations both are fixed. The optional
+    // parts are separate keys so no locale has to express "maybe a location, maybe a rating"
+    // inside one message.
+    const t = await getTranslations('property.meta');
+    const title = t('title', { name: property.name });
+    const description = [
+        location ? t('descriptionIn', { name: property.name, location }) : t('description', { name: property.name }),
+        property.rating ? t('rated', { rating: property.rating }) : null,
+        t('closing'),
+    ].filter(Boolean).join(' ').replace(/。 /g, '。'); // Japanese and Chinese don't space after a full stop
     const image = property.images?.[0] || property.image;
 
     return {
@@ -69,7 +81,9 @@ export async function generateMetadata({
             description,
             images: image ? [image] : [],
         },
-        alternates: { canonical: `/property/${rawSlug}` },
+        // Locale-aware for the same reason as every other page: a fixed `/property/...`
+        // made /ja/property/... declare the English page canonical.
+        alternates: await hreflangAlternates(`/property/${rawSlug}`),
     };
 }
 

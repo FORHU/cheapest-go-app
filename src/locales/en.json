@@ -1092,6 +1092,12 @@
         "title": "No flights match your filters",
         "description": "{count} flights found — your filters are hiding all of them.",
         "reset": "Reset all filters"
+      },
+      "meta": {
+        "title": "Flights {origin} → {destination} | CheapestGo",
+        "titleNoRoute": "Flight Search Results | CheapestGo",
+        "description": "Compare and book the cheapest flights from {origin} to {destination}. Find the best deals on CheapestGo.",
+        "descriptionNoRoute": "Compare and book cheap flights worldwide. Find the best deals on CheapestGo."
       }
     },
     "validation": {
@@ -2298,6 +2304,13 @@
       "foursquareRecommendations": "Foursquare Recommendations",
       "googleReviews": "Google Reviews",
       "noReviews": "No direct reviews available for this place yet."
+    },
+    "meta": {
+      "title": "{name} – Cheapest Rates | CheapestGo",
+      "description": "Book {name} at the cheapest price.",
+      "descriptionIn": "Book {name} in {location} at the cheapest price.",
+      "rated": "Rated {rating}/10.",
+      "closing": "Best deals on hotels with free cancellation options."
     }
   },
   "propertyGallery": {
@@ -2906,7 +2919,11 @@
     "startExploring": "Start exploring",
     "terms": "Terms of Service",
     "privacy": "Privacy Policy",
-    "refund": "Refund Policy"
+    "refund": "Refund Policy",
+    "meta": {
+      "title": "About Us — CheapestGo",
+      "description": "CheapestGo is a modern online travel agency helping travelers across Southeast Asia find and book flights, hotels, and packages at transparent prices."
+    }
   },
   "support": {
     "attachments": {

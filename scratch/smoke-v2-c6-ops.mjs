@@ -1,73 +1,110 @@
+#!/usr/bin/env node
 /**
- * C6 (ops) against a running api-v2 on :4000.
+ * C6 — the jobs that watch the money, and the cancel that actually cancels.
  *
- * The four routes ported from v1: the catalog seeders and the two internal flight refreshers.
- * Every one of them is a door into supplier accounts, so the first thing checked is that it is
- * locked; then the cheap end-to-end — one hotel's room content, which reads from ETG and writes
- * to v2's own catalog.
- *
- * Deliberately does not exercise the full ETG dump (hundreds of megabytes) or place any booking:
- * hotel bookings run against the live OTV API and are never made to satisfy a test.
+ * Read-only against the running api-v2. The reconcilers report and notify; neither repairs
+ * anything, and nothing here books, cancels or refunds.
  *
  *   node scratch/smoke-v2-c6-ops.mjs
  */
-import fs from 'fs';
 
-const API = 'http://localhost:4000';
-const env = fs.readFileSync('C:/Users/USER/Documents/GitHub/cheapestgo-api-v2/.env', 'utf8');
-const read = (key) => env.match(new RegExp(`^\\s*${key}\\s*=\\s*(.*?)\\s*$`, 'm'))?.[1]?.replace(/^["']|["']$/g, '');
+import { readFileSync, existsSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
 
-const CRON = read('CRON_SECRET');
-const FUNCTIONS = read('FUNCTIONS_SECRET');
+const API = process.env.API_V2 ?? 'http://localhost:4000/api/v2';
+const V2  = 'C:/Users/USER/Documents/GitHub/cheapestgo-api-v2';
 
-let failures = 0;
-const check = (label, ok, detail = '') => {
-    console.log(`${ok ? '✓' : '✗'} ${label}${detail ? ` — ${detail}` : ''}`);
-    if (!ok) failures++;
+let pass = 0, fail = 0;
+const ok  = (n) => { pass++; console.log(`  \x1b[32m✓\x1b[0m ${n}`); };
+const bad = (n, d) => { fail++; console.log(`  \x1b[31m✗\x1b[0m ${n}\n      ${d}`); };
+const check = (n, c, d = '') => c ? ok(n) : bad(n, d);
+
+const src = (p) => existsSync(`${V2}/${p}`) ? readFileSync(`${V2}/${p}`, 'utf8') : '';
+
+const secret = (readFileSync(`${V2}/.env`, 'utf8').match(/^CRON_SECRET=(.*)$/m) ?? [])[1]?.trim();
+const cron = async (path) => {
+    const res = await fetch(`${API}/cron/${path}`, { headers: { Authorization: `Bearer ${secret}` } });
+    return { status: res.status, body: await res.json().catch(() => ({})) };
 };
 
-const get = (path, token) => fetch(`${API}${path}`, token ? { headers: { Authorization: `Bearer ${token}` } } : {});
-const post = (path, token, body) => fetch(`${API}${path}`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
-    body: JSON.stringify(body ?? {}),
-});
+console.log('\n\x1b[1mC6 — ops\x1b[0m\n');
 
-// ── Locked first. A cron route open to the internet is a supplier account open to the internet.
-for (const path of ['/api/v2/cron/seed-room-groups', '/api/v2/cron/etg-dump-sync']) {
-    const res = await get(path);
-    check(`${path} refuses an unauthenticated caller`, res.status === 401, String(res.status));
+// ── Reconcilers ───────────────────────────────────────────────────────────────
+console.log('Reconciliation');
+
+const noAuth = await fetch(`${API}/cron/hotel-reconciliation`);
+check('a reconciler refuses an unauthenticated caller', noAuth.status === 401, `got ${noAuth.status}`);
+
+const hotel = await cron('hotel-reconciliation');
+check('unrecorded reservations are looked for', hotel.status === 200 && hotel.body.success === true,
+    `got ${hotel.status} ${JSON.stringify(hotel.body).slice(0, 160)}`);
+check('the run reports what it scanned, not just what it found',
+    typeof hotel.body.scanned === 'number' && typeof hotel.body.unrecorded === 'number',
+    'a run that found nothing is indistinguishable from one that did not look');
+
+const cost = await cron('platform-cost-reconciliation');
+check('platform cost is reconciled for a closed month', cost.status === 200 && cost.body.success === true,
+    `got ${cost.status}`);
+check('it reports the Stripe rate it charged against',
+    cost.body.stripeRateConfigured === 0.044,
+    `stripeRateConfigured=${cost.body.stripeRateConfigured} — the measured rate is 4.4%, not the 2.9% headline`);
+check('it says what makes its own numbers soft',
+    Array.isArray(cost.body.caveats),
+    'no caveats field — a figure with no stated weaknesses reads as more certain than it is');
+check('it does not report a cancellation rate off too few orders',
+    cost.body.orders >= 20 || cost.body.cancellationRate === null,
+    `orders=${cost.body.orders} rate=${cost.body.cancellationRate}`);
+
+// ── The credit check compares like with like ──────────────────────────────────
+console.log('\nOTV credit');
+
+const credit = await cron('otv-credit-check');
+check('the credit check runs', credit.status === 200, `got ${credit.status}`);
+
+const creditSrc = src('src/routes/cron.route.ts');
+check('outstanding credit is summed over what the supplier is owed',
+    /SUM\(COALESCE\(supplier_cost, 0\)\)/.test(creditSrc),
+    'still summing total_price — that is the guest price, markup included, in mixed currencies');
+check('the limit is converted into the same currency before comparing',
+    creditSrc.includes('CREDIT_LIMIT_CURRENCY') && creditSrc.includes('SUPPLIER_COST_CURRENCY'),
+    'a 600,000 PHP line read as $600,000 means the alert can never fire');
+check('a limit that cannot be converted is announced, not skipped quietly',
+    creditSrc.includes('OTV credit check could not run'),
+    'a skipped check looks identical to a healthy one');
+
+// ── Cancellation addresses the booking the way OTV accepts ────────────────────
+console.log('\nCancellation reference (OTV)');
+
+const tgx = src('src/lib/hotels/travelgatex.ts');
+const clientIdx   = tgx.indexOf("label: 'client'");
+const supplierIdx = tgx.indexOf("label: 'supplier'");
+check('the client reference is tried first',
+    clientIdx > 0 && supplierIdx > clientIdx,
+    'supplier-first — OTV answers that with "Request not accepted by supplier"');
+check('the supplier reference remains as a fallback', supplierIdx > 0,
+    'dropping it entirely loses the only route for a booking with no client reference');
+
+// ── The FX backfill the revenue figures assume ────────────────────────────────
+console.log('\nFX backfill');
+
+check('a backfill exists for rows lockFx could not price',
+    existsSync(`${V2}/src/scripts/backfill-booking-fx.ts`),
+    'rows with a null usd_amount are excluded from every blended total, permanently');
+check('it is a dry run unless told otherwise',
+    src('src/scripts/backfill-booking-fx.ts').includes("includes('--apply')"),
+    'a backfill that writes by default is one nobody can inspect first');
+
+const dump = execFileSync('node', ['-e', 'console.log(require("' + V2 + '/package.json").scripts["backfill-booking-fx"] ?? "")'], { encoding: 'utf8' }).trim();
+check('it is runnable as a named script', dump.includes('backfill-booking-fx.ts'), `package.json script: "${dump}"`);
+
+// ── Scheduled, not merely written ─────────────────────────────────────────────
+console.log('\nSchedule');
+
+const crontab = src('docker/cron/crontab');
+for (const job of ['hotel-reconciliation', 'platform-cost-reconciliation', 'etg-dump-sync', 'seed-room-groups']) {
+    check(`${job} is actually scheduled`, crontab.includes(job),
+        'the route exists and nothing calls it — which is how it stands in v1');
 }
-for (const [path, method] of [['/api/internal/cheapest-flight', 'GET'], ['/api/internal/refresh-flights', 'POST']]) {
-    const res = method === 'GET' ? await get(path) : await post(path);
-    check(`${path} refuses an unauthenticated caller`, res.status === 401, String(res.status));
-}
 
-// ── Present at all: a wrong path would 404 rather than 401, which is how a route that was
-//    never mounted looks from outside.
-const withBadSecret = await get('/api/v2/cron/seed-room-groups', 'not-the-secret');
-check('a wrong secret is refused, not ignored', withBadSecret.status === 401, String(withBadSecret.status));
-
-// ── One hotel's room content, end to end: ETG read, catalog write.
-if (!CRON) {
-    check('CRON_SECRET is configured locally', false, 'not found in api-v2/.env — seeding not exercised');
-} else {
-    const seeded = await get('/api/v2/cron/seed-room-groups?batch=1', CRON);
-    const body = await seeded.json().catch(() => ({}));
-    check('the room-group seeder runs', seeded.ok, JSON.stringify(body).slice(0, 120));
-    check('it reports what it did', typeof body.considered === 'number', JSON.stringify(body).slice(0, 120));
-}
-
-// ── The internal refreshers answer their contract. No booking is created by either.
-if (!FUNCTIONS) {
-    check('FUNCTIONS_SECRET is configured locally', false, 'not found in api-v2/.env');
-} else {
-    const missingParams = await get('/api/internal/cheapest-flight', FUNCTIONS);
-    check('cheapest-flight refuses a request with no route', missingParams.status === 400, String(missingParams.status));
-
-    const badRefresh = await post('/api/internal/refresh-flights', FUNCTIONS, { origin: 'MNL' });
-    check('refresh-flights refuses an incomplete route', badRefresh.status === 400, String(badRefresh.status));
-}
-
-console.log(failures ? `\n${failures} check(s) failed` : '\nall checks passed');
-process.exitCode = failures ? 1 : 0;
+console.log(`\n${fail === 0 ? '\x1b[32m' : '\x1b[31m'}${pass}/${pass + fail} passed\x1b[0m\n`);
+process.exit(fail === 0 ? 0 : 1);

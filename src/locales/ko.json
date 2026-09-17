@@ -1088,6 +1088,12 @@
         "title": "필터에 맞는 항공편이 없습니다",
         "description": "항공편 {count}개를 찾았지만 필터 때문에 모두 숨겨져 있습니다.",
         "reset": "필터 모두 초기화"
+      },
+      "meta": {
+        "title": "{origin} → {destination} 항공권 | CheapestGo",
+        "titleNoRoute": "항공권 검색 결과 | CheapestGo",
+        "description": "{origin}에서 {destination}까지 가장 저렴한 항공권을 비교하고 예약하세요. CheapestGo에서 최고의 특가를 만나보세요.",
+        "descriptionNoRoute": "전 세계 저렴한 항공권을 비교하고 예약하세요. CheapestGo에서 최고의 특가를 만나보세요."
       }
     },
     "validation": {
@@ -2507,6 +2513,13 @@
       "foursquareRecommendations": "Foursquare 추천",
       "googleReviews": "Google 리뷰",
       "noReviews": "아직 이 장소에 대한 리뷰가 없습니다."
+    },
+    "meta": {
+      "title": "{name} – 최저가 | CheapestGo",
+      "description": "{name} — 최저가로 예약하세요.",
+      "descriptionIn": "{location}의 {name} — 최저가로 예약하세요.",
+      "rated": "평점 {rating}/10.",
+      "closing": "무료 취소가 가능한 호텔 특가를 만나보세요."
     }
   },
   "reviewsSection": {
@@ -2566,7 +2579,11 @@
     "startExploring": "탐색 시작",
     "terms": "이용약관",
     "privacy": "개인정보처리방침",
-    "refund": "환불 정책"
+    "refund": "환불 정책",
+    "meta": {
+      "title": "회사 소개 — CheapestGo",
+      "description": "CheapestGo는 동남아시아 여행객이 항공권, 호텔, 패키지를 투명한 가격으로 찾고 예약할 수 있도록 돕는 모던 온라인 여행사입니다."
+    }
   },
   "support": {
     "attachments": {

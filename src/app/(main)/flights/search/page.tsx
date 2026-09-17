@@ -58,13 +58,16 @@ export async function generateMetadata({
     const origin = (sp.origin as string) || (sp.origin0 as string) || '';
     const destination = (sp.destination as string) || (sp.dest0 as string) || '';
 
+    // Not for search engines — this page is noindex. It is what a visitor sees in the tab,
+    // which was English and read "CheapestGo" on AirangGo whatever language the page was in.
+    const t = await getTranslations('flights.search.meta');
     const title = origin && destination
-        ? `Flights ${origin} → ${destination} | CheapestGo`
-        : 'Flight Search Results | CheapestGo';
+        ? t('title', { origin, destination })
+        : t('titleNoRoute');
 
     const description = origin && destination
-        ? `Compare and book the cheapest flights from ${origin} to ${destination}. Find the best deals on CheapestGo.`
-        : 'Compare and book cheap flights worldwide. Find the best deals on CheapestGo.';
+        ? t('description', { origin, destination })
+        : t('descriptionNoRoute');
 
     return {
         title,

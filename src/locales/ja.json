@@ -1088,6 +1088,12 @@
         "title": "条件に合うフライトはありません",
         "description": "{count}件のフライトが見つかりましたが、すべて絞り込み条件で非表示になっています。",
         "reset": "条件をすべてリセット"
+      },
+      "meta": {
+        "title": "{origin} → {destination} の航空券 | CheapestGo",
+        "titleNoRoute": "航空券の検索結果 | CheapestGo",
+        "description": "{origin}発{destination}行きの最安航空券を比較・予約。CheapestGoでお得な料金を見つけましょう。",
+        "descriptionNoRoute": "世界中の格安航空券を比較・予約。CheapestGoでお得な料金を見つけましょう。"
       }
     },
     "validation": {
@@ -2507,6 +2513,13 @@
       "foursquareRecommendations": "Foursquare のおすすめ",
       "googleReviews": "Google のレビュー",
       "noReviews": "この場所のレビューはまだありません。"
+    },
+    "meta": {
+      "title": "{name} – 最安料金 | CheapestGo",
+      "description": "{name}を最安値で予約。",
+      "descriptionIn": "{location}の{name}を最安値で予約。",
+      "rated": "評価 {rating}/10。",
+      "closing": "無料キャンセル可能なホテルのお得なプランを多数ご用意。"
     }
   },
   "reviewsSection": {
@@ -2566,7 +2579,11 @@
     "startExploring": "探索を始める",
     "terms": "利用規約",
     "privacy": "プライバシーポリシー",
-    "refund": "返金ポリシー"
+    "refund": "返金ポリシー",
+    "meta": {
+      "title": "会社概要 — CheapestGo",
+      "description": "CheapestGoは、東南アジアを旅する人が航空券・ホテル・パッケージを明瞭な料金で検索・予約できるモダンなオンライン旅行会社です。"
+    }
   },
   "support": {
     "attachments": {

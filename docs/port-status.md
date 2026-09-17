@@ -21,14 +21,14 @@ Empty means level. Anything listed must be ported before the watermark advances.
 | # | Slice | Watermark | Delta (re-run 2026-09-16) | State |
 |---|-------|-----------|---------------------------|-------|
 | C0a | Backend consolidation | `12f2af3` | 67 commits, but its paths overlap every slice below | level |
-| C0b | Locale + SEO shell | `8ef657b` | empty as of 2026-09-16 | **done** — see below |
+| C0b | Locale + SEO shell | `8ef657b` | the translation pass | **SEO done, translations open** |
 | C1 | Hotel search | `8ef657b` | empty as of 2026-09-16 | **done** — see below |
-| C2 | Hotel booking | `8ef657b` | empty as of 2026-09-16 | **done** — see below |
-| C3 | Flights | `8ef657b` | Mystifly + segment terminals left | **done** — see below |
-| C4 | Account | `6b0ced4` | empty as of 2026-09-16 | **done** — see below |
-| C5 | Admin | `6b0ced4` | one screen blocked on schema | **mostly done** — see below |
-| C6 | Ops | `6b0ced4` | empty as of 2026-09-16 | **done** — see below |
-| C7 | Mobile and misc | `6b0ced4` | mobile flight booking left | **partly done** — see below |
+| C2 | Hotel booking | `8bdd4a4` | empty as of 2026-09-17 | **done** — see below |
+| C3 | Flights | `8bdd4a4` | Mystifly + segment terminals left | **done** — see below |
+| C4 | Account | `8bdd4a4` | empty as of 2026-09-17 | **done** — see below |
+| C5 | Admin | `6b0ced4` | the Support Desk half, which is C8 | **mostly done** — see below |
+| C6 | Ops | `8bdd4a4` | support crons only, which are C8 | **done** — see below |
+| C7 | Mobile and misc | `8bdd4a4` | empty as of 2026-09-17 | **done** — see below |
 | C8 | Support Chat | `6b0ced4` | **35 commits** | not started — slice added 2026-09-16 |
 
 Re-measure with `bash scratch/port-delta.sh` (`-v` for the commits themselves). Both v2 repos were
@@ -356,7 +356,8 @@ No TGX-backed cron is in scope at all — TravelgateX prohibits scheduled calls 
 
 **v2 target:** `src/routes/mobile.route.ts`, `invoices.route.ts`, `weather.route.ts`, `email.route.ts`, `google.route.ts`, `photos.route.ts`
 
-**Gaps:** `google/search` and `og` are absent.
+**Gaps:** none as of 2026-09-17. `email` is deliberately *not* a route in v2 — see the C7
+close-out below.
 
 
 ## C8 — Support Chat
@@ -849,6 +850,314 @@ brand-new offer ids apiece. **No order was placed.**
 **Not ported:** Mystifly's `AirRevalidate` and its stop-parsing, which belong with whatever
 re-enables Mystifly; and `flight_segments.origin_terminal` / `destination_terminal`, which v1
 added and v2's schema does not have — a migration, and migrations here are applied by hand.
+
+---
+
+## Done 2026-09-17 — C7, the receipt and the confirmation
+
+C7's remaining items were the mobile flight routes (done with C3, since they sit on it) and
+the invoice. Measuring the invoice turned up something larger sitting behind it.
+
+### A confirmed booking told nobody
+
+**v2 sent no booking email at all.** Not for hotels, not for flights, on any path. The only
+thing that could send a confirmation was `POST /api/email`, which the browser called after a
+successful checkout — and nothing in app-v2 called it. A traveller paid, and heard nothing:
+no reference, no policy, no receipt link, nothing to show at a front desk.
+
+v1 had already deleted its own copy of that route ([`8cb2f27b`](https://github.com/FORHU/cheapest-go-app/commit/8cb2f27b)) for a related reason — a
+client-triggered send raced the server's own and could double-send with a different total.
+v2 inherited the route and none of the server-side sends that were supposed to replace it.
+
+What v2 has now:
+
+- **`src/lib/email/send.ts`** — one way to send. Deduplicates on `email_logs` before calling
+  Resend, records what it sent, and keeps the rendered HTML on anything that failed so the
+  existing `POST /api/internal/retry-emails` job can re-send it. That job already existed and
+  had nothing to retry, because nothing ever wrote a row for it.
+- **`src/lib/email/templates.ts`** — the hotel and flight confirmations as pure functions.
+  No database, no config import (importing `@/config` validates the whole environment and
+  calls `process.exit`, which makes a template impossible to render in a test). Everything
+  customer-supplied is escaped: a guest name and a free-text special request both reach the
+  markup, and a mail client renders HTML.
+- **`src/lib/email/flightConfirmation.ts`** — takes a booking id and reads the rest. v1 wrote
+  this separately at five call sites and they drifted: one sent every confirmation with a
+  total of `0 USD`, another described the itinerary the traveller *selected* rather than the
+  one the airline ticketed.
+- Wired into `hotels.service.confirmBooking`, both provider branches of
+  `internal/create-booking`, and the Duffel `order.updated` webhook — which is what makes the
+  "your ticket is on the way" email true, by sending the ticket numbers when they arrive.
+- **`POST /api/email` deleted.** A client-driven send is a second path to the same message,
+  and the second path is the one that double-sends.
+
+Every send is fire-and-forget at the call site. The booking exists and the money has moved
+before the email is attempted, so a mail outage leaves a row for the retry job — never a
+failed response to a traveller who has already been charged.
+
+### The dedup guard did not exist
+
+v1's email module says the pre-send check is backed by "the unique index on `email_logs`
+(booking_id, email_type) WHERE status IN ('sent','queued')". **There is no such index** — not
+on v1's database and not on v2's. The read was the only guard, and three callers can reach
+it concurrently for one booking.
+
+`db/migrations/20260917000001_email_logs_dedup.sql` adds it, in both repos. Partial on
+purpose: a `failed` row is not a delivery, and a booking may collect several before one
+succeeds. Applied to both local databases and to live on 2026-09-17.
+
+Only rows written from 2026-09-17 on are covered. Live already held one pair it would have
+rejected — FORHU-1786604066125-XNI3K, two confirmations sent **50ms apart** on 2026-08-13, which
+is this race caught in production (from the client-side send v1 removed in `8cb2f27b`). Both
+emails really went out, so both rows are kept: deleting one would erase a message someone
+received, and marking one `failed` would hand it to the retry job to send a third time.
+
+### A receipt only worked for whoever was signed in
+
+`GET /invoices/:id/pdf` required a session and scoped the row to the caller, which meant
+"Download PDF" failed for exactly the people an emailed receipt link is for — a guest opening
+it signed out, or anyone the booker forwarded it to. It is the same receipt the trips page
+renders in another file format, so it answers to the same Capability Link
+([ADR-0027](adr/0027-capability-link.md)): possession of the UUID is the authorisation.
+
+Now `optionalAuth` with its own rate limit (20/min per caller, since it renders a PDF and is
+reachable without a session), the session read only to fill in a viewer's email where the
+booking carries none, and **UUID only** — the supplier reference and the PNR were a second,
+weaker way into the same data, and a PNR is six characters off a luggage tag.
+
+app-v2 gained the "Download PDF" action to go with it; before this the receipt endpoint had
+no caller in the frontend at all.
+
+### Fixed in v1 as well
+
+- **Every email the Korean brand sent showed the wrong company.** The masthead was the
+  literal `cheapestGo` in all ten templates, beside a footer, a from-address and a body that
+  all said AirangGo. Now `brandWordmark()`, like everything else that names the brand.
+- **Flight times were formatted in the process timezone.** Segments store the airline's naive
+  local wall clock in a `timestamptz` column, so they read back correctly only in UTC. The
+  production container runs UTC, which made this right by accident there and wrong in every
+  other environment — so a local check of a flight email showed departures hours out and
+  nobody could tell whether that was the bug or the environment. Pinned to UTC in both repos.
+
+### Checked
+
+`scratch/smoke-v2-c7-email.mjs` — 17 checks: the send machinery, that each booking path is
+wired to it, that the database index exists and does not block a legitimate retry, and that
+a receipt opens with no session while a supplier reference and a PNR both 404.
+`src/__tests__/confirmationEmail.test.ts` — 22 tests over dedup, the retry payload, escaping,
+the credit line, the awaiting-ticket wording and the charged total.
+
+**No email was sent to a real address and no booking was created.**
+
+---
+
+## Done 2026-09-17 — C4 and C6, re-measured
+
+Both slices were called done on 2026-09-16 without their watermarks moving, so their
+deltas still counted everything already ported. Re-measured against HEAD.
+
+### C4 — four items, three already there
+
+The 30-character name cap, `fromNoReply()` on password resets, and the recent-search and
+booking-in-progress handoffs were already in v2. Two were not:
+
+- **The OAuth redirect URI was written twice.** Google rejects the token exchange unless
+  both legs quote an identical `redirect_uri`, and api-v2 built the same string in two
+  places — the exact shape of the bug v1 fixed by extracting a helper. Now one function.
+- **The session check on boot was unbounded.** Every sign-in screen disables itself on
+  `isLoading`, which starts `true` and clears only when `/auth/me` answers, so a request
+  stalled on a poor connection left them disabled with no way out (QA BG-15). Ten seconds,
+  then "not signed in" — the server still decides on every real request. Applied to both of
+  app-v2's auth stores, since either can be the one that boots.
+
+### C6 — the jobs that watch the money
+
+Two reconcilers existed in v1 and in neither v2 repo. Both are **derived on every call and
+never stored** (ADR-0026): a stored discrepancy is a third record that can disagree with
+the two it summarises.
+
+- **`hotel-reconciliation`** — hotel charges that succeeded in Stripe with no booking row
+  behind them. The customer holds a room this platform cannot see, show them, or cancel.
+  It repairs nothing deliberately: a reconciler that writes from payment evidence
+  eventually acts on a stale read, and the action at the end of that path is a refund.
+  Refuses outright when `STRIPE_EXPECTED_ACCOUNT` does not match the key's account, because
+  the compose file pairs live RDS with test Stripe keys and scanning there reports every
+  test intent as unrecorded while hiding the real one.
+- **`platform-cost-reconciliation`** — whether the month's markup covered what the month
+  cost to serve, reading the Stripe fee this system now records against the one the model
+  assumed. This is the loop that was missing when a 4% flight markup sat below a 4.017%
+  break-even for months; what surfaced it was an invoice screenshot arriving by chance.
+
+**Both are now scheduled**, along with `etg-dump-sync` and `seed-room-groups`, which
+existed as routes that nothing called. In v1 all four are still unscheduled — their cron
+expressions are written in their route comments and wired to nothing.
+
+### Three defects found while measuring
+
+- **api-v2 cancelled by the reference OTV rejects.** OTV answers a cancel addressed by
+  supplier reference with "Request not accepted by supplier" while accepting the identical
+  booking by client reference (measured 2026-09-06 on CG-770AZS / supplier 448577296). v1
+  only ever worked here by accident — its `provider_metadata` was double-encoded, so the
+  supplier reference read as undefined and it fell through to the client branch. api-v2
+  inherited the supplier-first order without inheriting the accident, so **its hotel
+  cancellations would have failed outright.** Now client-first with the supplier reference
+  as a fallback, pinned by tests rather than by a comment.
+- **The OTV credit alert could never fire.** RateHawk denominates the credit line in PHP —
+  600,000 PHP — while the outstanding sum was taken over `total_price`: the guest price,
+  markup included, in whatever currency each guest paid. Two different units compared as
+  bare numbers, so a 600,000 PHP ceiling read as $600,000, about sixty times the real one.
+  That alert is the only warning before OTV starts silently auto-cancelling refundable
+  bookings at their free-cancellation deadline. Now summed over `supplier_cost`, with the
+  limit converted into the same currency, and a conversion that fails raises a notification
+  instead of reading as healthy.
+- **Nothing recorded a supplier call.** A `bookings` row records a *sale*; it is written by
+  `confirmBooking`, above the client that performs the mutation, so a supplier booking that
+  never reaches that point exists at OTV and nowhere here. That is CG-770AZS, which OTV
+  raised with us and we could neither confirm nor deny.
+  `supplier_booking_attempts` now records the *call*, written before the mutation and
+  closed after — at the TravelgateX client, not at a route, so the trace does not depend on
+  which caller took which path. Migration applied to both local databases and to live on
+  2026-09-17.
+
+### Also
+
+- **`poll-pending-tickets` marked bookings ticketed with no ticket numbers.** It set the
+  status and left the column empty — the same field the webhook path fills. It now records
+  the numbers and sends the e-ticket email, which makes it the third route by which a
+  ticket can be announced and the only one that catches a webhook we never received.
+- **`backfill-booking-fx`** ported. `lockFx` never throws by design, so a rates outage
+  leaves the FX columns null rather than costing the booking — and a row with no rate is
+  excluded from every blended total, permanently. This is the other half of that design.
+  Dry run by default. 19 rows pending locally, all priceable; **not run with `--apply`.**
+
+### Checked
+
+`scratch/smoke-v2-c6-ops.mjs` — 20 checks, including live calls to both reconcilers.
+`reconciliation.test.ts` (10), `platformCost.test.ts` (8), `cancelReference.test.ts` (9).
+**No booking was created and no cancellation was sent to the live supplier.**
+
+### Not ported, and why
+
+- `purge-support-attachments` and `resume-support-translations` — C8, deliberately last.
+- v1's deploy workflows and its one-off operator scripts (`audit-city-aliases`,
+  `city-spelling-candidates`, `peek-*`, `tgx-list-bookings`, `import-otv-delta`). These are
+  v1's deployment and investigation tooling, not product behaviour; api-v2 deploys itself.
+- `backfill-segment-terminals` — still waiting on the terminal columns, as under C3.
+
+---
+
+## Done 2026-09-17 — C0b’s SEO half, and C2/C3 re-measured
+
+### C2 and C3 were already level
+
+Both deltas turned out to be the work done on 2026-09-16, committed in v1 since. Three
+items were genuinely missing from v2 and are now in:
+
+- **`offer-refresh` could substitute a different flight** — already fixed in api-v2 under
+  C3, confirmed against the delta.
+- **An offer’s times went through `new Date()`.** A provider quotes a flight the way a
+  boarding pass does — 08:15 at the gate it leaves from — with no UTC offset, so there is
+  nothing for a `Date` to convert *from*. Building one anyway makes the browser guess a zone
+  and render in another. app-v2 had three copies of that formatter; there is now one that
+  reads the digits out of the string, one `formatBookingTime` for a booking’s times (which
+  really are instants), and a test that holds in any timezone.
+- **`ticket_numbers`:** v1’s delta changes `JSON.stringify(tickets)` to `tickets`, on the
+  stated premise that the column is `text[]`. **It is `jsonb` in both local databases**, and
+  both binding forms round-trip correctly through postgres.js, so v1’s change is harmless
+  but its comment is misleading. api-v2 uses `::jsonb` with `JSON.stringify`, which is right
+  for the schema Prisma declares. Worth confirming against live before anyone "fixes" it.
+
+### C0b — canonicals, and which locales a deployment claims
+
+v1 rebuilt `hreflang` around a question v2 never asked: **which locales does this
+deployment actually serve?** app-v2 had the shape that made a language disappear.
+
+- **Every page declared the English URL as its canonical.** `/ja/terms` named `/terms`
+  as canonical, which tells Google the two are the same page and one should be discarded.
+  The canonical now carries the prefix the page is served under.
+- **`hreflangAlternates` had no callers at all.** No page in app-v2 emitted a canonical or
+  an alternate. Ten now do; `/property/[id]` among them, which is one indexable page per
+  hotel and therefore the whole long tail.
+- **A locked deployment is now a real case.** AirangGo sets `NEXT_PUBLIC_LOCALE=ko` and
+  serves one language at the root — a prefix does not switch language there, so it declares
+  no alternates and folds every prefixed URL onto the real one.
+- **Korean is no longer advertised by CheapestGo** (ADR-0037). `/ko` still answers and still
+  names itself as its own canonical — so it is not absorbed into the English page — but it
+  is absent from the sitemap and from every alternate.
+- **The sitemap reads the same list the pages do.** Two copies is how v1’s sitemap came to
+  advertise a `/ko` its own pages no longer claimed.
+
+Three pages were `'use client'` *page files*, which cannot export `generateMetadata` at
+all — `/property/[id]`, `/deals`, `/destinations/[slug]`. Each is now a server route file
+over a client component of the same content.
+
+**Verified against a real build**, not just a typecheck: `/terms` canonicalises to
+`/terms`, `/ja/terms` to `/ja/terms`, `/ja/property/31810` to itself with three alternates
+and an `x-default`, and the sitemap is 78 URLs with no `/ko` in any of them.
+
+### C0b’s other half is the translation pass, and it is still open
+
+The rest of the C0b delta is `src/locales/*.json` — v1 has **2,328 keys per language** and
+app-v2 has 248. Missing namespaces: account, bookingDestination, checkout, destinations,
+flightBook, invoice, legal, popularDestinations, property, propertyGallery, propertyNav,
+propertyOverview, reviewsSection, search, trips, about, support, map, help.
+
+This is deliberately not started here. It is bulk translation rather than behaviour, it
+wants a native reviewer for ko/ja/zh, and doing it badly is worse than not doing it — a
+page that renders in broken Korean is the thing the Korean brand exists to avoid. The
+watermark stays put until it is done.
+
+---
+
+## Done 2026-09-17 — C5, the half that is not the Support Desk
+
+Most of C5’s 28 commits are Support Desk admin — the conversation queue, agents,
+attachments, hours — which is C8. What is left is the back office proper.
+
+### An admin could promote anyone, including by typo
+
+`POST /admin/users/:id/promote` read the role as
+`role === 'admin' || role === 'user' ? role : 'admin'`. **Any value it did not recognise
+granted administrator** — a typo, a role from a newer deployment, an empty body. It also
+let an admin demote themselves, which locks them out of a console nothing left can reopen.
+
+The rule is now `validateRoleChange`, tested without a session, and the route records who
+changed whose role in `admin_audit_log` — a table that existed and had one caller.
+`support_agent` is deliberately **not** in v2’s role vocabulary: `users_role_check` admits
+only `user` and `admin`, so accepting it would pass validation and fail at the database.
+It arrives with C8 and the migration that widens the constraint.
+
+### The revenue screen added currencies together
+
+It summed `charged_price` across bookings in PHP, KRW and USD as bare numbers — a
+₩1,200,000 stay counted as 1,200,000 against a dollar total. The code said so honestly in
+a comment ("only meaningful while one currency dominates"), which is not the same as being
+right.
+
+Every total is now restated at each booking’s **own locked rate** (ADR-0008) rather than at
+today’s, so a closed period does not move each time the page is opened. Each row still
+shows the currency the customer was charged in. A booking with no locked rate contributes
+nothing and is **counted**: `unconvertedCount` is 19 against the local database today,
+which is exactly the number `backfill-booking-fx` reports as pending.
+
+### The booking list named nothing
+
+A hotel row showed the property name and a flight row showed its PNR, so an agent taking a
+call about "the Manila flight on the 9th" could match the caller only by reference. The
+list now names the trip — and names a flight by the **whole journey**: a connection reads
+`MNL→NRT` rather than `MNL→ICN`, and a return reads `CRK⇄PUS` rather than `CRK→CRK`,
+which named nowhere. The segments are aggregated in the same query, so 500 bookings do not
+become 500 follow-up reads.
+
+### Checked
+
+`roleChange.test.ts` (7), `adminRevenue.test.ts` (4), `normaliseBooking.test.ts` (13), plus
+live calls: self-demotion and an unknown role both refused, the revenue endpoint reporting
+USD with its unconverted count, and the booking list naming real journeys.
+
+### Not done, and why
+
+Everything under `admin/support/**` — 14 routes — is the Support Desk, which is C8. The
+C5 watermark stays at `6b0ced4` until that lands, because advancing it would bury them.
 
 ---
 
