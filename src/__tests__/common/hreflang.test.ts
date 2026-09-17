@@ -62,18 +62,41 @@ describe('servedLocalePaths', () => {
 });
 
 describe('hreflang', () => {
-    it('declares only the locales this deployment serves, plus x-default', () => {
+    it('on CheapestGo, names its own languages relatively and Korean at airanggo.com', () => {
         expect(hreflang('/about', UNLOCKED)).toEqual({
             en: '/about',
             ja: '/ja/about',
             zh: '/zh/about',
+            ko: 'https://airanggo.com/about',
             'x-default': '/about',
         });
     });
 
-    // AirangGo emitted alternates for en/ja/zh at its own domain, none of which it serves:
-    // those URLs render Korean. One language has nothing to alternate with.
-    it('declares nothing on a locked deployment', () => {
-        expect(hreflang('/about', AIRANGGO)).toBeUndefined();
+    // AirangGo used to emit en/ja/zh alternates at its own domain, where those URLs render
+    // Korean. They now point at the pages that actually serve those languages.
+    it('on AirangGo, names Korean relatively and the rest at cheapestgo.com', () => {
+        expect(hreflang('/about', AIRANGGO)).toEqual({
+            en: 'https://cheapestgo.com/about',
+            ja: 'https://cheapestgo.com/ja/about',
+            zh: 'https://cheapestgo.com/zh/about',
+            ko: '/about',
+            'x-default': 'https://cheapestgo.com/about',
+        });
+    });
+
+    it('shapes the home page without a trailing prefix slash', () => {
+        expect(hreflang('/', AIRANGGO).ja).toBe('https://cheapestgo.com/ja');
+        expect(hreflang('/', UNLOCKED).ko).toBe('https://airanggo.com/');
+    });
+
+    // The rule Google enforces: an alternate only counts if the page it names declares the
+    // same set back. Resolved against each domain, both must say exactly the same thing.
+    it('declares the identical set from both domains', () => {
+        const resolve = (map: Record<string, string>, origin: string) =>
+            Object.fromEntries(Object.entries(map).map(([l, url]) => [l, new URL(url, origin).href]));
+        for (const path of ['/', '/about', '/property/sumaya-hotel--10000231']) {
+            expect(resolve(hreflang(path, UNLOCKED), 'https://cheapestgo.com'))
+                .toEqual(resolve(hreflang(path, AIRANGGO), 'https://airanggo.com'));
+        }
     });
 });
