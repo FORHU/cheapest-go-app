@@ -1683,6 +1683,28 @@ const _inflight = new Map<string, Promise<any>>();
 // destination identifiers) and as the fallback when a destination-code search
 // returns empty.
 
+/**
+ * What the supplier actually said, kept long enough to act on.
+ *
+ * These messages were cut to 60 or 80 characters, which is shorter than the useful part of
+ * a TravelgateX rejection. A search sent with no dates logged exactly:
+ *
+ *     Variable "$criteria" got invalid value { occupancies
+ *
+ * — the sentence stops right before the field that was wrong. The search then fell through
+ * to the hotel-code path, failed there too and returned Unanswered, so the whole thing
+ * presented as a supplier outage. It took a packet capture of the request variables to see
+ * that the dates were simply missing.
+ *
+ * 400 is long enough for a GraphQL validation error to name its field and short enough that
+ * a stack trace or an HTML error page does not fill the log.
+ */
+const SUPPLIER_MESSAGE_MAX = 400;
+
+function supplierMessage(err: unknown): string {
+    const raw = (err as { message?: string } | null)?.message ?? String(err ?? '');
+    return raw.length > SUPPLIER_MESSAGE_MAX ? `${raw.slice(0, SUPPLIER_MESSAGE_MAX)}…` : raw;
+}
 async function runCityFallback(
     cityName: string,
     countryCode: string | undefined,
@@ -1732,9 +1754,9 @@ async function runCityFallback(
                 }, 22_000);
             } catch (destErr: any) {
                 // 513 = TGX handler timeout (dest code returns too many results) — fall through to hotel-code path
-                console.warn(`[tgx-search] Dest code "${resolvedCode}" search failed (${destErr.message?.slice(0, 80)}) — falling back to hotel-code search`);
+                console.warn(`[tgx-search] Dest code "${resolvedCode}" search failed (${supplierMessage(destErr)}) — falling back to hotel-code search`);
                 destResult = null;
-                unansweredReasons.push(`dest-code ${resolvedCode} threw (${destErr.message?.slice(0, 60)})`);
+                unansweredReasons.push(`dest-code ${resolvedCode} threw (${supplierMessage(destErr)})`);
             }
             if (!destResult) {
                 console.log(`[tgx-search][TIMING] dest-code attempt for "${resolvedCode}" failed after ${Date.now() - __t0}ms`);
@@ -1847,8 +1869,8 @@ async function runCityFallback(
                     return buildCityResults(extMerchant, cityName, countryCode);
                 }
             } catch (e: any) {
-                console.warn(`[tgx-search] Extended dest-code search failed: ${e.message?.slice(0, 80)}`);
-                unansweredReasons.push(`extended dest-code ${bgCode} threw (${e.message?.slice(0, 60)})`);
+                console.warn(`[tgx-search] Extended dest-code search failed: ${supplierMessage(e)}`);
+                unansweredReasons.push(`extended dest-code ${bgCode} threw (${supplierMessage(e)})`);
             }
         } else if (!bgCode) {
             // 18s race lost and 12s more wasn't enough — destinationSearcher never
@@ -1950,7 +1972,7 @@ async function runCityFallback(
                         settings: getTgxSettings(_cfg, 12_000, true, 'USD'),
                         filterSearch: getTgxFilterSearch(_cfg),
                     }, 22_000).catch((e: any) => {
-                        console.warn(`[tgx-search] Hotel-code batch of ${ids.length} failed: ${e?.message?.slice(0, 60)}`);
+                        console.warn(`[tgx-search] Hotel-code batch of ${ids.length} failed: ${supplierMessage(e)}`);
                         return null;
                     }),
                 ));
@@ -1997,8 +2019,8 @@ async function runCityFallback(
                 unansweredReasons.push('no catalog hotel codes to fall back on');
             }
         } catch (e: any) {
-            console.warn(`[tgx-search] Hotel-code fallback failed for "${cityName}": ${e.message?.slice(0, 80)}`);
-            unansweredReasons.push(`hotel-code fallback errored (${e.message?.slice(0, 60)})`);
+            console.warn(`[tgx-search] Hotel-code fallback failed for "${cityName}": ${supplierMessage(e)}`);
+            unansweredReasons.push(`hotel-code fallback errored (${supplierMessage(e)})`);
         }
     }
 

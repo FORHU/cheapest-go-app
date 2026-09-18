@@ -1257,6 +1257,113 @@ namespaces are already in v1 with Korean written: `checkout`, `property`, `trips
 
 ---
 
+## Done 2026-09-18 — why v2 search was slow, and what it was not
+
+Reported from the map: pins claiming "89 hotels" while still fetching, then two hotels after
+40 seconds. Four things were tangled together, and only one of them was what it looked like.
+
+### The plugins were never ported — this was the cause
+
+v1 sends TravelgateX plugins with every search. **api-v2 sent none.** `getTgxSettings` was
+ported without its plugin block, and v1’s own comments say what each one prevents:
+
+| Plugin | Without it |
+|--------|-----------|
+| `search_by_destination` | TGX answers **any** destination code with `WRONG_FIELD` / empty hotels |
+| `cheapest_price` | a Phuket response is ~16MB / ~84k options instead of ~20KB |
+| `currency_exchange` | supplier prices arrive unconverted |
+
+So every destination search failed, and the search fell back to asking OTV for hotel codes
+in batches of 100, four at a time, up to 22s a wave, then retried all of it. That is the 40
+seconds.
+
+### And the destination call was not alone
+
+v2 ran it inside a `Promise.all` with an OTV portfolio fetch — **two concurrent requests to
+OTV on every search.** v1 asks once and fetches the portfolio only if the destination
+attempt comes back empty. That is why the same query returned 249, then 24, then 20:
+`ALL_PROCESSES_FAILED` sent the runs that lost the race down the slow path.
+
+It also matters beyond latency. OTV watches how we call them, and a search that quietly
+doubled its own request count is the kind of thing that gets an access code throttled.
+
+### Measured, same query, same credentials
+
+| | time | results |
+|---|------|---------|
+| v2 before | 21–42s, erratic | 20 |
+| v2 after | 6–8s, stable | 252–254 |
+| v1 | 7–12s | 236 |
+
+The supplier budget was never the problem: both versions send OTV’s stated 12s in
+`settings.timeout`. v2 was making many more calls, not longer ones.
+
+### The "2 hotels" was downstream of that, not a second bug
+
+The card rail and the "N Stays" count are deliberately scoped to the map’s `bbox` once zoom
+passes 11. Applying the reported URL’s box to a healthy search:
+
+```
+catalog (phase 1)    total= 300  inside bbox=145   <- the "107+ Stays"
+available (phase 2)  total= 196  inside bbox= 16
+```
+
+On the broken code only ~20 hotels were available city-wide, **2** of them inside that box.
+The scoping was working; the number was small because the search was.
+
+### The pins now say what they know
+
+A search paints the catalog at 0.2s and learns availability ~7s later, so for those seconds
+the markers stand for hotels in the area rather than hotels anyone can book. An unpriced
+cluster now reads `checking 89…` and the chip `Checking 107…`, becoming `89 hotels` and
+`107 Stays` once priced. Same two-phase behaviour as v1, which shows price skeletons and an
+explicit banner when the supplier never answers.
+
+### Where the data comes from, since it came up
+
+**Nothing is served from a cached search, on any environment.** No code in either repo writes
+one: `search_results_cache` is empty everywhere and `hotel_search_cache` is frozen — 77 rows
+on live, newest `2026-09-11 09:27`, the day v1 removed its caching in `1f88a590`. The pins
+come from `hotel_content` (537 Phuket rows live, 1.14M overall); every price is a live OTV
+call made at that moment.
+
+Background jobs are not the difference either: the two databases are comparably populated
+(28,911 destination rows in v2 vs 24,441; 537 Phuket hotels vs 529) and Phuket resolves to
+code `1476` in both.
+
+### A v1 defect found while measuring
+
+`runTgxSearch` destructured `checkin`/`checkout`, but `/api/search/stream` and
+`/api/fn/travelgatex-search` both forward the raw request body and the browser sends
+`checkIn`. Those callers therefore searched with **no dates at all**: TGX rejects the
+criteria, the catch truncates the message to `Variable "$criteria" got invalid value {
+occupancies`, and the search returns Unanswered in about four seconds — a map of hotels with
+no prices, looking exactly like a supplier outage. It fooled this investigation into
+reporting that v1 was broken.
+
+Normalised once in `runTgxSearch`, the door every caller goes through, rather than at each
+route. `tgx-date-casing.test.ts` pins it; with the fix disabled, 2 of its 3 assertions fail.
+Verified end to end: `checkIn` went from `tgxCount: 0, tgxFailed: true` to 236 hotels.
+
+**The truncation that hid it is fixed too.** Seven supplier-error log sites cut their
+message to 60 or 80 characters — shorter than the useful part of a TGX rejection. One
+`supplierMessage` helper now allows 400: long enough for a GraphQL error to name its field,
+short enough that a stack trace or an HTML error page does not fill the log.
+
+Checked by reintroducing the original defect on purpose and reading what it prints now:
+
+```
+Field "checkIn" of required type "Date!" was not provided.
+Field "checkOut" of required type "Date!" was not provided.
+```
+
+The old limit stopped at `got invalid value { occupancies` — one clause before the answer.
+That single line would have replaced this whole investigation.
+
+**No booking was made.** Everything here was search, which is read-only.
+
+---
+
 ## Out of scope
 
 - `src/components/voice/VoiceAssistant.tsx` and `api/voice` — Voice Layer is Phase 2.
