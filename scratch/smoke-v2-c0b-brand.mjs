@@ -7,7 +7,12 @@
  * reader's data, and the share card, which is the one surface a visitor sees before
  * they ever reach the site.
  *
- *   NEXT_PUBLIC_BRAND_NAME=GeomeeGo npx next dev --turbo --port 3210   # in app-v2
+ * Run it in its own build directory. NEXT_PUBLIC_* values are compiled into the client
+ * bundle, so a run under another brand leaves chunks naming that brand in the shared .next —
+ * and the next ordinary dev server serves them beside a server render from .env, which React
+ * reports as a hydration mismatch in the header.
+ *
+ *   NEXT_DIST_DIR=.next-airanggo NEXT_PUBLIC_BRAND_NAME=GeomeeGo npx next dev --turbo --port 3210
  *   node scratch/smoke-v2-c0b-brand.mjs
  */
 const BASE = process.env.BASE ?? 'http://localhost:3210';

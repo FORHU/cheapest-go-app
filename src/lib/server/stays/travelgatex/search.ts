@@ -1411,6 +1411,15 @@ export class UnansweredSearchError extends Error {
 export interface TgxSearchParams {
     checkin: string;
     checkout: string;
+    /**
+     * The camelCase spellings a request body may carry instead.
+     *
+     * `/api/search/stream` and `/api/fn/travelgatex-search` both forward the raw body here,
+     * and the browser sends `checkIn`. Declared so those callers are honest about what they
+     * hand over, and normalised in `runTgxSearch` so nothing downstream has to ask twice.
+     */
+    checkIn?: string;
+    checkOut?: string;
     adults?: number;
     children?: number;
     childrenAges?: number[];
@@ -2015,7 +2024,25 @@ async function runCityFallback(
  * call and both get the same live answer. Prebook opts out (`bypassCache`) because it needs
  * option tokens minted for its own request.
  */
-export async function runTgxSearch(params: TgxSearchParams) {
+/**
+ * One spelling of the dates, before anything reads them.
+ *
+ * Two routes forward a request body straight in, and `_runTgxSearch` destructures
+ * `checkin`. A caller using `checkIn` therefore searched with **no dates at all**: TGX
+ * rejects the criteria outright, the message is truncated to `Variable "$criteria" got
+ * invalid value { occupancies` by the catch that logs it, and the search falls through to
+ * the hotel-code path and then to Unanswered — a page of hotels with no prices and nothing
+ * on screen explaining why. The pages themselves send lowercase, so this failed only for
+ * callers that had every reason to think they were holding it right.
+ */
+function withNormalisedDates(params: TgxSearchParams): TgxSearchParams {
+    const checkin  = params.checkin  || params.checkIn  || '';
+    const checkout = params.checkout || params.checkOut || '';
+    return { ...params, checkin, checkout };
+}
+
+export async function runTgxSearch(rawParams: TgxSearchParams) {
+    const params = withNormalisedDates(rawParams);
     const key = buildSearchKey(params);
 
     if (!params.bypassCache) {

@@ -21,7 +21,7 @@ Empty means level. Anything listed must be ported before the watermark advances.
 | # | Slice | Watermark | Delta (re-run 2026-09-16) | State |
 |---|-------|-----------|---------------------------|-------|
 | C0a | Backend consolidation | `12f2af3` | 67 commits, but its paths overlap every slice below | level |
-| C0b | Locale + SEO shell | `8ef657b` | the translation pass | **SEO done, translations open** |
+| C0b | Locale + SEO shell | `e79f354` | empty — but see the note on translations | **SEO done, translations open** |
 | C1 | Hotel search | `8ef657b` | empty as of 2026-09-16 | **done** — see below |
 | C2 | Hotel booking | `8bdd4a4` | empty as of 2026-09-17 | **done** — see below |
 | C3 | Flights | `8bdd4a4` | Mystifly + segment terminals left | **done** — see below |
@@ -1078,11 +1078,11 @@ deployment actually serve?** app-v2 had the shape that made a language disappear
   an alternate. Ten now do; `/property/[id]` among them, which is one indexable page per
   hotel and therefore the whole long tail.
 - **A locked deployment is now a real case.** AirangGo sets `NEXT_PUBLIC_LOCALE=ko` and
-  serves one language at the root — a prefix does not switch language there, so it declares
-  no alternates and folds every prefixed URL onto the real one.
-- **Korean is no longer advertised by CheapestGo** (ADR-0037). `/ko` still answers and still
-  names itself as its own canonical — so it is not absorbed into the English page — but it
-  is absent from the sitemap and from every alternate.
+  serves one language at the root — a prefix does not switch language there, so every
+  canonical is unprefixed, folding those prefixed URLs onto the real one.
+- **Korean is no longer advertised by CheapestGo as its own** (ADR-0037). `/ko` still answers
+  and still names itself as its own canonical — so it is not absorbed into the English page —
+  but it is in no sitemap.
 - **The sitemap reads the same list the pages do.** Two copies is how v1’s sitemap came to
   advertise a `/ko` its own pages no longer claimed.
 
@@ -1094,6 +1094,28 @@ over a client component of the same content.
 `/terms`, `/ja/terms` to `/ja/terms`, `/ja/property/31810` to itself with three alternates
 and an `x-default`, and the sitemap is 78 URLs with no `/ko` in any of them.
 
+### Amended 2026-09-18 — the alternates had to become cross-domain
+
+v1 moved the same evening (`e79f3542`), closing the last open consequence of ADR-0037, and
+the shape ported above was already the wrong one. **Google discards an alternate the named
+page does not confirm back**, so a set only one domain declares counts for nothing — dropping
+`ko` from CheapestGo did not make CheapestGo’s alternates correct, it made all of them
+inert.
+
+Both domains now declare the same four languages, each at its home: `ko` at
+`airanggo.com`, `en`/`ja`/`zh` at `cheapestgo.com`, `x-default` at the English page. A
+deployment emits its own languages as relative paths and the others absolute, so the two
+sides resolve to an identical set — which a test asserts directly, by resolving both against
+their own origin and comparing.
+
+The homes are a constant, not `NEXT_PUBLIC_SITE_URL`: an alternate names the page on the
+live site, so a local or staging build still points at production for a language it does not
+serve. Its own languages stay relative, which is what lets the same image serve both brands.
+
+Checked by running the build twice — once as CheapestGo, once with
+`NEXT_PUBLIC_LOCALE=ko` and AirangGo’s site URL. Both emit the same five links, and
+AirangGo’s sitemap is 26 Korean URLs where CheapestGo’s is 78.
+
 ### C0b’s other half is the translation pass, and it is still open
 
 The rest of the C0b delta is `src/locales/*.json` — v1 has **2,328 keys per language** and
@@ -1103,8 +1125,14 @@ propertyOverview, reviewsSection, search, trips, about, support, map, help.
 
 This is deliberately not started here. It is bulk translation rather than behaviour, it
 wants a native reviewer for ko/ja/zh, and doing it badly is worse than not doing it — a
-page that renders in broken Korean is the thing the Korean brand exists to avoid. The
-watermark stays put until it is done.
+page that renders in broken Korean is the thing the Korean brand exists to avoid.
+
+**The delta cannot see this, and the C0b watermark is at `e79f354` anyway.** A watermark
+measures how far v1 has moved since v2 last caught up; these keys are not a movement. v1 has
+held roughly 2,300 of them all along and app-v2 never had them, so the gap is a *level*
+difference and reads as zero however the watermark is set. Holding the watermark back would
+not have made it visible either — it would only have hidden the SEO work that is genuinely
+done. It is tracked here, in prose, because nothing else can track it.
 
 ---
 
@@ -1158,6 +1186,74 @@ USD with its unconverted count, and the booking list naming real journeys.
 
 Everything under `admin/support/**` — 14 routes — is the Support Desk, which is C8. The
 C5 watermark stays at `6b0ced4` until that lands, because advancing it would bury them.
+
+---
+
+## Done 2026-09-18 — the legal pages, in four languages
+
+### It was never a translation problem
+
+The gap recorded above as "the translation pass" is not missing translations. **246 of
+app-v2's 248 keys already use v1's exact key paths**, and v1 holds real, human Korean for the
+namespaces app-v2 lacks — `legal` 296 of 306 strings in Korean, `trips` 272, `checkout` 211,
+`property` 130 of 130.
+
+What is missing is `t()` calls: **11 of app-v2’s 187 component files use translations at
+all.** Wiring a component to a key path v1 already covers lights up all four languages at
+once. A native reviewer is needed only for strings v1 never had — which corrects what this
+document said yesterday, that the whole pass was blocked on one.
+
+Admin is excluded, and that is v1’s rule rather than a shortcut: **v1 translates none of its
+99 admin files and has no `admin` namespace.**
+
+### The four legal pages first, because the SEO work made them worse
+
+They are the pages whose canonicals landed yesterday — so AirangGo now has Korean-targeted,
+indexable legal pages that greeted a Korean reader in English. They are also the pages that
+state who holds a reader’s data and what they are agreeing to.
+
+`legal` (306 strings × 4 languages) is now in app-v2, and the pages render from it. The
+markup stays v2’s own ([ADR-0016](adr/0016-parity-is-functional-not-visual.md)); only the
+words are shared.
+
+Rendered **from the data**, unlike v1, which hand-writes a JSX block per section. There are
+45 sections across the four documents and v1 is still editing the copy, so a block each is
+both longer and a thing to keep in step by hand. The risk that buys is the opposite one — a
+key shaped in a way the renderer does not know disappearing in silence — so the test walks
+every leaf string in all four documents and fails naming any that did not reach the page. It
+caught three real gaps while it was being written: list entries shaped `{label, text}`
+rendering as nothing, a link whose text is keyed `refundLinkText` rather than after its
+stem, and a "email us at" sentence with no address of its own.
+
+### One company, named the same way everywhere
+
+Three different companies appeared across the three repos. **FORHU Inc. is the operating
+entity** (confirmed 2026-09-18), which is what v1 already served publicly and what the
+TravelgateX contract names.
+
+| Was | Where | Now |
+|-----|-------|-----|
+| JTP Partners | app-v2’s four legal pages and its footer copyright | FORHU Inc. |
+| CheapestGo Travel Services | the receipt PDF in v1 and api-v2 | FORHU Inc. |
+| `FORHU Inc.. All rights reserved.` | every app-v2 page footer | the doubled period is gone |
+
+The receipt FIXME is resolved rather than carried forward. The doubled period is inherited
+from v1 and is **still live there** — `footer.copyright` in all four of v1’s locale files.
+
+### Checked
+
+`legal-sections.test.tsx` — 15 tests, including the exhaustive coverage walk and a check that
+every `linkHref` in the messages becomes a real href. Then against a running build: `/terms`
+in English, `/ko/terms` in Korean — its headings render as Korean rather than English — and
+133 mentions of AirangGo and none of CheapestGo across the new strings — `applyBrand` reaches
+the ported copy, which the C0b brand smoke confirms at 26/26.
+
+### What is left of the storefront
+
+Roughly 130 files still hold hardcoded English, with the user-facing text concentrated in
+about 14 of them — checkout, property, trips and search being the ones that matter. The
+namespaces are already in v1 with Korean written: `checkout`, `property`, `trips`, `search`,
+`account`, `invoice`, `flightBook` and the rest.
 
 ---
 

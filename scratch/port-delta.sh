@@ -19,7 +19,7 @@ slice() {
 }
 
 slice "C0a backend consolidation" 12f2af3 src/lib/server/ src/app/api/
-slice "C0b locale + SEO" 8ef657b src/middleware.ts src/i18n/ src/lib/seo/ src/app/robots.ts src/app/sitemap.ts src/locales/
+slice "C0b locale + SEO" e79f354 src/middleware.ts src/i18n/ src/lib/seo/ src/app/robots.ts src/app/sitemap.ts src/locales/
 slice "C1 hotel search" 8ef657b src/lib/server/stays/ src/lib/server/search.ts src/lib/search/ src/lib/constants/cityAliases.ts src/lib/geolocation.ts src/lib/property/ src/lib/room/ src/app/api/search/ src/app/api/autocomplete/ src/app/api/stays/ src/components/search/ src/components/property/ src/stores/searchStore.ts
 slice "C2 hotel booking" 8bdd4a4 src/app/api/booking/ src/app/api/webhooks/ src/lib/server/bookings.ts src/lib/server/checkout.ts src/lib/server/policy-normalizer.ts src/lib/server/cancellation-engine.ts src/lib/server/refunds.ts src/lib/bookings/ src/lib/cancellation.ts src/lib/pricing.ts src/lib/currency.ts
 slice "C3 flights" 8bdd4a4 src/lib/server/flights/ src/app/api/flights/ src/app/api/internal/ src/types/flights.ts src/utils/flight-utils.ts
