@@ -1,0 +1,75 @@
+name: OTV Portfolio Sync
+
+# Keeps hotel_content in line with what OTV will actually sell, and gives the newly listed
+# hotels their photographs. Replaces a person downloading a 187 MB CSV from the TGX dashboard
+# each week and running an importer against each database by hand.
+#
+# Measured 2026-09-21 against access 38327: the portfolio is ~46 minutes at 2.24 ms a hotel.
+# The content backfill runs at 45 ms a hotel, so the 97,737 hotels currently without images
+# take a little over an hour on the first night, and seconds a day once it has caught up.
+# Together that is about two hours on the first run, against a six-hour ceiling.
+#
+# Daily rather than weekly because RTX agreement §2.1 asks for a daily static-content update,
+# and at an hour a night that is affordable.
+
+on:
+  schedule:
+    - cron: '0 4 * * *'   # daily at 04:00 UTC — after refresh-hotel-content (02:00) and the ETG dump (03:00)
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Read the portfolio and report, writing nothing (true/false)'
+        required: false
+        default: 'false'
+      skip_backfill:
+        description: 'Sync the portfolio only, skip the content backfill (true/false)'
+        required: false
+        default: 'false'
+
+# Two of these must never overlap. The sync stages the codes it has seen in a table it
+# truncates on entry, so a second run starting mid-flight would empty the first run's evidence
+# and the first would then conclude that everything it had already passed is missing from the
+# portfolio. `cancel-in-progress: false` because a half-finished sync is worth letting finish.
+concurrency:
+  group: otv-portfolio-sync
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 360   # 6 hours, matching the ETG dump; the job wants about one
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # pnpm, pinned, for the reasons spelled out in cron-etg-dump-sync.yml.
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.32.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Sync OTV portfolio
+        env:
+          DATABASE_URL:        ${{ secrets.DATABASE_URL }}
+          TRAVELGATEX_API_KEY: ${{ secrets.TRAVELGATEX_API_KEY }}
+          TRAVELGATEX_CODE:    ${{ secrets.TRAVELGATEX_CODE }}
+        run: |
+          DRY=""
+          [ "${{ github.event.inputs.dry_run }}" = "true" ] && DRY="--dry-run"
+          npx tsx scripts/sync-otv-portfolio.ts $DRY
+
+      # Only after a clean sync. A sync that stopped early already refuses to delist anything,
+      # and there is no sense buying photographs on the strength of a run that did not finish.
+      - name: Backfill hotel content
+        if: ${{ github.event.inputs.skip_backfill != 'true' && github.event.inputs.dry_run != 'true' }}
+        env:
+          DATABASE_URL:        ${{ secrets.DATABASE_URL }}
+          TRAVELGATEX_API_KEY: ${{ secrets.TRAVELGATEX_API_KEY }}
+          TRAVELGATEX_CODE:    ${{ secrets.TRAVELGATEX_CODE }}
+        run: npx tsx scripts/backfill-hotel-content.ts

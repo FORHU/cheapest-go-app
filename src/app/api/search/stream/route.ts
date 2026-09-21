@@ -184,6 +184,7 @@ async function getInstantHotelCatalog(body: any): Promise<any[]> {
                   AND lat != 0 AND lng != 0
                   AND (hotel_id ~ '^[0-9]+$' OR hotel_id ~ '^[A-Z]{2}[0-9]+$')
                   AND (content_source IS NULL OR content_source != 'etg')
+                  AND delisted_at IS NULL
                 ORDER BY review_count DESC NULLS LAST
                 LIMIT 1000
             `;
@@ -203,6 +204,7 @@ async function getInstantHotelCatalog(body: any): Promise<any[]> {
                   AND lat != 0 AND lng != 0
                   AND (hotel_id ~ '^[0-9]+$' OR hotel_id ~ '^[A-Z]{2}[0-9]+$')
                   AND (content_source IS NULL OR content_source != 'etg')
+                  AND delisted_at IS NULL
                 ORDER BY review_count DESC NULLS LAST
                 LIMIT 1000
             `;
@@ -242,6 +244,7 @@ async function getInstantHotelCatalog(body: any): Promise<any[]> {
                       AND LOWER(country) = ANY(${storedCountryCodes(isoCode)})
                       AND (hotel_id ~ '^[0-9]+$' OR hotel_id ~ '^[A-Z]{2}[0-9]+$')
                       AND (content_source IS NULL OR content_source != 'etg')
+                      AND delisted_at IS NULL
                     ORDER BY review_count DESC NULLS LAST
                     LIMIT 300
                   `
@@ -252,6 +255,7 @@ async function getInstantHotelCatalog(body: any): Promise<any[]> {
                     WHERE city ILIKE ANY(${patterns})
                       AND (hotel_id ~ '^[0-9]+$' OR hotel_id ~ '^[A-Z]{2}[0-9]+$')
                       AND (content_source IS NULL OR content_source != 'etg')
+                      AND delisted_at IS NULL
                     ORDER BY review_count DESC NULLS LAST
                     LIMIT 300
                   `;

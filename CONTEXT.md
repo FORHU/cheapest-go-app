@@ -139,6 +139,25 @@ _Avoid_: assuming OTV and ETG cover different hotels; treating ETG as a separate
 **LiteAPI** — a retired hotel supplier. The *integration* is gone: no client, no credentials, nothing calls it, and it supplies no inventory. Its *vocabulary* is not gone, and the difference matters when reading the code. `raw_liteapi_response` is a live column in the schema, LiteAPI's room-and-offer shape is still what v1's room types are modelled on, and v1's rate builder reads that shape before it reads the one OTV actually sends. api-v2 carries a smaller residue that nothing calls at all.
 _Avoid_: reading a LiteAPI name as evidence of a live supplier — every occurrence is either a column name, a type shape, or dead code. _Avoid_: the reverse error of assuming the names are cosmetic and safe to strip — the column is `NOT NULL` and a stored function reads it. _Avoid_: adding new code in LiteAPI's shape because the surrounding code is written that way.
 
+**OTV Portfolio** — every hotel our OTV access is entitled to sell, as OTV currently lists it.
+It is a supplier fact, not a catalogue of ours: hotels enter it and leave it on OTV’s schedule,
+and a hotel absent from it cannot be booked however much content we hold about it. Obtainable in
+full from the TravelGateX Hotels API, and separately as a CSV a person downloads from the TGX
+dashboard — the same portfolio by two routes, not two things.
+_Avoid_: treating the rows of `hotel_content` as the portfolio — that table also holds hotels OTV
+has since dropped, and hotels ETG supplies that OTV never carried. _Avoid_: calling a hotel
+missing from a search "not in the portfolio" without checking: a supplier timeout and a genuine
+absence look identical from a single search.
+
+**Supplier-Owned Field** — a column on a hotel that belongs to whoever supplies the hotel, and is
+overwritten from them without ceremony: what the hotel is called, where it is, its category, its
+Giata id. Distinct from **Enrichment** — images, descriptions, amenities, review scores, room
+groups, policies — which we accumulate from other sources over time and which no supplier refresh
+may destroy. The distinction is what makes a repeated portfolio sync safe to run: it can correct
+a moved hotel or a renamed one, and it cannot empty a hotel’s photo gallery.
+_Avoid_: a refresh that writes whatever the supplier returned — a thin response then hollows out
+rows that were complete. A supplier’s null is an absence of news, not news of an absence.
+
 **TGX Static Data** — a bulk hotel registry downloaded from TravelGateX, stored in `tgx_hotel_static`. Contains each hotel's TGX code, name, address, coordinates, and FastX mapping. Downloaded as part of TGX onboarding. Cross-supplier dedup via FastX has no active use case today (OTV is the only TGX supplier); the table is dormant until a second TGX supplier with distinct inventory is added.
 _Avoid_: using `tgx_hotel_static` as a geo-to-code lookup or as the primary source of display content.
 

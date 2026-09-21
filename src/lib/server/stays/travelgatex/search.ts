@@ -1636,6 +1636,30 @@ function hasEmptyHotelsError(errors: any[]): boolean {
     );
 }
 
+/**
+ * Did the supplier run out of time, or did it answer and have nothing?
+ *
+ * ALL_PROCESSES_FAILED is returned for both, described only as "See warnings for more
+ * information", which is why the warnings have to be read to tell them apart:
+ *
+ *     104  Connection timeout with supplier   OTV never answered
+ *     204  No results found                   OTV answered: nothing here
+ *
+ * Measured 2026-09-18 on one run of two cold cities: 3 timeouts against 6 no-results. The
+ * two are opposites downstream — a timeout has learned nothing about inventory, while a 204
+ * is a real and final answer — so reading them as one error shows a supplier outage to a
+ * traveller whose destination simply has no rooms.
+ *
+ * CONTEXT.md has said to do this since the ALL_PROCESSES_FAILED entry was written:
+ * "Avoid: blacklisting a destination code solely on ALL_PROCESSES_FAILED without inspecting
+ * the accompanying warnings."
+ */
+export function isSupplierTimeout(warnings: any[]): boolean {
+    return warnings.some(
+        (w) => String(w?.type) === '104' || w?.description?.toLowerCase().includes('timeout')
+    );
+}
+
 // In-process set of TGX destination codes that returned "Empty hotels" for OTV.
 // Seeded from DB on first use so cold starts also skip known-bad codes.
 const _failedDestCodes = new Set<string>();
@@ -1807,7 +1831,17 @@ async function runCityFallback(
                 // The same reasoning that keeps this out of the blacklist keeps it out of
                 // a No-Availability verdict: OTV either timed out or was never called, so
                 // nothing has been learned about inventory.
-                unansweredReasons.push(`dest-code ${resolvedCode} transient (${destErrors[0]?.code ?? 'empty hotels'})`);
+                //
+                // Unless the warnings say OTV did answer. A 204 is a real answer about a real
+                // city, and calling it unanswered leaves the catalog on screen under "prices
+                // could not be loaded" — our error message for their correct reply.
+                const otvAnswered = destErrors.some((e: any) => e.code === 'ALL_PROCESSES_FAILED') &&
+                    destWarnings.length > 0 && !isSupplierTimeout(destWarnings);
+                if (otvAnswered) {
+                    console.warn(`[tgx-search] Dest code "${resolvedCode}" — OTV answered with no availability`);
+                } else {
+                    unansweredReasons.push(`dest-code ${resolvedCode} transient (${destErrors[0]?.code ?? 'empty hotels'})`);
+                }
             } else {
                 persistFailedDestCode(resolvedCode, cityName);
                 if (destErrors.length) {
@@ -1904,6 +1938,7 @@ async function runCityFallback(
                     WHERE lat BETWEEN ${minLat} AND ${maxLat}
                       AND lng BETWEEN ${minLng} AND ${maxLng}
                       AND lat != 0 AND lng != 0
+                      AND delisted_at IS NULL
                       AND hotel_id ~ '^[0-9]+$'
                     LIMIT 1000`;
             } else if (centerLat && centerLng) {
@@ -1917,6 +1952,7 @@ async function runCityFallback(
                     WHERE lat BETWEEN ${minLat} AND ${maxLat}
                       AND lng BETWEEN ${minLng} AND ${maxLng}
                       AND lat != 0 AND lng != 0
+                      AND delisted_at IS NULL
                       AND hotel_id ~ '^[0-9]+$'
                     LIMIT 1000`;
                 catalogRows = bboxRows.filter(r => {
@@ -1942,12 +1978,14 @@ async function runCityFallback(
                           AND LOWER(country) = ANY(${storedCountryCodes(countryCode)})
                           AND hotel_id ~ '^[0-9]+$'
                           AND lat != 0 AND lng != 0
+                          AND delisted_at IS NULL
                         LIMIT 300`
                     : await sqlAdmin<{ hotel_id: string }[]>`
                         SELECT hotel_id FROM hotel_content
                         WHERE LOWER(TRIM(city)) = ANY(${cityNames})
                           AND hotel_id ~ '^[0-9]+$'
                           AND lat != 0 AND lng != 0
+                          AND delisted_at IS NULL
                         LIMIT 300`;
             }
 

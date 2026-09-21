@@ -352,6 +352,24 @@ export function clearDestCodeCache(prefix?: string): number {
  * countryCode is given — geographic zones (islands, provinces) are rarely shared
  * across countries, while small city names often clash.
  */
+/**
+ * A city name reduced to the letters and digits in it: no spaces, punctuation or accents.
+ *
+ * The destination cache is keyed on the exact lowercased name, so "Danang" misses a row
+ * stored as "da nang" and the search falls through to an 18-second TGX round-trip and then
+ * the Hotel-Code Fallback. Fifty seconds, for one absent space. The same gap swallows every
+ * accented name typed without its accents, and every name hyphenated on one side only.
+ *
+ * Deliberately not clever. It does not strip administrative suffixes, so "Hochiminh" still
+ * misses "ho chi minh city": a rule that let a query match a stored key plus a trailing word
+ * would also answer "Kansas" with Kansas City, and a quietly wrong destination is worse than
+ * a slow one.
+ */
+export function looseCityKey(name: string): string {
+    return name.normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+        .toLowerCase().replace(/[^a-z0-9]/g, '');
+}
+
 export async function resolveTgxDestinationCode(cityName: string, countryCode?: string): Promise<string | undefined> {
     const key = countryCode
         ? `${cityName.toLowerCase().trim()}:${countryCode.toLowerCase()}`
@@ -434,6 +452,34 @@ export async function resolveTgxDestinationCode(cityName: string, countryCode?: 
         if (key !== cityOnlyKey) {
             const cityHit = await readKey(cityOnlyKey, countryCode);
             if (cityHit !== null) return cityHit;
+        }
+
+        // Last resort before paying for TGX: match on letters alone. A scan of 24,441 rows
+        // costs single-digit milliseconds, against the 18-second round-trip it replaces.
+        //
+        // Country-checked for the same reason the unscoped key above is. Normalising away
+        // punctuation makes collisions *more* likely, not less, and an unchecked match is how
+        // "Paris, France" was once answered with Paris, Texas.
+        const loose = looseCityKey(cityOnlyKey);
+        if (loose) {
+            const rows = await sql<DestRow[]>`
+                SELECT destination_code, created_at, parent_code
+                FROM tgx_destination_cache
+                WHERE regexp_replace(lower(city_key), '[^a-z0-9]', '', 'g') = ${loose}
+                  AND destination_code <> 'NONE'
+                LIMIT 5
+            `;
+            const match = countryCode
+                ? rows.find(r => {
+                      const belongsTo = rowCountry(r.parent_code);
+                      return !belongsTo || belongsTo === countryCode.toUpperCase();
+                  })
+                : rows[0];
+            if (match) {
+                console.log(`[dest-resolve] "${cityName}" matched on letters alone → ${match.destination_code}`);
+                _destCodeCache.set(key, match.destination_code);
+                return match.destination_code;
+            }
         }
     } catch { /* non-fatal — fall through to TGX */ }
     // 3. TGX API — share the raw fetch with backgroundResolveDestCode so both
