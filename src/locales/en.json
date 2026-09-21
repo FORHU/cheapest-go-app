@@ -1135,7 +1135,7 @@
     "contactMinimal": "Contact us",
     "cookies": "Cookies",
     "cookiesMinimal": "Cookie preferences",
-    "copyright": "© 2026 FORHU Inc.. All rights reserved.",
+    "copyright": "© 2026 FORHU Inc. All rights reserved.",
     "copyrightMinimal": "CheapestGo © 2026",
     "enterprise": "Enterprise",
     "flights": "Flights",
@@ -1748,7 +1748,7 @@
         },
         "intellectualProperty": {
           "title": "Intellectual Property",
-          "body": "All content on the CheapestGo Platform — including logos, text, graphics, software, and design — is the property of CheapestGo or its licensors and is protected by applicable intellectual property laws. You may not reproduce, distribute, or create derivative works from our content without prior written consent. Hotel and flight images and descriptions are provided by our partners (Duffel, Mystifly, TravelgateX, ONDA, Rakuten) and respective suppliers under license."
+          "body": "All content on the CheapestGo Platform — including logos, text, graphics, software, and design — is the property of CheapestGo or its licensors and is protected by applicable intellectual property laws. You may not reproduce, distribute, or create derivative works from our content without prior written consent. Hotel and flight images and descriptions are provided by our partners (Duffel, TravelgateX) and respective suppliers under license."
         },
         "disclaimers": {
           "title": "Disclaimers",
@@ -1810,7 +1810,7 @@
           ],
           "thirdPartyLabel": "Information from third parties:",
           "thirdPartyItems": [
-            "Travel availability and pricing data from our partners (Duffel, Mystifly, TravelgateX, ONDA, Rakuten)",
+            "Travel availability and pricing data from our partners (Duffel, TravelgateX)",
             "Payment confirmation and fraud signals from Stripe",
             "Analytics data from service providers we use to improve our platform"
           ]
@@ -1843,12 +1843,12 @@
               "linkHref": "https://stripe.com/privacy"
             },
             {
-              "label": "Travel Partners (Duffel, Mystifly, TravelgateX, ONDA, Rakuten)",
+              "label": "Travel Partners (Duffel, TravelgateX)",
               "text": "Search queries and booking details are processed through our partner APIs to retrieve availability and pricing."
             },
             {
-              "label": "Supabase",
-              "text": "Our database infrastructure is hosted on Supabase. Data is stored with encryption at rest and in transit."
+              "label": "Amazon Web Services (AWS)",
+              "text": "Our database infrastructure is hosted on Amazon Web Services (AWS). Data is stored with encryption at rest and in transit."
             },
             {
               "label": "Legal requirements",
@@ -2050,7 +2050,7 @@
               "heading": "Strictly Necessary Cookies",
               "body": "These cookies are essential for the Platform to function. They enable core features such as authentication, session management, security tokens, and payment processing. You cannot opt out of these cookies as they are required for the service to operate.",
               "items": [
-                "supabase-auth-token — authentication session",
+                "cg-session — authentication session",
                 "__stripe_mid / __stripe_sid — Stripe fraud prevention"
               ]
             },

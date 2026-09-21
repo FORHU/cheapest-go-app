@@ -1135,7 +1135,7 @@
     "contactMinimal": "문의하기",
     "cookies": "쿠키",
     "cookiesMinimal": "쿠키 설정",
-    "copyright": "© 2026 FORHU Inc.. All rights reserved.",
+    "copyright": "© 2026 FORHU Inc. All rights reserved.",
     "copyrightMinimal": "{brand} © 2026",
     "enterprise": "기업 제휴",
     "flights": "항공편",
@@ -1748,7 +1748,7 @@
         },
         "intellectualProperty": {
           "title": "지식재산권",
-          "body": "CheapestGo 플랫폼의 모든 콘텐츠(로고, 텍스트, 그래픽, 소프트웨어, 디자인 포함)는 CheapestGo 또는 그 라이선스 허여자의 재산이며, 관련 지식재산권법에 의해 보호됩니다. 사전 서면 동의 없이 당사 콘텐츠를 복제, 배포하거나 파생 저작물을 제작하실 수 없습니다. 호텔 및 항공편 이미지와 설명은 당사의 파트너(Duffel, Mystifly, TravelgateX, ONDA, Rakuten)와 해당 공급업체가 라이선스에 따라 제공합니다."
+          "body": "CheapestGo 플랫폼의 모든 콘텐츠(로고, 텍스트, 그래픽, 소프트웨어, 디자인 포함)는 CheapestGo 또는 그 라이선스 허여자의 재산이며, 관련 지식재산권법에 의해 보호됩니다. 사전 서면 동의 없이 당사 콘텐츠를 복제, 배포하거나 파생 저작물을 제작하실 수 없습니다. 호텔 및 항공편 이미지와 설명은 당사의 파트너(Duffel, TravelgateX)와 해당 공급업체가 라이선스에 따라 제공합니다."
         },
         "disclaimers": {
           "title": "면책 조항",
@@ -1810,7 +1810,7 @@
           ],
           "thirdPartyLabel": "제3자로부터 수집된 정보:",
           "thirdPartyItems": [
-            "파트너(Duffel, Mystifly, TravelgateX, ONDA, Rakuten)로부터의 여행 가용성 및 요금 데이터",
+            "파트너(Duffel, TravelgateX)로부터의 여행 가용성 및 요금 데이터",
             "Stripe로부터의 결제 확인 및 사기 감지 신호",
             "플랫폼 개선을 위해 이용하는 서비스 제공업체의 분석 데이터"
           ]
@@ -1843,12 +1843,12 @@
               "linkHref": "https://stripe.com/privacy"
             },
             {
-              "label": "여행 파트너 (Duffel, Mystifly, TravelgateX, ONDA, Rakuten)",
+              "label": "여행 파트너 (Duffel, TravelgateX)",
               "text": "가용성 및 요금 조회를 위해 검색 쿼리 및 예약 세부 정보를 파트너 API를 통해 처리합니다."
             },
             {
-              "label": "Supabase",
-              "text": "당사의 데이터베이스 인프라는 Supabase에서 호스팅됩니다. 데이터는 저장 및 전송 시 암호화됩니다."
+              "label": "Amazon Web Services (AWS)",
+              "text": "당사의 데이터베이스 인프라는 Amazon Web Services (AWS)에서 호스팅됩니다. 데이터는 저장 및 전송 시 암호화됩니다."
             },
             {
               "label": "법적 요건",
@@ -2050,7 +2050,7 @@
               "heading": "필수 쿠키",
               "body": "이 쿠키는 플랫폼 작동에 필수적입니다. 인증, 세션 관리, 보안 토큰, 결제 처리 등 핵심 기능을 지원합니다. 서비스 운영에 필요하므로 이 쿠키는 거부하실 수 없습니다.",
               "items": [
-                "supabase-auth-token — 인증 세션",
+                "cg-session — 인증 세션",
                 "__stripe_mid / __stripe_sid — Stripe 사기 방지"
               ]
             },

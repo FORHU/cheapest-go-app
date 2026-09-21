@@ -4,10 +4,13 @@ name: OTV Portfolio Sync
 # hotels their photographs. Replaces a person downloading a 187 MB CSV from the TGX dashboard
 # each week and running an importer against each database by hand.
 #
-# Measured 2026-09-21 against access 38327: the portfolio is ~46 minutes at 2.24 ms a hotel.
-# The content backfill runs at 45 ms a hotel, so the 97,737 hotels currently without images
-# take a little over an hour on the first night, and seconds a day once it has caught up.
-# Together that is about two hours on the first run, against a six-hour ceiling.
+# Measured 2026-09-21 against access 38327: the portfolio takes ~42 minutes.
+#
+# The content backfill is bounded per run, because the hotels without images are not only the
+# ones each sync adds - most of the catalogue that predates this job has none either, so the
+# standing backlog is about a million and a single pass would run some seven hours. At the
+# default limit it is roughly two hours a night and about a week to catch up, after which it
+# has only the day's new hotels to do.
 #
 # Daily rather than weekly because RTX agreement §2.1 asks for a daily static-content update,
 # and at an hour a night that is affordable.

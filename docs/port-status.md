@@ -1364,6 +1364,71 @@ That single line would have replaced this whole investigation.
 
 ---
 
+## Done 2026-09-21 — C8 starts: the gate, the schema, and one message end to end
+
+**The gate opened.** C8 was deferred because Support was still being designed — it changed four
+times on 2026-09-15 alone. Tested rather than assumed: `git log --since=2026-09-16` over the six
+support directories returns **two commits**, `8ef657b6` and `241a64d6`, both styling for the chat
+widget chips. The design has stopped moving, so the slice starts and its watermark is `8ef657b6`.
+
+**The schema came across, and had to.** v2’s database held **none** of the seven support tables:
+`schema_migrations` there had 37 versions against v1’s 57, and all 16 support migrations were
+among the missing. Per [ADR-0018](adr/0018-v2-has-its-own-database.md) v2 never authors a
+migration, so v1’s files were applied in order to v2’s database rather than new ones written.
+All seven tables now compare column-for-column identical to v1’s, and `mint_chat_reference()`
+came with them, so a Chat Reference is minted in one place whichever application inserts the row.
+
+They are recorded under their full filenames, matching how v1 recorded them. Two support
+migrations share the prefix `20260907000001` with `supplier_booking_attempts`, and dbmate keys on
+the leading digits alone — recording digits would mark one applied without ever running it, which
+is exactly how `supplier_booking_attempts` went missing in the first place (CONTEXT.md,
+"Migration tool").
+
+**The tracer bullet.** One vertical slice through all four layers, against the real schema:
+
+| layer | file |
+| --- | --- |
+| Route | `api-v2/src/routes/support.route.ts` |
+| Service | `api-v2/src/services/support.service.ts` |
+| Repository | `api-v2/src/repositories/support.repository.ts` |
+
+`POST /support/conversation` opens or resumes, `GET /support/conversation` reads the transcript,
+`POST /support/conversation/:id/messages` says something. Authenticated throughout, and both
+verified returning 401 unauthenticated against a running server.
+
+Four rules were ported as rules rather than as code, because nothing in the schema enforces any
+of them and each was arrived at the hard way:
+
+- **No account, no conversation** ([ADR-0032](adr/0032-a-support-chat-requires-an-account.md)).
+  v1 decided this and migrated the data, but left the *create* path open, so a signed-out caller
+  could still mint a guest token and start typing. Reading stays open to guests; starting does not.
+- **A resolved conversation is never reopened.** v1 reopened on merely opening the widget, so one
+  Chat Reference collected unrelated topics across days and each was credited again to whoever
+  resolved it next — a reporting problem under
+  [ADR-0041](adr/0041-support-chats-are-assigned-by-an-admin-never-taken.md), not just a confusing one.
+- **A new conversation opens `waiting_human`**, because
+  [ADR-0031](adr/0031-support-is-answered-only-by-people.md) left no assistant to open against.
+  `ai_active` stays in the union only so rows written before that decision still read.
+- **The customer payload carries no staff id.** v1 shipped that leak and fixed it on 2026-09-15.
+
+Ownership is checked against the row and a stranger’s conversation answers **404, not 403** — a
+conversation id is a plain uuid that appears in the customer’s own payloads, and confirming one
+exists is itself a disclosure. This is deliberately *not*
+[ADR-0027](adr/0027-authorisation-belongs-to-the-resource-not-the-page.md)’s Capability Link: a
+support transcript is not a resource we hand out links to.
+
+16 tests in `api-v2/src/__tests__/support.service.test.ts`, driven through a fake repository so
+the rules are checked without a database. api-v2: 523 tests, typechecks.
+
+**What is not built yet**, and it is most of the slice: SSE over Postgres `LISTEN/NOTIFY`, the
+Agent inbox and Support Desk, Assignment, Translation, attachments, Urgency, Support Hours, the
+Help page, and Suggested Answers. app-v2 has no support feature at all — its `features/chat/` is
+a single 384-line AI chat client, which ADR-0031 and
+[ADR-0043](adr/0043-the-widget-suggests-only-a-person-answers.md) suggest is the wrong shape to
+build on rather than a head start.
+
+---
+
 ## Out of scope
 
 - `src/components/voice/VoiceAssistant.tsx` and `api/voice` — Voice Layer is Phase 2.

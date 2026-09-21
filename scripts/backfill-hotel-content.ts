@@ -6,14 +6,19 @@
  * hotel on the map as a card with no picture. This fills them in afterwards, asking only about
  * the hotels that have nothing — which is what makes it cheap.
  *
- * Measured 2026-09-21 against access 38327: 45 ms a hotel, and 97% of hotels had photos to
- * give (388 of the first 400 asked). Clearing the 97,737 the 2026-09-20 dump introduced is
- * therefore a little over an hour; in steady state it is only that day's new hotels, and it
- * takes seconds.
+ * Measured 2026-09-21 against access 38327: about 2,380 hotels a minute, and 94% of them had
+ * photos to give.
  *
- * Asking by hotel code costs far more per hotel than paging the whole portfolio does — 45 ms
- * against 9.99 ms — so this is worthwhile only because it asks about the few per cent that
- * have nothing. Backfilling the whole catalogue this way would take a day and a half.
+ * The backlog is far larger than it first appears. It is not the 97,737 hotels the 2026-09-20
+ * dump introduced: most of the 1.14M rows that predate it have no images either, so the first
+ * run faces 1,024,602 hotels and would need around seven hours — past the six-hour ceiling
+ * the workflow allows, and past the point where one long job is a sensible thing to run.
+ *
+ * So a run is bounded, and the backlog is cleared over several nights. At the default limit
+ * that is roughly two hours a night and about a week to catch up, after which each night has
+ * only that day's new hotels to do and finishes in seconds. Hotels are taken in hotel_id
+ * order, so successive runs continue rather than re-tread: a hotel asked about today carries
+ * last_attempt_at and drops out of tomorrow's query whether or not it had a photograph.
  *
  * `refresh-hotel-content` remains the richer job: amenities, contact details, check-in
  * schedules, for the thirty most-searched cities. This one is deliberately shallower and
@@ -28,10 +33,19 @@ import 'dotenv/config';
 import postgres from 'postgres';
 import { tgxGraphQL, getTgxConfig } from '@/lib/server/stays/travelgatex/client';
 
+/**
+ * Hotels per run, when no limit is given.
+ *
+ * 250,000 is about 105 minutes at the measured rate, which sits comfortably inside the
+ * six-hour workflow ceiling alongside the 42-minute portfolio sync that runs before it.
+ */
+const DEFAULT_LIMIT = 250_000;
+
 const DRY_RUN = process.argv.includes('--dry-run');
 const LIMIT   = (() => {
     const i = process.argv.indexOf('--limit');
-    return i >= 0 ? Number(process.argv[i + 1]) : Infinity;
+    if (i >= 0) return Number(process.argv[i + 1]);
+    return process.argv.includes('--all') ? Infinity : DEFAULT_LIMIT;
 })();
 
 const DATABASE_URL = process.env.DATABASE_URL;
@@ -104,7 +118,10 @@ async function main() {
     `;
 
     const codes = pending.map(r => r.hotel_id).slice(0, LIMIT === Infinity ? undefined : LIMIT);
-    console.log(`[backfill] ${codes.length.toLocaleString()} hotels have no images` +
+    const held  = pending.length - codes.length;
+    console.log(`[backfill] ${pending.length.toLocaleString()} hotels have no images; ` +
+                `doing ${codes.length.toLocaleString()} this run` +
+                `${held > 0 ? `, ${held.toLocaleString()} left for the next one` : ''}` +
                 `${DRY_RUN ? ' (dry run — no writes)' : ''}`);
     if (codes.length === 0) { await sql.end(); return; }
 

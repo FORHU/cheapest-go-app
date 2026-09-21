@@ -1135,7 +1135,7 @@
     "contactMinimal": "お問い合わせ",
     "cookies": "クッキー",
     "cookiesMinimal": "Cookie 設定",
-    "copyright": "© 2026 FORHU Inc.. All rights reserved.",
+    "copyright": "© 2026 FORHU Inc. All rights reserved.",
     "copyrightMinimal": "{brand} © 2026",
     "enterprise": "法人向け",
     "flights": "フライト",
@@ -1748,7 +1748,7 @@
         },
         "intellectualProperty": {
           "title": "知的財産",
-          "body": "CheapestGoプラットフォームのすべてのコンテンツ（ロゴ、テキスト、グラフィック、ソフトウェア、デザインを含む）は、CheapestGoまたはそのライセンサーの財産であり、適用される知的財産法により保護されています。事前の書面による同意なしに、当社のコンテンツを複製、配布、または派生著作物を作成することはできません。ホテルおよびフライトの画像と説明は、当社のパートナー（Duffel、Mystifly、TravelgateX、ONDA、Rakuten）および各サプライヤーがライセンスに基づいて提供します。"
+          "body": "CheapestGoプラットフォームのすべてのコンテンツ（ロゴ、テキスト、グラフィック、ソフトウェア、デザインを含む）は、CheapestGoまたはそのライセンサーの財産であり、適用される知的財産法により保護されています。事前の書面による同意なしに、当社のコンテンツを複製、配布、または派生著作物を作成することはできません。ホテルおよびフライトの画像と説明は、当社のパートナー（Duffel、TravelgateX）および各サプライヤーがライセンスに基づいて提供します。"
         },
         "disclaimers": {
           "title": "免責事項",
@@ -1810,7 +1810,7 @@
           ],
           "thirdPartyLabel": "第三者から収集された情報：",
           "thirdPartyItems": [
-            "パートナー（Duffel、Mystifly、TravelgateX、ONDA、Rakuten）からの旅行空室状況および料金データ",
+            "パートナー（Duffel、TravelgateX）からの旅行空室状況および料金データ",
             "Stripeからの支払い確認および不正検知信号",
             "プラットフォーム改善のために利用するサービスプロバイダーからの分析データ"
           ]
@@ -1843,12 +1843,12 @@
               "linkHref": "https://stripe.com/privacy"
             },
             {
-              "label": "旅行パートナー（Duffel、Mystifly、TravelgateX、ONDA、Rakuten）",
+              "label": "旅行パートナー（Duffel、TravelgateX）",
               "text": "空室状況と料金を取得するために、検索クエリと予約詳細をパートナーAPIを通じて処理します。"
             },
             {
-              "label": "Supabase",
-              "text": "当社のデータベースインフラはSupabaseでホスティングされています。データは保存時および転送時に暗号化されます。"
+              "label": "Amazon Web Services (AWS)",
+              "text": "当社のデータベースインフラはAmazon Web Services (AWS)でホスティングされています。データは保存時および転送時に暗号化されます。"
             },
             {
               "label": "法的要件",
@@ -2050,7 +2050,7 @@
               "heading": "必須Cookie",
               "body": "これらのCookieはプラットフォームの機能に必要不可欠です。認証、セッション管理、セキュリティトークン、支払い処理などのコア機能を可能にします。サービスの運営に必要なため、これらのCookieを無効にすることはできません。",
               "items": [
-                "supabase-auth-token — 認証セッション",
+                "cg-session — 認証セッション",
                 "__stripe_mid / __stripe_sid — Stripe不正防止"
               ]
             },

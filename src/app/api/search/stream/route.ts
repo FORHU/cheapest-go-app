@@ -5,6 +5,7 @@ import { tgxGraphQL, getTgxConfig } from '@/lib/server/stays/travelgatex/client'
 import { CITY_ALIASES, resolveHotelDbCities } from '@/lib/constants/cityAliases';
 import { hotelCountry, storedCountryCodes, isTerritory } from '@/lib/geo/territories';
 import { rateLimit } from '@/lib/server/rate-limit';
+import { looseCityKey } from '@/lib/server/search';
 
 const COUNTRY_NAME_TO_ISO: Record<string, string> = {
     'indonesia': 'ID', 'france': 'FR', 'italy': 'IT', 'spain': 'ES', 'germany': 'DE',
@@ -259,6 +260,37 @@ async function getInstantHotelCatalog(body: any): Promise<any[]> {
                     ORDER BY review_count DESC NULLS LAST
                     LIMIT 300
                   `;
+
+            // Nothing found, so ask again on letters alone.
+            //
+            // The patterns above are ILIKE, which cannot see past a space: someone who types
+            // "Danang" is asking about 1,870 rows filed under "Da Nang", and is told the city
+            // has no hotels at all. The destination-code lookup already falls back this way,
+            // so the same search resolved a code, reached the supplier and returned 213
+            // hotels - while the map stayed empty for the fourteen seconds that took, which
+            // is the whole of what Phase 1 exists to prevent.
+            //
+            // Only on a miss: regexp_replace over the column cannot use an index, and the
+            // ILIKE above answers almost every search without it.
+            if (rows.length === 0) {
+                const loose = looseCityKey(normalized);
+                if (loose) {
+                    rows = await sql`
+                        SELECT hotel_id, name, images[1] AS image, star_rating, lat, lng, address, city, country,
+                               review_rating, review_count
+                        FROM hotel_content
+                        WHERE regexp_replace(lower(city), '[^a-z0-9]', '', 'g') = ${loose}
+                          AND (hotel_id ~ '^[0-9]+$' OR hotel_id ~ '^[A-Z]{2}[0-9]+$')
+                          AND (content_source IS NULL OR content_source != 'etg')
+                          AND delisted_at IS NULL
+                        ORDER BY review_count DESC NULLS LAST
+                        LIMIT 300
+                      `;
+                    if (rows.length > 0) {
+                        console.log(`[stream] phase1 matched "${normalized}" on letters alone: ${rows.length} hotels`);
+                    }
+                }
+            }
         }
 
         return rows
