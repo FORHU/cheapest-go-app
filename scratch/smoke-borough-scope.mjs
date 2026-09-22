@@ -50,11 +50,31 @@ const BOROUGH = {
     bbox: [0.0666, 51.512, 0.1902, 51.5994],
 };
 
+/**
+ * Dates close enough that OTV actually prices London. April 2027 returned no prices at all,
+ * which let a search that never reached the supplier look exactly like one that did.
+ */
+const CHECKIN  = new Date(Date.now() + 24 * 864e5).toISOString().slice(0, 10);
+const CHECKOUT = new Date(Date.now() + 26 * 864e5).toISOString().slice(0, 10);
+
+/**
+ * The body exactly as HotelResultsClient posts it: every URL param a string, the bbox the
+ * comma-joined string from the URL, and cityName filled from canonicalCity. An earlier version
+ * of this smoke posted a numeric array and no cityName, and passed 14/14 against a live site
+ * where every real borough search came back empty.
+ */
+function asBrowserSends(body) {
+    const out = Object.fromEntries(Object.entries(body).map(([k, v]) =>
+        [k, Array.isArray(v) ? v.join(',') : String(v)]));
+    if (!out.cityName) out.cityName = out.canonicalCity || out.destination;
+    return out;
+}
+
 async function search(body) {
     const res = await fetch(`${BASE}/api/search/stream`, {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ checkin: '2027-04-14', checkout: '2027-04-16', adults: '2', children: '0', ...body }),
+        body:    JSON.stringify(asBrowserSends({ checkin: CHECKIN, checkout: CHECKOUT, adults: '2', children: '0', ...body })),
     });
     const text = await res.text();
     const events = text.split(/\r?\n/)
@@ -66,6 +86,8 @@ async function search(body) {
         status: res.status,
         catalog: events.find(e => e.type === 'hotels' && e.source === 'catalog')?.data ?? [],
         done: events.find(e => e.type === 'done') ?? {},
+        // Everything the page is handed to draw, supplier hotels included, not only the catalog.
+        shown: events.filter(e => e.type === 'hotels').flatMap(e => e.data ?? []),
     };
 }
 
@@ -128,6 +150,13 @@ if (!reachable) {
     check('the search answers', r.status === 200, `status ${r.status}`);
     check('pins arrive', r.catalog.length > 0, `${r.catalog.length} catalog hotels`);
 
+    // Reported 2026-09-22 as "No hotels found" for Camden Town: the sub-area went undetected, its
+    // rung stayed 'district', and the supplier search answers a district with nothing — so every
+    // catalog pin was then removed as unavailable. The parent city must actually be searched.
+    check('the supplier is asked about the parent city, not the borough',
+        (r.done.tgxCount ?? 0) > 0,
+        `tgxCount ${r.done.tgxCount}, tgxFailed ${r.done.tgxFailed} — a borough answered with no supplier search empties the page`);
+
     // The whole point: every pin drawn must be inside the borough the traveller asked for.
     const [minLng, minLat, maxLng, maxLat] = BOROUGH.bbox;
     const outside = r.catalog.filter(h =>
@@ -136,6 +165,14 @@ if (!reachable) {
     check('and every one of them is inside the borough',
         r.catalog.length > 0 && outside.length === 0,
         `${outside.length} of ${r.catalog.length} fall outside, e.g. ${outside.slice(0, 2).map(h => `${h.name} (${h.lat}, ${h.lng})`).join('; ')}`);
+
+    // The supplier answers for the parent city; what it adds must be bounded like the catalog,
+    // or the page lists the whole city and the map refits to it.
+    const strays = [...r.shown, ...(r.done.allMappable ?? [])].filter(h =>
+        Number(h.lat) < minLat || Number(h.lat) > maxLat || Number(h.lng) < minLng || Number(h.lng) > maxLng);
+    check('and nothing the supplier adds, nor any map pin, is outside it',
+        strays.length === 0,
+        `${strays.length} outside, e.g. ${strays.slice(0, 2).map(h => h.name).join('; ')}`);
 
     check('the catalog is scoped to the borough, not the city',
         r.catalog.length <= inBorough,

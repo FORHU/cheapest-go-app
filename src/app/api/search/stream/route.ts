@@ -398,6 +398,23 @@ export async function POST(req: NextRequest) {
 
     const body = await req.json().catch(() => ({}));
 
+    // URL params arrive as strings. Coerced here, before anything reads them: the bounded-rung
+    // check below asks whether bbox is an array, and a browser search always sends it as the
+    // "minLng,minLat,maxLng,maxLat" string from the URL. Coerced later, every real borough search
+    // failed that check and fell back to the 50km radius, while a smoke posting an array passed.
+    if (body.lat != null && body.lat !== '') body.lat = Number(body.lat);
+    if (body.lng != null && body.lng !== '') body.lng = Number(body.lng);
+    if (typeof body.bbox === 'string' && body.bbox.includes(',')) {
+        const parts = body.bbox.split(',').map(Number);
+        body.bbox = parts.length === 4 && parts.every((n: number) => Number.isFinite(n)) ? parts : undefined;
+    }
+
+    // What the traveller picked, before the name normalisation below overwrites `destination`
+    // with `cityName`. The results page sends `cityName = canonicalCity`, so after normalising,
+    // "Camden Town" and "London" both read "London" and the sub-area went undetected — its rung
+    // stayed `district`, which the supplier search answers with nothing by design.
+    const pickedDestination: string = typeof body.destination === 'string' ? body.destination : '';
+
     // When canonicalCity differs from destination, the destinationCode was resolved
     // for the district/alias (e.g. "Ottavia" → code 183294) not the parent city ("Rome").
     // Clear it before normalization so TGX falls back to city-name lookup.
@@ -494,10 +511,10 @@ export async function POST(req: NextRequest) {
     // Both facts are kept: the city to search, and the extent to search within. This is the
     // same split the province path makes twenty lines below, which is where areaRung came
     // from - it exists precisely to survive the downgrade that follows it.
-    if (body.canonicalCity && body.destination &&
-        body.canonicalCity.toLowerCase() !== body.destination.toLowerCase()) {
+    if (body.canonicalCity && pickedDestination &&
+        body.canonicalCity.toLowerCase() !== pickedDestination.toLowerCase()) {
         const picked = body.rung;
-        console.log(`[stream] sub-area: "${body.destination}" (rung: ${picked ?? '?'}) ` +
+        console.log(`[stream] sub-area: "${pickedDestination}" (rung: ${picked ?? '?'}) ` +
                     `-> searching "${body.canonicalCity}", bounded by its own extent`);
         if (picked && picked !== 'city') body.areaRung = picked;
         body.cityName = body.canonicalCity;
@@ -544,14 +561,6 @@ export async function POST(req: NextRequest) {
 
     const city = rawCity || '(unknown)';
 
-    // Granularity ladder: URL params arrive as strings — coerce the geo fields so
-    // runTgxSearch can dispatch point rungs (district/landmark) to ETG serp/geo.
-    if (body.lat != null && body.lat !== '') body.lat = Number(body.lat);
-    if (body.lng != null && body.lng !== '') body.lng = Number(body.lng);
-    if (typeof body.bbox === 'string' && body.bbox.includes(',')) {
-        const parts = body.bbox.split(',').map(Number);
-        body.bbox = parts.length === 4 && parts.every((n: number) => Number.isFinite(n)) ? parts : undefined;
-    }
 
     // Default dates when not provided (e.g. landing card clicks).
     // Use next Friday → Sunday so OTV has inventory.
@@ -754,9 +763,37 @@ export async function POST(req: NextRequest) {
                 // The `nights > 1` guard went with it — dividing by one is identity, and a
                 // condition that only ever changes a number's precision is a difference
                 // nobody can see and everybody has to read past.
+                // A sub-area searches its parent city, because OTV serves only the City rung
+                // (ADR-0006) — so the supplier answers for all of London when the traveller asked
+                // for Camden Town. The catalog is already bounded to the sub-area; the supplier’s
+                // answer has to be bounded the same way, or its hotels arrive as "new" across the
+                // whole city and the map refits to London. Measured 2026-09-22: 1 priced hotel in
+                // Camden, 297 more from the rest of London sent to the page.
+                //
+                // Kept: a hotel that is one of the sub-area’s catalog hotels (bounded already, and
+                // its supplier record may carry no coordinates), or one whose own coordinates fall
+                // inside the extent.
+                const subAreaBbox: number[] | null =
+                    body.areaRung && body.areaRung !== 'city' && Array.isArray(body.bbox) && body.bbox.length === 4
+                        ? body.bbox as number[]
+                        : null;
+                const insideSubArea = (h: any) => {
+                    if (!subAreaBbox) return true;
+                    if (catalogIdSet.has(h.hotelId || h.id)) return true;
+                    const [minLng, minLat, maxLng, maxLat] = subAreaBbox;
+                    const lat = Number(h.lat ?? h.coordinates?.lat);
+                    const lng = Number(h.lng ?? h.coordinates?.lng);
+                    return Number.isFinite(lat) && Number.isFinite(lng)
+                        && lat >= minLat && lat <= maxLat && lng >= minLng && lng <= maxLng;
+                };
+
                 const tgxHotels: any[] = (Array.isArray(tgxResult.data) ? tgxResult.data : [])
+                    .filter(insideSubArea)
                     .map((h: any) => ({ ...h, price: (h.price ?? 0) / Math.max(1, nights) }));
-                const tgxMappable: any[] = tgxResult.allMappable ?? [];
+                const tgxMappable: any[] = (tgxResult.allMappable ?? []).filter(insideSubArea);
+                if (subAreaBbox && Array.isArray(tgxResult.data) && tgxResult.data.length !== tgxHotels.length) {
+                    console.log(`[stream] sub-area bound: kept ${tgxHotels.length} of ${tgxResult.data.length} supplier hotels`);
+                }
                 console.log(`[stream] phase2 TGX done: ${tgxHotels.length} hotels in ${Date.now() - p2Start}ms (total ${elapsed()})`);
 
                 // ── Stream prices/remove/new-hotels IMMEDIATELY after Phase 2 ─────────────
