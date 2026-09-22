@@ -1429,6 +1429,132 @@ build on rather than a head start.
 
 ---
 
+## Done 2026-09-22 — C8: the Agent side, and live delivery
+
+A conversation now has two ends and they reach each other without a refresh.
+
+**The Agent side.** The Waiting queue ordered by urgency, an Agent reading any chat, replying,
+and an admin handing one over. `admin-support.route.ts` sits beside the customer’s router and
+is authenticated but *not* `requireRole('admin')` like the rest of /admin: a Support Agent is
+not an admin, so each action checks for itself and can say why it refused.
+
+Four rules ported as rules, because nothing in the schema enforces any of them:
+
+- **Ownership is given, never taken** ([ADR-0041](adr/0041-support-chats-are-assigned-by-an-admin-never-taken.md)).
+  Only an admin assigns; an Agent may hand a chat *back* to the queue but never to a named
+  colleague, which would be an Agent assigning. Every handover is written to
+  `support_assignment_events`.
+- **Answering is not taking.** A reply moves a chat out of Waiting and leaves the owner alone.
+- **Reading is open, writing is not.** Every Agent reads every chat — that is how one picks up
+  where another left off — and only whoever holds it may reply.
+- **Urgency is computed, never stored**
+  ([ADR-0039](adr/0039-the-support-queue-is-ordered-by-how-close-the-customer-is-to-travelling.md)).
+  A booking three weeks out when the chat opened is three days out a fortnight later, so a
+  column would be wrong by then unless something walked the table to refresh it.
+
+**Live delivery, over Postgres rather than the Redis already sitting there.** api-v2 treats
+Redis as a cache and says so — `server.ts` logs "unavailable, caching disabled" and carries on
+— so a chat riding on it would stop updating the moment Redis went away with both ends still
+looking at a screen that appeared to work. The bus has to be as available as the data. That
+needed a driver Prisma cannot provide, so `postgres` was added: it listens, and Prisma issues
+the `pg_notify`.
+
+**Two bugs found by insisting the smoke hold a real stream open:**
+
+- `publish` first went out through the listening connection. A connection in LISTEN mode is not
+  one you can also query on, so the message was written, nobody was told, and the chat worked
+  perfectly on refresh — the failure was invisible from every angle except a held-open stream.
+- The stream announced `open` *before* subscribing. A client entitled to read that as "I am
+  listening" and reply immediately had its reply delivered to nobody. It passed whenever
+  anything at all happened in between, which is why the first green run was not evidence: the
+  fix was confirmed only after removing the accidental delay that had hidden it.
+
+`scratch/smoke-v2-c8-support.mjs` — **33/33** against the real database, including a customer
+holding a stream open while an Agent replies in another request. api-v2: 535 tests, typechecks.
+
+## Done 2026-09-22 — C8: translation, both directions
+
+A customer writes Korean and the Agent reads English; the Agent writes English and the customer
+reads Korean. Each message stores one rendering beside the words its author wrote, which stay
+authoritative ([ADR-0033](adr/0033-a-translation-is-stored-never-recomputed.md)).
+
+**The module was not rewritten — it was moved.** v1’s `src/lib/server/support/translation.ts` is
+571 lines with no imports, and almost all of it is the guard rather than the translating: the
+engine ([ADR-0034](adr/0034-translation-goes-through-chatwonder.md)) is a relay to a general
+model, and a general model asked to translate will sometimes refuse, narrate its instructions,
+answer the message or summarise it. Every pattern in it was captured from real replies. It now
+sits at `src/lib/support/translation.ts` in api-v2 verbatim, with v1’s 74 tests beside it.
+
+An earlier attempt here was a thinner hand-written version of the same thing, and it was wrong in
+a way unit tests could not see: it posted the prompt as `message` where the endpoint reads
+`user_input`, so every call came back `{"detail":"User input is empty."}`. It also dropped the
+worked-example prompt, the chunking and the three attempts on a fresh session that take a ~19%
+refusal rate under 1%. Reusing the measured file removed all four at once.
+
+**The status vocabulary came from the schema, not from me.** The first version wrote
+`done`/`failed`/`skipped` and every write was rejected by two check constraints — and rejected
+silently, because the failure path swallowed the error. `translation_status` is a state machine
+the database enforces: null until a rendering is asked for, `pending` while the engine is being
+asked, then `translated` or `untranslated`. Both settles are conditional on the row still being
+`pending`, so two runs of the same message cannot both land, and `translated_body` is allowed
+only on a `translated` row — so a refusal can never be stored as the customer’s words.
+
+An Agent’s reply into a non-English language is then translated back into English and stored as
+`back_translated_body`, so the Agent can see what the customer actually read. It is written after
+the customer’s copy, never before: the back-translation is for staff, and the customer’s wait
+must not include it.
+
+**Two defects the smoke caught that the unit tests could not.** Both were mine, and both were
+invisible until the check ran against the real database:
+
+- the constraint violations above, swallowed by `.catch(() => {})` — the row simply stayed null
+- the smoke’s own conversation was *resumed*, not created, so the locale it asked for never
+  applied and the Agent-reply direction was never exercised at all. It passed by not running.
+
+`scratch/smoke-v2-c8-support.mjs` — **41/41** against the real database, the real HTTP server and
+the live engine, both directions including the back-translation. api-v2: 609 tests, typechecks.
+
+**Not ported: recovery of a stalled translation.** v1 marks a row `pending`, and a process that
+stops mid-call leaves it there with nothing coming to settle it; v1’s `resumeStalledTranslations`
+runs every minute from a cron sidecar to finish them. api-v2 has no sidecar yet, so a restart
+during a translation leaves that one row `pending` and a reader waiting on it. Everything else
+settles, including on error. This belongs with the support crons already listed for C8.
+
+---
+
+## Done 2026-09-22 — C8: Support Hours, and a hole in the translation guard
+
+**Support Hours.** v1's `hours.ts` moved verbatim (pure, no imports) with its 23 tests; the
+`admin_settings` lookup rewritten on Prisma. `GET /support/availability` is public and sits before
+the auth gate — it says when the desk is open, the same answer for everyone — and carries
+`nextOpening` whether open or shut. `GET|PUT /admin/support/hours` is for anyone who answers chats,
+checked against the database because the token's role type predates `support_agent`. A write is
+validated and refused rather than coerced, and stored as a jsonb object, never a JSON string.
+
+**The guard let a worked example through — in v1 too, which is live.** Back-translating
+"이번에는 이걸 스트리밍합니다." returned "You stupid scammers, give me my money back right now." —
+the prompt's first example — and it passed every check, being well-formed English of a plausible
+length. Stored, it puts abuse in the mouth of a customer or an Agent who never wrote it. The guard
+now refuses a reply containing any example sentence unless the source is that same example;
+fixed in both repositories, with the captured reply as a test in each.
+
+The smoke's intermittent failure that exposed it was partly real and partly the smoke: the engine
+also refuses harmless short sentences outright ("I can't assist with that") on all three attempts
+now and then, and `''` — "could not check" — is the designed result. The smoke now tells that apart
+from a row left waiting, and no longer confuses NULL with `''`.
+
+`scratch/smoke-v2-c8-support.mjs` — **51/51**, three runs in a row. api-v2: 635 tests, typechecks.
+
+---
+
+**Still ahead in C8:** attachments
+([ADR-0040](adr/0040-a-support-attachment-is-private-and-is-reached-only-through-the-app.md)),
+the Help page, Suggested Answers, stalled-translation recovery, and app-v2’s side
+of all of it — which still has no support feature, only the AI chat client that ADR-0031 makes
+the wrong shape to build on.
+
+---
+
 ## Out of scope
 
 - `src/components/voice/VoiceAssistant.tsx` and `api/voice` — Voice Layer is Phase 2.

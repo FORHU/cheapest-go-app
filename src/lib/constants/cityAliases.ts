@@ -248,7 +248,7 @@ export const CITY_ALIASES: Record<string, Record<string, string>> = {
         // Anchorage AK
         'downtown anchorage': 'Anchorage',
         // Alaska extras
-        'juneau city': 'Juneau (und Umgebung)', 'mendenhall juneau': 'Juneau (und Umgebung)',
+        'juneau city': 'Juneau', 'mendenhall juneau': 'Juneau',
         'fairbanks city': 'Fairbanks', 'denali village': 'Fairbanks',
         'ketchikan': 'Ketchikan', 'sitka': 'Sitka',
         // Florida Keys
@@ -412,11 +412,11 @@ export const CITY_ALIASES: Record<string, Record<string, string>> = {
         'whitehorse city': 'Whitehorse',
     },
     MX: {
-        'polanco': 'Mexiko-Stadt', 'condesa': 'Mexiko-Stadt', 'roma': 'Mexiko-Stadt',
-        'coyoacan': 'Mexiko-Stadt', 'zona rosa': 'Mexiko-Stadt', 'santa fe': 'Mexiko-Stadt',
-        'napoles': 'Mexiko-Stadt', 'del valle': 'Mexiko-Stadt', 'narvarte': 'Mexiko-Stadt',
-        'juarez cdmx': 'Mexiko-Stadt', 'tepito': 'Mexiko-Stadt', 'centro historico cdmx': 'Mexiko-Stadt',
-        'xochimilco': 'Mexiko-Stadt', 'tlalpan': 'Mexiko-Stadt', 'pedregal': 'Mexiko-Stadt',
+        'polanco': 'Mexico City', 'condesa': 'Mexico City', 'roma': 'Mexico City',
+        'coyoacan': 'Mexico City', 'zona rosa': 'Mexico City', 'santa fe': 'Mexico City',
+        'napoles': 'Mexico City', 'del valle': 'Mexico City', 'narvarte': 'Mexico City',
+        'juarez cdmx': 'Mexico City', 'tepito': 'Mexico City', 'centro historico cdmx': 'Mexico City',
+        'xochimilco': 'Mexico City', 'tlalpan': 'Mexico City', 'pedregal': 'Mexico City',
         'hotel zone': 'Cancún', 'zona hotelera': 'Cancún', 'downtown cancun': 'Cancún',
         'quinta avenida': 'Playa del Carmen', '5th avenue': 'Playa del Carmen',
         'centro playa': 'Playa del Carmen',
@@ -455,7 +455,7 @@ export const CITY_ALIASES: Record<string, Record<string, string>> = {
         'acapulco costera': 'Acapulco',
         // Baja California
         'tijuana zona rio': 'Tijuana', 'ensenada city': 'Ensenada',
-        'la paz baja': 'La Paz (und Umgebung)', 'loreto baja': 'Loreto',
+        'la paz baja': 'La Paz', 'loreto baja': 'Loreto',
         // Yucatan extras
         'izamal city': 'Izamal', 'valladolid yucatan': 'Valladolid',
         'chichen itza town': 'Valladolid',
@@ -479,12 +479,12 @@ export const CITY_ALIASES: Record<string, Record<string, string>> = {
         'comitan': 'Comitán',
         // Sonora / Baja Sur
         'hermosillo city': 'Hermosillo', 'guaymas': 'Guaymas',
-        'los mochis': 'Los Mochis (und Umgebung)', 'mazatlan centro': 'Mazatlán',
+        'los mochis': 'Los Mochis', 'mazatlan centro': 'Mazatlán',
         // Durango / Chihuahua
         'chihuahua city': 'Chihuahua', 'ciudad juarez': 'Ciudad Juárez',
         'creel chihuahua': 'Creel', 'copper canyon': 'Creel',
         // Sinaloa
-        'culiacan city': 'Culiacán (und Umgebung)', 'culiacán': 'Culiacán (und Umgebung)',
+        'culiacan city': 'Culiacan', 'culiacán': 'Culiacan',
         // Nayarit extras
         'san blas nayarit': 'San Blas', 'tepic city': 'Tepic',
         // Colima
@@ -502,15 +502,15 @@ export const CITY_ALIASES: Record<string, Record<string, string>> = {
         // Quintana Roo extras
         'mahahual': 'Mahahual', 'xcalak': 'Xcalak',
         // Mexico City CDMX extra neighborhoods
-        'doctores': 'Mexiko-Stadt', 'obrera': 'Mexiko-Stadt', 'guerrero cdmx': 'Mexiko-Stadt',
-        'santa maria la ribera': 'Mexiko-Stadt', 'san rafael': 'Mexiko-Stadt',
-        'cuauhtemoc cdmx': 'Mexiko-Stadt', 'anzures': 'Mexiko-Stadt',
-        'lomas de chapultepec': 'Mexiko-Stadt', 'polanco chapultepec': 'Mexiko-Stadt',
-        'bosques de las lomas': 'Mexiko-Stadt', 'interlomas': 'Mexiko-Stadt',
-        'perisur': 'Mexiko-Stadt', 'insurgentes sur': 'Mexiko-Stadt',
-        'ciudad universitaria': 'Mexiko-Stadt', 'coyoacan centro': 'Mexiko-Stadt',
-        'san angel': 'Mexiko-Stadt', 'desierto de los leones': 'Mexiko-Stadt',
-        'tepepan': 'Mexiko-Stadt', 'xochitepec': 'Mexiko-Stadt',
+        'doctores': 'Mexico City', 'obrera': 'Mexico City', 'guerrero cdmx': 'Mexico City',
+        'santa maria la ribera': 'Mexico City', 'san rafael': 'Mexico City',
+        'cuauhtemoc cdmx': 'Mexico City', 'anzures': 'Mexico City',
+        'lomas de chapultepec': 'Mexico City', 'polanco chapultepec': 'Mexico City',
+        'bosques de las lomas': 'Mexico City', 'interlomas': 'Mexico City',
+        'perisur': 'Mexico City', 'insurgentes sur': 'Mexico City',
+        'ciudad universitaria': 'Mexico City', 'coyoacan centro': 'Mexico City',
+        'san angel': 'Mexico City', 'desierto de los leones': 'Mexico City',
+        'tepepan': 'Mexico City', 'xochitepec': 'Mexico City',
         // Monterrey extras
         'san pedro nl': 'Monterrey', 'santa catarina nl': 'Monterrey',
         'guadalupe nl': 'Monterrey', 'apodaca nl': 'Monterrey',
@@ -581,8 +581,8 @@ export const CITY_ALIASES: Record<string, Record<string, string>> = {
         'caldas novas': 'Caldas Novas', 'pirenopolis': 'Pirenópolis',
         'goiania city': 'Goiânia',
         // Minas Gerais
-        'belo horizonte city': 'Belo Horizonte', 'ouro preto historic': 'Ouro Preto (und Umgebung)',
-        'tiradentes mg': 'Tiradentes (und Umgebung)', 'diamantina city': 'Diamantina',
+        'belo horizonte city': 'Belo Horizonte', 'ouro preto historic': 'Ouro Preto',
+        'tiradentes mg': 'Tiradentes', 'diamantina city': 'Diamantina',
         'mariana mg': 'Mariana',
         // São Paulo city extras
         'jardim europa sp': 'São Paulo', 'jardim america sp': 'São Paulo',
@@ -624,7 +624,7 @@ export const CITY_ALIASES: Record<string, Record<string, string>> = {
         'sao luis': 'Sao Luis', 'são luís': 'Sao Luis', 'lencois maranhenses': 'Barreirinhas',
         'barreirinhas': 'Barreirinhas', 'atins maranhao': 'Barreirinhas',
         // Para
-        'belem para': 'Belem (und Umgebung)', 'belém': 'Belem (und Umgebung)', 'ilha do marajó': 'Soure',
+        'belem para': 'Belem', 'belém': 'Belem', 'ilha do marajó': 'Soure',
         // Rondonia / Roraima
         'porto velho rondonia': 'Porto Velho', 'boa vista roraima': 'Boa Vista',
         // Acre
@@ -669,7 +669,7 @@ export const CITY_ALIASES: Record<string, Record<string, string>> = {
         'san martin de los andes': 'San Martin de los Andes',
         'perito moreno glacier': 'El Calafate', 'el chalten': 'El Chaltén',
         // Northern Argentina
-        'cafayate salta': 'Cafayate', 'tilcara': 'Tilcara (und Umgebung)', 'purmamarca': 'Purmamarca',
+        'cafayate salta': 'Cafayate', 'tilcara': 'Tilcara', 'purmamarca': 'Purmamarca',
         'jujuy city': 'Jujuy',
         // Wine routes
         'san juan argentina': 'San Juan',
@@ -712,14 +712,14 @@ export const CITY_ALIASES: Record<string, Record<string, string>> = {
         'cerro alegre': 'Valparaiso', 'cerro concepcion': 'Valparaiso',
         // Chile extras
         'vina del mar city': 'Viña del Mar', 'reñaca': 'Viña del Mar',
-        'san pedro atacama': 'San Pedro de Atacama (und Umgebung)', 'atacama salt flat': 'San Pedro de Atacama (und Umgebung)',
+        'san pedro atacama': 'San Pedro de Atacama', 'atacama salt flat': 'San Pedro de Atacama',
         'torres del paine area': 'Puerto Natales', 'puerto natales city': 'Puerto Natales',
         'punta arenas city': 'Punta Arenas', 'tierra del fuego chile': 'Punta Arenas',
         'puerto montt city': 'Puerto Montt', 'puerto varas city': 'Puerto Varas',
         'chiloe island': 'Castro', 'castro chiloe': 'Castro', 'ancud': 'Ancud',
         'osorno city': 'Osorno', 'temuco city': 'Temuco',
         'concepcion chile': 'Concepción',
-        'iquique city': 'Iquique (und Umgebung)', 'antofagasta city': 'Antofagasta',
+        'iquique city': 'Iquique', 'antofagasta city': 'Antofagasta',
         'arica city': 'Arica',
         // Santiago extra neighborhoods
         'nunoa': 'Santiago', 'macul': 'Santiago', 'la reina': 'Santiago', 'la florida': 'Santiago',
@@ -732,14 +732,14 @@ export const CITY_ALIASES: Record<string, Record<string, string>> = {
         // Northern Chile / Atacama
         'la serena city': 'La Serena', 'coquimbo city': 'Coquimbo', 'ovalle city': 'Ovalle',
         'valle del elqui': 'Vicuña', 'pisco elqui': 'La Serena', 'vicuna city': 'Vicuña',
-        'calama city': 'Calama', 'san pedro atacama desert': 'San Pedro de Atacama (und Umgebung)',
+        'calama city': 'Calama', 'san pedro atacama desert': 'San Pedro de Atacama',
         // Lake District
         'pucon city': 'Pucón', 'villarrica city': 'Villarrica', 'valdivia city': 'Valdivia',
         'frutillar town': 'Frutillar', 'llanquihue lake': 'Puerto Montt', 'puerto octay': 'Puerto Montt',
         // Easter Island
         'easter island': 'Hanga Roa', 'hanga roa': 'Hanga Roa', 'rapa nui': 'Hanga Roa',
         // Aysen / Patagonia
-        'coyhaique city': 'Coyhaique (und Umgebung)', 'cochrane chile': 'Cochrane', 'caleta tortel': 'Puerto Montt',
+        'coyhaique city': 'Coyhaique', 'cochrane chile': 'Cochrane', 'caleta tortel': 'Puerto Montt',
         'villa o higgins': 'Villa O\'Higgins',
         // Chiloé extras
         'dalcahue': 'Dalcahue', 'quemchi': 'Ancud', 'achao chiloe': 'Castro',
@@ -759,16 +759,16 @@ export const CITY_ALIASES: Record<string, Record<string, string>> = {
         // Cali
         'el poblado cali': 'Cali', 'granada cali': 'Cali', 'san antonio cali': 'Cali',
         // Salento / Coffee Region
-        'salento colombia': 'Salento', 'quindio': 'Armenien',
+        'salento colombia': 'Salento', 'quindio': 'Armenia',
         // Barranquilla
-        'el prado barranquilla': 'Barranquilla (und Umgebung)',
+        'el prado barranquilla': 'Barranquilla',
         // San Andres Island
         'san andres city': 'San Andrés',
         // Colombia extras
         'minca sierra': 'Minca', 'tayrona park area': 'Santa Marta',
         'isla rosario': 'Cartagena', 'playa blanca colombia': 'Cartagena',
         'pereira city': 'Pereira', 'manizales city': 'Manizales',
-        'armenia quindio': 'Armenien',
+        'armenia quindio': 'Armenia',
         'bucaramanga city': 'Bucaramanga', 'cucuta city': 'Cúcuta',
         'villa de leyva': 'Villa de Leyva', 'guatape': 'Guatape',
         'jardin antioquia': 'Jardin',
@@ -788,7 +788,7 @@ export const CITY_ALIASES: Record<string, Record<string, string>> = {
         'chapinero alto': 'Bogotá', 'gran sabana bogota': 'Bogotá',
         // More Caribbean
         'monteria city': 'Monteria', 'sincelejo city': 'Sincelejo',
-        'lorica colombia': 'Barranquilla (und Umgebung)', 'covenas beach': 'Coveñas',
+        'lorica colombia': 'Barranquilla', 'covenas beach': 'Coveñas',
         'san onofre beach': 'Cartagena', 'tolu beach': 'Tolú',
         // Pacific coast
         'bahia solano': 'Bahía Solano', 'buenaventura city': 'Buenaventura',
@@ -805,7 +805,7 @@ export const CITY_ALIASES: Record<string, Record<string, string>> = {
         'tunja city': 'Tunja', 'duitama city': 'Duitama', 'sogamoso city': 'Sogamoso',
         'barichara colonial': 'Barichara', 'giron city': 'Girón',
         'ibague city': 'Ibague', 'espinal tolima': 'Ibague',
-        'armenia centro': 'Armenien', 'buga city': 'Buga',
+        'armenia centro': 'Armenia', 'buga city': 'Buga',
     },
     PE: {
         'miraflores': 'Lima', 'barranco': 'Lima', 'san isidro': 'Lima', 'surco': 'Lima',
@@ -820,14 +820,14 @@ export const CITY_ALIASES: Record<string, Record<string, string>> = {
         // Puno / Lake Titicaca
         'puno city': 'Puno', 'lake titicaca area': 'Puno',
         // Iquitos
-        'iquitos city': 'Iquitos (und Umgebung)',
+        'iquitos city': 'Iquitos',
         // Trujillo
         'trujillo centro': 'Trujillo',
         // Peru extras
         'huaraz city': 'Huaraz', 'santa cruz trek area': 'Huaraz',
         'nazca lines area': 'Nazca', 'paracas beach': 'Paracas',
         'ica city': 'Ica', 'huacachina oasis': 'Ica',
-        'chiclayo city': 'Chiclayo (und Umgebung)', 'chan chan ruins': 'Trujillo',
+        'chiclayo city': 'Chiclayo', 'chan chan ruins': 'Trujillo',
         'tarapoto city': 'Tarapoto', 'moyobamba': 'Moyobamba',
         'chachapoyas': 'Chachapoyas', 'kuelap fortress': 'Chachapoyas',
         'puno lago titicaca': 'Puno', 'copacabana peru bolivia': 'Puno',
@@ -850,27 +850,27 @@ export const CITY_ALIASES: Record<string, Record<string, string>> = {
         // Puno extras
         'juli puno': 'Puno', 'pomata lake': 'Puno', 'ilave puno': 'Puno',
         // Amazon
-        'nauta loreto': 'Nauta', 'requena loreto': 'Iquitos (und Umgebung)', 'yurimaguas': 'Yurimaguas',
+        'nauta loreto': 'Nauta', 'requena loreto': 'Iquitos', 'yurimaguas': 'Yurimaguas',
         // Northern coast
-        'mancora beach': 'Máncora (und Umgebung)', 'los organos beach': 'Los Organos', 'vichayito beach': 'Piura',
+        'mancora beach': 'Mancora', 'los organos beach': 'Los Organos', 'vichayito beach': 'Piura',
         'zorritos tumbes': 'Zorritos', 'tumbes city': 'Tumbes',
         // Southern coast
         'camana arequipa': 'Arequipa', 'mollendo beach': 'Arequipa', 'matarani port': 'Arequipa',
         // Highlands extras
         'ayacucho city': 'Ayacucho', 'wari ruins': 'Ayacucho',
-        'cajamarca city': 'Cajamarca (und Umgebung)', 'ventanillas de otuzco': 'Cajamarca (und Umgebung)',
+        'cajamarca city': 'Cajamarca', 'ventanillas de otuzco': 'Cajamarca',
         'piura city': 'Piura', 'catacaos piura': 'Piura',
-        'lambayeque city': 'Chiclayo (und Umgebung)', 'sipan museum': 'Chiclayo (und Umgebung)',
+        'lambayeque city': 'Chiclayo', 'sipan museum': 'Chiclayo',
         // Junin / Central
         'huancayo city': 'Huancayo', 'tarma city': 'Tarma', 'la oroya': 'Huancayo',
         'junin lake': 'Huancayo', 'cerro de pasco': 'Huancayo',
     },
     EC: {
         'la mariscal': 'Quito', 'la carolina': 'Quito', 'cumbaya': 'Quito',
-        'malecon simon bolivar': 'Guayaquil (und Umgebung)', 'las penas': 'Guayaquil (und Umgebung)',
+        'malecon simon bolivar': 'Guayaquil', 'las penas': 'Guayaquil',
         // Ecuador extras
         'quito historic center': 'Quito', 'quito old town': 'Quito',
-        'guayaquil malecon': 'Guayaquil (und Umgebung)', 'salinas ecuador': 'Salinas',
+        'guayaquil malecon': 'Guayaquil', 'salinas ecuador': 'Salinas',
         'montanita beach': 'Montanita', 'canoa beach': 'Canoa',
         'banos de agua santa': 'Banos', 'puyo city': 'Puyo',
         'cuenca city': 'Cuenca', 'cuenca old town': 'Cuenca',
@@ -1156,7 +1156,7 @@ export const CITY_ALIASES: Record<string, Record<string, string>> = {
         'joliette': 'Marseille', 'corniche marseille': 'Marseille',
         'presquile': 'Lyon', 'croix rousse': 'Lyon', 'vieux lyon': 'Lyon',
         'confluence': 'Lyon', 'part-dieu': 'Lyon',
-        'vieux nice': 'Nizza', 'promenade des anglais': 'Nizza', 'cimiez': 'Nizza',
+        'vieux nice': 'Nice', 'promenade des anglais': 'Nice', 'cimiez': 'Nice',
         'cours mirabeau': 'Aix-en-Provence',
         'saint-pierre': 'Bordeaux', 'chartrons': 'Bordeaux', 'bacalan': 'Bordeaux',
         'grande ile': 'Strasbourg', 'krutenau': 'Strasbourg',
@@ -1215,7 +1215,7 @@ export const CITY_ALIASES: Record<string, Record<string, string>> = {
         'saint jean de luz': 'Saint-Jean-de-Luz', 'hendaye': 'Hendaye',
         // French Riviera extras
         'antibes old town': 'Antibes', 'juan les pins': 'Antibes',
-        'eze village': 'Nizza', 'saint paul de vence': 'Saint-Paul de Vence',
+        'eze village': 'Nice', 'saint paul de vence': 'Saint-Paul de Vence',
         'grasse city': 'Grasse',
         'saint tropez village': 'Saint-Tropez', 'ramatuelle': 'Saint-Tropez',
         'port grimaud': 'Sainte-Maxime',
@@ -1289,6 +1289,10 @@ export const CITY_ALIASES: Record<string, Record<string, string>> = {
         'saint paul reunion': 'Saint-Denis',
     },
     ES: {
+        // El Bierzo is a comarca, not a town, so the geocoder has no feature for it and
+        // answered "Bierzo" with Bierzow in Poland. Ponferrada is its seat and where its
+        // 37 hotels are filed.
+        'bierzo': 'Ponferrada', 'el bierzo': 'Ponferrada', 'comarca del bierzo': 'Ponferrada',
         'gothic quarter': 'Barcelona', 'gotico': 'Barcelona', 'el born': 'Barcelona',
         'gracia': 'Barcelona', 'eixample': 'Barcelona', 'barceloneta': 'Barcelona',
         'poblenou': 'Barcelona', 'raval': 'Barcelona', 'montjuic': 'Barcelona',
@@ -1308,8 +1312,8 @@ export const CITY_ALIASES: Record<string, Record<string, string>> = {
         'old town malaga': 'Málaga', 'soho malaga': 'Málaga', 'teatinos': 'Málaga',
         'palma old town': 'Palma de Mallorca', 'santa catalina': 'Palma de Mallorca',
         // Ibiza
-        'ibiza old town': 'Ibiza-Stadt', 'dalt vila': 'Ibiza-Stadt', 'playa d en bossa': 'Ibiza-Stadt',
-        'ses salines ibiza': 'Ibiza-Stadt', 'santa eulalia': 'Ibiza-Stadt',
+        'ibiza old town': 'Ibiza', 'dalt vila': 'Ibiza', 'playa d en bossa': 'Ibiza',
+        'ses salines ibiza': 'Ibiza', 'santa eulalia': 'Ibiza',
         // Mallorca (non-Palma areas)
         'port de pollenca': 'Pollença', 'magaluf': 'Palma de Mallorca',
         // Menorca
@@ -1442,38 +1446,38 @@ export const CITY_ALIASES: Record<string, Record<string, string>> = {
     },
     IT: {
         // Rome — centro storico / tourist core
-        'trastevere': 'Rom', 'vatican': 'Rom', 'prati': 'Rom',
-        'testaccio': 'Rom', 'pigneto': 'Rom', 'monti': 'Rom',
-        'parioli': 'Rom', 'esquilino': 'Rom', 'ostiense': 'Rom',
-        'garbatella': 'Rom', 'flaminio': 'Rom',
-        'navona': 'Rom', 'campo de fiori': 'Rom', 'campo dei fiori': 'Rom',
-        'borgo': 'Rom', 'aventino': 'Rom', 'celio': 'Rom',
-        'centro storico rome': 'Rom', 'colosseo': 'Rom',
+        'trastevere': 'Rome', 'vatican': 'Rome', 'prati': 'Rome',
+        'testaccio': 'Rome', 'pigneto': 'Rome', 'monti': 'Rome',
+        'parioli': 'Rome', 'esquilino': 'Rome', 'ostiense': 'Rome',
+        'garbatella': 'Rome', 'flaminio': 'Rome',
+        'navona': 'Rome', 'campo de fiori': 'Rome', 'campo dei fiori': 'Rome',
+        'borgo': 'Rome', 'aventino': 'Rome', 'celio': 'Rome',
+        'centro storico rome': 'Rome', 'colosseo': 'Rome',
         // Rome — residential & outer districts
-        'ottavia': 'Rom', 'trionfale': 'Rom', 'aurelio': 'Rom',
-        'monteverde': 'Rom', 'portuense': 'Rom', 'trullo': 'Rom',
-        'marconi': 'Rom', 'eur': 'Rom', 'appio': 'Rom',
-        'appio claudio': 'Rom', 'tuscolano': 'Rom', 'casilino': 'Rom',
-        'prenestino': 'Rom', 'centocelle': 'Rom', 'torpignattara': 'Rom',
-        'tiburtino': 'Rom', 'san lorenzo rome': 'Rom',
-        'nomentano': 'Rom', 'salario': 'Rom', 'africano': 'Rom',
-        'coppede': 'Rom', 'balduina': 'Rom', 'vigna clara': 'Rom',
-        'navigli': 'Mailand', 'brera': 'Mailand', 'porta nuova': 'Mailand',
-        'isola': 'Mailand', 'porta venezia': 'Mailand', 'magenta': 'Mailand',
-        'centro storico milan': 'Mailand', 'duomo area': 'Mailand', 'ticinese': 'Mailand',
-        'porta romana': 'Mailand', 'città studi': 'Mailand', 'loreto': 'Mailand',
-        'cannaregio': 'Venedig', 'dorsoduro': 'Venedig', 'san polo': 'Venedig',
-        'castello venice': 'Venedig', 'giudecca': 'Venedig', 'mestre': 'Venedig',
-        'lido di venezia': 'Venedig',
-        'oltrarno': 'Florenz', 'santa croce': 'Florenz', 'san giovanni': 'Florenz',
-        'san marco florence': 'Florenz', 'santa maria novella': 'Florenz',
-        'spaccanapoli': 'Neapel', 'chiaia': 'Neapel', 'posillipo': 'Neapel',
-        'vomero': 'Neapel', 'quartieri spagnoli': 'Neapel', 'piazza garibaldi naples': 'Neapel',
-        'centro storico naples': 'Neapel',
+        'ottavia': 'Rome', 'trionfale': 'Rome', 'aurelio': 'Rome',
+        'monteverde': 'Rome', 'portuense': 'Rome', 'trullo': 'Rome',
+        'marconi': 'Rome', 'eur': 'Rome', 'appio': 'Rome',
+        'appio claudio': 'Rome', 'tuscolano': 'Rome', 'casilino': 'Rome',
+        'prenestino': 'Rome', 'centocelle': 'Rome', 'torpignattara': 'Rome',
+        'tiburtino': 'Rome', 'san lorenzo rome': 'Rome',
+        'nomentano': 'Rome', 'salario': 'Rome', 'africano': 'Rome',
+        'coppede': 'Rome', 'balduina': 'Rome', 'vigna clara': 'Rome',
+        'navigli': 'Milan', 'brera': 'Milan', 'porta nuova': 'Milan',
+        'isola': 'Milan', 'porta venezia': 'Milan', 'magenta': 'Milan',
+        'centro storico milan': 'Milan', 'duomo area': 'Milan', 'ticinese': 'Milan',
+        'porta romana': 'Milan', 'città studi': 'Milan', 'loreto': 'Milan',
+        'cannaregio': 'Venice', 'dorsoduro': 'Venice', 'san polo': 'Venice',
+        'castello venice': 'Venice', 'giudecca': 'Venice', 'mestre': 'Venice',
+        'lido di venezia': 'Venice',
+        'oltrarno': 'Florence', 'santa croce': 'Florence', 'san giovanni': 'Florence',
+        'san marco florence': 'Florence', 'santa maria novella': 'Florence',
+        'spaccanapoli': 'Naples', 'chiaia': 'Naples', 'posillipo': 'Naples',
+        'vomero': 'Naples', 'quartieri spagnoli': 'Naples', 'piazza garibaldi naples': 'Naples',
+        'centro storico naples': 'Naples',
         'quadrilatero romano': 'Turin', 'san salvario': 'Turin', 'vanchiglia': 'Turin',
         'cit turin': 'Turin', 'aurora': 'Turin',
         'quadrilatero': 'Bologna', 'bolognina': 'Bologna', 'porto bologna': 'Bologna',
-        'centro storico genoa': 'Genua', 'boccadasse': 'Genua',
+        'centro storico genoa': 'Genoa', 'boccadasse': 'Genoa',
         'catania city center': 'Catania', 'centro storico palermo': 'Palermo',
         // Verona
         'verona centro': 'Verona', 'veronetta': 'Verona', 'isolo verona': 'Verona',
@@ -1749,12 +1753,12 @@ export const CITY_ALIASES: Record<string, Record<string, string>> = {
         'alkmaar city': 'Alkmaar', 'leeuwarden': 'Leeuwarden',
     },
     PT: {
-        'alfama': 'Lissabon', 'bairro alto': 'Lissabon', 'belem': 'Lissabon',
-        'chiado': 'Lissabon', 'mouraria': 'Lissabon', 'intendente': 'Lissabon',
-        'avenidas novas': 'Lissabon', 'campo de ourique': 'Lissabon', 'santos': 'Lissabon',
-        'alcantara': 'Lissabon', 'bica': 'Lissabon', 'principe real': 'Lissabon',
-        'graça': 'Lissabon', 'estrela': 'Lissabon', 'campolide': 'Lissabon',
-        'parque das nacoes': 'Lissabon', 'oriente lisbon': 'Lissabon',
+        'alfama': 'Lisbon', 'bairro alto': 'Lisbon', 'belem': 'Lisbon',
+        'chiado': 'Lisbon', 'mouraria': 'Lisbon', 'intendente': 'Lisbon',
+        'avenidas novas': 'Lisbon', 'campo de ourique': 'Lisbon', 'santos': 'Lisbon',
+        'alcantara': 'Lisbon', 'bica': 'Lisbon', 'principe real': 'Lisbon',
+        'graça': 'Lisbon', 'estrela': 'Lisbon', 'campolide': 'Lisbon',
+        'parque das nacoes': 'Lisbon', 'oriente lisbon': 'Lisbon',
         'oeiras': 'Oeiras', 'cascais city': 'Cascais',
         'sintra old town': 'Sintra', 'pena palace area': 'Sintra',
         'setubal city': 'Setúbal', 'arrabida': 'Setúbal',
@@ -1804,9 +1808,9 @@ export const CITY_ALIASES: Record<string, Record<string, string>> = {
         'ramalde': 'Porto', 'aldoar': 'Porto', 'nevogilde': 'Porto',
         'antas porto': 'Porto', 'bonfim porto': 'Porto',
         // More Lisbon neighborhoods
-        'arroios': 'Lissabon', 'marvila': 'Lissabon', 'beato': 'Lissabon',
-        'penha de franca': 'Lissabon', 'sao joao': 'Lissabon',
-        'benfica lisbon': 'Lissabon', 'lumiar': 'Lissabon', 'amadora': 'Amadora',
+        'arroios': 'Lisbon', 'marvila': 'Lisbon', 'beato': 'Lisbon',
+        'penha de franca': 'Lisbon', 'sao joao': 'Lisbon',
+        'benfica lisbon': 'Lisbon', 'lumiar': 'Lisbon', 'amadora': 'Amadora',
         'loures': 'Loures', 'odivelas': 'Odivelas',
         // Azores extras
         'flores azores': 'Santa Cruz das Flores', 'corvo azores': 'Vila do Corvo',
@@ -1821,7 +1825,7 @@ export const CITY_ALIASES: Record<string, Record<string, string>> = {
         // Islands people search by island name, whose hotels the catalog files
         // under the main town. Each was searched for and reached nothing.
         'paros': 'Parikia', 'paros island': 'Parikia',
-        'kefalonia': 'Argostoli-Stadt', 'cephalonia': 'Argostoli-Stadt',
+        'kefalonia': 'Argostoli', 'cephalonia': 'Argostoli',
         'lesbos': 'Mytilini', 'lesvos': 'Mytilini',
         'plaka': 'Athens', 'monastiraki': 'Athens', 'kolonaki': 'Athens',
         'psiri': 'Athens', 'thissio': 'Athens', 'exarchia': 'Athens',
@@ -1842,7 +1846,7 @@ export const CITY_ALIASES: Record<string, Record<string, string>> = {
         'zakynthos town': 'Zakynthos', 'laganas': 'Zakynthos', 'navagio area': 'Zakynthos',
         'tsilivi': 'Zakynthos',
         // Kefalonia
-        'argostoli': 'Argostoli-Stadt', 'fiskardo': 'Fiskardo', 'skala kefalonia': 'Skala',
+        'argostoli': 'Argostoli', 'fiskardo': 'Fiskardo', 'skala kefalonia': 'Skala',
         'lixouri': 'Lixouri',
         // Paros
         'naoussa paros': 'Antiparos', 'parikia': 'Antiparos', 'golden beach paros': 'Antiparos',
@@ -1897,11 +1901,11 @@ export const CITY_ALIASES: Record<string, Record<string, string>> = {
         'katakolon': 'Pyrgos',
     },
     CZ: {
-        'old town': 'Prag', 'mala strana': 'Prag', 'vinohrady': 'Prag',
-        'zizkov': 'Prag', 'josefov': 'Prag', 'nove mesto': 'Prag',
-        'holesovice': 'Prag', 'dejvice': 'Prag', 'smichov': 'Prag',
-        'nusle': 'Prag', 'zbraslav': 'Prag',
-        'vysehrad': 'Prag', 'karlin': 'Prag', 'zlichov': 'Prag',
+        'old town': 'Prague', 'mala strana': 'Prague', 'vinohrady': 'Prague',
+        'zizkov': 'Prague', 'josefov': 'Prague', 'nove mesto': 'Prague',
+        'holesovice': 'Prague', 'dejvice': 'Prague', 'smichov': 'Prague',
+        'nusle': 'Prague', 'zbraslav': 'Prague',
+        'vysehrad': 'Prague', 'karlin': 'Prague', 'zlichov': 'Prague',
         'brno city center': 'Brno', 'brno stred': 'Brno', 'kralovo pole': 'Brno',
         'ostrava city': 'Stadtzentrum von Ostrava', 'poruba': 'Stadtzentrum von Ostrava',
         'plzen city': 'Pilsen', 'liberec city': 'Liberec (Reichenberg)',
@@ -1910,9 +1914,9 @@ export const CITY_ALIASES: Record<string, Record<string, string>> = {
         'karlovy vary': 'Karlsbad', 'marianske lazne': 'Mariánské Lázne',
         'cesky raj': 'Jičín', 'krkonose': 'Spindleruv Mlyn',
         // Prague extra neighborhoods
-        'zizkov prague': 'Prag', 'vrsovice': 'Prag', 'nusle prague': 'Prag',
-        'modany': 'Prag', 'branik': 'Prag', 'strascnice': 'Prag',
-        'pankrac': 'Prag', 'budejovicka': 'Prag', 'kobylisy': 'Prag',
+        'zizkov prague': 'Prague', 'vrsovice': 'Prague', 'nusle prague': 'Prague',
+        'modany': 'Prague', 'branik': 'Prague', 'strascnice': 'Prague',
+        'pankrac': 'Prague', 'budejovicka': 'Prague', 'kobylisy': 'Prague',
         // More Czech cities
         'hradec kralove': 'Königgrätz', 'pardubice city': 'Pardubice',
         'zlin city': 'Zlín', 'jihlava city': 'Jihlava', 'usti nad labem': 'Usti nad Labem (Aussig)',
@@ -1925,11 +1929,11 @@ export const CITY_ALIASES: Record<string, Record<string, string>> = {
         'harrachov': 'Harrachov', 'spindleruv mlyn': 'Spindleruv Mlyn',
     },
     PL: {
-        'old town warsaw': 'Warschau', 'praga': 'Warschau', 'srodmiescie': 'Warschau',
-        'mokotow': 'Warschau', 'ursynow': 'Warschau', 'zoliborz': 'Warschau',
-        'wola': 'Warschau', 'wlochy': 'Warschau',
-        'ochota': 'Warschau', 'targowek': 'Warschau', 'bielany': 'Warschau',
-        'wilanow': 'Warschau', 'bemowo': 'Warschau',
+        'old town warsaw': 'Warsaw', 'praga': 'Warsaw', 'srodmiescie': 'Warsaw',
+        'mokotow': 'Warsaw', 'ursynow': 'Warsaw', 'zoliborz': 'Warsaw',
+        'wola': 'Warsaw', 'wlochy': 'Warsaw',
+        'ochota': 'Warsaw', 'targowek': 'Warsaw', 'bielany': 'Warsaw',
+        'wilanow': 'Warsaw', 'bemowo': 'Warsaw',
         'kazimierz': 'Krakau', 'stare miasto': 'Krakau', 'podgorze': 'Krakau',
         'krowodrza': 'Krakau', 'nowa huta': 'Krakau',
         'zablocie': 'Krakau', 'bronowice': 'Krakau',
@@ -1949,9 +1953,9 @@ export const CITY_ALIASES: Record<string, Record<string, string>> = {
         'rzeszow city': 'Rzeszów', 'kielce city': 'Kielce',
         'auschwitz birkenau area': 'Krakau',
         // More Warsaw districts
-        'praga polnoc': 'Warschau', 'praga poludnie': 'Warschau', 'rembertow': 'Warschau',
-        'wawer': 'Warschau', 'wesola': 'Warschau', 'wilanow warsaw': 'Warschau',
-        'saska kepa': 'Warschau', 'grochow': 'Warschau', 'radosc': 'Warschau',
+        'praga polnoc': 'Warsaw', 'praga poludnie': 'Warsaw', 'rembertow': 'Warsaw',
+        'wawer': 'Warsaw', 'wesola': 'Warsaw', 'wilanow warsaw': 'Warsaw',
+        'saska kepa': 'Warsaw', 'grochow': 'Warsaw', 'radosc': 'Warsaw',
         // More Krakow
         'debniki': 'Krakau', 'pradnik czerwony': 'Krakau', 'nowy kleparz': 'Krakau',
         'lobzow': 'Krakau', 'grzegorzki': 'Krakau', 'pradnik bialy': 'Krakau',
@@ -2447,7 +2451,7 @@ export const CITY_ALIASES: Record<string, Record<string, string>> = {
         'fes el bali': 'Fès', 'fes medina': 'Fès', 'bou inania': 'Fès',
         'meknes city': 'Meknes', 'volubilis ruins': 'Meknes',
         // Tangier extras
-        'tangier old medina': 'Tanger (und Umgebung)', 'cap spartel': 'Tanger (und Umgebung)',
+        'tangier old medina': 'Tangier', 'cap spartel': 'Tangier',
         // Desert / Sahara
         'merzouga village': 'Merzouga', 'erg chebbi dunes': 'Merzouga',
         'zagora desert': 'Zagora', 'm hamid oasis': 'Zagora',
@@ -2658,8 +2662,8 @@ export const CITY_ALIASES: Record<string, Record<string, string>> = {
         // Sapporo
         'susukino': 'Sapporo', 'odori sapporo': 'Sapporo', 'tanukikoji': 'Sapporo',
         // Fukuoka
-        'tenjin': 'Fukuoka (und Umgebung)', 'nakasu': 'Fukuoka (und Umgebung)', 'hakata': 'Fukuoka (und Umgebung)',
-        'daimyo': 'Fukuoka (und Umgebung)', 'yakuin': 'Fukuoka (und Umgebung)', 'ohori': 'Fukuoka (und Umgebung)',
+        'tenjin': 'Fukuoka', 'nakasu': 'Fukuoka', 'hakata': 'Fukuoka',
+        'daimyo': 'Fukuoka', 'yakuin': 'Fukuoka', 'ohori': 'Fukuoka',
         // Nagoya
         'sakae': 'Nagoya', 'nagoya station area': 'Nagoya', 'osu': 'Nagoya',
         'meiekis': 'Nagoya', 'chikusa': 'Nagoya',
@@ -2828,7 +2832,7 @@ export const CITY_ALIASES: Record<string, Record<string, string>> = {
         'aso': 'Aso', 'mount aso': 'Aso', 'aso caldera': 'Aso', 'aso kuju': 'Aso',
         'kurokawa onsen': 'Aso', 'oguni': 'Aso',
         // Fukuoka / Kitakyushu
-        'ohori park fukuoka': 'Fukuoka (und Umgebung)', 'nishijin fukuoka': 'Fukuoka (und Umgebung)',
+        'ohori park fukuoka': 'Fukuoka', 'nishijin fukuoka': 'Fukuoka',
         'kokura': 'Kitakyushu', 'mojiko': 'Kitakyushu', 'moji port': 'Kitakyushu',
         'yanagawa': 'Yanagawa', 'yame': 'Yame',
         // Gifu
@@ -2921,7 +2925,7 @@ export const CITY_ALIASES: Record<string, Record<string, string>> = {
         'itoshima': 'Itoshima', 'itoshima beach': 'Itoshima',
         'kurume': 'Kurume', 'kurume ramen': 'Kurume',
         'iizuka': 'Iizuka', 'omuta': 'Kurume',
-        'koga fukuoka': 'Koga', 'fukuoka suburbs': 'Fukuoka (und Umgebung)',
+        'koga fukuoka': 'Koga', 'fukuoka suburbs': 'Fukuoka',
         // More Nagasaki / Kyushu
         'unzen': 'Unzen', 'unzen onsen': 'Unzen', 'unzen volcano': 'Unzen',
         'obama nagasaki': 'Obama', 'shimabara': 'Shimabara',
@@ -3025,7 +3029,7 @@ export const CITY_ALIASES: Record<string, Record<string, string>> = {
         'katsunuma': 'Koshu', 'koshu wine': 'Koshu', 'enzan': 'Koshu',
         // Japanese Kanji city names
         '東京': 'Tokyo', '大阪': 'Osaka', '京都': 'Kyoto',
-        '札幌': 'Sapporo', '福岡': 'Fukuoka (und Umgebung)', '名古屋': 'Nagoya',
+        '札幌': 'Sapporo', '福岡': 'Fukuoka', '名古屋': 'Nagoya',
         '広島': 'Hiroshima', '仙台': 'Sendai', '横浜': 'Yokohama',
         '神戸': 'Kobe', '奈良': 'Nara', '長崎': 'Nagasaki',
         '鹿児島': 'Kagoshima', '熊本': 'Kumamoto', '沖縄': 'Naha',
@@ -3083,7 +3087,7 @@ export const CITY_ALIASES: Record<string, Record<string, string>> = {
         // Sokcho / Gangwon
         'sokcho city': 'Sokcho', 'seoraksan': 'Sokcho',
         // Daegu
-        'dongseongno': 'Daegu (und Umgebung)', 'seomun market': 'Daegu (und Umgebung)',
+        'dongseongno': 'Daegu', 'seomun market': 'Daegu',
         // Gwangju
         'gwangju city centre': 'Gwangju',
         // Daejeon
@@ -3114,10 +3118,10 @@ export const CITY_ALIASES: Record<string, Record<string, string>> = {
         'dangsan': 'Seoul', 'gimpo airport area': 'Seoul',
         'godeok': 'Seoul', 'cheonho': 'Seoul', 'amsa': 'Seoul',
         // Daegu (대구) neighborhoods
-        'suseong': 'Daegu (und Umgebung)', 'dalseo': 'Daegu (und Umgebung)', 'dalseong': 'Daegu (und Umgebung)',
-        'jung-gu daegu': 'Daegu (und Umgebung)', 'buk-gu daegu': 'Daegu (und Umgebung)',
-        'duryu': 'Daegu (und Umgebung)', 'anjirang': 'Daegu (und Umgebung)', 'chilseong': 'Daegu (und Umgebung)',
-        'banwoldang': 'Daegu (und Umgebung)', 'suseong lake': 'Daegu (und Umgebung)', 'apsan': 'Daegu (und Umgebung)',
+        'suseong': 'Daegu', 'dalseo': 'Daegu', 'dalseong': 'Daegu',
+        'jung-gu daegu': 'Daegu', 'buk-gu daegu': 'Daegu',
+        'duryu': 'Daegu', 'anjirang': 'Daegu', 'chilseong': 'Daegu',
+        'banwoldang': 'Daegu', 'suseong lake': 'Daegu', 'apsan': 'Daegu',
         // Gwangju (광주) neighborhoods
         'chungjang-ro': 'Gwangju', 'buk-gu gwangju': 'Gwangju',
         'sang-mu': 'Gwangju', 'unam': 'Gwangju', 'seo-gu gwangju': 'Gwangju',
@@ -3216,7 +3220,7 @@ export const CITY_ALIASES: Record<string, Record<string, string>> = {
         'dongducheon': 'Dongducheon', 'yanggu': 'Inje',
         // Jeolla region
         "mokpo": "Mokp'o", "yudalsan": "Mokp'o",
-        'suncheon': 'Suncheon (und Umgebung)', 'suncheon bay': 'Suncheon (und Umgebung)', 'suncheonman': 'Suncheon (und Umgebung)',
+        'suncheon': 'Suncheon', 'suncheon bay': 'Suncheon', 'suncheonman': 'Suncheon',
         'yeosu odongdo': 'Yòsu',
         'damyang': 'Gwangju', 'metasequoia road': 'Gwangju',
         'jindo': "Mokp'o", 'wando': 'Wando',
@@ -3252,19 +3256,19 @@ export const CITY_ALIASES: Record<string, Record<string, string>> = {
         // Gyeongbuk (North Gyeongsang) — missing cities
         'gumi': 'Kumi', 'gumi samsung': 'Kumi', 'gumi industrial complex': 'Kumi',
         'yeongcheon': 'Gyeongju', 'yeongcheon wine': 'Gyeongju',
-        'cheongdo': 'Daegu (und Umgebung)', 'cheongdo bullfighting': 'Daegu (und Umgebung)',
+        'cheongdo': 'Daegu', 'cheongdo bullfighting': 'Daegu',
         'uiseong': 'Andong', 'uiseong garlic': 'Andong',
         'mungyeong': 'Mungyeong-eup', 'mungyeong saejae': 'Mungyeong-eup', 'mungyeong tea bowl': 'Mungyeong-eup',
         'sangju': 'Sangju-si', 'sangju cycling': 'Sangju-si',
-        'gunwi': 'Daegu (und Umgebung)',
+        'gunwi': 'Daegu',
         'yeongdeok': 'Pohang', 'yeongdeok crab': 'Pohang', 'yeongdeok blueroad': 'Pohang',
         'yeongju': 'Yeongju', 'buseoksa': 'Yeongju', 'sobaeksan yeongju': 'Yeongju',
         'yecheon': 'Andong', 'world archery yeongju': 'Yeongju',
         'bonghwa': 'Yeongju',
         'yeongyang': 'Andong',
         'cheongsong': 'Cheongsong-eup',
-        'seongju': 'Daegu (und Umgebung)',
-        'goryeong': 'Daegu (und Umgebung)', 'daegaya': 'Daegu (und Umgebung)',
+        'seongju': 'Daegu',
+        'goryeong': 'Daegu', 'daegaya': 'Daegu',
         // Gyeongju additional areas
         'tumuli park': 'Gyeongju', 'cheomseongdae': 'Gyeongju',
         'anapji': 'Gyeongju', 'bomun lake': 'Gyeongju',
@@ -3287,7 +3291,7 @@ export const CITY_ALIASES: Record<string, Record<string, string>> = {
         'goheung': 'Yòsu', 'naro space center': 'Yòsu', 'sorokdo': 'Yòsu',
         'haenam': "Mokp'o", 'ttangkkeut': "Mokp'o", 'haenam southernmost': "Mokp'o",
         'gangjin': "Mokp'o", 'gangjin celadon': "Mokp'o", 'dasan chodang': "Mokp'o",
-        'gokseong': 'Suncheon (und Umgebung)', 'gokseong train village': 'Suncheon (und Umgebung)',
+        'gokseong': 'Suncheon', 'gokseong train village': 'Suncheon',
         'gurye': 'Gurye', 'gurye jirisan': 'Gurye', 'gurye sansuyu': 'Gurye',
         'jangheung': 'Jangheung-myeon',
         // North Jeolla (Jeonbuk) — missing cities
@@ -3326,8 +3330,8 @@ export const CITY_ALIASES: Record<string, Record<string, string>> = {
         'yeonje': 'Busan', 'yeonje-gu': 'Busan', 'hadan': 'Busan',
         'amnam park': 'Busan', 'taejongdae': 'Busan',
         // More Daegu neighborhoods
-        'palgong mountain': 'Daegu (und Umgebung)', 'daegu sta area': 'Daegu (und Umgebung)',
-        'daegu seomun': 'Daegu (und Umgebung)',
+        'palgong mountain': 'Daegu', 'daegu sta area': 'Daegu',
+        'daegu seomun': 'Daegu',
         // More Ulsan neighborhoods
         'ulsan buk-gu': 'Ulsan', 'ulju': 'Ulsan',
         'bangeojin': 'Ulsan', 'jangsaengpo whale museum': 'Ulsan',
@@ -3349,14 +3353,14 @@ export const CITY_ALIASES: Record<string, Record<string, string>> = {
         'chiaksan national park': 'Wonju',
         // Hangeul city name variants
         '서울': 'Seoul', '부산': 'Busan', '인천': "Inch'on",
-        '대구': 'Daegu (und Umgebung)', '광주': 'Gwangju', '대전': 'Daejeon',
+        '대구': 'Daegu', '광주': 'Gwangju', '대전': 'Daejeon',
         '울산': 'Ulsan', '제주': 'Jeju', '수원': 'Suwon',
         '전주': 'Jeonju', '청주': 'Cheongju', '천안': 'Cheonan',
         '경주': 'Gyeongju', '포항': 'Pohang', '안동': 'Andong',
         '여수': 'Yòsu', '목포': "Mokp'o", '강릉': 'Gangneung',
         '춘천': 'Chuncheon', '속초': 'Sokcho', '원주': 'Wonju',
         '군산': 'Kunsan', '남원': 'Namwon',
-        '순천': 'Suncheon (und Umgebung)', '나주': 'Naju', '여천': 'Yòsu',
+        '순천': 'Suncheon', '나주': 'Naju', '여천': 'Yòsu',
         '창원': 'Changwon', '진주': 'Chinju', '거제': 'Geoje',
         '통영': 'Tongyeong', '김해': 'Gimhae', '양산': 'Yangsan',
         '구미': 'Kumi', '안양': 'Anyang', '성남': 'Seongnam',
@@ -3375,7 +3379,7 @@ export const CITY_ALIASES: Record<string, Record<string, string>> = {
         '서울특별시': 'Seoul', 'seoul teukbyeolsi': 'Seoul',
         // 2–6. Metropolitan Cities (광역시)
         '부산광역시': 'Busan', 'busan gwangyeoksi': 'Busan',
-        '대구광역시': 'Daegu (und Umgebung)', 'daegu gwangyeoksi': 'Daegu (und Umgebung)',
+        '대구광역시': 'Daegu', 'daegu gwangyeoksi': 'Daegu',
         '인천광역시': "Inch'on", 'incheon gwangyeoksi': "Inch'on",
         '광주광역시': 'Gwangju', 'gwangju gwangyeoksi': 'Gwangju',
         '대전광역시': 'Daejeon', 'daejeon gwangyeoksi': 'Daejeon',
@@ -3430,17 +3434,17 @@ export const CITY_ALIASES: Record<string, Record<string, string>> = {
         'gyeryong': 'Daejeon', '계룡': 'Daejeon',
         'yesan county': 'Cheonan', '예산': 'Cheonan',
         // ── Gyeongbuk Hangeul keys ───────────────────────────────────────────
-        '군위': 'Daegu (und Umgebung)', '울릉': 'Pohang', '영덕': 'Pohang',
-        '영천': 'Gyeongju', '청도': 'Daegu (und Umgebung)', '의성': 'Andong',
+        '군위': 'Daegu', '울릉': 'Pohang', '영덕': 'Pohang',
+        '영천': 'Gyeongju', '청도': 'Daegu', '의성': 'Andong',
         '문경': 'Mungyeong-eup', '상주': 'Sangju-si', '예천': 'Andong',
         '봉화': 'Yeongju', '영양': 'Andong', '청송': 'Cheongsong-eup',
-        '성주': 'Daegu (und Umgebung)', '고령': 'Daegu (und Umgebung)', '영주': 'Yeongju',
+        '성주': 'Daegu', '고령': 'Daegu', '영주': 'Yeongju',
         // ── Gyeongnam Hangeul keys ───────────────────────────────────────────
         '하동': 'Gurye', '함안': 'Changwon', '의령': 'Chinju',
         '합천': 'Changwon', '산청': 'Chinju', '함양': 'Chinju',
         '고성군': 'Tongyeong', '남해': 'Namhae',
         // ── Jeonnam Hangeul keys ─────────────────────────────────────────────
-        '무안': "Mokp'o", '강진': "Mokp'o", '곡성': 'Suncheon (und Umgebung)',
+        '무안': "Mokp'o", '강진': "Mokp'o", '곡성': 'Suncheon',
         '장흥': 'Jangheung-myeon', '신안': "Mokp'o", '담양': 'Gwangju',
         '구례': 'Gurye', '화순': 'Gwangju', '영암': "Mokp'o",
         '장성': 'Gwangju', '영광': "Mokp'o",
@@ -4275,7 +4279,7 @@ export const CITY_ALIASES: Record<string, Record<string, string>> = {
         'taiping': 'Taiping', 'teluk intan': 'Teluk Intan', 'sitiawan': 'Sitiawan',
         'lumut': 'Lumut', 'pangkor island': 'Lumut',
         // Pahang / East Coast
-        'kuantan': 'Kuantan (und Umgebung)', 'cherating': 'Kuantan (und Umgebung)', 'beserah': 'Kuantan (und Umgebung)',
+        'kuantan': 'Kuantan', 'cherating': 'Kuantan', 'beserah': 'Kuantan',
         'fraser hill': 'Bukit Fraser', 'raub': 'Raub',
         'jerantut': 'Jerantut', 'taman negara': 'Jerantut',
         'rompin': 'Kuala Rompin',
@@ -4503,11 +4507,11 @@ export const CITY_ALIASES: Record<string, Record<string, string>> = {
         'ขอนแก่น': 'Khon Kaen', 'อุดรธานี': 'Udon Thani',
     },
     VN: {
-        'district 1': 'Ho-Chi-Minh-Stadt', 'ben thanh': 'Ho-Chi-Minh-Stadt',
-        'bui vien': 'Ho-Chi-Minh-Stadt', 'thao dien': 'Ho-Chi-Minh-Stadt',
-        'phu my hung': 'Ho-Chi-Minh-Stadt', 'district 3': 'Ho-Chi-Minh-Stadt',
-        'district 7': 'Ho-Chi-Minh-Stadt', 'binh thanh': 'Ho-Chi-Minh-Stadt',
-        'tan binh': 'Ho-Chi-Minh-Stadt', 'go vap': 'Ho-Chi-Minh-Stadt',
+        'district 1': 'Ho Chi Minh City', 'ben thanh': 'Ho Chi Minh City',
+        'bui vien': 'Ho Chi Minh City', 'thao dien': 'Ho Chi Minh City',
+        'phu my hung': 'Ho Chi Minh City', 'district 3': 'Ho Chi Minh City',
+        'district 7': 'Ho Chi Minh City', 'binh thanh': 'Ho Chi Minh City',
+        'tan binh': 'Ho Chi Minh City', 'go vap': 'Ho Chi Minh City',
         'old quarter': 'Hanoi', 'hoan kiem': 'Hanoi', 'tay ho': 'Hanoi',
         'ba dinh': 'Hanoi', 'dong da': 'Hanoi', 'cau giay': 'Hanoi',
         'long bien': 'Hanoi', 'hai ba trung': 'Hanoi',
@@ -4529,15 +4533,15 @@ export const CITY_ALIASES: Record<string, Record<string, string>> = {
         // Halong extras
         'cat ba island': 'Ha Long',
         // HCMC — additional districts
-        'saigon': 'Ho-Chi-Minh-Stadt', 'hcmc': 'Ho-Chi-Minh-Stadt', 'ho chi minh': 'Ho-Chi-Minh-Stadt',
-        'district 2': 'Ho-Chi-Minh-Stadt', 'district 4': 'Ho-Chi-Minh-Stadt',
-        'district 5': 'Ho-Chi-Minh-Stadt', 'district 6': 'Ho-Chi-Minh-Stadt',
-        'district 8': 'Ho-Chi-Minh-Stadt', 'district 9': 'Ho-Chi-Minh-Stadt',
-        'district 10': 'Ho-Chi-Minh-Stadt', 'district 11': 'Ho-Chi-Minh-Stadt',
-        'district 12': 'Ho-Chi-Minh-Stadt', 'cholon': 'Ho-Chi-Minh-Stadt',
-        'phu nhuan': 'Ho-Chi-Minh-Stadt', 'thu duc': 'Ho-Chi-Minh-Stadt',
-        'pham ngu lao': 'Ho-Chi-Minh-Stadt', 'landmark 81': 'Ho-Chi-Minh-Stadt',
-        'ben nghe': 'Ho-Chi-Minh-Stadt', 'vinhomes central park': 'Ho-Chi-Minh-Stadt',
+        'saigon': 'Ho Chi Minh City', 'hcmc': 'Ho Chi Minh City', 'ho chi minh': 'Ho Chi Minh City',
+        'district 2': 'Ho Chi Minh City', 'district 4': 'Ho Chi Minh City',
+        'district 5': 'Ho Chi Minh City', 'district 6': 'Ho Chi Minh City',
+        'district 8': 'Ho Chi Minh City', 'district 9': 'Ho Chi Minh City',
+        'district 10': 'Ho Chi Minh City', 'district 11': 'Ho Chi Minh City',
+        'district 12': 'Ho Chi Minh City', 'cholon': 'Ho Chi Minh City',
+        'phu nhuan': 'Ho Chi Minh City', 'thu duc': 'Ho Chi Minh City',
+        'pham ngu lao': 'Ho Chi Minh City', 'landmark 81': 'Ho Chi Minh City',
+        'ben nghe': 'Ho Chi Minh City', 'vinhomes central park': 'Ho Chi Minh City',
         // Hanoi — additional
         'my dinh': 'Hanoi', 'nam tu liem': 'Hanoi', 'hoang mai': 'Hanoi',
         'ha dong': 'Hanoi', 'thanh xuan': 'Hanoi', 'tay ho tay': 'Hanoi',
@@ -4574,23 +4578,23 @@ export const CITY_ALIASES: Record<string, Record<string, string>> = {
         // More Nha Trang
         'hon tam': 'Nha Trang', 'doc let beach': 'Nha Trang', 'vinpearl nha trang': 'Nha Trang',
         // More HCMC
-        'thu thiem': 'Ho-Chi-Minh-Stadt', 'binh chanh': 'Ho-Chi-Minh-Stadt',
-        'hoc mon': 'Ho-Chi-Minh-Stadt', 'binh duong': 'Ho-Chi-Minh-Stadt',
+        'thu thiem': 'Ho Chi Minh City', 'binh chanh': 'Ho Chi Minh City',
+        'hoc mon': 'Ho Chi Minh City', 'binh duong': 'Ho Chi Minh City',
         // Vung Tau expanded
         'vung tau long hai': 'Vung Tàu', 'ho tram': 'Vung Tàu',
         // Delta
         'my tho': 'Mỹ Tho', 'ben tre': 'Ben Tre',
         'vinh long': 'Vinh Long', 'chau doc': 'Chau Doc',
         'ha tien': 'Ha Tien', 'long xuyen': 'Long Xuyen',
-        'soc trang': 'Ho-Chi-Minh-Stadt', 'bac lieu': 'Bac Lieu',
+        'soc trang': 'Ho Chi Minh City', 'bac lieu': 'Bac Lieu',
         'ca mau': 'Ca Mau',
         // More Hanoi districts
         'ba vi': 'Hanoi', 'son tay': 'Hanoi', 'hoai duc': 'Hanoi',
         'thu duc hanoi': 'Hanoi', 'dong anh': 'Hanoi', 'soc son': 'Hanoi',
         'me linh': 'Hanoi', 'gia lam': 'Hanoi',
         // More HCMC areas
-        'binh tan': 'Ho-Chi-Minh-Stadt', 'cu chi': 'Ho-Chi-Minh-Stadt',
-        'can gio': 'Ho-Chi-Minh-Stadt', 'nha be': 'Ho-Chi-Minh-Stadt',
+        'binh tan': 'Ho Chi Minh City', 'cu chi': 'Ho Chi Minh City',
+        'can gio': 'Ho Chi Minh City', 'nha be': 'Ho Chi Minh City',
         // Central Vietnam
         'dong hoi': 'Dong Hoi', 'phong nha': 'Phong Nha', 'phong nha ke bang': 'Phong Nha',
         'paradise cave': 'Phong Nha', 'son doong': 'Phong Nha',
@@ -4636,8 +4640,8 @@ export const CITY_ALIASES: Record<string, Record<string, string>> = {
         'fairy stream': 'Mui Ne', 'binh thuan': 'Mui Ne',
         // Vietnamese diacritic names
         'hà nội': 'Hanoi', 'ha noi': 'Hanoi',
-        'thành phố hồ chí minh': 'Ho-Chi-Minh-Stadt',
-        'hồ chí minh': 'Ho-Chi-Minh-Stadt', 'sài gòn': 'Ho-Chi-Minh-Stadt',
+        'thành phố hồ chí minh': 'Ho Chi Minh City',
+        'hồ chí minh': 'Ho Chi Minh City', 'sài gòn': 'Ho Chi Minh City',
         'đà nẵng': 'Da Nang', 'da nang': 'Da Nang',
         'huế': 'Hue', 'hội an': 'Hoi An',
         'nha trang': 'Nha Trang', 'đà lạt': 'Ðà Lat', 'da lat': 'Ðà Lat',
@@ -4901,9 +4905,9 @@ export const CITY_ALIASES: Record<string, Record<string, string>> = {
         'bani park': 'Jaipur', 'civil lines jaipur': 'Jaipur', 'malviya nagar jaipur': 'Jaipur',
         'sindhi camp': 'Jaipur', 'old city jaipur': 'Jaipur',
         // Kolkata
-        'park street': 'Kalkutta', 'salt lake': 'Kalkutta', 'new town kolkata': 'Kalkutta',
-        'ballygunge': 'Kalkutta', 'behala': 'Kalkutta', 'howrah': 'Kalkutta',
-        'lake town': 'Kalkutta',
+        'park street': 'Kolkata', 'salt lake': 'Kolkata', 'new town kolkata': 'Kolkata',
+        'ballygunge': 'Kolkata', 'behala': 'Kolkata', 'howrah': 'Kolkata',
+        'lake town': 'Kolkata',
         // Ahmedabad
         'satellite': 'Ahmedabad', 'navrangpura': 'Ahmedabad', 'cg road': 'Ahmedabad',
         'prahladnagar': 'Ahmedabad',
@@ -4951,7 +4955,7 @@ export const CITY_ALIASES: Record<string, Record<string, string>> = {
         'vizag beach': 'Visakhapatnam', 'rushikonda': 'Visakhapatnam',
         // Udaipur extras - already added above
         // Kolkata extras
-        'esplanade kolkata': 'Kalkutta', 'college street': 'Kalkutta',
+        'esplanade kolkata': 'Kolkata', 'college street': 'Kolkata',
         // North East India
         'gangtok mg road': 'Gangtok', 'rumtek': 'Gangtok',
         'shillong police bazaar': 'Shillong',
@@ -5000,10 +5004,10 @@ export const CITY_ALIASES: Record<string, Record<string, string>> = {
         'dona paula': 'Panaji', 'campal': 'Panaji', 'vasco da gama': 'Süd-Goa', 'bogmalo': 'Süd-Goa',
         'margao': 'Süd-Goa', 'curca': 'Panaji',
         // Kolkata — more neighborhoods
-        'jadavpur': 'Kalkutta', 'tollygunge': 'Kalkutta', 'dhakuria': 'Kalkutta',
-        'gariahat': 'Kalkutta', 'alipore': 'Kalkutta', 'elgin kolkata': 'Kalkutta',
-        'dum dum': 'Kalkutta', 'shyambazar': 'Kalkutta', 'ultadanga': 'Kalkutta',
-        'bidhannagar': 'Kalkutta', 'new alipore': 'Kalkutta', 'barrackpore': 'Kalkutta',
+        'jadavpur': 'Kolkata', 'tollygunge': 'Kolkata', 'dhakuria': 'Kolkata',
+        'gariahat': 'Kolkata', 'alipore': 'Kolkata', 'elgin kolkata': 'Kolkata',
+        'dum dum': 'Kolkata', 'shyambazar': 'Kolkata', 'ultadanga': 'Kolkata',
+        'bidhannagar': 'Kolkata', 'new alipore': 'Kolkata', 'barrackpore': 'Kolkata',
         // Ahmedabad — more neighborhoods
         'vastrapur': 'Ahmedabad', 'bodakdev': 'Ahmedabad', 'drive in ahmedabad': 'Ahmedabad',
         'sarkhej': 'Ahmedabad', 'maninagar': 'Ahmedabad', 'chandkheda': 'Ahmedabad',
@@ -5183,7 +5187,7 @@ export const CITY_ALIASES: Record<string, Record<string, string>> = {
         // Hindi language city names
         'मुंबई': 'Mumbai', 'दिल्ली': 'New Delhi', 'नई दिल्ली': 'New Delhi',
         'बेंगलुरु': 'Bengaluru', 'चेन्नई': 'Chennai', 'हैदराबाद': 'Hyderabad',
-        'कोलकाता': 'Kalkutta', 'पुणे': 'Pune', 'अहमदाबाद': 'Ahmedabad',
+        'कोलकाता': 'Kolkata', 'पुणे': 'Pune', 'अहमदाबाद': 'Ahmedabad',
         'जयपुर': 'Jaipur', 'वाराणसी': 'Varanasi', 'आगरा': 'Agra',
         'लखनऊ': 'Lucknow', 'कानपुर': 'Kanpur', 'नागपुर': 'Nagpur',
         'इंदौर': 'Indore', 'भोपाल': 'Bhopal', 'पटना': 'Patna',
@@ -5408,7 +5412,7 @@ export const CITY_ALIASES: Record<string, Record<string, string>> = {
         // Regional WA
         'broome': 'Broome', 'port hedland': 'Port Hedland',
         'karratha': 'Karratha', 'carnarvon wa': 'Carnarvon',
-        'geraldton': 'Geraldton (und Umgebung)', 'kalgoorlie': 'Kalgoorlie',
+        'geraldton': 'Geraldton', 'kalgoorlie': 'Kalgoorlie',
         'esperance': 'Esperance', 'albany wa': 'Albany',
         'bunbury': 'Bunbury', 'busselton': 'Busselton',
         'dunsborough': 'Dunsborough', 'yallingup': 'Dunsborough',
@@ -6789,11 +6793,11 @@ export const CITY_ALIASES: Record<string, Record<string, string>> = {
         'brattora': 'Trondheim', 'lerkendal': 'Trondheim',
     },
     DK: {
-        'norrebro': 'Kopenhagen', 'vesterbro': 'Kopenhagen', 'frederiksberg': 'Frederiksberg',
-        'christianshavn': 'Kopenhagen', 'indre by': 'Kopenhagen',
-        'osterbro': 'Kopenhagen', 'amager': 'Kopenhagen', 'sydhavn': 'Kopenhagen',
-        'kongens enghave': 'Kopenhagen', 'vanlose': 'Kopenhagen', 'bronshoj': 'Kopenhagen',
-        'hellerup': 'Kopenhagen', 'gentofte': 'Kopenhagen', 'lyngby': 'Kopenhagen',
+        'norrebro': 'Copenhagen', 'vesterbro': 'Copenhagen', 'frederiksberg': 'Frederiksberg',
+        'christianshavn': 'Copenhagen', 'indre by': 'Copenhagen',
+        'osterbro': 'Copenhagen', 'amager': 'Copenhagen', 'sydhavn': 'Copenhagen',
+        'kongens enghave': 'Copenhagen', 'vanlose': 'Copenhagen', 'bronshoj': 'Copenhagen',
+        'hellerup': 'Copenhagen', 'gentofte': 'Copenhagen', 'lyngby': 'Copenhagen',
         'randers': 'Randers', 'silkeborg': 'Silkeborg',
         'aarhus city center': 'Aarhus', 'latin quarter aarhus': 'Aarhus',
         'odense city': 'Odense', 'aalborg city': 'Aalborg',
@@ -6859,13 +6863,13 @@ export const CITY_ALIASES: Record<string, Record<string, string>> = {
     },
     // ── Central/Eastern Europe additions ──────────────────────────────────────
     AT: {
-        'innere stadt': 'Wien', 'mariahilf': 'Wien', 'neubau': 'Wien',
-        'leopoldstadt': 'Wien', 'wieden': 'Wien', 'alsergrund': 'Wien',
-        'josefstadt': 'Wien', 'favoriten': 'Wien', 'ottakring': 'Wien',
-        'hernals': 'Wien', 'wahring': 'Wien',
-        'donaustadt': 'Wien', 'simmering': 'Wien', 'liesing': 'Wien',
-        'floridsdorf': 'Wien', 'brigittenau': 'Wien', 'meidling': 'Wien',
-        'penzing': 'Wien', 'rudolfsheim': 'Wien', 'margareten': 'Wien',
+        'innere stadt': 'Vienna', 'mariahilf': 'Vienna', 'neubau': 'Vienna',
+        'leopoldstadt': 'Vienna', 'wieden': 'Vienna', 'alsergrund': 'Vienna',
+        'josefstadt': 'Vienna', 'favoriten': 'Vienna', 'ottakring': 'Vienna',
+        'hernals': 'Vienna', 'wahring': 'Vienna',
+        'donaustadt': 'Vienna', 'simmering': 'Vienna', 'liesing': 'Vienna',
+        'floridsdorf': 'Vienna', 'brigittenau': 'Vienna', 'meidling': 'Vienna',
+        'penzing': 'Vienna', 'rudolfsheim': 'Vienna', 'margareten': 'Vienna',
         'altstadt salzburg': 'Salzburg', 'parsch': 'Salzburg',
         'nonntal': 'Salzburg', 'schallmoos': 'Salzburg',
         'innsbruck city center': 'Innsbruck', 'wilten': 'Innsbruck', 'pradl': 'Innsbruck',
@@ -6887,8 +6891,8 @@ export const CITY_ALIASES: Record<string, Record<string, string>> = {
         'oerlikon': 'Zürich', 'affoltern': 'Zürich', 'schwamendingen': 'Zürich',
         'old town bern': 'Bern', 'lorraine': 'Bern',
         'bethlehem bern': 'Bern', 'kirchenfeld': 'Bern',
-        'paquis': 'Genf', 'eaux-vives': 'Genf', 'plainpalais': 'Genf',
-        'carouge': 'Genf', 'acacias': 'Genf',
+        'paquis': 'Geneva', 'eaux-vives': 'Geneva', 'plainpalais': 'Geneva',
+        'carouge': 'Geneva', 'acacias': 'Geneva',
         'ouchy': 'Lausanne', 'flon': 'Lausanne', 'prilly': 'Lausanne',
         'lucerne old town': 'Lucerne', 'tribschen': 'Lucerne',
         'basel city center': 'Basel', 'gundeldingen': 'Basel',
@@ -6910,11 +6914,11 @@ export const CITY_ALIASES: Record<string, Record<string, string>> = {
         'sion valais': 'Sitten',
     },
     BE: {
-        'grand place': 'Brüssel', 'ixelles': 'Brüssel', 'saint-gilles': 'Brüssel',
-        'molenbeek': 'Brüssel', 'uccle': 'Brüssel', 'schaerbeek': 'Brüssel',
-        'etterbeek': 'Brüssel', 'laeken': 'Brüssel',
-        'anderlecht': 'Brüssel', 'forest brussels': 'Brüssel', 'jette': 'Brüssel',
-        'woluwe saint lambert': 'Brüssel', 'auderghem': 'Brüssel',
+        'grand place': 'Brussels', 'ixelles': 'Brussels', 'saint-gilles': 'Brussels',
+        'molenbeek': 'Brussels', 'uccle': 'Brussels', 'schaerbeek': 'Brussels',
+        'etterbeek': 'Brussels', 'laeken': 'Brussels',
+        'anderlecht': 'Brussels', 'forest brussels': 'Brussels', 'jette': 'Brussels',
+        'woluwe saint lambert': 'Brussels', 'auderghem': 'Brussels',
         'old town bruges': 'Brügge', 'sint-anna': 'Brügge',
         'damme': 'Brügge', 'zeebrugge': 'Brügge', 'knokke': 'Knokke-Heist',
         'antwerp city center': 'Antwerpen', 'eilandje': 'Antwerpen', 'berchem': 'Antwerpen',
@@ -6948,12 +6952,12 @@ export const CITY_ALIASES: Record<string, Record<string, string>> = {
         'hasselt': 'Hasselt',
     },
     RO: {
-        'old town bucharest': 'Bukarest', 'floreasca': 'Bukarest', 'dorobanti': 'Bukarest',
-        'herastrau': 'Bukarest', 'victoriei': 'Bukarest', 'unirii': 'Bukarest',
-        'baneasa': 'Bukarest', 'ilfov': 'Bukarest', 'pipera': 'Bukarest',
-        'pantelimon': 'Bukarest', 'militari': 'Bukarest', 'drumul taberei': 'Bukarest',
-        'sector 1': 'Bukarest', 'sector 2': 'Bukarest', 'sector 3': 'Bukarest',
-        'sector 4': 'Bukarest', 'sector 5': 'Bukarest', 'sector 6': 'Bukarest',
+        'old town bucharest': 'Bucharest', 'floreasca': 'Bucharest', 'dorobanti': 'Bucharest',
+        'herastrau': 'Bucharest', 'victoriei': 'Bucharest', 'unirii': 'Bucharest',
+        'baneasa': 'Bucharest', 'ilfov': 'Bucharest', 'pipera': 'Bucharest',
+        'pantelimon': 'Bucharest', 'militari': 'Bucharest', 'drumul taberei': 'Bucharest',
+        'sector 1': 'Bucharest', 'sector 2': 'Bucharest', 'sector 3': 'Bucharest',
+        'sector 4': 'Bucharest', 'sector 5': 'Bucharest', 'sector 6': 'Bucharest',
         'cluj napoca city center': 'Cluj-Napoca (Klausenburg)', 'manastur': 'Cluj-Napoca (Klausenburg)',
         'buna ziua': 'Cluj-Napoca (Klausenburg)', 'floresti cluj': 'Cluj-Napoca (Klausenburg)',
         'brasov old town': 'Brasov', 'schei': 'Brasov',
@@ -6973,10 +6977,10 @@ export const CITY_ALIASES: Record<string, Record<string, string>> = {
         'tulcea': 'Tulcea', 'danube delta': 'Tulcea',
         'neptun beach': 'Constanta', 'jupiter resort': 'Constanta',
         // More Bucharest
-        'cotroceni': 'Bukarest', 'grozavesti': 'Bukarest', 'titan bucharest': 'Bukarest',
-        'colentina': 'Bukarest', 'obor': 'Bukarest', 'tei bucharest': 'Bukarest',
-        'balta alba': 'Bukarest', 'voluntari': 'Bukarest', 'otopeni': 'Bukarest',
-        'mogosoaia': 'Bukarest', 'afumati': 'Bukarest',
+        'cotroceni': 'Bucharest', 'grozavesti': 'Bucharest', 'titan bucharest': 'Bucharest',
+        'colentina': 'Bucharest', 'obor': 'Bucharest', 'tei bucharest': 'Bucharest',
+        'balta alba': 'Bucharest', 'voluntari': 'Bucharest', 'otopeni': 'Bucharest',
+        'mogosoaia': 'Bucharest', 'afumati': 'Bucharest',
         // More Cluj-Napoca
         'gheorgheni cluj': 'Cluj-Napoca (Klausenburg)', 'gruia cluj': 'Cluj-Napoca (Klausenburg)',
         'zorilor cluj': 'Cluj-Napoca (Klausenburg)', 'iris cluj': 'Cluj-Napoca (Klausenburg)',
@@ -7076,10 +7080,10 @@ export const CITY_ALIASES: Record<string, Record<string, string>> = {
         'tuheljske toplice': 'Zabok',
     },
     RS: {
-        'stari grad': 'Belgrad', 'savamala': 'Belgrad', 'vracar': 'Belgrad',
-        'zemun': 'Belgrad', 'novi beograd': 'Belgrad', 'palilula': 'Belgrad',
-        'vozdovac': 'Belgrad', 'cukarica': 'Belgrad', 'rakovica': 'Belgrad',
-        'grocka': 'Belgrad', 'surcin': 'Belgrad', 'obrenovac': 'Belgrad',
+        'stari grad': 'Belgrade', 'savamala': 'Belgrade', 'vracar': 'Belgrade',
+        'zemun': 'Belgrade', 'novi beograd': 'Belgrade', 'palilula': 'Belgrade',
+        'vozdovac': 'Belgrade', 'cukarica': 'Belgrade', 'rakovica': 'Belgrade',
+        'grocka': 'Belgrade', 'surcin': 'Belgrade', 'obrenovac': 'Belgrade',
         'novi sad old town': 'Novi Sad', 'liman': 'Novi Sad', 'detelinara': 'Novi Sad',
         'petrovaradin': 'Novi Sad', 'futog': 'Novi Sad',
         'nis city': 'Niš', 'nisava': 'Niš',
@@ -7089,13 +7093,13 @@ export const CITY_ALIASES: Record<string, Record<string, string>> = {
         'vrnjacka banja': 'Vrnjačka Banja',
         'palic lake': 'Subotica',
         // More Belgrade areas
-        'banjica': 'Belgrad', 'konjarnik': 'Belgrad',
-        'dedinje': 'Belgrad', 'senjak': 'Belgrad', 'autokomanda': 'Belgrad',
-        'miljakovac': 'Belgrad', 'banovo brdo': 'Belgrad', 'makis': 'Belgrad',
-        'resnik': 'Belgrad', 'mirijevo': 'Belgrad', 'kaluderica': 'Belgrad',
-        'borca': 'Belgrad', 'ovca': 'Belgrad', 'zvezdara': 'Belgrad',
-        'karaburma': 'Belgrad', 'borča': 'Belgrad', 'kotez': 'Belgrad',
-        'ruzica': 'Belgrad',
+        'banjica': 'Belgrade', 'konjarnik': 'Belgrade',
+        'dedinje': 'Belgrade', 'senjak': 'Belgrade', 'autokomanda': 'Belgrade',
+        'miljakovac': 'Belgrade', 'banovo brdo': 'Belgrade', 'makis': 'Belgrade',
+        'resnik': 'Belgrade', 'mirijevo': 'Belgrade', 'kaluderica': 'Belgrade',
+        'borca': 'Belgrade', 'ovca': 'Belgrade', 'zvezdara': 'Belgrade',
+        'karaburma': 'Belgrade', 'borča': 'Belgrade', 'kotez': 'Belgrade',
+        'ruzica': 'Belgrade',
         // Novi Sad extras
         'rotkvarija': 'Novi Sad', 'salajka': 'Novi Sad', 'grbavica novi sad': 'Novi Sad',
         'klisa': 'Novi Sad', 'adice': 'Novi Sad', 'novo naselje': 'Novi Sad',
@@ -7509,7 +7513,7 @@ export const CITY_ALIASES: Record<string, Record<string, string>> = {
         // Jamaica expanded
         'rose hall montego bay': 'Montego Bay', 'reading montego bay': 'Montego Bay',
         'falmouth jamaica': 'Falmouth', 'runaway bay': 'Runaway Bay',
-        'port antonio': 'Port Antonio (und Umgebung)', 'boston bay': 'Port Antonio (und Umgebung)',
+        'port antonio': 'Port Antonio', 'boston bay': 'Port Antonio',
         'mandeville jamaica': 'Mandeville', 'spanish town': 'Spanish Town',
         'half moon bay jamaica': 'Montego Bay', 'tryall estate': 'Montego Bay',
         'treasure beach': 'Treasure Beach', 'black river': 'Black River',
@@ -7567,7 +7571,7 @@ export const CITY_ALIASES: Record<string, Record<string, string>> = {
         'alajuela city': 'Alajuela', 'volcan poas': 'Alajuela',
     },
     GT: {
-        'zona viva': 'Guatemala-Stadt', 'zona 10': 'Guatemala-Stadt', 'zona 4': 'Guatemala-Stadt',
+        'zona viva': 'Guatemala City', 'zona 10': 'Guatemala City', 'zona 4': 'Guatemala City',
         'antigua guatemala': 'Antigua Guatemala',
         // Guatemala expanded
         'antigua centro': 'Antigua Guatemala', 'santa catalina arch': 'Antigua Guatemala',
@@ -8480,32 +8484,32 @@ export const CITY_ALIASES: Record<string, Record<string, string>> = {
     },
     // ── Kuwait / Bahrain / Oman ────────────────────────────────────────────────
     KW: {
-        'kuwait city centre': 'Kuwait-Stadt', 'salmiya': 'Salmiyah',
+        'kuwait city centre': 'Kuwait City', 'salmiya': 'Salmiyah',
         'hawally': 'Hawally', 'rumaithiya': 'Salmiyah',
         // More Kuwait areas
-        'dasman': 'Kuwait-Stadt', 'bneid al gar': 'Kuwait-Stadt', 'sharq': 'Kuwait-Stadt',
-        'qibla': 'Kuwait-Stadt', 'faiha': 'Kuwait-Stadt', 'nuzha': 'Kuwait-Stadt',
+        'dasman': 'Kuwait City', 'bneid al gar': 'Kuwait City', 'sharq': 'Kuwait City',
+        'qibla': 'Kuwait City', 'faiha': 'Kuwait City', 'nuzha': 'Kuwait City',
         'jabriya': 'Salmiyah', 'salwa': 'Salmiyah', 'bayan': 'Salmiyah',
-        'shuwaikh': 'Kuwait-Stadt', 'kuwait souk': 'Kuwait-Stadt',
+        'shuwaikh': 'Kuwait City', 'kuwait souk': 'Kuwait City',
         'mishref': 'Salmiyah', 'fintas': 'Fintas', 'mahboula': 'Mahboula',
         'fahaheel': 'Fahaheel', 'ahmadi': 'Fahaheel',
         // More Kuwait districts
-        'adailiya': 'Kuwait-Stadt', 'kaifan': 'Kuwait-Stadt', 'surra': 'Kuwait-Stadt',
-        'rawda': 'Kuwait-Stadt', 'khaldiya': 'Kuwait-Stadt', 'shamiya': 'Kuwait-Stadt',
-        'qortuba': 'Kuwait-Stadt',
-        'al seef': 'Kuwait-Stadt', 'bnaid al gar': 'Kuwait-Stadt',
-        'shuwaikh industrial': 'Kuwait-Stadt', 'rai kuwait': 'Kuwait-Stadt',
-        'ardiya': 'Kuwait-Stadt', 'sabah al salem': 'Mahboula',
+        'adailiya': 'Kuwait City', 'kaifan': 'Kuwait City', 'surra': 'Kuwait City',
+        'rawda': 'Kuwait City', 'khaldiya': 'Kuwait City', 'shamiya': 'Kuwait City',
+        'qortuba': 'Kuwait City',
+        'al seef': 'Kuwait City', 'bnaid al gar': 'Kuwait City',
+        'shuwaikh industrial': 'Kuwait City', 'rai kuwait': 'Kuwait City',
+        'ardiya': 'Kuwait City', 'sabah al salem': 'Mahboula',
         'mangaf': 'Mangaf', 'abu halifa': 'Fahaheel',
-        'funaitees': 'Kuwait-Stadt', 'riqqa': 'Mahboula',
-        'hadiya': 'Kuwait-Stadt', 'sabahiya': 'Mahboula',
+        'funaitees': 'Kuwait City', 'riqqa': 'Mahboula',
+        'hadiya': 'Kuwait City', 'sabahiya': 'Mahboula',
         // Kuwait landmarks as searches
-        'kuwait towers': 'Kuwait-Stadt', 'grand mosque kuwait': 'Kuwait-Stadt',
-        'al hamra tower': 'Kuwait-Stadt', 'liberation tower': 'Kuwait-Stadt',
-        'souq mubarakiya': 'Kuwait-Stadt', 'avenues mall': 'Kuwait-Stadt',
-        'marina mall kuwait': 'Kuwait-Stadt',
+        'kuwait towers': 'Kuwait City', 'grand mosque kuwait': 'Kuwait City',
+        'al hamra tower': 'Kuwait City', 'liberation tower': 'Kuwait City',
+        'souq mubarakiya': 'Kuwait City', 'avenues mall': 'Kuwait City',
+        'marina mall kuwait': 'Kuwait City',
         // Arabic language names
-        'الكويت': 'Kuwait-Stadt', 'مدينة الكويت': 'Kuwait-Stadt',
+        'الكويت': 'Kuwait City', 'مدينة الكويت': 'Kuwait City',
         'السالمية': 'Salmiyah', 'حولي': 'Hawally',
         'الفحيحيل': 'Fahaheel', 'الأحمدي': 'Fahaheel',
     },
@@ -8921,7 +8925,7 @@ export const CITY_ALIASES: Record<string, Record<string, string>> = {
         'la libertad beach': 'La Libertad', 'sunzal beach': 'La Libertad',
         'playa el sunzal': 'La Libertad',
         'suchitoto': 'Suchitoto', 'lake suchitlan': 'Suchitoto',
-        'santa ana sv': 'Santa Ana (und Umgebung)', 'chalchuapa': 'Santa Ana (und Umgebung)', 'tazumal ruins': 'Santa Ana (und Umgebung)',
+        'santa ana sv': 'Santa Ana', 'chalchuapa': 'Santa Ana', 'tazumal ruins': 'Santa Ana',
         'san miguel sv': 'San Miguel', 'usulutan': 'Usulutan',
         'playa el cuco': 'El Cuco',
         'el tunco surf': 'La Libertad', 'playa el zonte': 'La Libertad',
@@ -8987,15 +8991,15 @@ export const CITY_ALIASES: Record<string, Record<string, string>> = {
     },
     // ── Paraguay ──────────────────────────────────────────────────────────────
     PY: {
-        'asuncion city centre': 'Asunción (und Umgebung)', 'villa morra': 'Asunción (und Umgebung)',
+        'asuncion city centre': 'Asuncion', 'villa morra': 'Asuncion',
         // Paraguay expanded
-        'barrio jara': 'Asunción (und Umgebung)', 'centro asuncion': 'Asunción (und Umgebung)',
-        'trinidad asuncion': 'Asunción (und Umgebung)', 'las mercedes': 'Asunción (und Umgebung)',
+        'barrio jara': 'Asuncion', 'centro asuncion': 'Asuncion',
+        'trinidad asuncion': 'Asuncion', 'las mercedes': 'Asuncion',
         'ciudad del este': 'Ciudad del Este', 'encarnacion': 'Encarnación',
         'itaipu paraguay': 'Ciudad del Este',
         // More Asuncion neighborhoods
-        'catedral asuncion': 'Asunción (und Umgebung)', 'sajonia': 'Asunción (und Umgebung)',
-        'recoleta asuncion': 'Asunción (und Umgebung)', 'itauguá': 'Asunción (und Umgebung)',
+        'catedral asuncion': 'Asuncion', 'sajonia': 'Asuncion',
+        'recoleta asuncion': 'Asuncion', 'itauguá': 'Asuncion',
         'luque paraguay': 'Luque', 'mariano roque alonso': 'Mariano Roque Alonso',
         'san lorenzo paraguay': 'San Lorenzo', 'ñemby': 'Ñemby',
         // More Paraguay cities
@@ -10843,7 +10847,7 @@ export const CITY_ALIASES: Record<string, Record<string, string>> = {
         'betio tarawa': 'Betio',
         'christmas island kiribati': 'London',
         'north tarawa': 'Buariki', 'abaiang atoll': 'Tuarabu',
-        'kiritimati island': 'London', 'canton island': 'Kanton',
+        'kiritimati island': 'London', 'canton island': 'Guangzhou',
         'tarawa atoll': 'Bairiki', 'bonriki': 'Bonriki',
         // ── extended coverage ──
         'tarawa': 'Tarawa', 'betio': 'Betio',
@@ -12236,6 +12240,131 @@ export const HOTEL_DB_CITY_SYNONYMS: Record<string, string[]> = {
     'Skiathos|GR':          ['Skiathos', 'Skiathos-stad'],
     'Ho Chi Minh City|VN':  ['Ho-Chi-Minh-Stadt', 'Ho Chi Minh City'],
     'Ha Long|VN':           ['Ha Long', 'Halong'],
+
+    'Rome|IT':                 ['Rome', 'Rom'],
+    'Milan|IT':                ['Milan', 'Mailand'],
+    'Naples|IT':               ['Naples', 'Neapel'],
+    'Venice|IT':               ['Venice', 'Venedig'],
+    'Florence|IT':             ['Florence', 'Florenz'],
+    'Nice|FR':                 ['Nice', 'Nizza'],
+    'Vienna|AT':               ['Vienna', 'Wien'],
+    'Prague|CZ':               ['Prague', 'Prag'],
+    'Warsaw|PL':               ['Warsaw', 'Warschau'],
+    'Bucharest|RO':            ['Bucharest', 'Bukarest'],
+    'Belgrade|RS':             ['Belgrade', 'Belgrad'],
+    'Copenhagen|DK':           ['Copenhagen', 'Kopenhagen'],
+    'Brussels|BE':             ['Brussels', 'Brüssel'],
+    'Geneva|CH':               ['Geneva', 'Genf'],
+    'Kolkata|IN':              ['Kolkata', 'Kalkutta'],
+    'Kuwait City|KW':          ['Kuwait City', 'Kuwait-Stadt'],
+    'Guatemala City|GT':       ['Guatemala City', 'Guatemala-Stadt'],
+    'Ibiza|ES':                ['Ibiza', 'Ibiza-Stadt'],
+    'Armenia|CO':              ['Armenia', 'Armenien'],
+    'Daegu|KR':                ['Daegu', 'Daegu (und Umgebung)'],
+    'Fukuoka|JP':              ['Fukuoka', 'Fukuoka (und Umgebung)'],
+    'Asuncion|PY':             ['Asuncion', 'Asunción (und Umgebung)'],
+    'Guayaquil|EC':            ['Guayaquil', 'Guayaquil (und Umgebung)'],
+    'Iquitos|PE':              ['Iquitos', 'Iquitos (und Umgebung)'],
+    'Barranquilla|CO':         ['Barranquilla', 'Barranquilla (und Umgebung)'],
+    // The same split, found by auditing every one-to-one mapping against both databases on
+    // 2026-09-22: 78 of 126 pointed at the spelling with fewer hotels on one side or the
+    // other. Cape Town is 2,961 here and 2,861 as "Kapstadt" on live. Not only German -
+    // the sync also dropped accents and changed transliterations, so Sao Paulo, Malaga and
+    // Katmandu are in the same position as Kapstadt and Breslau.
+    'Cape Town|ZA':            ['Cape Town', 'Kapstadt'],
+    'Bangalore|IN':            ['Bangalore', 'Bengaluru'],
+    'Suzhou|CN':               ['Suzhou', 'Suzhou (Jiangsu)'],
+    'Sao Paulo|BR':            ['Sao Paulo', 'São Paulo'],
+    'Krakow|PL':               ['Krakow', 'Krakau'],
+    'Malaga|ES':               ['Malaga', 'Málaga'],
+    'Koh Samui|TH':            ['Koh Samui', 'Ko Samui'],
+    'Gdansk|PL':               ['Gdansk', 'Danzig'],
+    'Riyadh|SA':               ['Riyadh', 'Riad'],
+    'Tbilisi|GE':              ['Tbilisi', 'Tiflis'],
+    'Florianopolis|BR':        ['Florianopolis', 'Florianópolis'],
+    'Taipei|TW':               ['Taipei', 'Taipeh'],
+    'Yerevan|AM':              ['Yerevan', 'Jerewan'],
+    'Medellin|CO':             ['Medellin', 'Medellín'],
+    'Bogota|CO':               ['Bogota', 'Bogotá'],
+    'Cairo|EG':                ['Cairo', 'Kairo'],
+    'Johor Bahru|MY':          ['Johor Bahru', 'Johore Baharu'],
+    'Sorrento|IT':             ['Sorrento', 'Sorrent'],
+    'Kathmandu|NP':            ['Kathmandu', 'Katmandu'],
+    'Tashkent|UZ':             ['Tashkent', 'Taschkent'],
+    'Ahmedabad|IN':            ['Ahmedabad', 'Ahmadabad'],
+    'Wroclaw|PL':              ['Wroclaw', 'Breslau'],
+    'Munich|DE':               ['Munich', 'München'],
+    'Jeddah|SA':               ['Jeddah', 'Djiddah'],
+    'Cancun|MX':               ['Cancun', 'Cancún'],
+    'Portimao|PT':             ['Portimao', 'Portimão'],
+    'Larnaca|CY':              ['Larnaca', 'Larnaka'],
+    'Rhodes|GR':               ['Rhodes', 'Rhodos'],
+    'Antwerp|BE':              ['Antwerp', 'Antwerpen'],
+    'Poznan|PL':               ['Poznan', 'Posen'],
+    'Cordoba|ES':              ['Cordoba', 'Córdoba'],
+    'Cordoba|AR':              ['Cordoba', 'Córdoba'],
+    'San Jose|US':             ['San Jose', 'San José'],
+    'Cologne|DE':              ['Cologne', 'Köln'],
+    'Las Palmas de Gran Canaria|ES': ['Las Palmas de Gran Canaria', 'Las Palmas, Gran Canaria'],
+    'Pollensa|ES':             ['Pollensa', 'Pollença'],
+    'Alcudia|ES':              ['Alcudia', 'Alcúdia'],
+    'Ljubljana|SI':            ['Ljubljana', 'Ljubljana (Laibach)'],
+    'Vung Tau|VN':             ['Vung Tau', 'Vung Tàu'],
+    'Dusseldorf|DE':           ['Dusseldorf', 'Düsseldorf'],
+    'Trieste|IT':              ['Trieste', 'Triest'],
+    'Bruges|BE':               ['Bruges', 'Brügge'],
+    'San Sebastian|ES':        ['San Sebastian', 'San Sebastián'],
+    'Cluj-Napoca|RO':          ['Cluj-Napoca', 'Cluj-Napoca (Klausenburg)'],
+    'Merida|MX':               ['Merida', 'Mérida'],
+    'Corfu|GR':                ['Corfu', 'Korfu'],
+    'Bodrum|TR':               ['Bodrum', 'Bodrum (Region)'],
+    'Ooty|IN':                 ['Ooty', 'Udagamandalam'],
+    'Zurich|CH':               ['Zurich', 'Zürich'],
+    'Szczecin|PL':             ['Szczecin', 'Stettin'],
+    'Reykjavik|IS':            ['Reykjavik', 'Reykjavík'],
+    'Strasbourg|FR':           ['Strasbourg', 'Straßburg'],
+    'Mazatlan|MX':             ['Mazatlan', 'Mazatlán'],
+    'Nuremberg|DE':            ['Nuremberg', 'Nürnberg'],
+    'Ghent|BE':                ['Ghent', 'Gent'],
+    'San Andres|CO':           ['San Andres', 'San Andrés'],
+    'Quebec|CA':               ['Quebec', 'Québec'],
+    'Muscat|OM':               ['Muscat', 'Maskat'],
+    'Bydgoszcz|PL':            ['Bydgoszcz', 'Bromberg'],
+    'The Hague|NL':            ['The Hague', 'Den Haag'],
+    'Can Tho|VN':              ['Can Tho', 'Cân Tho'],
+    'Dar es Salaam|TZ':        ['Dar es Salaam', 'Daressalam'],
+    'Koh Tao|TH':              ['Koh Tao', 'Ko Tao'],
+    'Foz do Iguacu|BR':        ['Foz do Iguacu', 'Foz do Iguaçu'],
+    'Algiers|DZ':              ['Algiers', 'Algier'],
+    'Gothenburg|SE':           ['Gothenburg', 'Göteborg'],
+    'Parnu|EE':                ['Parnu', 'Pärnu'],
+    'Sarajevo|BA':             ['Sarajevo', 'Sarajewo'],
+    'Nicosia|CY':              ['Nicosia', 'Nikosia'],
+    'Gijon|ES':                ['Gijon', 'Gijón'],
+    'San Cristobal de las Casas|MX': ['San Cristobal de las Casas', 'San Cristóbal de las Casas'],
+    'Yaounde|CM':              ['Yaounde', 'Jaunde'],
+    'Macau|MO':                ['Macau', 'Macao'],
+    'Huatulco|MX':             ['Huatulco', 'Santa Cruz Huatulco'],
+    'Lviv|UA':                 ['Lviv', 'Lemberg'],
+    'Windhoek|NA':             ['Windhoek', 'Windhuk'],
+    'Malmo|SE':                ['Malmo', 'Malmö'],
+    'Grindavik|IS':            ['Grindavik', 'Grindavík'],
+    // The 2026-09-21 portfolio sync rewrote city from the supplier, replacing the German
+    // names it used to send. Local has the new spellings and live, which had only the
+    // insert-only CSV delta, still has the old ones - Fukuoka is 787 hotels here and 762
+    // under "Fukuoka (und Umgebung)" there. Naming both is what makes the dictionary work
+    // on either, and it stays correct once live is synced and the old spelling empties out.
+    'Genoa|US':                ['Genoa', 'Genua'],
+    'Argostoli|GR':            ['Argostoli', 'Argostoli-Stadt'],
+    'Suncheon|KR':             ['Suncheon', 'Suncheon (und Umgebung)'],
+    'Kuantan|MY':              ['Kuantan', 'Kuantan (und Umgebung)'],
+    'Tangier|MA':              ['Tangier', 'Tanger (und Umgebung)'],
+
+    // Confirmed by hand, 2026-09-22: 1,271 hotels are filed as "Mexico" and 28 as
+    // "Mexiko-Stadt". HOTEL_DB_CITY_MAP redirected the canonical to the German spelling
+    // alone, so a search for Mexico City reached 28 of its 1,299 hotels - the same failure
+    // this map was created for, on a city nobody had checked.
+    'Mexico City|MX':       ['Mexico City', 'Mexico', 'Mexiko-Stadt'],
 
     // The catalog files this city under both names and both are large: 2,113 rows
     // as "Lissabon" and 890 as "Lisbon". HOTEL_DB_CITY_MAP already redirects to

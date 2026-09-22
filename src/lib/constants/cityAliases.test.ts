@@ -26,8 +26,18 @@ describe('resolveHotelDbCities', () => {
     });
 
     it('falls back to the one-to-one map when a city has a single spelling', () => {
-        expect(resolveHotelDbCities('Rome', 'IT')).toEqual(['Rom']);
-        expect(resolveHotelDbCities('Cape Town', 'ZA')).toEqual(['Kapstadt']);
+        // Taken from the maps rather than named, because which cities have one spelling is
+        // data that a supplier refresh changes: Rome and Tokyo were both examples here until
+        // the 2026-09-21 sync gave each of them a second.
+        const key = Object.keys(HOTEL_DB_CITY_MAP)
+            .find(k => !(k in HOTEL_DB_CITY_SYNONYMS));
+        expect(key).toBeDefined();
+        const [city, cc] = key!.split('|');
+        expect(resolveHotelDbCities(city, cc)).toEqual([HOTEL_DB_CITY_MAP[key!]]);
+
+        // And a city with several is given all of them, the synonyms winning.
+        expect(resolveHotelDbCities('Rome', 'IT')).toEqual(['Rome', 'Rom']);
+        expect(resolveHotelDbCities('Cape Town', 'ZA')).toEqual(['Cape Town', 'Kapstadt']);
     });
 
     it('returns the input unchanged when nothing is mapped', () => {
@@ -43,8 +53,8 @@ describe('resolveHotelDbCities', () => {
         // supplier payloads, and not all preserve case. "rome" missing `Rome|IT`
         // meant searching the catalog for "rome", which has no rows — Rome
         // returned nothing at all.
-        expect(resolveHotelDbCities('rome', 'IT')).toEqual(['Rom']);
-        expect(resolveHotelDbCities('ROME', 'it')).toEqual(['Rom']);
+        expect(resolveHotelDbCities('rome', 'IT')).toEqual(['Rome', 'Rom']);
+        expect(resolveHotelDbCities('ROME', 'it')).toEqual(['Rome', 'Rom']);
         expect(resolveHotelDbCities('sEoUl', 'KR')).toEqual(resolveHotelDbCities('Seoul', 'KR'));
     });
 
@@ -57,7 +67,7 @@ describe('resolveHotelDbCities', () => {
 
 describe('resolveHotelDbCity', () => {
     it('still returns a single name, for callers that need one', () => {
-        expect(resolveHotelDbCity('Rome', 'IT')).toBe('Rom');
+        expect(resolveHotelDbCity('Rome', 'IT')).toBe('Rome');
         expect(resolveHotelDbCity('Cebu', 'PH')).toBe('Cebu');
     });
 

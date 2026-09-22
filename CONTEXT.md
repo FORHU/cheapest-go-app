@@ -209,6 +209,50 @@ _Avoid_: treating an empty Quote `cancelPenalties` as definitive — always chec
 
 **Planned Suppliers** — ONDA and Rakuten are the next hotel providers in the pipeline, added for **coverage expansion** (genuinely different hotel inventory from OTV/RateHawk, not price competition on the same hotels). Neither is active yet. When added, dedup against OTV results will be required.
 
+**Endonym** — what a city is called at home, when that differs from the English name: Roma for
+Rome, Wien for Vienna, Lissabon for Lisbon. Distinct from a **Sub-Area**, and the distinction
+is not pedantry — an Endonym is the *same place* under another name, so it has no parent city,
+no district framing and no bounds of its own; a Sub-Area is a smaller place inside another and
+has all three. Kept in their own list for that reason, and because the two collide: the
+Sub-Area dictionary already spends the key "roma" on the colonia in Mexico City.
+_Avoid_: resolving an Endonym through the Sub-Area dictionary — it would frame Rome as a
+district of Rome and bound the search by a city bbox, which is tighter than the city’s real
+hotel spread. _Avoid_: expecting the geocoder to find one: it is queried in English and ranks
+an exact match on its English index first, so on 2026-09-22 "Milano" returned a Polish village
+and Milan was not in the list at all.
+
+**Catalog Spelling** — the name `hotel_content` files a city under, which is the supplier’s
+name and not always the English one: Mexico City is filed as "Mexico", and 2,113 Lisbon hotels
+are filed as "Lissabon" beside 890 as "Lisbon". A city may have several at once, and all of
+them have to be searched or part of its inventory is invisible. A **Canonical City** — what an
+alias resolves to — is therefore not a Catalog Spelling: it is the key that maps to every
+spelling the catalog uses.
+_Avoid_: pointing an alias at a Catalog Spelling instead of the canonical — it reaches that
+one spelling and silently misses the rest. _Avoid_: assuming a spelling is stable: a supplier
+refresh rewrites it. The 2026-09-21 portfolio sync replaced the German names the supplier used
+to send with its English ones, and the dictionary, which had been correct, stopped matching
+overnight — "Ho-Chi-Minh-Stadt" went from most of the city to 63 hotels against 3,110.
+
+**Sub-Area** — a borough, district or neighbourhood the picker resolves to a parent city:
+Barking and Dagenham to London, Gangnam to Seoul, Shoreditch to London. Two facts travel with
+it and neither substitutes for the other — the **city whose inventory is searched**, because
+[ADR-0006](docs/adr/0006-granularity-ladder-is-etg-driven.md) leaves OTV serving the City rung
+alone and a borough has no supplier code of its own; and the **extent the results are shown
+within**, which is the sub-area’s own administrative bounds. The alias dictionary holds 16,634
+of these.
+
+A Sub-Area is therefore searched wide and presented narrow. Collapsing the two into one answer
+is what produced the 2026-09-22 report: a borough search was labelled a city search, so the
+bounds it arrived with were discarded, the catalog fell back to a 50 km circle around the
+borough’s centroid — the whole of Greater London — and the traveller was shown 220 hotels in
+a place they had not asked about. The borough holds 125.
+_Avoid_: reading a Sub-Area’s rung as "city" because its inventory is the city’s — the rung
+records what the traveller picked, and the map clips to a bbox at every rung except city.
+_Avoid_: searching under the Sub-Area’s own name: it matches no `hotel_content` row and no TGX
+destination, and any results are the radius quietly reaching the parent city instead.
+_Avoid_: widening to the parent city when a Sub-Area holds few hotels — the results header
+already offers "Show all in <city>", and widening without being asked is the confusion above.
+
 **Destination granularity** — a searched place resolves at one of five levels (the *granularity ladder*): **Country → Province/State → City → District → Specific** (a landmark/POI or address). The ladder has two resolution modes:
 - **Area rungs** (**Country**, **Province/State**, **City**) resolve to an **ETG region identifier** and are searched as a whole area. **City** *additionally* resolves on **OTV/TravelGateX** (destination or hotel codes); Country and Province do not.
 - **Point rungs** (**District**, **Specific**) have no area code — they resolve to a **coordinate + radius** and are searched as a circle around that point (a **point/geo search**). A District (e.g. "Gangnam") sizes its circle from the place's map bounding box; a landmark/address starts small and widens until hotels are found.

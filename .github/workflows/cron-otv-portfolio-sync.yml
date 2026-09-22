@@ -6,11 +6,11 @@ name: OTV Portfolio Sync
 #
 # Measured 2026-09-21 against access 38327: the portfolio takes ~42 minutes.
 #
-# The content backfill is bounded per run, because the hotels without images are not only the
-# ones each sync adds - most of the catalogue that predates this job has none either, so the
-# standing backlog is about a million and a single pass would run some seven hours. At the
-# default limit it is roughly two hours a night and about a week to catch up, after which it
-# has only the day's new hotels to do.
+# The content backfill is bounded per run. The hotels without images are not only the ones each
+# sync adds - most of the catalogue that predates this job had none either. Measured in full on
+# 2026-09-21: 1,024,602 hotels, 91.5% of them with photos to give, in 290 minutes. That fits the
+# six-hour ceiling on its own but not after the 42-minute sync, so a first backlog is cleared
+# over a few nights instead. Afterwards a night has only the day's new hotels and takes seconds.
 #
 # Daily rather than weekly because RTX agreement §2.1 asks for a daily static-content update,
 # and at an hour a night that is affordable.

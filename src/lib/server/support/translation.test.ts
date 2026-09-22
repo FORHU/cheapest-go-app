@@ -454,3 +454,23 @@ describe('buildPrompt', () => {
         expect(buildPrompt('I found it.', 'zh').endsWith('English: I found it.\nSimplified Chinese:')).toBe(true);
     });
 });
+
+describe('guardTranslation — a worked example handed back', () => {
+    it('refuses the prompt\'s first example returned for an unrelated message', () => {
+        // Captured 2026-09-22, back-translating an Agent's reply.
+        expect(guardTranslation(
+            'You stupid scammers, give me my money back right now.',
+            '이번에는 이걸 스트리밍합니다.', 'en')).toBeNull();
+    });
+
+    it('refuses an example echoed into the customer\'s language too', () => {
+        expect(guardTranslation('호텔 예약 확인서를 받지 못했습니다.', 'Streaming this one.', 'ko')).toBeNull();
+    });
+
+    it('still translates a customer who really wrote that sentence', () => {
+        expect(guardTranslation(
+            'You stupid scammers, give me my money back right now.',
+            '이 멍청한 사기꾼들아, 당장 내 돈 돌려줘.', 'en'))
+            .toBe('You stupid scammers, give me my money back right now.');
+    });
+});

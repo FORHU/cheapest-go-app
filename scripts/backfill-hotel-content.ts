@@ -6,19 +6,22 @@
  * hotel on the map as a card with no picture. This fills them in afterwards, asking only about
  * the hotels that have nothing — which is what makes it cheap.
  *
- * Measured 2026-09-21 against access 38327: about 2,380 hotels a minute, and 94% of them had
- * photos to give.
- *
  * The backlog is far larger than it first appears. It is not the 97,737 hotels the 2026-09-20
- * dump introduced: most of the 1.14M rows that predate it have no images either, so the first
- * run faces 1,024,602 hotels and would need around seven hours — past the six-hour ceiling
- * the workflow allows, and past the point where one long job is a sensible thing to run.
+ * dump introduced: most of the 1.14M rows that predate it had no images either.
  *
- * So a run is bounded, and the backlog is cleared over several nights. At the default limit
- * that is roughly two hours a night and about a week to catch up, after which each night has
- * only that day's new hotels to do and finishes in seconds. Hotels are taken in hotel_id
- * order, so successive runs continue rather than re-tread: a hotel asked about today carries
- * last_attempt_at and drops out of tomorrow's query whether or not it had a photograph.
+ * Run in full against local on 2026-09-21, which is the measurement that matters:
+ *
+ *     1,024,602 hotels asked, 937,905 of them had photos (91.5%), 290.6 minutes
+ *
+ * So a complete pass is a little under five hours — inside the six-hour workflow ceiling,
+ * but not once the 42-minute portfolio sync has run before it. A run is therefore bounded, and
+ * a first backlog is cleared over a few nights rather than in one sitting that finishes with
+ * half an hour to spare.
+ *
+ * Hotels are taken in hotel_id order, so successive runs continue rather than re-tread: one
+ * asked about today carries last_attempt_at and drops out of the query for thirty days,
+ * whether or not it had a photograph to give. After the backlog, a night has only the new
+ * day's hotels to do and finishes in seconds.
  *
  * `refresh-hotel-content` remains the richer job: amenities, contact details, check-in
  * schedules, for the thirty most-searched cities. This one is deliberately shallower and

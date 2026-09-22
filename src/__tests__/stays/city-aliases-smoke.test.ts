@@ -298,11 +298,11 @@ describe('CY (Cyprus) aliases', () => {
 
 describe('VN (Vietnam) aliases', () => {
     const m = CITY_ALIASES['VN'];
-    it('resolves HCMC aliases to TGX canonical Ho-Chi-Minh-Stadt (1973 hotels)', () => {
-        expect(m['saigon']).toBe('Ho-Chi-Minh-Stadt');
-        expect(m['district 1']).toBe('Ho-Chi-Minh-Stadt');
-        expect(m['ben thanh']).toBe('Ho-Chi-Minh-Stadt');
-        expect(m['hcmc']).toBe('Ho-Chi-Minh-Stadt');
+    it('resolves HCMC aliases to Ho Chi Minh City, as the catalog files it (3,110 hotels)', () => {
+        expect(m['saigon']).toBe('Ho Chi Minh City');
+        expect(m['district 1']).toBe('Ho Chi Minh City');
+        expect(m['ben thanh']).toBe('Ho Chi Minh City');
+        expect(m['hcmc']).toBe('Ho Chi Minh City');
     });
     it('resolves Vietnamese diacritic names', () => {
         expect(m['hà nội']).toBe('Hanoi');
@@ -420,8 +420,8 @@ describe('KZ (Kazakhstan) aliases', () => {
 
 describe('KW (Kuwait) aliases', () => {
     const m = CITY_ALIASES['KW'];
-    it('resolves Kuwait City to TGX Kuwait-Stadt', () => {
-        expect(m['kuwait city centre']).toBe('Kuwait-Stadt');
+    it('resolves Kuwait City to Kuwait City, as the catalog files it (54 hotels)', () => {
+        expect(m['kuwait city centre']).toBe('Kuwait City');
     });
     it('resolves suburbs as separate TGX cities', () => {
         expect(m['salmiya']).toBe('Salmiyah');
@@ -512,11 +512,11 @@ describe('KR (South Korea) aliases', () => {
         expect(m['인천']).toBe("Inch'on");
     });
     it('resolves Daegu to TGX canonical', () => {
-        expect(m['대구']).toBe('Daegu (und Umgebung)');
-        expect(m['palgong mountain']).toBe('Daegu (und Umgebung)');
+        expect(m['대구']).toBe('Daegu');
+        expect(m['palgong mountain']).toBe('Daegu');
     });
     it('resolves Suncheon, Yeosu, Mokpo, etc. to TGX canonicals', () => {
-        expect(m['suncheon']).toBe('Suncheon (und Umgebung)');
+        expect(m['suncheon']).toBe('Suncheon');
         expect(m['여수']).toBe('Yòsu');
         expect(m['목포']).toBe("Mokp'o");
         expect(m['군산']).toBe('Kunsan');
@@ -541,8 +541,8 @@ describe('MY (Malaysia) aliases', () => {
         expect(m['genting highlands']).toBe('Genting Highlands (Berg)');
     });
     it('resolves Kuantan to TGX canonical', () => {
-        expect(m['kuantan']).toBe('Kuantan (und Umgebung)');
-        expect(m['cherating']).toBe('Kuantan (und Umgebung)');
+        expect(m['kuantan']).toBe('Kuantan');
+        expect(m['cherating']).toBe('Kuantan');
     });
     it('resolves George Town as TGX city (not Penang)', () => {
         expect(m['george town']).toBe('George Town');
@@ -607,10 +607,10 @@ describe('AE (UAE) aliases', () => {
 
 describe('IN (India) aliases', () => {
     const m = CITY_ALIASES['IN'];
-    it('resolves Kolkata to TGX Kalkutta (959 hotels)', () => {
-        expect(m['park street']).toBe('Kalkutta');
-        expect(m['salt lake']).toBe('Kalkutta');
-        expect(m['howrah']).toBe('Kalkutta');
+    it('resolves Kolkata to Kolkata, as the catalog files it (947 hotels)', () => {
+        expect(m['park street']).toBe('Kolkata');
+        expect(m['salt lake']).toBe('Kolkata');
+        expect(m['howrah']).toBe('Kolkata');
     });
     it('resolves Guwahati to TGX diacritic Guwahãti', () => {
         expect(m['guwahati']).toBe('Guwahãti');

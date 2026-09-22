@@ -168,9 +168,19 @@ async function getInstantHotelCatalog(body: any): Promise<any[]> {
         // 277 hotels then bury the ~66 actually in La Union. Only province does
         // this: a city bbox is tighter than the city's real hotel spread (Jeju's
         // excludes Seogwipo, 27km away), which is exactly what the radius is for.
-        // areaRung, not rung — the province→city downgrade above runs first.
+        // areaRung, not rung — the downgrade to city runs before this.
+        //
+        // Any rung the user picked by name and that has real administrative boundaries, not
+        // just a province. A London borough was the case that showed the gap: "Barking and
+        // Dagenham" arrived with its own bbox and no areaRung, fell through to the radius,
+        // and a 50km circle around Barking is the whole of Greater London — 220 hotels, a map
+        // opening on the wrong place, and the borough the traveller asked for nowhere in it.
+        //
+        // City is still excluded, for the reason above: a city bbox is tighter than the city’s
+        // real hotel spread. areaRung is only ever set when we demoted from something else, so
+        // a plain city search never reaches here.
         const areaBbox: number[] | null =
-            body.areaRung === 'province' && Array.isArray(body.bbox) && body.bbox.length === 4
+            body.areaRung && body.areaRung !== 'city' && Array.isArray(body.bbox) && body.bbox.length === 4
                 ? body.bbox as number[]
                 : null;
 
@@ -448,6 +458,52 @@ export async function POST(req: NextRequest) {
         // administrative area so they can bound by its bbox instead of a radius.
         body.areaRung = 'province';
         body.rung = 'city';
+        delete body.destinationCode;
+    }
+
+    // Whatever extent the traveller picked, remembered before anything below rewrites the rung.
+    //
+    // These are the rungs the map clips to a bbox, and the catalog now bounds by exactly the
+    // same set, so the hotels in the list are the hotels drawn on the map. Every one of them
+    // is a place with real administrative boundaries, whatever the local word for it happens
+    // to be - a London borough, a Paris arrondissement, a German Landkreis, a Thai amphoe, a
+    // Polish powiat, a Tokyo ku. None of those words appear anywhere in this code, and none
+    // need to: what matters is that Mapbox typed the place as an area below a city and gave
+    // us its bounds.
+    //
+    // City is excluded because a city bbox is tighter than the city’s real hotel spread
+    // (Jeju’s excludes Seogwipo, 27km away), which is what the radius is for. Country is
+    // excluded because bounding a country by its own bbox buys nothing. A landmark is
+    // excluded because its bounds are a building: the glossary has it start small and widen
+    // until hotels are found, and a bbox would pin it to the first of those steps.
+    const BOUNDED_RUNGS = new Set(['province', 'state', 'county', 'district', 'neighborhood', 'locality']);
+    if (body.rung && BOUNDED_RUNGS.has(body.rung) && Array.isArray(body.bbox) && body.bbox.length === 4) {
+        body.areaRung = body.rung;
+    }
+
+    // A sub-area the picker already resolved for us.
+    //
+    // When the picker offers a borough, a district or a neighbourhood it sends both names:
+    // `destination` is what the traveller chose and `canonicalCity` is the city whose
+    // inventory actually has to be searched, because ADR-0006 leaves OTV serving the City
+    // rung alone. Only the second was ever acted on, and only to discard a stale destination
+    // code - so the search ran under the borough’s own name, which matches no row in
+    // hotel_content and no TGX destination, and reached London purely by the 50km radius
+    // around its centroid.
+    //
+    // Both facts are kept: the city to search, and the extent to search within. This is the
+    // same split the province path makes twenty lines below, which is where areaRung came
+    // from - it exists precisely to survive the downgrade that follows it.
+    if (body.canonicalCity && body.destination &&
+        body.canonicalCity.toLowerCase() !== body.destination.toLowerCase()) {
+        const picked = body.rung;
+        console.log(`[stream] sub-area: "${body.destination}" (rung: ${picked ?? '?'}) ` +
+                    `-> searching "${body.canonicalCity}", bounded by its own extent`);
+        if (picked && picked !== 'city') body.areaRung = picked;
+        body.cityName = body.canonicalCity;
+        body.destination = body.canonicalCity;
+        body.rung = 'city';
+        // Resolved for the borough, wrong for the city.
         delete body.destinationCode;
     }
 

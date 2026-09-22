@@ -352,9 +352,33 @@ export function guardTranslation(
     const outNumbers = new Set(bigNumbers(out));
     if (bigNumbers(source).some(n => !outNumbers.has(n))) return null;
 
+    // One of the prompt's own worked examples handed back as the answer. Measured
+    // 2026-09-22: "이번에는 이걸 스트리밍합니다." came back as "You stupid scammers, give me my
+    // money back right now." — the first example — and passed every check above, because it is
+    // well-formed English of a plausible length. Stored, it puts abuse in the mouth of a
+    // customer or an Agent who never wrote it.
+    if (echoesAnExample(out, source)) return null;
+
     return out;
 }
 
+/** Case, spacing and trailing punctuation ignored, so a lightly altered echo still matches. */
+const looseText = (text: string) => text.toLowerCase().replace(/\s+/g, ' ').replace(/[.!?。！？\s]+$/u, '').trim();
+
+/**
+ * Whether a reply contains one of the worked examples when the source is not that example.
+ *
+ * A customer who genuinely wrote one of those five sentences still gets it translated: the
+ * source then carries the same example in its own language, and the check stands aside.
+ */
+function echoesAnExample(out: string, source: string): boolean {
+    const reply = looseText(out);
+    const from = looseText(source);
+    return EXAMPLES.en.some((_, i) => {
+        const lines = (Object.keys(EXAMPLES) as SupportLang[]).map(lang => looseText(EXAMPLES[lang][i]));
+        return lines.some(line => reply.includes(line)) && !lines.some(line => from.includes(line));
+    });
+}
 /**
  * The numbers of three digits or more in a text — amounts, booking and flight numbers, years —
  * with thousands separators removed, so "10,453" and "10453" are the same figure.

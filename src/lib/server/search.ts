@@ -2,6 +2,7 @@ import { unstable_cache } from 'next/cache';
 import { extractCountryCode, COUNTRY_SEARCH_LIST } from '@/lib/constants/countries';
 import { getSqlAdmin } from '@/lib/db/postgres';
 import { CITY_ALIASES, matchAliasQuery, resolveHotelDbCities } from '@/lib/constants/cityAliases';
+import { matchCityEndonym } from '@/lib/constants/cityEndonyms';
 import { storedCountryCodes } from '@/lib/geo/territories';
 
 /** Where a searched place sits on the granularity ladder. See CONTEXT.md
@@ -182,7 +183,15 @@ async function fetchCitiesFromMapbox(query: string, locale?: string): Promise<Au
 
             return {
                 type: 'city' as const,
-                rung: aliasedCity ? 'city' : rung,
+                // The rung describes what the traveller picked, and a borough is not a city.
+                //
+                // It used to be flattened to 'city' here because the search needs the parent
+                // city’s inventory - but that is the *search*’s business, and the search now
+                // does it for itself from canonicalCity. Flattening it here reached further
+                // than intended: the map clips to a bbox for every rung except city, so a
+                // borough arrived carrying its own correct bounds and was drawn as the whole
+                // of London anyway.
+                rung,
                 // Show the district name (e.g. "Gangnam District") in the autocomplete
                 // so the user sees what they typed — not the canonical city ("Seoul").
                 // canonicalCity carries "Seoul" for the actual TGX hotel search.
@@ -690,10 +699,49 @@ async function fetchAliasSuggestions(
     return geocoded.filter((r): r is AutocompleteResult => r !== null);
 }
 
+/** Letters and digits alone, for comparing what was typed against what was offered. */
+function looseName(value: string): string {
+    return value.normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+        .toLowerCase().replace(/[^a-z0-9]/g, '');
+}
+
+/**
+ * The city a traveller named in its own language, resolved to the one thing everything
+ * downstream is keyed on: its English name.
+ *
+ * Offered ahead of everything else because the geocoder cannot be relied on to find it. It
+ * is queried in English and ranks an exact match on its English index first, so "Milano"
+ * returns Milanowek in Poland and Milan is not in the list at all - there is nothing to
+ * re-rank, only something to add.
+ */
+async function fetchEndonymSuggestion(query: string): Promise<AutocompleteResult | null> {
+    const hit = matchCityEndonym(query);
+    if (!hit) return null;
+    const geo = await geocodeCanonicalCity(hit.city, hit.countryCode);
+    if (!geo) return null;
+    return {
+        type: 'city' as const,
+        rung: 'city' as const,
+        title: hit.city,
+        subtitle: geo.placeName,
+        countryCode: hit.countryCode,
+        lat: geo.lat,
+        lng: geo.lng,
+        bbox: geo.bbox,
+        // No canonicalCity and no districtName on purpose: an endonym is the same place
+        // under another name, not a Sub-Area of it. Setting either would frame Rome as a
+        // district of Rome and bound the search by a city bbox, which is tighter than the
+        // city's real hotel spread.
+    };
+}
+
 async function fetchAutocomplete(query: string, locale?: string): Promise<AutocompleteResult[]> {
     const countryResults = matchCountries(query);
 
-    const cityResults = await fetchCitiesFromMapbox(query, locale);
+    const [cityResults, endonymResult] = await Promise.all([
+        fetchCitiesFromMapbox(query, locale),
+        fetchEndonymSuggestion(query),
+    ]);
 
     // Fill gaps in Mapbox's index from the alias dict, matched against the raw
     // query rather than Mapbox's output.
@@ -708,18 +756,55 @@ async function fetchAutocomplete(query: string, locale?: string): Promise<Autoco
     }
     const aliasResults = await fetchAliasSuggestions(query, covered);
 
+    const typed = looseName(query);
     const allCities = [...cityResults, ...aliasResults];
-    if (!allCities.length) return countryResults;
+    if (!allCities.length) {
+        return endonymResult ? [endonymResult, ...countryResults] : countryResults;
+    }
 
-    // Sort cities with hotels in our TGX inventory (hotel_content) to the top.
-    // Cities we don't cover are still shown, below those we do.
+    // Cities we hold hotels in come first; cities we do not are still shown, below them.
+    //
+    // Within each of those groups, a place actually named what the traveller typed comes
+    // before one the geocoder merely thinks is similar. Without this, "Alfama" was answered
+    // with Alhama de Granada: the geocoder has no Alfama in its index, offered a Spanish town
+    // two letters away, and that arrived first in the array purely because the geocoder is
+    // consulted before the alias dictionary. Both have hotels, so nothing else separated them.
+    //
+    // Ordered under coverage rather than over it: a place we can sell beats a better-spelled
+    // place we cannot, because the second leads to an empty search.
     const citiesWithHotels = await filterCitiesWithHotels(allCities);
-    const sorted = [
-        ...allCities.filter(c => citiesWithHotels.has((c.canonicalCity ?? c.title).toLowerCase())),
-        ...allCities.filter(c => !citiesWithHotels.has((c.canonicalCity ?? c.title).toLowerCase())),
-    ];
+    const covered2 = (c: AutocompleteResult) =>
+        citiesWithHotels.has((c.canonicalCity ?? c.title).toLowerCase());
+    // districtName is what a Sub-Area was called before it was resolved to its parent, and it
+    // is what the traveller typed: "Alfama" for Lisbon, "Gangnam" for Seoul.
+    const namedExactly = (c: AutocompleteResult) =>
+        looseName(c.districtName ?? c.title) === typed || looseName(c.title) === typed;
+    const rank = (c: AutocompleteResult) => (covered2(c) ? 0 : 2) + (namedExactly(c) ? 0 : 1);
+    const sorted = [...allCities].sort((a, b) => rank(a) - rank(b));
 
-    return [...countryResults, ...sorted];
+    // A country leads only when it is what was actually typed.
+    //
+    // Countries used to come first unconditionally, and matchCountries matches a substring
+    // anywhere in the name, so "Roma" was answered with Romania above every city - the
+    // country is four letters longer than the query and in a different place entirely. An
+    // exact name still leads, so "Japan" opens Japan; anything less sits below the cities,
+    // where it is still offered and no longer in the way.
+    const exactCountry = countryResults.filter(c => looseName(c.title) === typed);
+    const looserCountry = countryResults.filter(c => looseName(c.title) !== typed);
+
+    // The geocoder sometimes also finds the endonym’s city by its English name; offering it
+    // twice under two spellings reads as two destinations.
+    const deduped = endonymResult
+        ? sorted.filter(c => !(looseName(c.title) === looseName(endonymResult.title)
+                              && c.countryCode === endonymResult.countryCode))
+        : sorted;
+
+    return [
+        ...(endonymResult ? [endonymResult] : []),
+        ...exactCountry,
+        ...deduped,
+        ...looserCountry,
+    ];
 }
 
 const getCachedAutocomplete = unstable_cache(
