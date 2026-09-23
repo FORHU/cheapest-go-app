@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useCallback, useRef, useMemo, useEffect } from 'react';
+import Image from 'next/image';
 import { Map } from '@/components/ui/map';
 import type { StandardStyleConfig } from '@/components/ui/map';
 import { Marker, Popup, NavigationControl, GeolocateControl, Source, Layer } from 'react-map-gl/mapbox';
@@ -635,9 +636,11 @@ export default function TestMapPage() {
                             }`}
                         >
                             <div className="flex items-start gap-3">
-                                <img
+                                <Image
                                     src={hotel.image}
                                     alt={hotel.name}
+                                    width={64}
+                                    height={48}
                                     className="w-16 h-12 object-cover rounded-md flex-shrink-0"
                                 />
                                 <div className="flex-1 min-w-0">
@@ -745,11 +748,13 @@ export default function TestMapPage() {
                             maxWidth="280px"
                         >
                             <div className="bg-gray-900 text-white rounded-lg overflow-hidden shadow-2xl min-w-[250px]">
-                                <div className="relative">
-                                    <img
+                                <div className="relative h-36">
+                                    <Image
                                         src={selectedHotel.image}
                                         alt={selectedHotel.name}
-                                        className="w-full h-36 object-cover"
+                                        fill
+                                        sizes="280px"
+                                        className="object-cover"
                                     />
                                     <span
                                         className={`absolute top-2 left-2 text-[10px] px-2 py-0.5 rounded-full text-white font-medium ${getCategoryColor(selectedHotel.category)}`}

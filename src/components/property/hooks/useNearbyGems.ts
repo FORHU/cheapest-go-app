@@ -274,7 +274,7 @@ export const useNearbyGems = ({
 
         fetchTopGems();
         return () => controller.abort();
-    }, [isLoaded, hasCoordinates, coordinates?.lat, coordinates?.lng, selectedCategory, radiusMeters]);
+    }, [isLoaded, hasCoordinates, coordinates?.lat, coordinates?.lng, selectedCategory, radiusMeters, onClearDirections]);
 
     return { nearbyGems, isFetchingGems, setNearbyGems };
 };

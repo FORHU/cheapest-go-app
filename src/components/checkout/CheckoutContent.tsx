@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+import Image from 'next/image';
 import {
     useProperty,
     useSelectedRoom,
@@ -177,7 +178,7 @@ export function CheckoutContent() {
         return () => {
             if (bookingStepTimer.current) clearInterval(bookingStepTimer.current);
         };
-    }, [loading, step, isSuccess]);
+    }, [loading, step, isSuccess, bookingSteps.length]);
 
     // Reveal success screen once animation reaches the last step
     useEffect(() => {
@@ -185,7 +186,7 @@ export function CheckoutContent() {
             const timer = setTimeout(() => setShowSuccess(true), 800);
             return () => clearTimeout(timer);
         }
-    }, [isSuccess, bookingStepIdx]);
+    }, [isSuccess, bookingStepIdx, bookingSteps.length]);
 
     // Warn 5 min before the 30-min prebook quote expires
     useEffect(() => {
@@ -476,7 +477,7 @@ export function CheckoutContent() {
         } finally {
             setIsCreatingPayment(false);
         }
-    }, [user, prebookId, selectedRoom, formData, bookingFor, priceData, selectedCurrency, property, openAuthModal, totalPrice, clearFormErrors, setFormErrors, appliedVoucher, bundleFlightId]);
+    }, [user, prebookId, selectedRoom, formData, priceData, selectedCurrency, property, openAuthModal, totalPrice, clearFormErrors, setFormErrors, appliedVoucher, bundleFlightId, checkIn, checkOut, refreshPrebook, specialRequests, t]);
 
     // Step 2: After Stripe payment succeeds → confirm with LiteAPI
     const handlePaymentSuccess = useCallback(async (stripePaymentIntentId: string) => {
@@ -580,7 +581,7 @@ export function CheckoutContent() {
             setStep('form');
             setClientSecret(null);
         }
-    }, [prebookId, selectedRoom, formData, bookingFor, specialRequests, completeBooking, setIsSuccess, setShowSuccess, setEmailSent, property, checkIn, checkOut, priceData, selectedCurrency, adults, children, user, totalPrice, appliedVoucher, openAuthModal]);
+    }, [prebookId, selectedRoom, formData, specialRequests, completeBooking, setIsSuccess, setEmailSent, property, checkIn, checkOut, priceData, selectedCurrency, adults, children, user, totalPrice, appliedVoucher, openAuthModal, router, t]);
 
     // When the user modifies check-in/check-out in BookingSummary:
     // - No room selected (deal flow): just update store dates, user then clicks "Search rooms"
@@ -635,7 +636,7 @@ export function CheckoutContent() {
                     <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl overflow-hidden shadow-sm">
                         <div className="flex gap-3 p-4">
                             {property.image && (
-                                <img src={property.image} alt={property.name} className="w-20 h-20 rounded-lg object-cover shrink-0" />
+                                <Image src={property.image} alt={property.name} width={80} height={80} className="w-20 h-20 rounded-lg object-cover shrink-0" />
                             )}
                             <div className="min-w-0">
                                 <p className="font-bold text-slate-900 dark:text-white text-sm leading-tight">{property.name}</p>

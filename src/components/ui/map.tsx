@@ -250,14 +250,12 @@ const Map = React.memo(
                         map.off('style.load', setup);
                     };
                 }
-            }, [
-                mapStyle,
-                mapReady,
-                isStandard,
-                // Note: standardConfig is excluded here to avoid setup reset on every config change.
-                enable3DTerrain,
-                terrainExaggeration,
-            ]);
+                // Note: standardConfig and onStyleReady are excluded here to avoid a full
+                // setup reset (re-adding terrain sources, 3D buildings, etc.) on every config
+                // change or parent re-render that passes a new onStyleReady closure. Both are
+                // read fresh, at setup-run time, inside the effect body. mapRef is a stable
+                // ref container (forwardRef or the internal fallback), safe to include.
+            }, [mapStyle, mapReady, isStandard, enable3DTerrain, terrainExaggeration, mapRef]); // eslint-disable-line react-hooks/exhaustive-deps
 
             const token = env.MAPBOX_TOKEN;
             if (!token) {

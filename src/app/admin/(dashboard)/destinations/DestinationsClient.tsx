@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useTransition } from 'react';
+import Image from 'next/image';
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import { toast } from 'sonner';
 import { Globe, Search, Plus, Pencil, Trash2, XCircle, MapPin, Check, X } from 'lucide-react';
@@ -57,7 +58,11 @@ export function DestinationsClient({ data, searchParams }: DestinationsClientPro
             if (searchTerm !== searchParams.q) updateParam({ q: searchTerm, page: 1 });
         }, 500);
         return () => clearTimeout(t);
-    }, [searchTerm]);
+        // Deliberately keyed on searchTerm alone: updateParam is a plain (unmemoized)
+        // function recreated every render, and searchParams.q is the URL's own current
+        // value — including either would reset this debounce timer on every render, not
+        // just when the user types.
+    }, [searchTerm]); // eslint-disable-line react-hooks/exhaustive-deps
 
     const startEdit = (dest: Destination) => {
         setEditingId(dest.id);
@@ -179,7 +184,7 @@ export function DestinationsClient({ data, searchParams }: DestinationsClientPro
                                         <TableCell className="pl-6">
                                             <div className="flex items-center gap-3">
                                                 {dest.image_url ? (
-                                                    <img src={dest.image_url} alt={dest.city} className="w-10 h-10 rounded-xl object-cover shrink-0" onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                                                    <Image src={dest.image_url} alt={dest.city} width={40} height={40} className="w-10 h-10 rounded-xl object-cover shrink-0" onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }} />
                                                 ) : (
                                                     <div className="w-10 h-10 rounded-xl bg-slate-100 dark:bg-white/5 flex items-center justify-center shrink-0"><Globe size={16} className="text-slate-400" /></div>
                                                 )}

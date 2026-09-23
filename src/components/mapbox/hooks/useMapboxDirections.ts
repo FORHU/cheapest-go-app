@@ -86,7 +86,11 @@ export function useMapboxDirections({
         };
 
         fetchRoute();
-    }, [origin?.lat, origin?.lng, destination?.lat, destination?.lng, enabled, profile]);
+        // Deliberately keyed on lat/lng primitives rather than the origin/destination
+        // objects themselves: callers commonly pass fresh {lat, lng} literals every
+        // render, which would refetch the route on every render instead of only on an
+        // actual coordinate change.
+    }, [origin?.lat, origin?.lng, destination?.lat, destination?.lng, enabled, profile]); // eslint-disable-line react-hooks/exhaustive-deps
 
     const clearRoute = () => {
         setRouteGeometry(null);

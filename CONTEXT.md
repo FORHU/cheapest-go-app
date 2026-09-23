@@ -70,6 +70,12 @@ _Avoid_: assuming every enum-like column uses the same mechanism, or converting 
 
 **Session** — a Lucia-managed row in the `sessions` table. Stored as a cookie (`cg-session`). Replaces Supabase Auth JWTs.
 
+**Presence** — evidence that a person is actually at the screen: a click, keypress, scroll or touch, or a request one of those caused. It is what an **Idle Limit** measures the absence of.
+_Avoid_: treating traffic as Presence. Pages poll themselves — admin notifications every 30 seconds, the admin dashboard every 60, `/trips` every 30 — so requests keep arriving from a screen nobody is sitting at, and a limit that counts them never expires the sessions it was written for. _Avoid_: reading a visible tab as Presence; a tab can be in front of an empty chair.
+
+**Idle Limit** — how long a **Session** survives without **Presence**, after which the traveller signs in again. Ten minutes for staff, thirty for travellers — the traveller figure matching the life of a **Price Hold**, so the two things a traveller can lose lapse on the same scale. Enforced by the server, because a limit the browser keeps is one the browser can decline to keep ([ADR-0027](docs/adr/0027-authorisation-belongs-to-the-resource-not-the-page.md)).
+_Avoid_: calling it a session length. A **Session** also has an absolute lifetime, and the two expire for different reasons — one because nobody was there, the other because enough time passed either way.
+
 **User** — a row in `public.users`. Replaces `auth.users`. Password hashed with argon2id. `users.role` is the authoritative source for authorization — all role checks read from this column via the Lucia session. See [ADR-0003](docs/adr/0003-users-role-is-authoritative.md).
 
 **Profile** — a row in `public.profiles` auto-created by the `on_user_created` trigger on `public.users`. Replaces the Supabase `on_auth_user_created` trigger on `auth.users`. Does not carry `role` — use `users.role` for all authorization checks.
@@ -249,6 +255,10 @@ _Avoid_: passing one as a bare number. A price and the stay it covers travel tog
 
 **Booked Amount** — a payment restated into the **Reporting Currency** using the rate in force at the moment it was taken. Fixed permanently at that instant, so a report for a past period returns the same figure however long afterwards it is run.
 _Avoid_: recomputing a past period at today's rate — a closed month never moves.
+
+**Receipt** — the document a traveller is given after paying, stating what was charged and for which trip. It is proof that money was taken, reached through a **Capability Link**, and read by people who were never on the booking — a travel companion, an employer's finance team. It states one total and says that total is inclusive; it breaks out neither tax nor **Platform Cost**, because no tax figure is recorded anywhere and the supplier's cost is not held in the **Charge Currency** ([ADR-0042](docs/adr/0042-a-receipt-states-one-total-because-the-parts-were-never-recorded.md)).
+Titled **E-Receipt** on the document itself, in both the web and downloadable forms, which are the same document and not two.
+_Avoid_: "invoice" — an invoice asks for money that has not been paid, and this is only ever issued afterwards. The route and the document number still say invoice, which is a misnomer the code has not caught up with. _Avoid_: treating it as a tax invoice. That is a third document with statutory content, and issuing one means naming a registered entity and a tax registration number, neither of which is confirmed. _Avoid_: reading its total as a supplier price — what the supplier charged is a different figure, in a different currency, and subtracting one from the other has already produced a sixtyfold error elsewhere in this codebase.
 
 **Locked Rate** — the exchange rate captured alongside a payment, and the evidence for its **Booked Amount**. Stored with the booking rather than looked up later, because a rate that was not recorded at the time cannot be recovered.
 

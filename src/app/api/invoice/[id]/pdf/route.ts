@@ -6,6 +6,8 @@ import { formatCurrency, calculateNights } from '@/lib/utils';
 import { renderToBuffer } from '@react-pdf/renderer';
 import React from 'react';
 import { InvoicePdfDocument } from './InvoicePdfDocument';
+import { receiptCancellation, receiptDiscount, fareBreakdown } from '@/lib/invoice/receipt-details';
+import { loadFlightBookingRelations, loadFlightFareBase } from '@/lib/invoice/flight-booking-relations';
 
 export const dynamic = 'force-dynamic';
 
@@ -58,8 +60,16 @@ export async function GET(
         const { data: byUuid } = await db.from('bookings').select('*').eq('id', id).single();
         booking = byUuid;
     } else {
-        const { data } = await db.from('flight_bookings').select('*, flight_segments(*), passengers(*)').eq('id', id).single();
-        booking = data;
+        // Relations loaded separately: the query builder silently drops Supabase embed
+        // selectors, so these came back undefined and the PDF carried an empty
+        // itinerary. See loadFlightBookingRelations.
+        const { data } = await db.from('flight_bookings').select('*').eq('id', id).single();
+        if (data) {
+            const relations = await loadFlightBookingRelations((data as any).id);
+            booking = { ...data, flight_segments: relations.segments, passengers: relations.passengers };
+        } else {
+            booking = data;
+        }
     }
 
     // Fallback: unified_bookings
@@ -204,8 +214,16 @@ export async function GET(
             segments: (booking.flight_segments ?? []).map((seg: any) => ({
                 airline: `${seg.airline || ''} ${seg.flight_number || ''}`.trim(),
                 route: `${seg.origin || ''} -> ${seg.destination || ''}`,
+                // Date plus the times flown. Rendered in the reader's own timezone, not
+                // the airport's — the stored values are instants and nothing here carries
+                // an IANA zone per airport to convert them back with.
                 date: seg.departure
-                    ? new Date(seg.departure).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+                    ? [
+                        new Date(seg.departure).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+                        seg.arrival
+                            ? `${new Date(seg.departure).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })} – ${new Date(seg.arrival).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}`
+                            : '',
+                    ].filter(Boolean).join('  ')
                     : '',
             })),
             passengers: (booking.passengers ?? []).map((p: any) => ({
@@ -215,6 +233,51 @@ export async function GET(
             })),
         };
     }
+
+    // Derived from the same module the web page uses, so the two renderers cannot state
+    // different terms for one booking — they drifted once already (ADR-0042).
+    const cancelTerms = receiptCancellation(booking, effectiveIsHotel);
+    const cancellation = !cancelTerms ? null : (() => {
+        switch (cancelTerms.kind) {
+            case 'free':
+                return cancelTerms.until
+                    ? `Free cancellation until ${new Date(cancelTerms.until).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`
+                    : 'Free cancellation';
+            case 'non_refundable': return 'Non-refundable';
+            case 'partial': return 'Partial refund';
+            case 'tiered': return 'Cancellation charges apply';
+            case 'refundable': return 'Refundable';
+        }
+    })();
+
+    const discountRow = receiptDiscount(booking);
+    const discount = discountRow
+        ? {
+            label: discountRow.code ? `Voucher ${discountRow.code}` : 'Discount',
+            formattedAmount: formatCurrency(discountRow.amount, currency),
+        }
+        : null;
+
+    // Stored on `passengers`, so this is a real value rather than the placeholder the
+    // design carries. Absent until the airline issues the ticket, and then the row goes.
+    const ticketNumber: string | null = booking.passengers?.[0]?.ticket_number || null;
+
+    // The airline that issued the ticket, from the first segment's marketing carrier.
+    // The design's own example named an airport here.
+    const issuingAirline: string | null = effectiveIsHotel
+        ? (booking.property_name || null)
+        : (booking.flight_segments?.[0]?.airline || null);
+
+    // The Figma's Fare and Taxes rows. Present only when the booking's offer recorded a
+    // fare before tax; older bookings hold none and the rows stay hidden (ADR-0042).
+    const fareBase = effectiveIsHotel ? null : await loadFlightFareBase(booking.session_id);
+    const fareParts = fareBreakdown(totalPrice, fareBase?.base, fareBase?.currency, currency);
+    const breakdown = fareParts
+        ? {
+            formattedFare: formatCurrency(fareParts.fare, currency),
+            formattedTaxesAndFees: formatCurrency(fareParts.taxesAndFees, currency),
+        }
+        : null;
 
     const bookingRef = isHotel ? (booking.booking_id || '') : (booking.pnr || '');
     const bookingType = isBundleType ? 'Flight + Hotel Bundle' : isHotel ? 'Hotel' : `Flight · ${booking.trip_type ?? 'one-way'}`;
@@ -233,6 +296,11 @@ export async function GET(
             bookingType,
             provider,
             formattedTotal,
+            cancellation,
+            discount,
+            ticketNumber,
+            issuingAirline,
+            breakdown,
         }) as any
     );
 

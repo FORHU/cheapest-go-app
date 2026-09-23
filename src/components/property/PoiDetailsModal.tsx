@@ -341,7 +341,7 @@ export function PoiDetailsModal({ isOpen, onClose, poi }: PoiDetailsModalProps) 
                                     </label>
                                     {userImages.slice(0, 5).map((img, i) => (
                                         <div key={i} className="relative w-20 h-20 rounded-xl overflow-hidden group">
-                                            <img src={img} alt="" className="w-full h-full object-cover" />
+                                            <Image src={img} alt="" fill unoptimized className="object-cover" />
                                             <button 
                                                 onClick={() => {
                                                     const updated = userImages.filter((_, idx) => idx !== i);
@@ -415,7 +415,7 @@ export function PoiDetailsModal({ isOpen, onClose, poi }: PoiDetailsModalProps) 
                                 <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
                                     {userImages.map((img, i) => (
                                         <div key={i} className="relative flex-shrink-0 w-32 h-32 sm:w-40 sm:h-40 rounded-2xl overflow-hidden shadow-md">
-                                            <img src={img} alt="" className="w-full h-full object-cover" />
+                                            <Image src={img} alt="" fill unoptimized className="object-cover" />
                                         </div>
                                     ))}
                                 </div>

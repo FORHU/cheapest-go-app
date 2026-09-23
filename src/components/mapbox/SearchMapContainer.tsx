@@ -19,7 +19,6 @@ import { MapPopup } from '../map/MapPopup';
 import { MapSearchOverlay } from './components/MapSearchOverlay';
 import { useRouter } from 'next/navigation';
 import { useUserCurrency } from '@/stores/searchStore';
-import { useNights } from '@/hooks/useNights';
 import { useMapDetails } from './hooks/useMapDetails';
 import { MapDetailsPanel } from './components/MapDetailsPanel';
 import { env } from '@/utils/env';
@@ -117,7 +116,6 @@ export const SearchMapContainer = React.memo(({
     const isMobile = useIsMobile();
     const router = useRouter();
     const targetCurrency = useUserCurrency();
-    const nights = useNights();
 
     // 3. Derived State & Currency Conversion
     const mappableProperties = useMemo(() => {
@@ -221,7 +219,7 @@ export const SearchMapContainer = React.memo(({
         const zoom = mapRef.current?.getZoom() ?? DISTRICT_MARKER_THRESHOLD;
         setCurrentZoom(zoom);
         onZoomChange?.(zoom);
-    }, [updateViewBounds, onZoomChange]);
+    }, [updateViewBounds, onZoomChange, mapRef]);
 
     // When zoomed in to a district (≥ threshold), only render markers inside the
     // bbox. Zooming out reveals all-city hotels — the parent passes all-city hotels
@@ -242,7 +240,7 @@ export const SearchMapContainer = React.memo(({
             prices[p.id] = convertCurrency(p.price, p.currency || 'USD', targetCurrency);
         }
         return prices;
-    }, [mappableProperties, targetCurrency, nights]);
+    }, [mappableProperties, targetCurrency]);
 
     // Clusters carry only ids, so rendering a lone hotel needs its property back.
     const propertyById = useMemo(() => {
@@ -315,7 +313,7 @@ export const SearchMapContainer = React.memo(({
         if (!map) return;
         const cleanup = attachMouseLeave(map);
         return cleanup;
-    }, [isMapLoaded, attachMouseLeave]);
+    }, [isMapLoaded, attachMouseLeave, mapRef]);
 
     // 6. Viewport Management — skip auto-fit when a district bbox or restore will handle it
     useMapViewport({
@@ -387,7 +385,7 @@ export const SearchMapContainer = React.memo(({
         };
         window.addEventListener('popstate', onPopState);
         return () => window.removeEventListener('popstate', onPopState);
-    }, [onSelectId]); // eslint-disable-line react-hooks/exhaustive-deps
+    }, [onSelectId]);
 
     // Apply restore once the map is loaded. stop() is a safety net for any animation
     // that slipped through (e.g. useMapViewport on searches without a districtBbox).
@@ -565,7 +563,7 @@ export const SearchMapContainer = React.memo(({
             vicinity: gem.properties?.vicinity,
         });
         mapRef.current?.flyTo({ center: [lng, lat], zoom: 16, pitch: 0, duration: 600 });
-    }, [activeGemName]);
+    }, [activeGemName, mapRef]);
 
     // Clear gem state whenever the hotel selection is cleared
     React.useEffect(() => {

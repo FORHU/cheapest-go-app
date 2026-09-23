@@ -286,7 +286,6 @@ interface DealsSectionProps { deals?: Deal[] }
 
 const DealsSection: React.FC<DealsSectionProps> = ({ deals }) => {
   const t         = useTranslations();
-  const rawDeals  = deals || [];
   const gridRef   = useRef<HTMLDivElement>(null);
   const { ref: rowRef, dragProps } = useDragScroll<HTMLDivElement>();
   const [showAll,    setShowAll]    = useState(false);
@@ -298,11 +297,12 @@ const DealsSection: React.FC<DealsSectionProps> = ({ deals }) => {
   // Sort: deals departing from the user's detected airport float to the top.
   // Falls back to the original order when no match exists in the fetched set.
   const sortedDeals = useMemo(() => {
+    const rawDeals = deals || [];
     if (!userOrigin) return rawDeals;
     const local  = rawDeals.filter(d => d.origin === userOrigin);
     const others = rawDeals.filter(d => d.origin !== userOrigin);
     return local.length > 0 ? [...local, ...others] : rawDeals;
-  }, [rawDeals, userOrigin]);
+  }, [deals, userOrigin]);
 
   // Filter by trip type — a deal with a return_date is a round trip.
   const displayDeals = useMemo(() => {

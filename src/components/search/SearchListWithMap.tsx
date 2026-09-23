@@ -17,7 +17,6 @@ import { MapPin, Layers } from 'lucide-react';
 import { MapDetailsPanel } from '@/components/mapbox/components/MapDetailsPanel';
 import { useMapDetails } from '@/components/mapbox/hooks/useMapDetails';
 import { useUserCurrency } from '@/stores/searchStore';
-import { useNights } from '@/hooks/useNights';
 import { convertCurrency } from '@/lib/currency';
 
 interface SearchListWithMapProps {
@@ -77,14 +76,13 @@ function SearchListWithMap({ properties, children }: SearchListWithMapProps) {
     // Markers here used to render property.price raw — the stay total, in the supplier's
     // currency — while every card beside them showed a converted per-night figure.
     const targetCurrency = useUserCurrency();
-    const nights = useNights();
     const markerPrices = useMemo(() => {
         const prices: Record<string, number> = {};
         for (const p of mappableProperties) {
             prices[p.id] = convertCurrency(p.price, p.currency || 'USD', targetCurrency);
         }
         return prices;
-    }, [mappableProperties, targetCurrency, nights]);
+    }, [mappableProperties, targetCurrency]);
 
     const bounds = useMemo(() => computeBounds(mappableProperties), [mappableProperties]);
 

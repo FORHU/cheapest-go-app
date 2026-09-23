@@ -278,7 +278,12 @@ export function BookingDetailsDialog({ booking, onClose }: BookingDetailsDialogP
             fetchRefundHistory();
             fetchEmailLogs();
         }
-    }, [booking?.id]);
+        // Deliberately keyed on booking?.id alone: booking, fetchRefundHistory, and
+        // fetchEmailLogs are all recreated every render (booking is a fresh object from
+        // the parent's list-sync effect; the fetchers are plain unmemoized functions).
+        // Depending on them directly would re-fetch on every render of this dialog, not
+        // just when it's opened for a different booking.
+    }, [booking?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
     const handleRestoreBooking = () => {
         if (!booking) return;

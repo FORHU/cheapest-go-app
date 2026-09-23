@@ -183,7 +183,11 @@ export function BookingsClient({ data, searchParams }: BookingsClientProps) {
             }
         }, 500);
         return () => clearTimeout(timer);
-    }, [searchTerm]);
+        // Deliberately keyed on searchTerm alone: updateSearchParam is a plain
+        // (unmemoized) function recreated every render, and searchParams.q is the URL's
+        // own current value — including either would reset this debounce timer on every
+        // render, not just when the user types.
+    }, [searchTerm]); // eslint-disable-line react-hooks/exhaustive-deps
 
     // Update local search if URL changes externally
     React.useEffect(() => {
@@ -198,7 +202,7 @@ export function BookingsClient({ data, searchParams }: BookingsClientProps) {
                 setSelectedBooking(updated);
             }
         }
-    }, [data.bookings]);
+    }, [data.bookings, selectedBooking]);
 
     const fetchMonitoringData = async () => {
         setMonitoringLoading(true);

@@ -104,7 +104,7 @@ describe('FlightSummaryHeader', () => {
     });
 
     it('says the fare is non-refundable on the same row as the other facts', () => {
-        // The design puts refundability beside PNR / passengers / stops, because it is
+        // The design puts refundability beside PNR / passengers, because it is
         // the fact a traveller looking at a booking they may want out of reads first.
         renderIntl(<FlightSummaryHeader booking={{ ...booking, fare_policy: { isRefundable: false } }} />);
 

@@ -239,11 +239,31 @@ export function parseDuffelOffer(offer: any, cabinClassFallback?: string) {
     const numAdults = (offer.passengers ?? []).filter((p: any) => p.type === 'adult').length || 1;
     const pricePerAdult = numAdults > 1 ? Math.round(totalAmount / numAdults) : totalAmount;
 
+    // The fare before tax and the tax on it, as the airline quoted them.
+    //
+    // `FlightPrice` has carried `base` and `taxes` since it was written, and they
+    // reach the stored booking through `booking_sessions.flight`; nothing ever filled
+    // them, so both were persisted as zero and a receipt could state only one total
+    // (ADR-0042). Duffel sends these on every offer and always has.
+    //
+    // Parsed defensively: a missing or unparseable amount stays undefined rather than
+    // becoming zero, because zero is a number a receipt would print as a fact. Only a
+    // pair that reconciles with the total is kept — the two must account for the whole
+    // charge, or the breakdown would show a fare and a tax that do not add up.
+    const baseAmount = offer.base_amount != null ? parseFloat(offer.base_amount) : NaN;
+    const taxAmount = offer.tax_amount != null ? parseFloat(offer.tax_amount) : NaN;
+    const partsReconcile =
+        Number.isFinite(baseAmount) &&
+        Number.isFinite(taxAmount) &&
+        Number.isFinite(totalAmount) &&
+        Math.abs(baseAmount + taxAmount - totalAmount) < 0.01;
+
     return {
         provider: "duffel",
         offer_id: offer.id,
         price: totalAmount,
         pricePerAdult,
+        ...(partsReconcile ? { baseFare: baseAmount, taxes: taxAmount } : {}),
         currency: offer.total_currency,
         airline: offer.owner.name,
         departure_time: firstSeg?.departure?.time,

@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import Image, { type ImageProps } from "next/image"
 import { cn } from "@/lib/utils"
 
 function Avatar({
@@ -28,16 +29,17 @@ function AvatarImage({
   src,
   alt,
   ...props
-}: React.ComponentProps<"img">) {
+}: Omit<ImageProps, "src" | "alt" | "fill"> & { src?: ImageProps["src"]; alt?: string }) {
   const [hasError, setHasError] = React.useState(false)
 
   if (hasError || !src) return null
 
   return (
-    <img
+    <Image
       data-slot="avatar-image"
       src={src}
-      alt={alt}
+      alt={alt ?? ""}
+      fill
       className={cn("aspect-square size-full object-cover", className)}
       onError={() => setHasError(true)}
       {...props}

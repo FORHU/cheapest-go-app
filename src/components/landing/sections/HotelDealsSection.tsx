@@ -242,7 +242,9 @@ interface HotelDealsSectionProps { deals?: WeekendDeal[] }
 
 const HotelDealsSection: React.FC<HotelDealsSectionProps> = ({ deals }) => {
   const t = useTranslations();
-  const rawDeals = deals || [];
+  // Memoized so the [] fallback doesn't get a fresh identity every render — that
+  // identity feeds localDeals/allDeals' own deps below.
+  const rawDeals = useMemo(() => deals || [], [deals]);
   const gridRef = useRef<HTMLDivElement>(null);
   const { ref: rowRef, dragProps } = useDragScroll<HTMLDivElement>();
   const [showAll, setShowAll] = useState(false);

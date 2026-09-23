@@ -67,7 +67,10 @@ export function useMapNearbyPlaces({
 
         load();
         return () => controller.abort();
-    }, [enabled, coordinates?.lat, coordinates?.lng, radiusMeters, category]);
+        // Deliberately keyed on coordinates?.lat/lng rather than the coordinates object
+        // itself: callers commonly pass a fresh {lat, lng} literal every render, which
+        // would refire this fetch on every render instead of only on an actual move.
+    }, [enabled, coordinates?.lat, coordinates?.lng, radiusMeters, category]); // eslint-disable-line react-hooks/exhaustive-deps
 
     return { places, isLoading };
 }

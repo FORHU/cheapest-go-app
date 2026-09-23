@@ -454,7 +454,7 @@ export function useFlightBooking() {
         revalidate();
 
         return () => { isMounted = false; };
-    }, [router]);
+    }, [router, user?.id]);
 
     const updatePassenger = (idx: number, field: keyof FlightPassengerForm, value: string) => {
         setPassengers(prev => prev.map((p, i) => i === idx ? { ...p, [field]: value } : p));

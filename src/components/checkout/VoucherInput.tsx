@@ -96,7 +96,7 @@ export function VoucherInput({
         } finally {
             setVoucherLoading(false);
         }
-    }, [voucherCode, voucherLoading, bookingPrice, currency, hotelId, locationCode, setVoucherLoading, setVoucherError, setAppliedVoucher, onVoucherApplied]);
+    }, [voucherCode, voucherLoading, bookingPrice, currency, hotelId, locationCode, setVoucherLoading, setVoucherError, setAppliedVoucher, onVoucherApplied, t]);
 
     const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
         if (e.key === 'Enter') {

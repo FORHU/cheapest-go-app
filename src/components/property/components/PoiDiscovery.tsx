@@ -1,4 +1,5 @@
 import React from 'react';
+import Image from 'next/image';
 import { ChevronRight, ChevronLeft, Search, Star, Maximize, Minimize, Navigation, MapPin } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { POI_FILTERS } from '@/config/map-discovery';
@@ -195,6 +196,7 @@ export const PoiDiscovery: React.FC<PoiDiscoveryProps> = ({
                         const lat = poi.geometry?.coordinates[1] || poi.coordinates?.lat;
                         const category = (poi.properties?.category || poi.category || '').toLowerCase();
                         const PoiIcon = poi.properties?.icon || poi.icon || Search;
+                        const imageUrl: string | undefined = poi.properties?.imageUrl || poi.imageUrl;
 
                         const ratingValue = Number(poi.properties?.rating);
                         const ratingDisplay = Number.isFinite(ratingValue) && ratingValue > 0
@@ -242,13 +244,17 @@ export const PoiDiscovery: React.FC<PoiDiscoveryProps> = ({
                             `}
                             >
                                 {/* Photo — falls back gracefully to the gradient bg */}
-                                <img
-                                    src={poi.properties?.imageUrl || poi.imageUrl}
-                                    alt={name}
-                                    className="absolute inset-0 w-full h-full object-cover"
-                                    loading="lazy"
-                                    onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
-                                />
+                                {imageUrl && (
+                                    <Image
+                                        src={imageUrl}
+                                        alt={name}
+                                        fill
+                                        sizes="(max-width: 640px) 144px, 192px"
+                                        className="object-cover"
+                                        loading="lazy"
+                                        onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                                    />
+                                )}
                                 {/* Gradient overlay so text is always readable */}
                                 <div className="absolute inset-0 bg-linear-to-t from-black/70 via-black/10 to-transparent" />
                                 {/* Large centred icon — shows through when no photo */}

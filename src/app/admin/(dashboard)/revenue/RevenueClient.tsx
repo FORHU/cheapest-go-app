@@ -142,7 +142,11 @@ export function RevenueClient({ data, searchParams, defaultCurrency }: RevenueCl
             }
         }, 500);
         return () => clearTimeout(timer);
-    }, [searchTerm]);
+        // Deliberately keyed on searchTerm alone: updateSearchParam is a plain
+        // (unmemoized) function recreated every render, and searchParams.q is the URL's
+        // own current value — including either would reset this debounce timer on every
+        // render, not just when the user types.
+    }, [searchTerm]); // eslint-disable-line react-hooks/exhaustive-deps
 
     const handleExport = () => {
         try {

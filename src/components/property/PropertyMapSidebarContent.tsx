@@ -60,7 +60,7 @@ const PropertyMapSidebarContent = React.memo<PropertyMapSidebarProps>(
         const isPoiAllowed = useCallback((feature: any) => {
             const catId = getMapPoiCategory(feature);
             return catId && activeMapFilters.includes(catId);
-        }, [activeMapFilters, getMapPoiCategory]);
+        }, [activeMapFilters]);
         // Stable session token for Mapbox Search Box API
         const [mapboxSessionToken] = useState(() => Math.random().toString(36).substring(2, 15));
 
@@ -478,7 +478,7 @@ const PropertyMapSidebarContent = React.memo<PropertyMapSidebarProps>(
                     setSelectedNativePoi(null);
                 }
             }
-        }, [activePoiId, showDirections, isPoiAllowed]);
+        }, [activePoiId, showDirections, handleSelectOrigin]);
 
         const handleRecenter = useCallback(() => {
             if (!hasCoordinates) return;
@@ -580,7 +580,7 @@ const PropertyMapSidebarContent = React.memo<PropertyMapSidebarProps>(
             });
 
             map.getCanvas().style.cursor = poiFeature ? 'pointer' : '';
-        }, [showDirections, isPoiAllowed]);
+        }, [showDirections]);
 
         if (!mounted) {
             return (

@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import Image from 'next/image';
 import { motion } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
@@ -119,7 +120,7 @@ export function HotelBookingConfirmed({
 
                     {propertyImage && (
                         <div className="flex items-center gap-3 pb-3 border-b border-slate-200 dark:border-white/10">
-                            <img src={propertyImage} alt={propertyName} className="w-10 h-10 rounded-lg object-cover shrink-0" />
+                            <Image src={propertyImage} alt={propertyName} width={40} height={40} className="w-10 h-10 rounded-lg object-cover shrink-0" />
                             <span className="text-[10px] lg:text-sm font-medium text-slate-900 dark:text-white leading-tight">{propertyName}</span>
                         </div>
                     )}

@@ -6,6 +6,8 @@ import { formatCurrency, calculateNights } from '@/lib/utils';
 import { PrintButton } from './PrintButton';
 import { getTranslations } from 'next-intl/server';
 import { canonicalBrandName } from '@/lib/brand';
+import { receiptCancellation, receiptDiscount, fareBreakdown } from '@/lib/invoice/receipt-details';
+import { loadFlightBookingRelations, loadFlightFareBase } from '@/lib/invoice/flight-booking-relations';
 
 export const metadata: Metadata = {
     robots: { index: false, follow: false },
@@ -43,8 +45,17 @@ export default async function InvoicePage({ params, searchParams }: PageProps) {
         const { data: byUuid } = await db.from('bookings').select('*').eq('id', id).single();
         booking = byUuid;
     } else {
-        const { data } = await db.from('flight_bookings').select('*, flight_segments(*), passengers(*)').eq('id', id).single();
-        booking = data;
+        // The relations are loaded separately: this codebase's query builder silently
+        // drops Supabase embed selectors, so `flight_segments(*), passengers(*)` came
+        // back undefined and the receipt rendered an empty itinerary. See
+        // loadFlightBookingRelations.
+        const { data } = await db.from('flight_bookings').select('*').eq('id', id).single();
+        if (data) {
+            const relations = await loadFlightBookingRelations((data as any).id);
+            booking = { ...data, flight_segments: relations.segments, passengers: relations.passengers };
+        } else {
+            booking = data;
+        }
     }
 
     // Fallback: check unified_bookings (newer bookings live here)
@@ -115,6 +126,53 @@ export default async function InvoicePage({ params, searchParams }: PageProps) {
     const currency = booking.payment_currency || booking.currency || 'PHP';
     const totalPrice = booking.charged_price ?? booking.total_price;
 
+    // What the traveller can be told beyond the total. Derived in one place shared with
+    // the PDF renderer, which used to drift from this page — see ADR-0042.
+    const cancellation = receiptCancellation(booking, isHotel);
+    const discount = receiptDiscount(booking);
+
+    const cancellationLabel = (() => {
+        if (!cancellation) return null;
+        switch (cancellation.kind) {
+            case 'free':
+                return cancellation.until
+                    ? t('freeCancellationUntil', {
+                        date: new Date(cancellation.until).toLocaleDateString('en-US', {
+                            month: 'short', day: 'numeric', year: 'numeric',
+                        }),
+                    })
+                    : t('freeCancellation');
+            case 'non_refundable': return t('nonRefundable');
+            case 'partial': return t('partialRefund');
+            case 'tiered': return t('tieredPolicy');
+            case 'refundable': return t('refundable');
+        }
+    })();
+
+    // The one traveller the document is addressed to. A hotel booking names its holder;
+    // a flight names the lead passenger, who is who the ticket belongs to.
+    const leadName = isHotel
+        ? `${booking.holder_first_name ?? ''} ${booking.holder_last_name ?? ''}`.trim()
+        : `${booking.passengers?.[0]?.first_name ?? ''} ${booking.passengers?.[0]?.last_name ?? ''}`.trim();
+
+    // Stored on `passengers`, so this is a real value rather than the placeholder the
+    // design carries. Absent until the airline issues the ticket, and then the row goes.
+    const leadTicketNumber: string | null = booking.passengers?.[0]?.ticket_number || null;
+
+    // The airline that issued the ticket, taken from the first segment's marketing
+    // carrier. The design's own example named an airport here.
+    const issuingAirline: string | null = isHotel
+        ? (booking.property_name || null)
+        : (booking.flight_segments?.[0]?.airline || null);
+
+    const bookingReference: string = (isHotel ? booking.booking_id : booking.pnr) || '';
+
+    // The Figma's Fare and Taxes rows. They render only for a booking whose offer
+    // recorded a fare before tax — Duffel sends one on every offer, but nothing parsed
+    // it until recently, so older bookings have none and the rows stay hidden (ADR-0042).
+    const fareBase = isHotel ? null : await loadFlightFareBase(booking.session_id);
+    const breakdown = fareBreakdown(totalPrice, fareBase?.base, fareBase?.currency, currency);
+
     // Resolve customer email for the "Billed to" section.
     // Always look up the booking owner's profile; fall back to the viewer's session email.
     let customerEmail: string | null = user?.email ?? null;
@@ -143,7 +201,7 @@ export default async function InvoicePage({ params, searchParams }: PageProps) {
                         {/* The brand the customer actually paid. This was the literal "CheapestGo" on every
                             receipt, including those issued by the Korean storefront. */}
                         <h1 className="text-2xl font-extrabold text-indigo-600 tracking-tight">{canonicalBrandName(process.env.NEXT_PUBLIC_BRAND_NAME)}</h1>
-                        <p className="text-xs text-slate-400 mt-0.5">{t('yourTravelPartner')}</p>
+                        <p className="text-xs text-slate-400 mt-0.5">{t('yourTravelCompanion')}</p>
                     </div>
                     <div className="text-right">
                         <p className="text-xl font-bold text-slate-800 dark:text-white">{t('receipt')}</p>
@@ -152,29 +210,49 @@ export default async function InvoicePage({ params, searchParams }: PageProps) {
                     </div>
                 </div>
 
-                {/* Billed to */}
-                <div className="px-8 py-5 border-b border-slate-100 dark:border-slate-800">
-                    <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide mb-1">{t('billedTo')}</p>
-                    {isHotel ? (
-                        <>
-                            <p className="text-sm font-semibold text-slate-800 dark:text-white">
-                                {booking.holder_first_name} {booking.holder_last_name}
-                            </p>
-                            <p className="text-xs text-slate-500">{booking.holder_email}</p>
-                        </>
-                    ) : (
-                        <>
-                            <p className="text-sm font-semibold text-slate-800 dark:text-white">
-                                {booking.passengers?.[0]?.first_name} {booking.passengers?.[0]?.last_name}
-                            </p>
-                            <p className="text-xs text-slate-500">{customerEmail}</p>
-                        </>
+                {/* Who the document is for, called out above the detail blocks.
+                    No contact number: the page's credential is a forwardable UUID, and a
+                    phone beside a name, reference and ticket number is what an airline
+                    asks for to verify a caller. See ADR-0027. */}
+                <div className="px-8 pt-5 pb-4 space-y-1.5">
+                    <div className="flex items-baseline gap-2 text-sm">
+                        <span className="text-indigo-600 dark:text-indigo-400 font-medium uppercase tracking-wide text-xs">
+                            {isHotel ? t('guestLabel') : t('passengerLabel')}
+                        </span>
+                        <span className="text-slate-300 dark:text-slate-700">|</span>
+                        <span className="text-slate-800 dark:text-white uppercase">{leadName}</span>
+                    </div>
+                    {leadTicketNumber && (
+                        <div className="flex items-baseline gap-2 text-sm">
+                            <span className="text-indigo-600 dark:text-indigo-400 font-medium uppercase tracking-wide text-xs">
+                                {t('ticketNumberLabel')}
+                            </span>
+                            <span className="text-slate-300 dark:text-slate-700">|</span>
+                            <span className="font-mono text-slate-800 dark:text-white">{leadTicketNumber}</span>
+                        </div>
                     )}
                 </div>
 
-                {/* Booking details */}
+                {/* Your details */}
+                <div className="px-8 pb-5 border-b border-slate-100 dark:border-slate-800">
+                    <p className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-2">{t('yourDetails')}</p>
+                    <dl className="space-y-1.5 text-sm">
+                        <div className="flex items-baseline justify-between gap-6">
+                            <dt className="text-slate-500 dark:text-slate-400">{isHotel ? t('guestName') : t('passengerName')}</dt>
+                            <dd className="text-slate-800 dark:text-white text-right">{leadName}</dd>
+                        </div>
+                        <div className="flex items-baseline justify-between gap-6">
+                            <dt className="text-slate-500 dark:text-slate-400">{t('emailAddress')}</dt>
+                            <dd className="text-slate-800 dark:text-white text-right break-all">
+                                {isHotel ? booking.holder_email : customerEmail}
+                            </dd>
+                        </div>
+                    </dl>
+                </div>
+
+                {/* Itinerary */}
                 <div className="px-8 py-5 border-b border-slate-100 dark:border-slate-800">
-                    <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide mb-3">{t('bookingDetails')}</p>
+                    <p className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-3">{isHotel ? t('stay') : t('itinerary')}</p>
 
                     {isHotel ? (
                         <table className="w-full text-sm">
@@ -219,14 +297,24 @@ export default async function InvoicePage({ params, searchParams }: PageProps) {
                             <tbody className="divide-y divide-slate-50 dark:divide-slate-800">
                                 {(booking.flight_segments ?? []).map((seg: any, i: number) => (
                                     <tr key={i}>
-                                        <td className="py-2.5 text-xs text-slate-600 dark:text-slate-300 font-medium">
+                                        <td className="py-2.5 text-xs text-slate-600 dark:text-slate-300 font-medium align-top">
                                             {seg.airline} {seg.flight_number}
                                         </td>
-                                        <td className="py-2.5 text-xs text-slate-600 dark:text-slate-300">
+                                        <td className="py-2.5 text-xs text-slate-600 dark:text-slate-300 align-top">
                                             {seg.origin} → {seg.destination}
                                         </td>
-                                        <td className="py-2.5 text-xs text-slate-500">
+                                        <td className="py-2.5 text-xs text-slate-500 align-top">
                                             {new Date(seg.departure).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                                            {/* Times are rendered in the reader's own timezone, not the
+                                                airport's — the stored values are instants and nothing here
+                                                carries an IANA zone per airport to convert them back with. */}
+                                            {seg.arrival && (
+                                                <span className="block text-slate-400">
+                                                    {new Date(seg.departure).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
+                                                    {' – '}
+                                                    {new Date(seg.arrival).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
+                                                </span>
+                                            )}
                                         </td>
                                     </tr>
                                 ))}
@@ -252,38 +340,96 @@ export default async function InvoicePage({ params, searchParams }: PageProps) {
                     )}
                 </div>
 
-                {/* Booking reference */}
-                <div className="px-8 py-4 border-b border-slate-100 dark:border-slate-800 flex flex-wrap gap-6 text-xs text-slate-500">
-                    <div>
-                        <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide block mb-0.5">{t('bookingRef')}</span>
-                        <span className="font-mono text-slate-700 dark:text-slate-300">
-                            {isHotel ? booking.booking_id : booking.pnr}
-                        </span>
-                    </div>
-                    <div>
-                        <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide block mb-0.5">{t('type')}</span>
-                        <span className="text-slate-700 dark:text-slate-300 capitalize">
-                            {isHotel ? t('hotel') : `Flight · ${booking.trip_type ?? 'one-way'}`}
-                        </span>
-                    </div>
-                    <div>
-                        <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide block mb-0.5">{t('provider')}</span>
-                        <span className="text-slate-700 dark:text-slate-300 capitalize">
-                            {isHotel ? t('hotelPartner') : booking.provider}
-                        </span>
-                    </div>
-                    <div>
-                        <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide block mb-0.5">{t('payment')}</span>
-                        <span className="text-slate-700 dark:text-slate-300">{t('paymentMethod')}</span>
-                    </div>
-                </div>
-
-                {/* Total */}
-                <div className="px-8 py-5 flex items-center justify-between">
-                    <p className="text-sm font-semibold text-slate-500">{t('totalPaid')}</p>
-                    <p className="text-2xl font-extrabold text-slate-900 dark:text-white">
-                        {formatCurrency(totalPrice, currency)}
+                {/* Flight / stay details.
+                    The design also draws Fare, Taxes, Restriction Endorsements and Fare
+                    Calculation. None of them is rendered: no tax figure is recorded
+                    anywhere (ADR-0042), and the last two come from a Mystifly ticket-display
+                    call that cannot run while Duffel is the only live provider. The rows
+                    return when there is something true to put in them — a blank label or a
+                    zero would read as a fact. */}
+                <div className="px-8 py-5">
+                    <p className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-3">
+                        {isHotel ? t('stayDetails') : t('flightDetails')}
                     </p>
+                    <dl className="space-y-1.5 text-sm">
+                        <div className="flex items-baseline justify-between gap-6">
+                            <dt className="text-slate-500 dark:text-slate-400">{isHotel ? t('bookingRef') : t('pnr')}</dt>
+                            <dd className="font-mono text-slate-800 dark:text-white text-right">{bookingReference}</dd>
+                        </div>
+
+                        {leadTicketNumber && (
+                            <div className="flex items-baseline justify-between gap-6">
+                                <dt className="text-slate-500 dark:text-slate-400">{t('ticketNumber')}</dt>
+                                <dd className="font-mono text-slate-800 dark:text-white text-right">{leadTicketNumber}</dd>
+                            </div>
+                        )}
+
+                        <div className="flex items-baseline justify-between gap-6">
+                            <dt className="text-slate-500 dark:text-slate-400">{t('formOfPayment')}</dt>
+                            <dd className="text-slate-800 dark:text-white text-right">{t('paymentMethod')}</dd>
+                        </div>
+
+                        {/* Fare and the rest. Derived so the two rows always account for the
+                            whole charge; the second is never called "Tax" alone, because it
+                            carries any platform fee as well (ADR-0042). */}
+                        {breakdown && (
+                            <>
+                                <div className="flex items-baseline justify-between gap-6">
+                                    <dt className="text-slate-500 dark:text-slate-400">{t('fare')}</dt>
+                                    <dd className="text-slate-800 dark:text-white text-right">
+                                        {formatCurrency(breakdown.fare, currency)}
+                                    </dd>
+                                </div>
+                                <div className="flex items-baseline justify-between gap-6">
+                                    <dt className="text-slate-500 dark:text-slate-400">{t('taxesAndFees')}</dt>
+                                    <dd className="text-slate-800 dark:text-white text-right">
+                                        {formatCurrency(breakdown.taxesAndFees, currency)}
+                                    </dd>
+                                </div>
+                            </>
+                        )}
+
+                        {/* A voucher the traveller used is theirs to see, and it sits where
+                            a reader expects a deduction: immediately above the total. */}
+                        {discount && (
+                            <div className="flex items-baseline justify-between gap-6">
+                                <dt className="text-slate-500 dark:text-slate-400">
+                                    {discount.code ? t('voucherApplied', { code: discount.code }) : t('discount')}
+                                </dt>
+                                <dd className="font-semibold text-emerald-600 dark:text-emerald-400 text-right">
+                                    −{formatCurrency(discount.amount, currency)}
+                                </dd>
+                            </div>
+                        )}
+
+                        <div className="flex items-baseline justify-between gap-6">
+                            <dt className="text-slate-500 dark:text-slate-400">
+                                {t('totalAmount')}
+                                {/* Only worth saying when the parts are not shown above. */}
+                                {!breakdown && <span className="block text-[11px] text-slate-400">{t('includesTaxes')}</span>}
+                            </dt>
+                            <dd className="font-bold text-slate-900 dark:text-white text-right">
+                                {formatCurrency(totalPrice, currency)}
+                            </dd>
+                        </div>
+
+                        {issuingAirline && (
+                            <div className="flex items-baseline justify-between gap-6">
+                                <dt className="text-slate-500 dark:text-slate-400">{isHotel ? t('property') : t('issuingAirline')}</dt>
+                                <dd className="text-slate-800 dark:text-white text-right">{issuingAirline}</dd>
+                            </div>
+                        )}
+
+                        {/* Absent terms say nothing at all. A booking that never recorded its
+                            rules must not read as non-refundable on the document proving what
+                            the traveller paid. */}
+                        {cancellationLabel && (
+                            <div className="flex items-baseline justify-between gap-6">
+                                <dt className="text-slate-500 dark:text-slate-400">{t('cancellation')}</dt>
+                                <dd className="text-slate-800 dark:text-white text-right">{cancellationLabel}</dd>
+                            </div>
+                        )}
+                    </dl>
                 </div>
 
                 {/* Footer */}

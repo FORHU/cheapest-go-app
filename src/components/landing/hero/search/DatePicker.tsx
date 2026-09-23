@@ -32,9 +32,12 @@ export const DatePicker: React.FC<DatePickerProps> = ({ inline, forceOpen, onDon
     const { checkIn: rawCheckIn, checkOut: rawCheckOut, flexibility } = useDates();
     const { setDates, setActiveDropdown } = useSearchStore();
 
-    // Convert potential strings from persistence to Date objects
-    const checkIn = rawCheckIn ? new Date(rawCheckIn) : null;
-    const checkOut = rawCheckOut ? new Date(rawCheckOut) : null;
+    // Convert potential strings from persistence to Date objects. Memoized so these
+    // keep a stable identity across renders (a `new Date(...)` on every render would be
+    // a fresh reference every time even for the same timestamp) — several effects below
+    // depend on them.
+    const checkIn = useMemo(() => (rawCheckIn ? new Date(rawCheckIn) : null), [rawCheckIn]);
+    const checkOut = useMemo(() => (rawCheckOut ? new Date(rawCheckOut) : null), [rawCheckOut]);
 
     const [currentMonth, setCurrentMonth] = useState(() => {
         if (checkIn && !isNaN(checkIn.getTime())) return new Date(checkIn.getFullYear(), checkIn.getMonth(), 1);
@@ -57,11 +60,11 @@ export const DatePicker: React.FC<DatePickerProps> = ({ inline, forceOpen, onDon
             else if (checkIn && !checkOut) setSelectingCheckOut(true);
             else setSelectingCheckOut(false);
         }
-    }, [isOpen, initialCheckOutMode]);
-    const onClose = () => {
+    }, [isOpen, initialCheckOutMode, checkIn, checkOut]);
+    const onClose = React.useCallback(() => {
         if (onDone) onDone();
         else if (!forceOpen) setActiveDropdown(null);
-    };
+    }, [onDone, forceOpen, setActiveDropdown]);
 
     useEffect(() => {
         setYearInput(currentMonth.getFullYear().toString());
@@ -95,7 +98,7 @@ export const DatePicker: React.FC<DatePickerProps> = ({ inline, forceOpen, onDon
             document.removeEventListener('mousedown', handleClickOutside);
             document.removeEventListener('touchstart', handleClickOutside);
         };
-    }, [isOpen]);
+    }, [isOpen, onClose]);
 
     const years = useMemo(() => {
         const currentYear = new Date().getFullYear();

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useRef, useEffect, useState } from 'react';
+import React, { useRef, useEffect, useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { MapPin, History, Plane, Building2, Globe, X } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
@@ -62,9 +62,9 @@ export const DestinationPicker: React.FC<DestinationPickerProps> = ({ hideIcon, 
     });
 
     const isOpen = forceOpen || activeDropdown === 'destination';
-    const onClose = () => {
+    const onClose = useCallback(() => {
         if (!forceOpen) setActiveDropdown(null);
-    };
+    }, [forceOpen, setActiveDropdown]);
 
     // Close logic
     useEffect(() => {
@@ -79,7 +79,7 @@ export const DestinationPicker: React.FC<DestinationPickerProps> = ({ hideIcon, 
             document.addEventListener('mousedown', handleClickOutside);
         }
         return () => document.removeEventListener('mousedown', handleClickOutside);
-    }, [isOpen, hideInput]);
+    }, [isOpen, hideInput, onClose]);
 
     // Handlers
     const handleSelect = (destination: Destination) => {

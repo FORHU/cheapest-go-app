@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect } from 'react';
+import Image from 'next/image';
 import { useTranslations } from 'next-intl';
 import { motion } from 'framer-motion';
 import { Plane, User, Mail, Loader2, CheckCircle, AlertTriangle, MapPin, PartyPopper, Info, Clock, Shield, XCircle, X, BadgeDollarSign, RefreshCw, Users, BedDouble, ArrowRight, Armchair, Luggage, Sparkles, ChevronDown } from 'lucide-react';
@@ -869,11 +870,13 @@ function BookingContent() {
                 {/* Flight Summary */}
                 <div className="bg-white dark:bg-slate-900 rounded-md border border-slate-200 dark:border-slate-700 p-3 lg:p-5 mb-3 lg:mb-6 shadow-sm">
                     <div className="flex items-center gap-2 lg:gap-3 mb-2 lg:mb-3">
-                        <div className="w-8 h-8 lg:w-10 lg:h-10 rounded-md lg:rounded-md bg-white border border-slate-200 dark:border-slate-700 overflow-hidden flex items-center justify-center shadow-sm">
-                            <img
+                        <div className="relative w-8 h-8 lg:w-10 lg:h-10 rounded-md lg:rounded-md bg-white border border-slate-200 dark:border-slate-700 overflow-hidden flex items-center justify-center shadow-sm">
+                            <Image
                                 src={`https://www.gstatic.com/flights/airline_logos/70px/${primary.airline.code}.png`}
                                 alt={primary.airline.name}
-                                className="w-full h-full object-contain p-1.5"
+                                fill
+                                sizes="40px"
+                                className="object-contain p-1.5"
                             />
                         </div>
                         <div>
@@ -1637,7 +1640,7 @@ function DealGate({
             setHasError(true);
             setErrorMsg(err.message || t('dealGate.somethingWrong'));
         }
-    }, [origin, destination, departure, returnDate, cabinClass, isRoundTrip, onReady]);
+    }, [origin, destination, departure, returnDate, cabinClass, isRoundTrip, onReady, t]);
 
     React.useEffect(() => {
         if (searchFired.current) return;

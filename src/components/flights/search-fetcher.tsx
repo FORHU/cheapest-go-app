@@ -297,7 +297,12 @@ export function SearchFetcher({
     }, [origin, destination, departureDate, returnDate, adults, children, infants, cabinClass, retryKey]);
 
     // ─── Derived data ─────────────────────────────────────────────────────────
-    const rawOffers = state.status === 'success' ? state.offers : [];
+    // Memoized so the [] fallback doesn't get a fresh identity every render — that
+    // identity feeds filteredOffers' own deps below.
+    const rawOffers = useMemo(
+        () => (state.status === 'success' ? state.offers : []),
+        [state],
+    );
 
     // Client-side filtering applied to cached allOffers — no re-fetch needed. The rules
     // themselves live in lib/flights/filter-offers, so they can be tested without a screen.

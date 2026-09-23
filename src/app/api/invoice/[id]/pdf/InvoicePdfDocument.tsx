@@ -29,6 +29,21 @@ interface InvoicePdfProps {
     bookingType: string;
     provider: string;
     formattedTotal: string;
+    /** The lead traveller's e-ticket, or null before the airline issues one. */
+    ticketNumber: string | null;
+    /** The airline that issued the ticket, or the property for a stay. */
+    issuingAirline: string | null;
+    /** Already-formatted cancellation terms, or null when the booking records none. */
+    cancellation: string | null;
+    /** Already-formatted voucher discount, or null when none was applied. */
+    discount: { label: string; formattedAmount: string } | null;
+    /**
+     * Fare before tax and everything else, already formatted. Null when the booking's
+     * offer recorded no fare, which is every booking taken before Duffel's base_amount
+     * was parsed. The second figure is never labelled as tax alone — it carries any
+     * platform fee too (ADR-0042).
+     */
+    breakdown: { formattedFare: string; formattedTaxesAndFees: string } | null;
 }
 
 // ── Styles ──
@@ -83,8 +98,6 @@ const s = StyleSheet.create({
         letterSpacing: 1.5,
         marginBottom: 6,
     },
-    nameText: { fontSize: 11, fontFamily: 'Helvetica-Bold', color: colors.darkText },
-    emailText: { fontSize: 9, color: colors.mediumText, marginTop: 2 },
 
     // ── Table ──
     tableHeaderRow: {
@@ -124,53 +137,24 @@ const s = StyleSheet.create({
     passengerType: { fontSize: 8, color: colors.lightText },
     ticketLabel: { fontSize: 7, fontFamily: 'Helvetica-Bold', color: colors.emerald },
 
-    // ── Booking ref row ──
-    refRow: {
-        flexDirection: 'row',
-        gap: 32,
-        paddingVertical: 14,
-        borderBottomWidth: 1,
-        borderBottomColor: colors.border,
-    },
-    refBlock: {},
-    refLabel: {
-        fontSize: 7,
-        fontFamily: 'Helvetica-Bold',
-        color: colors.lightText,
-        textTransform: 'uppercase' as const,
-        letterSpacing: 1,
-        marginBottom: 3,
-    },
-    refValue: { fontSize: 9, color: colors.darkText },
-
-    // ── Total ──
-    totalRow: {
+    // ── Label / value rows ──
+    totalNote: { fontSize: 8, color: colors.lightText, marginTop: 2 },
+    discountValue: { fontSize: 9, fontFamily: 'Helvetica-Bold', color: colors.emerald },
+    identityBlock: { marginBottom: 16 },
+    identityRow: { flexDirection: 'row', alignItems: 'baseline', gap: 6, marginBottom: 4 },
+    identityLabel: { fontSize: 9, color: colors.indigo, fontFamily: 'Helvetica-Bold' },
+    identityDivider: { fontSize: 9, color: colors.faintText },
+    identityValue: { fontSize: 10, color: colors.darkText },
+    detailRow: {
         flexDirection: 'row',
         justifyContent: 'space-between',
-        alignItems: 'center',
-        paddingVertical: 18,
+        alignItems: 'flex-start',
+        marginBottom: 5,
     },
-    totalLabel: { fontSize: 11, fontFamily: 'Helvetica-Bold', color: colors.mediumText },
-    totalValue: { fontSize: 20, fontFamily: 'Helvetica-Bold', color: colors.darkText },
+    detailLabel: { fontSize: 9, color: colors.mediumText },
+    detailValue: { fontSize: 9, color: colors.darkText, textAlign: 'right' },
+    detailValueBold: { fontSize: 11, fontFamily: 'Helvetica-Bold', color: colors.darkText, textAlign: 'right' },
 
-    // ── Paid Stamp ──
-    paidStamp: {
-        position: 'absolute',
-        top: 140,
-        right: 48,
-        borderWidth: 2,
-        borderColor: '#10b981',
-        borderRadius: 4,
-        paddingHorizontal: 12,
-        paddingVertical: 4,
-        transform: 'rotate(-12deg)',
-    },
-    paidText: {
-        color: '#10b981',
-        fontSize: 14,
-        fontFamily: 'Helvetica-Bold',
-        letterSpacing: 2,
-    },
 
     // ── Footer ──
     footer: {
@@ -191,6 +175,7 @@ export function InvoicePdfDocument(props: InvoicePdfProps) {
         invoiceNumber, issuedDate, billedTo, isHotel,
         hotelDetails, flightDetails, bookingRef,
         bookingType, provider, formattedTotal,
+        cancellation, discount, ticketNumber, issuingAirline, breakdown,
     } = props;
 
     const showFlight = !!flightDetails;
@@ -204,31 +189,53 @@ export function InvoicePdfDocument(props: InvoicePdfProps) {
                 <View style={s.headerRow}>
                     <View>
                         <Text style={s.brand}>{BRAND}</Text>
-                        <Text style={s.tagline}>Your Travel Partner</Text>
+                        <Text style={s.tagline}>Your Travel Companion</Text>
                     </View>
                     <View>
-                        <Text style={s.receiptTitle}>OFFICIAL RECEIPT</Text>
+                        <Text style={s.receiptTitle}>E-RECEIPT</Text>
                         <Text style={s.receiptMeta}>{invoiceNumber}</Text>
                         <Text style={s.receiptMeta}>Issued: {issuedDate}</Text>
                     </View>
                 </View>
 
-                {/* ── Paid Stamp ── */}
-                <View style={s.paidStamp}>
-                    <Text style={s.paidText}>PAID</Text>
+                {/* ── Who this is for ──
+                    No contact number: this document is reached by a forwardable UUID, and a
+                    phone beside a name, reference and ticket number is what an airline asks
+                    for to verify a caller. See ADR-0027. */}
+                <View style={s.identityBlock}>
+                    <View style={s.identityRow}>
+                        <Text style={s.identityLabel}>{isHotel ? 'GUEST' : 'PASSENGER'}</Text>
+                        <Text style={s.identityDivider}>|</Text>
+                        <Text style={s.identityValue}>{(billedTo.name || 'Guest').toUpperCase()}</Text>
+                    </View>
+                    {ticketNumber ? (
+                        <View style={s.identityRow}>
+                            <Text style={s.identityLabel}>TICKET NUMBER</Text>
+                            <Text style={s.identityDivider}>|</Text>
+                            <Text style={s.identityValue}>{ticketNumber}</Text>
+                        </View>
+                    ) : null}
                 </View>
 
-                {/* ── Billed To ── */}
+                {/* ── Your details ── */}
                 <View style={s.section}>
-                    <Text style={s.sectionLabel}>Billed to</Text>
-                    <Text style={s.nameText}>{billedTo.name || 'Guest'}</Text>
-                    {billedTo.email ? <Text style={s.emailText}>{billedTo.email}</Text> : null}
+                    <Text style={s.sectionLabel}>Your details</Text>
+                    <View style={s.detailRow}>
+                        <Text style={s.detailLabel}>{isHotel ? 'Guest Name' : 'Passenger Name'}</Text>
+                        <Text style={s.detailValue}>{billedTo.name || 'Guest'}</Text>
+                    </View>
+                    {billedTo.email ? (
+                        <View style={s.detailRow}>
+                            <Text style={s.detailLabel}>Email Address</Text>
+                            <Text style={s.detailValue}>{billedTo.email}</Text>
+                        </View>
+                    ) : null}
                 </View>
 
                 {/* ── Hotel Details (If present) ── */}
                 {showHotel && hotelDetails && (
                     <View style={s.section}>
-                        <Text style={s.sectionLabel}>Hotel Accommodation</Text>
+                        <Text style={s.sectionLabel}>Stay</Text>
                         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                             <View style={{ flex: 1 }}>
                                 <Text style={s.hotelPropName}>{hotelDetails.propertyName}</Text>
@@ -246,7 +253,7 @@ export function InvoicePdfDocument(props: InvoicePdfProps) {
                 {/* ── Flight Details (If present) ── */}
                 {showFlight && flightDetails && (
                     <View style={s.section}>
-                        <Text style={s.sectionLabel}>Flight Itinerary</Text>
+                        <Text style={s.sectionLabel}>Itinerary</Text>
 
                         {/* Segment table */}
                         <View style={s.tableHeaderRow}>
@@ -282,31 +289,92 @@ export function InvoicePdfDocument(props: InvoicePdfProps) {
                     </View>
                 )}
 
-                {/* ── Booking Reference ── */}
-                <View style={s.refRow}>
-                    <View style={s.refBlock}>
-                        <Text style={s.refLabel}>Booking Ref</Text>
-                        <Text style={s.refValue}>{bookingRef}</Text>
+                {/* ── Flight / stay details ──
+                    The design also draws Fare, Taxes, Restriction Endorsements and Fare
+                    Calculation. None is rendered: no tax figure is recorded anywhere
+                    (ADR-0042), and the last two come from a Mystifly ticket-display call
+                    that cannot run while Duffel is the only live provider. A blank label
+                    or a zero would read as a fact, so the rows wait for real values. */}
+                <View style={s.section}>
+                    <Text style={s.sectionLabel}>{isHotel ? 'Stay details' : 'Flight details'}</Text>
+
+                    <View style={s.detailRow}>
+                        <Text style={s.detailLabel}>{isHotel ? 'Booking Reference' : 'PNR'}</Text>
+                        <Text style={s.detailValue}>{bookingRef}</Text>
                     </View>
-                    <View style={s.refBlock}>
-                        <Text style={s.refLabel}>Type</Text>
-                        <Text style={s.refValue}>{bookingType}</Text>
+
+                    {ticketNumber ? (
+                        <View style={s.detailRow}>
+                            <Text style={s.detailLabel}>Ticket number</Text>
+                            <Text style={s.detailValue}>{ticketNumber}</Text>
+                        </View>
+                    ) : null}
+
+                    <View style={s.detailRow}>
+                        <Text style={s.detailLabel}>Form of payment</Text>
+                        <Text style={s.detailValue}>Stripe (Card)</Text>
                     </View>
-                    <View style={s.refBlock}>
-                        <Text style={s.refLabel}>Provider</Text>
-                        <Text style={s.refValue}>{provider}</Text>
+
+                    {/* Fare and the rest, derived so the rows account for the whole charge.
+                        The second is never "Tax" alone — it carries any platform fee too. */}
+                    {breakdown && (
+                        <>
+                            <View style={s.detailRow}>
+                                <Text style={s.detailLabel}>Fare</Text>
+                                <Text style={s.detailValue}>{breakdown.formattedFare}</Text>
+                            </View>
+                            <View style={s.detailRow}>
+                                <Text style={s.detailLabel}>Taxes and fees</Text>
+                                <Text style={s.detailValue}>{breakdown.formattedTaxesAndFees}</Text>
+                            </View>
+                        </>
+                    )}
+
+                    {/* Sits where a reader expects a deduction: immediately above the total. */}
+                    {discount && (
+                        <View style={s.detailRow}>
+                            <Text style={s.detailLabel}>{discount.label}</Text>
+                            <Text style={s.discountValue}>−{discount.formattedAmount}</Text>
+                        </View>
+                    )}
+
+                    <View style={s.detailRow}>
+                        <View>
+                            <Text style={s.detailLabel}>Total Amount</Text>
+                            {/* Only worth saying when the parts are not shown above. */}
+                            {breakdown ? null : <Text style={s.totalNote}>Includes all taxes and fees</Text>}
+                        </View>
+                        <Text style={s.detailValueBold}>{formattedTotal}</Text>
                     </View>
-                    <View style={s.refBlock}>
-                        <Text style={s.refLabel}>Payment</Text>
-                        <Text style={s.refValue}>Stripe (Card)</Text>
+
+                    {issuingAirline ? (
+                        <View style={s.detailRow}>
+                            <Text style={s.detailLabel}>{isHotel ? 'Property' : 'Issuing Airline'}</Text>
+                            <Text style={s.detailValue}>{issuingAirline}</Text>
+                        </View>
+                    ) : null}
+
+                    {/* Absent terms say nothing. A booking that never recorded its rules
+                        must not read as non-refundable. */}
+                    {cancellation && (
+                        <View style={s.detailRow}>
+                            <Text style={s.detailLabel}>Cancellation</Text>
+                            <Text style={s.detailValue}>{cancellation}</Text>
+                        </View>
+                    )}
+
+                    <View style={s.detailRow}>
+                        <Text style={s.detailLabel}>Type</Text>
+                        <Text style={s.detailValue}>{bookingType}</Text>
+                    </View>
+                    <View style={s.detailRow}>
+                        <Text style={s.detailLabel}>Provider</Text>
+                        <Text style={s.detailValue}>{provider}</Text>
                     </View>
                 </View>
 
-                {/* ── Total ── */}
-                <View style={s.totalRow}>
-                    <Text style={s.totalLabel}>Total Paid</Text>
-                    <Text style={s.totalValue}>{formattedTotal}</Text>
-                </View>
+                {/* The total lives inside the details block above, where the design puts
+                    it. There is no separate total band and no breakdown — see ADR-0042. */}
 
                 {/* ── Footer ── */}
                 <View style={s.footer}>
@@ -314,16 +382,15 @@ export function InvoicePdfDocument(props: InvoicePdfProps) {
                         Thank you for booking with {BRAND}. For support, contact{' '}
                         <Text style={s.footerEmail}>crm@myfarebox.com</Text>
                     </Text>
-                    {/* FIXME (legal, not cosmetic): this read "CheapestGo is a trading name
-                        of CheapestGo Travel Services." Neither half is verified — the site
-                        footer and the TravelgateX contract both name FORHU Inc as the legal
-                        entity, and no company called "CheapestGo Travel Services" appears
-                        anywhere else in this codebase. The brand is now correct; the entity
-                        it claims to trade under still needs confirming by someone who knows
-                        what is registered, on this and on airanggo.com. */}
-                    <Text style={[s.footerText, { marginTop: 4, opacity: 0.6 }]}>
-                        {BRAND} is a trading name of CheapestGo Travel Services.
-                    </Text>
+                    {/* No issuing entity is named here on purpose. This line used to read
+                        "{BRAND} is a trading name of CheapestGo Travel Services", which
+                        nobody verified and which names a company appearing nowhere else in
+                        this codebase; the site footer and the TravelgateX contract both say
+                        FORHU Inc. An unverified legal claim on a document finance teams file
+                        is worse than no claim, so it was removed rather than corrected on a
+                        guess. Restore a real entity — with its registered address and tax
+                        registration number — once someone confirms what is registered, here
+                        and on airanggo.com. Until then this is not a tax invoice. ADR-0042. */}
                 </View>
 
             </Page>

@@ -2,7 +2,7 @@
 
 import React, { useMemo } from 'react';
 import { useTranslations } from 'next-intl';
-import { Calendar, MoveRight, PlaneLanding, RotateCcw, XCircle } from 'lucide-react';
+import { Calendar, MoveRight, RotateCcw, XCircle } from 'lucide-react';
 import { AirlineSeatReclineIcon } from '@/components/icons/AirlineSeatReclineIcon';
 import type { FlightBookingRecord } from '@/services/booking.service';
 import { bookingToFlightOffer, durationMinutes } from '@/lib/trips/booking-itinerary';
@@ -56,14 +56,6 @@ export function FlightSummaryHeader({ booking }: { booking: FlightBookingRecord 
     const refundable: boolean | undefined =
         typeof booking.fare_policy?.isRefundable === 'boolean' ? booking.fare_policy.isRefundable : undefined;
 
-    // Plane changes per direction, which is what a traveller counts — never the sum
-    // across a round trip, which describes a journey nobody takes in one go.
-    const stopLabels = offerSlices(offer).map(slice =>
-        slice.stops === 0
-            ? t('flightBookingCard.nonstop')
-            : t(slice.stops === 1 ? 'flightBookingCard.stop' : 'flightBookingCard.stops', { count: slice.stops }),
-    );
-
     return (
         <div className="flex flex-col">
             {/* Airline, its flight numbers, and the booking's facts.
@@ -107,10 +99,11 @@ export function FlightSummaryHeader({ booking }: { booking: FlightBookingRecord 
                                     )}
                                 </span>
                             </span>
-                            <span className="flex items-center gap-1">
-                                <PlaneLanding className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 shrink-0" />
-                                <span>{stopLabels.join(' / ')}</span>
-                            </span>
+                            {/* Stops are deliberately absent here. A round trip needs one
+                                figure per direction, and two of them side by side read as
+                                noise on a booking already paid for; a single combined figure
+                                is the summary [ADR-0010] retired. The trip's own page carries
+                                the itinerary, which states each direction in full. */}
                             {/* Read straight off the booking's stored fare policy, so this
                                 works on the server-rendered trip page as well as in the list
                                 card. Absent rules say nothing at all — claiming a ticket is

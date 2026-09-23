@@ -1,5 +1,4 @@
 import { getRequestConfig } from 'next-intl/server';
-import { cookies } from 'next/headers';
 import { routing } from './routing';
 import { applyBrand } from './applyBrand';
 
@@ -20,7 +19,18 @@ function deepMerge<T extends Record<string, unknown>>(target: T, source: Partial
 }
 
 export default getRequestConfig(async ({ requestLocale }) => {
-  // Priority: brand lock > URL-based locale (from middleware header) > cookie > default
+  // Priority: brand lock > URL-based locale (from middleware header) > default.
+  //
+  // The cookie itself is read in middleware, not here: middleware either rewrites a
+  // prefixed URL (/ko/...) to set the header, or redirects an unprefixed request whose
+  // sticky cookie names a non-default locale to its prefixed URL, and otherwise sets the
+  // header to the default locale explicitly. That means requestLocale always resolves
+  // for a real request. Reading cookies()/headers() directly in this function — as a
+  // previous version of this fallback did — forces Next.js to render the page
+  // dynamically on every request, silently disabling ISR (export const revalidate) on
+  // every page that uses translations. During the build's static-generation pass (no
+  // real request, no middleware), requestLocale resolves to undefined and we fall back
+  // to the static default below.
   const locked = process.env.NEXT_PUBLIC_LOCALE;
 
   let locale: string;
@@ -28,15 +38,9 @@ export default getRequestConfig(async ({ requestLocale }) => {
     locale = locked;
   } else {
     const fromMiddleware = await requestLocale;
-    if (fromMiddleware && routing.locales.includes(fromMiddleware as typeof routing.locales[number])) {
-      locale = fromMiddleware;
-    } else {
-      const cookieStore = await cookies();
-      const fromCookie = cookieStore.get('locale')?.value;
-      locale = (fromCookie && routing.locales.includes(fromCookie as typeof routing.locales[number]))
-        ? fromCookie
-        : 'en';
-    }
+    locale = (fromMiddleware && routing.locales.includes(fromMiddleware as typeof routing.locales[number]))
+      ? fromMiddleware
+      : routing.defaultLocale;
   }
 
   const enMessages = (await import(`../locales/en.json`)).default;

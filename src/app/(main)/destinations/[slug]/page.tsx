@@ -7,8 +7,6 @@ import { buildDestinationSlug } from '@/lib/utils';
 import { getTranslations } from 'next-intl/server';
 import { hreflang } from '@/lib/seo/hreflang';
 
-export const revalidate = 3600;
-
 interface PopularDestination {
     id: string;
     city: string;

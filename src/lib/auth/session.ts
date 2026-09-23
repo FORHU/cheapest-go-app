@@ -8,6 +8,7 @@
  */
 
 import { isRole, type Role } from './roles';
+import { hasExceededIdleLimit } from './idle';
 import { cookies } from 'next/headers';
 import { getLucia } from './lucia';
 import type { Session, User } from 'lucia';
@@ -46,6 +47,18 @@ export async function getSession(): Promise<SessionResult> {
 
     if (!session) return { session: null, user: null };
 
+    // Idle Limit (CONTEXT.md, ADR-0027): a session that has gone longer than its role's
+    // limit without Presence signs the traveller out, even though it has not reached its
+    // absolute expiry. Enforced here, server-side, on every read — a limit the browser kept
+    // instead is one the browser can decline to keep.
+    const role = isRole((user as any).role) ? (user as any).role : 'user';
+    if (hasExceededIdleLimit({ lastActiveAt: session.lastActiveAt ?? new Date(0), role, now: new Date() })) {
+        await lucia.invalidateSession(sessionId);
+        const blankCookie = lucia.createBlankSessionCookie();
+        cookieStore.set(blankCookie.name, blankCookie.value, blankCookie.attributes);
+        return { session: null, user: null };
+    }
+
     // Refresh session cookie if it's close to expiry (sliding window)
     // (This replaces Supabase's automatic token refresh in middleware)
     if (session.fresh) {
@@ -81,6 +94,21 @@ export async function createUserSession(userId: string): Promise<void> {
     const cookie = lucia.createSessionCookie(session.id);
     const cookieStore = await cookies();
     cookieStore.set(cookie.name, cookie.value, cookie.attributes);
+}
+
+/**
+ * Record Presence for a session — a click, keypress, scroll or touch, or a request one of
+ * those caused. The only writer of `sessions.last_active_at`; `getSession()` only ever
+ * reads it. Call this from a route the client hits deliberately on real activity, never
+ * from routine polling or from `getSession()` itself — traffic is not Presence (CONTEXT.md).
+ *
+ * A session id that no longer exists (already idled out, or never existed) is a no-op: the
+ * caller has nothing useful to do with a session that isn't there, and shouldn't have to
+ * treat "gone" as an error.
+ */
+export async function touchSessionPresence(sessionId: string): Promise<void> {
+    const sql = getSqlAdmin();
+    await sql`UPDATE sessions SET last_active_at = NOW() WHERE id = ${sessionId}`;
 }
 
 /**

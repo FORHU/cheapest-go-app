@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useMemo } from 'react';
+import Image from 'next/image';
 import { createPortal } from 'react-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useTranslations } from 'next-intl';
@@ -115,7 +116,7 @@ function CancelModal({ booking, onConfirm, onClose, isLoading, error, displayCur
             .catch((err) => { if (err?.name !== 'AbortError') setQuoteError(t('flightBookingCard.cancelModal.networkError')); })
             .finally(() => { if (!abort.signal.aborted) setQuoteLoading(false); });
         return () => { abort.abort(); };
-    }, [booking.id, booking.provider]);
+    }, [booking.id, booking.provider, t]);
 
     const fmtAmount = (amount: number, fromCurrency: string) =>
         formatCurrency(convertCurrency(amount, fromCurrency, displayCurrency), displayCurrency);
@@ -354,7 +355,7 @@ export default function FlightBookingCard({ booking, onCancelled }: FlightBookin
         if (!fareEligibility.isVoidable) { setShowVoidQuote(false); setVoidQuoteData(null); setVoidQuoteError(null); }
         // For Duffel, always allow the refund quote panel — Duffel's cancellation API is the source of truth, not the stored fare_policy flag
         if (!fareEligibility.isRefundable && !isDuffel) { setShowRefundQuote(false); setRefundStep('idle'); setRefundError(null); }
-    }, [fareEligibility]);
+    }, [fareEligibility, isDuffel]);
 
     // Silently auto-fetch TripDetails for ticketed Mystifly bookings to check eligibility
     useEffect(() => {
@@ -1156,9 +1157,11 @@ export default function FlightBookingCard({ booking, onCancelled }: FlightBookin
                     <div className="relative w-24 min-h-[96px] flex-shrink-0 bg-white dark:bg-slate-800 flex flex-col items-center justify-center rounded-l-xl border-r border-slate-100 dark:border-slate-700">
                         {/* Airline Logo */}
                         <div className="w-16 h-16 flex items-center justify-center mb-1">
-                            <img
+                            <Image
                                 src={`https://images.kiwi.com/airlines/64/${firstSegment?.airline}.png`}
                                 alt={firstSegment?.airline ?? ''}
+                                width={64}
+                                height={64}
                                 className="w-16 h-16 object-contain"
                                 onError={(e) => {
                                     e.currentTarget.style.display = 'none';

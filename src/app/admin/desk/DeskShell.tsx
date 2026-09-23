@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { ChevronRight, Plane } from 'lucide-react';
@@ -132,10 +133,13 @@ export function DeskShell({
                     {/* Page banner */}
                     <div className="p-3 sm:p-6 lg:p-8 pb-0 lg:pb-0">
                         <div className="relative h-32 sm:h-64 w-full overflow-hidden rounded-2xl sm:rounded-3xl shadow-2xl">
-                            <img
+                            <Image
                                 src={banner.image}
                                 alt={banner.title}
-                                className="w-full h-full object-cover transition-opacity duration-500"
+                                fill
+                                sizes="100vw"
+                                priority
+                                className="object-cover transition-opacity duration-500"
                             />
                             <div className="absolute inset-0 bg-linear-to-b from-black/20 via-transparent to-black/60" />
 

@@ -150,7 +150,7 @@ export function AvailablePromos({
         } finally {
             setVoucherLoading(false);
         }
-    }, [voucherLoading, bookingPrice, currency, hotelId, locationCode, setVoucherLoading, setVoucherError, setVoucherCode, setAppliedVoucher, onVoucherApplied]);
+    }, [voucherLoading, bookingPrice, currency, hotelId, locationCode, setVoucherLoading, setVoucherError, setVoucherCode, setAppliedVoucher, onVoucherApplied, t]);
 
     // Don't render if loading or no promos
     if (promosLoading) {

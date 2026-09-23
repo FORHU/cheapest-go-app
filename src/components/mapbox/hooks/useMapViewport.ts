@@ -65,7 +65,7 @@ export const useMapViewport = ({
                 bearing: 0,
             }
         );
-    }, [isMapLoaded, propertiesKey, mapRef, selectedId, disableInitialFit]);
+    }, [isMapLoaded, propertiesKey, mapRef, selectedId, disableInitialFit, properties]);
 
     // 2. Fly to specific property when selected (skip if caller opted out)
     useEffect(() => {

@@ -142,6 +142,13 @@ export const AirportAutocomplete: React.FC<AirportAutocompleteProps> = ({
         el?.scrollIntoView({ block: 'nearest' });
     }, [activeIndex, listboxId]);
 
+    const handleSelect = useCallback((airport: Airport) => {
+        isSelectingRef.current = true;
+        setQuery(airport.city);
+        onChange(airport);
+        onToggle(false);
+    }, [onChange, onToggle]);
+
     // ── Keyboard navigation ──────────────────────────────────────
     const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
         switch (e.key) {
@@ -165,14 +172,7 @@ export const AirportAutocomplete: React.FC<AirportAutocompleteProps> = ({
                 onToggle(false);
                 break;
         }
-    }, [activeIndex, results, onToggle]);
-
-    const handleSelect = (airport: Airport) => {
-        isSelectingRef.current = true;
-        setQuery(airport.city);
-        onChange(airport);
-        onToggle(false);
-    };
+    }, [activeIndex, results, onToggle, handleSelect]);
 
     // ── Display ──────────────────────────────────────────────────
     const displayText = value ? `${value.city} (${value.iata})` : null;

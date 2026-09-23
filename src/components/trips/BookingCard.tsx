@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
+import Image from 'next/image';
 import dynamic from 'next/dynamic';
 import { motion } from 'framer-motion';
 import { useTranslations } from 'next-intl';
@@ -86,10 +87,12 @@ export default function BookingCard({ booking, onBookingUpdated, index = 0 }: Bo
                     {/* Image — smaller thumbnail */}
                     <div className="relative w-24 min-h-[96px] flex-shrink-0 overflow-hidden rounded-l-lg">
                         {booking.property_image ? (
-                            <img
+                            <Image
                                 src={booking.property_image}
                                 alt={booking.property_name}
-                                className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                                fill
+                                sizes="96px"
+                                className="object-cover transition-transform duration-500 group-hover:scale-105"
                             />
                         ) : (
                             <div className="absolute inset-0 bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
@@ -191,10 +194,12 @@ export default function BookingCard({ booking, onBookingUpdated, index = 0 }: Bo
                         corners — the design gives it a quarter of the row, not a thumbnail. */}
                     <div className="relative w-[242px] shrink-0 overflow-hidden rounded-l-lg">
                         {booking.property_image ? (
-                            <img
+                            <Image
                                 src={booking.property_image}
                                 alt={booking.property_name}
-                                className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                                fill
+                                sizes="242px"
+                                className="object-cover transition-transform duration-500 group-hover:scale-105"
                             />
                         ) : (
                             <div className="absolute inset-0 bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">

@@ -298,7 +298,10 @@ export function MapResultsClient({ searchParams, destination, onSwitchView }: Ma
 
         run().catch((err) => { if (!cancelled && err?.name !== 'AbortError') setStatus('error'); });
         return () => { cancelled = true; controller.abort(); };
-    }, [searchKey]);
+        // searchKey is the stable proxy for searchParams (JSON.stringify) — depending on
+        // searchParams/cached directly would re-run this on every render, since both are
+        // recomputed fresh (new identity) each render. See the identical pattern above.
+    }, [searchKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
     if (status === 'done' && properties.length === 0) {
         return (

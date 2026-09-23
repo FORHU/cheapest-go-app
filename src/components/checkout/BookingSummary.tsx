@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from 'react';
+import Image from 'next/image';
 import { useTranslations } from 'next-intl';
 import { Calendar, Star, MapPin, Tag, Pencil, Check, X, ChevronDown, CheckCircle, AlertCircle, HelpCircle } from 'lucide-react';
 import { CancellationPolicySection } from './CancellationPolicySection';
@@ -128,11 +129,13 @@ export function BookingSummary({
                 {/* Hotel Card Header */}
                 <div className="p-3 lg:p-5 flex gap-3 lg:gap-4">
                     {propertyImage && (
-                        <div className="w-16 h-16 lg:w-20 lg:h-20 rounded-lg overflow-hidden flex-shrink-0">
-                            <img
+                        <div className="relative w-16 h-16 lg:w-20 lg:h-20 rounded-lg overflow-hidden flex-shrink-0">
+                            <Image
                                 src={propertyImage}
                                 alt={propertyName}
-                                className="w-full h-full object-cover"
+                                fill
+                                sizes="80px"
+                                className="object-cover"
                             />
                         </div>
                     )}
