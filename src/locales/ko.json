@@ -1391,25 +1391,79 @@
     "subtitlePersonalized": "{country} 인기 호텔 · 매일 업데이트"
   },
   "invoice": {
-    "amount": "금액",
-    "billedTo": "청구 대상",
-    "bookingDetails": "예약 정보",
-    "bookingRef": "예약 번호",
-    "date": "날짜",
-    "description": "내역",
-    "flight": "항공",
-    "hotel": "호텔",
-    "hotelPartner": "호텔 파트너",
-    "issued": "발행일: {date}",
+    "airline": "항공사",
+    "airlinePnr": "항공사 PNR",
+    "booking": "예약",
+    "bookingReference": "예약 번호",
+    "cabin": {
+      "business": "비즈니스",
+      "economy": "일반석",
+      "first": "일등석",
+      "premium_economy": "프리미엄 일반석"
+    },
+    "cancellation": "취소",
+    "changes": "변경",
+    "checkIn": "체크인",
+    "checkOut": "체크아웃",
+    "colName": "이름",
+    "colSeat": "좌석",
+    "colTicket": "전자항공권 번호",
+    "colType": "구분",
+    "eReceipt": "전자 영수증",
+    "guest": "투숙객",
+    "guests": "투숙객 {count}명",
+    "invoiceNumber": "인보이스 {number}",
+    "issuedOn": "발행일 {date}",
+    "itinerary": "여정",
+    "leadGuest": "대표 투숙객",
+    "leg": {
+      "depart": "가는 편",
+      "flight": "항공편 {number}",
+      "return": "오는 편"
+    },
+    "nights": "{count}박",
+    "paidWith": "결제 수단",
+    "paidWithCard": "카드 · {date}",
     "passengers": "탑승객",
+    "paxCount": {
+      "adult": "성인 {count}명",
+      "child": "소아 {count}명",
+      "infant": "유아 {count}명"
+    },
+    "paxType": {
+      "adult": "성인",
+      "child": "소아",
+      "infant": "유아"
+    },
     "payment": "결제",
-    "paymentMethod": "Stripe (카드)",
-    "provider": "공급사",
-    "receipt": "영수증",
-    "route": "여정",
-    "thankYou": "CheapestGo를 이용해 주셔서 감사합니다. 문의 사항은 다음으로 연락해 주세요",
+    "policy": {
+      "freeCancellation": "무료 취소",
+      "nonRefundable": "환불 불가",
+      "notPermitted": "변경 불가",
+      "partialRefund": "부분 환불 가능",
+      "permitted": "변경 가능",
+      "permittedFee": "변경 가능 · 수수료 {fee}",
+      "refundable": "환불 가능",
+      "refundablePenalty": "환불 가능 · 위약금 {fee}"
+    },
+    "room": "객실",
+    "status": {
+      "cancelled": "취소됨",
+      "paid": "결제 완료",
+      "refundPending": "환불 대기",
+      "refunded": "환불 완료"
+    },
+    "stay": "숙박",
+    "stops": "{count, plural, =0 {직항} other {경유 #회}}",
+    "thankYou": "CheapestGo를 이용해 주셔서 감사합니다. 도움이 필요하시면 예약 번호와 함께 <email></email>로 문의해 주세요.",
     "totalPaid": "총 결제 금액",
-    "type": "구분",
+    "totalWithCurrency": "합계 ({currency})",
+    "trip": "여행",
+    "tripKind": {
+      "multiCity": "다구간",
+      "oneWay": "편도",
+      "roundTrip": "왕복"
+    },
     "yourTravelPartner": "당신의 여행 파트너"
   },
   "landing": {

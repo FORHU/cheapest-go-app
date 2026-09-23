@@ -1391,25 +1391,79 @@
     "subtitlePersonalized": "Top-rated stays in {country} · updated daily"
   },
   "invoice": {
-    "amount": "Amount",
-    "billedTo": "Billed to",
-    "bookingDetails": "Booking Details",
-    "bookingRef": "Booking Ref",
-    "date": "Date",
-    "description": "Description",
-    "flight": "Flight",
-    "hotel": "Hotel",
-    "hotelPartner": "Hotel Partner",
-    "issued": "Issued: {date}",
+    "airline": "Airline",
+    "airlinePnr": "Airline PNR",
+    "booking": "Booking",
+    "bookingReference": "Booking reference",
+    "cabin": {
+      "business": "Business",
+      "economy": "Economy",
+      "first": "First",
+      "premium_economy": "Premium Economy"
+    },
+    "cancellation": "Cancellation",
+    "changes": "Changes",
+    "checkIn": "Check-in",
+    "checkOut": "Check-out",
+    "colName": "Name",
+    "colSeat": "Seat",
+    "colTicket": "E-ticket number",
+    "colType": "Type",
+    "eReceipt": "E-Receipt",
+    "guest": "Guest",
+    "guests": "{count, plural, one {# guest} other {# guests}}",
+    "invoiceNumber": "Invoice {number}",
+    "issuedOn": "Issued {date}",
+    "itinerary": "Itinerary",
+    "leadGuest": "Lead guest",
+    "leg": {
+      "depart": "Depart",
+      "flight": "Flight {number}",
+      "return": "Return"
+    },
+    "nights": "{count, plural, one {# night} other {# nights}}",
+    "paidWith": "Paid with",
+    "paidWithCard": "Card · {date}",
     "passengers": "Passengers",
+    "paxCount": {
+      "adult": "{count, plural, one {# adult} other {# adults}}",
+      "child": "{count, plural, one {# child} other {# children}}",
+      "infant": "{count, plural, one {# infant} other {# infants}}"
+    },
+    "paxType": {
+      "adult": "Adult",
+      "child": "Child",
+      "infant": "Infant"
+    },
     "payment": "Payment",
-    "paymentMethod": "Stripe (Card)",
-    "provider": "Provider",
-    "receipt": "RECEIPT",
-    "route": "Route",
-    "thankYou": "Thank you for booking with CheapestGo. For support, contact",
-    "totalPaid": "Total Paid",
-    "type": "Type",
+    "policy": {
+      "freeCancellation": "Free cancellation",
+      "nonRefundable": "Non-refundable",
+      "notPermitted": "Not permitted",
+      "partialRefund": "Partially refundable",
+      "permitted": "Permitted",
+      "permittedFee": "Permitted · {fee} fee",
+      "refundable": "Refundable",
+      "refundablePenalty": "Refundable · {fee} penalty"
+    },
+    "room": "Room",
+    "status": {
+      "cancelled": "Cancelled",
+      "paid": "Paid",
+      "refundPending": "Refund pending",
+      "refunded": "Refunded"
+    },
+    "stay": "Stay",
+    "stops": "{count, plural, =0 {Nonstop} one {# stop} other {# stops}}",
+    "thankYou": "Thank you for booking with CheapestGo. Need help? Contact <email></email> and quote your booking reference.",
+    "totalPaid": "Total paid",
+    "totalWithCurrency": "Total ({currency})",
+    "trip": "Trip",
+    "tripKind": {
+      "multiCity": "Multi-city",
+      "oneWay": "One-way",
+      "roundTrip": "Round-trip"
+    },
     "yourTravelPartner": "Your Travel Partner"
   },
   "landing": {

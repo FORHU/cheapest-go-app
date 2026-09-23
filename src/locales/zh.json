@@ -1391,25 +1391,79 @@
     "subtitlePersonalized": "{country} 的高分住宿 · 每日更新"
   },
   "invoice": {
-    "amount": "金额",
-    "billedTo": "账单寄送至",
-    "bookingDetails": "预订详情",
-    "bookingRef": "预订编号",
-    "date": "日期",
-    "description": "说明",
-    "flight": "机票",
-    "hotel": "酒店",
-    "hotelPartner": "酒店合作伙伴",
-    "issued": "开具日期：{date}",
+    "airline": "航空公司",
+    "airlinePnr": "航空公司 PNR",
+    "booking": "预订",
+    "bookingReference": "预订编号",
+    "cabin": {
+      "business": "商务舱",
+      "economy": "经济舱",
+      "first": "头等舱",
+      "premium_economy": "超级经济舱"
+    },
+    "cancellation": "取消",
+    "changes": "改签",
+    "checkIn": "入住",
+    "checkOut": "退房",
+    "colName": "姓名",
+    "colSeat": "座位",
+    "colTicket": "电子客票号",
+    "colType": "类型",
+    "eReceipt": "电子收据",
+    "guest": "住客",
+    "guests": "{count} 位住客",
+    "invoiceNumber": "发票 {number}",
+    "issuedOn": "开具日期 {date}",
+    "itinerary": "行程",
+    "leadGuest": "主要住客",
+    "leg": {
+      "depart": "去程",
+      "flight": "航班 {number}",
+      "return": "返程"
+    },
+    "nights": "{count} 晚",
+    "paidWith": "付款方式",
+    "paidWithCard": "银行卡 · {date}",
     "passengers": "乘客",
+    "paxCount": {
+      "adult": "{count} 位成人",
+      "child": "{count} 位儿童",
+      "infant": "{count} 位婴儿"
+    },
+    "paxType": {
+      "adult": "成人",
+      "child": "儿童",
+      "infant": "婴儿"
+    },
     "payment": "付款",
-    "paymentMethod": "Stripe（银行卡）",
-    "provider": "供应商",
-    "receipt": "收据",
-    "route": "航线",
-    "thankYou": "感谢您通过 CheapestGo 预订。如需帮助，请联系",
+    "policy": {
+      "freeCancellation": "免费取消",
+      "nonRefundable": "不可退款",
+      "notPermitted": "不可改签",
+      "partialRefund": "可部分退款",
+      "permitted": "可改签",
+      "permittedFee": "可改签 · 手续费 {fee}",
+      "refundable": "可退款",
+      "refundablePenalty": "可退款 · 违约金 {fee}"
+    },
+    "room": "房型",
+    "status": {
+      "cancelled": "已取消",
+      "paid": "已付款",
+      "refundPending": "退款处理中",
+      "refunded": "已退款"
+    },
+    "stay": "住宿",
+    "stops": "{count, plural, =0 {直飞} other {经停 # 次}}",
+    "thankYou": "感谢您通过 CheapestGo 预订。如需帮助，请联系 <email></email> 并提供您的预订编号。",
     "totalPaid": "已付总额",
-    "type": "类型",
+    "totalWithCurrency": "合计（{currency}）",
+    "trip": "行程",
+    "tripKind": {
+      "multiCity": "多程",
+      "oneWay": "单程",
+      "roundTrip": "往返"
+    },
     "yourTravelPartner": "您的旅行伙伴"
   },
   "landing": {

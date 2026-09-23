@@ -1391,25 +1391,79 @@
     "subtitlePersonalized": "{country} の高評価ホテル · 毎日更新"
   },
   "invoice": {
-    "amount": "金額",
-    "billedTo": "請求先",
-    "bookingDetails": "予約内容",
-    "bookingRef": "予約番号",
-    "date": "日付",
-    "description": "内容",
-    "flight": "航空券",
-    "hotel": "ホテル",
-    "hotelPartner": "ホテルパートナー",
-    "issued": "発行日: {date}",
+    "airline": "航空会社",
+    "airlinePnr": "航空会社PNR",
+    "booking": "予約",
+    "bookingReference": "予約番号",
+    "cabin": {
+      "business": "ビジネス",
+      "economy": "エコノミー",
+      "first": "ファースト",
+      "premium_economy": "プレミアムエコノミー"
+    },
+    "cancellation": "キャンセル",
+    "changes": "変更",
+    "checkIn": "チェックイン",
+    "checkOut": "チェックアウト",
+    "colName": "氏名",
+    "colSeat": "座席",
+    "colTicket": "eチケット番号",
+    "colType": "区分",
+    "eReceipt": "電子領収書",
+    "guest": "宿泊者",
+    "guests": "宿泊者{count}名",
+    "invoiceNumber": "請求書 {number}",
+    "issuedOn": "発行日 {date}",
+    "itinerary": "旅程",
+    "leadGuest": "代表宿泊者",
+    "leg": {
+      "depart": "往路",
+      "flight": "フライト {number}",
+      "return": "復路"
+    },
+    "nights": "{count}泊",
+    "paidWith": "お支払い方法",
+    "paidWithCard": "カード · {date}",
     "passengers": "搭乗者",
+    "paxCount": {
+      "adult": "大人{count}名",
+      "child": "小児{count}名",
+      "infant": "幼児{count}名"
+    },
+    "paxType": {
+      "adult": "大人",
+      "child": "小児",
+      "infant": "幼児"
+    },
     "payment": "お支払い",
-    "paymentMethod": "Stripe（カード）",
-    "provider": "提供元",
-    "receipt": "領収書",
-    "route": "区間",
-    "thankYou": "CheapestGoをご利用いただきありがとうございます。お問い合わせ先",
+    "policy": {
+      "freeCancellation": "無料キャンセル",
+      "nonRefundable": "返金不可",
+      "notPermitted": "変更不可",
+      "partialRefund": "一部返金可",
+      "permitted": "変更可",
+      "permittedFee": "変更可 · 手数料 {fee}",
+      "refundable": "返金可",
+      "refundablePenalty": "返金可 · 違約金 {fee}"
+    },
+    "room": "客室",
+    "status": {
+      "cancelled": "キャンセル済み",
+      "paid": "支払い済み",
+      "refundPending": "返金手続き中",
+      "refunded": "返金済み"
+    },
+    "stay": "宿泊",
+    "stops": "{count, plural, =0 {直行便} other {経由{count}回}}",
+    "thankYou": "CheapestGoをご利用いただきありがとうございます。お問い合わせは、予約番号を添えて<email></email>までご連絡ください。",
     "totalPaid": "お支払い総額",
-    "type": "種別",
+    "totalWithCurrency": "合計（{currency}）",
+    "trip": "旅行",
+    "tripKind": {
+      "multiCity": "周遊",
+      "oneWay": "片道",
+      "roundTrip": "往復"
+    },
     "yourTravelPartner": "あなたの旅のパートナー"
   },
   "landing": {

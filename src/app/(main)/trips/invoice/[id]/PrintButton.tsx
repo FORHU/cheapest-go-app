@@ -54,7 +54,7 @@ export function PrintButton() {
             </button>
             <button
                 onClick={() => window.print()}
-                className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold rounded-xl transition-colors"
+                className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-sm font-semibold rounded-xl transition-colors"
             >
                 <Printer className="w-4 h-4" />
                 {t('print')}

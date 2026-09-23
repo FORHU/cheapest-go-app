@@ -59,7 +59,7 @@ function storedLegIndex(seg: FlightSegmentRecord): number {
  * when the insert path set it, and a gap over 24 hours as the fallback for legacy rows
  * where itinerary_index is 0 on every segment and can't be trusted alone.
  */
-function groupIntoLegs(segments: FlightSegmentRecord[]): FlightSegmentRecord[][] {
+export function groupIntoLegs(segments: FlightSegmentRecord[]): FlightSegmentRecord[][] {
     if (segments.length === 0) return [];
 
     const sorted = [...segments].sort((a, b) => new Date(a.departure).getTime() - new Date(b.departure).getTime());
