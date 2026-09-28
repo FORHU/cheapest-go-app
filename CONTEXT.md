@@ -312,6 +312,11 @@ _Avoid_: blaming the difference on the account or the session. Nothing about a N
 **Stay Total** — what a room costs for the whole date range asked about. This is what OTV/TGX actually quotes and what prebook confirms, so it is the only hotel price the platform receives directly and the basis of every charge.
 _Avoid_: passing one as a bare number. A price and the stay it covers travel together; a figure that has lost its night count cannot be restated per night by whoever renders it next, only guessed at.
 
+**Default Stay** — the dates a hotel search quotes for when nobody has named usable ones: a landing card that links straight to a city, a link that has gone stale in a chat window, a checkout that falls on or before the arrival. Next Friday to Sunday. It is a *hotel* term and says nothing about flights, where the cheapest departure is weeks out, not next weekend.
+_Avoid_: today or tomorrow. OTV holds near-zero inventory for same-day and next-day stays, so a page that quotes them reports "no rooms available" for a hotel with plenty — indistinguishable, to the traveller, from the hotel being full. On 2026-09-28 a landing card linked with no dates at all, the search bar filled in tomorrow, and every property opened from those results came back empty.
+_Avoid_: more than one rule for it. Three coexisted — next weekend, today+30, and tomorrow — so which stay a traveller was quoted depended on which card they happened to click.
+_Note_: a Default Stay is disclosed, never silent. The traveller is told the dates were chosen for them and where to change them; a quote they did not ask for and cannot see the basis of is worse than no quote.
+
 **Booked Amount** — a payment restated into the **Reporting Currency** using the rate in force at the moment it was taken. Fixed permanently at that instant, so a report for a past period returns the same figure however long afterwards it is run.
 _Avoid_: recomputing a past period at today's rate — a closed month never moves.
 

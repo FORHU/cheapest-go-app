@@ -16,6 +16,7 @@ import MobileBookingCTA from '@/components/property/MobileBookingCTA';
 import BackButton from '@/components/common/BackButton';
 import { FadeInUp, FadeIn } from '@/components/property/AnimatedContent';
 import { fetchHotelStatic, fetchPropertyData } from '@/lib/property';
+import { resolveStayDates } from '@/lib/defaultStay';
 import { bundleSavingPercent } from '@/lib/pricing';
 import { fetchHotelReviews } from '@/lib/property/fetchReviews';
 import LocationSection from '@/components/property/LocationSectionDynamic';
@@ -102,10 +103,20 @@ export default async function PropertyPage({
     // carries `checkIn`/`checkOut`, the map view writes `checkin`/`checkout`. Accept both
     // so a stay is never silently dropped on the way in; everything downstream reads the
     // camelCase form only.
+    //
+    // Then resolve them. A link shared in a chat window last week names dates in the past,
+    // and the supplier simply rejects those — the page then shows a hotel with no bookable
+    // room, which reads as a full hotel rather than a stale link. This is the one place
+    // every downstream read passes through, so it is the only place that has to do it.
+    const asString = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v);
+    const stay = resolveStayDates(
+        asString(rawSearchParams.checkIn  ?? rawSearchParams.checkin),
+        asString(rawSearchParams.checkOut ?? rawSearchParams.checkout),
+    );
     const searchParamsResult: { [key: string]: string | string[] | undefined } = {
         ...rawSearchParams,
-        checkIn:  rawSearchParams.checkIn  ?? rawSearchParams.checkin,
-        checkOut: rawSearchParams.checkOut ?? rawSearchParams.checkout,
+        checkIn:  stay.checkIn,
+        checkOut: stay.checkOut,
     };
     const t = await getTranslations('property');
 

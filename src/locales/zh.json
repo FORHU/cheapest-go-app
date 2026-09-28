@@ -1270,7 +1270,8 @@
       "pricePerNight": "{min} – {max} /晚",
       "search": "搜索",
       "searchFallback": "搜索",
-      "swipeToBrowse": "滑动浏览"
+      "swipeToBrowse": "滑动浏览",
+      "datesPicked": "这些日期是我们为您选择的 — 更改日期可查看其他价格。"
     },
     "mobileSearch": {
       "addDates": "添加日期",

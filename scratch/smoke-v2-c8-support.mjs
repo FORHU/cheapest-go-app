@@ -48,6 +48,11 @@ const [ME, SOMEONE_ELSE] = users;
 // ids belong to staff before it can act as one.
 const ADMIN_IDS = new Set(psql("SELECT id FROM users WHERE role = 'admin'").split('\n').map(s => s.trim()).filter(Boolean));
 
+// Someone with no way into the desk at all. The first two accounts are both admins, and an
+// Agent may legitimately read any chat — so an "a stranger cannot" check written against one
+// of them proves nothing about the rule it claims to test.
+const OUTSIDER = psql("SELECT id FROM users WHERE coalesce(role, 'user') NOT IN ('admin', 'support_agent') ORDER BY created_at LIMIT 1").split(String.fromCharCode(10))[0].trim();
+
 const b64url = (o) => Buffer.from(JSON.stringify(o)).toString('base64url');
 
 /** An HS256 token, which is all api-v2 verifies. */
@@ -331,11 +336,149 @@ if (agentStatus === 'translated') {
     }
 }
 
+console.log('\nWhat the reader is handed');
+
+// The widget decides which text to show from the language the rendering is in — a translation
+// into English is for the inbox, one into anything else is for the customer. It can only do
+// that if the payload carries the rendering at all; until 2026-09-25 it carried only the body,
+// so an Agent's reply reached a Korean customer in English however well the server had
+// translated it.
+const readBack = await call('GET', '/support/conversation', { as: ME });
+const transcript = readBack.json?.data?.messages ?? [];
+check('the transcript comes back with the rendering beside the words',
+    transcript.length > 0 && transcript.every(m => 'translatedBody' in m && 'translatedLang' in m && 'translationStatus' in m),
+    `fields on a message: ${Object.keys(transcript[0] ?? {}).join(', ')}`);
+
+const koreanRow = transcript.find(m => m.id === koreanId);
+check('a customer message carries an English rendering, which is for the inbox',
+    koreanRow?.translatedLang === 'en',
+    `lang ${koreanRow?.translatedLang}, status ${koreanRow?.translationStatus}`);
+
+const agentRow = transcript.find(m => m.id === agentMessageId);
+check('and an Agent reply carries one in the language the customer reads',
+    agentRow?.translatedLang === 'ko',
+    `lang ${agentRow?.translatedLang}, status ${agentRow?.translationStatus}`);
+
+// The rule the widget applies, restated here against the real payload: the customer must never
+// be shown the English rendering of their own sentence.
+check('so the customer is never shown their own words in English',
+    koreanRow?.translatedLang === 'en' && koreanRow?.body.includes('12345678'),
+    'the guest row must keep the words as written');
+
 const resolved = await call('POST', `/admin/support/conversations/${fresh.id}/resolve`, { as: ADMIN });
 check('an admin can resolve it', resolved.status === 200, `got ${resolved.status}`);
 check('and the customer can no longer add to it',
     (await call('POST', `/support/conversation/${fresh.id}/messages`, { as: ME, body: { body: 'one more' } })).status === 409,
     'a resolved chat accepted a message');
+
+console.log('\nAttachments (ADR-0040)');
+
+// The bytes need a bucket, which this environment has none of — so the upload path is
+// checked for the one thing it must do without one: refuse honestly rather than 500. What
+// does not need a bucket is the part that matters most, and is checked in full below: the
+// storage key never leaving the server, and who may fetch a file being re-decided per
+// request rather than baked into a link.
+const attachUpload = await call('POST', `/support/conversation/${fresh.id}/attachments`, { as: ME });
+check('an upload with no storage configured is refused, not crashed',
+    attachUpload.status === 503 || attachUpload.status === 400,
+    `got ${attachUpload.status}`);
+
+// A row of our own, so the reading paths can be checked without a bucket.
+const attachId = psql(`
+    INSERT INTO support_message_attachments
+        (conversation_id, message_id, storage_key, file_name, content_type, size_bytes, uploaded_by_type)
+    VALUES ('${fresh.id}'::uuid, '${koreanId}'::uuid, 'support/${fresh.id}/secret-key-do-not-leak',
+            'boarding-pass.pdf', 'application/pdf', 1234, 'guest')
+    RETURNING id`).split(String.fromCharCode(10))[0];
+
+const withFiles = await call('GET', '/support/conversation', { as: ME });
+const carrying = (withFiles.json?.data?.messages ?? []).find(m => m.id === koreanId);
+check('a message carries its attachments',
+    (carrying?.attachments ?? []).length === 1,
+    JSON.stringify(carrying?.attachments ?? []).slice(0, 120));
+check('named by id, with what a reader needs to show it',
+    carrying?.attachments?.[0]?.id === attachId && carrying.attachments[0].fileName === 'boarding-pass.pdf'
+        && carrying.attachments[0].bytesDeleted === false);
+
+// The promise of ADR-0040: a message is serialised into HTTP, a stream frame and the
+// Agent's inbox, and none of them need to name an object in a bucket.
+check('and the storage key never leaves the server',
+    !JSON.stringify(withFiles.json).includes('secret-key-do-not-leak'),
+    'the storage key appeared in the customer payload');
+
+const agentSees = await call('GET', `/admin/support/conversations/${fresh.id}`, { as: ADMIN });
+check('nor from the Agent\u2019s side either',
+    !JSON.stringify(agentSees.json).includes('secret-key-do-not-leak'),
+    'the storage key appeared in the inbox payload');
+
+// Authorisation is re-evaluated on every fetch, so this is a real check and not a link that
+// happened to expire. A stranger is told it does not exist: naming it is itself a disclosure.
+check('a stranger cannot fetch someone else\u2019s attachment',
+    (await call('GET', `/support/attachments/${attachId}`, { as: OUTSIDER })).status === 404);
+check('and an attachment that does not exist reads the same way',
+    (await call('GET', '/support/attachments/00000000-0000-4000-8000-000000000000', { as: ME })).status === 404);
+
+// Expired bytes are marked, never the row: the transcript still has to say a file was sent.
+psql(`UPDATE support_message_attachments SET bytes_deleted_at = now() WHERE id = '${attachId}'`);
+const expired = await call('GET', '/support/conversation', { as: ME });
+const goneRow = (expired.json?.data?.messages ?? []).find(m => m.id === koreanId)?.attachments?.[0];
+check('an expired file still shows in the transcript, marked gone',
+    goneRow?.bytesDeleted === true, JSON.stringify(goneRow ?? {}).slice(0, 110));
+check('and its bytes cannot be fetched',
+    (await call('GET', `/support/attachments/${attachId}`, { as: ME })).status === 410);
+
+console.log('\nA translation nobody came back for');
+
+// `pending` is written before the engine is called, so a deploy mid-call leaves a row with
+// nothing coming to settle it — and a reply in that state is held back from the customer
+// for good, which reads as a message that never arrived. A minutely cron finishes them.
+const CRON_SECRET = /^CRON_SECRET=(.*)$/m.exec(existsSync(`${V2}/.env`) ? readFileSync(`${V2}/.env`, 'utf8') : '')?.[1]?.trim().replace(/^["']|["']$/g, '') ?? '';
+
+// A conversation of our own to strand a message in.
+// psql prints the RETURNING row and then its own "INSERT 0 1"; only the first line is the id.
+const strandedConv = psql(`INSERT INTO support_conversations (user_id, locale) VALUES ('${ME}'::uuid, 'ko') RETURNING id`).split(String.fromCharCode(10))[0];
+const stranded = psql(`
+    -- An agent message must name its author — the schema refuses one that does not.
+    INSERT INTO support_messages (conversation_id, sender_type, sender_admin_id, body, translation_status, translated_lang, created_at)
+    VALUES ('${strandedConv}'::uuid, 'agent', '${ADMIN}'::uuid, 'Your refund has been approved.', 'pending', 'ko', now() - interval '10 minutes')
+    RETURNING id`).split(String.fromCharCode(10))[0];
+
+check('a stalled translation is there to be found',
+    psql(`SELECT translation_status FROM support_messages WHERE id = '${stranded}'`) === 'pending');
+
+const resumed = await fetch(`${API.replace(/\/api\/v2$/, "")}/api/v2/cron/resume-support-translations`, {
+    headers: { Authorization: `Bearer ${CRON_SECRET}` },
+});
+check('the cron endpoint answers', resumed.status === 200, `got ${resumed.status}`);
+
+// It is re-run rather than merely marked failed, so this settles the same way an ordinary
+// translation does — done, or honestly marked untranslated.
+let settled = '';
+for (let i = 0; i < 120 && settled !== 'translated' && settled !== 'untranslated'; i++) {
+    settled = psql(`SELECT coalesce(translation_status, '') FROM support_messages WHERE id = '${stranded}'`);
+    if (settled !== 'translated' && settled !== 'untranslated') await new Promise(r => setTimeout(r, 500));
+}
+check('and the stranded translation is finished, not left pending forever',
+    settled === 'translated' || settled === 'untranslated', `status is ${JSON.stringify(settled)}`);
+
+psql(`DELETE FROM support_messages WHERE conversation_id = '${strandedConv}'::uuid`);
+psql(`DELETE FROM support_conversations WHERE id = '${strandedConv}'::uuid`);
+
+console.log('\nWho a chat can be handed to');
+
+// The desk fills its assign list from the user list and filters on role, because "can
+// answer support" is a role rather than a roster. If the role stops coming back the
+// dropdown silently empties, and an admin can no longer give a chat to anybody.
+const staff = await call('GET', '/admin/users', { as: ADMIN });
+check('the user list is readable by an admin', staff.status === 200, `got ${staff.status}`);
+
+const answerable = (staff.json?.users ?? [])
+    .filter(u => u.role === 'admin' || u.role === 'support_agent');
+check('and carries the role the assign list filters on', answerable.length > 0,
+    `no admin or support_agent rows among ${(staff.json?.users ?? []).length} users`);
+check('each one carries a name to show and an id to assign by',
+    answerable.length > 0 && answerable.every(u => u.id && (u.fullName || u.email)),
+    JSON.stringify(answerable[0] ?? {}).slice(0, 90));
 
 console.log('\nSupport Hours');
 

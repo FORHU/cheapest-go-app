@@ -6,7 +6,7 @@ import dynamic from 'next/dynamic';
 import { MapPropertyCard } from '@/components/map/MapPropertyCard';
 import type { MappableProperty } from '@/components/map/types';
 import { type Property } from '@/types';
-import { ArrowLeft, MapPin, List, SlidersHorizontal, Calendar, Users, Search } from 'lucide-react';
+import { ArrowLeft, MapPin, List, SlidersHorizontal, Calendar, CalendarClock, Users, Search } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { formatCurrency, cn, buildPropertySlug } from '@/lib/utils';
 import { convertCurrency } from '@/lib/currency';
@@ -15,6 +15,7 @@ import { DatePicker } from '@/components/landing/hero/search/DatePicker';
 import { useTranslations, useLocale } from 'next-intl';
 import { HotelCardSkeleton, SKELETON_NAME_WIDTHS } from '@/components/shared/Skeleton';
 import { hasValidCoords, dedupeByProximity, haversineDistanceKm } from './mappableUtils';
+import { asDay } from '@/lib/defaultStay';
 
 const SearchMapContainer = dynamic(
     () => import('../mapbox/SearchMapContainer').then(m => ({ default: m.SearchMapContainer })),
@@ -180,7 +181,7 @@ function PriceLoadingSidebar({ destination }: { destination: string }) {
 }
 
 // ── Search Refinement Bar ───────────────────────────────────────────────────
-function SearchRefinementBar({ rawSearchParams }: { rawSearchParams: Record<string, any> }) {
+export function SearchRefinementBar({ rawSearchParams }: { rawSearchParams: Record<string, any> }) {
     const router = useRouter();
     const searchParams = useSearchParams();
     const t = useTranslations('hotels.mapView');
@@ -206,8 +207,23 @@ function SearchRefinementBar({ rawSearchParams }: { rawSearchParams: Record<stri
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
-    const checkin = storeCheckIn ? storeCheckIn.toISOString().slice(0, 10) : '';
-    const checkout = storeCheckOut ? storeCheckOut.toISOString().slice(0, 10) : '';
+    // `asDay`, not `toISOString()`. The store holds local midnight, and toISOString converts
+    // to UTC — so east of Greenwich the date submitted was the day *before* the one the pill
+    // was showing. In Manila a traveller picking Tue 29 searched Mon 28, one day deeper into
+    // the window the supplier has no inventory in.
+    const checkin = storeCheckIn ? asDay(storeCheckIn) : '';
+    const checkout = storeCheckOut ? asDay(storeCheckOut) : '';
+
+    /**
+     * Whether these are dates we chose rather than dates the traveller asked for.
+     *
+     * The landing cards link to a city, not to a stay, so they carry a **Default Stay** and
+     * say so with `datesAuto`. It stops applying the moment the traveller moves a date —
+     * the store then disagrees with the URL, and the notice has nothing left to disclose.
+     */
+    const datesArePicked =
+        rawSearchParams.datesAuto === '1' &&
+        checkin === (rawSearchParams.checkIn || rawSearchParams.checkin);
 
     const nights = useMemo(() => {
         if (!storeCheckIn || !storeCheckOut) return 1;
@@ -218,6 +234,8 @@ function SearchRefinementBar({ rawSearchParams }: { rawSearchParams: Record<stri
     function handleSearch() {
         if (!checkin || !checkout) return;
         const params = new URLSearchParams(searchParams?.toString() || '');
+        // Whatever the traveller submits is theirs, even if they left our dates alone.
+        params.delete('datesAuto');
         // camelCase to match every other link builder — the property page reads the
         // dates back out to work out how many nights a rate covers.
         params.set('checkIn', checkin);
@@ -243,7 +261,7 @@ function SearchRefinementBar({ rawSearchParams }: { rawSearchParams: Record<stri
                     {/* Check-in */}
                     <div className="relative flex-1 min-w-0 h-full">
                         <div
-                            className="flex flex-col justify-center px-2 h-full cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors border-r border-slate-100 dark:border-slate-800 rounded-l-2xl"
+                            className={cn("flex flex-col justify-center px-2 h-full cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors border-r border-slate-100 dark:border-slate-800 rounded-l-2xl", datesArePicked && "ring-2 ring-inset ring-blue-400/70 dark:ring-blue-500/60 bg-blue-50/50 dark:bg-blue-950/20")}
                             onClick={() => setActiveDropdown(activeDropdown === 'dates-in' ? null : 'dates-in')}
                             data-datepicker-trigger
                         >
@@ -255,7 +273,7 @@ function SearchRefinementBar({ rawSearchParams }: { rawSearchParams: Record<stri
                     {/* Check-out */}
                     <div className="relative flex-1 min-w-0 h-full">
                         <div
-                            className="flex flex-col justify-center px-2 h-full cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors border-r border-slate-100 dark:border-slate-800"
+                            className={cn("flex flex-col justify-center px-2 h-full cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors border-r border-slate-100 dark:border-slate-800", datesArePicked && "ring-2 ring-inset ring-blue-400/70 dark:ring-blue-500/60 bg-blue-50/50 dark:bg-blue-950/20")}
                             onClick={() => setActiveDropdown(activeDropdown === 'dates-out' ? null : 'dates-out')}
                             data-datepicker-trigger
                         >
@@ -289,7 +307,7 @@ function SearchRefinementBar({ rawSearchParams }: { rawSearchParams: Record<stri
                     {/* Check-in — relative wrapper so DatePicker positions itself here */}
                     <div className="relative flex-1 min-w-0 h-full">
                         <div
-                            className="flex flex-col justify-center px-2.5 sm:px-5 h-full cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors border-r border-slate-100 dark:border-slate-800 rounded-l-2xl"
+                            className={cn("flex flex-col justify-center px-2.5 sm:px-5 h-full cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors border-r border-slate-100 dark:border-slate-800 rounded-l-2xl", datesArePicked && "ring-2 ring-inset ring-blue-400/70 dark:ring-blue-500/60 bg-blue-50/50 dark:bg-blue-950/20")}
                             onClick={() => setActiveDropdown(activeDropdown === 'dates-in' ? null : 'dates-in')}
                             data-datepicker-trigger
                         >
@@ -308,7 +326,7 @@ function SearchRefinementBar({ rawSearchParams }: { rawSearchParams: Record<stri
                     {/* Check-out — relative wrapper so DatePicker positions itself here */}
                     <div className="relative flex-1 min-w-0 h-full">
                         <div
-                            className="flex flex-col justify-center px-2.5 sm:px-5 h-full cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors border-r border-slate-100 dark:border-slate-800"
+                            className={cn("flex flex-col justify-center px-2.5 sm:px-5 h-full cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors border-r border-slate-100 dark:border-slate-800", datesArePicked && "ring-2 ring-inset ring-blue-400/70 dark:ring-blue-500/60 bg-blue-50/50 dark:bg-blue-950/20")}
                             onClick={() => setActiveDropdown(activeDropdown === 'dates-out' ? null : 'dates-out')}
                             data-datepicker-trigger
                         >
@@ -337,6 +355,16 @@ function SearchRefinementBar({ rawSearchParams }: { rawSearchParams: Record<stri
                         <span className="hidden sm:inline">{t('search')}</span>
                     </button>
                 </div>
+
+                {/* A Default Stay is disclosed, never silent — the traveller asked for a
+                    city, so they should be told which dates they are being quoted for and
+                    that moving them is the way to see other prices. */}
+                {datesArePicked && (
+                    <p className="mt-1.5 flex items-center justify-center gap-1.5 text-[11px] text-slate-500 dark:text-slate-400">
+                        <CalendarClock size={12} className="shrink-0 text-blue-500" aria-hidden />
+                        {t('datesPicked')}
+                    </p>
+                )}
             </div>
         </div>
     );
@@ -554,6 +582,17 @@ function SearchMapView({
     const searchKey = JSON.stringify(rawSearchParams);
     React.useEffect(() => { setDisplayCount(LIST_PAGE_SIZE); }, [searchKey]);
     const [selectedId, setSelectedId] = useState<string | null>(null);
+
+    /**
+     * A selection belongs to the search it was made in.
+     *
+     * This is local state and nothing cleared it, so picking a hotel in Paris and then
+     * searching New York left a Paris id selected against a New York list. It matches
+     * nothing, so no card is highlighted and it looks harmless — but `useMapViewport`
+     * skips its refit whenever anything is selected, so the map stayed on the street
+     * corner the Paris selection had flown it to while the list said New York.
+     */
+    React.useEffect(() => { setSelectedId(null); }, [searchKey]);
     const [hoveredId, setHoveredId] = useState<string | null>(null);
     const cardRefs = React.useRef<Map<string, HTMLDivElement>>(new Map());
     const listContainerRef = React.useRef<HTMLDivElement | null>(null);

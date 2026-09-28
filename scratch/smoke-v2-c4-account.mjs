@@ -8,7 +8,7 @@
  *
  *   node scratch/smoke-v2-c4-account.mjs
  */
-const BASE = 'http://localhost:4000/api/v2';
+const BASE = process.env.API_V2 ?? 'http://localhost:4000/api/v2';
 const run = Date.now();
 let failures = 0;
 const check = (label, ok, detail = '') => {

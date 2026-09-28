@@ -1270,7 +1270,8 @@
       "pricePerNight": "{min} – {max} /night",
       "search": "Search",
       "searchFallback": "Search",
-      "swipeToBrowse": "Swipe to browse"
+      "swipeToBrowse": "Swipe to browse",
+      "datesPicked": "We picked these dates for you — change them to see other prices."
     },
     "mobileSearch": {
       "addDates": "Add dates",

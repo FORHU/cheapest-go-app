@@ -12,7 +12,7 @@
  */
 import { execFileSync } from 'child_process';
 
-const API = 'http://localhost:4000/api/v2';
+const API = process.env.API_V2 ?? 'http://localhost:4000/api/v2';
 let failures = 0;
 const check = (label, ok, detail = '') => {
     console.log(`${ok ? '✓' : '✗'} ${label}${detail ? ` — ${detail}` : ''}`);
@@ -54,8 +54,13 @@ check('the stream refuses it too, before it opens', streamReversed.status === 40
     `${streamReversed.status} ${streamReversed.headers.get('content-type')}`);
 
 // ── Nothing is replayed from an earlier search.
-check('no search result cache is written', sql(`SELECT count(*) FROM hotel_search_cache`) === '0',
-    `${sql(`SELECT count(*) FROM hotel_search_cache`)} rows`);
+// Recent rows only, not an empty table. v2's database is rebuilt from v1's (ADR-0018), and
+// v1 does keep this cache — so a refresh carries its rows across and an emptiness check
+// starts reporting v1's history as v2 writing a cache. What must hold is that nothing was
+// written by the searches this smoke just ran.
+const freshCache = sql(`SELECT count(*) FROM hotel_search_cache WHERE created_at > now() - interval '1 hour'`);
+check('no search result cache is written', freshCache === '0',
+    `${freshCache} rows written in the last hour, of ${sql(`SELECT count(*) FROM hotel_search_cache`)} carried over from v1`);
 
 // ── A territory's hotels are found under the parent's code they are stored with.
 const hkStored = sql(`SELECT DISTINCT country FROM hotel_content WHERE LOWER(city) = 'hong kong' LIMIT 3`);

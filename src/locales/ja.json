@@ -1270,7 +1270,8 @@
       "pricePerNight": "{min} – {max} /泊",
       "search": "検索",
       "searchFallback": "検索",
-      "swipeToBrowse": "スワイプして見る"
+      "swipeToBrowse": "スワイプして見る",
+      "datesPicked": "日付はこちらで選びました。変更すると他の料金をご覧いただけます。"
     },
     "mobileSearch": {
       "addDates": "日付を追加",

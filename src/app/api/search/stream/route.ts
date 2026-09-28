@@ -1,4 +1,5 @@
 import { NextRequest } from 'next/server';
+import { defaultStay } from '@/lib/defaultStay';
 import { runTgxSearch } from '@/lib/server/stays/travelgatex/search';
 import { getSqlAdmin } from '@/lib/db/postgres';
 import { tgxGraphQL, getTgxConfig } from '@/lib/server/stays/travelgatex/client';
@@ -562,20 +563,13 @@ export async function POST(req: NextRequest) {
     const city = rawCity || '(unknown)';
 
 
-    // Default dates when not provided (e.g. landing card clicks).
-    // Use next Friday → Sunday so OTV has inventory.
-    // Same-day / next-day defaults have near-zero OTV coverage.
+    // Default dates when not provided (e.g. landing card clicks). The last line of defence:
+    // whatever the caller forgot, the supplier is never asked for a stay it has no
+    // inventory for. One shared rule — this was the fourth hand-written copy of it.
     if (!body.checkin && !body.checkIn) {
-        const now = new Date();
-        const dayOfWeek = now.getDay(); // 0=Sun … 6=Sat
-        const daysUntilFriday = ((5 - dayOfWeek + 7) % 7) || 7; // at least 1 day ahead
-        const checkin  = new Date(now);
-        checkin.setDate(now.getDate() + daysUntilFriday);
-        const checkout = new Date(checkin);
-        checkout.setDate(checkin.getDate() + 2); // Fri → Sun
-        const fmt = (d: Date) => d.toISOString().slice(0, 10);
-        body.checkin  = fmt(checkin);
-        body.checkout = fmt(checkout);
+        const stay = defaultStay();
+        body.checkin  = stay.checkIn;
+        body.checkout = stay.checkOut;
     }
 
     // TGX/ETG return the total-stay price, not per-night. Compute nights so we

@@ -15,7 +15,7 @@
 import { execFileSync } from 'child_process';
 import { createHmac } from 'crypto';
 
-const API = 'http://localhost:4000/api/v2';
+const API = process.env.API_V2 ?? 'http://localhost:4000/api/v2';
 const run = Date.now();
 let failures = 0;
 const check = (label, ok, detail = '') => {

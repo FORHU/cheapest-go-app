@@ -21,7 +21,7 @@ Empty means level. Anything listed must be ported before the watermark advances.
 | # | Slice | Watermark | Delta (re-run 2026-09-16) | State |
 |---|-------|-----------|---------------------------|-------|
 | C0a | Backend consolidation | `12f2af3` | 67 commits, but its paths overlap every slice below | level |
-| C0b | Locale + SEO shell | `e79f354` | empty — but see the note on translations | **SEO done, translations open** |
+| C0b | Locale + SEO shell | `e79f354` | empty | **done** — see below |
 | C1 | Hotel search | `8ef657b` | empty as of 2026-09-16 | **done** — see below |
 | C2 | Hotel booking | `8bdd4a4` | empty as of 2026-09-17 | **done** — see below |
 | C3 | Flights | `8bdd4a4` | Mystifly + segment terminals left | **done** — see below |
@@ -100,7 +100,7 @@ v2 did **not** copy v1's mechanism here, and that was a deliberate choice — se
 
 **One bug found by the smoke test:** `robots.txt` and `sitemap.xml` are routes, not files, so the locale middleware was rewriting them into the segment and serving the rendered homepage to anything asking for `/robots.txt`. Both are now excluded from the matcher.
 
-**Debt:** some components still hold hardcoded English (`Sign in` renders untranslated on `/ko`). The locale files themselves are at 100% parity between `en` and `ko` — 248 keys each — so this is components not reaching for the keys, and it is fixed per slice as each one is touched.
+**Debt, cleared 2026-09-28:** the components that held hardcoded English — `Sign in` rendering untranslated on `/ko` among them — now all reach for keys. 1,744 keys per language across `en`, `ko`, `ja` and `zh`, at identical key sets, and 16 pages fetched in each of the three non-English languages come back with no English left. See *C0b's other half* below.
 
 ## C1 — Hotel search
 
@@ -1116,23 +1116,40 @@ Checked by running the build twice — once as CheapestGo, once with
 `NEXT_PUBLIC_LOCALE=ko` and AirangGo’s site URL. Both emit the same five links, and
 AirangGo’s sitemap is 26 Korean URLs where CheapestGo’s is 78.
 
-### C0b’s other half is the translation pass, and it is still open
+### C0b’s other half was the translation pass — done 2026-09-28
 
-The rest of the C0b delta is `src/locales/*.json` — v1 has **2,328 keys per language** and
-app-v2 has 248. Missing namespaces: account, bookingDestination, checkout, destinations,
-flightBook, invoice, legal, popularDestinations, property, propertyGallery, propertyNav,
-propertyOverview, reviewsSection, search, trips, about, support, map, help.
+`src/locales/*.json` now holds **1,744 keys per language** across `en`, `ko`, `ja` and `zh`,
+with the four files at identical key sets. Every customer-facing screen reads from them:
+`/admin` is deliberately excluded, being staff-facing and English-only.
 
-This is deliberately not started here. It is bulk translation rather than behaviour, it
-wants a native reviewer for ko/ja/zh, and doing it badly is worse than not doing it — a
-page that renders in broken Korean is the thing the Korean brand exists to avoid.
+Two questions had to be answered separately, because a key existing and a component reaching
+for it are different things:
 
-**The delta cannot see this, and the C0b watermark is at `e79f354` anyway.** A watermark
-measures how far v1 has moved since v2 last caught up; these keys are not a movement. v1 has
-held roughly 2,300 of them all along and app-v2 never had them, so the gap is a *level*
-difference and reads as zero however the watermark is set. Holding the watermark back would
-not have made it visible either — it would only have hidden the SEO work that is genuinely
-done. It is tracked here, in prose, because nothing else can track it.
+- **Does a string have a key?** A scanner over every `.tsx` outside `/admin`. 212 real strings
+  in 72 files had none; all were authored and wired.
+- **Does the page actually print it?** The first scanner goes quiet as soon as a key exists,
+  whether or not anything uses it — and it only reads `.tsx`, so a sentence assembled in a
+  `.ts` constant, written as `Today&apos;s`, or sitting in a `{'…'}` expression is invisible to
+  it. So each page is also **fetched in Korean and searched for English**. That is what found
+  the landing headline, the four assistant prompts, the flight passenger line, the footer link
+  labels, and the tab title on six pages. 16 pages × 3 languages now come back clean.
+
+**Two bugs the pass surfaced:**
+
+- **`help.title` was `고객지원 | AirangGo` in Korean.** A brand baked into a locale string, and
+  the wrong brand — `applyBrand` only rewrites `CheapestGo`, so it passed straight through onto
+  a CheapestGo deployment. The key is now the bare label; the root layout appends the brand.
+  Checked: no other locale string names a brand other than CheapestGo.
+- **Every hotel page in every language shared one English tab title.** `property/[id]` set only
+  `alternates`, so the title fell through to the site-wide default — on the one route whose own
+  comment says per-language indexing is won or lost there. It now carries the hotel's name and a
+  localised description.
+
+**Where the translations are honest about a limit:** the landing headline is one English
+sentence with form controls inside it — "Fly me from *X* to *Y*, on *D*, with *N*". No CJK
+language keeps that word order, and the fragments cannot be reordered from a locale file. They
+are therefore translated as labels (`출발 X 도착 Y`) rather than as a sentence. A native
+reviewer should look at `search.prose.*` first.
 
 ---
 
@@ -1522,6 +1539,235 @@ settles, including on error. This belongs with the support crons already listed 
 
 ---
 
+## Done 2026-09-25 — C8 finished: hours, answers, files
+
+The four remaining pieces, in the order they were cheapest to make true.
+
+**Stalled translations are picked up.** `pending` is written *before* the engine is called, so a
+deploy mid-call leaves a row nothing will settle — and a reply in that state is held back from
+the customer for good, which reads as a message that never arrived. A minutely cron finishes
+them, re-running rather than merely marking failed, because asking again usually works. The
+smoke strands one ten minutes in the past and watches it settle.
+
+**The Help Centre, and the questions the widget answers itself** (ADR-0043, ADR-0044). The five
+articles moved across in all four languages, and are served at `/help` — which the widget cannot
+replace, because a chat needs an account (ADR-0032) and someone deciding whether to book should
+still be able to read how refunds work. In the widget an empty chat opens with the questions
+tappable; the answer appears in the chat window, labelled automated and attributed to the Help
+Centre, with "That answered it" and "Talk to a person" under it.
+
+Two rules there matter more than they look:
+
+- **Nothing is generated.** The tap chooses which stored paragraph a person wrote. ADR-0031's
+  objection was never automation, it was a model being wrong in the company's voice about
+  somebody's money.
+- **A payment problem is never answered automatically** — a double charge, fraud, a chargeback
+  go straight to the queue.
+
+And the reason this slice changed `useSupportChat`: **opening the panel no longer creates a
+chat.** A customer who reads an article and leaves should not be left with a conversation, a
+Chat Reference and a doorbell ring behind them, which is the cost ADR-0044 exists to remove.
+Writing is what starts a chat now — attaching counts as writing, so both go through one place.
+
+**Attachments** (ADR-0040). The bucket is private and nothing is served from it. A file is named
+by a database id; the bytes are reached through a route that re-checks, per request, that this
+caller is entitled to them and only then redirects to a five-minute signed URL. No stored URL,
+no public object, and authorisation that changes the moment a chat is reassigned rather than
+whenever an old link happens to expire.
+
+The parts that carry the risk are checked against the real database, without a bucket:
+
+- the storage key never appears in the customer's payload, nor in the Agent's
+- someone outside the conversation is told the attachment does not exist — naming it is itself
+  a disclosure
+- an expired file still shows in the transcript, struck through, and its bytes answer 410
+
+That "stranger" check failed first time and was right to: the smoke's second account is an
+**admin**, and an Agent may legitimately read any chat. The check now uses an account with no
+way into the desk at all — the same trap this smoke fell into once before.
+
+The declared content type is discarded and the bytes are sniffed, because a browser's
+`Content-Type` is derived from the file extension and settable outright by anything that is not
+a browser — that is the whole of how an upload endpoint becomes a way to host someone else's
+payload. Files expire after 90 days: the row stays so the transcript still says a file was sent,
+and only the object goes.
+
+**Checked.** `smoke-v2-c8-support.mjs` **70/70** against the real database; admin 29, borough
+10, search 18. api-v2 657 tests, app-v2 311, both typecheck, lint clean. `/help` serves Korean
+with no English leaking through; `/admin/support` redirects to login signed out.
+
+**One thing is not finished, and cannot be here.** Attachments need a bucket:
+`SUPPORT_ATTACHMENTS_BUCKET` is unset in api-v2, so uploads answer 503 and the widget hides the
+paperclip rather than offering an upload that would be refused. Everything above the storage
+call is proved; the round trip through S3 is not, and will not be until that variable is set and
+the task role carries `s3:PutObject`, `s3:GetObject` and `s3:DeleteObject` on `<bucket>/support/*`.
+
+---
+
+## Done 2026-09-25 — C8: and somebody is there to answer
+
+The widget shipped earlier today writes to v2's database. Staff answer from v1's admin, against
+v1's database, and ADR-0018 keeps those two apart on purpose — so until now a message sent from
+v2 had nobody behind it. The Support Desk closes that loop: `/admin/support` in app-v2, against
+the agent endpoints api-v2 already served.
+
+**The queues, and who may do what.** Waiting, Mine, Assigned, Resolved. Waiting is ordered by
+proximity to travel (ADR-0039) **by the server**, and nothing on this page re-sorts it: a queue
+an Agent can reorder is a queue that no longer means what it says, and that is invisible in a
+screenshot, so it is a test. A chat is **given** by an admin and never taken (ADR-0041), so
+there is no claim button and the assign control renders only for an admin — also a test, because
+its absence is the whole point. An Agent may read a chat someone else holds and is told plainly
+why they cannot answer it.
+
+**One rule, both readers.** The desk renders through the same `readerView` as the widget, asked
+from the other side: an Agent reads the English rendering of a Korean message with the
+customer's own words still under it, and their own reply as they wrote it. That module is shared
+precisely so the two surfaces cannot drift apart on the question of which text to show.
+
+**The assign list needs no new endpoint.** It reads `/admin/users` and filters on role, because
+"can answer support" is a role rather than a roster — and the API refuses an assignment to anyone
+else regardless, so this only decides what the dropdown offers. The smoke now checks that list
+still carries a role, a name and an id: if the role stops coming back the dropdown empties
+silently and an admin can no longer hand out a chat.
+
+**Checked.** `smoke-v2-c8-support.mjs` **57/57** against the real database. app-v2 290 tests,
+typechecks, lints clean. `/admin/support` redirects to /login signed out, exactly as the other
+admin pages do.
+
+**Still ahead in C8:** attachments
+([ADR-0040](adr/0040-a-support-attachment-is-private-and-is-reached-only-through-the-app.md)),
+the Help page, Suggested Answers, and stalled-translation recovery — which now has somewhere to
+run, since api-v2 ships a cron container.
+
+---
+
+## Done 2026-09-25 — C8: the customer can reach support in v2
+
+Until today api-v2 had the whole Support Chat built and smoke-tested while app-v2 had no way to
+reach it: one `AiChatClient`, which ADR-0031 makes the wrong shape to build on. A customer on v2
+could not contact anyone.
+
+**What was ported, and what deliberately was not.** v1's widget is 5,302 lines, and most of the
+value is in three pure modules rather than the markup. `translationView` and `reopenTime` moved
+across unchanged with their 24 tests. The reducer was ported by hand, because half of it is about
+an assistant that ADR-0031 retired — the typing indicator, the "assistant is offline" banner, the
+escalation handover. What remains is the part that had nothing to do with the assistant and is
+still true: **a message arrives more than once.** Its own POST response and the stream both carry
+it, and a reply arrives again each time its translation moves on. Keeping the first copy and
+dropping the rest is the tempting version, and it is why v1 once showed a customer an English
+reply that had already been translated. The design here is v2's own (ADR-0016); only behaviour
+crossed.
+
+**A gap the UI exposed in the API.** `PublicMessage` carried only `body`. Every rendering
+ADR-0033 stores was therefore invisible to the reader, so a Korean customer would have read an
+Agent's English however well the server had translated it. The payload now carries
+`translatedBody`, `translatedLang` and `translationStatus` — all three, because who a rendering
+is *for* is decided by the language it is in, not by who sent the message: a Korean-speaking
+Agent answering in Korean has their reply rendered into English for colleagues, and the customer
+must still read the Korean as typed. `translationStatus` travels too, because "not translated
+yet" and "could not be translated" look identical in the body and mean different things.
+
+**Held replies.** A reply whose translation for this customer is still pending is kept out of the
+transcript until it settles, so nobody reads an answer in English and again in Korean four
+seconds later. A customer's own message is never held: the English rendering of it is for the
+inbox, not for them. The resume cursor accounts for this — it sits *before* the oldest held
+reply, because a translation landing while the connection was down is an update to a message
+already received, and a cursor past it would never hear about it.
+
+**Proved from both ends.** `smoke-v2-c8-support.mjs` is **55/55** against the real database and
+server, including four new checks that the transcript really does carry the rendering and that a
+guest row keeps the words as written. A signed-out page renders no widget (ADR-0032) — which is
+indistinguishable from one that never mounted, so the mounting is asserted from the other side in
+`SupportWidget.test.tsx`: signed in, the launcher appears; a conversation is opened only when the
+panel is, never on page load; the Chat Reference is on screen; a message shows before the server
+answers; an Agent's reply is read in Korean with the English one click away; and a closed desk
+says when it reopens. app-v2 282 tests, typechecks, lints clean.
+
+**Still ahead in C8:** attachments
+([ADR-0040](adr/0040-a-support-attachment-is-private-and-is-reached-only-through-the-app.md)),
+the Help page, Suggested Answers, stalled-translation recovery, and the Agent's own side of the
+desk in app-v2 — the queues, assignment and replying, all of which api-v2 already serves.
+
+---
+
+## Done 2026-09-24 — C1 drifts back out of done: the sub-area never crossed
+
+The delta re-run on 2026-09-24 put six commits and ~800 lines behind C1, all of it this
+week's search work. Auditing it against api-v2 found the sub-area story missing from v2 end
+to end, not merely out of date:
+
+- **app-v2 never sent the extent.** The search request carried `destination`, dates, party,
+  `lat`, `lng` and `countryCode` — and nothing else. The URL has carried `rung`, `bbox` and
+  `canonicalCity` all along, and the page reads all three for its own rendering, but none of
+  them reached the API. A Camden Town search was a 50km circle around Camden, which is the
+  whole of Greater London, cut back only by a 150km client-side filter.
+- **api-v2 had no concept of one.** No `areaRung`, so nothing survived the downgrade to City
+  that ADR-0006 forces; the catalog preferred a 50km radius whenever it had coordinates.
+- **And it bounded the wrong searches.** The supplier filter applied to *any* search carrying
+  a bbox, city rung included — the opposite mistake, and the one that looks like more care
+  rather than less. A city's own box is tighter than its hotel spread: Jeju's excludes
+  Seogwipo, 27km out. That is what the radius is for.
+
+v2 was spared v1's worst symptom by accident: it has no district early-return, so its
+supplier search still ran. The page was wrong rather than empty.
+
+**Ported.** `areaRung` on `HotelSearchParams`, a single `subAreaBbox()` that both the catalog
+and the supplier filter ask — so the list and the pins cannot disagree about what was asked
+for — the bounded-rung set, and the sub-area rewrite keyed on the destination as picked,
+captured before normalisation overwrites it with the parent city. Geo fields are coerced the
+moment the body is read, which is the ordering fault that made the same check silently fail
+in v1. app-v2 now sends `rung`, `bbox`, `canonicalCity` and `cityName`. City endonyms moved
+across too, offered ahead of Mapbox and suppressed when Mapbox already found the city.
+
+api-v2 640 tests, app-v2 234, both typecheck. `subAreaBbox` is tested in both directions:
+a borough bounds, a city does not.
+
+**5434 refreshed from 5433** (ADR-0018), then `prisma db pull` and `prisma generate`. The two
+databases now agree exactly: 62 tables, 1,238,355 hotels, `delisted_at` carried across with
+30,298 rows marked. v2 had drifted to 1,142,056, so the comparison below is the first valid one.
+
+**`delisted_at` is filtered** on the queries that *choose* hotels — the pins, and the codes the
+supplier is asked to price — and not on a lookup by id, or a hotel already in a booking would
+lose its name and pictures.
+
+**Three defects the refreshed data exposed, none of them from this port.** Each was checked
+against a stash of the work before being blamed on the data:
+
+- **A Hong Kong search returned Shenzhen hotels.** The territory cull was gated on the search
+  carrying coordinates — and the caller never sends any, so it never ran. Both cities have a
+  district called "North District", and every Hong Kong hotel is stored `CN` (QA BG-8), so
+  neither the name nor the country separates them; the border does. Ungated, Hong Kong returns
+  296 hotels and reports every one of them HK.
+- **The catalog was never given the search coordinates.** Which is also why "Danang" drew no
+  pins while 1,705 hotels sat under "Da Nang": without them the only match is the spelling the
+  traveller happened to type. Coordinates now pass through, and a spacing-insensitive lookup
+  runs when the plain match finds nothing — a second query only on a search that already failed.
+- **The supplier bound sat on one of four exits.** A city-name search returns from three other
+  places, so a Camden page was still being handed 305 hotels from the rest of London. It now
+  happens once, on the way out of `runTgxSearch`, on a copy — the promise is shared between
+  concurrent searches, and two callers may want different extents of the same city.
+
+A territory branch added earlier in the same sitting turned out to be dead code: it guarded the
+radius path, which never runs, because of the missing coordinates above. Removed rather than left
+to read as protection.
+
+**Verified against the refreshed database.** borough 10/10, search 18, money 21, flights 12,
+account 10, admin 29, ops 20, email 17, support 51, backfill 14. api-v2 640 tests, app-v2 234,
+both typecheck.
+
+**One assertion left failing, deliberately.** `smoke-v2-search-speed`'s "Danang: hotels really
+do arrive after done". The supplier marked its first answer truncated and the collecting pass
+then returned the identical set — "Second pass: 219 hotels, 0 of them new". The pass is working;
+what is wrong is the promise, because `collecting: true` cannot guarantee anything follows it.
+Either the check softens to "the pass completes", or a truncated-but-complete answer stops
+earning a second pass. Left red rather than weakened to make the line green.
+
+Also: the same smoke compared `hotel_search_cache` to empty, which a refresh breaks — v1 keeps
+that cache and the dump carries its 19 rows across. It now asks whether anything was written in
+the last hour, which is what "v2 writes no cache" means once the databases are rebuilt from
+each other.
+
+---
 ## Done 2026-09-22 — C8: Support Hours, and a hole in the translation guard
 
 **Support Hours.** v1's `hours.ts` moved verbatim (pure, no imports) with its 23 tests; the

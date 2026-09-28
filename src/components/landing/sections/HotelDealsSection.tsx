@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef, useMemo } from 'react';
+import { defaultStay } from '@/lib/defaultStay';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -102,15 +103,9 @@ interface HotelDealCardProps {
   variant?: 'carousel' | 'grid';
 }
 
-function getNextWeekend(): { checkIn: string; checkOut: string } {
-  const d = new Date();
-  const daysUntilFriday = (5 - d.getDay() + 7) % 7 || 7;
-  d.setDate(d.getDate() + daysUntilFriday);
-  const friday = d.toISOString().slice(0, 10);
-  d.setDate(d.getDate() + 1);
-  const saturday = d.toISOString().slice(0, 10);
-  return { checkIn: friday, checkOut: saturday };
-}
+// Was a fourth copy of the weekend rule — and a different one, Friday to *Saturday*,
+// built with toISOString() so it landed a day early east of Greenwich.
+const getNextWeekend = defaultStay;
 
 const HotelDealCardImpl: React.FC<HotelDealCardProps> = ({ deal, index, variant = 'carousel' }) => {
   const [mounted, setMounted] = useState(false);

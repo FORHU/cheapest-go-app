@@ -9,6 +9,7 @@ import { useDragScroll } from '@/hooks/useDragScroll';
 import { attractionImagePath } from '@/lib/destination-images';
 import { useTranslations } from 'next-intl';
 import { useSearchStore } from '@/stores/searchStore';
+import { defaultStay } from '@/lib/defaultStay';
 
 interface Attraction {
   name: string;
@@ -57,17 +58,16 @@ const AttractionCard: React.FC<AttractionCardProps> = ({ attraction, index }) =>
   const setIsSearching = useSearchStore((s) => s.setIsSearching);
 
   function navigate() {
-    const localDate = (offset: number) => {
-      const d = new Date();
-      d.setDate(d.getDate() + offset);
-      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-    };
+    // See PhilippinesCitiesSection: a card names a place, not a stay. Today-to-tomorrow
+    // is the window OTV has almost no inventory in, so it is never what we pick.
+    const { checkIn, checkOut } = defaultStay();
     const p = new URLSearchParams({
       destination: attraction.searchQuery,
       destinationType: 'city',
       country: attraction.country,
-      checkIn: localDate(0),
-      checkOut: localDate(1),
+      checkIn,
+      checkOut,
+      datesAuto: '1',
     });
     if (attraction.lat != null) p.set('lat', String(attraction.lat));
     if (attraction.lng != null) p.set('lng', String(attraction.lng));

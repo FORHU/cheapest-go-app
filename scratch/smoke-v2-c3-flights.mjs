@@ -6,7 +6,7 @@
  *
  *   node scratch/smoke-v2-c3-flights.mjs
  */
-const API = 'http://localhost:4000/api/v2';
+const API = process.env.API_V2 ?? 'http://localhost:4000/api/v2';
 let failures = 0;
 const check = (label, ok, detail = '') => {
     console.log(`${ok ? '✓' : '✗'} ${label}${detail ? ` — ${detail}` : ''}`);

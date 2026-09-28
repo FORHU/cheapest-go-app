@@ -1270,7 +1270,8 @@
       "pricePerNight": "{min} – {max} /박",
       "search": "검색",
       "searchFallback": "검색",
-      "swipeToBrowse": "스와이프하여 보기"
+      "swipeToBrowse": "스와이프하여 보기",
+      "datesPicked": "날짜는 저희가 골랐습니다 — 다른 가격을 보시려면 변경해 주세요."
     },
     "mobileSearch": {
       "addDates": "날짜 추가",
