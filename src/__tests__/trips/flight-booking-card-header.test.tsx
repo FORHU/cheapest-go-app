@@ -1,8 +1,24 @@
 import React from 'react';
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeAll, afterAll } from 'vitest';
 import { render, screen, within, fireEvent } from '@testing-library/react';
 import { NextIntlClientProvider } from 'next-intl';
 import en from '@/locales/en.json';
+
+/**
+ * The clock this file reads the booking against.
+ *
+ * The status chip is state-aware: the same `ticketed` booking says "Upcoming Flight"
+ * before departure, "Flight in progress" between departure and arrival, and "Flight
+ * completed" after. So a fixture with fixed dates is only correct until those dates
+ * pass — and on 2026-09-28 they did, five days after the flight below was due to leave.
+ * The suite had been green for weeks and then failed on a day nobody had touched it.
+ *
+ * Only `Date` is faked. Faking timers wholesale stops the ones React and Testing Library
+ * rely on, and these tests render components.
+ */
+const NOW = new Date('2026-09-20T00:00:00.000Z');   // three days before departure
+beforeAll(() => { vi.useFakeTimers({ toFake: ['Date'], now: NOW }); });
+afterAll(() => { vi.useRealTimers(); });
 
 /**
  * The Trips flight card's summary header, drawn as the design draws it.
