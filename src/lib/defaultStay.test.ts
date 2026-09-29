@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { asDay, defaultStay, resolveStayDates } from './defaultStay';
+import { asDay, defaultStay, defaultDeparture, resolveStayDates } from './defaultStay';
 
 /** A local-calendar date `offset` days from today, the way the URL writes it. */
 const day = (offset: number) => {
@@ -53,5 +53,14 @@ describe('resolveStayDates', () => {
         const stay = resolveStayDates(day(20), day(18));
         expect(stay.checkIn).toBe(day(20));
         expect(stay.checkOut).toBe(day(22));
+    });
+});
+
+describe('defaultDeparture', () => {
+    it('is a month out, not next weekend', () => {
+        // The Default Stay's rule would point every dateless route at the priciest
+        // departure window there is. These are different questions.
+        expect(defaultDeparture()).toBe(day(30));
+        expect(defaultDeparture()).not.toBe(defaultStay().checkIn);
     });
 });

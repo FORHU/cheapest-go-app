@@ -317,6 +317,11 @@ _Avoid_: today or tomorrow. OTV holds near-zero inventory for same-day and next-
 _Avoid_: more than one rule for it. Three coexisted — next weekend, today+30, and tomorrow — so which stay a traveller was quoted depended on which card they happened to click.
 _Note_: a Default Stay is disclosed, never silent. The traveller is told the dates were chosen for them and where to change them; a quote they did not ask for and cannot see the basis of is worse than no quote.
 
+**Default Departure** — the same idea for flights, and deliberately a different date: a month out. A route can be named without a date at all — `/flights/MNL-ICN` is a page *about* a route — and a link shared last month names a day that has gone. Both get one.
+_Avoid_: reaching for the **Default Stay** because both are "the date we pick". They answer different questions — one is about what OTV has rooms for next weekend, the other about where the cheap fares are — and applying the hotel rule to flights would deep-link every route page to the most expensive departure window there is.
+_Avoid_: refusing to search instead. A missing or stale date is not a reason to show an error; a missing *route* is, because nothing can guess where someone meant to fly.
+_Note_: disclosed on the same terms as a Default Stay, on every width. The flight results said so only on narrow screens at first, so the widest screen was the one that never mentioned it.
+
 **Booked Amount** — a payment restated into the **Reporting Currency** using the rate in force at the moment it was taken. Fixed permanently at that instant, so a report for a past period returns the same figure however long afterwards it is run.
 _Avoid_: recomputing a past period at today's rate — a closed month never moves.
 

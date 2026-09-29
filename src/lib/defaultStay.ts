@@ -41,6 +41,20 @@ export function defaultStay(): { checkIn: string; checkOut: string } {
 }
 
 /**
+ * The **Default Departure**: what a flight search asks for when no date was named.
+ *
+ * A month out, which is where the cheap fares are — deliberately not the Default Stay.
+ * The two answer different questions: one is about what OTV has rooms for next weekend,
+ * the other about airfare, and quoting next weekend for a flight would point every
+ * dateless route at the most expensive departure window there is.
+ */
+export function defaultDeparture(): string {
+    const d = new Date();
+    d.setDate(d.getDate() + 30);
+    return asDay(d);
+}
+
+/**
  * The stay a page should actually quote for, given whatever the URL carries.
  *
  * A link that has sat in a chat window for a week names dates in the past; sent on as-is
