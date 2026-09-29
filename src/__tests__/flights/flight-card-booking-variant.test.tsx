@@ -77,6 +77,26 @@ describe('FlightCard — booking variant', () => {
         expect(screen.queryByText(/Available fare options/i)).not.toBeInTheDocument();
     });
 
+    it('states the booking total on the airline row, over a "total price" caption', () => {
+        renderCard({ variant: 'booking', totalPrice: 1520 });
+        const total = screen.getByTestId('booking-total');
+        expect(total).toHaveTextContent('$1,520');
+        expect(total).toHaveTextContent('total price');
+        // Same row as the airline name, pushed to its far end.
+        expect(total).toHaveClass('ml-auto');
+        expect(total.parentElement).toContainElement(screen.getByText('EVA Air'));
+    });
+
+    it('falls back to the fare when no running total is given', () => {
+        renderCard({ variant: 'booking' });
+        expect(screen.getByTestId('booking-total')).toHaveTextContent('$1,445');
+    });
+
+    it('shows no booking total on a search result', () => {
+        renderCard();
+        expect(screen.queryByTestId('booking-total')).not.toBeInTheDocument();
+    });
+
     it('keeps the search result card unchanged by default', () => {
         renderCard();
         expect(screen.getByRole('button', { name: /Select/ })).toBeInTheDocument();

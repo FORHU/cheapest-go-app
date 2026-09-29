@@ -9,7 +9,7 @@ import { RESULT_CARD_RESTING } from '@/components/flights/FilterCard';
 
 /*
  * The flight book page's card: the search page's card surface, a blue glyph
- * beside a 16px title, and fields labelled above 36px pills outlined in grey
+ * beside a 16px title, and fields labelled above 36px fields with 12px corners, outlined in grey
  * that turn blue while focused.
  */
 
@@ -40,12 +40,12 @@ export const BOOK_CARD_TITLE = 'text-[15px] lg:text-[16px] font-normal text-[#1c
 export const BOOK_FIELD_GRID = 'grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-4 lg:gap-y-[18px]';
 
 /**
- * The design's field: a 36px pill outlined in grey, blue while focused (or
+ * The design's field: 36px tall with 12px corners, outlined in grey, blue while focused (or
  * while its menu is open), red once it has failed validation.
  */
 export function bookFieldClass(hasError: boolean, extra = ''): string {
     return cn(
-        'w-full h-9 px-4 rounded-full border bg-white dark:bg-slate-900 text-[14px] text-[#1c1b1f] dark:text-white',
+        'w-full h-9 px-4 rounded-xl border bg-white dark:bg-slate-900 text-[14px] text-[#1c1b1f] dark:text-white',
         'placeholder:text-[#c4c8cf] dark:placeholder:text-slate-500 focus:outline-none transition-colors',
         hasError
             ? 'border-red-500 focus:border-red-500'

@@ -3,8 +3,7 @@
 import React, { useEffect } from 'react';
 import { useTranslations } from 'next-intl';
 import { motion } from 'framer-motion';
-import { Plane, Mail, Loader2, CheckCircle, AlertTriangle, PartyPopper, Info, Clock, Shield, XCircle, X, BadgeDollarSign, RefreshCw, BedDouble, ArrowRight, Armchair, Luggage, Sparkles, Receipt } from 'lucide-react';
-import { FlightItinerarySummary } from '@/components/flights/FlightItinerarySummary';
+import { Plane, Mail, Loader2, CheckCircle, AlertTriangle, PartyPopper, Info, Clock, Shield, XCircle, X, BadgeDollarSign, RefreshCw, BedDouble, ArrowRight, Armchair, Luggage, Sparkles } from 'lucide-react';
 import { FlightCard } from '@/components/flights/flightCard';
 import { useSearchParams, useRouter } from 'next/navigation';
 import BackButton from '@/components/common/BackButton';
@@ -24,7 +23,7 @@ import DuplicateBookingModal from '@/components/flights/DuplicateBookingModal';
 import { FlightBookColumns } from '@/components/flights/booking/FlightBookColumns';
 import { PassengerDetailsCard } from '@/components/flights/booking/PassengerDetailsCard';
 import { BillingAddressCard, ContactInformationCard } from '@/components/flights/booking/ContactCards';
-import { BOOK_CARD, BOOK_CARD_ICON, BOOK_CARD_PADDING, BOOK_CARD_TITLE, BookCard, BookCollapsibleCard } from '@/components/flights/booking/BookCard';
+import { BOOK_CARD, BOOK_CARD_ICON, BOOK_CARD_PADDING, BOOK_CARD_TITLE, BookCollapsibleCard } from '@/components/flights/booking/BookCard';
 import { cn } from '@/lib/utils';
 import { } from 'zod';
 
@@ -726,7 +725,13 @@ function BookingContent() {
                 flight={<>
                 {/* The flight, as the search page shows it — its own card, opened on the
                     itineraries, without the Select rail (the flight is already chosen). */}
-                <FlightCard offer={offer} variant="booking" />
+                <FlightCard
+                    offer={offer}
+                    variant="booking"
+                    // The running total, seats and bags included — the Order Summary
+                    // card that used to carry it is gone.
+                    totalPrice={offer.price.total + selectedSeats.reduce((s, x) => s + x.price, 0) + selectedBags.reduce((s, b) => s + b.price, 0)}
+                />
                 {/* Deal context banner — shown when booking came from a deal card */}
                 {searchParams.get('dealDiscount') || searchParams.get('dealPrice') ? (() => {
                     const dealDiscount = searchParams.get('dealDiscount');
@@ -768,19 +773,6 @@ function BookingContent() {
                     );
                 })() : null}
 
-                {/* Offer expiry countdown — only for Duffel */}
-                {offerExpiresAt && offer.provider === 'duffel' && (
-                    <OfferExpiryBanner expiresAt={offerExpiresAt} />
-                )}
-
-                {/* Fare Policy Panel — shown from search-stage policy, updated after revalidation */}
-                {offer.farePolicy && (
-                    <FarePolicyPanel
-                        policy={offer.farePolicy}
-                        policyChanged={(offer as any).policyChanged === true}
-                    />
-                )}
-
                 {/* Fare Conditions — Duffel only; read from offer.conditions (no extra API call) */}
                 {offer.provider === 'duffel' && (
                     <DuffelFareConditions rawOffer={(offer as any)._raw} currency={offer.price.currency} />
@@ -794,6 +786,23 @@ function BookingContent() {
                 )}
                 </>}
             >
+
+                {/* At the top of the form column, beside what the traveller is filling
+                    in: the time left on the offer, then the fare's policy. Above both
+                    steps — the offer runs out during payment too. */}
+
+                {/* Offer expiry countdown — only for Duffel */}
+                {offerExpiresAt && offer.provider === 'duffel' && (
+                    <OfferExpiryBanner expiresAt={offerExpiresAt} />
+                )}
+
+                {/* Fare Policy Panel — shown from search-stage policy, updated after revalidation */}
+                {offer.farePolicy && (
+                    <FarePolicyPanel
+                        policy={offer.farePolicy}
+                        policyChanged={(offer as any).policyChanged === true}
+                    />
+                )}
 
                 {/* Booking Flow: Passenger Form OR Payment Element */}
                 {step === 'payment' && clientSecret ? (
@@ -1000,52 +1009,6 @@ function BookingContent() {
                                 </div>
                             );
                         })()}
-
-                        {/* Booking summary */}
-                        <BookCard icon={Receipt} title={t('orderSummary.title')} headingLevel="h3">
-
-                            {/* Flight itinerary */}
-                            <div className="mb-3 pb-3 border-b border-slate-100 dark:border-slate-800">
-                                <FlightItinerarySummary offer={offer} />
-                            </div>
-
-                            {/* Meta row */}
-                            <div className="flex flex-wrap gap-x-3 gap-y-1 mb-3 pb-3 border-b border-slate-100 dark:border-slate-800">
-                                <span className="text-[11px] lg:text-[12px] text-[#939fb1] dark:text-slate-400">{primary.airline.name} · {primary.flightNumber}</span>
-                                <span className="text-[11px] lg:text-[12px] text-[#939fb1] dark:text-slate-400">{primary.cabinClass?.replace('_', ' ').replace(/\b\w/g, c => c.toUpperCase()) || t('orderSummary.economy')}</span>
-                                <span className="text-[11px] lg:text-[12px] text-[#939fb1] dark:text-slate-400">{passengers.length === 1 ? t('orderSummary.passenger', { count: 1 }) : t('orderSummary.passengerPlural', { count: passengers.length })}</span>
-                            </div>
-
-                            {/* Price breakdown */}
-                            <div className="space-y-1.5">
-                                <div className="flex justify-between">
-                                    <span className="text-[12px] lg:text-[13px] text-[#939fb1] dark:text-slate-400">{t('orderSummary.baseFare')}</span>
-                                    <span className="text-[12px] lg:text-[13px] text-slate-900 dark:text-white">{formatPrice(offer.price.total, offer.price.currency, targetCurrency)}</span>
-                                </div>
-                                {selectedSeats.length > 0 && (
-                                    <div className="flex justify-between">
-                                        <span className="text-[12px] lg:text-[13px] text-[#939fb1] dark:text-slate-400">{t('orderSummary.seatSelection')}</span>
-                                        <span className="text-[12px] lg:text-[13px] text-slate-900 dark:text-white">+{formatPrice(selectedSeats.reduce((s, x) => s + x.price, 0), offer.price.currency, targetCurrency)}</span>
-                                    </div>
-                                )}
-                                {selectedBags.length > 0 && (
-                                    <div className="flex justify-between">
-                                        <span className="text-[12px] lg:text-[13px] text-[#939fb1] dark:text-slate-400">{t('orderSummary.extraBags')}</span>
-                                        <span className="text-[12px] lg:text-[13px] text-slate-900 dark:text-white">+{formatPrice(selectedBags.reduce((s, b) => s + b.price, 0), offer.price.currency, targetCurrency)}</span>
-                                    </div>
-                                )}
-                                <div className="flex justify-between pt-2 border-t border-slate-100 dark:border-slate-800">
-                                    <span className="text-[14px] lg:text-[16px] font-normal text-slate-900 dark:text-white">{t('orderSummary.total')}</span>
-                                    <span className="text-[14px] lg:text-[16px] font-normal text-slate-900 dark:text-white">
-                                        {formatPrice(
-                                            offer.price.total + selectedSeats.reduce((s, x) => s + x.price, 0) + selectedBags.reduce((s, b) => s + b.price, 0),
-                                            offer.price.currency,
-                                            targetCurrency,
-                                        )}
-                                    </span>
-                                </div>
-                            </div>
-                        </BookCard>
 
                         {/* Submit */}
                         <button

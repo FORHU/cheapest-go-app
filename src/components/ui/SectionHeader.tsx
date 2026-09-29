@@ -5,8 +5,8 @@ import { motion } from 'framer-motion';
 import { ArrowRight, LucideIcon } from 'lucide-react';
 
 interface SectionHeaderProps {
-  title: string;
-  subtitle?: string;
+  title: React.ReactNode;
+  subtitle?: React.ReactNode;
   icon?: LucideIcon;
   badge?: {
     icon?: React.ReactNode;

@@ -82,17 +82,20 @@ export interface FlightCardProps {
      * the fare alternatives.
      */
     variant?: 'result' | 'booking';
+    /** `booking` only: the running total in the offer's currency, extras included. Defaults to the fare. */
+    totalPrice?: number;
 }
 
 // ─── FlightCard ──────────────────────────────────────────────────────
 
-export const FlightCard: React.FC<FlightCardProps> = ({ offer, index = 0, onSelect, isSelected = false, variant = 'result' }) => {
+export const FlightCard: React.FC<FlightCardProps> = ({ offer, index = 0, onSelect, isSelected = false, variant = 'result', totalPrice }) => {
     const booking = variant === 'booking';
     const [expanded, setExpanded] = useState(booking);
     // Fare alternatives are a choice made on the search page, not at checkout.
     const alternatives = booking ? [] : (offer.alternatives ?? []);
     const targetCurrency = useUserCurrency();
     const t = useTranslations('flights.card');
+    const tb = useTranslations('flightBook');
     // Times are rendered per locale — 12-hour where the locale says so, 24-hour where it
     // does not — without ever converting the wall clock. See formatTimeIn.
     const locale = useLocale();
@@ -268,6 +271,19 @@ export const FlightCard: React.FC<FlightCardProps> = ({ offer, index = 0, onSele
                             </span>
                         )}
                     </div>
+
+                    {/* ─── Booking total — the book page only, at the far end of the
+                        airline row: what the traveller is about to pay, extras included. */}
+                    {booking && (
+                        <div data-testid="booking-total" className="ml-auto shrink-0 text-right leading-tight">
+                            <div className="text-lg lg:text-2xl font-semibold text-slate-900 dark:text-white">
+                                {formatPrice(totalPrice ?? offer.price.total, offer.price.currency, targetCurrency)}
+                            </div>
+                            <div className="text-[11px] lg:text-sm text-slate-500 dark:text-slate-400">
+                                {tb('totalPrice')}
+                            </div>
+                        </div>
+                    )}
                     </div>
 
                     {/* ─── Route summary — the OUTBOUND leg only ───
