@@ -111,7 +111,7 @@ export function PassengerDetailsCard({ index, passenger: pax, errors, canRemove,
         <>
             <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                    <button type="button" className="flex items-center gap-1.5 h-9 px-4 text-[13px] lg:text-[14px] bg-white dark:bg-slate-900 border border-[#d9d9d9] dark:border-slate-700 rounded-full text-[#1c1b1f] dark:text-white group">
+                    <button type="button" className="flex items-center gap-1.5 h-9 px-4 text-[13px] lg:text-[14px] bg-white dark:bg-slate-900 border border-[#d9d9d9] dark:border-slate-700 rounded-xl text-[#1c1b1f] dark:text-white group">
                         <span>{t(`passenger.${PASSENGER_TYPES.find(pt => pt.code === pax.type)?.key ?? 'adult'}`)}</span>
                         <ChevronDown size={14} className="transition-transform group-data-[state=open]:rotate-180" />
                     </button>

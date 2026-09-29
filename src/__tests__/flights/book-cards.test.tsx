@@ -27,8 +27,8 @@ describe('ContactInformationCard', () => {
         expect(screen.getByText(/Fields marked with/)).toBeInTheDocument();
         const email = screen.getByLabelText(/^Email Address/);
         expect(email).toBeRequired();
-        expect(email).toHaveClass('rounded-full', 'border-[#d9d9d9]', 'focus:border-blue-600');
-        expect(screen.getByLabelText(/^Phone Number/)).toHaveClass('rounded-full');
+        expect(email).toHaveClass('rounded-xl', 'border-[#d9d9d9]', 'focus:border-blue-600');
+        expect(screen.getByLabelText(/^Phone Number/)).toHaveClass('rounded-xl');
     });
 
     it('reports edits by field and validates on blur', () => {
@@ -54,7 +54,7 @@ describe('BillingAddressCard', () => {
         withIntl(<BillingAddressCard contact={contact} errors={{}} onChange={() => {}} />);
         expect(screen.getByRole('heading', { name: 'Billing Address' })).toBeInTheDocument();
         for (const label of [/^Address Line/, /^City/, /^Postal Code/]) {
-            expect(screen.getByLabelText(label)).toHaveClass('rounded-full');
+            expect(screen.getByLabelText(label)).toHaveClass('rounded-xl');
         }
         expect(screen.getByRole('button', { name: /^Country/ })).toHaveClass('w-full');
     });

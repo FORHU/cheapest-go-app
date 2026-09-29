@@ -2,11 +2,57 @@
 
 import React, { useState } from 'react';
 import { useTranslations } from 'next-intl';
-import { loadStripe } from '@stripe/stripe-js';
+import { loadStripe, type Appearance } from '@stripe/stripe-js';
 import { Elements, PaymentElement, useStripe, useElements } from '@stripe/react-stripe-js';
-import { Loader2 } from 'lucide-react';
+import { CreditCard, Loader2 } from 'lucide-react';
 
 import { env } from '@/utils/env';
+import { cn } from '@/lib/utils';
+import { useTheme } from '@/components/context/ThemeContext';
+import { BOOK_CARD, BOOK_CARD_PADDING, BookCardHeader } from '@/components/flights/booking/BookCard';
+
+/**
+ * `default`: the hotel checkout's own look.
+ * `flightBook`: the flight book page's card — the search page's card surface, a blue
+ * glyph beside a 16px title, 12px fields outlined in grey that turn blue while focused,
+ * and the blue pill button the rest of that page uses.
+ */
+export type StripeCheckoutVariant = 'default' | 'flightBook';
+
+/**
+ * The Payment Element dressed as the flight book page's fields. It draws inside
+ * Stripe's iframe, so the page's classes cannot reach it — the same look is handed to
+ * Stripe as an appearance: 12px corners, the #d9d9d9 outline, blue (#2563eb) on focus
+ * and for the selected method, 14px type, and no shadows.
+ */
+export function bookPaymentAppearance(theme: 'light' | 'dark'): Appearance {
+    const dark = theme === 'dark';
+    const outline = dark ? '#334155' : '#d9d9d9';
+    return {
+        theme: dark ? 'night' : 'stripe',
+        variables: {
+            colorPrimary:         '#2563eb',
+            colorText:            dark ? '#ffffff' : '#1c1b1f',
+            colorTextSecondary:   dark ? '#94a3b8' : '#939fb1',
+            colorTextPlaceholder: dark ? '#64748b' : '#c4c8cf',
+            colorBackground:      dark ? '#0f172a' : '#ffffff',
+            colorDanger:          '#ef4444',
+            borderRadius:         '12px',
+            fontSizeBase:         '14px',
+            spacingUnit:          '4px',
+        },
+        rules: {
+            '.Input':                 { border: `1px solid ${outline}`, boxShadow: 'none' },
+            '.Input:focus':           { borderColor: '#2563eb', boxShadow: 'none' },
+            '.Input--invalid':        { borderColor: '#ef4444', boxShadow: 'none' },
+            '.AccordionItem':         { border: `1px solid ${outline}`, boxShadow: 'none' },
+            '.AccordionItem--selected': { borderColor: '#2563eb' },
+            '.Tab':                   { border: `1px solid ${outline}`, boxShadow: 'none' },
+            '.Tab--selected':         { borderColor: '#2563eb', boxShadow: 'none' },
+            '.Label':                 { fontWeight: '400' },
+        },
+    };
+}
 
 let stripePromise: ReturnType<typeof loadStripe> | null = null;
 function getStripe() {
@@ -16,11 +62,13 @@ function getStripe() {
     return stripePromise;
 }
 
-function CheckoutForm({ clientSecret, onSuccess, returnUrl }: {
+function CheckoutForm({ clientSecret, onSuccess, returnUrl, variant }: {
     clientSecret: string;
     onSuccess: (paymentIntentId: string) => void;
     returnUrl?: string;
+    variant: StripeCheckoutVariant;
 }) {
+    const book = variant === 'flightBook';
     const stripe = useStripe();
     const elements = useElements();
 
@@ -76,11 +124,22 @@ function CheckoutForm({ clientSecret, onSuccess, returnUrl }: {
     };
 
     return (
-        <form onSubmit={handleSubmit} className="p-3 sm:p-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-sm mt-4">
-            <h2 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white mb-3">{t('stripe.completePayment')}</h2>
+        <form
+            onSubmit={handleSubmit}
+            className={book
+                ? cn(BOOK_CARD, BOOK_CARD_PADDING)
+                : 'p-3 sm:p-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-sm mt-4'}
+        >
+            {book ? (
+                <div className="mb-5">
+                    <BookCardHeader icon={CreditCard} title={t('stripe.completePayment')} />
+                </div>
+            ) : (
+                <h2 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white mb-3">{t('stripe.completePayment')}</h2>
+            )}
 
             <PaymentElement
-                className="mb-4"
+                className={book ? 'mb-5' : 'mb-4'}
                 options={{ layout: 'accordion' }}
                 onLoadError={(event) => {
                     console.error('[stripe] PaymentElement load error:', event.elementType, event.error);
@@ -93,7 +152,9 @@ function CheckoutForm({ clientSecret, onSuccess, returnUrl }: {
 
             <button
                 disabled={isLoading || submitted || !stripe || !elements}
-                className="w-full py-2 sm:py-2.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 disabled:bg-indigo-400 text-white text-sm font-semibold flex items-center justify-center gap-2"
+                className={book
+                    ? 'w-full h-11 lg:h-12 rounded-full bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white font-normal text-[13px] lg:text-[14px] transition-colors flex items-center justify-center gap-2'
+                    : 'w-full py-2 sm:py-2.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 disabled:bg-indigo-400 text-white text-sm font-semibold flex items-center justify-center gap-2'}
             >
                 {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : t('stripe.payNow')}
             </button>
@@ -103,13 +164,16 @@ function CheckoutForm({ clientSecret, onSuccess, returnUrl }: {
     );
 }
 
-export default function StripeEmbeddedCheckout({ clientSecret, onSuccess, returnUrl }: {
+export default function StripeEmbeddedCheckout({ clientSecret, onSuccess, returnUrl, variant = 'default' }: {
     clientSecret: string;
     onSuccess: (paymentIntentId: string) => void;
     /** Where Stripe should return to if the payment method forces a redirect.
      *  Defaults to the current page, which is right for every caller. */
     returnUrl?: string;
+    /** Which page's card this is drawn as; see `StripeCheckoutVariant`. */
+    variant?: StripeCheckoutVariant;
 }) {
+    const { theme } = useTheme();
     // Stripe's controller iframes (__privateStripeController,
     // __privateStripeMetricsController) are appended to <body> by Stripe.js and are
     // meant to outlive any single Elements instance — it reuses them for the whole page
@@ -129,8 +193,11 @@ export default function StripeEmbeddedCheckout({ clientSecret, onSuccess, return
     if (!clientSecret) return null;
 
     return (
-        <Elements options={{ clientSecret, appearance: { theme: 'stripe' } }} stripe={getStripe()}>
-            <CheckoutForm clientSecret={clientSecret} onSuccess={onSuccess} returnUrl={returnUrl} />
+        <Elements
+            options={{ clientSecret, appearance: variant === 'flightBook' ? bookPaymentAppearance(theme) : { theme: 'stripe' } }}
+            stripe={getStripe()}
+        >
+            <CheckoutForm clientSecret={clientSecret} onSuccess={onSuccess} returnUrl={returnUrl} variant={variant} />
         </Elements>
     );
 }

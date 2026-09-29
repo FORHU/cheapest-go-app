@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import Link from "next/link";
 import { Suspense } from 'react';
-import { getTranslations } from 'next-intl/server';
+import { getLocale, getTranslations } from 'next-intl/server';
 import { SearchFetcher } from "@/components/flights/search-fetcher";
 import { SectionHeader } from "@/components/ui";
 import BackButton from "@/components/common/BackButton";
@@ -9,7 +9,9 @@ import PriceAlertButton from "@/components/flights/PriceAlertButton";
 import { Hotel, Sparkles } from "lucide-react";
 import type { CabinClass } from "@/types/flights";
 import { searchAirports } from "@/lib/airports";
-import { airportLabel } from "@/lib/flights/airport-label";
+import { airportName } from "@/lib/flights/airport-label";
+import { searchDateLabel } from "@/lib/flights/search-date-label";
+import { FlightRouteTitle, FlightSearchMeta } from "@/components/flights/FlightSearchHeading";
 
 export const dynamic = 'force-dynamic';
 
@@ -135,6 +137,7 @@ export default async function SearchPage({
 
     const fs = await getTranslations('flights.search');
     const ls = await getTranslations('landing.search');
+    const locale = await getLocale();
 
     // Guard: redirect gracefully when required params are missing
     if (!origin || !destination || !departure) {
@@ -179,9 +182,11 @@ export default async function SearchPage({
     }
 
     const cabinLabel = ls(`cabinClass.${cabinClass === 'premium_economy' ? 'premiumEconomy' : cabinClass}`);
-    const subtitle = [departure, returnDate && `↩ ${returnDate}`, fs('adult', { count: adults }), cabinLabel]
+    // "October 1, 2026 ← October 3, 2026" for a round trip, as the design writes it.
+    const dates = [searchDateLabel(departure, locale), returnDate && searchDateLabel(returnDate, locale)]
         .filter(Boolean)
-        .join(' · ');
+        .join(' ← ');
+    const subtitle = <FlightSearchMeta items={[dates, fs('adult', { count: adults }), cabinLabel]} />;
 
     return (
         <main className="min-h-screen pt-2 pb-12 px-4 md:pt-6 md:pb-20 overflow-x-hidden">
@@ -190,7 +195,13 @@ export default async function SearchPage({
                     <BackButton href="/" bareIcon className="mb-1 lg:mb-3 bg-white/90 dark:bg-slate-900/90 backdrop-blur border border-slate-200/50 dark:border-slate-700/50 text-slate-700 dark:text-slate-300 w-8 h-8 lg:w-10 lg:h-10 rounded-full flex items-center justify-center shadow-sm p-0!" />
                     <div className="flex items-start justify-between gap-2 lg:gap-4 flex-wrap">
                         <SectionHeader
-                            title={fs('routeTitle', { origin: airportLabel(origin), destination: airportLabel(destination) })}
+                            title={
+                                <FlightRouteTitle
+                                    names={fs('routeTitle', { origin: airportName(origin), destination: airportName(destination) })}
+                                    origin={origin}
+                                    destination={destination}
+                                />
+                            }
                             subtitle={subtitle}
                             className="!mb-0"
                         />

@@ -12,3 +12,13 @@ export function airportLabel(code: string | undefined): string {
     const name = getAirportByCode(iata)?.name;
     return name ? `${name} (${iata})` : iata;
 }
+
+/**
+ * An airport named in full, without its code — "Clark International Airport" — for a
+ * line that states the codes on their own beside it. Unknown codes read as themselves.
+ */
+export function airportName(code: string | undefined): string {
+    if (!code) return '';
+    const iata = code.toUpperCase();
+    return getAirportByCode(iata)?.name ?? iata;
+}
