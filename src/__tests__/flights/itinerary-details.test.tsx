@@ -174,6 +174,18 @@ describe('FlightItineraryDetails', () => {
         expect(screen.getByText('Return')).toBeTruthy();
     });
 
+    it('dates each direction instead of timing it, when asked to as the book page does', () => {
+        const { unmount } = renderIntl(<FlightItineraryDetails offer={roundTrip} />);
+        // By default the return's departure date appears once, under DEPART FROM.
+        expect(screen.getAllByText('Wed, Sep 30, 2026, 9:00 AM')).toHaveLength(1);
+        unmount();
+
+        renderIntl(<FlightItineraryDetails offer={roundTrip} legHeading="date" />);
+        // Now also beside RETURN — and the per-direction total is left to the overview.
+        expect(screen.getAllByText('Wed, Sep 30, 2026, 9:00 AM')).toHaveLength(2);
+        expect(screen.queryByText('Total Flight Duration')).toBeNull();
+    });
+
     it('leaves a one-way journey unlabelled', () => {
         renderIntl(<FlightItineraryDetails offer={oneWay} />);
 

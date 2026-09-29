@@ -15,7 +15,8 @@ import en from '@/locales/en.json';
  */
 
 vi.mock('framer-motion', () => ({
-    motion: new Proxy({}, { get: () => (p: any) => React.createElement('div', null, p.children) }),
+    // Keeps className: the rail and itinerary column are motion elements, and their layout classes are what these tests read.
+    motion: new Proxy({}, { get: () => (p: any) => React.createElement('div', { className: p.className }, p.children) }),
     AnimatePresence: ({ children }: any) => React.createElement(React.Fragment, null, children),
 }));
 vi.mock('@/stores/searchStore', () => ({ useUserCurrency: () => 'USD' }));
@@ -276,15 +277,30 @@ describe('FlightCard — the fare rail', () => {
         expect(screen.getByRole('button', { name: 'Select' }).className).toContain('cursor-pointer');
     });
 
+    it('offers "Hide flight itineraries" once the itineraries are open', () => {
+        renderIntl(<FlightCard offer={referenceOffer} />);
+
+        fireEvent.click(screen.getByText('Show flight itineraries'));
+
+        expect(screen.getByRole('button', { name: 'Hide flight itineraries' })).toBeTruthy();
+    });
+
+    it('keeps a five-figure fare on one line in the rail', () => {
+        const pricey = { ...referenceOffer, price: { ...referenceOffer.price, pricePerAdult: 12345.67 } } as FlightOffer;
+        renderIntl(<FlightCard offer={pricey} />);
+
+        expect(screen.getByText('$12,345.67').className).toContain('whitespace-nowrap');
+    });
+
     it('drops the price rail below the itinerary once it is expanded', () => {
         renderIntl(<FlightCard offer={referenceOffer} />);
 
         // Collapsed: a fixed-width column running alongside the itinerary.
         const railBefore = screen.getByText('fees included').parentElement!.parentElement!;
-        expect(railBefore.className).toContain('lg:w-[180px]');
+        expect(railBefore.className).toContain('lg:w-[240px]');
         expect(railBefore.className).not.toContain('w-full');
 
-        fireEvent.click(screen.getByText('Show all segments'));
+        fireEvent.click(screen.getByText('Show flight itineraries'));
 
         // Expanded: the rail would otherwise stretch the full height of the now much
         // taller itinerary as a side column. It sits below it instead, full width.
@@ -292,15 +308,15 @@ describe('FlightCard — the fare rail', () => {
         // React a new component type on every render, so the whole card remounts.
         const railAfter = screen.getByText('fees included').parentElement!.parentElement!;
         expect(railAfter.className).toContain('w-full');
-        expect(railAfter.className).not.toContain('lg:w-[180px]');
+        expect(railAfter.className).not.toContain('lg:w-[240px]');
     });
 });
 
-describe('FlightCard — the itinerary behind "Show all segments"', () => {
+describe('FlightCard — the itinerary behind "Show flight itineraries"', () => {
     it('draws every flight of the leg once expanded', () => {
         renderIntl(<FlightCard offer={referenceOffer} />);
 
-        fireEvent.click(screen.getByText('Show all segments'));
+        fireEvent.click(screen.getByText('Show flight itineraries'));
 
         expect(screen.getAllByText('Depart from')).toHaveLength(2);
         expect(screen.getByText('02h 45m at Hamad International Airport')).toBeTruthy();
@@ -333,7 +349,7 @@ describe('FlightCard — the itinerary behind "Show all segments"', () => {
         expect(screen.queryByText('Terminal 2')).toBeNull();
         expect(screen.queryByText('Terminal 3')).toBeNull();
 
-        fireEvent.click(screen.getByText('Show all segments'));
+        fireEvent.click(screen.getByText('Show flight itineraries'));
 
         expect(screen.getByText('Terminal 2')).toBeTruthy();
         expect(screen.getByText('Terminal 3')).toBeTruthy();
@@ -351,7 +367,7 @@ describe('FlightCard — the itinerary behind "Show all segments"', () => {
         } as FlightOffer;
 
         renderIntl(<FlightCard offer={roundTrip} />);
-        fireEvent.click(screen.getByText('Show all segments'));
+        fireEvent.click(screen.getByText('Show flight itineraries'));
 
         expect(screen.getByText('Outbound')).toBeTruthy();
         expect(screen.getByText('Return')).toBeTruthy();
@@ -371,15 +387,15 @@ describe('FlightCard — the itinerary behind "Show all segments"', () => {
         } as FlightOffer;
 
         renderIntl(<FlightCard offer={roundTrip} />);
-        fireEvent.click(screen.getByText('Show all segments'));
+        fireEvent.click(screen.getByText('Show flight itineraries'));
 
         expect(screen.getByText('Outbound').parentElement!.textContent).toContain('1d 01h 50m');
         expect(screen.getByText('Return').parentElement!.textContent).toContain('21h 40m');
     });
 
-    it('gives the "Show all segments" toggle a pointer cursor', () => {
+    it('gives the "Show flight itineraries" toggle a pointer cursor', () => {
         renderIntl(<FlightCard offer={referenceOffer} />);
 
-        expect(screen.getByText('Show all segments').closest('button')!.className).toContain('cursor-pointer');
+        expect(screen.getByText('Show flight itineraries').closest('button')!.className).toContain('cursor-pointer');
     });
 });

@@ -740,46 +740,9 @@
       "passport": "여권 번호 *",
       "passportExpiry": "여권 만료일 *",
       "remove": "삭제",
-      "title": "여객 {number}"
-    },
-    "priceCalendar": {
-      "checkingPrices": "가격 확인 중…",
-      "clickToSearch": "클릭하여 이 날짜 검색",
-      "clickToSearchWithPrice": "{price} — 클릭하여 검색",
-      "datesFound": "{count}개 날짜에 가격 있음",
-      "days": [
-        "일",
-        "월",
-        "화",
-        "수",
-        "목",
-        "금",
-        "토"
-      ],
-      "exploreOneWay": "날짜별 가격 탐색(편도)",
-      "exploreRoundTrip": "날짜별 가격 탐색(왕복)",
-      "fetchingLive": "실시간 가격 조회 중…",
-      "from": "{price}부터",
-      "loading": "불러오는 중…",
-      "months": [
-        "1월",
-        "2월",
-        "3월",
-        "4월",
-        "5월",
-        "6월",
-        "7월",
-        "8월",
-        "9월",
-        "10월",
-        "11월",
-        "12월"
-      ],
-      "searchDates": "{month}의 {count}개 날짜 검색",
-      "searchingBestPrices": "최고 가격 검색 중…",
-      "tipDescription": "이것은 해당 제공사의 근처 날짜 실제 요금입니다. 날짜를 클릭하면 그 날짜의 항곸을 검색합니다.",
-      "tipTitle": "팁:",
-      "updatingMonth": "월 업데이트 중…"
+      "title": "여객 {number}",
+      "ordinalTitle": "여객 {number}",
+      "requiredNote": "<req>*</req> 표시된 항목은 필수입니다"
     },
     "priceChange": {
       "accept": "새 금액 수낙 및 계속",
@@ -895,7 +858,7 @@
       "seatsLeft": "{count}석 남음",
       "select": "선택",
       "selectFare": "{fare} 선택",
-      "showAllSegments": "모든 구간 보기",
+      "showAllSegments": "항공편 일정 보기",
       "standard": "스탠다드",
       "stop": "회 경유",
       "stopCount": "{count}회 경유",
@@ -943,7 +906,10 @@
       "times": "시간대",
       "twoStopsPlus": "경유 2회 이상",
       "underHours": "{hours}시간 이내",
-      "upToOneStop": "최대 1회 경유"
+      "upToOneStop": "최대 1회 경유",
+      "rangeFrom": "{label} 시작",
+      "rangeTo": "{label} 끝",
+      "underHoursInput": "<field></field>시간 이내"
     },
     "priceAlert": {
       "active": "알림 활성화됨",
@@ -984,6 +950,7 @@
       "adult_plural": "성인 {count}명",
       "fetchingProviders": "공급사에서 검색 중...",
       "newSearch": "새 검색",
+      "routeTitle": "{origin} → {destination}",
       "providersSlow": "항공사 공급사의 응답이 느립니다. 잠시만 기다려 주세요. 최적의 요금을 계속 찾고 있습니다.",
       "providersSlowDescription": "항공사 공급사의 응답이 느립니다. 다시 시도하거나 검색 조건을 조정해 주세요.",
       "sources": "출처:",
@@ -1017,7 +984,9 @@
       "layoverValue": "{airport}에서 {duration}",
       "terminal": "터미널 {terminal}",
       "terminalUnavailable": "터미널 정보는 출발일이 가까워지면 제공됩니다",
-      "totalFlightDuration": "총 비행 시간"
+      "totalFlightDuration": "총 비행 시간",
+      "nonstop": "직항",
+      "stopCount": "경유 {count}회"
     }
   },
   "footer": {
@@ -1324,7 +1293,24 @@
     "nonRefundable": "환불 불가",
     "partialRefund": "부분 환불",
     "tieredPolicy": "취소 수수료가 부과됩니다",
-    "refundable": "환불 가능"
+    "refundable": "환불 가능",
+    "referenceLabel": "예약 참조번호",
+    "tripLabel": "여행",
+    "paidBadge": "결제 완료",
+    "depart": "출발",
+    "returnLabel": "귀국",
+    "directLabel": "직항",
+    "stopsShort": "{count}회 경유",
+    "nameCol": "성명",
+    "eTicketCol": "e-티켓 번호",
+    "bookingSectionLabel": "예약",
+    "adultLabel": "성인",
+    "childLabel": "소아",
+    "infantLabel": "유아",
+    "tripTypeOneWay": "편도",
+    "tripTypeRoundTrip": "왕복",
+    "tripTypeMultiCity": "다구간",
+    "passengerCount": "{count, plural, other {승객 #명}}"
   },
   "landing": {
     "hero": {

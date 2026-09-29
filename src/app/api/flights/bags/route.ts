@@ -28,8 +28,10 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ success: false, error: 'Duffel not configured' }, { status: 503 });
     }
 
+    // Services only come back on a single-offer GET with this flag. There is no
+    // /available_services sub-resource — it 404s, which read as "offer expired" every time.
     const res = await fetch(
-        `https://api.duffel.com/air/offers/${encodeURIComponent(offerId)}/available_services`,
+        `https://api.duffel.com/air/offers/${encodeURIComponent(offerId)}?return_available_services=true`,
         {
             headers: {
                 'Authorization': `Bearer ${token}`,
@@ -50,7 +52,7 @@ export async function POST(req: NextRequest) {
     }
 
     const json = await res.json();
-    const services: any[] = json.data ?? [];
+    const services: any[] = json.data?.available_services ?? [];
 
     // Build a map from Duffel passenger ID → our passenger index
     const paxIds: string[] = duffelPassengerIds ?? [];

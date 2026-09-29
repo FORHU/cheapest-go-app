@@ -756,54 +756,17 @@
       "adult": "Adult",
       "birthdate": "Birthdate *",
       "child": "Child",
-      "firstName": "First Name *",
-      "gender": "Gender *",
+      "firstName": "Firstname *",
+      "gender": "Sex *",
       "infant": "Infant",
-      "lastName": "Last Name *",
-      "nationality": "Nationality *",
+      "lastName": "Lastname *",
+      "nationality": "Country *",
       "passport": "Passport Number *",
       "passportExpiry": "Passport Expiry Date *",
       "remove": "Remove",
-      "title": "Passenger {number}"
-    },
-    "priceCalendar": {
-      "checkingPrices": "Checking prices…",
-      "clickToSearch": "Click to search this date",
-      "clickToSearchWithPrice": "{price} — click to search",
-      "datesFound": "{count} dates with prices found",
-      "days": [
-        "Su",
-        "Mo",
-        "Tu",
-        "We",
-        "Th",
-        "Fr",
-        "Sa"
-      ],
-      "exploreOneWay": "Explore prices by date (One-way)",
-      "exploreRoundTrip": "Explore prices by date (Round-trip)",
-      "fetchingLive": "Fetching live prices…",
-      "from": "From {price}",
-      "loading": "Loading…",
-      "months": [
-        "January",
-        "February",
-        "March",
-        "April",
-        "May",
-        "June",
-        "July",
-        "August",
-        "September",
-        "October",
-        "November",
-        "December"
-      ],
-      "searchDates": "Search all {count} dates for {month}",
-      "searchingBestPrices": "Searching for the best prices…",
-      "tipDescription": "These are real fares for nearby dates from this provider. Click any date to instantly search flights on that day.",
-      "tipTitle": "Tip:",
-      "updatingMonth": "Updating month…"
+      "title": "Passenger {number}",
+      "ordinalTitle": "{number, select, 1 {First Passenger} 2 {Second Passenger} 3 {Third Passenger} 4 {Fourth Passenger} 5 {Fifth Passenger} 6 {Sixth Passenger} 7 {Seventh Passenger} 8 {Eighth Passenger} 9 {Ninth Passenger} other {Passenger {number}}}",
+      "requiredNote": "Fields marked with <req>*</req> are required"
     },
     "priceChange": {
       "accept": "Accept new price & continue",
@@ -905,7 +868,7 @@
       "currentlySelected": "Currently Selected",
       "direct": "Direct",
       "freeCancellation": "Free cancellation",
-      "hideDetails": "Hide flight itinerary",
+      "hideDetails": "Hide flight itineraries",
       "legLabel": "Leg {number}",
       "moreSegments": "+ {count} more",
       "operatedBy": "Operated by {airline}",
@@ -924,7 +887,7 @@
       "seatsLeft": "{count} seats left",
       "select": "Select",
       "selectFare": "Select {fare}",
-      "showAllSegments": "Show all segments",
+      "showAllSegments": "Show flight itineraries",
       "standard": "Standard",
       "stop": "stop",
       "stopCount": "{count} stop",
@@ -973,7 +936,10 @@
       "times": "Times",
       "twoStopsPlus": "2 Stops +",
       "underHours": "Under {hours} hours",
-      "upToOneStop": "Up to 1 stop"
+      "upToOneStop": "Up to 1 stop",
+      "rangeFrom": "{label} from",
+      "rangeTo": "{label} to",
+      "underHoursInput": "Under <field></field> hours"
     },
     "priceAlert": {
       "active": "Alert active",
@@ -1014,6 +980,7 @@
       "adult_plural": "{count} adults",
       "fetchingProviders": "Fetching from providers...",
       "newSearch": "New Search",
+      "routeTitle": "{origin} to {destination}",
       "providersSlow": "Flight providers are responding slowly. Hang tight, we're still looking for the best fares.",
       "providersSlowDescription": "Flight providers are slow to respond right now. Please try again or adjust your search.",
       "sources": "Sources:",
@@ -1047,7 +1014,9 @@
       "layoverValue": "{duration} at {airport}",
       "terminal": "Terminal {terminal}",
       "terminalUnavailable": "Terminal available closer to departure",
-      "totalFlightDuration": "Total Flight Duration"
+      "totalFlightDuration": "Total Flight Duration",
+      "nonstop": "Nonstop",
+      "stopCount": "{count, plural, one {# stop} other {# stops}}"
     }
   },
   "footer": {
@@ -1356,7 +1325,24 @@
     "nonRefundable": "Non-refundable",
     "partialRefund": "Partial refund",
     "tieredPolicy": "Cancellation charges apply",
-    "refundable": "Refundable"
+    "refundable": "Refundable",
+    "referenceLabel": "Booking Reference",
+    "tripLabel": "Trip",
+    "paidBadge": "Paid",
+    "depart": "Depart",
+    "returnLabel": "Return",
+    "directLabel": "Direct",
+    "stopsShort": "{count} stop(s)",
+    "nameCol": "Name",
+    "eTicketCol": "E-ticket number",
+    "bookingSectionLabel": "Booking",
+    "adultLabel": "Adult",
+    "childLabel": "Child",
+    "infantLabel": "Infant",
+    "tripTypeOneWay": "One-way",
+    "tripTypeRoundTrip": "Round-trip",
+    "tripTypeMultiCity": "Multi-city",
+    "passengerCount": "{count, plural, one {# passenger} other {# passengers}}"
   },
   "landing": {
     "hero": {

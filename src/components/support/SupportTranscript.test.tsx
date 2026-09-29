@@ -221,4 +221,24 @@ describe('a machine translation', () => {
 
         expect(screen.queryByText('MACHINE ENGLISH FOR THE AGENT')).not.toBeInTheDocument();
     });
+
+    it('sits the conversation at the bottom, by the composer, so the last message sent is the lowest', () => {
+        render(
+            <SupportTranscript
+                messages={[
+                    message({ id: 'm1', senderType: 'guest', body: 'first' }),
+                    message({ id: 'm2', senderType: 'guest', body: 'latest' }),
+                ]}
+                isTyping={false}
+            />,
+            { wrapper: Wrapper },
+        );
+
+        const log = screen.getByRole('log');
+        expect(log).toHaveClass('flex', 'flex-col');
+        // The content is pushed down to the bottom of the scroll area, not left at the top.
+        const list = screen.getByRole('list');
+        expect(list.parentElement).toHaveClass('mt-auto');
+        expect(list.lastElementChild).toHaveTextContent('latest');
+    });
 });

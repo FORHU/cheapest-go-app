@@ -11,6 +11,7 @@ import { placeDuffelOrder } from '@/lib/server/flights/place-duffel-order';
 import { duffelIdentityDocuments } from '@/lib/server/flights/duffel-identity-documents';
 import { findOrderFromTimedOutAttempt, toReconciledOrder } from '@/lib/server/flights/duffel-order-reconcile';
 import { revalidateFlight } from '@/lib/server/flights/revalidate-flight';
+import { withDuffelServicePrices } from '@/lib/server/flights/duffel-service-prices';
 
 export const maxDuration = 300;
 export const dynamic = 'force-dynamic';
@@ -177,11 +178,14 @@ export async function POST(req: NextRequest) {
 
         // ── Step 3: Duffel pre-order ──────────────────────────────────────
         // Create the airline order BEFORE charging the card so the fare is locked.
-        const rawOffer = (flight as any)._rawOffer;
-        if (!rawOffer?.id) throw new Error('Duffel offer data missing. Please go back and reselect the flight.');
+        if (!(flight as any)._rawOffer?.id) throw new Error('Duffel offer data missing. Please go back and reselect the flight.');
 
         const duffelToken = env.DUFFEL_TOKEN;
         if (!duffelToken) throw new Error('Duffel not configured.');
+
+        // The posted offer is a search result and carries no services, so seats/bags
+        // priced at zero and Duffel refused the payment. Get Duffel's own prices.
+        const rawOffer = await withDuffelServicePrices((flight as any)._rawOffer, seatServiceIds, bagServiceIds, duffelToken);
 
         const isSandbox = duffelToken.startsWith('duffel_test_');
 

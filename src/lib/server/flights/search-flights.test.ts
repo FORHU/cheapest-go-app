@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
-// saveSearch / cacheResults / logSearchAnalytics all reach the DB through createClient.
+// saveSearch / logSearchAnalytics all reach the DB through createClient.
 // searchFlights already swallows a rejected saveSearch, so failing it here keeps these
 // tests on the provider timeout budget and off the persistence path.
 vi.mock('@/utils/postgres/server', () => ({

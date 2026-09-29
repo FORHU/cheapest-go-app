@@ -8,6 +8,7 @@ import React from 'react';
 import { InvoicePdfDocument } from './InvoicePdfDocument';
 import { receiptCancellation, receiptDiscount, fareBreakdown } from '@/lib/invoice/receipt-details';
 import { loadFlightBookingRelations, loadFlightFareBase } from '@/lib/invoice/flight-booking-relations';
+import { buildItinerarySlices, formatDurationShort, tripSummaryFromSlices } from '@/lib/invoice/itinerary-view';
 
 export const dynamic = 'force-dynamic';
 
@@ -123,6 +124,12 @@ export async function GET(
                         origin: s.origin || s.departure_airport || '',
                         destination: s.destination || s.arrival_airport || '',
                         departure: s.departure || s.departureTime || s.departure_time || '',
+                        // unified_bookings never carried these for the flat table this
+                        // replaces; defaulted so a slice still has a real duration and
+                        // stop count instead of collapsing everything into one segment.
+                        arrival: s.arrival || s.arrivalTime || s.arrival_time || s.departure || s.departureTime || s.departure_time || '',
+                        itinerary_index: s.itinerary_index ?? s.itineraryIndex ?? 0,
+                        cabin_class: s.cabin_class ?? s.cabinClass ?? null,
                     })),
                     passengers: passengers.map((p: any) => ({
                         first_name: p.firstName || p.first_name || '',
@@ -207,28 +214,43 @@ export async function GET(
         };
     }
 
+    // Flight itinerary, grouped into the slices the reference band and cards draw. Built
+    // by the same module the web page uses (itinerary-view.ts), so the two renderers
+    // cannot state a different route or duration for the same booking (ADR-0042). Every
+    // date and time is pinned to UTC so it agrees with its own arrivalDayOffset.
+    const slices = effectiveIsFlight ? buildItinerarySlices(booking.flight_segments ?? []) : [];
+    const fmtSliceTime = (d: Date) => d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', timeZone: 'UTC' });
+    const fmtSliceDay = (d: Date) => d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', timeZone: 'UTC' });
+    const passengerTypeLabel = (type: string): string => {
+        switch (type) {
+            case 'ADT': return 'Adult';
+            case 'CHD': return 'Child';
+            case 'INF': return 'Infant';
+            default:    return type;
+        }
+    };
+
     // Flight details
     let flightDetails: any = null;
     if (effectiveIsFlight) {
         flightDetails = {
-            segments: (booking.flight_segments ?? []).map((seg: any) => ({
-                airline: `${seg.airline || ''} ${seg.flight_number || ''}`.trim(),
-                route: `${seg.origin || ''} -> ${seg.destination || ''}`,
-                // Date plus the times flown. Rendered in the reader's own timezone, not
-                // the airport's — the stored values are instants and nothing here carries
-                // an IANA zone per airport to convert them back with.
-                date: seg.departure
-                    ? [
-                        new Date(seg.departure).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
-                        seg.arrival
-                            ? `${new Date(seg.departure).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })} – ${new Date(seg.arrival).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}`
-                            : '',
-                    ].filter(Boolean).join('  ')
-                    : '',
+            slices: slices.map((slice) => ({
+                label: slice.label === 'depart' ? 'Depart' : slice.label === 'return' ? 'Return' : `Flight ${slice.label}`,
+                flightNumber: slice.flightNumber,
+                cabinClass: slice.cabinClass,
+                origin: slice.origin,
+                destination: slice.destination,
+                departureTime: fmtSliceTime(slice.departure),
+                departureDate: fmtSliceDay(slice.departure),
+                arrivalTime: fmtSliceTime(slice.arrival),
+                arrivalDate: fmtSliceDay(slice.arrival),
+                arrivalDayOffset: slice.arrivalDayOffset,
+                durationLabel: formatDurationShort(slice.durationMinutes),
+                stopsLabel: slice.stops === 0 ? 'Direct' : `${slice.stops} stop${slice.stops === 1 ? '' : 's'}`,
             })),
             passengers: (booking.passengers ?? []).map((p: any) => ({
                 name: `${p.first_name || ''} ${p.last_name || ''}`.trim(),
-                type: p.type || 'ADT',
+                type: passengerTypeLabel(p.type || 'ADT'),
                 ticketNumber: p.ticket_number || '',
             })),
         };
@@ -283,6 +305,42 @@ export async function GET(
     const bookingType = isBundleType ? 'Flight + Hotel Bundle' : isHotel ? 'Hotel' : `Flight · ${booking.trip_type ?? 'one-way'}`;
     const provider = isHotel ? 'Hotel Partner' : (booking.provider || '');
 
+    const reference = { label: effectiveIsHotel ? 'Booking Reference' : 'PNR', value: bookingRef };
+
+    // The reference band's middle column: route/trip type for a flight, property/dates
+    // for a stay — the same facts the design's "Trip" column shows, derived rather than
+    // reproduced from its sample data.
+    const TRIP_TYPE_LABELS: Record<string, string> = {
+        'one-way': 'One-way', 'round-trip': 'Round-trip', 'multi-city': 'Multi-city',
+    };
+    const fmtHeroDate = (d: Date) => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' });
+    const tripSummary = effectiveIsFlight
+        ? (() => {
+            const summary = tripSummaryFromSlices(slices, booking.trip_type ?? null);
+            if (!summary) return null;
+            const tripTypeLabel = TRIP_TYPE_LABELS[summary.tripType ?? ''] ?? null;
+            const dateRange = summary.endDate
+                ? `${fmtHeroDate(summary.startDate)} – ${fmtHeroDate(summary.endDate)}`
+                : fmtHeroDate(summary.startDate);
+            const paxCount = booking.passengers?.length ?? 0;
+            return {
+                title: `${summary.origin} → ${summary.destination}${tripTypeLabel ? ` · ${tripTypeLabel}` : ''}`,
+                subtitle: paxCount > 0 ? `${dateRange} · ${paxCount} passenger${paxCount === 1 ? '' : 's'}` : dateRange,
+            };
+        })()
+        : effectiveIsHotel
+            ? {
+                title: booking.property_name || '',
+                subtitle: booking.check_in && booking.check_out
+                    ? `${fmtHeroDate(new Date(booking.check_in))} – ${fmtHeroDate(new Date(booking.check_out))}`
+                    : '',
+            }
+            : null;
+
+    // A traveller who paid and was then refunded or had the booking cancelled should not
+    // see a "Paid" badge that reads as still-current proof of payment.
+    const paidBadge = /cancel|refund|fail/i.test(booking.status ?? '') ? null : 'Paid';
+
     // ── Render the PDF to Buffer ──
     const pdfBuffer = await renderToBuffer(
         React.createElement(InvoicePdfDocument, {
@@ -290,6 +348,9 @@ export async function GET(
             issuedDate,
             billedTo,
             isHotel: effectiveIsHotel,
+            paidBadge,
+            reference,
+            tripSummary,
             hotelDetails,
             flightDetails,
             bookingRef,

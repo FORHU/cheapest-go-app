@@ -27,9 +27,6 @@ async function withTimeout<T>(promise: Promise<T>, ms: number, providerName: str
  * fails with `offer_no_longer_available`, and the auto-refresh has to re-quote
  * from scratch, landing on a different price. A cache hit here bought a faster
  * search at the cost of an unbookable one.
- *
- * `flight_results_cache` is still written below — the price calendar reads it as
- * price history — it just never answers a search.
  */
 export async function searchFlights(params: FlightSearchParams): Promise<FlightOffer[]> {
     return (await searchFlightsWithStatus(params)).offers;
@@ -56,8 +53,7 @@ export async function searchFlightsWithStatus(params: FlightSearchParams): Promi
     // cut the retries off before they can deliver.
     const TIMEOUT_MS = PROVIDER_CEILING_MS;
 
-    // Create the search record up front so the results written at the end have
-    // something to hang off.
+    // Create the search record up front; analytics at the end only runs for a saved search.
     let searchId = params.searchId;
     if (!searchId) {
         const saved = await saveSearch(params).catch(() => ({ id: undefined }));
@@ -88,13 +84,8 @@ export async function searchFlightsWithStatus(params: FlightSearchParams): Promi
         }
     });
 
-    // Persist results — fire-and-forget so it never blocks the search response.
-    // This feeds the price calendar's history; it is never read back as a search result.
+    // Fire-and-forget so it never blocks the search response.
     if (allResults.length > 0 && searchId) {
-        cacheResults(searchId, allResults).catch(err =>
-            console.error("[Cache] Background result write failed:", err.message)
-        );
-
         logSearchAnalytics(params, allResults).catch(err =>
             console.error("[Analytics] Logging failed:", err.message)
         );
@@ -156,38 +147,4 @@ export async function saveSearch(params: FlightSearchParams): Promise<FlightSear
 
     if (error) throw new Error(`Failed to save search: ${error.message}`);
     return data as FlightSearch;
-}
-
-/**
- * Caches flight results for a specific search.
- * Inserts in chunks of 50 to avoid Supabase statement timeouts on large result sets.
- */
-export async function cacheResults(searchId: string, results: FlightResult[]): Promise<void> {
-    const supabase = await createClient();
-    const CHUNK_SIZE = 50;
-
-    const rows = results.map(r => ({
-        id: crypto.randomUUID(),
-        search_id: searchId,
-        provider: r.provider,
-        offer_id: r.offer_id,
-        price: r.price,
-        currency: r.currency,
-        airline: r.airline,
-        departure_time: r.departure_time,
-        arrival_time: r.arrival_time,
-        duration: r.duration,
-        stops: r.stops ?? 0,
-        refundable: (r as any).refundable ?? false,
-        raw: r.raw,
-    }));
-
-    for (let i = 0; i < rows.length; i += CHUNK_SIZE) {
-        const chunk = rows.slice(i, i + CHUNK_SIZE);
-        const { error } = await supabase.from('flight_results_cache').insert(chunk);
-        if (error) {
-            console.error(`[Cache] Failed to cache chunk ${i / CHUNK_SIZE + 1}:`, error.message);
-            // Don't abort — partial cache is better than none
-        }
-    }
 }

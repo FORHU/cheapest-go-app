@@ -86,23 +86,6 @@ const TOOLS = [
   {
     type: 'function',
     function: {
-      name: 'get_price_calendar',
-      description: 'Find cheapest days to fly on a route.',
-      parameters: {
-        type: 'object',
-        properties: {
-          origin:      { type: 'string' },
-          destination: { type: 'string' },
-          month:       { type: 'string', description: 'YYYY-MM' },
-          currency:    { type: 'string', default: 'USD' },
-        },
-        required: ['origin', 'destination', 'month'],
-      },
-    },
-  },
-  {
-    type: 'function',
-    function: {
       name: 'manage_price_alerts',
       description: 'List, create, delete or toggle flight price alerts.',
       parameters: {
@@ -286,15 +269,6 @@ async function callTool(name: string, args: any, token: string, baseUrl: string,
         return { from: args.from, to: args.to, rate: Math.round(rate * 10000) / 10000 };
       }
       return { base: args.from, rates };
-    }
-
-    case 'get_price_calendar': {
-      const params = new URLSearchParams({
-        origin: args.origin, destination: args.destination,
-        month: args.month, currency: args.currency || 'USD',
-      });
-      const res = await fetch(`${baseUrl}/api/flights/price-calendar?${params}`, { headers });
-      return res.json();
     }
 
     case 'manage_price_alerts': {

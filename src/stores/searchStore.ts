@@ -111,7 +111,9 @@ interface SearchState {
 
     // Loading state (reusable across components)
     isSearching: boolean;
-    setIsSearching: (isSearching: boolean) => void;
+    /** What the running search is for — picks the skeleton the navigation overlay shows. */
+    searchingKind: 'hotels' | 'flights';
+    setIsSearching: (isSearching: boolean, kind?: 'hotels' | 'flights') => void;
 
     // Search Filters (moved from SearchFilters component useState)
     filters: SearchFilters;
@@ -210,6 +212,7 @@ export const useSearchStore = create<SearchState>()(
             recentSearches: [],
             activeDropdown: null,
             isSearching: false,
+            searchingKind: 'hotels',
             filters: initialFilters,
             isMobileFiltersOpen: false,
             suggestions: initialSuggestions,
@@ -273,7 +276,7 @@ export const useSearchStore = create<SearchState>()(
 
             setActiveDropdown: (activeDropdown) => set({ activeDropdown }),
 
-            setIsSearching: (isSearching) => set({ isSearching }),
+            setIsSearching: (isSearching, kind = 'hotels') => set(isSearching ? { isSearching, searchingKind: kind } : { isSearching }),
 
             // Filter actions
             setIsMobileFiltersOpen: (isMobileFiltersOpen) => set({ isMobileFiltersOpen }),

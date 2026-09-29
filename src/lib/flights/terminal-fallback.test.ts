@@ -68,6 +68,67 @@ describe('fallbackTerminal', () => {
     });
 });
 
+describe('fallbackTerminal for airports with only one terminal', () => {
+    it('defaults to Terminal 1 at a single-terminal airport, for any carrier', () => {
+        // Davao (DVO) has exactly one passenger terminal — there is nothing to
+        // guess between, so any carrier lands on '1'.
+        expect(fallbackTerminal('DVO', 'PR')).toBe('1');
+        expect(fallbackTerminal('DVO', '5J')).toBe('1');
+    });
+
+    it('answers even with no airline code, since the terminal does not depend on the carrier', () => {
+        expect(fallbackTerminal('DVO', undefined)).toBe('1');
+    });
+
+    it('is case-insensitive', () => {
+        expect(fallbackTerminal('dvo', 'pr')).toBe('1');
+    });
+
+    it('does not guess for a multi-terminal airport that has no curated carrier table', () => {
+        // Changi has four terminals and is not one of the airlines-split airports
+        // above — there is no safe single default, so this must stay silent.
+        expect(fallbackTerminal('SIN', 'SQ')).toBeUndefined();
+    });
+
+    it('does not let the single-terminal default leak into an airport already handled by the carrier table', () => {
+        // ICN is itself multi-terminal and already resolved via TERMINALS/byAirline
+        // above — it must never additionally consult the single-terminal set.
+        expect(fallbackTerminal('ICN', 'KE')).toBe('2');
+    });
+
+    it('covers the rest of the curated single-terminal airports, one per region', () => {
+        expect(fallbackTerminal('ILO', 'PR')).toBe('1'); // Iloilo
+        expect(fallbackTerminal('CJU', 'KE')).toBe('1'); // Jeju
+        expect(fallbackTerminal('PKX', 'CA')).toBe('1'); // Beijing Daxing
+        expect(fallbackTerminal('DOH', 'QR')).toBe('1'); // Hamad Intl
+        expect(fallbackTerminal('AMS', 'KL')).toBe('1'); // Schiphol
+        expect(fallbackTerminal('CPT', 'SA')).toBe('1'); // Cape Town
+        expect(fallbackTerminal('LIM', 'LA')).toBe('1'); // Jorge Chávez
+    });
+
+    it('refuses to guess where the sole terminal is not actually named "1"', () => {
+        // AUH's one working terminal is "Terminal A"; WAW's is "Terminal A" too;
+        // CCU and GIG each closed their original Terminal 1 and now run
+        // everything through what is officially "Terminal 2". Printing '1' at
+        // any of these would state a terminal a traveller will not find —
+        // worse than the current "unavailable" message, so they stay excluded.
+        expect(fallbackTerminal('AUH', 'EY')).toBeUndefined();
+        expect(fallbackTerminal('WAW', 'LO')).toBeUndefined();
+        expect(fallbackTerminal('CCU', 'AI')).toBeUndefined();
+        expect(fallbackTerminal('GIG', 'G3')).toBeUndefined();
+    });
+
+    it('refuses to guess where the airport has one terminal but no number at all', () => {
+        // Denver, Miami and Dulles each run every flight through a single
+        // building, but none of the three calls it "Terminal 1" — Denver's is
+        // the Jeppesen Terminal, Miami's is one undivided terminal, Dulles's
+        // is the Main Terminal. '1' would be an invented label, not a fact.
+        expect(fallbackTerminal('DEN', 'UA')).toBeUndefined();
+        expect(fallbackTerminal('MIA', 'AA')).toBeUndefined();
+        expect(fallbackTerminal('IAD', 'UA')).toBeUndefined();
+    });
+});
+
 function seg(overrides: Partial<FlightSegmentDetail> = {}): FlightSegmentDetail {
     return {
         segmentIndex: 0,

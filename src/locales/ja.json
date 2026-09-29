@@ -621,46 +621,9 @@
       "passport": "パスポート番号 *",
       "passportExpiry": "パスポート有効期限 *",
       "remove": "削除",
-      "title": "乗客 {number}"
-    },
-    "priceCalendar": {
-      "checkingPrices": "価格を確認中…",
-      "clickToSearch": "クリックしてこの日付を検索",
-      "clickToSearchWithPrice": "{price} — クリックして検索",
-      "datesFound": "{count} つの日付に価格が見つかりました",
-      "days": [
-        "日",
-        "月",
-        "火",
-        "水",
-        "木",
-        "金",
-        "土"
-      ],
-      "exploreOneWay": "日付別に価格を探る（片道）",
-      "exploreRoundTrip": "日付別に価格を探る（往返）",
-      "fetchingLive": "実時価格を取得中…",
-      "from": "{price} から",
-      "loading": "読み込み中…",
-      "months": [
-        "1月",
-        "2月",
-        "3月",
-        "4月",
-        "5月",
-        "6月",
-        "7月",
-        "8月",
-        "9月",
-        "10月",
-        "11月",
-        "12月"
-      ],
-      "searchDates": "{month} の全ての {count} 日付を検索",
-      "searchingBestPrices": "最安値を検索中…",
-      "tipDescription": "これらはこの提供元からの近い日付の実際の運賃です。日付をクリックするとすぐにその日の航空券を検索できます。",
-      "tipTitle": "ヒント：",
-      "updatingMonth": "月を更新中…"
+      "title": "乗客 {number}",
+      "ordinalTitle": "乗客 {number}",
+      "requiredNote": "<req>*</req> の項目は必須です"
     },
     "priceChange": {
       "accept": "新価格を承諾して続行",
@@ -783,7 +746,7 @@
       "seatsLeft": "残り{count}席",
       "select": "選択",
       "selectFare": "{fare}を選択",
-      "showAllSegments": "すべての区間を表示",
+      "showAllSegments": "フライト旅程を表示",
       "standard": "スタンダード",
       "stop": "回乗り継ぎ",
       "stopCount": "{count}回乗り継ぎ",
@@ -831,7 +794,10 @@
       "times": "時刻",
       "twoStopsPlus": "経由2回以上",
       "underHours": "{hours}時間以内",
-      "upToOneStop": "乗り継ぎ1回まで"
+      "upToOneStop": "乗り継ぎ1回まで",
+      "rangeFrom": "{label} から",
+      "rangeTo": "{label} まで",
+      "underHoursInput": "<field></field>時間以内"
     },
     "priceAlert": {
       "active": "アラート有効",
@@ -872,6 +838,7 @@
       "adult_plural": "{count} 名様",
       "fetchingProviders": "プロバイダーから取得中...",
       "newSearch": "新しい検索",
+      "routeTitle": "{origin} → {destination}",
       "providersSlow": "航空会社の応答が遅くなっています。そのままお待ちください。最良の運賃を引き続き検索しています。",
       "providersSlowDescription": "航空会社の応答が遅くなっています。もう一度お試しいただくか、検索条件を変更してください。",
       "sources": "提供元:",
@@ -905,7 +872,9 @@
       "layoverValue": "{airport} で {duration}",
       "terminal": "ターミナル {terminal}",
       "terminalUnavailable": "ターミナル情報は出発が近づくと表示されます",
-      "totalFlightDuration": "総飛行時間"
+      "totalFlightDuration": "総飛行時間",
+      "nonstop": "直行",
+      "stopCount": "経由{count}回"
     }
   },
   "footer": {
@@ -1212,7 +1181,24 @@
     "nonRefundable": "返金不可",
     "partialRefund": "一部返金",
     "tieredPolicy": "キャンセル料がかかります",
-    "refundable": "返金可能"
+    "refundable": "返金可能",
+    "referenceLabel": "予約リファレンス",
+    "tripLabel": "ご旅行",
+    "paidBadge": "支払い済み",
+    "depart": "出発",
+    "returnLabel": "帰り",
+    "directLabel": "直行",
+    "stopsShort": "{count}回乗り継ぎ",
+    "nameCol": "氏名",
+    "eTicketCol": "eチケット番号",
+    "bookingSectionLabel": "予約",
+    "adultLabel": "大人",
+    "childLabel": "小児",
+    "infantLabel": "幼児",
+    "tripTypeOneWay": "片道",
+    "tripTypeRoundTrip": "往復",
+    "tripTypeMultiCity": "マルチシティ",
+    "passengerCount": "{count, plural, other {乗客 #名}}"
   },
   "landing": {
     "hero": {

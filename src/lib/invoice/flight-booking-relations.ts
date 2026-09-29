@@ -24,6 +24,7 @@ export interface FlightSegmentRow {
     departure: string;
     arrival: string;
     itinerary_index: number;
+    cabin_class: string | null;
 }
 
 export interface FlightPassengerRow {

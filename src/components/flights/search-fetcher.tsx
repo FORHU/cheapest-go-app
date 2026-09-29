@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FlightResults } from '@/components/flights/flightResultsList';
 import FlightFilters, { type FilterState } from '@/components/flights/filters';
+import { FilterCard } from '@/components/flights/FilterCard';
 import { DEFAULT_FLIGHT_FILTERS, activeFilterCount as countActiveFilters, applyFlightFilters } from '@/lib/flights/filter-offers';
 import type { FlightOffer, CabinClass } from '@/types/flights';
 import { ListFilter, ChevronDown, X } from 'lucide-react';
@@ -14,8 +15,6 @@ import { useTranslations } from 'next-intl';
 import { createPortal } from 'react-dom';
 import { GlobalSparkle } from '@/components/ui/GlobalSparkle';
 import { MobileBottomNav } from '@/components/common/MobileBottomNav';
-import PriceCalendar from './PriceCalendar';
-import { Suspense } from 'react';
 import { searchStateFromResponse, type SearchOutcome } from '@/lib/flights/search-state';
 import { CLIENT_SEARCH_TIMEOUT_MS, CLIENT_SLOW_SEARCH_MS } from '@/lib/flights/search-budget';
 import { searchCacheKey, readSearchCache, writeSearchCache } from '@/lib/flights/search-cache';
@@ -493,18 +492,21 @@ export function SearchFetcher({
                     {filtersOpen && (
                         <motion.div
                             initial={{ width: 0, opacity: 0, x: -20 }}
-                            animate={{ width: 288, opacity: 1, x: 0 }}
+                            // 288 for the card plus the 24px of room each side given
+                            // below — the clip the width animation needs would otherwise
+                            // cut the card's shadow off at its own edges.
+                            animate={{ width: 336, opacity: 1, x: 0 }}
                             exit={{ width: 0, opacity: 0, x: -20 }}
                             transition={{ duration: 0.3, ease: 'easeInOut' }}
-                            className="hidden lg:block sticky top-24 self-start flex-shrink-0 overflow-hidden"
+                            className="hidden lg:block sticky top-24 self-start flex-shrink-0 overflow-hidden -mx-6 px-6 -mt-2 pt-2 -mb-10 pb-10"
                         >
-                            <div className="w-full bg-white dark:bg-slate-900 p-6 rounded-md border border-slate-200 dark:border-slate-800 shadow-sm">
+                            <FilterCard>
                                 <FlightFilters
                                     onFilterChange={setFilters}
                                     allOffers={allOffers.length > 0 ? allOffers : rawOffers}
                                     resetKey={filterResetKey}
                                 />
-                            </div>
+                            </FilterCard>
                         </motion.div>
                     )}
                 </AnimatePresence>

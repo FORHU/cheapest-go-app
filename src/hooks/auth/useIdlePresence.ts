@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
+import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/stores/authStore';
 import { shouldSendPresencePing } from './presenceThrottle';
 
@@ -12,7 +13,9 @@ import { shouldSendPresencePing } from './presenceThrottle';
  *      throttled to at most one `/api/auth/presence` call a minute, so an active
  *      traveller's session keeps surviving.
  *   2. Notices when the server has signed someone out for being idle, and prompts them to
- *      sign in again instead of leaving stale "signed in" UI up.
+ *      sign in again instead of leaving stale "signed in" UI up — and sends them back to
+ *      the home page, since whatever they were mid-way through (checkout, account
+ *      settings) no longer has a session backing it.
  *
  * Deliberately keyed off real DOM activity events, not a bare timer and not tab visibility
  * — CONTEXT.md: "a tab can be in front of an empty chair", and pages that poll themselves
@@ -30,6 +33,7 @@ export function useIdlePresence(): void {
     const isSignedIn = useAuthStore((s) => s.user !== null);
     const setUser = useAuthStore((s) => s.setUser);
     const openAuthModal = useAuthStore((s) => s.openAuthModal);
+    const router = useRouter();
     const lastPingRef = useRef<number | null>(null);
 
     useEffect(() => {
@@ -40,6 +44,7 @@ export function useIdlePresence(): void {
             if (cancelled) return;
             setUser(null);
             openAuthModal('email');
+            router.push('/');
         };
 
         const ping = () => {
@@ -76,5 +81,5 @@ export function useIdlePresence(): void {
             }
             clearInterval(liveness);
         };
-    }, [isSignedIn, setUser, openAuthModal]);
+    }, [isSignedIn, setUser, openAuthModal, router]);
 }

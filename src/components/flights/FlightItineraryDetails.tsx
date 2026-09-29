@@ -1,11 +1,11 @@
 'use client';
 
 import React from 'react';
-import { useTranslations } from 'next-intl';
+import { useTranslations, useLocale } from 'next-intl';
 import type { FlightOffer } from '@/types/flights';
 import { offerSlices } from '@/lib/flights/offer-slices';
 import { sliceTimeline } from '@/lib/flights/itinerary-timeline';
-import { formatDurationLong } from '@/utils/flight-utils';
+import { formatDateTimeIn, formatDurationLong } from '@/utils/flight-utils';
 import { FlightItineraryTimeline, LayoverNote } from './FlightItineraryTimeline';
 
 /**
@@ -18,8 +18,19 @@ import { FlightItineraryTimeline, LayoverNote } from './FlightItineraryTimeline'
  * A round trip's legs are named for their direction, a multi-city trip's are numbered,
  * and a single leg is left unnamed — "Outbound" only means something beside a return.
  */
-export function FlightItineraryDetails({ offer }: { offer: FlightOffer }) {
+export function FlightItineraryDetails({
+    offer,
+    legHeading = 'duration',
+}: {
+    offer: FlightOffer;
+    /**
+     * What sits beside each direction's name. Its total run time by default; the book page,
+     * whose overview rows above already give that total, shows the day it departs instead.
+     */
+    legHeading?: 'duration' | 'date';
+}) {
     const t = useTranslations('flights.itinerary');
+    const locale = useLocale();
     const slices = offerSlices(offer);
     const twoWay = slices.length === 2;
     const multiLeg = slices.length > 1;
@@ -38,23 +49,27 @@ export function FlightItineraryDetails({ offer }: { offer: FlightOffer }) {
                 <React.Fragment key={slice.sliceIndex}>
                     <div className="flex flex-col gap-2">
                         {multiLeg && (
-                            <div className="text-[11px] lg:text-[12px] font-bold uppercase text-[#939fb1] dark:text-slate-400">
-                                <span>
+                            <div className="flex flex-wrap items-baseline gap-x-2.5 text-[10px] text-slate-900 dark:text-slate-200 lg:text-[12px]">
+                                <span className="uppercase">
                                     {twoWay
                                         ? (i === 0 ? t('outbound') : t('return'))
                                         : t('legLabel', { number: i + 1 })}
                                 </span>
-                                {/* Each direction's own total, not the offer-wide figure — a round
-                                    trip's outbound and return rarely run the same length, and the
-                                    traveller reading one leg's segments wants that leg's number,
-                                    not a sum of both directions or a value borrowed from the other. */}
-                                {twoWay && slice.durationMinutes != null && (
-                                    <span className="ml-2 font-normal normal-case text-[#939fb1] dark:text-slate-500">
-                                        {t('totalFlightDuration')}{' '}
-                                        <span className="text-slate-900 dark:text-slate-200">
-                                            {formatDurationLong(slice.durationMinutes)}
+                                {legHeading === 'date' ? (
+                                    <span>{formatDateTimeIn(slice.departure.time, locale)}</span>
+                                ) : (
+                                    /* Each direction's own total, not the offer-wide figure — a round
+                                       trip's outbound and return rarely run the same length, and the
+                                       traveller reading one leg's segments wants that leg's number,
+                                       not a sum of both directions or a value borrowed from the other. */
+                                    twoWay && slice.durationMinutes != null && (
+                                        <span className="text-slate-600 dark:text-slate-400">
+                                            {t('totalFlightDuration')}{' '}
+                                            <span className="text-slate-900 dark:text-slate-200">
+                                                {formatDurationLong(slice.durationMinutes)}
+                                            </span>
                                         </span>
-                                    </span>
+                                    )
                                 )}
                             </div>
                         )}

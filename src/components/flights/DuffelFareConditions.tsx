@@ -2,8 +2,9 @@
 
 import React from 'react';
 import { useTranslations } from 'next-intl';
-import { CheckCircle, XCircle, AlertCircle, ChevronDown, ChevronUp } from 'lucide-react';
+import { CheckCircle, XCircle, AlertCircle, ChevronDown, ChevronUp, ScrollText } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { BOOK_CARD, BOOK_CARD_ICON, BOOK_CARD_ROW_PADDING, BOOK_CARD_TITLE } from '@/components/flights/booking/BookCard';
 
 interface DuffelCondition {
     allowed: boolean;
@@ -77,27 +78,28 @@ export default function DuffelFareConditions({ rawOffer, currency = 'USD' }: Duf
     const isNonRefundable = !refundBefore?.allowed;
 
     return (
-        <div className="rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 overflow-hidden mb-3 lg:mb-6">
+        <div className={cn(BOOK_CARD, 'overflow-hidden mb-3 lg:mb-6')}>
             <button
                 type="button"
                 onClick={() => setOpen(o => !o)}
-                className="w-full flex items-center justify-between px-3.5 py-3 text-left"
+                className={cn('w-full flex items-center justify-between gap-3 text-left', BOOK_CARD_ROW_PADDING)}
             >
                 <div className="flex items-center gap-2">
-                    <span className="text-[11px] font-normal text-slate-800 dark:text-slate-200">{t('title')}</span>
+                    <ScrollText className={BOOK_CARD_ICON} strokeWidth={1.75} aria-hidden />
+                    <span className={BOOK_CARD_TITLE}>{t('title')}</span>
                     {isFullyRefundable ? (
-                        <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800 font-normal">{t('fullyRefundable')}</span>
+                        <span className="text-[11px] px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800 font-normal">{t('fullyRefundable')}</span>
                     ) : isNonRefundable ? (
-                        <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800 font-normal">{t('nonRefundable')}</span>
+                        <span className="text-[11px] px-2 py-0.5 rounded-full bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800 font-normal">{t('nonRefundable')}</span>
                     ) : (
-                        <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-amber-50 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 border border-amber-200 dark:border-amber-800 font-normal">{t('partialRefund')}</span>
+                        <span className="text-[11px] px-2 py-0.5 rounded-full bg-amber-50 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 border border-amber-200 dark:border-amber-800 font-normal">{t('partialRefund')}</span>
                     )}
                 </div>
-                {open ? <ChevronUp className="w-3.5 h-3.5 text-slate-400" /> : <ChevronDown className="w-3.5 h-3.5 text-slate-400" />}
+                {open ? <ChevronUp className="w-4 h-4 shrink-0 text-[#1c1b1f] dark:text-white" /> : <ChevronDown className="w-4 h-4 shrink-0 text-[#1c1b1f] dark:text-white" />}
             </button>
 
             {open && (
-                <div className="px-3.5 pb-3.5 border-t border-slate-100 dark:border-slate-800 pt-2.5 divide-y divide-slate-100 dark:divide-slate-800">
+                <div className="px-4 lg:px-6 pb-4 border-t border-slate-100 dark:border-slate-800 pt-2.5 divide-y divide-slate-100 dark:divide-slate-800">
                     <ConditionRow label={t('changeBefore')} cond={conds.change_before_departure} currency={offerCurrency} t={t} />
                     <ConditionRow label={t('changeAfter')} cond={conds.change_after_departure} currency={offerCurrency} t={t} />
                     <ConditionRow label={t('refundBefore')} cond={conds.refund_before_departure} currency={offerCurrency} t={t} />

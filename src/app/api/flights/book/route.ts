@@ -34,6 +34,7 @@ import { duffelIdentityDocuments } from '@/lib/server/flights/duffel-identity-do
 import { normalizedToFlightOffer } from '@/utils/flight-utils';
 import { mintBookingReference } from '@/lib/bookingReference';
 import { revalidateFlight } from '@/lib/server/flights/revalidate-flight';
+import { withDuffelServicePrices } from '@/lib/server/flights/duffel-service-prices';
 import { canonicalBrandName } from '@/lib/brand';
 
 export const dynamic = 'force-dynamic';
@@ -683,6 +684,19 @@ export async function POST(req: NextRequest) {
             rawOrder: any;
         } | null = null;
 
+        // ── Step 1.3 (Duffel only): Duffel's own prices for the chosen seats/bags ──
+        // The offer posted here is a search result, which never carries services, so
+        // every total below priced extras at zero and Duffel refused the payment.
+        if (provider === 'duffel' && (flight as any)._rawOffer?.id && env.DUFFEL_TOKEN) {
+            try {
+                (flight as any)._rawOffer = await withDuffelServicePrices(
+                    (flight as any)._rawOffer, seatServiceIds, bagServiceIds, env.DUFFEL_TOKEN,
+                );
+            } catch (err: any) {
+                return NextResponse.json({ success: false, error: err.message }, { status: 502 });
+            }
+        }
+
         // ── Step 1.4 (Duffel only): did a previous attempt already buy this? ──
         //
         // The payment screen's "Back to details" returns to the form, and
@@ -1040,7 +1054,17 @@ export async function POST(req: NextRequest) {
                             console.log(`[/book] Priced offer ID differs: ${currentId} -> ${pricedId}`);
                         }
 
-                        const availableSvcs: any[] = pricedOffer.available_services ?? [];
+                        // The price action returns no services at all, so extras priced from
+                        // it came to zero and Duffel refused the retried payment.
+                        let availableSvcs: any[] = [];
+                        if (includeServices) {
+                            try {
+                                availableSvcs = (await withDuffelServicePrices(pricedOffer, seatServiceIds, bagServiceIds, duffelToken)).available_services ?? [];
+                            } catch (svcErr: any) {
+                                console.error(`[/book] could not re-price services on ${pricedId}: ${svcErr.message}`);
+                                break;
+                            }
+                        }
                         let newSeatExtra = 0;
                         let newBagExtra = 0;
                         if (includeServices) {

@@ -6,9 +6,9 @@ import en from '@/locales/en.json';
 
 /**
  * A leg drawn as the design draws it: each flight is three columns — the departure
- * clock over DEPART FROM and the airport it leaves, the elapsed time over a dotted rule
- * with the full date at either end, and the arrival clock over ARRIVE AT and the airport
- * it reaches. Between two flights sits the layover, centred and named.
+ * clock over the airport it leaves and DEPART FROM with its date, terminal, flight and
+ * aircraft; the elapsed time over a dotted rule; and the arrival clock over the airport
+ * it reaches and ARRIVE AT with the same facts. Between two flights sits the layover.
  *
  * Rendered against the real message catalogue so the copy is exercised, not stood in for.
  */
@@ -140,29 +140,28 @@ describe('FlightItineraryTimeline', () => {
         expect(screen.getByText('Heathrow Airport (LHR)')).toBeTruthy();
     });
 
-    it('names the city an end is in, beside the airport itself', () => {
+    it('names each end by its airport alone, with no separate city line', () => {
         renderIntl(<FlightItineraryTimeline slice={offerSlices(oneStop)[0]} />);
 
-        expect(screen.getByText('Clark')).toBeTruthy();
-        // Doha is both the first flight's arrival and the second's departure.
-        expect(screen.getAllByText('Doha')).toHaveLength(2);
-        expect(screen.getByText('London')).toBeTruthy();
+        // The airport's own name already says where it is; the design gives the city no line.
+        expect(screen.queryByText('Clark')).toBeNull();
+        expect(screen.queryByText('Doha')).toBeNull();
+        expect(screen.getByText('Clark International Airport (CRK)')).toBeTruthy();
     });
 
-    it('names no city for an airport it does not know, rather than guessing one', () => {
-        const unknown = {
+    it('marks an arrival that lands on a later day beside its clock', () => {
+        renderIntl(<FlightItineraryTimeline slice={offerSlices(oneStop)[0]} />);
+
+        // CRK 18:40 → DOH 22:30 lands the same day; DOH 01:15 → LHR 06:30 does too.
+        expect(screen.queryByText(/\+ \d/)).toBeNull();
+
+        const overnight = {
             ...oneStop,
-            segments: [seg('ZZZ', 'CRK', '2026-09-23T08:00:00', '2026-09-23T10:00:00', { duration: 120 })],
-            sliceDurations: [120],
+            segments: [seg('CRK', 'LHR', '2026-09-23T18:40:00', '2026-09-24T06:30:00', { duration: 1070 })],
+            sliceDurations: [1070],
         } as FlightOffer;
-
-        const { container } = renderIntl(<FlightItineraryTimeline slice={offerSlices(unknown)[0]} />);
-
-        // Clark's own city still shows; nothing invented for the airport we don't carry.
-        expect(screen.getByText('Clark')).toBeTruthy();
-        expect(screen.getByText('ZZZ')).toBeTruthy();
-        // A lone item still renders as one bullet, not a bullet with an empty city before it.
-        expect(container.textContent).not.toMatch(/•\s*•\s*ZZZ/);
+        const { container } = renderIntl(<FlightItineraryTimeline slice={offerSlices(overnight)[0]} />);
+        expect(container.textContent).toContain('6:30 AM + 1');
     });
 
     it('names the cabin and flight number at both ends of a flight', () => {
@@ -204,6 +203,52 @@ describe('FlightItineraryTimeline', () => {
         renderIntl(<FlightItineraryTimeline slice={offerSlices(unknown)[0]} />);
 
         expect(screen.getByText('ZZZ')).toBeTruthy();
+    });
+});
+
+describe('FlightItineraryTimeline — the design pass', () => {
+    it('draws no plane glyphs beside the clocks', () => {
+        const { container } = renderIntl(<FlightItineraryTimeline slice={offerSlices(oneStop)[0]} />);
+
+        expect(container.querySelector('img[src*="flight-takeoff"], img[src*="flight-land"]')).toBeNull();
+    });
+
+    it('hangs a dot to the right of every ARRIVE AT fact', () => {
+        renderIntl(<FlightItineraryTimeline slice={offerSlices(oneStop)[0]} />);
+
+        // The first flight's arrival end, at Doha.
+        for (const fact of ['Wed, Sep 23, 2026, 10:30 PM', 'Boeing 787-8']) {
+            const arrivalFacts = screen.getAllByText(fact).map(el => el.closest('li')!);
+            const li = arrivalFacts[arrivalFacts.length - 1];
+            const dot = li.querySelector('[data-fact-dot]');
+            expect(dot).not.toBeNull();
+            // After the words, so it sits on their right.
+            expect(li.lastElementChild).toBe(dot);
+            expect(dot).toHaveAttribute('aria-hidden', 'true');
+        }
+    });
+
+    it('leaves the dot out of the fact text a reader or search finds', () => {
+        renderIntl(<FlightItineraryTimeline slice={offerSlices(oneStop)[0]} />);
+
+        expect(screen.getAllByText('Economy QR0927')).toHaveLength(2);
+    });
+
+    it('keeps DEPART FROM facts on their left-hand bullets', () => {
+        renderIntl(<FlightItineraryTimeline slice={offerSlices(oneStop)[0]} />);
+
+        const departure = screen.getByText('Wed, Sep 23, 2026, 6:40 PM').closest('li')!;
+        expect(departure.querySelector('[data-fact-dot]')).toBeNull();
+        expect(departure.parentElement).toHaveClass('list-disc');
+    });
+
+    it('sets the layover label as a pill that stands out from the muted labels', () => {
+        renderIntl(<FlightItineraryTimeline slice={offerSlices(oneStop)[0]} />);
+
+        const label = screen.getByText('Layover');
+        expect(label).toHaveClass('font-semibold', 'rounded-full');
+        expect(label.className).toMatch(/\bbg-(?!transparent)/);
+        expect(label.className).not.toContain('text-[#939fb1]');
     });
 });
 
@@ -255,9 +300,11 @@ describe('FlightItineraryTimeline — terminals', () => {
     it('says terminal info comes closer to departure at an untracked airport with none stated', () => {
         renderIntl(<FlightItineraryTimeline slice={offerSlices(oneStop)[0]} />);
 
-        // Four ends in this leg (CRK depart, DOH arrive, DOH depart, LHR arrive), none
-        // tracked — every one gets the note rather than sitting blank.
-        expect(screen.getAllByText('Terminal available closer to departure')).toHaveLength(4);
+        // CRK depart and LHR arrive: neither is tracked, so both get the note.
+        // DOH arrive and DOH depart resolve via the single-terminal default
+        // instead (Hamad Intl has exactly one terminal) — see the next test.
+        expect(screen.getAllByText('Terminal available closer to departure')).toHaveLength(2);
+        expect(screen.getAllByText('Terminal 1')).toHaveLength(2);
     });
 
     it('fills a missing terminal from the standing assignment for the operating carrier', () => {
