@@ -4,8 +4,10 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowUp } from 'lucide-react';
 import { cn } from '@/utils/cn';
+import { useTranslations } from 'next-intl';
 
 export const ScrollToTop = () => {
+    const t = useTranslations('nav');
     const [isVisible, setIsVisible] = useState(false);
 
     useEffect(() => {
@@ -46,7 +48,7 @@ export const ScrollToTop = () => {
                         // clear instead — the 80px offset already does.
                         "right-4 sm:right-6 bottom-[calc(env(safe-area-inset-bottom,0px)+80px)] sm:bottom-24"
                     )}
-                    aria-label="Scroll to top"
+                    aria-label={t('scrollToTop')}
                 >
                     <ArrowUp className="w-4 h-4 lg:w-5 lg:h-5" />
                 </motion.button>

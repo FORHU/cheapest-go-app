@@ -8,12 +8,17 @@ import { seedHotelRoomGroupsById, parseRoomGroups } from '@/lib/server/stays/etg
 import { getSqlAdmin } from '@/lib/db/postgres';
 import { resolveTgxDestinationCode, backgroundResolveDestCode } from '@/lib/server/search';
 import { resolveHotelDbCities } from '@/lib/constants/cityAliases';
+import { hotelCountry, storedCountryCodes, hasLandBorder, landTerritoryOfCity, territoryCityNames } from '@/lib/geo/territories';
 import { otvCodeToLabel } from './amenityCodes';
 
 // ─── Country bounding boxes for geographic hotel filtering ───────────────────
-// Used to reject OTV portfolio hotels that are in the wrong country.
-// Bounding boxes are intentionally generous (±2° buffer) to avoid false negatives.
-// Hotels with lat=0/lng=0 (no OTV coordinates) are always kept regardless.
+// Used, with a hotel's stored country, to reject OTV portfolio hotels that are in the wrong
+// country — see isConfirmedOutOfCountry. Read these as rough outlines, not borders: the
+// "±2° buffer" this comment used to promise was never there. An audit of live content on
+// 2026-09-14 found many drawn at the border or leaving out islands, and as the only test
+// they dropped real hotels: 170 of Uruguay's 313 (Montevideo, Punta del Este), all of
+// Galápagos, Montego Bay, Dakar, Penghu and Kinmen. The buffer is now applied where the
+// boxes are used, and a hotel whose stored country matches is never dropped by a box.
 const COUNTRY_BBOX: Record<string, { minLat: number; maxLat: number; minLng: number; maxLng: number }> = {
     // ── Asia-Pacific ──────────────────────────────────────────────────────────
     TH: { minLat: 3.6,   maxLat: 22.5,  minLng: 95.3,   maxLng: 107.7  },
@@ -223,6 +228,54 @@ const COUNTRY_BBOX: Record<string, { minLat: number; maxLat: number; minLng: num
     AR: { minLat: -55.1, maxLat: -21.8, minLng: -73.6,  maxLng: -53.6  },
     UY: { minLat: -34.9, maxLat: -30.1, minLng: -58.4,  maxLng: -53.1  },
 };
+
+/** Degrees added on every side of a COUNTRY_BBOX box where it is used. */
+const BBOX_BUFFER_DEG = 1;
+
+/**
+ * Whether a hotel returned for a search in `searchedCountry` is confirmed to be somewhere
+ * else — the OTV destination code for "Paris" that also returns Paris, Texas.
+ *
+ * Two kinds of evidence, and a hotel is dropped only when they agree:
+ *  - its stored country, corrected for territories filed under a parent (Guam as US);
+ *  - its coordinates against the country's box, buffered.
+ *
+ * Neither is enough alone. Boxes miss islands and cut border cities (Montevideo, Galápagos —
+ * see COUNTRY_BBOX), so a hotel whose country matches is never dropped for its coordinates.
+ * And a supplier row with no country is stamped with the searched one (parseTgxHotelData),
+ * so a matching country proves little — which is fine, since matching keeps the hotel.
+ *
+ * Land-border territories (Hong Kong, Macao) are decided by country alone: Shenzhen is
+ * inside Hong Kong's box, so coordinates cannot separate them.
+ *
+ * Anything unknown is kept — a hotel not yet catalogued may well be valid.
+ */
+export function isConfirmedOutOfCountry(
+    hotel: { country?: string | null; city?: string | null; lat?: number | string | null; lng?: number | string | null },
+    searchedCountry: string | null | undefined,
+): boolean {
+    const searched = (searchedCountry ?? '').trim().toUpperCase();
+    if (!searched) return false;
+
+    const lat = Number(hotel.lat ?? 0), lng = Number(hotel.lng ?? 0);
+    const hasCoords = Number.isFinite(lat) && Number.isFinite(lng) && !(lat === 0 && lng === 0);
+    const country = hotelCountry(hotel.country, hotel.city, lat, lng).toUpperCase();
+
+    if (country === searched) return false;
+    if (hasLandBorder(searched)) return !!country;
+
+    const box = COUNTRY_BBOX[searched];
+    const outsideBox = !!box && hasCoords && !(
+        lat >= box.minLat - BBOX_BUFFER_DEG && lat <= box.maxLat + BBOX_BUFFER_DEG &&
+        lng >= box.minLng - BBOX_BUFFER_DEG && lng <= box.maxLng + BBOX_BUFFER_DEG
+    );
+
+    // A different country alone is not enough, whether or not one is stored: some of it is
+    // noise from `hotel_content` rows seeded by an earlier search, and 32 countries have no
+    // box to check against. Only the coordinates decide — the leniency this filter has
+    // always had, now applied to the country too.
+    return outsideBox;
+}
 
 // ─── TGX hotel content (on-demand per-hotel lookup) ─────────────────────────
 
@@ -876,8 +929,6 @@ async function backgroundSeedEtgContent(hotelId: string, hotelName: string): Pro
               AND ratehawk_hid IS NULL
         `;
         console.log(`[etg-bg-seed] ${hotelId} (${hotelName}) → ${hid}: ${hotelImages.length} imgs, ${roomGroups.length} room groups`);
-        // Invalidate any cached search results so next request picks up the new room photos
-        await sql`DELETE FROM hotel_search_cache WHERE cache_key LIKE ${'hotel:' + hotelId + '|%'}`;
     } catch (e: any) {
         console.warn(`[etg-bg-seed] ${hotelId}: ${e.message?.slice(0, 80)}`);
     }
@@ -1187,24 +1238,23 @@ async function searchEtgCity(
     }
 }
 
-// ─── Hotel search cache ───────────────────────────────────────────────────────
+// ─── Search identity ──────────────────────────────────────────────────────────
 
-export const POPULAR_CITIES = new Set([
-    'tokyo', 'bangkok', 'seoul', 'singapore', 'paris',
-    'london', 'new york', 'dubai', 'barcelona', 'bali',
-]);
-
-export function isPopularCity(cityName: string): boolean {
-    return POPULAR_CITIES.has(cityName.toLowerCase().trim());
-}
-
-export function getEffectiveTtl(cityName?: string): number {
-    const standardTtl = parseInt(process.env.HOTEL_SEARCH_CACHE_TTL_MINUTES          ?? '120', 10);
-    const popularTtl  = parseInt(process.env.HOTEL_SEARCH_CACHE_TTL_POPULAR_MINUTES   ?? '360', 10);
-    return cityName && isPopularCity(cityName) ? popularTtl : standardTtl;
-}
-
-function buildHotelCacheKey(p: TgxSearchParams): string {
+/**
+ * What makes two searches the same search — used only to let identical searches that are
+ * in flight at the same moment share one supplier call.
+ *
+ * There is deliberately no result cache behind this any more. Search results used to be
+ * kept in `hotel_search_cache` for two hours (six for popular cities) and then served
+ * *stale* for as long again while refreshing in the background — so the first search after
+ * expiry showed rates up to twelve hours old, and the next showed the refreshed ones. A
+ * hotel's rate is its cheapest room, and cheap rooms are what sell, so a replayed rate was
+ * often a room already gone: customers searched, searched again, and watched every price
+ * rise. Measured on live 2026-09-11: Tokyo 7.7h old, Paris 7.1h, Manila 3.8h; against a live
+ * search of the same Manila stay, two hotels were 45% and 47% higher. CONTEXT.md, "Nightly
+ * Rate": always live.
+ */
+function buildSearchKey(p: TgxSearchParams): string {
     const location = p.hotelCode
         ? `hotel:${p.hotelCode}`
         : (p.rung === 'country' || p.rung === 'province')
@@ -1220,38 +1270,6 @@ function buildHotelCacheKey(p: TgxSearchParams): string {
         String(p.children ?? 0),
         p.guest_nationality ?? 'US',
     ].join('|');
-}
-
-async function getHotelSearchCache(key: string, ttlMinutes: number): Promise<{ result: any; stale: boolean } | null> {
-    try {
-        const sql = getSqlAdmin();
-        const rows = await sql`
-            SELECT result, (expires_at <= now()) AS stale
-            FROM hotel_search_cache
-            WHERE cache_key = ${key}
-              AND expires_at > now() - (${ttlMinutes} * interval '1 minute')
-            LIMIT 1
-        `;
-        if (!rows[0]) return null;
-        return { result: rows[0].result, stale: Boolean(rows[0].stale) };
-    } catch {
-        return null;
-    }
-}
-
-async function setHotelSearchCache(key: string, result: any, ttlMinutes: number): Promise<void> {
-    try {
-        const sql = getSqlAdmin();
-        await sql`
-            INSERT INTO hotel_search_cache (cache_key, result, expires_at)
-            VALUES (${key}, ${sql.json(result)}, now() + ${`${ttlMinutes} minutes`}::interval)
-            ON CONFLICT (cache_key) DO UPDATE
-                SET result = EXCLUDED.result, expires_at = EXCLUDED.expires_at, created_at = now()
-        `;
-        console.log(`[hotel-cache] WRITE ${key} (ttl=${ttlMinutes}min)`);
-    } catch (e: any) {
-        console.error('[hotel-cache] Write failed (key:', key, '):', e.message);
-    }
 }
 
 // ─── GraphQL queries ──────────────────────────────────────────────────────────
@@ -1379,8 +1397,7 @@ export type DestinationRung = 'country' | 'province' | 'city' | 'district' | 'po
  * pruned. An Unanswered Search has learned nothing about availability, so the
  * catalog must stay on screen.
  *
- * Thrown rather than returned so `runTgxSearch`'s `.then(cache)` is skipped and an
- * unanswered search can never be written to `hotel_search_cache`.
+ * Thrown rather than returned so no caller can mistake it for a real empty result.
  */
 export class UnansweredSearchError extends Error {
     readonly cityName: string;
@@ -1394,6 +1411,15 @@ export class UnansweredSearchError extends Error {
 export interface TgxSearchParams {
     checkin: string;
     checkout: string;
+    /**
+     * The camelCase spellings a request body may carry instead.
+     *
+     * `/api/search/stream` and `/api/fn/travelgatex-search` both forward the raw body here,
+     * and the browser sends `checkIn`. Declared so those callers are honest about what they
+     * hand over, and normalised in `runTgxSearch` so nothing downstream has to ask twice.
+     */
+    checkIn?: string;
+    checkOut?: string;
     adults?: number;
     children?: number;
     childrenAges?: number[];
@@ -1414,8 +1440,9 @@ export interface TgxSearchParams {
     lng?: number;
     /** Mapbox bounding box [minLng, minLat, maxLng, maxLat] — sizes a district's circle. */
     bbox?: [number, number, number, number];
-    /** Skip the DB cache read — always does a live TGX call. Used by prebook to get genuinely
-     *  fresh tokens; result is still written to cache to benefit subsequent requests. */
+    /** Do not join an identical search already in flight — run a separate supplier call.
+     *  Used by prebook, which needs option tokens minted for its own request. Every search
+     *  is live either way; there is no result cache to bypass any more. */
     bypassCache?: boolean;
 }
 
@@ -1485,14 +1512,8 @@ async function fetchOtvHotelCodesByCity(
             // Before persisting, drop hotels whose coordinates are confirmed outside the
             // expected country — TGX destination codes sometimes return wrong-country hotels.
             // Hotels with 0,0 coords (OTV data gap) are kept since we can't verify them.
-            const bbox = countryCode ? COUNTRY_BBOX[countryCode.toUpperCase()] : null;
-            const backfillMap = bbox
-                ? new Map([...contentMap].filter(([, c]) => {
-                    const lat = Number(c.lat ?? 0);
-                    const lng = Number(c.lng ?? 0);
-                    if (!lat && !lng) return true;
-                    return lat >= bbox.minLat && lat <= bbox.maxLat && lng >= bbox.minLng && lng <= bbox.maxLng;
-                }))
+            const backfillMap = countryCode
+                ? new Map([...contentMap].filter(([, c]) => !isConfirmedOutOfCountry(c, countryCode)))
                 : contentMap;
             backfillHotelContent(backfillMap).catch((err: any) =>
                 console.warn('[tgx-search] hotel_content backfill failed:', err.message)
@@ -1615,6 +1636,30 @@ function hasEmptyHotelsError(errors: any[]): boolean {
     );
 }
 
+/**
+ * Did the supplier run out of time, or did it answer and have nothing?
+ *
+ * ALL_PROCESSES_FAILED is returned for both, described only as "See warnings for more
+ * information", which is why the warnings have to be read to tell them apart:
+ *
+ *     104  Connection timeout with supplier   OTV never answered
+ *     204  No results found                   OTV answered: nothing here
+ *
+ * Measured 2026-09-18 on one run of two cold cities: 3 timeouts against 6 no-results. The
+ * two are opposites downstream — a timeout has learned nothing about inventory, while a 204
+ * is a real and final answer — so reading them as one error shows a supplier outage to a
+ * traveller whose destination simply has no rooms.
+ *
+ * CONTEXT.md has said to do this since the ALL_PROCESSES_FAILED entry was written:
+ * "Avoid: blacklisting a destination code solely on ALL_PROCESSES_FAILED without inspecting
+ * the accompanying warnings."
+ */
+export function isSupplierTimeout(warnings: any[]): boolean {
+    return warnings.some(
+        (w) => String(w?.type) === '104' || w?.description?.toLowerCase().includes('timeout')
+    );
+}
+
 // In-process set of TGX destination codes that returned "Empty hotels" for OTV.
 // Seeded from DB on first use so cold starts also skip known-bad codes.
 const _failedDestCodes = new Set<string>();
@@ -1652,20 +1697,38 @@ function persistFailedDestCode(destCode: string, cityName = ''): void {
     `.catch((e: any) => console.warn('[tgx-search] Could not persist failed dest code:', e.message));
 }
 
-// In-flight deduplication: when two requests arrive with the same cache key before
-// either has written a result (cache stampede), the second waits for the first
-// promise instead of firing a second TGX call that OTV will throttle.
+// In-flight deduplication: when two identical searches arrive while the first is still
+// running, the second waits for the first promise instead of firing a second TGX call that
+// OTV will throttle. Both still get a live answer — this shares a call, it stores nothing.
 const _inflight = new Map<string, Promise<any>>();
-
-// Tracks keys currently being refreshed in the background (stale-while-revalidate).
-// Prevents duplicate background refreshes when multiple requests hit a stale entry.
-const _backgroundRefreshing = new Set<string>();
 
 // ─── City search fallback ─────────────────────────────────────────────────────
 // Called for every city-name search (OTV never accepts free-text city names as
 // destination identifiers) and as the fallback when a destination-code search
 // returns empty.
 
+/**
+ * What the supplier actually said, kept long enough to act on.
+ *
+ * These messages were cut to 60 or 80 characters, which is shorter than the useful part of
+ * a TravelgateX rejection. A search sent with no dates logged exactly:
+ *
+ *     Variable "$criteria" got invalid value { occupancies
+ *
+ * — the sentence stops right before the field that was wrong. The search then fell through
+ * to the hotel-code path, failed there too and returned Unanswered, so the whole thing
+ * presented as a supplier outage. It took a packet capture of the request variables to see
+ * that the dates were simply missing.
+ *
+ * 400 is long enough for a GraphQL validation error to name its field and short enough that
+ * a stack trace or an HTML error page does not fill the log.
+ */
+const SUPPLIER_MESSAGE_MAX = 400;
+
+function supplierMessage(err: unknown): string {
+    const raw = (err as { message?: string } | null)?.message ?? String(err ?? '');
+    return raw.length > SUPPLIER_MESSAGE_MAX ? `${raw.slice(0, SUPPLIER_MESSAGE_MAX)}…` : raw;
+}
 async function runCityFallback(
     cityName: string,
     countryCode: string | undefined,
@@ -1715,9 +1778,9 @@ async function runCityFallback(
                 }, 22_000);
             } catch (destErr: any) {
                 // 513 = TGX handler timeout (dest code returns too many results) — fall through to hotel-code path
-                console.warn(`[tgx-search] Dest code "${resolvedCode}" search failed (${destErr.message?.slice(0, 80)}) — falling back to hotel-code search`);
+                console.warn(`[tgx-search] Dest code "${resolvedCode}" search failed (${supplierMessage(destErr)}) — falling back to hotel-code search`);
                 destResult = null;
-                unansweredReasons.push(`dest-code ${resolvedCode} threw (${destErr.message?.slice(0, 60)})`);
+                unansweredReasons.push(`dest-code ${resolvedCode} threw (${supplierMessage(destErr)})`);
             }
             if (!destResult) {
                 console.log(`[tgx-search][TIMING] dest-code attempt for "${resolvedCode}" failed after ${Date.now() - __t0}ms`);
@@ -1768,7 +1831,17 @@ async function runCityFallback(
                 // The same reasoning that keeps this out of the blacklist keeps it out of
                 // a No-Availability verdict: OTV either timed out or was never called, so
                 // nothing has been learned about inventory.
-                unansweredReasons.push(`dest-code ${resolvedCode} transient (${destErrors[0]?.code ?? 'empty hotels'})`);
+                //
+                // Unless the warnings say OTV did answer. A 204 is a real answer about a real
+                // city, and calling it unanswered leaves the catalog on screen under "prices
+                // could not be loaded" — our error message for their correct reply.
+                const otvAnswered = destErrors.some((e: any) => e.code === 'ALL_PROCESSES_FAILED') &&
+                    destWarnings.length > 0 && !isSupplierTimeout(destWarnings);
+                if (otvAnswered) {
+                    console.warn(`[tgx-search] Dest code "${resolvedCode}" — OTV answered with no availability`);
+                } else {
+                    unansweredReasons.push(`dest-code ${resolvedCode} transient (${destErrors[0]?.code ?? 'empty hotels'})`);
+                }
             } else {
                 persistFailedDestCode(resolvedCode, cityName);
                 if (destErrors.length) {
@@ -1830,8 +1903,8 @@ async function runCityFallback(
                     return buildCityResults(extMerchant, cityName, countryCode);
                 }
             } catch (e: any) {
-                console.warn(`[tgx-search] Extended dest-code search failed: ${e.message?.slice(0, 80)}`);
-                unansweredReasons.push(`extended dest-code ${bgCode} threw (${e.message?.slice(0, 60)})`);
+                console.warn(`[tgx-search] Extended dest-code search failed: ${supplierMessage(e)}`);
+                unansweredReasons.push(`extended dest-code ${bgCode} threw (${supplierMessage(e)})`);
             }
         } else if (!bgCode) {
             // 18s race lost and 12s more wasn't enough — destinationSearcher never
@@ -1865,6 +1938,7 @@ async function runCityFallback(
                     WHERE lat BETWEEN ${minLat} AND ${maxLat}
                       AND lng BETWEEN ${minLng} AND ${maxLng}
                       AND lat != 0 AND lng != 0
+                      AND delisted_at IS NULL
                       AND hotel_id ~ '^[0-9]+$'
                     LIMIT 1000`;
             } else if (centerLat && centerLng) {
@@ -1878,6 +1952,7 @@ async function runCityFallback(
                     WHERE lat BETWEEN ${minLat} AND ${maxLat}
                       AND lng BETWEEN ${minLng} AND ${maxLng}
                       AND lat != 0 AND lng != 0
+                      AND delisted_at IS NULL
                       AND hotel_id ~ '^[0-9]+$'
                     LIMIT 1000`;
                 catalogRows = bboxRows.filter(r => {
@@ -1891,21 +1966,26 @@ async function runCityFallback(
                 // spelling (e.g. "Rome" → "Rom", "Seoul" → "Seoul" and "Seúl") so
                 // the query matches however ETG/OTV seeded hotel_content. A city
                 // filed under two spellings needs both, or half its hotels vanish.
-                const cityNames = resolveHotelDbCities(cityName.split(',')[0].trim(), countryCode ?? '')
-                    .map((c: string) => c.toLowerCase());
+                const baseCity = cityName.split(',')[0].trim();
+                const landTerritory = landTerritoryOfCity(baseCity, countryCode);
+                const cityNames = landTerritory
+                    ? territoryCityNames(landTerritory)
+                    : resolveHotelDbCities(baseCity, countryCode ?? '').map((c: string) => c.toLowerCase());
                 catalogRows = countryCode
                     ? await sqlAdmin<{ hotel_id: string }[]>`
                         SELECT hotel_id FROM hotel_content
                         WHERE LOWER(TRIM(city)) = ANY(${cityNames})
-                          AND LOWER(country) = LOWER(${countryCode})
+                          AND LOWER(country) = ANY(${storedCountryCodes(countryCode)})
                           AND hotel_id ~ '^[0-9]+$'
                           AND lat != 0 AND lng != 0
+                          AND delisted_at IS NULL
                         LIMIT 300`
                     : await sqlAdmin<{ hotel_id: string }[]>`
                         SELECT hotel_id FROM hotel_content
                         WHERE LOWER(TRIM(city)) = ANY(${cityNames})
                           AND hotel_id ~ '^[0-9]+$'
                           AND lat != 0 AND lng != 0
+                          AND delisted_at IS NULL
                         LIMIT 300`;
             }
 
@@ -1930,7 +2010,7 @@ async function runCityFallback(
                         settings: getTgxSettings(_cfg, 12_000, true, 'USD'),
                         filterSearch: getTgxFilterSearch(_cfg),
                     }, 22_000).catch((e: any) => {
-                        console.warn(`[tgx-search] Hotel-code batch of ${ids.length} failed: ${e?.message?.slice(0, 60)}`);
+                        console.warn(`[tgx-search] Hotel-code batch of ${ids.length} failed: ${supplierMessage(e)}`);
                         return null;
                     }),
                 ));
@@ -1977,8 +2057,8 @@ async function runCityFallback(
                 unansweredReasons.push('no catalog hotel codes to fall back on');
             }
         } catch (e: any) {
-            console.warn(`[tgx-search] Hotel-code fallback failed for "${cityName}": ${e.message?.slice(0, 80)}`);
-            unansweredReasons.push(`hotel-code fallback errored (${e.message?.slice(0, 60)})`);
+            console.warn(`[tgx-search] Hotel-code fallback failed for "${cityName}": ${supplierMessage(e)}`);
+            unansweredReasons.push(`hotel-code fallback errored (${supplierMessage(e)})`);
         }
     }
 
@@ -1992,71 +2072,53 @@ async function runCityFallback(
     return buildCityResults([], cityName, countryCode);
 }
 
-export async function runTgxSearch(params: TgxSearchParams) {
-    const key = buildHotelCacheKey(params);
-    const ttl = getEffectiveTtl(params.cityName);
+/**
+ * Search hotels, live, every time.
+ *
+ * Every caller — the search stream, the property page, a booking re-quote — gets the
+ * supplier's answer as of now. Nothing is replayed from an earlier search; see
+ * `buildSearchKey` for why the result cache was removed.
+ *
+ * The one sharing left: an identical search already in flight is joined rather than
+ * duplicated, so a customer double-clicking, or two tabs opening together, cost one supplier
+ * call and both get the same live answer. Prebook opts out (`bypassCache`) because it needs
+ * option tokens minted for its own request.
+ */
+/**
+ * One spelling of the dates, before anything reads them.
+ *
+ * Two routes forward a request body straight in, and `_runTgxSearch` destructures
+ * `checkin`. A caller using `checkIn` therefore searched with **no dates at all**: TGX
+ * rejects the criteria outright, the message is truncated to `Variable "$criteria" got
+ * invalid value { occupancies` by the catch that logs it, and the search falls through to
+ * the hotel-code path and then to Unanswered — a page of hotels with no prices and nothing
+ * on screen explaining why. The pages themselves send lowercase, so this failed only for
+ * callers that had every reason to think they were holding it right.
+ */
+function withNormalisedDates(params: TgxSearchParams): TgxSearchParams {
+    const checkin  = params.checkin  || params.checkIn  || '';
+    const checkout = params.checkout || params.checkOut || '';
+    return { ...params, checkin, checkout };
+}
 
-    // 1. DB cache hit (fresh or stale-within-grace)
-    // Skipped when bypassCache=true so prebook always gets live tokens.
-    if (ttl > 0 && !params.bypassCache) {
-        const cached = await getHotelSearchCache(key, ttl);
-        if (cached !== null) {
-            if (!cached.stale) {
-                console.log(`[hotel-cache] HIT ${key}`);
-                return cached.result;
-            }
-            // Stale hit: return immediately, kick off background refresh
-            console.log(`[hotel-cache] STALE ${key} — serving stale result, refreshing in background`);
-            if (!_inflight.has(key) && !_backgroundRefreshing.has(key)) {
-                _backgroundRefreshing.add(key);
-                _runTgxSearch(params)
-                    .then(result => {
-                        const hasCityResults = Array.isArray(result?.data) && result.data.length > 0;
-                        const hasHotelRooms  = !Array.isArray(result?.data)
-                            && Array.isArray(result?.data?.roomTypes)
-                            && result.data.roomTypes.length > 0;
-                        if (hasCityResults || hasHotelRooms) {
-                            setHotelSearchCache(key, result, ttl).catch(() => {});
-                        }
-                    })
-                    .catch((e: any) => console.error('[hotel-cache] Background refresh failed:', e.message))
-                    .finally(() => _backgroundRefreshing.delete(key));
-            }
-            return cached.result;
-        }
-    }
+export async function runTgxSearch(rawParams: TgxSearchParams) {
+    const params = withNormalisedDates(rawParams);
+    const key = buildSearchKey(params);
 
-    // 2. In-flight dedup: attach to existing search for the same key.
-    // Also skipped for bypassCache so each prebook gets its own fresh search.
     if (!params.bypassCache) {
         const existing = _inflight.get(key);
         if (existing) {
-            console.log(`[hotel-cache] INFLIGHT ${key} — waiting for in-progress search`);
+            console.log(`[tgx-search] JOIN ${key} — sharing the live search already in flight`);
             return existing;
         }
     }
 
-    // 3. Start new search, register in-flight promise
-    const promise = _runTgxSearch(params)
-        .then(result => {
-            if (ttl > 0) {
-                // Only cache NON-EMPTY results. City search: result.data is an array;
-                // single-hotel: result.data is an object with roomTypes. Caching an empty
-                // roomTypes:[] would pin a hotel to "0 rooms" for the whole TTL even after
-                // the supplier recovers, so require at least one room/result.
-                const hasCityResults = Array.isArray(result?.data) && result.data.length > 0;
-                const hasHotelRooms  = !Array.isArray(result?.data)
-                    && Array.isArray(result?.data?.roomTypes)
-                    && result.data.roomTypes.length > 0;
-                if (hasCityResults || hasHotelRooms) {
-                    setHotelSearchCache(key, result, ttl).catch(() => {});
-                }
-                // Empty results are NOT cached — a transient TGX error or OTV availability gap
-                // would otherwise pin 0 hotels for all users until the TTL expires.
-            }
-            return result;
-        })
-        .finally(() => { _inflight.delete(key); });
+    // One line per supplier search, so volume is visible now that every search is one.
+    console.log(`[tgx-search] LIVE ${key}${params.bypassCache ? ' (own call)' : ''}`);
+
+    const promise = _runTgxSearch(params).finally(() => {
+        if (_inflight.get(key) === promise) _inflight.delete(key);
+    });
 
     if (!params.bypassCache) {
         _inflight.set(key, promise);
@@ -2238,7 +2300,7 @@ async function _runTgxSearch(params: TgxSearchParams): Promise<any> {
                 coordinates: { lat: Number(content?.lat ?? 0), lng: Number(content?.lng ?? 0) },
                 address:     content?.address ?? '',
                 city:        content?.city ?? '',
-                country:     content?.country ?? '',
+                country:     hotelCountry(content?.country, content?.city, content?.lat, content?.lng),
                 description:         content?.description ?? '',
                 amenities:           content?.amenities ?? [],
                 amenityGroups:       content?.amenity_groups ?? [],
@@ -2291,14 +2353,15 @@ async function buildCityResults(
     // no DB/OTV entry, or with zero coordinates, are included — they may be valid hotels
     // we haven't catalogued yet. Excluding them causes "No hotels found" for major cities
     // on first search before hotel_content is seeded.
-    const bbox = countryCode ? COUNTRY_BBOX[countryCode.toUpperCase()] : null;
-    const filteredCodes = !bbox ? hotelCodes : hotelCodes.filter(code => {
+    const filteredCodes = !countryCode ? hotelCodes : hotelCodes.filter(code => {
         const c = contentMap.get(code) ?? preloadedContent.get(code);
         if (!c) return true; // not catalogued yet — include
-        const lat = Number(c.lat ?? c.latitude ?? 0);
-        const lng = Number(c.lng ?? c.longitude ?? 0);
-        if (!lat && !lng) return true; // no coordinates — include
-        return lat >= bbox.minLat && lat <= bbox.maxLat && lng >= bbox.minLng && lng <= bbox.maxLng;
+        return !isConfirmedOutOfCountry({
+            country: c.country,
+            city:    c.city,
+            lat:     c.lat ?? c.latitude,
+            lng:     c.lng ?? c.longitude,
+        }, countryCode);
     });
     if (filteredCodes.length < hotelCodes.length) {
         console.warn(`[tgx-search] buildCityResults: filtered ${hotelCodes.length - filteredCodes.length} confirmed out-of-country hotels for "${cityName}" (${countryCode})`);
@@ -2355,7 +2418,7 @@ async function buildCityResults(
             address:      content?.address ?? '',
             location:     content?.address ?? '',
             city:         content?.city ?? cityName ?? '',
-            country:      content?.country ?? countryCode ?? '',
+            country:      content?.country ? hotelCountry(content.country, content.city, content.lat, content.lng) : (countryCode ?? ''),
             description:  content?.description ?? '',
             amenities:    content?.amenities ?? [],
             reviewRating,

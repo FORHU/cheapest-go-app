@@ -5,6 +5,8 @@ import { FileText, ImageIcon } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { formatFileSize } from './formatFileSize';
 import type { SupportAttachmentView, SupportMessageView } from './types';
+import { TranslatedText } from './TranslatedText';
+import { readerView } from './translationView';
 
 /**
  * The conversation as the customer reads it.
@@ -17,15 +19,20 @@ import type { SupportAttachmentView, SupportMessageView } from './types';
 interface SupportTranscriptProps {
     messages: SupportMessageView[];
     isTyping: boolean;
+    /**
+     * An Agent's reply has arrived and is being translated for this customer. It is held
+     * back until then, so this is what tells them one is on its way.
+     */
+    isReplying?: boolean;
 }
 
-export function SupportTranscript({ messages, isTyping }: SupportTranscriptProps) {
+export function SupportTranscript({ messages, isTyping, isReplying = false }: SupportTranscriptProps) {
     const t = useTranslations('support');
     const endRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
         endRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
-    }, [messages, isTyping]);
+    }, [messages, isTyping, isReplying]);
 
     return (
         <div
@@ -41,7 +48,7 @@ export function SupportTranscript({ messages, isTyping }: SupportTranscriptProps
               * scrolls as before, kept on the newest message by the effect above.
               */}
             <div className="mt-auto">
-                {messages.length === 0 && !isTyping && (
+                {messages.length === 0 && !isTyping && !isReplying && (
                     <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
                         {t('empty')}
                     </p>
@@ -57,6 +64,10 @@ export function SupportTranscript({ messages, isTyping }: SupportTranscriptProps
                     <p className="mt-3 text-xs text-slate-500 dark:text-slate-400">{t('typing')}</p>
                 )}
 
+                {isReplying && !isTyping && (
+                    <p className="mt-3 text-xs text-slate-500 dark:text-slate-400">{t('replying')}</p>
+                )}
+
                 <div ref={endRef} />
             </div>
         </div>
@@ -67,15 +78,6 @@ function SupportMessageRow({ message }: { message: SupportMessageView }) {
     const t = useTranslations('support');
     const isCustomer = message.senderType === 'guest';
     const isNotice = message.senderType === 'system';
-
-    /**
-     * The rendering this reader is the audience for.
-     *
-     * Only an Agent's reply: that is the one rendered into the customer's language. A guest
-     * row's translation is the English the Agent reads, and showing a customer a machine
-     * rendering of their own sentence tells them nothing they did not already write.
-     */
-    const rendering = message.senderType === 'agent' ? message.translatedBody : null;
 
     return (
         <li className={isCustomer ? 'self-end max-w-[85%]' : 'self-start max-w-[85%]'}>
@@ -92,25 +94,28 @@ function SupportMessageRow({ message }: { message: SupportMessageView }) {
                             : 'rounded-lg bg-white px-3 py-2 text-sm text-slate-900 ring-1 ring-slate-200 dark:bg-white/5 dark:text-slate-100 dark:ring-white/10'
                 }
             >
-                {rendering ?? renderBody(message, t)}
+                {/*
+                  * A notice renders from this reader's own locale file and is never
+                  * translated. Anything else goes through `readerView`: an Agent's reply
+                  * arrives in the customer's language, marked as a machine translation,
+                  * with the Agent's own English one click away.
+                  */}
+                {isNotice ? (
+                    renderBody(message, t)
+                ) : (
+                    <TranslatedText
+                        view={readerView(message, false)}
+                        tone={isCustomer ? 'dark' : 'light'}
+                        labels={{
+                            translated: t('translation.translated'),
+                            showOriginal: t('translation.showOriginal'),
+                            showTranslation: t('translation.showTranslation'),
+                            pending: t('translation.pending'),
+                            untranslated: t('translation.untranslated'),
+                        }}
+                    />
+                )}
             </p>
-
-            {/*
-              * The label and the author's own words, together and always both.
-              *
-              * ADR-0033 keeps the original because an Agent's reply is a statement someone
-              * made, and the question a customer asks later is what they were actually
-              * told. The label is what stops the rendering above being read as CheapestGo's
-              * considered wording when the machine got it wrong.
-              */}
-            {rendering && (
-                <div className="mt-1">
-                    <span className="block text-[11px] uppercase tracking-[0.12em] text-slate-400 dark:text-slate-500">
-                        {t('machineTranslated')}
-                    </span>
-                    <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">{message.body}</p>
-                </div>
-            )}
 
             {message.attachments.length > 0 && (
                 <ul className="mt-1.5 flex flex-col gap-1">

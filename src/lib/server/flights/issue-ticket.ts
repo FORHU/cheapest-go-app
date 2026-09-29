@@ -129,10 +129,11 @@ export async function issueTicket(bookingId: string): Promise<IssueTicketResult>
         console.log(`[issue-ticket] Order ${orderId}: ${tickets.length} tickets, ${seatsFound} seat(s) assigned — status → ${newStatus}`);
 
         // ── Update flight_bookings ───────────────────────────────────────
-        // ticket_numbers is text[], not jsonb — pass the array itself and let postgres.js
-        // serialise it. JSON.stringify(tickets) here bound the STRING '["1234..."]', and
-        // Postgres rejects that as array input (it wants `{1234...}`, not `[...]`):
-        // "malformed array literal". Every call with a non-empty tickets array failed.
+        // ticket_numbers is jsonb (live and both local databases, checked 2026-09-17). The
+        // array is bound as-is and postgres.js serialises it to a JSON array. An earlier note
+        // here called the column text[]; it is not, and "fixing" a caller to write text[]
+        // syntax into it would be the actual bug. The text[] column in this flow is
+        // booking_sessions.duffel_pre_order_tickets.
         await sql`
             UPDATE flight_bookings
             SET

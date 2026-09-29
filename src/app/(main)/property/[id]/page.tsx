@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation';
 import type { Metadata } from 'next';
 import { parsePropertySlug, buildPropertySlug } from '@/lib/utils';
 import { getTranslations } from 'next-intl/server';
+import { hreflangAlternates } from '@/lib/seo/hreflang';
 import PropertyGallery from '@/components/property/PropertyGallery';
 import PropertyOverview from '@/components/property/PropertyOverview';
 import PropertyNav from '@/components/property/PropertyNav';
@@ -15,6 +16,7 @@ import MobileBookingCTA from '@/components/property/MobileBookingCTA';
 import BackButton from '@/components/common/BackButton';
 import { FadeInUp, FadeIn } from '@/components/property/AnimatedContent';
 import { fetchHotelStatic, fetchPropertyData } from '@/lib/property';
+import { resolveStayDates } from '@/lib/defaultStay';
 import { bundleSavingPercent } from '@/lib/pricing';
 import { fetchHotelReviews } from '@/lib/property/fetchReviews';
 import LocationSection from '@/components/property/LocationSectionDynamic';
@@ -50,8 +52,19 @@ export async function generateMetadata({
     const city = staticData?.city || '';
     const country = staticData?.country || '';
     const location = [city, country].filter(Boolean).join(', ');
-    const title = `${property.name} – Cheapest Rates | CheapestGo`;
-    const description = `Book ${property.name}${location ? ` in ${location}` : ''} at the cheapest price. ${property.rating ? `Rated ${property.rating}/10.` : ''} Best deals on hotels with free cancellation options.`;
+
+    // One page per hotel is the site's whole long tail, and the title and description are
+    // all a search result shows. They were English template strings in every locale, and
+    // named CheapestGo on AirangGo; through the translations both are fixed. The optional
+    // parts are separate keys so no locale has to express "maybe a location, maybe a rating"
+    // inside one message.
+    const t = await getTranslations('property.meta');
+    const title = t('title', { name: property.name });
+    const description = [
+        location ? t('descriptionIn', { name: property.name, location }) : t('description', { name: property.name }),
+        property.rating ? t('rated', { rating: property.rating }) : null,
+        t('closing'),
+    ].filter(Boolean).join(' ').replace(/。 /g, '。'); // Japanese and Chinese don't space after a full stop
     const image = property.images?.[0] || property.image;
 
     return {
@@ -69,7 +82,9 @@ export async function generateMetadata({
             description,
             images: image ? [image] : [],
         },
-        alternates: { canonical: `/property/${rawSlug}` },
+        // Locale-aware for the same reason as every other page: a fixed `/property/...`
+        // made /ja/property/... declare the English page canonical.
+        alternates: await hreflangAlternates(`/property/${rawSlug}`),
     };
 }
 
@@ -88,10 +103,20 @@ export default async function PropertyPage({
     // carries `checkIn`/`checkOut`, the map view writes `checkin`/`checkout`. Accept both
     // so a stay is never silently dropped on the way in; everything downstream reads the
     // camelCase form only.
+    //
+    // Then resolve them. A link shared in a chat window last week names dates in the past,
+    // and the supplier simply rejects those — the page then shows a hotel with no bookable
+    // room, which reads as a full hotel rather than a stale link. This is the one place
+    // every downstream read passes through, so it is the only place that has to do it.
+    const asString = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v);
+    const stay = resolveStayDates(
+        asString(rawSearchParams.checkIn  ?? rawSearchParams.checkin),
+        asString(rawSearchParams.checkOut ?? rawSearchParams.checkout),
+    );
     const searchParamsResult: { [key: string]: string | string[] | undefined } = {
         ...rawSearchParams,
-        checkIn:  rawSearchParams.checkIn  ?? rawSearchParams.checkin,
-        checkOut: rawSearchParams.checkOut ?? rawSearchParams.checkout,
+        checkIn:  stay.checkIn,
+        checkOut: stay.checkOut,
     };
     const t = await getTranslations('property');
 
@@ -265,7 +290,7 @@ export default async function PropertyPage({
 
                         <div className="lg:hidden" id="location-mobile">
                             <FadeInUp delay={0.28}>
-                                <div className="w-full"><PropertyMapSidebar {...mapProps} /></div>
+                                <div className="w-full"><PropertyMapSidebar {...mapProps} showAt="below-lg" /></div>
                             </FadeInUp>
                         </div>
 
@@ -325,7 +350,7 @@ export default async function PropertyPage({
 
                     <div className="hidden lg:block lg:w-[45%] xl:w-[40%] shrink-0 sticky top-[80px] self-start" id="location">
                         <div className="h-[calc(100vh-120px)] rounded-xl overflow-hidden shadow-sm border border-slate-200/60 dark:border-white/10">
-                            <PropertyMapSidebar {...mapProps} />
+                            <PropertyMapSidebar {...mapProps} showAt="lg-up" />
                         </div>
                     </div>
                 </div>

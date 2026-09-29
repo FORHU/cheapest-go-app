@@ -19,9 +19,24 @@ export const loginSchema = z.object({
     password: z.string().min(1, 'Password is required'),
 });
 
+/**
+ * How long a person's own name may be, here and in the database (QA BG-9).
+ *
+ * Nothing capped it: a profile was saved with a 13,708-character first name, which then
+ * rendered as a wall of text wherever the account is shown. 30 characters per field is the
+ * length QA asked for, and it holds the long real names we already store.
+ */
+export const NAME_MAX_LENGTH = 30;
+
+const personNameSchema = (label: string) =>
+    z.string()
+        .trim()
+        .min(1, `${label} is required`)
+        .max(NAME_MAX_LENGTH, `${label} must be ${NAME_MAX_LENGTH} characters or fewer`);
+
 export const registerSchema = z.object({
-    firstName: z.string().min(1, 'First name is required'),
-    lastName: z.string().min(1, 'Last name is required'),
+    firstName: personNameSchema('First name'),
+    lastName: personNameSchema('Last name'),
     email: z.string().email('Invalid email address'),
     password: passwordSchema.shape.password,
     // Mirrors the server-side gate in /api/auth/signup so the form can report it
@@ -37,8 +52,8 @@ export const registerSchema = z.object({
 });
 
 export const profileSchema = z.object({
-    firstName: z.string().min(1, 'First name is required'),
-    lastName: z.string().min(1, 'Last name is required'),
+    firstName: personNameSchema('First name'),
+    lastName: personNameSchema('Last name'),
 });
 
 export const updatePasswordSchema = z.object({

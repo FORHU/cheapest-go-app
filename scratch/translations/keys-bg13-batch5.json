@@ -1,0 +1,26 @@
+{
+  "trips.pages.backToBooking":  { "en": "Back to booking", "ko": "예약으로 돌아가기", "ja": "予約に戻る", "zh": "返回预订" },
+  "trips.pages.ref":            { "en": "Ref:", "ko": "예약번호:", "ja": "予約番号：", "zh": "预订号：" },
+
+  "trips.requestsPage.title":     { "en": "Special requests", "ko": "요청 사항", "ja": "特別リクエスト", "zh": "特殊要求" },
+  "trips.requestsPage.note":      { "en": "Requests are passed to the property but aren't guaranteed — availability depends on the hotel.", "ko": "요청 사항은 숙소에 전달되지만 보장되지는 않으며, 호텔 사정에 따라 달라집니다.", "ja": "リクエストは施設に伝えられますが、確約はできません。ホテルの状況によります。", "zh": "我们会将您的要求转达给住宿方，但不保证一定满足，需视酒店情况而定。" },
+  "trips.requestsPage.cancelled": { "en": "This booking is cancelled, so special requests can no longer be updated.", "ko": "이 예약은 취소되어 요청 사항을 더 이상 변경할 수 없습니다.", "ja": "この予約はキャンセル済みのため、特別リクエストは変更できません。", "zh": "该预订已取消，无法再修改特殊要求。" },
+
+  "trips.requestsForm.label":       { "en": "Message to the property", "ko": "숙소에 전달할 메시지", "ja": "施設へのメッセージ", "zh": "给住宿方的留言" },
+  "trips.requestsForm.placeholder": { "en": "e.g. Late check-in after 10 PM, extra bed, high floor…", "ko": "예: 오후 10시 이후 늦은 체크인, 엑스트라 베드, 고층 객실…", "ja": "例：22時以降のレイトチェックイン、エキストラベッド、高層階…", "zh": "例如：晚上 10 点后入住、加床、高楼层…" },
+  "trips.requestsForm.saved":       { "en": "Saved — the property has been notified.", "ko": "저장되었습니다 — 숙소에 전달했습니다.", "ja": "保存しました — 施設に通知しました。", "zh": "已保存 — 已通知住宿方。" },
+  "trips.requestsForm.saveError":   { "en": "Failed to save your request. Please try again.", "ko": "요청 사항을 저장하지 못했습니다. 다시 시도해 주세요.", "ja": "リクエストを保存できませんでした。もう一度お試しください。", "zh": "保存失败，请重试。" },
+  "trips.requestsForm.submit":      { "en": "Save request", "ko": "요청 저장", "ja": "リクエストを保存", "zh": "保存要求" },
+
+  "trips.sharePage.title": { "en": "Share booking confirmation", "ko": "예약 확인서 공유", "ja": "予約確認書を共有", "zh": "分享预订确认" },
+  "trips.sharePage.note":  { "en": "Resend the confirmation email to yourself or anyone else — useful for a travel companion or your own records.", "ko": "확인 이메일을 본인이나 다른 사람에게 다시 보낼 수 있습니다. 동행자에게 전달하거나 기록용으로 유용합니다.", "ja": "確認メールをご自身や他の方に再送できます。同行者への共有や記録用に便利です。", "zh": "可将确认邮件重新发送给自己或他人，方便同行者查看或留作记录。" },
+
+  "trips.shareForm.sendTo":     { "en": "Send to", "ko": "받는 사람", "ja": "送信先", "zh": "发送至" },
+  "trips.shareForm.sentTo":     { "en": "Sent to {email}.", "ko": "{email}(으)로 보냈습니다.", "ja": "{email} に送信しました。", "zh": "已发送至 {email}。" },
+  "trips.shareForm.sendError":  { "en": "Failed to send. Please try again.", "ko": "전송하지 못했습니다. 다시 시도해 주세요.", "ja": "送信できませんでした。もう一度お試しください。", "zh": "发送失败，请重试。" },
+  "trips.shareForm.submit":     { "en": "Send confirmation", "ko": "확인서 보내기", "ja": "確認書を送信", "zh": "发送确认" },
+
+  "trips.hotelConfirmed.confirming": { "en": "Confirming your booking…", "ko": "예약을 확정하는 중…", "ja": "予約を確定しています…", "zh": "正在确认您的预订…" },
+  "trips.hotelConfirmed.loading":    { "en": "Loading your booking…", "ko": "예약 정보를 불러오는 중…", "ja": "予約情報を読み込んでいます…", "zh": "正在加载您的预订…" },
+  "trips.invoice.downloadPdf":       { "en": "Download PDF", "ko": "PDF 내려받기", "ja": "PDF をダウンロード", "zh": "下载 PDF" }
+}

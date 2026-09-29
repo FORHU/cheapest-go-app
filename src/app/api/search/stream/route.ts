@@ -1,8 +1,12 @@
 import { NextRequest } from 'next/server';
+import { defaultStay } from '@/lib/defaultStay';
 import { runTgxSearch } from '@/lib/server/stays/travelgatex/search';
 import { getSqlAdmin } from '@/lib/db/postgres';
 import { tgxGraphQL, getTgxConfig } from '@/lib/server/stays/travelgatex/client';
 import { CITY_ALIASES, resolveHotelDbCities } from '@/lib/constants/cityAliases';
+import { hotelCountry, storedCountryCodes, isTerritory } from '@/lib/geo/territories';
+import { rateLimit } from '@/lib/server/rate-limit';
+import { looseCityKey } from '@/lib/server/search';
 
 const COUNTRY_NAME_TO_ISO: Record<string, string> = {
     'indonesia': 'ID', 'france': 'FR', 'italy': 'IT', 'spain': 'ES', 'germany': 'DE',
@@ -165,9 +169,19 @@ async function getInstantHotelCatalog(body: any): Promise<any[]> {
         // 277 hotels then bury the ~66 actually in La Union. Only province does
         // this: a city bbox is tighter than the city's real hotel spread (Jeju's
         // excludes Seogwipo, 27km away), which is exactly what the radius is for.
-        // areaRung, not rung — the province→city downgrade above runs first.
+        // areaRung, not rung — the downgrade to city runs before this.
+        //
+        // Any rung the user picked by name and that has real administrative boundaries, not
+        // just a province. A London borough was the case that showed the gap: "Barking and
+        // Dagenham" arrived with its own bbox and no areaRung, fell through to the radius,
+        // and a 50km circle around Barking is the whole of Greater London — 220 hotels, a map
+        // opening on the wrong place, and the borough the traveller asked for nowhere in it.
+        //
+        // City is still excluded, for the reason above: a city bbox is tighter than the city’s
+        // real hotel spread. areaRung is only ever set when we demoted from something else, so
+        // a plain city search never reaches here.
         const areaBbox: number[] | null =
-            body.areaRung === 'province' && Array.isArray(body.bbox) && body.bbox.length === 4
+            body.areaRung && body.areaRung !== 'city' && Array.isArray(body.bbox) && body.bbox.length === 4
                 ? body.bbox as number[]
                 : null;
 
@@ -182,6 +196,7 @@ async function getInstantHotelCatalog(body: any): Promise<any[]> {
                   AND lat != 0 AND lng != 0
                   AND (hotel_id ~ '^[0-9]+$' OR hotel_id ~ '^[A-Z]{2}[0-9]+$')
                   AND (content_source IS NULL OR content_source != 'etg')
+                  AND delisted_at IS NULL
                 ORDER BY review_count DESC NULLS LAST
                 LIMIT 1000
             `;
@@ -201,6 +216,7 @@ async function getInstantHotelCatalog(body: any): Promise<any[]> {
                   AND lat != 0 AND lng != 0
                   AND (hotel_id ~ '^[0-9]+$' OR hotel_id ~ '^[A-Z]{2}[0-9]+$')
                   AND (content_source IS NULL OR content_source != 'etg')
+                  AND delisted_at IS NULL
                 ORDER BY review_count DESC NULLS LAST
                 LIMIT 1000
             `;
@@ -211,6 +227,16 @@ async function getInstantHotelCatalog(body: any): Promise<any[]> {
                 const a = Math.sin(dLat / 2) ** 2 + Math.cos((centerLat * Math.PI) / 180) * Math.cos((Number(r.lat) * Math.PI) / 180) * Math.sin(dLng / 2) ** 2;
                 return 6371 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)) <= RADIUS_KM;
             });
+            // The circle ignores borders on purpose (Jeju must reach Seogwipo), but a
+            // territory's border is a customs line. 50km from central Hong Kong is all of
+            // Shenzhen plus Dongguan and Zhuhai: a "Hong Kong" search returned 601 Shenzhen
+            // hotels of 1,287 (QA BG-8); Jersey's circle reaches Guernsey. A territory keeps
+            // to its own side, judged by the territory-corrected country. Deliberately not
+            // every country: across ordinary land borders the circle is the point.
+            if (isTerritory(countryCode)) {
+                const own = countryCode.toUpperCase();
+                rows = rows.filter((r: any) => hotelCountry(r.country, r.city, r.lat, r.lng).toUpperCase() === own);
+            }
         } else {
             // Fallback: city-string ILIKE match when no coordinates available.
             const cityOnly = cityName.split(',')[0].trim();
@@ -227,9 +253,10 @@ async function getInstantHotelCatalog(body: any): Promise<any[]> {
                            review_rating, review_count
                     FROM hotel_content
                     WHERE city ILIKE ANY(${patterns})
-                      AND LOWER(country) = LOWER(${isoCode})
+                      AND LOWER(country) = ANY(${storedCountryCodes(isoCode)})
                       AND (hotel_id ~ '^[0-9]+$' OR hotel_id ~ '^[A-Z]{2}[0-9]+$')
                       AND (content_source IS NULL OR content_source != 'etg')
+                      AND delisted_at IS NULL
                     ORDER BY review_count DESC NULLS LAST
                     LIMIT 300
                   `
@@ -240,9 +267,41 @@ async function getInstantHotelCatalog(body: any): Promise<any[]> {
                     WHERE city ILIKE ANY(${patterns})
                       AND (hotel_id ~ '^[0-9]+$' OR hotel_id ~ '^[A-Z]{2}[0-9]+$')
                       AND (content_source IS NULL OR content_source != 'etg')
+                      AND delisted_at IS NULL
                     ORDER BY review_count DESC NULLS LAST
                     LIMIT 300
                   `;
+
+            // Nothing found, so ask again on letters alone.
+            //
+            // The patterns above are ILIKE, which cannot see past a space: someone who types
+            // "Danang" is asking about 1,870 rows filed under "Da Nang", and is told the city
+            // has no hotels at all. The destination-code lookup already falls back this way,
+            // so the same search resolved a code, reached the supplier and returned 213
+            // hotels - while the map stayed empty for the fourteen seconds that took, which
+            // is the whole of what Phase 1 exists to prevent.
+            //
+            // Only on a miss: regexp_replace over the column cannot use an index, and the
+            // ILIKE above answers almost every search without it.
+            if (rows.length === 0) {
+                const loose = looseCityKey(normalized);
+                if (loose) {
+                    rows = await sql`
+                        SELECT hotel_id, name, images[1] AS image, star_rating, lat, lng, address, city, country,
+                               review_rating, review_count
+                        FROM hotel_content
+                        WHERE regexp_replace(lower(city), '[^a-z0-9]', '', 'g') = ${loose}
+                          AND (hotel_id ~ '^[0-9]+$' OR hotel_id ~ '^[A-Z]{2}[0-9]+$')
+                          AND (content_source IS NULL OR content_source != 'etg')
+                          AND delisted_at IS NULL
+                        ORDER BY review_count DESC NULLS LAST
+                        LIMIT 300
+                      `;
+                    if (rows.length > 0) {
+                        console.log(`[stream] phase1 matched "${normalized}" on letters alone: ${rows.length} hotels`);
+                    }
+                }
+            }
         }
 
         return rows
@@ -277,7 +336,7 @@ async function getInstantHotelCatalog(body: any): Promise<any[]> {
             address:      '',
             location:     r.address ?? '',
             city:         r.city ?? cityName,
-            country:      r.country ?? '',
+            country:      hotelCountry(r.country, r.city, r.lat, r.lng),
             // Not selected. Nothing in the search UI reads either: the card renders
             // neither, the amenities filter is a URL param re-queried server-side, and
             // SearchMapView overwrites both with empty values when it builds its own
@@ -330,7 +389,32 @@ function ndjsonLine(obj: unknown): Uint8Array {
  * whichever resolves first by enqueueing from each Promise independently.
  */
 export async function POST(req: NextRequest) {
+    // Every search here reaches TravelgateX and ETG. This was the one supplier-facing route
+    // with no limit at all — flight search allows 20 a minute, this allowed anyone any
+    // number (found while fixing QA BG-10). Same budget as flights.
+    const rl = await rateLimit(req, { limit: 20, windowMs: 60_000, prefix: 'hotel-search' });
+    if (!rl.success) {
+        return Response.json({ error: 'Too many requests. Please wait before trying again.' }, { status: 429 });
+    }
+
     const body = await req.json().catch(() => ({}));
+
+    // URL params arrive as strings. Coerced here, before anything reads them: the bounded-rung
+    // check below asks whether bbox is an array, and a browser search always sends it as the
+    // "minLng,minLat,maxLng,maxLat" string from the URL. Coerced later, every real borough search
+    // failed that check and fell back to the 50km radius, while a smoke posting an array passed.
+    if (body.lat != null && body.lat !== '') body.lat = Number(body.lat);
+    if (body.lng != null && body.lng !== '') body.lng = Number(body.lng);
+    if (typeof body.bbox === 'string' && body.bbox.includes(',')) {
+        const parts = body.bbox.split(',').map(Number);
+        body.bbox = parts.length === 4 && parts.every((n: number) => Number.isFinite(n)) ? parts : undefined;
+    }
+
+    // What the traveller picked, before the name normalisation below overwrites `destination`
+    // with `cityName`. The results page sends `cityName = canonicalCity`, so after normalising,
+    // "Camden Town" and "London" both read "London" and the sub-area went undetected — its rung
+    // stayed `district`, which the supplier search answers with nothing by design.
+    const pickedDestination: string = typeof body.destination === 'string' ? body.destination : '';
 
     // When canonicalCity differs from destination, the destinationCode was resolved
     // for the district/alias (e.g. "Ottavia" → code 183294) not the parent city ("Rome").
@@ -395,6 +479,52 @@ export async function POST(req: NextRequest) {
         delete body.destinationCode;
     }
 
+    // Whatever extent the traveller picked, remembered before anything below rewrites the rung.
+    //
+    // These are the rungs the map clips to a bbox, and the catalog now bounds by exactly the
+    // same set, so the hotels in the list are the hotels drawn on the map. Every one of them
+    // is a place with real administrative boundaries, whatever the local word for it happens
+    // to be - a London borough, a Paris arrondissement, a German Landkreis, a Thai amphoe, a
+    // Polish powiat, a Tokyo ku. None of those words appear anywhere in this code, and none
+    // need to: what matters is that Mapbox typed the place as an area below a city and gave
+    // us its bounds.
+    //
+    // City is excluded because a city bbox is tighter than the city’s real hotel spread
+    // (Jeju’s excludes Seogwipo, 27km away), which is what the radius is for. Country is
+    // excluded because bounding a country by its own bbox buys nothing. A landmark is
+    // excluded because its bounds are a building: the glossary has it start small and widen
+    // until hotels are found, and a bbox would pin it to the first of those steps.
+    const BOUNDED_RUNGS = new Set(['province', 'state', 'county', 'district', 'neighborhood', 'locality']);
+    if (body.rung && BOUNDED_RUNGS.has(body.rung) && Array.isArray(body.bbox) && body.bbox.length === 4) {
+        body.areaRung = body.rung;
+    }
+
+    // A sub-area the picker already resolved for us.
+    //
+    // When the picker offers a borough, a district or a neighbourhood it sends both names:
+    // `destination` is what the traveller chose and `canonicalCity` is the city whose
+    // inventory actually has to be searched, because ADR-0006 leaves OTV serving the City
+    // rung alone. Only the second was ever acted on, and only to discard a stale destination
+    // code - so the search ran under the borough’s own name, which matches no row in
+    // hotel_content and no TGX destination, and reached London purely by the 50km radius
+    // around its centroid.
+    //
+    // Both facts are kept: the city to search, and the extent to search within. This is the
+    // same split the province path makes twenty lines below, which is where areaRung came
+    // from - it exists precisely to survive the downgrade that follows it.
+    if (body.canonicalCity && pickedDestination &&
+        body.canonicalCity.toLowerCase() !== pickedDestination.toLowerCase()) {
+        const picked = body.rung;
+        console.log(`[stream] sub-area: "${pickedDestination}" (rung: ${picked ?? '?'}) ` +
+                    `-> searching "${body.canonicalCity}", bounded by its own extent`);
+        if (picked && picked !== 'city') body.areaRung = picked;
+        body.cityName = body.canonicalCity;
+        body.destination = body.canonicalCity;
+        body.rung = 'city';
+        // Resolved for the borough, wrong for the city.
+        delete body.destinationCode;
+    }
+
     // City alias resolution: map district/borough/neighbourhood names to the
     // canonical city TGX can resolve. Rung is upgraded to 'city' so the district
     // early-return in _runTgxSearch doesn't kill the search.
@@ -432,35 +562,28 @@ export async function POST(req: NextRequest) {
 
     const city = rawCity || '(unknown)';
 
-    // Granularity ladder: URL params arrive as strings — coerce the geo fields so
-    // runTgxSearch can dispatch point rungs (district/landmark) to ETG serp/geo.
-    if (body.lat != null && body.lat !== '') body.lat = Number(body.lat);
-    if (body.lng != null && body.lng !== '') body.lng = Number(body.lng);
-    if (typeof body.bbox === 'string' && body.bbox.includes(',')) {
-        const parts = body.bbox.split(',').map(Number);
-        body.bbox = parts.length === 4 && parts.every((n: number) => Number.isFinite(n)) ? parts : undefined;
-    }
 
-    // Default dates when not provided (e.g. landing card clicks).
-    // Use next Friday → Sunday so results match the prewarm cache and OTV has inventory.
-    // Same-day / next-day defaults have near-zero OTV coverage.
+    // Default dates when not provided (e.g. landing card clicks). The last line of defence:
+    // whatever the caller forgot, the supplier is never asked for a stay it has no
+    // inventory for. One shared rule — this was the fourth hand-written copy of it.
     if (!body.checkin && !body.checkIn) {
-        const now = new Date();
-        const dayOfWeek = now.getDay(); // 0=Sun … 6=Sat
-        const daysUntilFriday = ((5 - dayOfWeek + 7) % 7) || 7; // at least 1 day ahead
-        const checkin  = new Date(now);
-        checkin.setDate(now.getDate() + daysUntilFriday);
-        const checkout = new Date(checkin);
-        checkout.setDate(checkin.getDate() + 2); // Fri → Sun
-        const fmt = (d: Date) => d.toISOString().slice(0, 10);
-        body.checkin  = fmt(checkin);
-        body.checkout = fmt(checkout);
+        const stay = defaultStay();
+        body.checkin  = stay.checkIn;
+        body.checkout = stay.checkOut;
     }
 
     // TGX/ETG return the total-stay price, not per-night. Compute nights so we
     // can normalise all prices to per-night before streaming to the client.
     const _checkin  = body.checkin  ?? body.checkIn  ?? '';
     const _checkout = body.checkout ?? body.checkOut ?? '';
+
+    // A check-out on or before check-in is not a stay. `Math.max(1, …)` below used to hide
+    // it — the reversed dates went to the suppliers as a "1 night" search. The calendar no
+    // longer offers such a range (QA BG-5), but a pasted or edited URL still can.
+    const inTime = Date.parse(_checkin), outTime = Date.parse(_checkout);
+    if (Number.isFinite(inTime) && Number.isFinite(outTime) && outTime <= inTime) {
+        return Response.json({ error: 'Check-out must be after check-in.' }, { status: 400 });
+    }
     const nights = (_checkin && _checkout)
         ? Math.max(1, Math.round((new Date(_checkout).getTime() - new Date(_checkin).getTime()) / 86_400_000))
         : 1;
@@ -634,9 +757,37 @@ export async function POST(req: NextRequest) {
                 // The `nights > 1` guard went with it — dividing by one is identity, and a
                 // condition that only ever changes a number's precision is a difference
                 // nobody can see and everybody has to read past.
+                // A sub-area searches its parent city, because OTV serves only the City rung
+                // (ADR-0006) — so the supplier answers for all of London when the traveller asked
+                // for Camden Town. The catalog is already bounded to the sub-area; the supplier’s
+                // answer has to be bounded the same way, or its hotels arrive as "new" across the
+                // whole city and the map refits to London. Measured 2026-09-22: 1 priced hotel in
+                // Camden, 297 more from the rest of London sent to the page.
+                //
+                // Kept: a hotel that is one of the sub-area’s catalog hotels (bounded already, and
+                // its supplier record may carry no coordinates), or one whose own coordinates fall
+                // inside the extent.
+                const subAreaBbox: number[] | null =
+                    body.areaRung && body.areaRung !== 'city' && Array.isArray(body.bbox) && body.bbox.length === 4
+                        ? body.bbox as number[]
+                        : null;
+                const insideSubArea = (h: any) => {
+                    if (!subAreaBbox) return true;
+                    if (catalogIdSet.has(h.hotelId || h.id)) return true;
+                    const [minLng, minLat, maxLng, maxLat] = subAreaBbox;
+                    const lat = Number(h.lat ?? h.coordinates?.lat);
+                    const lng = Number(h.lng ?? h.coordinates?.lng);
+                    return Number.isFinite(lat) && Number.isFinite(lng)
+                        && lat >= minLat && lat <= maxLat && lng >= minLng && lng <= maxLng;
+                };
+
                 const tgxHotels: any[] = (Array.isArray(tgxResult.data) ? tgxResult.data : [])
+                    .filter(insideSubArea)
                     .map((h: any) => ({ ...h, price: (h.price ?? 0) / Math.max(1, nights) }));
-                const tgxMappable: any[] = tgxResult.allMappable ?? [];
+                const tgxMappable: any[] = (tgxResult.allMappable ?? []).filter(insideSubArea);
+                if (subAreaBbox && Array.isArray(tgxResult.data) && tgxResult.data.length !== tgxHotels.length) {
+                    console.log(`[stream] sub-area bound: kept ${tgxHotels.length} of ${tgxResult.data.length} supplier hotels`);
+                }
                 console.log(`[stream] phase2 TGX done: ${tgxHotels.length} hotels in ${Date.now() - p2Start}ms (total ${elapsed()})`);
 
                 // ── Stream prices/remove/new-hotels IMMEDIATELY after Phase 2 ─────────────

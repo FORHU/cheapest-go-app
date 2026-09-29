@@ -213,10 +213,16 @@ export function MapGemsPanel({
                                     <div className="absolute inset-0 bg-slate-200 dark:bg-slate-800 animate-pulse rounded-2xl z-10" />
                                 )}
 
+                                {/* `unoptimized`: the photo proxy answers with an SVG placeholder
+                                    the first time it sees a place with no Google photo, and the
+                                    Next image optimizer refuses SVG with a 400 — a broken thumbnail
+                                    that fixed itself on reload once the cache held a PNG (QA BG-4).
+                                    The proxy already caches and sets its own Cache-Control. */}
                                 <Image
                                     src={imageUrl}
                                     alt={name}
                                     fill
+                                    unoptimized
                                     sizes="176px"
                                     className="object-cover transition-transform duration-700 group-hover:scale-110"
                                     loading="eager"

@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect } from 'react';
+import { useTranslations } from 'next-intl';
 
 export default function MainError({
   error,
@@ -9,6 +10,8 @@ export default function MainError({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
+  const t = useTranslations('errors');
+
   useEffect(() => {
     console.error('[MainLayout Error]', error);
   }, [error]);
@@ -20,16 +23,16 @@ export default function MainError({
           <span className="text-2xl text-red-600 dark:text-red-400">!</span>
         </div>
         <h2 className="text-2xl font-display font-bold text-slate-900 dark:text-white">
-          Something went wrong
+          {t('page.title')}
         </h2>
         <p className="text-slate-500 dark:text-slate-400">
-          An unexpected error occurred. Please try again.
+          {t('page.description')}
         </p>
         <button
           onClick={reset}
           className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-full transition-colors"
         >
-          Try again
+          {t('actions.tryAgain')}
         </button>
       </div>
     </div>

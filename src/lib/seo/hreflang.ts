@@ -1,40 +1,128 @@
 /**
- * Generates the `alternates.languages` block for Next.js generateMetadata.
+ * Canonical and `hreflang` URLs, and the single place that knows which locales a
+ * deployment serves.
  *
- * With localePrefix: 'as-needed', English (default) has no URL prefix,
- * while ko/ja/zh are served at /ko/*, /ja/*, /zh/*.
+ * Two shapes of deployment, decided by `NEXT_PUBLIC_LOCALE`:
  *
- * Usage:
- *   alternates: {
- *     canonical: '/about',
- *     languages: hreflang('/about'),
- *   }
+ * - **Locked** (AirangGo sets `ko`). It serves exactly one language, at the root, with no
+ *   URL prefix. A prefix does not switch language there — `airanggo.com/ja/about` renders
+ *   Korean — so every canonical is unprefixed, which folds those prefixed URLs onto the
+ *   real one instead of letting them stand as separate pages.
+ * - **Unlocked** (CheapestGo). English at the root, `PREFIXED_LOCALES` under a prefix.
+ *
+ * Both domains declare the same `hreflang` set: all four languages, each at its own home in
+ * `LANGUAGE_HOMES`. Google ignores alternates that are not confirmed from the other side, so
+ * a set only one domain declared would be discarded — AirangGo naming CheapestGo's English,
+ * Japanese and Chinese pages is what lets CheapestGo's Korean alternate count.
+ *
+ * `cheapestgo.com/ko` still answers until the redirect lands. It is in no sitemap and no
+ * alternate, and a visitor who reaches it gets a canonical naming that same Korean URL,
+ * because claiming to be the English page is what made Google discard it.
+ *
+ * The list of languages lived here AND in `src/app/sitemap.ts`. Two copies are how the
+ * sitemap came to advertise URLs the pages did not agree with, so there is one copy now.
  */
+import { getLocale } from 'next-intl/server';
 
-const NON_DEFAULT_LOCALES = ['ko', 'ja', 'zh'] as const;
+const DEFAULT_LOCALE = 'en';
 
-export function hreflang(path: string): Record<string, string> {
-    const normalised = path.startsWith('/') ? path : `/${path}`;
-    return {
-        'en':        normalised,
-        'ko':        `/ko${normalised === '/' ? '' : normalised}`,
-        'ja':        `/ja${normalised === '/' ? '' : normalised}`,
-        'zh':        `/zh${normalised === '/' ? '' : normalised}`,
-        'x-default': normalised,
-    };
+/**
+ * Where each language is served in production — the decision in ADR-0037, written down once.
+ *
+ * Production origins on purpose, not `NEXT_PUBLIC_SITE_URL`: an alternate names the page in
+ * another language on the live site. A deployment's own languages are still emitted as
+ * relative paths, so a local or staging build points at itself for those.
+ */
+const LANGUAGE_HOMES: Record<string, string> = {
+    en: 'https://cheapestgo.com',
+    ja: 'https://cheapestgo.com',
+    zh: 'https://cheapestgo.com',
+    ko: 'https://airanggo.com',
+};
+
+/** Languages served under a prefix beside the default: those sharing the default's home. */
+const PREFIXED_LOCALES = Object.keys(LANGUAGE_HOMES).filter(
+    locale => locale !== DEFAULT_LOCALE && LANGUAGE_HOMES[locale] === LANGUAGE_HOMES[DEFAULT_LOCALE],
+);
+
+/** The locale this deployment is locked to, or null when it serves several. */
+function lockedLocale(): string | null {
+    const value = (process.env.NEXT_PUBLIC_LOCALE ?? '').trim();
+    return value.length > 0 ? value : null;
 }
 
 /**
- * Convenience: returns both canonical and languages in one call.
+ * Where a path is served for a given locale: `/about` + `ja` -> `/ja/about`.
  *
- *   alternates: hreflangAlternates('/about')
+ * The default locale and every locale on a locked deployment are served unprefixed.
  */
-export function hreflangAlternates(path: string) {
+export function localisedPath(path: string, locale: string, locked: string | null = lockedLocale()): string {
     const normalised = path.startsWith('/') ? path : `/${path}`;
+    if (locked !== null || locale === DEFAULT_LOCALE) return normalised;
+    return `/${locale}${normalised === '/' ? '' : normalised}`;
+}
+
+/** Every locale this deployment serves, each with the path it is served at. */
+export function servedLocalePaths(
+    path: string,
+    locked: string | null = lockedLocale(),
+): { locale: string; path: string }[] {
+    const locales = locked !== null ? [locked] : [DEFAULT_LOCALE, ...PREFIXED_LOCALES];
+    return locales.map(locale => ({ locale, path: localisedPath(path, locale, locked) }));
+}
+
+/**
+ * Where `path` lives in `locale`: relative when this deployment serves that language,
+ * otherwise absolute at the language's home. A home holding a single language is shaped like
+ * a locked deployment and serves it unprefixed.
+ */
+function alternateUrl(path: string, locale: string, locked: string | null): string {
+    if (servedLocalePaths(path, locked).some(served => served.locale === locale)) {
+        return localisedPath(path, locale, locked);
+    }
+    const home = LANGUAGE_HOMES[locale];
+    const languagesAtHome = Object.keys(LANGUAGE_HOMES).filter(l => LANGUAGE_HOMES[l] === home);
+    return `${home}${localisedPath(path, locale, languagesAtHome.length === 1 ? locale : null)}`;
+}
+
+/**
+ * The `alternates.languages` map: every language at its home, plus `x-default` at the
+ * default language's page. Identical on both domains, which is what makes it count.
+ */
+export function hreflang(path: string, locked: string | null = lockedLocale()): Record<string, string> {
+    const languages = Object.fromEntries(
+        Object.keys(LANGUAGE_HOMES).map(locale => [locale, alternateUrl(path, locale, locked)]),
+    );
+    return { ...languages, 'x-default': alternateUrl(path, DEFAULT_LOCALE, locked) };
+}
+
+/**
+ * The URL this page should name as its own.
+ *
+ * It includes the locale prefix the page is actually served under. Returning the
+ * unprefixed path made every `/ja` and `/zh` page declare the English page as canonical,
+ * which tells Google they are duplicates and not pages of their own.
+ */
+export function canonicalPath(path: string, locale: string, locked: string | null = lockedLocale()): string {
+    return localisedPath(path, locale, locked);
+}
+
+/**
+ * Canonical plus languages for the locale of the current request.
+ *
+ *   export async function generateMetadata() {
+ *     return { title, alternates: await hreflangAlternates('/about') };
+ *   }
+ *
+ * Async because the canonical depends on the request's locale, which is why a page using
+ * it cannot export a static `metadata` object.
+ */
+export async function hreflangAlternates(path: string) {
+    const locale = await getLocale();
     return {
-        canonical: normalised,
-        languages: hreflang(normalised),
+        canonical: canonicalPath(path, locale),
+        languages: hreflang(path),
     };
 }
 
-export { NON_DEFAULT_LOCALES };
+export { DEFAULT_LOCALE, PREFIXED_LOCALES };

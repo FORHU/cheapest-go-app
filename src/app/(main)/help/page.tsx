@@ -33,7 +33,7 @@ export async function generateMetadata(): Promise<Metadata> {
     return {
         title: t('title'),
         description: t('description'),
-        alternates: hreflangAlternates('/help'),
+        alternates: await hreflangAlternates('/help'),
     };
 }
 

@@ -1,14 +1,21 @@
 'use client';
 
 import { useCallback, useEffect, useReducer, useRef, useState } from 'react';
-import { useLocale } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
+import { checkAttachment, describeUploadFailure } from '@/lib/support/limits';
 import {
+    awaitingTranslation,
     initialSupportState,
     supportReducer,
     visibleMessages,
 } from './supportReducer';
 import type { EscalationDetails } from './EscalationForm';
-import type { SupportAttachmentView, SupportConversationView, SupportMessageView } from './types';
+import type {
+    PastConversationView,
+    SupportAttachmentView,
+    SupportConversationView,
+    SupportMessageView,
+} from './types';
 import type { ReopenOpening } from './reopenTime';
 
 /**
@@ -27,6 +34,7 @@ export function useSupportChat(isOpen: boolean) {
     // shut is what the launcher badge counts.
 
     const locale = useLocale();
+    const tAttachmentErrors = useTranslations('support.attachments.errors');
     const [state, dispatch] = useReducer(supportReducer, initialSupportState);
     const [connected, setConnected] = useState(false);
     const [escalating, setEscalating] = useState(false);
@@ -47,32 +55,81 @@ export function useSupportChat(isOpen: boolean) {
 
     cursorRef.current = state.cursor;
 
-    // Open or resume, once, the first time the panel is opened.
+    /**
+     * The customer's finished chats, newest first. A resolved chat is never reopened — the
+     * next question starts a new one — so this is how an earlier answer stays reachable.
+     */
+    const [past, setPast] = useState<PastConversationView[]>([]);
+    const loadPast = useCallback(async () => {
+        try {
+            const response = await fetch('/api/support/conversation/history');
+            if (!response.ok) return;
+            const data = (await response.json()) as { conversations?: PastConversationView[] };
+            setPast(data.conversations ?? []);
+        } catch {
+            // History is a convenience; the chat works without it.
+        }
+    }, []);
+
     useEffect(() => {
-        if (!isOpen || state.conversation || opening.current) return;
+        if (state.conversation?.id) void loadPast();
+    }, [state.conversation?.id, loadPast]);
+
+    /**
+     * Open the caller's chat: their open one, or a new one when the last was resolved — the
+     * server decides (`openConversation`).
+     */
+    const openChat = useCallback(async () => {
+        if (opening.current) return;
         opening.current = true;
+        try {
+            const response = await fetch('/api/support/conversation', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ locale }),
+            });
+            if (!response.ok) return;
 
-        void (async () => {
-            try {
-                const response = await fetch('/api/support/conversation', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ locale }),
-                });
-                if (!response.ok) return;
+            const data = (await response.json()) as {
+                conversation: SupportConversationView;
+                messages: SupportMessageView[];
+            };
+            dispatch({ type: 'opened', conversation: data.conversation, messages: data.messages });
+        } catch {
+            // Leave the composer disabled; the customer sees "connecting".
+        } finally {
+            opening.current = false;
+        }
+    }, [locale]);
 
-                const data = (await response.json()) as {
-                    conversation: SupportConversationView;
-                    messages: SupportMessageView[];
-                };
-                dispatch({ type: 'opened', conversation: data.conversation, messages: data.messages });
-            } catch {
-                // Leave the composer disabled; the customer sees "connecting".
-            } finally {
-                opening.current = false;
-            }
-        })();
-    }, [isOpen, state.conversation, locale]);
+    /**
+     * Set when the chat is resolved while the panel is shut, so the fresh chat is opened the
+     * next time the customer looks rather than created for nobody in the background.
+     */
+    const resolvedWhileClosed = useRef(false);
+    const isOpenRef = useRef(isOpen);
+    isOpenRef.current = isOpen;
+
+    // Open or resume the first time the panel is opened — and again after a resolution.
+    useEffect(() => {
+        if (!isOpen) return;
+        if (state.conversation && !resolvedWhileClosed.current) return;
+        resolvedWhileClosed.current = false;
+        void openChat();
+    }, [isOpen, state.conversation, openChat]);
+
+    /**
+     * The chat was resolved by the team. It is finished — never reopened — so it moves to the
+     * previous conversations and the panel starts clean, ready for the next question, without
+     * the customer having to refresh or type into a finished chat first (QA BG-17).
+     */
+    const onResolved = useCallback(() => {
+        void loadPast();
+        if (isOpenRef.current) void openChat();
+        else resolvedWhileClosed.current = true;
+    }, [loadPast, openChat]);
+    const onResolvedRef = useRef(onResolved);
+    onResolvedRef.current = onResolved;
 
     // Live updates, held from the moment a conversation exists rather than only while the
     // panel is open. A visitor who never opens support still holds nothing — that was the
@@ -93,7 +150,17 @@ export function useSupportChat(isOpen: boolean) {
 
         const source = new EventSource(url);
 
-        source.addEventListener('ready', () => setConnected(true));
+        source.addEventListener('ready', event => {
+            setConnected(true);
+            // Resolved while the stream was down or still connecting: no `status` event is
+            // coming for that, so the status the stream opens with is the one to act on.
+            try {
+                const data = JSON.parse((event as MessageEvent).data) as { status?: string };
+                if (data.status === 'resolved') onResolvedRef.current();
+            } catch {
+                // Unreadable frame; nothing to act on.
+            }
+        });
         source.addEventListener('message', event => {
             try {
                 dispatch({
@@ -102,6 +169,16 @@ export function useSupportChat(isOpen: boolean) {
                 });
             } catch {
                 // A frame we cannot read is not worth tearing the stream down for.
+            }
+        });
+        source.addEventListener('status', event => {
+            try {
+                const data = JSON.parse((event as MessageEvent).data) as { status?: string };
+                // Through a ref, so the stream is not torn down and reopened when the handler's
+                // own dependencies change.
+                if (data.status === 'resolved') onResolvedRef.current();
+            } catch {
+                // Unreadable frame; the next open reads the status anyway.
             }
         });
         source.onerror = () => setConnected(false);
@@ -121,9 +198,16 @@ export function useSupportChat(isOpen: boolean) {
      * attach three things and then write the message that goes with them.
      */
     const attach = useCallback(async (file: File) => {
-        setUploading(true);
         setUploadError(null);
 
+        // Refused here when the answer is already known, before a phone spends its data on it.
+        const refusal = checkAttachment(file);
+        if (refusal) {
+            setUploadError(tAttachmentErrors(refusal));
+            return;
+        }
+
+        setUploading(true);
         try {
             const form = new FormData();
             form.append('file', file);
@@ -132,25 +216,28 @@ export function useSupportChat(isOpen: boolean) {
                 method: 'POST',
                 body: form,
             });
-            const data = (await response.json()) as {
+            // Not always the app's JSON: production's proxy answers an oversized upload with an
+            // HTML 413 page. Parsing that used to throw into a catch that showed no message at
+            // all — the file simply did not appear (QA BG-16).
+            const data = (await response.json().catch(() => ({}))) as {
                 attachment?: SupportAttachmentView;
                 error?: string;
             };
 
             if (!response.ok || !data.attachment) {
-                // The server's words, not ours: it is the only side that knows whether this
-                // was the size, the type, or one file too many.
-                setUploadError(data.error ?? null);
+                // The server's words when it has any; otherwise what the status means.
+                const failure = describeUploadFailure(response.status, data.error);
+                setUploadError('message' in failure ? failure.message : tAttachmentErrors(failure.reason));
                 return;
             }
 
             setAttachments(current => [...current, data.attachment as SupportAttachmentView]);
         } catch {
-            setUploadError(null);
+            setUploadError(tAttachmentErrors('failed'));
         } finally {
             setUploading(false);
         }
-    }, []);
+    }, [tAttachmentErrors]);
 
     /**
      * Drop a file that has not been sent.
@@ -194,14 +281,25 @@ export function useSupportChat(isOpen: boolean) {
                     return;
                 }
 
-                const data = (await response.json()) as { message: SupportMessageView };
+                const data = (await response.json()) as {
+                    message: SupportMessageView;
+                    conversation?: SupportConversationView;
+                    started?: boolean;
+                };
+                // The chat had been resolved while the panel was open, so this message
+                // started a new one. Switch to it: its reference, an empty transcript, then
+                // this message — which also clears the optimistic copy.
+                if (data.started && data.conversation) {
+                    dispatch({ type: 'opened', conversation: data.conversation, messages: [] });
+                    void loadPast();
+                }
                 dispatch({ type: 'confirmed', clientId, message: data.message });
             } catch {
                 dispatch({ type: 'send_failed', clientId });
                 setAttachments(current => [...sending, ...current]);
             }
         })();
-    }, [attachments]);
+    }, [attachments, loadPast]);
 
     /**
      * Ask for a person. Called with no details first; the server answers
@@ -272,6 +370,10 @@ export function useSupportChat(isOpen: boolean) {
         removeAttachment,
         nextOpening,
         isTyping: state.isTyping,
+        /** Finished chats other than the current one, newest first. */
+        past: past.filter(p => p.reference !== state.conversation?.reference),
+        // A reply has arrived and is held until its translation settles.
+        isReplying: awaitingTranslation(state),
         needsDetails: state.needsDetails,
         assistantOffline: state.assistantOffline,
         unread: state.unread,

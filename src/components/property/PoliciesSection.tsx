@@ -1,6 +1,7 @@
 import React from 'react';
 import { Clock, Info, XCircle, CheckCircle, AlertTriangle, LogOut } from 'lucide-react';
 import { sanitizeHtml } from '@/lib/sanitize-html';
+import { useTranslations } from 'next-intl';
 
 interface CancellationPolicy {
     cancelTime?: string;
@@ -102,6 +103,7 @@ const PoliciesSection: React.FC<PoliciesSectionProps> = ({
     hotelImportantInformation,
     cancellationPolicies
 }) => {
+    const t = useTranslations('property.policies');
     // If no policy data is available at all, don't render the section
     const hasAnyData = checkInTime || checkOutTime || hotelImportantInformation || cancellationPolicies;
 
@@ -126,26 +128,26 @@ const PoliciesSection: React.FC<PoliciesSectionProps> = ({
 
     return (
         <div className="py-4 lg:py-8 border-t border-slate-200 dark:border-white/10 scroll-mt-24 lg:scroll-mt-36" id="policies">
-            <h2 className="text-[14px] lg:text-xl font-bold text-slate-900 dark:text-white mb-3 lg:mb-6">Policies</h2>
+            <h2 className="text-[14px] lg:text-xl font-bold text-slate-900 dark:text-white mb-3 lg:mb-6">{t('title')}</h2>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 lg:gap-8">
                 {/* Check-in / Check-out — always shown; falls back to "Contact property" */}
                 <div className="space-y-1.5 lg:space-y-4">
                     <h3 className="text-[11px] lg:text-sm font-bold text-slate-900 dark:text-white flex items-center gap-1.5 lg:gap-2">
                         <Clock size={12} className="lg:hidden" /><Clock size={18} className="hidden lg:block" />
-                        Check-in & Check-out
+                        {t('checkInOut')}
                     </h3>
                     <div className="bg-slate-50 dark:bg-slate-800/50 rounded-lg p-2 lg:p-4 space-y-1.5 lg:space-y-3">
                         <div className="flex justify-between items-center">
-                            <span className="text-[10px] lg:text-sm text-slate-600 dark:text-slate-400">Check-in</span>
+                            <span className="text-[10px] lg:text-sm text-slate-600 dark:text-slate-400">{t('checkIn')}</span>
                             <span className="text-[10px] lg:text-sm font-medium text-slate-900 dark:text-white">
-                                {checkInTime || 'Contact property'}
+                                {checkInTime || t('contactProperty')}
                             </span>
                         </div>
                         <div className="flex justify-between items-center">
-                            <span className="text-[10px] lg:text-sm text-slate-600 dark:text-slate-400">Check-out</span>
+                            <span className="text-[10px] lg:text-sm text-slate-600 dark:text-slate-400">{t('checkOut')}</span>
                             <span className="text-[10px] lg:text-sm font-medium text-slate-900 dark:text-white">
-                                {checkOutTime || 'Contact property'}
+                                {checkOutTime || t('contactProperty')}
                             </span>
                         </div>
                     </div>
@@ -166,14 +168,14 @@ const PoliciesSection: React.FC<PoliciesSectionProps> = ({
                                     <XCircle size={18} className="text-amber-500 hidden lg:block" />
                                 </>
                             )}
-                            Cancellation Policy
+                            {t('cancellationPolicy')}
                         </h3>
                         <div className="bg-slate-50 dark:bg-slate-800/50 rounded-lg p-2 lg:p-4 space-y-1.5 lg:space-y-3">
                             <div className={`inline-flex items-center gap-1 px-2 lg:px-2.5 py-0.5 lg:py-1 rounded-full text-[9px] lg:text-xs font-medium ${isRefundable
                                     ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
                                     : 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'
                                 }`}>
-                                {isRefundable ? 'Refundable' : 'Non-refundable'}
+                                {isRefundable ? t('refundable') : t('nonRefundable')}
                             </div>
 
                             {cancellationPolicies.cancelPolicyInfos
@@ -185,9 +187,14 @@ const PoliciesSection: React.FC<PoliciesSectionProps> = ({
                                     <div key={index} className="text-[10px] lg:text-sm text-slate-600 dark:text-slate-300">
                                         {policy.cancelTime && (
                                             <p>
-                                                Cancel before <span className="font-medium">{formatCancellationTime(policy.cancelTime)}</span>
+                                                {t.rich('cancelBefore', {
+                                                    time: () => <span className="font-medium">{formatCancellationTime(policy.cancelTime!)}</span>,
+                                                })}
                                                 {policy.amount !== undefined && policy.currency && (
-                                                    <> - Fee: <span className="font-medium">{policy.currency} {policy.amount}</span></>
+                                                    t.rich('feeSuffix', {
+                                                        amount: `${policy.currency} ${policy.amount}`,
+                                                        fee: (chunks) => <span className="font-medium">{chunks}</span>,
+                                                    })
                                                 )}
                                             </p>
                                         )}
@@ -199,8 +206,8 @@ const PoliciesSection: React.FC<PoliciesSectionProps> = ({
                                 <div className="flex items-start gap-2 p-2.5 rounded-lg bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800">
                                     <AlertTriangle size={14} className="mt-0.5 text-orange-500 flex-shrink-0" />
                                     <p className="text-xs text-orange-700 dark:text-orange-300">
-                                        <span className="font-medium">No-Show Penalty:</span>{' '}
-                                        {formatFeeAmount(noShowPenalty, feeCurrency)} if you don&apos;t check in without cancelling.
+                                        <span className="font-medium">{t('noShowPenalty')}</span>{' '}
+                                        {t('noShowBody', { amount: formatFeeAmount(noShowPenalty, feeCurrency) })}
                                     </p>
                                 </div>
                             )}
@@ -210,8 +217,8 @@ const PoliciesSection: React.FC<PoliciesSectionProps> = ({
                                 <div className="flex items-start gap-2 p-2.5 rounded-lg bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800">
                                     <LogOut size={14} className="mt-0.5 text-orange-500 flex-shrink-0" />
                                     <p className="text-xs text-orange-700 dark:text-orange-300">
-                                        <span className="font-medium">Early Departure Fee:</span>{' '}
-                                        {formatFeeAmount(earlyDepartureFee, feeCurrency)} if you check out before your scheduled date.
+                                        <span className="font-medium">{t('earlyDepartureFee')}</span>{' '}
+                                        {t('earlyDepartureBody', { amount: formatFeeAmount(earlyDepartureFee, feeCurrency) })}
                                     </p>
                                 </div>
                             )}
@@ -232,7 +239,7 @@ const PoliciesSection: React.FC<PoliciesSectionProps> = ({
                 <div className="mt-3 lg:mt-8 space-y-2 lg:space-y-4">
                     <h3 className="text-[11px] lg:text-sm font-bold text-slate-900 dark:text-white flex items-center gap-1.5 lg:gap-2">
                         <Info size={12} className="lg:hidden" /><Info size={18} className="hidden lg:block" />
-                        Important Information
+                        {t('importantInformation')}
                     </h3>
                     <div
                         className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-2 lg:p-4 text-[10px] lg:text-sm text-slate-700 dark:text-slate-300 whitespace-pre-line [&_ul]:list-disc [&_ul]:pl-5 [&_ul]:space-y-1 [&_ol]:list-decimal [&_ol]:pl-5 [&_ol]:space-y-1"

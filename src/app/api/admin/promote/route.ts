@@ -5,7 +5,8 @@ import { requireAdmin, isAuthError } from '@/lib/server/admin';
 import { createNotification } from '@/lib/server/admin/notify';
 import { logAdminAction } from '@/lib/server/admin/audit';
 import { validateRoleChange } from '@/lib/server/admin/roleChange';
-import { roleLabel } from '@/lib/auth/roles';
+import { roleLabel, canStaffSupport } from '@/lib/auth/roles';
+import { releaseConversationsOf } from '@/lib/server/support/assignment';
 
 export async function POST(req: NextRequest) {
     const rl = await rateLimit(req, { limit: 10, windowMs: 60_000, prefix: 'admin-promote' });
@@ -49,6 +50,18 @@ export async function POST(req: NextRequest) {
                 { success: false, error: 'Failed to update role' },
                 { status: 500 }
             );
+        }
+
+        // No longer able to open the Support Desk: their open chats go back to Unassigned
+        // rather than sitting with someone who cannot answer them (ADR-0041). Never fatal —
+        // the role change has happened; an admin can still hand the chats out by hand.
+        if (!canStaffSupport(newRole)) {
+            try {
+                const released = await releaseConversationsOf(userId, auth.user.id);
+                if (released > 0) console.log(`[Admin Promote] released ${released} support chat(s) from ${userId}`);
+            } catch (err) {
+                console.error('[Admin Promote] could not release support chats:', err);
+            }
         }
 
         logAdminAction({

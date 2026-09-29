@@ -3,6 +3,7 @@
 import { useRef, useState } from 'react';
 import { Paperclip, Send, X } from 'lucide-react';
 import { useTranslations } from 'next-intl';
+import { ATTACHMENT_ACCEPT, MAX_MESSAGE_LENGTH, MESSAGE_COUNTER_FROM } from '@/lib/support/limits';
 import { formatFileSize } from './formatFileSize';
 import type { SupportAttachmentView } from './types';
 
@@ -18,7 +19,7 @@ import type { SupportAttachmentView } from './types';
  */
 
 /** Mirrors the server allowlist. A picker offering types the route refuses wastes a trip. */
-const ACCEPTED_TYPES = 'image/jpeg,image/png,image/webp,image/gif,image/heic,application/pdf';
+const ACCEPTED_TYPES = ATTACHMENT_ACCEPT;
 
 interface SupportComposerProps {
     canSend: boolean;
@@ -32,6 +33,8 @@ interface SupportComposerProps {
     uploadError: string | null;
     onAttach: (file: File) => void;
     onRemoveAttachment: (attachmentId: string) => void;
+    /** Every keystroke of the draft, so the panel can offer Help Page articles (ADR-0043). */
+    onDraftChange?: (draft: string) => void;
 }
 
 export function SupportComposer({
@@ -43,6 +46,7 @@ export function SupportComposer({
     uploadError,
     onAttach,
     onRemoveAttachment,
+    onDraftChange,
 }: SupportComposerProps) {
     const t = useTranslations('support');
     const [value, setValue] = useState('');
@@ -58,6 +62,7 @@ export function SupportComposer({
 
         onSend(value.trim());
         setValue('');
+        onDraftChange?.('');
     };
 
     const pick = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -129,7 +134,11 @@ export function SupportComposer({
                 <input
                     type="text"
                     value={value}
-                    onChange={event => setValue(event.target.value)}
+                    onChange={event => {
+                        setValue(event.target.value);
+                        onDraftChange?.(event.target.value);
+                    }}
+                    maxLength={MAX_MESSAGE_LENGTH}
                     disabled={!canSend}
                     placeholder={canSend ? t('composer.placeholder') : t('composer.connecting')}
                     aria-label={t('composer.placeholder')}
@@ -145,6 +154,13 @@ export function SupportComposer({
                     <Send className="h-4 w-4" />
                 </button>
             </div>
+
+            {/* Only near the limit. The box stops at the limit on its own; this says why. */}
+            {value.length >= MESSAGE_COUNTER_FROM && (
+                <p aria-live="polite" className="text-right text-xs text-slate-500 dark:text-slate-400">
+                    {t('composer.remaining', { count: MAX_MESSAGE_LENGTH - value.length })}
+                </p>
+            )}
         </form>
     );
 }

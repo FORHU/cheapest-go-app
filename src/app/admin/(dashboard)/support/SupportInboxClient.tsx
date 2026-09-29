@@ -1,19 +1,55 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Loader2, Send, Check, Paperclip, FileText, ImageIcon, X } from 'lucide-react';
+import { Loader2, Send, Check, Paperclip, FileText, ImageIcon, X, ChevronLeft, PanelRight } from 'lucide-react';
 import { formatFileSize } from '@/components/support/formatFileSize';
 import type { SupportAttachmentView } from '@/components/support/types';
 import type {
+    AssignableAgentView,
     ConversationDetail,
+    InboxMessage,
+    HandledTallyView,
     InboxConversation,
     InboxCountsView,
     InboxFilterView,
+    SupportRoleView,
 } from './types';
+import { AssignmentControls } from './AssignmentControls';
+import { TeamTally } from './TeamTally';
 import { UrgencyBadge } from '@/components/support/UrgencyBadge';
 import { UrgencyOverride } from '@/components/support/UrgencyOverride';
 import { LinkedBookings } from '@/components/support/LinkedBookings';
 import { AgentNotes } from '@/components/support/AgentNotes';
+import { TranslatedText } from '@/components/support/TranslatedText';
+import { readerView, customerReadsView, type CustomerReadsView } from '@/components/support/translationView';
+import {
+    ATTACHMENT_ACCEPT,
+    MAX_MESSAGE_LENGTH,
+    MESSAGE_COUNTER_FROM,
+    checkAttachment,
+    describeUploadFailure,
+    type AttachmentRefusal,
+    type UploadFailure,
+} from '@/lib/support/limits';
+
+/** Help Page articles by id, for the "already shown" line. The inbox is English-only. */
+const HELP_ARTICLE_NAMES: Record<string, string> = {
+    confirmation: 'Missing confirmation',
+    refunds: 'Refund timing',
+    changes: 'Changes and cancellations',
+    priceGap: 'Price differences',
+    payment: 'Payment problems',
+};
+
+/** The inbox is English-only; the customer's widget says the same things in their language. */
+const ATTACHMENT_REFUSALS: Record<AttachmentRefusal | UploadFailure, string> = {
+    empty: 'That file is empty.',
+    tooLarge: 'Files must be 10 MB or smaller.',
+    unsupported: 'That file type is not supported. Send an image or a PDF.',
+    tooMany: 'Too many uploads. Please wait a moment and try again.',
+    unavailable: 'Attachments are not available right now.',
+    failed: 'Could not upload that file. Please try again.',
+};
 
 /**
  * The Agent's inbox: the queue on the left, the conversation on the right.
@@ -27,19 +63,92 @@ import { AgentNotes } from '@/components/support/AgentNotes';
  * queue look exactly the same.
  */
 
-const TABS: { filter: InboxFilterView; label: string }[] = [
-    { filter: 'waiting', label: 'Waiting' },
-    { filter: 'mine', label: 'Mine' },
-    { filter: 'assistant', label: 'Assistant' },
-    { filter: 'resolved', label: 'Resolved' },
-];
+/**
+ * The views, in the order each role works them (ADR-0041). An admin's job is handing out the
+ * Unassigned queue; a Support Agent's is the chats given to them — they may read the queue
+ * and colleagues' chats, but it is not where their work is.
+ */
+const TABS: Record<SupportRoleView, { filter: InboxFilterView; label: string }[]> = {
+    admin: [
+        { filter: 'unassigned', label: 'Unassigned' },
+        { filter: 'mine', label: 'Mine' },
+        { filter: 'assigned', label: 'Assigned' },
+        { filter: 'resolved', label: 'Resolved' },
+    ],
+    support_agent: [
+        { filter: 'mine', label: 'Mine' },
+        { filter: 'unassigned', label: 'Unassigned' },
+        { filter: 'assigned', label: 'Assigned' },
+        { filter: 'resolved', label: 'Resolved' },
+    ],
+};
 
 const EMPTY: Record<InboxFilterView, string> = {
-    waiting: 'Nothing waiting. Everyone has been answered.',
-    mine: 'You are not handling anything right now.',
+    unassigned: 'Nothing to hand out. Every chat has someone.',
+    mine: 'Nothing is assigned to you right now.',
+    assigned: 'No chats are assigned to anyone.',
     assistant: 'The assistant is not in any conversations.',
     resolved: 'Nothing resolved yet.',
 };
+
+/**
+ * English, because English is the staff working language and every Agent reads the inbox in
+ * it. The customer's widget carries its own localised copy of the same labels.
+ *
+ * "Could not translate" rather than a softer word: when this shows, the text above it is the
+ * customer's own words in their own language, and an Agent who skims past it will answer a
+ * message they have not understood.
+ */
+const AGENT_TRANSLATION_LABELS = {
+    translated: 'Machine-translated',
+    showOriginal: 'Show original',
+    showTranslation: 'Show translation',
+    pending: 'Translating…',
+    untranslated: 'Could not translate — this is the customer’s original',
+};
+
+/**
+ * Under an Agent's own reply that went to the customer in another language: what the
+ * customer actually read, translated back. The Agent cannot read the translation itself, and
+ * this is how they catch one that changed their meaning.
+ */
+function CustomerReadsLine({ view }: { view: CustomerReadsView | null }) {
+    if (!view) return null;
+
+    const base = 'mt-1 block text-[11px] text-slate-500 dark:text-slate-400';
+    switch (view.state) {
+        case 'translating':
+            return <span className={base}>{`Translating into ${view.language}…`}</span>;
+        case 'checking':
+            return <span className={base}>{`Sent in ${view.language} — checking how it reads…`}</span>;
+        case 'unchecked':
+            return <span className={base}>{`Sent in ${view.language} — could not check how it reads`}</span>;
+        case 'untranslated':
+            // Amber: the customer did not get their language, and the Agent should know.
+            return (
+                <span className="mt-1 block text-[11px] text-amber-600 dark:text-amber-400">
+                    {`Could not translate into ${view.language} — the customer received your English`}
+                </span>
+            );
+        case 'reads-as':
+            return (
+                <span className={base}>
+                    {`Sent in ${view.language} — reads back as: `}
+                    <q className="italic text-slate-700 dark:text-slate-300">{view.readsAs}</q>
+                </span>
+            );
+    }
+}
+
+/** A labelled group in the details panel. */
+function DetailSection({ title, children }: { title: string; children: React.ReactNode }) {
+    return (
+        <section className="min-w-0">
+            <h3 className="mb-1.5 text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-400">{title}</h3>
+            {children}
+        </section>
+    );
+}
 
 interface SupportInboxClientProps {
     initialFilter: InboxFilterView;
@@ -47,6 +156,8 @@ interface SupportInboxClientProps {
     initialCounts: InboxCountsView;
     /** The signed-in Agent, so their own notes can be told from a colleague's. */
     currentAdminId: string;
+    /** Decides what they may write in and what they are offered (ADR-0041). */
+    currentRole?: SupportRoleView;
 }
 
 export function SupportInboxClient({
@@ -54,6 +165,7 @@ export function SupportInboxClient({
     initialConversations,
     initialCounts,
     currentAdminId,
+    currentRole = 'admin',
 }: SupportInboxClientProps) {
     const [filter, setFilter] = useState<InboxFilterView>(initialFilter);
     const [conversations, setConversations] = useState(initialConversations);
@@ -61,6 +173,8 @@ export function SupportInboxClient({
     const [openId, setOpenId] = useState<string | null>(null);
     const [detail, setDetail] = useState<ConversationDetail | null>(null);
     const [loadingDetail, setLoadingDetail] = useState(false);
+    /** The details panel, where it opens over the chat (below `xl`). Always shown beside it above. */
+    const [showDetails, setShowDetails] = useState(false);
     const [reply, setReply] = useState('');
     const [sending, setSending] = useState(false);
     /** Files this Agent has uploaded and not yet sent. Cleared when the reply goes. */
@@ -68,6 +182,11 @@ export function SupportInboxClient({
     const [uploading, setUploading] = useState(false);
     const [uploadError, setUploadError] = useState<string | null>(null);
     const fileInput = useRef<HTMLInputElement>(null);
+
+    /** Admins only: who a chat can be given to, and the team's tally. */
+    const [agents, setAgents] = useState<AssignableAgentView[]>([]);
+    const [tally, setTally] = useState<HandledTallyView[]>([]);
+    const [tallySince, setTallySince] = useState<string | null>(null);
 
     const openIdRef = useRef<string | null>(null);
     openIdRef.current = openId;
@@ -77,8 +196,30 @@ export function SupportInboxClient({
         if (!response.ok) return;
         const data = await response.json();
         setConversations(data.conversations ?? []);
-        setCounts(data.counts ?? { waiting: 0, mine: 0 });
+        setCounts(data.counts ?? { unassigned: 0, mine: 0, waiting: 0 });
     }, []);
+
+    const loadTeam = useCallback(async () => {
+        if (currentRole !== 'admin') return;
+        try {
+            const response = await fetch('/api/admin/support/agents');
+            if (!response.ok) return;
+            const data = (await response.json()) as {
+                agents?: AssignableAgentView[];
+                tally?: HandledTallyView[];
+                since?: string;
+            };
+            setAgents(data.agents ?? []);
+            setTally(data.tally ?? []);
+            setTallySince(data.since ?? null);
+        } catch {
+            // The inbox still works without it; assigning just has no one to offer.
+        }
+    }, [currentRole]);
+
+    useEffect(() => {
+        void loadTeam();
+    }, [loadTeam]);
 
     const loadDetail = useCallback(async (id: string) => {
         setLoadingDetail(true);
@@ -111,13 +252,14 @@ export function SupportInboxClient({
             }
 
             void loadList(filter);
+            void loadTeam();
             if (conversationId && conversationId === openIdRef.current) {
                 void loadDetail(conversationId);
             }
         });
 
         return () => source.close();
-    }, [filter, loadList, loadDetail]);
+    }, [filter, loadList, loadDetail, loadTeam]);
 
     const chooseFilter = (next: InboxFilterView) => {
         setFilter(next);
@@ -140,9 +282,15 @@ export function SupportInboxClient({
      */
     const attach = async (file: File) => {
         if (!openId) return;
-        setUploading(true);
         setUploadError(null);
 
+        const refusal = checkAttachment(file);
+        if (refusal) {
+            setUploadError(ATTACHMENT_REFUSALS[refusal]);
+            return;
+        }
+
+        setUploading(true);
         try {
             const form = new FormData();
             form.append('file', file);
@@ -151,18 +299,21 @@ export function SupportInboxClient({
                 method: 'POST',
                 body: form,
             });
-            const data = (await response.json()) as {
+            // Production's proxy answers an oversized upload with an HTML 413 page, not JSON
+            // (QA BG-16); read the status when there is no message to read.
+            const data = (await response.json().catch(() => ({}))) as {
                 attachment?: SupportAttachmentView;
                 error?: string;
             };
 
             if (!response.ok || !data.attachment) {
-                setUploadError(data.error ?? 'Could not upload that file.');
+                const failure = describeUploadFailure(response.status, data.error);
+                setUploadError('message' in failure ? failure.message : ATTACHMENT_REFUSALS[failure.reason]);
                 return;
             }
             setPendingFiles(current => [...current, data.attachment as SupportAttachmentView]);
         } catch {
-            setUploadError('Could not upload that file.');
+            setUploadError(ATTACHMENT_REFUSALS.failed);
         } finally {
             setUploading(false);
         }
@@ -203,6 +354,11 @@ export function SupportInboxClient({
         }
     };
 
+    // Whether this Agent may write in the open chat — their own, or any if they are an admin.
+    // Reading is never gated (ADR-0041).
+    const canWrite = detail !== null
+        && (currentRole === 'admin' || detail.conversation.assignedAdminId === currentAdminId);
+
     return (
         <div className="flex h-[calc(100dvh-8rem)] flex-col gap-4">
             <header>
@@ -212,8 +368,10 @@ export function SupportInboxClient({
                 </p>
             </header>
 
+            {currentRole === 'admin' && <TeamTally tally={tally} since={tallySince} />}
+
             <nav className="flex flex-wrap gap-1" aria-label="Inbox filters">
-                {TABS.map(tab => (
+                {TABS[currentRole].map(tab => (
                     <button
                         key={tab.filter}
                         type="button"
@@ -226,16 +384,16 @@ export function SupportInboxClient({
                         }`}
                     >
                         {tab.label}
-                        {tab.filter === 'waiting' && counts.waiting > 0 && ` (${counts.waiting})`}
+                        {tab.filter === 'unassigned' && counts.unassigned > 0 && ` (${counts.unassigned})`}
                         {tab.filter === 'mine' && counts.mine > 0 && ` (${counts.mine})`}
                     </button>
                 ))}
             </nav>
 
-            <div className="flex min-h-0 flex-1 gap-4">
+            <div className="flex min-h-0 min-w-0 flex-1 gap-4">
                 <section
                     aria-label="Conversations"
-                    className={`min-h-0 w-full overflow-y-auto rounded-xl border border-slate-200 lg:w-80 dark:border-white/10 ${
+                    className={`min-h-0 w-full overflow-y-auto rounded-xl border border-slate-200 lg:w-72 lg:shrink-0 xl:w-80 dark:border-white/10 ${
                         openId ? 'hidden lg:block' : ''
                     }`}
                 >
@@ -266,7 +424,7 @@ export function SupportInboxClient({
                                                 overridden={item.priority !== null}
                                             />
                                         </span>
-                                        <span className="mt-0.5 flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+                                        <span className="mt-0.5 flex min-w-0 items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
                                             {/*
                                               * Monospaced so a reference a customer reads out
                                               * over the phone can be matched character by
@@ -282,10 +440,23 @@ export function SupportInboxClient({
                                               */}
                                             <span className="whitespace-nowrap font-mono">{item.reference}</span>
                                             <span aria-hidden>·</span>
-                                            <span>{item.sourceBrand ?? 'CheapestGo'}</span>
+                                            <span className="truncate">{item.sourceBrand ?? 'CheapestGo'}</span>
                                             <span aria-hidden>·</span>
-                                            <span>{new Date(item.lastMessageAt).toLocaleString()}</span>
+                                            <span
+                                                className="ml-auto shrink-0 whitespace-nowrap"
+                                                title={new Date(item.lastMessageAt).toLocaleString()}
+                                            >
+                                                {new Date(item.lastMessageAt).toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'short' })}
+                                            </span>
                                         </span>
+                                        {/* Whose it is, where that is not obvious from the view. */}
+                                        {filter !== 'mine' && item.assignedAdminId && (
+                                            <span className="mt-0.5 block truncate text-xs text-slate-400">
+                                                {item.assignedAdminId === currentAdminId
+                                                    ? 'Assigned to you'
+                                                    : `Assigned to ${item.assignedAdminName ?? 'someone'}`}
+                                            </span>
+                                        )}
                                     </button>
                                 </li>
                             ))}
@@ -295,7 +466,7 @@ export function SupportInboxClient({
 
                 <section
                     aria-label="Conversation"
-                    className={`flex min-h-0 flex-1 flex-col rounded-xl border border-slate-200 dark:border-white/10 ${
+                    className={`relative flex min-h-0 min-w-0 flex-1 overflow-hidden rounded-xl border border-slate-200 dark:border-white/10 ${
                         openId ? '' : 'hidden lg:flex'
                     }`}
                 >
@@ -313,159 +484,99 @@ export function SupportInboxClient({
 
                     {detail && (
                         <>
-                            <header className="shrink-0 border-b border-slate-200 px-4 py-3 dark:border-white/10">
-                                <div className="flex items-start justify-between gap-3">
-                                    <div className="min-w-0">
-                                        <p className="flex items-center gap-2 text-sm font-semibold text-slate-900 dark:text-slate-100">
-                                            <span className="truncate">
-                                                {detail.conversation.guestName ?? 'Signed-in customer'}
-                                            </span>
-                                            <UrgencyBadge
-                                                urgency={detail.conversation.urgency}
-                                                overridden={detail.conversation.priority !== null}
-                                            />
-                                        </p>
-                                        <p className="text-xs text-slate-500 dark:text-slate-400">
-                                            <span className="font-mono">{detail.conversation.reference}</span> ·{' '}
-                                            {detail.conversation.guestEmail ?? '—'} ·{' '}
-                                            {detail.conversation.sourceBrand ?? 'CheapestGo'} ·{' '}
-                                            {detail.conversation.locale}
-                                            {detail.conversation.userId ? ' · signed in' : ' · not signed in'}
-                                        </p>
-                                    </div>
-                                    {/*
-                                      * Named in full for assistive tech: the "Resolved" tab is
-                                      * one word away, and two controls that sound alike is how
-                                      * the wrong one gets pressed.
-                                      */}
+                            {/*
+                              * The conversation column: who, then the messages, then the reply.
+                              * Everything else about the chat is in the details panel beside it,
+                              * so the transcript always has the height — it is what is being read.
+                              */}
+                            <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+                            <header className="flex shrink-0 items-center gap-3 border-b border-slate-200 px-4 py-3 dark:border-white/10">
+                                {/* Back to the list, where the list and the chat do not fit side by side. */}
+                                <button
+                                    type="button"
+                                    onClick={() => { setOpenId(null); setDetail(null); }}
+                                    aria-label="Back to conversations"
+                                    className="-ml-1 rounded-lg p-1 text-slate-500 transition hover:bg-slate-100 lg:hidden dark:hover:bg-white/10"
+                                >
+                                    <ChevronLeft className="h-4 w-4" />
+                                </button>
+                                <div className="min-w-0 flex-1">
+                                    <p className="flex min-w-0 items-center gap-2 text-sm font-semibold text-slate-900 dark:text-slate-100">
+                                        <span className="truncate">
+                                            {detail.conversation.guestName ?? 'Signed-in customer'}
+                                        </span>
+                                        <UrgencyBadge
+                                            urgency={detail.conversation.urgency}
+                                            overridden={detail.conversation.priority !== null}
+                                        />
+                                    </p>
+                                    <p className="truncate text-xs text-slate-500 dark:text-slate-400">
+                                        <span className="font-mono">{detail.conversation.reference}</span> ·{' '}
+                                        {detail.conversation.guestEmail ?? '—'} ·{' '}
+                                        {detail.conversation.sourceBrand ?? 'CheapestGo'} ·{' '}
+                                        {detail.conversation.locale}
+                                        {detail.conversation.userId ? ' · signed in' : ' · not signed in'}
+                                    </p>
+                                </div>
+                                {/*
+                                  * Named in full for assistive tech: the "Resolved" tab is
+                                  * one word away, and two controls that sound alike is how
+                                  * the wrong one gets pressed.
+                                  */}
+                                {canWrite && detail.conversation.status !== 'resolved' && (
                                     <button
                                         type="button"
                                         onClick={() => void resolve()}
                                         aria-label="Mark conversation resolved"
                                         className="flex shrink-0 items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 transition hover:bg-slate-50 dark:border-white/10 dark:text-slate-300 dark:hover:bg-white/5"
                                     >
-                                        <Check className="h-3.5 w-3.5" /> Resolve
+                                        <Check className="h-3.5 w-3.5" /> <span className="hidden sm:inline">Resolve</span>
                                     </button>
-                                </div>
-
-                                {/*
-                                  * The model's private note. Shown here and nowhere else —
-                                  * it is about the customer, not for them.
-                                  */}
-                                {detail.conversation.escalationReason && (
-                                    <p className="mt-2 rounded-lg bg-amber-50 px-3 py-1.5 text-xs text-amber-900 dark:bg-amber-950/40 dark:text-amber-200">
-                                        Handed over because: {detail.conversation.escalationReason}
-                                    </p>
                                 )}
-
-                                {detail.bookings && detail.bookings.length > 0 && (
-                                    <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
-                                        {detail.bookings.length} booking
-                                        {detail.bookings.length === 1 ? '' : 's'} on this account
-                                    </p>
-                                )}
-
-                                <LinkedBookings
-                                    conversationId={detail.conversation.id}
-                                    bookings={detail.linkedBookings}
-                                    onChanged={() => void loadDetail(detail.conversation.id)}
-                                />
-
-                                {/*
-                                  * The override, offered as plain words rather than a
-                                  * priority dropdown. "Let the dates decide" is a real
-                                  * choice and not the same as picking Normal: it hands the
-                                  * conversation back to a rule that keeps moving as the
-                                  * departure approaches, where Normal freezes it there.
-                                  */}
-                                <UrgencyOverride
-                                    conversationId={detail.conversation.id}
-                                    priority={detail.conversation.priority}
-                                    onChanged={() => void loadDetail(detail.conversation.id)}
-                                />
-
-                                <div className="mt-2">
-                                    <AgentNotes
-                                        conversationId={detail.conversation.id}
-                                        notes={detail.notes}
-                                        currentAdminId={currentAdminId}
-                                        onChanged={() => void loadDetail(detail.conversation.id)}
-                                    />
-                                </div>
+                                {/* Beside the chat on wide screens; below that the panel opens over it. */}
+                                <button
+                                    type="button"
+                                    onClick={() => setShowDetails(v => !v)}
+                                    aria-label="Details"
+                                    aria-expanded={showDetails}
+                                    aria-controls="support-conversation-details"
+                                    className="flex shrink-0 items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 transition hover:bg-slate-50 xl:hidden dark:border-white/10 dark:text-slate-300 dark:hover:bg-white/5"
+                                >
+                                    <PanelRight className="h-3.5 w-3.5" /> <span className="hidden sm:inline">Details</span>
+                                </button>
                             </header>
 
-                            <div className="min-h-0 flex-1 space-y-3 overflow-y-auto px-4 py-3">
-                                {detail.messages.map(message => (
-                                    <div key={message.id}>
-                                        <span className="block text-[11px] font-medium uppercase tracking-[0.12em] text-slate-400">
-                                            {message.senderType}
-                                        </span>
-                                        {/*
-                                          * A customer's message is read here through its
-                                          * English rendering, because English is the staff
-                                          * working language — but the rendering never
-                                          * replaces what they wrote. An Agent answering a
-                                          * mistranslation has to be able to see that is
-                                          * what happened, and the label is what tells them
-                                          * the sentence above was written by a machine.
-                                          */}
-                                        {message.senderType === 'guest' && message.translatedBody ? (
-                                            <>
-                                                <p className="text-sm text-slate-800 dark:text-slate-200">
-                                                    {message.translatedBody}
-                                                </p>
-                                                <span className="mt-1 block text-[11px] uppercase tracking-[0.12em] text-slate-400 dark:text-slate-500">
-                                                    Machine translation
-                                                </span>
-                                                <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
-                                                    {message.body}
-                                                </p>
-                                            </>
-                                        ) : (
-                                            <p className="text-sm text-slate-800 dark:text-slate-200">{message.body}</p>
-                                        )}
+                            {/*
+                              * What the widget already offered this customer (ADR-0043). They
+                              * read these and wrote anyway, so sending the same article back is
+                              * the one reply guaranteed to annoy them — and a chat that keeps
+                              * arriving after the same card is how a bad match is found.
+                              */}
+                            {(detail.suggestionsShown?.length ?? 0) > 0 && (
+                                <p className="shrink-0 border-b border-slate-100 px-4 py-1.5 text-[11px] text-slate-500 dark:border-white/5 dark:text-slate-400">
+                                    Already shown: {detail.suggestionsShown!.map(id => HELP_ARTICLE_NAMES[id] ?? id).join(', ')}
+                                </p>
+                            )}
 
-                                        {message.attachments.length > 0 && (
-                                            <ul className="mt-1.5 flex flex-col gap-1">
-                                                {message.attachments.map(file => {
-                                                    const Icon = file.contentType.startsWith('image/')
-                                                        ? ImageIcon
-                                                        : FileText;
-                                                    return (
-                                                        <li key={file.id}>
-                                                            {/*
-                                                              * Links to this app, not to the bucket: the route
-                                                              * re-checks the Agent and mints a URL good for a few
-                                                              * minutes (ADR-0040). Opened in a new tab so reading
-                                                              * an attachment does not lose the queue.
-                                                              */}
-                                                            <a
-                                                                href={`/api/admin/support/conversations/${detail.conversation.id}/attachments/${file.id}`}
-                                                                target="_blank"
-                                                                rel="noopener noreferrer"
-                                                                className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs text-slate-700 ring-1 ring-slate-200 transition hover:bg-slate-50 dark:text-slate-200 dark:ring-white/10 dark:hover:bg-white/10"
-                                                            >
-                                                                <Icon className="h-3.5 w-3.5 shrink-0 text-slate-400" />
-                                                                <span className="max-w-[16rem] truncate">{file.fileName}</span>
-                                                                <span className="shrink-0 text-slate-400">
-                                                                    {formatFileSize(file.sizeBytes)}
-                                                                </span>
-                                                            </a>
-                                                        </li>
-                                                    );
-                                                })}
-                                            </ul>
-                                        )}
-                                    </div>
-                                ))}
-                            </div>
+                            <Transcript
+                                messages={detail.messages}
+                                conversationId={detail.conversation.id}
+                                currentAdminId={currentAdminId}
+                            />
 
                             {/*
-                              * Never disabled by status. Replying to a chat the assistant is
-                              * handling is a Takeover, and catching a wrong answer is the
-                              * reason the Assistant tab exists at all.
+                              * Only where this Agent may write: their own chat, or any chat
+                              * if they are an admin (ADR-0041). Everyone else reads, and is
+                              * told why the box is not there rather than finding it refuses.
                               */}
-                            <form
+                            {!canWrite && (
+                                <p className="shrink-0 border-t border-slate-200 px-4 py-3 text-xs text-slate-500 dark:border-white/10 dark:text-slate-400">
+                                    {detail.conversation.assignedAdminId
+                                        ? `Assigned to ${detail.conversation.assignedAdminName ?? 'someone else'}. You can read this chat, but only they can reply.`
+                                        : 'Not assigned yet. An admin will give it to someone — you can read it meanwhile.'}
+                                </p>
+                            )}
+                            {canWrite && <form
                                 onSubmit={sendReply}
                                 className="flex shrink-0 flex-col gap-2 border-t border-slate-200 px-4 py-3 dark:border-white/10"
                             >
@@ -505,7 +616,7 @@ export function SupportInboxClient({
                                 <input
                                     ref={fileInput}
                                     type="file"
-                                    accept="image/jpeg,image/png,image/webp,image/gif,image/heic,application/pdf"
+                                    accept={ATTACHMENT_ACCEPT}
                                     className="hidden"
                                     tabIndex={-1}
                                     onChange={event => {
@@ -528,6 +639,7 @@ export function SupportInboxClient({
                                     type="text"
                                     value={reply}
                                     onChange={event => setReply(event.target.value)}
+                                    maxLength={MAX_MESSAGE_LENGTH}
                                     placeholder="Reply to the customer"
                                     aria-label="Reply to the customer"
                                     className="h-9 flex-1 rounded-lg border border-slate-200 px-3 text-sm dark:border-white/10 dark:bg-white/5"
@@ -540,11 +652,306 @@ export function SupportInboxClient({
                                     <Send className="h-4 w-4" /> Send
                                 </button>
                                 </div>
-                            </form>
+
+                                {reply.length >= MESSAGE_COUNTER_FROM && (
+                                    <p aria-live="polite" className="text-right text-xs text-slate-500 dark:text-slate-400">
+                                        {`${MAX_MESSAGE_LENGTH - reply.length} characters left`}
+                                    </p>
+                                )}
+                            </form>}
+                            </div>
+
+                            {/*
+                              * Details: whose it is, what came before, the trips, urgency and the
+                              * notes. A column of its own on wide screens; below `xl` it is opened
+                              * from the header and lies over the conversation rather than pushing
+                              * the transcript into a sliver.
+                              */}
+                            <aside
+                                id="support-conversation-details"
+                                aria-label="Conversation details"
+                                className={`${
+                                    showDetails ? 'absolute inset-y-0 right-0 z-20 flex w-full max-w-sm shadow-2xl' : 'hidden'
+                                } min-h-0 shrink-0 flex-col overflow-y-auto border-l border-slate-200 bg-white xl:static xl:flex xl:w-80 xl:shadow-none 2xl:w-96 dark:border-white/10 dark:bg-slate-950`}
+                            >
+                                <div className="flex items-center justify-between border-b border-slate-200 px-4 py-2.5 xl:hidden dark:border-white/10">
+                                    <span className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">Details</span>
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowDetails(false)}
+                                        aria-label="Close details"
+                                        className="rounded-lg p-1 text-slate-500 transition hover:bg-slate-100 dark:hover:bg-white/10"
+                                    >
+                                        <X className="h-4 w-4" />
+                                    </button>
+                                </div>
+
+                                <div className="flex flex-col gap-4 px-4 py-3">
+                                    <DetailSection title="Assignment">
+                                        <AssignmentControls
+                                            conversationId={detail.conversation.id}
+                                            assignedAdminId={detail.conversation.assignedAdminId}
+                                            assignedAdminName={detail.conversation.assignedAdminName}
+                                            resolved={detail.conversation.status === 'resolved'}
+                                            currentAdminId={currentAdminId}
+                                            currentRole={currentRole}
+                                            agents={agents}
+                                            onChanged={() => {
+                                                void loadDetail(detail.conversation.id);
+                                                void loadList(filter);
+                                                void loadTeam();
+                                            }}
+                                        />
+                                    </DetailSection>
+
+                                    {/*
+                                      * The model's private note. Shown here and nowhere else —
+                                      * it is about the customer, not for them.
+                                      */}
+                                    {detail.conversation.escalationReason && (
+                                        <p className="rounded-lg bg-amber-50 px-3 py-1.5 text-xs text-amber-900 dark:bg-amber-950/40 dark:text-amber-200">
+                                            Handed over because: {detail.conversation.escalationReason}
+                                        </p>
+                                    )}
+
+                                    {/*
+                                      * The customer's earlier chats. A resolved chat is never
+                                      * reopened, so a returning customer arrives in a new one;
+                                      * this is where what was said before is, one click away.
+                                      */}
+                                    {detail.previousConversations && detail.previousConversations.length > 0 && (
+                                        <DetailSection title="Earlier chats">
+                                            <ul className="flex flex-col gap-1">
+                                                {detail.previousConversations.map(previous => (
+                                                    <li key={previous.id}>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => openConversation(previous.id)}
+                                                            className="flex w-full min-w-0 items-center justify-between gap-2 rounded-lg px-2 py-1.5 text-left text-xs transition hover:bg-slate-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:hover:bg-white/5"
+                                                        >
+                                                            <span className="shrink-0 font-mono text-blue-600 dark:text-blue-400">{previous.reference}</span>
+                                                            <span className="min-w-0 truncate text-slate-500 dark:text-slate-400">
+                                                                {previous.status === 'resolved' ? 'Resolved' : 'Open'} · {new Date(previous.lastMessageAt).toLocaleDateString()}
+                                                                {previous.assignedAdminName ? ` · ${previous.assignedAdminName}` : ''}
+                                                            </span>
+                                                        </button>
+                                                    </li>
+                                                ))}
+                                            </ul>
+                                        </DetailSection>
+                                    )}
+
+                                    <DetailSection title="Trips">
+                                        {detail.bookings && detail.bookings.length > 0 && (
+                                            <p className="mb-1 text-xs text-slate-500 dark:text-slate-400">
+                                                {detail.bookings.length} booking
+                                                {detail.bookings.length === 1 ? '' : 's'} on this account
+                                            </p>
+                                        )}
+                                        <LinkedBookings
+                                            conversationId={detail.conversation.id}
+                                            bookings={detail.linkedBookings}
+                                            onChanged={() => void loadDetail(detail.conversation.id)}
+                                        />
+                                    </DetailSection>
+
+                                    {/*
+                                      * The override, offered as plain words rather than a
+                                      * priority dropdown. "Let the dates decide" is a real
+                                      * choice and not the same as picking Normal: it hands the
+                                      * conversation back to a rule that keeps moving as the
+                                      * departure approaches, where Normal freezes it there.
+                                      */}
+                                    {canWrite && (
+                                        <UrgencyOverride
+                                            conversationId={detail.conversation.id}
+                                            priority={detail.conversation.priority}
+                                            onChanged={() => void loadDetail(detail.conversation.id)}
+                                        />
+                                    )}
+
+                                    <AgentNotes
+                                        conversationId={detail.conversation.id}
+                                        notes={detail.notes}
+                                        currentAdminId={currentAdminId}
+                                        onChanged={() => void loadDetail(detail.conversation.id)}
+                                    />
+                                </div>
+                            </aside>
                         </>
                     )}
                 </section>
             </div>
         </div>
     );
+}
+
+/**
+ * The conversation, read the way a messenger reads it: the customer on the left, CheapestGo
+ * on the right, so an Agent scanning a chat they were handed sees who said what before they
+ * read a word of it. The flat list it replaces put both speakers in one column under an
+ * uppercase GUEST / AGENT caption, which makes a long exchange one undifferentiated wall.
+ *
+ * The customer's own widget has always been laid out this way (components/support/
+ * SupportTranscript.tsx); this is the same idea from the other chair — "me" is support here,
+ * so support is the side on the right.
+ */
+const SIDE: Record<InboxMessage['senderType'], 'left' | 'right' | 'centre'> = {
+    guest: 'left',
+    agent: 'right',
+    // Residue: nothing writes an `ai` row any more (CONTEXT.md, "Support Chat"). Old chats
+    // still carry them — on the support side, but never in the Agent's blue, because a
+    // retired model's words must not read as a colleague's.
+    ai: 'right',
+    // A notice has no author, so it gets no side. Giving it one implies someone said it.
+    system: 'centre',
+};
+
+/** A pause this long between two messages earns a time above the next one. */
+const TIME_GAP_MS = 15 * 60 * 1000;
+
+function Transcript({
+    messages,
+    conversationId,
+    currentAdminId,
+}: {
+    messages: InboxMessage[];
+    conversationId: string;
+    currentAdminId: string;
+}) {
+    return (
+        <div className="min-h-0 flex-1 space-y-1 overflow-y-auto px-4 py-3">
+            {messages.map((message, i) => {
+                const previous = i > 0 ? messages[i - 1] : null;
+                const side = SIDE[message.senderType];
+                const isAgent = message.senderType === 'agent';
+
+                // The caption names the author once per run of their messages: an admin may
+                // write in a chat they do not own without taking it (CONTEXT.md,
+                // "Assignment"), so two colleagues' replies share this column.
+                const author = message.senderAdminId && message.senderAdminId === currentAdminId
+                    ? 'You'
+                    : message.senderName ?? (message.senderType === 'ai' ? 'Assistant' : 'Agent');
+                const startsRun = !previous
+                    || previous.senderType !== message.senderType
+                    || (previous.senderAdminId ?? null) !== (message.senderAdminId ?? null);
+
+                return (
+                    <div key={message.id}>
+                        <TimeSeparator at={message.createdAt} previousAt={previous?.createdAt ?? null} />
+
+                        {side === 'centre' ? (
+                            <p className="my-2 text-center text-[11px] text-slate-500 dark:text-slate-400">
+                                <time dateTime={message.createdAt} title={exactTime(message.createdAt)}>
+                                    {message.body}
+                                </time>
+                            </p>
+                        ) : (
+                            <div className={side === 'right' ? 'flex flex-col items-end' : 'flex flex-col items-start'}>
+                                {side === 'right' && startsRun && (
+                                    <span className="mb-0.5 mt-2 text-[11px] font-medium text-slate-400 dark:text-slate-500">
+                                        {author}
+                                    </span>
+                                )}
+
+                                <div
+                                    title={exactTime(message.createdAt)}
+                                    className={
+                                        'max-w-[85%] rounded-2xl px-3 py-2 text-sm ' + (isAgent
+                                            ? 'bg-blue-600 text-white'
+                                            : 'bg-slate-100 text-slate-900 dark:bg-white/5 dark:text-slate-100')
+                                    }
+                                >
+                                    {/*
+                                      * A customer's message arrives in English for the Agent,
+                                      * marked as a machine translation, with the customer's own
+                                      * words one click away. When the translation failed the
+                                      * original shows with an amber "not translated" — never a
+                                      * refusal the translator produced in the customer's name.
+                                      */}
+                                    <TranslatedText
+                                        view={readerView(message, true)}
+                                        tone={isAgent ? 'dark' : 'light'}
+                                        labels={AGENT_TRANSLATION_LABELS}
+                                    />
+                                </div>
+
+                                {/*
+                                  * Outside the bubble on purpose. This is not what anyone said:
+                                  * it is what the customer received, the Agent's own check on
+                                  * their reply — and it turns amber when it has to warn, which
+                                  * is unreadable on blue.
+                                  */}
+                                <div className={'max-w-[85%] ' + (side === 'right' ? 'text-right' : '')}>
+                                    <CustomerReadsLine view={customerReadsView(message)} />
+                                </div>
+
+                                {message.attachments.length > 0 && (
+                                    <ul className={'mt-1 flex max-w-[85%] flex-col gap-1 ' + (side === 'right' ? 'items-end' : 'items-start')}>
+                                        {message.attachments.map(file => {
+                                            const Icon = file.contentType.startsWith('image/') ? ImageIcon : FileText;
+                                            return (
+                                                <li key={file.id}>
+                                                    {/*
+                                                      * Links to this app, not to the bucket: the route
+                                                      * re-checks the Agent and mints a URL good for a few
+                                                      * minutes (ADR-0040). Opened in a new tab so reading
+                                                      * an attachment does not lose the queue.
+                                                      */}
+                                                    <a
+                                                        href={`/api/admin/support/conversations/${conversationId}/attachments/${file.id}`}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs text-slate-700 ring-1 ring-slate-200 transition hover:bg-slate-50 dark:text-slate-200 dark:ring-white/10 dark:hover:bg-white/10"
+                                                    >
+                                                        <Icon className="h-3.5 w-3.5 shrink-0 text-slate-400" />
+                                                        <span className="max-w-[16rem] truncate">{file.fileName}</span>
+                                                        <span className="shrink-0 text-slate-400">
+                                                            {formatFileSize(file.sizeBytes)}
+                                                        </span>
+                                                    </a>
+                                                </li>
+                                            );
+                                        })}
+                                    </ul>
+                                )}
+                            </div>
+                        )}
+                    </div>
+                );
+            })}
+        </div>
+    );
+}
+
+/**
+ * The clock, only where it says something: the first message, a new day, or a pause long
+ * enough that "how long has this person been waiting" is the question being asked. In the
+ * Agent's own timezone, because the Agent is who reads it.
+ */
+function TimeSeparator({ at, previousAt }: { at: string; previousAt: string | null }) {
+    const now = new Date(at);
+    const before = previousAt ? new Date(previousAt) : null;
+    const show = !before
+        || now.getTime() - before.getTime() >= TIME_GAP_MS
+        || now.toDateString() !== before.toDateString();
+    if (!show) return null;
+
+    const sameDay = before !== null && now.toDateString() === before.toDateString();
+    return (
+        <p className="my-3 text-center text-[11px] text-slate-400 dark:text-slate-500">
+            <time dateTime={at}>
+                {sameDay
+                    ? now.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })
+                    : now.toLocaleString(undefined, {
+                        month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit',
+                    })}
+            </time>
+        </p>
+    );
+}
+
+/** The full timestamp, for a hover and for anything reading the title attribute. */
+function exactTime(at: string): string {
+    return new Date(at).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
 }

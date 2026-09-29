@@ -133,7 +133,7 @@ export function LegalModal({ open, doc, onOpenChange }: LegalModalProps) {
                         aria-hidden={reachedBottom}
                     >
                         <ArrowDown className="h-3.5 w-3.5" />
-                        Scroll to the bottom to continue
+                        {t('scrollToContinue')}
                     </p>
                     <button
                         type="button"

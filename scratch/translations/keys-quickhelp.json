@@ -1,0 +1,50 @@
+{
+  "support.suggestions.quickHeading": {
+    "en": "Common questions",
+    "ko": "자주 묻는 질문",
+    "ja": "よくある質問",
+    "zh": "常见问题"
+  },
+  "support.suggestions.automated": {
+    "en": "Help Centre · automated",
+    "ko": "도움말 센터 · 자동 응답",
+    "ja": "ヘルプセンター · 自動応答",
+    "zh": "帮助中心 · 自动回复"
+  },
+  "support.suggestions.talkToPerson": {
+    "en": "Talk to a person",
+    "ko": "상담원과 대화하기",
+    "ja": "担当者に相談する",
+    "zh": "联系人工客服"
+  },
+  "support.suggestions.chips.confirmation": {
+    "en": "Where's my confirmation?",
+    "ko": "예약 확인서가 안 왔어요",
+    "ja": "予約確認が届きません",
+    "zh": "没有收到确认信"
+  },
+  "support.suggestions.chips.refunds": {
+    "en": "When do I get my refund?",
+    "ko": "환불은 언제 받나요?",
+    "ja": "返金はいつ受け取れますか？",
+    "zh": "退款什么时候到账？"
+  },
+  "support.suggestions.chips.changes": {
+    "en": "Cancel or change a booking",
+    "ko": "예약 취소 또는 변경",
+    "ja": "予約のキャンセル・変更",
+    "zh": "取消或更改预订"
+  },
+  "support.suggestions.chips.priceGap": {
+    "en": "The price changed at checkout",
+    "ko": "결제 단계에서 가격이 달라졌어요",
+    "ja": "支払い画面で料金が変わりました",
+    "zh": "结账时价格变了"
+  },
+  "support.suggestions.chips.payment": {
+    "en": "A payment problem",
+    "ko": "결제 문제가 있어요",
+    "ja": "支払いに問題があります",
+    "zh": "支付出现问题"
+  }
+}

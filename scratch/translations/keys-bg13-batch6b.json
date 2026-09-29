@@ -1,0 +1,6 @@
+{
+  "landing.ai.cards.destination": { "en": "Destination", "ko": "목적지", "ja": "目的地", "zh": "目的地" },
+  "landing.ai.cards.dates":       { "en": "Dates", "ko": "날짜", "ja": "日程", "zh": "日期" },
+  "landing.ai.cards.guests":      { "en": "Guests", "ko": "인원", "ja": "人数", "zh": "人数" },
+  "landing.ai.cards.budget":      { "en": "Budget", "ko": "예산", "ja": "予算", "zh": "预算" }
+}

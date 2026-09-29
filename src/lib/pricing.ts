@@ -371,6 +371,51 @@ export function applyMarkup(
 }
 
 /**
+ * The hotel service fee on a base already in the charge currency, and the total that
+ * results — the one function behind both the figure a customer is **shown** and the figure
+ * they are **charged**.
+ *
+ * It exists because those two were computed in different places and had drifted. The
+ * server charged 5.9% while v1's checkout rendered a hardcoded 5% and app-v2's a hardcoded
+ * 6%, so a $300 room displayed $315.00 and billed $317.70. Deriving both from here, with the
+ * same spec and the same conversion, is what makes them agree by construction.
+ *
+ * The flat component is quoted in USD (it covers Stripe's $0.30 per charge) and is converted
+ * into `currency` here. If that conversion is not possible the flat part is dropped rather
+ * than the booking refused: failing a sale over forty cents is the wrong trade, and a fee
+ * shown without it is never *higher* than the one charged with it — see `create-payment`,
+ * which never bills above what was displayed.
+ *
+ * @param convert  A strict converter; throwing is how it says it cannot convert.
+ */
+export function hotelServiceFee(
+    baseInChargeCurrency: number,
+    currency: string,
+    convert: (amount: number, from: string, to: string) => number,
+): {
+    serviceFee: number;
+    chargedTotal: number;
+    markupRate: number;
+    markupFlat: number;
+    capped: boolean;
+} {
+    let flat = 0;
+    try {
+        flat = convert(HOTEL_MARKUP_SPEC.flat, 'USD', currency);
+    } catch {
+        flat = 0;
+    }
+    const pricing = applyMarkup(baseInChargeCurrency, HOTEL_MARKUP_SPEC, flat);
+    return {
+        serviceFee: pricing.markupAmount,
+        chargedTotal: pricing.chargedPrice,
+        markupRate: pricing.markupRate,
+        markupFlat: pricing.markupFlat,
+        capped: pricing.capped,
+    };
+}
+
+/**
  * The saving a traveller receives by bundling a hotel with a flight.
  *
  * Always zero, and kept as a function rather than deleted so the call site

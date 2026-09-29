@@ -97,15 +97,13 @@ export async function GET(req: NextRequest) {
     const url = new URL(req.url);
     const hotelId = url.searchParams.get('hotel');
 
-    // Single-hotel reset+reseed — clears ETG cache, re-fetches ETG, evicts search cache
+    // Single-hotel reset+reseed — clears ETG cache and re-fetches ETG. Nothing to evict:
+    // hotel searches are live, so the next page load picks the new room groups up anyway.
     if (hotelId) {
         const sql = getSqlAdmin();
         await sql`UPDATE hotel_content SET room_groups = '[]'::jsonb, room_groups_seeded_at = NULL WHERE hotel_id = ${hotelId}`;
         const groups = await seedHotelRoomGroupsById(hotelId);
-        // Evict all hotel_search_cache rows for this hotel so the next page load re-runs fetchTgxRoomCatalog
-        const evicted = await sql`DELETE FROM hotel_search_cache WHERE cache_key LIKE ${'hotel:' + hotelId + '|%'}`;
-        console.log(`[seed-room-groups] Evicted ${evicted.count} search cache rows for hotel ${hotelId}`);
-        return NextResponse.json({ ok: true, hotel_id: hotelId, groups: groups.length, photos: groups.filter((g: { images: string[] }) => g.images.length > 0).length, cache_evicted: evicted.count });
+        return NextResponse.json({ ok: true, hotel_id: hotelId, groups: groups.length, photos: groups.filter((g: { images: string[] }) => g.images.length > 0).length });
     }
 
     const batchSize = Math.min(parseInt(url.searchParams.get('batch') ?? '150', 10), 500);

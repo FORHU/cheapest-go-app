@@ -17,17 +17,23 @@ export default async function DeskInboxPage() {
     const { user } = await getSession();
     if (!user || !canStaffSupport(user.role)) redirect('/');
 
+    // Where each role's work is: an admin hands out Unassigned chats, a Support Agent works
+    // the ones given to them (ADR-0041).
+    const role = user.role === 'admin' ? 'admin' : 'support_agent';
+    const initialFilter = role === 'admin' ? 'unassigned' : 'mine';
+
     const [conversations, counts] = await Promise.all([
-        listInbox({ filter: 'waiting', adminId: user.id }),
-        inboxCounts(user.id),
+        listInbox({ filter: initialFilter, adminId: user.id }),
+        inboxCounts({ id: user.id, role }),
     ]);
 
     return (
         <SupportInboxClient
-            initialFilter="waiting"
+            initialFilter={initialFilter}
             initialConversations={conversations as unknown as InboxConversation[]}
             initialCounts={counts}
             currentAdminId={user.id}
+            currentRole={role}
         />
     );
 }

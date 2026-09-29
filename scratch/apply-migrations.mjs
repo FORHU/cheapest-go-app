@@ -22,7 +22,8 @@
  * applying either file marks the other applied forever, and it silently never runs.
  *
  *   node scratch/apply-migrations.mjs --dry    # print what would run, change nothing
- *   node scratch/apply-migrations.mjs          # apply
+ *   node scratch/apply-migrations.mjs          # apply to live (RDS_DATABASE_URL)
+ *   node scratch/apply-migrations.mjs --local  # apply to local (DATABASE_URL, :5433)
  */
 import fs from 'fs';
 import path from 'path';
@@ -57,8 +58,14 @@ const FILES = [
     '20260910000001_support_message_attachments.sql',
     '20260910000002_support_attachment_retention.sql',
 
-    // The stored machine translation beside each message (ADR-0033, ADR-0034).
+    // Machine translation stored beside each message (ADR-0033).
     '20260911000001_support_message_translation.sql',
+
+    // An Agent's translated reply, translated back so the Agent sees what the customer read.
+    '20260911000002_support_message_back_translation.sql',
+
+    // Who a Support Chat was given to, and who handled it — Assignment by admin (ADR-0041).
+    '20260911000003_support_assignment_events.sql',
 ];
 
 const dry = process.argv.includes('--dry');
@@ -118,10 +125,21 @@ if (collisions.length || malformed.length || absent.length) {
  *   node scratch/apply-migrations.mjs                             # .env, i.e. live
  */
 const fileEnv = fs.readFileSync('.env', 'utf8');
-const fromFile = fileEnv.match(/^RDS_DATABASE_URL=(.*)$/m)?.[1].trim().replace(/^"|"$/g, '');
-const url = process.env.RDS_DATABASE_URL?.trim() || fromFile;
+const readEnv = (name) => fileEnv
+    .match(new RegExp(`^\\s*${name}\\s*=\\s*(.*?)\\s*$`, 'm'))?.[1]
+    .replace(/^["']|["']$/g, '');
+
+// `--local` migrates the database in .env's DATABASE_URL — the local one on :5433 — without
+// any shell-specific way of setting a variable first, which differs between PowerShell,
+// cmd and bash and is how a "local" run ended up somewhere else.
+const local = process.argv.includes('--local');
+const url = local
+    ? readEnv('DATABASE_URL')
+    : process.env.RDS_DATABASE_URL?.trim() || readEnv('RDS_DATABASE_URL');
 if (!url) {
-    console.error('No database URL. Set RDS_DATABASE_URL in the environment or in .env.');
+    console.error(local
+        ? 'No DATABASE_URL in .env for --local.'
+        : 'No database URL. Set RDS_DATABASE_URL in the environment or in .env.');
     process.exit(1);
 }
 
@@ -130,6 +148,12 @@ if (!url) {
 const host = url.match(/@([^/:?]+)/)?.[1] ?? 'unknown';
 const isLocal = /^(localhost|127\.0\.0\.1)$/.test(host);
 console.log(`target: ${host}${isLocal ? '  (local)' : '  ** LIVE **'}\n`);
+
+// Asked for local and about to touch something that is not: stop rather than migrate it.
+if (local && !isLocal) {
+    console.error(`--local was given but DATABASE_URL points at ${host}. Nothing was run.`);
+    process.exit(1);
+}
 
 const sql = postgres(url, {
     // A local database has no TLS to negotiate; insisting on it fails the connection.

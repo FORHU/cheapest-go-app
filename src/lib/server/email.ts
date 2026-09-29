@@ -5,7 +5,7 @@ import path from 'path';
 import { calculateNights } from '@/lib/utils';
 import { derivePolicyType, getFreeCancelDeadline, formatPolicyDescription } from '@/lib/policy-formatter';
 import { getAirlineName } from '@/types/flights';
-import { canonicalBrandName } from '@/lib/brand';
+import { canonicalBrandName, brandWordmark } from '@/lib/brand';
 
 // ─── Sending addresses ────────────────────────────────────────────────
 // Verified domain: mail.cheapestgo.com (Resend, ap-northeast-1)
@@ -30,6 +30,13 @@ const BRAND_LOGO_URL = (() => {
         return `${EMAIL_BASE_URL}${BRAND_LOGO}`;
     }
 })();
+
+// The masthead wordmark. This was the literal `cheapestGo`, in all ten templates, so every
+// email the Korean brand sent carried a masthead naming a company the recipient had never
+// used — beside a footer, a from-address and a body that all said AirangGo. Brand names live
+// in one place for exactly this reason.
+const _wordmark = brandWordmark(process.env.NEXT_PUBLIC_BRAND_NAME);
+const BRAND_WORDMARK_HTML = `${_wordmark.head}${_wordmark.tail ? `<span style="color:#2563eb;">${_wordmark.tail}</span>` : ''}`;
 
 export const FROM_NOREPLY = `${BRAND_NAME} <${BRAND_EMAIL}>`;
 export const FROM_ALERTS  = `${BRAND_NAME} Alerts <${BRAND_EMAIL}>`;
@@ -340,7 +347,7 @@ export function buildHotelConfirmationEmailHtml(params: SendBookingEmailParams):
         <td align="left">
           <table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr>
             <td style="padding-right:9px;line-height:0;"><img src="${BRAND_ICON_URL}" width="26" height="26" alt="${BRAND_NAME}" style="display:block;width:26px;height:26px;border:0;border-radius:13px;"></td>
-            <td style="font-family:Arial,Helvetica,sans-serif;font-size:18px;font-weight:bold;color:#0f172a;letter-spacing:-0.4px;">cheapest<span style="color:#2563eb;">Go</span></td>
+            <td style="font-family:Arial,Helvetica,sans-serif;font-size:18px;font-weight:bold;color:#0f172a;letter-spacing:-0.4px;">${BRAND_WORDMARK_HTML}</td>
           </tr></table>
         </td>
         <td align="right" style="font-size:15px;font-weight:bold;color:#0f172a;letter-spacing:-0.2px;">Hello, ${firstName}</td>
@@ -437,7 +444,7 @@ export function buildHotelConfirmationEmailHtml(params: SendBookingEmailParams):
             <td align="right" style="padding:12px 0;border-top:1px solid #eef2f7;font-family:'Courier New',Courier,monospace;color:#0f172a;">${fmtMoney(totalPrice + discountAmount!)}</td>
           </tr>
           <tr>
-            <td style="padding:12px 0;border-top:1px solid #eef2f7;color:#64748b;">CheapestGo credit</td>
+            <td style="padding:12px 0;border-top:1px solid #eef2f7;color:#64748b;">${BRAND_NAME} credit</td>
             <td align="right" style="padding:12px 0;border-top:1px solid #eef2f7;font-family:'Courier New',Courier,monospace;color:#16a34a;">− ${fmtMoney(discountAmount!)}</td>
           </tr>` : ''}
           <tr>
@@ -786,7 +793,7 @@ export function buildHotelCancellationEmailHtml(params: SendHotelCancellationEma
         <td align="left">
           <table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr>
             <td style="padding-right:9px;line-height:0;"><img src="${BRAND_ICON_URL}" width="26" height="26" alt="${BRAND_NAME}" style="display:block;width:26px;height:26px;border:0;border-radius:13px;"></td>
-            <td style="font-family:Arial,Helvetica,sans-serif;font-size:18px;font-weight:bold;color:#0f172a;letter-spacing:-0.4px;">cheapest<span style="color:#2563eb;">Go</span></td>
+            <td style="font-family:Arial,Helvetica,sans-serif;font-size:18px;font-weight:bold;color:#0f172a;letter-spacing:-0.4px;">${BRAND_WORDMARK_HTML}</td>
           </tr></table>
         </td>
         <td align="right" style="font-size:15px;font-weight:bold;color:#0f172a;letter-spacing:-0.2px;">Hello, ${firstName}</td>
@@ -1064,7 +1071,7 @@ export function buildHotelAmendmentEmailHtml(params: SendHotelAmendmentEmailPara
         <td align="left">
           <table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr>
             <td style="padding-right:9px;line-height:0;"><img src="${BRAND_ICON_URL}" width="26" height="26" alt="${BRAND_NAME}" style="display:block;width:26px;height:26px;border:0;border-radius:13px;"></td>
-            <td style="font-family:Arial,Helvetica,sans-serif;font-size:18px;font-weight:bold;color:#0f172a;letter-spacing:-0.4px;">cheapest<span style="color:#2563eb;">Go</span></td>
+            <td style="font-family:Arial,Helvetica,sans-serif;font-size:18px;font-weight:bold;color:#0f172a;letter-spacing:-0.4px;">${BRAND_WORDMARK_HTML}</td>
           </tr></table>
         </td>
         <td align="right" style="font-size:15px;font-weight:bold;color:#0f172a;letter-spacing:-0.2px;">Hello, ${firstName}</td>
@@ -1404,9 +1411,19 @@ function flightRouteSummary(segments: FlightSegmentEmail[]): { route: string; is
     return { route, isRoundTrip };
 }
 
+/**
+ * A flight date, in the airport's own local time.
+ *
+ * Read in UTC on purpose. Airlines quote a departure in local wall-clock time with no zone,
+ * and the segment insert stores exactly that string in a timestamptz column, so Postgres tags
+ * it +00. Reading it back in UTC recovers the wall clock the traveller was shown; reading it
+ * in whatever zone the process runs in shifts it by that offset. The production container
+ * runs UTC, which made this right by accident there and wrong in every other environment —
+ * including any local check of these emails.
+ */
 function fmtFlightDayDate(iso: string): string {
     try {
-        return new Date(iso).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
+        return new Date(iso).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' });
     } catch {
         return iso;
     }
@@ -1453,14 +1470,16 @@ export function buildFlightConfirmationEmailHtml(params: SendFlightBookingEmailP
 
     const fmtTime = (iso: string) => {
         try {
-            return new Date(iso).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false });
+            // UTC, for the reason given on fmtFlightDayDate: the stored instant carries the
+            // airport's wall clock, not a real offset.
+            return new Date(iso).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'UTC' });
         } catch {
             return iso;
         }
     };
     const fmtDayDate = (iso: string) => {
         try {
-            return new Date(iso).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' });
+            return new Date(iso).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC' });
         } catch {
             return iso;
         }
@@ -1645,7 +1664,7 @@ ${connections}
         <td align="left">
           <table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr>
             <td style="padding-right:9px;line-height:0;"><img src="${BRAND_ICON_URL}" width="26" height="26" alt="${BRAND_NAME}" style="display:block;width:26px;height:26px;border:0;border-radius:13px;"></td>
-            <td style="font-family:Arial,Helvetica,sans-serif;font-size:18px;font-weight:bold;color:#0f172a;letter-spacing:-0.4px;">cheapest<span style="color:#2563eb;">Go</span></td>
+            <td style="font-family:Arial,Helvetica,sans-serif;font-size:18px;font-weight:bold;color:#0f172a;letter-spacing:-0.4px;">${BRAND_WORDMARK_HTML}</td>
           </tr></table>
         </td>
         <td align="right" style="font-size:15px;font-weight:bold;color:#0f172a;letter-spacing:-0.2px;">Hello, ${firstName}</td>
@@ -1927,7 +1946,7 @@ export function buildFlightAmendmentEmailHtml(params: SendFlightAmendmentEmailPa
         <td align="left">
           <table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr>
             <td style="padding-right:9px;line-height:0;"><img src="${BRAND_ICON_URL}" width="26" height="26" alt="${BRAND_NAME}" style="display:block;width:26px;height:26px;border:0;border-radius:13px;"></td>
-            <td style="font-family:Arial,Helvetica,sans-serif;font-size:18px;font-weight:bold;color:#0f172a;letter-spacing:-0.4px;">cheapest<span style="color:#2563eb;">Go</span></td>
+            <td style="font-family:Arial,Helvetica,sans-serif;font-size:18px;font-weight:bold;color:#0f172a;letter-spacing:-0.4px;">${BRAND_WORDMARK_HTML}</td>
           </tr></table>
         </td>
         <td align="right" style="font-size:15px;font-weight:bold;color:#0f172a;letter-spacing:-0.2px;">Hello, ${firstName}</td>
@@ -2131,7 +2150,7 @@ export function buildFlightAwaitingTicketEmailHtml(params: SendFlightAwaitingTic
         <td align="left">
           <table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr>
             <td style="padding-right:9px;line-height:0;"><img src="${BRAND_ICON_URL}" width="26" height="26" alt="${BRAND_NAME}" style="display:block;width:26px;height:26px;border:0;border-radius:13px;"></td>
-            <td style="font-family:Arial,Helvetica,sans-serif;font-size:18px;font-weight:bold;color:#0f172a;letter-spacing:-0.4px;">cheapest<span style="color:#2563eb;">Go</span></td>
+            <td style="font-family:Arial,Helvetica,sans-serif;font-size:18px;font-weight:bold;color:#0f172a;letter-spacing:-0.4px;">${BRAND_WORDMARK_HTML}</td>
           </tr></table>
         </td>
         <td align="right" style="font-size:15px;font-weight:bold;color:#0f172a;letter-spacing:-0.2px;">Hello, ${firstName}</td>
@@ -2358,7 +2377,7 @@ export function buildFlightRefundEmailHtml(params: SendFlightRefundEmailParams):
         <td align="left">
           <table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr>
             <td style="padding-right:9px;line-height:0;"><img src="${BRAND_ICON_URL}" width="26" height="26" alt="${BRAND_NAME}" style="display:block;width:26px;height:26px;border:0;border-radius:13px;"></td>
-            <td style="font-family:Arial,Helvetica,sans-serif;font-size:18px;font-weight:bold;color:#0f172a;letter-spacing:-0.4px;">cheapest<span style="color:#2563eb;">Go</span></td>
+            <td style="font-family:Arial,Helvetica,sans-serif;font-size:18px;font-weight:bold;color:#0f172a;letter-spacing:-0.4px;">${BRAND_WORDMARK_HTML}</td>
           </tr></table>
         </td>
         <td align="right" style="font-size:15px;font-weight:bold;color:#0f172a;letter-spacing:-0.2px;">Hello, ${firstName}</td>
@@ -2633,7 +2652,7 @@ export function buildFlightCancellationEmailHtml(params: SendFlightCancellationE
         <td align="left">
           <table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr>
             <td style="padding-right:9px;line-height:0;"><img src="${BRAND_ICON_URL}" width="26" height="26" alt="${BRAND_NAME}" style="display:block;width:26px;height:26px;border:0;border-radius:13px;"></td>
-            <td style="font-family:Arial,Helvetica,sans-serif;font-size:18px;font-weight:bold;color:#0f172a;letter-spacing:-0.4px;">cheapest<span style="color:#2563eb;">Go</span></td>
+            <td style="font-family:Arial,Helvetica,sans-serif;font-size:18px;font-weight:bold;color:#0f172a;letter-spacing:-0.4px;">${BRAND_WORDMARK_HTML}</td>
           </tr></table>
         </td>
         <td align="right" style="font-size:15px;font-weight:bold;color:#0f172a;letter-spacing:-0.2px;">Hello, ${firstName}</td>
@@ -2829,7 +2848,7 @@ export function buildFlightCancellationRefundEmailHtml(params: SendFlightCancell
         <td align="left">
           <table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr>
             <td style="padding-right:9px;line-height:0;"><img src="${BRAND_ICON_URL}" width="26" height="26" alt="${BRAND_NAME}" style="display:block;width:26px;height:26px;border:0;border-radius:13px;"></td>
-            <td style="font-family:Arial,Helvetica,sans-serif;font-size:18px;font-weight:bold;color:#0f172a;letter-spacing:-0.4px;">cheapest<span style="color:#2563eb;">Go</span></td>
+            <td style="font-family:Arial,Helvetica,sans-serif;font-size:18px;font-weight:bold;color:#0f172a;letter-spacing:-0.4px;">${BRAND_WORDMARK_HTML}</td>
           </tr></table>
         </td>
         <td align="right" style="font-size:15px;font-weight:bold;color:#0f172a;letter-spacing:-0.2px;">Hello, ${firstName}</td>
@@ -3086,7 +3105,7 @@ export function buildHotelRefundEmailHtml(params: SendHotelRefundEmailParams): s
         <td align="left">
           <table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr>
             <td style="padding-right:9px;line-height:0;"><img src="${BRAND_ICON_URL}" width="26" height="26" alt="${BRAND_NAME}" style="display:block;width:26px;height:26px;border:0;border-radius:13px;"></td>
-            <td style="font-family:Arial,Helvetica,sans-serif;font-size:18px;font-weight:bold;color:#0f172a;letter-spacing:-0.4px;">cheapest<span style="color:#2563eb;">Go</span></td>
+            <td style="font-family:Arial,Helvetica,sans-serif;font-size:18px;font-weight:bold;color:#0f172a;letter-spacing:-0.4px;">${BRAND_WORDMARK_HTML}</td>
           </tr></table>
         </td>
         <td align="right" style="font-size:15px;font-weight:bold;color:#0f172a;letter-spacing:-0.2px;">Hello, ${firstName}</td>

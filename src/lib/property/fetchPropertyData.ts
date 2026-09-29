@@ -7,9 +7,11 @@ import { cache } from 'react';
 import { preBook } from '@/utils/postgres/functions';
 import { runTgxSearch, fetchTgxHotelContent } from '@/lib/server/stays/travelgatex/search';
 import { otvCodeToLabel, normalizeStoredAmenity } from '@/lib/server/stays/travelgatex/amenityCodes';
+import { defaultStay, earliestBookableDay } from '@/lib/defaultStay';
 import { toRefundableTag } from '@/lib/server/stays/travelgatex/client';
 import { type Property } from '@/types';
 import { getSqlAdmin } from '@/lib/db/postgres';
+import { hotelCountry } from '@/lib/geo/territories';
 export type PropertyData = Property;
 
 export interface StaticHotelResult {
@@ -36,7 +38,7 @@ export async function fetchHotelStatic(id: string): Promise<StaticHotelResult | 
         const r = rows[0];
         const images: string[] = Array.isArray(r.images) ? r.images : [];
         const city = r.city || '';
-        const country = r.country || '';
+        const country = hotelCountry(r.country, city, r.lat, r.lng);
         const address = r.address || '';
         // hotel_content.amenities is jsonb in two shapes: a real array, and — for every
         // row that actually has amenities — a JSON *string* containing the array, written
@@ -183,18 +185,16 @@ export function sanitizeDate(dateStr: string | undefined): string | undefined {
     }
 }
 
-// Get default check-in/out dates — next Friday → Sunday (mirrors stream/route.ts logic).
-// Same-day / next-day dates have near-zero OTV inventory.
-export function getDefaultDates() {
-    const now = new Date();
-    const dayOfWeek = now.getDay(); // 0=Sun … 6=Sat
-    const daysUntilFriday = ((5 - dayOfWeek + 7) % 7) || 7; // at least 1 day ahead
-    const checkin = new Date(now);
-    checkin.setDate(now.getDate() + daysUntilFriday);
-    const checkout = new Date(checkin);
-    checkout.setDate(checkin.getDate() + 2); // Fri → Sun
-    return { checkIn: formatDateForApi(checkin), checkOut: formatDateForApi(checkout) };
-}
+/**
+ * Kept as a name callers already use; the rule itself lives in one place now.
+ *
+ * It was written out four times — here, the search stream, and two landing sections — and
+ * the copies had drifted into three different stays: Friday→Sunday here, Friday→*Saturday*
+ * on the cards, and two of them built with `toISOString()`, which shifts the date back a
+ * day for anyone east of Greenwich. Which stay a traveller was quoted depended on which
+ * card they happened to click.
+ */
+export const getDefaultDates = defaultStay;
 
 /**
  * Resolve the stay a property page is actually quoting for.
@@ -217,9 +217,11 @@ export function resolveStayDates(searchParams: SearchParamsInput): {
     let checkIn  = sanitizeDate(searchParams.checkIn  as string) || defaults.checkIn;
     let checkOut = sanitizeDate(searchParams.checkOut as string) || defaults.checkOut;
 
-    // A stay that starts today or earlier can't be booked — fall back rather than
-    // quote a range the supplier will reject.
-    if (checkIn <= formatDateForApi(new Date())) {
+    // A stay starting today *or tomorrow* can't usefully be booked — both sit in the window
+    // OTV has near-zero inventory in, which the comment on this rule has always said. The
+    // test was `<= today`, so next-day arrivals went to the supplier unrescued and the page
+    // reported no rooms for a hotel with plenty. That is the bug reported on 2026-09-28.
+    if (checkIn < earliestBookableDay()) {
         checkIn = defaults.checkIn;
         if (checkOut <= checkIn) checkOut = defaults.checkOut;
     }
@@ -481,7 +483,7 @@ async function fetchETGPropertyData(
         }
 
         const city    = (db?.city    as string) || '';
-        const country = (db?.country as string) || '';
+        const country = hotelCountry(db?.country as string, city, db?.lat as number, db?.lng as number);
 
         // ETG per-hotel availability — direct slug lookup via serp/hotels/.
         // ETG IDs are string slugs (e.g. "au_royal_mad") that TGX/OTV can't resolve,

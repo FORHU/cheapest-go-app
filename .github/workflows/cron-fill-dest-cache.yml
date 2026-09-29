@@ -10,7 +10,12 @@ on:
     # count from 22,635 cities to 13,416 in 40 seconds. Every city still uncached
     # serves a user a slow first search that returns nothing, so 500 hourly clears the
     # rest in roughly a day. Drop back to daily once this reports "all caught up".
-    - cron: '0 * * * *'
+    #
+    # Dropped back to daily on 2026-09-14. The backlog had been cleared — a working query
+    # found 0 uncached cities with 5+ hotels — but no run could say so: the query had become
+    # so slow it never finished, and every hourly run left another copy running on the
+    # database. See the comment on the query in the route.
+    - cron: '30 4 * * *'      # daily, 04:30 UTC — clear of the 04:00 sidecar jobs
   workflow_dispatch:          # allow manual trigger from GitHub UI
     inputs:
       limit:

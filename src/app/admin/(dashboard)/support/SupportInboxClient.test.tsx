@@ -56,7 +56,7 @@ function mockApi(detail: unknown = null) {
         return {
             ok: true,
             status: 200,
-            json: async () => ({ filter: 'waiting', conversations: [], counts: { waiting: 0, mine: 0 } }),
+            json: async () => ({ filter: 'unassigned', conversations: [], counts: { unassigned: 0, mine: 0, waiting: 0 } }),
         };
     });
     vi.stubGlobal('fetch', fetchMock);
@@ -81,9 +81,9 @@ describe('SupportInboxClient', () => {
         mockApi();
         render(
             <SupportInboxClient
-                initialFilter="waiting"
+                initialFilter="unassigned"
                 initialConversations={waiting}
-                initialCounts={{ waiting: 2, mine: 0 }}
+                initialCounts={{ unassigned: 2, mine: 0, waiting: 2 }}
                 currentAdminId="admin-1"
             />,
         );
@@ -97,9 +97,9 @@ describe('SupportInboxClient', () => {
         mockApi();
         render(
             <SupportInboxClient
-                initialFilter="waiting"
+                initialFilter="unassigned"
                 initialConversations={waiting}
-                initialCounts={{ waiting: 2, mine: 0 }}
+                initialCounts={{ unassigned: 2, mine: 0, waiting: 2 }}
                 currentAdminId="admin-1"
             />,
         );
@@ -108,18 +108,18 @@ describe('SupportInboxClient', () => {
         expect(screen.getByText('CheapestGo')).toBeInTheDocument();
     });
 
-    it('says when nothing is waiting, rather than showing an empty box', () => {
+    it('says when there is nothing to hand out, rather than showing an empty box', () => {
         mockApi();
         render(
             <SupportInboxClient
-                initialFilter="waiting"
+                initialFilter="unassigned"
                 initialConversations={[]}
-                initialCounts={{ waiting: 0, mine: 0 }}
+                initialCounts={{ unassigned: 0, mine: 0, waiting: 0 }}
                 currentAdminId="admin-1"
             />,
         );
 
-        expect(screen.getByText(/nothing waiting/i)).toBeInTheDocument();
+        expect(screen.getByText(/nothing to hand out/i)).toBeInTheDocument();
     });
 
     it('opens a conversation and shows the transcript beside the queue', async () => {
@@ -133,9 +133,9 @@ describe('SupportInboxClient', () => {
 
         render(
             <SupportInboxClient
-                initialFilter="waiting"
+                initialFilter="unassigned"
                 initialConversations={waiting}
-                initialCounts={{ waiting: 2, mine: 0 }}
+                initialCounts={{ unassigned: 2, mine: 0, waiting: 2 }}
                 currentAdminId="admin-1"
             />,
         );
@@ -158,9 +158,9 @@ describe('SupportInboxClient', () => {
 
         render(
             <SupportInboxClient
-                initialFilter="waiting"
+                initialFilter="unassigned"
                 initialConversations={waiting}
-                initialCounts={{ waiting: 2, mine: 0 }}
+                initialCounts={{ unassigned: 2, mine: 0, waiting: 2 }}
                 currentAdminId="admin-1"
             />,
         );
@@ -175,9 +175,9 @@ describe('SupportInboxClient', () => {
 
         render(
             <SupportInboxClient
-                initialFilter="waiting"
+                initialFilter="unassigned"
                 initialConversations={waiting}
-                initialCounts={{ waiting: 2, mine: 0 }}
+                initialCounts={{ unassigned: 2, mine: 0, waiting: 2 }}
                 currentAdminId="admin-1"
             />,
         );
@@ -209,7 +209,7 @@ describe('SupportInboxClient', () => {
             <SupportInboxClient
                 initialFilter="assistant"
                 initialConversations={[conversation({ id: 'a', status: 'ai_active' })]}
-                initialCounts={{ waiting: 0, mine: 0 }}
+                initialCounts={{ unassigned: 0, mine: 0, waiting: 0 }}
                 currentAdminId="admin-1"
             />,
         );
@@ -224,9 +224,9 @@ describe('SupportInboxClient', () => {
 
         render(
             <SupportInboxClient
-                initialFilter="waiting"
+                initialFilter="unassigned"
                 initialConversations={waiting}
-                initialCounts={{ waiting: 2, mine: 0 }}
+                initialCounts={{ unassigned: 2, mine: 0, waiting: 2 }}
                 currentAdminId="admin-1"
             />,
         );
@@ -248,9 +248,9 @@ describe('SupportInboxClient', () => {
         mockApi();
         render(
             <SupportInboxClient
-                initialFilter="waiting"
+                initialFilter="unassigned"
                 initialConversations={waiting}
-                initialCounts={{ waiting: 2, mine: 0 }}
+                initialCounts={{ unassigned: 2, mine: 0, waiting: 2 }}
                 currentAdminId="admin-1"
             />,
         );
@@ -277,6 +277,8 @@ describe('a machine translation in the inbox', () => {
                 senderType: 'guest',
                 body: '\uD658\uBD88 \uC5B8\uC81C \uB418\uB098\uC694?',
                 translatedBody: 'When will the refund be processed?',
+                translatedLang: 'en',
+                translationStatus: 'translated',
                 noticeCode: null,
                 createdAt: '2026-09-06T10:00:00.000Z',
                 attachments: [],
@@ -286,19 +288,20 @@ describe('a machine translation in the inbox', () => {
 
         render(
             <SupportInboxClient
-                initialFilter="waiting"
+                initialFilter="unassigned"
                 initialConversations={waiting}
-                initialCounts={{ waiting: 2, mine: 0 }}
+                initialCounts={{ unassigned: 2, mine: 0, waiting: 2 }}
                 currentAdminId="admin-1"
             />,
         );
 
         fireEvent.click(screen.getByText('Ana Reyes'));
         await screen.findByText('When will the refund be processed?');
+        expect(screen.getByText(/machine-translated/i)).toBeInTheDocument();
 
-        // Both, always: the rendering to work from and the original to check it against.
+        // The original to check it against, one click away and never replaced.
+        fireEvent.click(screen.getByRole('button', { name: 'Show original' }));
         expect(screen.getByText('\uD658\uBD88 \uC5B8\uC81C \uB418\uB098\uC694?')).toBeInTheDocument();
-        expect(screen.getByText(/machine translation/i)).toBeInTheDocument();
     });
 
     it('shows the message alone when there is no rendering', async () => {
@@ -318,9 +321,9 @@ describe('a machine translation in the inbox', () => {
 
         render(
             <SupportInboxClient
-                initialFilter="waiting"
+                initialFilter="unassigned"
                 initialConversations={waiting}
-                initialCounts={{ waiting: 2, mine: 0 }}
+                initialCounts={{ unassigned: 2, mine: 0, waiting: 2 }}
                 currentAdminId="admin-1"
             />,
         );
@@ -328,6 +331,251 @@ describe('a machine translation in the inbox', () => {
         fireEvent.click(screen.getByText('Ana Reyes'));
         await screen.findByText('I want a refund.');
 
-        expect(screen.queryByText(/machine translation/i)).not.toBeInTheDocument();
+        expect(screen.queryByText(/machine-translated/i)).not.toBeInTheDocument();
+    });
+
+    it("warns when a customer's message could not be translated, rather than hiding it", async () => {
+        // The case the guard exists for: the translator refused, so the Agent reads the
+        // customer's own words, flagged — never "I cannot assist with that" in their name.
+        mockApi({
+            conversation: conversation({ id: 'a' }),
+            messages: [{
+                id: 'm1',
+                senderType: 'guest',
+                body: '공항인데 항공권이 취소되었어요.',
+                translatedBody: null,
+                translatedLang: 'en',
+                translationStatus: 'untranslated',
+                noticeCode: null,
+                createdAt: '2026-09-06T10:00:00.000Z',
+                attachments: [],
+            }],
+            bookings: null,
+        });
+
+        render(
+            <SupportInboxClient
+                initialFilter="unassigned"
+                initialConversations={waiting}
+                initialCounts={{ unassigned: 2, mine: 0, waiting: 2 }}
+                currentAdminId="admin-1"
+            />,
+        );
+
+        fireEvent.click(screen.getByText('Ana Reyes'));
+        await screen.findByText('공항인데 항공권이 취소되었어요.');
+        expect(screen.getByText(/could not translate/i)).toBeInTheDocument();
+    });
+});
+
+/**
+ * What each role may do with an open chat (ADR-0041). A Support Agent reads everything but
+ * writes only in their own; an admin assigns, and writes anywhere.
+ */
+describe('Assignment on screen', () => {
+    /** Routes the detail endpoint, the team endpoint, and everything else to an empty list. */
+    function mockDetail(detailConversation: Partial<InboxConversation>) {
+        vi.stubGlobal('fetch', vi.fn(async (url: string) => {
+            if (url.includes('/api/admin/support/agents')) {
+                return {
+                    ok: true, status: 200,
+                    json: async () => ({
+                        agents: [
+                            { id: 'agent-1', name: 'Aida Cruz', role: 'support_agent' },
+                            { id: 'admin-1', name: 'Boss', role: 'admin' },
+                        ],
+                        tally: [{ adminId: 'agent-1', name: 'Aida Cruz', role: 'support_agent', open: 1, handled: 7 }],
+                        since: '2026-09-01T00:00:00.000Z',
+                    }),
+                };
+            }
+            if (/conversations\/[^/?]+$/.test(url)) {
+                return {
+                    ok: true, status: 200,
+                    json: async () => ({
+                        conversation: conversation({ id: 'a', ...detailConversation }),
+                        messages: [], bookings: null, linkedBookings: [], notes: [],
+                    }),
+                };
+            }
+            return {
+                ok: true, status: 200,
+                json: async () => ({ filter: 'mine', conversations: [], counts: { unassigned: 0, mine: 0, waiting: 0 } }),
+            };
+        }));
+    }
+
+    const open = async (role: 'admin' | 'support_agent', me: string) => {
+        render(
+            <SupportInboxClient
+                initialFilter="unassigned"
+                initialConversations={[conversation({ id: 'a', guestName: 'Ana Reyes' })]}
+                initialCounts={{ unassigned: 1, mine: 0, waiting: 1 }}
+                currentAdminId={me}
+                currentRole={role}
+            />,
+        );
+        fireEvent.click(screen.getByText('Ana Reyes'));
+        await screen.findByRole('complementary', { name: 'Conversation details' });
+    };
+
+    it('lets a Support Agent read an Unassigned chat but not answer it', async () => {
+        mockDetail({ assignedAdminId: null });
+        await open('support_agent', 'agent-1');
+
+        expect(screen.queryByRole('textbox', { name: /reply to the customer/i })).not.toBeInTheDocument();
+        expect(screen.getByText(/an admin will give it to someone/i)).toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: /mark conversation resolved/i })).not.toBeInTheDocument();
+        // Never offered the assignment list — choosing who gets a chat is the admin's.
+        expect(screen.queryByRole('combobox')).not.toBeInTheDocument();
+    });
+
+    it("tells a Support Agent whose a colleague's chat is, and keeps them out of it", async () => {
+        mockDetail({ assignedAdminId: 'agent-2', assignedAdminName: 'Ben Santos' });
+        await open('support_agent', 'agent-1');
+
+        expect(screen.getByText(/only they can reply/i)).toHaveTextContent('Ben Santos');
+        expect(screen.queryByRole('textbox', { name: /reply to the customer/i })).not.toBeInTheDocument();
+    });
+
+    it('gives a Support Agent the reply box, and a way to give it back, in their own chat', async () => {
+        mockDetail({ assignedAdminId: 'agent-1', assignedAdminName: 'Aida Cruz' });
+        await open('support_agent', 'agent-1');
+
+        expect(screen.getByRole('textbox', { name: /reply to the customer/i })).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: /give back to unassigned/i })).toBeInTheDocument();
+    });
+
+    it('offers an admin everyone who can take the chat, and the team tally', async () => {
+        mockDetail({ assignedAdminId: null });
+        await open('admin', 'admin-1');
+
+        const picker = await screen.findByRole('combobox', { name: /assign to/i });
+        await waitFor(() => expect(picker).toBeEnabled());
+        fireEvent.click(picker);
+        expect(await screen.findByRole('option', { name: /Aida Cruz/ })).toBeInTheDocument();
+        expect(screen.getByRole('option', { name: /Boss \(you\)/ })).toBeInTheDocument();
+        // An admin writes anywhere — the reply box is there even though it is unassigned.
+        expect(screen.getByRole('textbox', { name: /reply to the customer/i })).toBeInTheDocument();
+
+        fireEvent.click(screen.getByRole('button', { name: /team · handled in/i }));
+        expect(screen.getByText('7')).toBeInTheDocument();
+    });
+
+    it('assigns the person an admin picks from the list', async () => {
+        mockDetail({ assignedAdminId: null });
+        await open('admin', 'admin-1');
+
+        const picker = await screen.findByRole('combobox', { name: /assign to/i });
+        await waitFor(() => expect(picker).toBeEnabled());
+        fireEvent.click(picker);
+        fireEvent.click(await screen.findByRole('option', { name: /Aida Cruz/ }));
+
+        await waitFor(() => {
+            const calls = vi.mocked(fetch).mock.calls as [string, RequestInit?][];
+            const assign = calls.find(([url]) => url.endsWith('/conversations/a/assign'));
+            expect(assign?.[1]?.body).toBe(JSON.stringify({ toAdminId: 'agent-1' }));
+        });
+    });
+
+    it('closes the list on Escape without assigning anyone', async () => {
+        mockDetail({ assignedAdminId: null });
+        await open('admin', 'admin-1');
+
+        const picker = await screen.findByRole('combobox', { name: /assign to/i });
+        await waitFor(() => expect(picker).toBeEnabled());
+        fireEvent.click(picker);
+        const list = await screen.findByRole('listbox');
+        fireEvent.keyDown(list, { key: 'Escape' });
+
+        expect(screen.queryByRole('listbox')).not.toBeInTheDocument();
+        const calls = vi.mocked(fetch).mock.calls as [string][];
+        expect(calls.some(([url]) => url.endsWith('/assign'))).toBe(false);
+    });
+});
+
+/**
+ * The transcript reads like a messenger: the customer down the left, CheapestGo down the
+ * right, and the support side captioned with who wrote it. The caption is not decoration —
+ * an admin may write in a chat they do not own without taking it (CONTEXT.md, "Assignment"),
+ * so two colleagues' replies share that column and only the name tells them apart.
+ */
+describe('the transcript reads like a messenger', () => {
+    const msg = (over: Record<string, unknown>) => ({
+        id: 'm', senderType: 'guest', body: '', noticeCode: null,
+        createdAt: '2026-09-06T10:00:00.000Z', attachments: [], ...over,
+    });
+
+    /** The element that carries the row's alignment, for a message's text. */
+    const rowOf = (text: string) => screen.getByText(text).closest('div.flex.flex-col');
+
+    async function open(messages: unknown[]) {
+        mockApi({ conversation: conversation({ id: 'a' }), messages, bookings: null });
+        render(
+            <SupportInboxClient
+                initialFilter="unassigned"
+                initialConversations={waiting}
+                initialCounts={{ unassigned: 2, mine: 0, waiting: 2 }}
+                currentAdminId="admin-1"
+            />,
+        );
+        fireEvent.click(screen.getByText('Ana Reyes'));
+        await waitFor(() => expect(fetchMock).toHaveBeenCalled());
+    }
+
+    it('puts the customer on the left and support on the right', async () => {
+        await open([
+            msg({ id: 'm1', senderType: 'guest', body: 'I want a refund.' }),
+            msg({ id: 'm2', senderType: 'agent', senderAdminId: 'admin-1', senderName: 'Ada Admin', body: 'Looking now.' }),
+        ]);
+
+        await waitFor(() => expect(screen.getByText('I want a refund.')).toBeInTheDocument());
+        expect(rowOf('I want a refund.')).toHaveClass('items-start');
+        expect(rowOf('Looking now.')).toHaveClass('items-end');
+    });
+
+    it('says "You" over your own replies and names the colleague over theirs', async () => {
+        await open([
+            msg({ id: 'm1', senderType: 'agent', senderAdminId: 'admin-1', senderName: 'Ada Admin', body: 'Mine.' }),
+            msg({ id: 'm2', senderType: 'agent', senderAdminId: 'admin-2', senderName: 'Ben Agent', body: 'Theirs.' }),
+        ]);
+
+        await waitFor(() => expect(screen.getByText('Mine.')).toBeInTheDocument());
+        expect(screen.getByText('You')).toBeInTheDocument();
+        expect(screen.getByText('Ben Agent')).toBeInTheDocument();
+        // Never the reader's own name — the question being answered is "did I write this?"
+        expect(screen.queryByText('Ada Admin')).not.toBeInTheDocument();
+    });
+
+    it('captions a run of replies once, not every bubble', async () => {
+        await open([
+            msg({ id: 'm1', senderType: 'agent', senderAdminId: 'admin-2', senderName: 'Ben Agent', body: 'One moment.' }),
+            msg({ id: 'm2', senderType: 'agent', senderAdminId: 'admin-2', senderName: 'Ben Agent', body: 'Refunded.' }),
+        ]);
+
+        await waitFor(() => expect(screen.getByText('Refunded.')).toBeInTheDocument());
+        expect(screen.getAllByText('Ben Agent')).toHaveLength(1);
+    });
+
+    it('centres a system notice, which nobody said', async () => {
+        await open([
+            msg({ id: 'm1', senderType: 'system', body: 'This chat was resolved.', noticeCode: 'resolved' }),
+        ]);
+
+        await waitFor(() => expect(screen.getByText('This chat was resolved.')).toBeInTheDocument());
+        expect(screen.getByText('This chat was resolved.').closest('p')).toHaveClass('text-center');
+    });
+
+    it('shows a time when the conversation has been sitting, and not between quick replies', async () => {
+        await open([
+            msg({ id: 'm1', senderType: 'guest', body: 'Hello?', createdAt: '2026-09-06T10:00:00.000Z' }),
+            msg({ id: 'm2', senderType: 'guest', body: 'Anyone?', createdAt: '2026-09-06T10:01:00.000Z' }),
+            msg({ id: 'm3', senderType: 'agent', senderAdminId: 'admin-1', body: 'Here now.', createdAt: '2026-09-06T14:00:00.000Z' }),
+        ]);
+
+        await waitFor(() => expect(screen.getByText('Here now.')).toBeInTheDocument());
+        // One for the first message, one for the four-hour gap — never for the minute between.
+        const times = document.querySelectorAll('p > time[dateTime]');
+        expect(times).toHaveLength(2);
     });
 });

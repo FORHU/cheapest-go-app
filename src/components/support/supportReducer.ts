@@ -100,17 +100,85 @@ function readsAsOutage(message: SupportMessageView): boolean {
         && OUTAGE_NOTICES.has(message.noticeCode);
 }
 
+/** The staff working language. A translation into anything else is for the customer. */
+const AGENT_LANG = 'en';
+
+/**
+ * A reply whose translation for this customer has not settled yet — held back from the
+ * transcript until it has.
+ *
+ * Decided 2026-09-11: a customer who writes Korean reads an Agent's reply in Korean, not in
+ * English first and Korean a few seconds later. So the reply appears once its translation is
+ * done — or, when translating fails, in the Agent's own words, marked. It is never held
+ * indefinitely: the server settles every translation, including ones a restart interrupted.
+ *
+ * Only a translation *for this reader* holds anything. A customer's own message, pending its
+ * English rendering for the inbox, is shown at once — that English is not theirs to wait for.
+ */
+export function isHeldForTranslation(message: SupportMessageView): boolean {
+    return message.translationStatus === 'pending'
+        && Boolean(message.translatedLang)
+        && message.translatedLang !== AGENT_LANG;
+}
+
+/** Whether a reply exists that the customer is waiting on the translation of. */
+export function awaitingTranslation(state: SupportState): boolean {
+    return state.confirmed.some(isHeldForTranslation);
+}
+
+/**
+ * How far a message's translation has got. It only ever moves forward — nothing, then
+ * translating, then translated or not — so a copy further along is the newer copy.
+ */
+function translationProgress(message: SupportMessageView): number {
+    switch (message.translationStatus) {
+        case 'translated':
+        case 'untranslated': return 2;
+        case 'pending': return 1;
+        default: return 0;
+    }
+}
+
+/**
+ * Add a message, or update the copy already on screen.
+ *
+ * A message arrives more than once. Its translation is stored after it is delivered
+ * (ADR-0033), and the server sends the row again each time that moves on — translating,
+ * then translated. This used to keep the first copy and drop the rest, so a customer read an
+ * Agent's English reply with no translation and no "translating…" either, until they
+ * reloaded: exactly what was reported on 2026-09-11 ("im handsome too", translated to Korean
+ * on the server, never shown).
+ *
+ * The copies do not arrive in order — the POST response for the customer's own message can
+ * land after the stream has already delivered it translated — so an older copy never
+ * replaces a newer one.
+ */
 function withMessage(
     confirmed: SupportMessageView[],
     message: SupportMessageView,
 ): SupportMessageView[] {
-    if (confirmed.some(existing => existing.id === message.id)) return confirmed;
-    return [...confirmed, message];
+    const index = confirmed.findIndex(existing => existing.id === message.id);
+    if (index === -1) return [...confirmed, message];
+    if (translationProgress(message) < translationProgress(confirmed[index])) return confirmed;
+
+    const next = [...confirmed];
+    next[index] = message;
+    return next;
 }
 
-function newestId(confirmed: SupportMessageView[]): string | null {
-    if (confirmed.length === 0) return null;
-    return [...confirmed].sort(byCreatedAt).at(-1)?.id ?? null;
+/**
+ * Where a reconnecting stream resumes from: the newest message — unless a reply is still
+ * held for its translation, in which case just before the oldest such reply.
+ *
+ * The stream's backfill sends only what comes after the cursor. A reply translated while the
+ * connection was down is an *update* to a message already received, so a cursor past it
+ * would never hear of the translation, and the reply would stay held for good.
+ */
+function resumeCursor(confirmed: SupportMessageView[]): string | null {
+    const ordered = [...confirmed].sort(byCreatedAt);
+    const firstHeld = ordered.findIndex(isHeldForTranslation);
+    if (firstHeld === -1) return ordered.at(-1)?.id ?? null;
+    return firstHeld === 0 ? null : ordered[firstHeld - 1].id;
 }
 
 function byCreatedAt(a: { createdAt: string }, b: { createdAt: string }): number {
@@ -124,7 +192,7 @@ export function supportReducer(state: SupportState, action: SupportAction): Supp
                 ...state,
                 conversation: action.conversation,
                 confirmed: action.messages,
-                cursor: newestId(action.messages),
+                cursor: resumeCursor(action.messages),
                 needsDetails: false,
             };
         }
@@ -155,7 +223,7 @@ export function supportReducer(state: SupportState, action: SupportAction): Supp
                 ...state,
                 confirmed,
                 pending: state.pending.filter(p => p.clientId !== action.clientId),
-                cursor: newestId(confirmed),
+                cursor: resumeCursor(confirmed),
             };
         }
 
@@ -170,6 +238,9 @@ export function supportReducer(state: SupportState, action: SupportAction): Supp
         }
 
         case 'received': {
+            // An update to a message already on screen — its translation arriving — is not
+            // a new message: it must not raise the unread badge again.
+            const isNew = !state.confirmed.some(existing => existing.id === action.message.id);
             const confirmed = withMessage(state.confirmed, action.message);
 
             // The stream beat the POST response to the customer's own message. Matching on
@@ -184,7 +255,7 @@ export function supportReducer(state: SupportState, action: SupportAction): Supp
                 ...state,
                 confirmed,
                 pending,
-                cursor: newestId(confirmed),
+                cursor: resumeCursor(confirmed),
                 isTyping: endsTheWait(action.message) ? false : state.isTyping,
                 // An answer is proof it recovered; anything else leaves the banner alone.
                 assistantOffline: readsAsOutage(action.message)
@@ -194,7 +265,7 @@ export function supportReducer(state: SupportState, action: SupportAction): Supp
                         : state.assistantOffline,
                 // Only what arrived while nobody was reading, and only from the other
                 // side — the customer's own message coming back is not news to them.
-                unread: !state.panelOpen && action.message.senderType !== 'guest'
+                unread: isNew && !state.panelOpen && action.message.senderType !== 'guest'
                     ? state.unread + 1
                     : state.unread,
             };
@@ -229,7 +300,8 @@ export function supportReducer(state: SupportState, action: SupportAction): Supp
 
 /**
  * What the transcript renders: confirmed rows and anything still in flight, in the order
- * they were created rather than the order they arrived.
+ * they were created rather than the order they arrived. A reply still being translated for
+ * this customer is left out until it settles — see `isHeldForTranslation`.
  */
 export function visibleMessages(state: SupportState): SupportMessageView[] {
     const optimistic: SupportMessageView[] = state.pending.map(p => ({
@@ -244,5 +316,6 @@ export function visibleMessages(state: SupportState): SupportMessageView[] {
         attachments: p.attachments,
     }));
 
-    return [...state.confirmed, ...optimistic].sort(byCreatedAt);
+    const shown = state.confirmed.filter(message => !isHeldForTranslation(message));
+    return [...shown, ...optimistic].sort(byCreatedAt);
 }

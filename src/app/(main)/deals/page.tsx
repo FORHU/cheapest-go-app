@@ -1,6 +1,9 @@
 import React from 'react';
 import { Metadata } from 'next';
 import { hreflangAlternates } from '@/lib/seo/hreflang';
+import { canonicalBrandName } from '@/lib/brand';
+
+export const revalidate = 1800; // regenerate every 30 minutes
 import { Sparkles } from 'lucide-react';
 import { getFlightDeals } from '@/lib/server/landing/get-landing-data';
 import { DealCard } from '@/components/landing/sections/DealsSection';
@@ -11,9 +14,11 @@ import { getTranslations } from 'next-intl/server';
 export async function generateMetadata(): Promise<Metadata> {
     const t = await getTranslations('deals');
     return {
-        title: t('pageTitle') + ' | CheapestGo',
+        // The brand is appended in code, where applyBrand never sees it, so it is read from
+        // the brand config rather than written out — "| CheapestGo" was shown on AirangGo.
+        title: `${t('pageTitle')} | ${canonicalBrandName(process.env.NEXT_PUBLIC_BRAND_NAME)}`,
         description: t('pageSubtitle'),
-        alternates: hreflangAlternates('/deals'),
+        alternates: await hreflangAlternates('/deals'),
     };
 }
 

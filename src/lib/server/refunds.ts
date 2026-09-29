@@ -104,9 +104,24 @@ export async function processRefund(
         return { success: false, error: `Refund is already ${log.status}` };
     }
 
-    // 2. Stripe already issued the refund in cancelBooking. Record the outcome here.
+    // 2. Record what Stripe actually did in cancelBooking.
     const now = new Date().toISOString();
-    const externalRef = liteApiInfo.cancellationId ?? null;
+
+    // No refund id means no refund was issued. This used to fall straight through to
+    // `processed` with the full amount approved — and then set the booking to
+    // cancelled_refunded, which the caller had to overwrite with cancelled_refund_failed. The
+    // log is the record of whether money went back; it must not say yes when it did not.
+    if (!liteApiInfo.stripeRefundId) {
+        await supabase
+            .from('refund_logs')
+            .update({ status: 'failed', status_reason: 'No refund was issued by Stripe', processed_at: now })
+            .eq('id', refundLogId);
+        return { success: false, error: 'No refund was issued' };
+    }
+
+    // The Stripe refund is the reference for money that went back; the supplier's
+    // cancellation id is kept only when there is no refund id to point at.
+    const externalRef = liteApiInfo.stripeRefundId ?? liteApiInfo.cancellationId ?? null;
 
     // Mark refund log as processed
     const { error: updateError } = await supabase

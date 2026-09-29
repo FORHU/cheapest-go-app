@@ -511,7 +511,7 @@ export function getCookieSections(t: Translator): LegalSection[] {
                             </a>.
                         </li>
                         <li>
-                            <strong>Supabase</strong> — {t('content.cookie.thirdParty.supabaseText')}
+                            <strong>Amazon Web Services (AWS)</strong> — {t('content.cookie.thirdParty.supabaseText')}
                         </li>
                     </ul>
                     <p>{t('content.cookie.thirdParty.outro')}</p>

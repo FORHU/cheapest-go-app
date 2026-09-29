@@ -523,15 +523,18 @@ export function InvoicePdfDocument(props: InvoicePdfProps) {
                         Thank you for booking with {BRAND}. For support, contact{' '}
                         <Text style={s.footerEmail}>crm@myfarebox.com</Text>
                     </Text>
-                    {/* No issuing entity is named here on purpose. This line used to read
-                        "{BRAND} is a trading name of CheapestGo Travel Services", which
-                        nobody verified and which names a company appearing nowhere else in
-                        this codebase; the site footer and the TravelgateX contract both say
-                        FORHU Inc. An unverified legal claim on a document finance teams file
-                        is worse than no claim, so it was removed rather than corrected on a
-                        guess. Restore a real entity — with its registered address and tax
-                        registration number — once someone confirms what is registered, here
-                        and on airanggo.com. Until then this is not a tax invoice. ADR-0042. */}
+                    {/* No issuing entity is named here on purpose. The line used to name a
+                        company appearing nowhere else in this codebase; the site footer and
+                        the TravelgateX contract both say FORHU Inc. An unverified legal
+                        claim on a document finance teams file is worse than no claim, so it
+                        was removed rather than corrected on a guess.
+
+                        The other side of this merge restored it as "a trading name of FORHU
+                        Inc.". It is kept out because the branch this merged with carries a
+                        test forbidding any such line — not only the wrong one — so the two
+                        cannot both stand. Restore a real entity, with its registered address
+                        and tax registration number, and relax that test in the same change.
+                        Until then this is a receipt, not a tax invoice. */}
                 </View>
 
             </Page>

@@ -68,8 +68,8 @@ belt-and-braces for anything historical.
   `HotelResultsClient` (list) and `MapResultsClient` (map, floating) — and zero have been
   seen in a browser. They typecheck and the trigger condition is correct, which is not
   the same thing. To force one: `TRAVELGATEX_ENDPOINT_URL=https://tgx-unreachable.invalid npm run dev`
-  then search a city on a date never searched before, or `hotel_search_cache` serves a
-  success and nothing shows. Note the `TRAVELGATEX_` prefix — `env.ts` prefers it over
+  then search any city — hotel searches are live now (2026-09-11), so there is no cached
+  success to hide the failure. Note the `TRAVELGATEX_` prefix — `env.ts` prefers it over
   `TRAVELGATE_`, and overriding the wrong one silently does nothing.
 - **Batching under concurrency is untested.** The hotel-code fallback now fires five
   parallel TGX calls where it fired one. `search.ts` carries a comment saying OTV
@@ -125,15 +125,17 @@ belt-and-braces for anything historical.
   `cancelPolicyInfos` arrives `undefined` in the refund path. Nothing is broken today:
   there are 8 bookings and 6 are already refunded. Deliberately left alone — it touches
   money and wants its own decision, not a side effect of a search audit.
-- **`hotel_search_cache` is never purged.** 233 rows, oldest 2026-08-21. Reads check the
-  row's age so a stale entry is never served, but nothing deletes it; the table grows
-  without bound. `cache-cleanup` looks like the owner and is not — it targets
-  `search_results_cache`, a different table.
+- **`hotel_search_cache` is no longer read or written** (2026-09-11). Hotel searches are
+  live — the cache served rates up to twelve hours old, which customers saw as prices rising
+  on every re-search; see CONTEXT.md, "Nightly Rate". The table and its rows remain, unused:
+  drop it with a migration once nothing in admin/debug tooling (`/api/admin/cache/clear`,
+  `/api/debug/tgx`) still names it. The earlier note here was also wrong — reads did *not*
+  refuse stale entries, they served them for a second full TTL.
 
 ## 4. Loose ends in the code
 
-- **`/api/search/more` is dead** — no callers, and it does not paginate: it re-runs the
-  whole search with no offset or cursor.
+- ~~**`/api/search/more` is dead**~~ — deleted 2026-09-11. It had no callers and did not
+  paginate; it re-ran the whole search.
 - **`fetchSearchData.ts:348`** wraps `searchTravelgateX` in `.catch(() => null)`, so the
   non-streaming `/api/search` route swallows `UnansweredSearchError` and still renders
   empty. The live path is the stream, so this is secondary — but it is the same bug that

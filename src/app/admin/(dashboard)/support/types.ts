@@ -7,7 +7,24 @@
 
 import type { SupportAttachmentView } from '@/components/support/types';
 
-export type InboxFilterView = 'waiting' | 'mine' | 'assistant' | 'resolved';
+export type InboxFilterView = 'unassigned' | 'mine' | 'assigned' | 'assistant' | 'resolved';
+
+/** Who is looking — decides what they may write in and what they are offered (ADR-0041). */
+export type SupportRoleView = 'admin' | 'support_agent';
+
+export interface AssignableAgentView {
+    id: string;
+    name: string;
+    role: SupportRoleView;
+}
+
+export interface HandledTallyView {
+    adminId: string;
+    name: string;
+    role: SupportRoleView;
+    open: number;
+    handled: number;
+}
 
 export interface InboxConversation {
     id: string;
@@ -18,6 +35,8 @@ export interface InboxConversation {
     guestEmail: string | null;
     userId: string | null;
     assignedAdminId: string | null;
+    /** Who it is assigned to, named. */
+    assignedAdminName?: string | null;
     /**
      * The model's own account of why it gave up. Agent-only — it is a private note about
      * the customer, and it is never sent to the widget.
@@ -60,14 +79,23 @@ export interface SupportNoteView {
 export interface InboxMessage {
     id: string;
     senderType: 'guest' | 'ai' | 'agent' | 'system';
+    /** Which staff account wrote it. Set on every 'agent' row; null on everyone else's. */
+    senderAdminId?: string | null;
+    /** That account's name, resolved for the transcript caption. Null if the account is gone. */
+    senderName?: string | null;
     body: string;
-    /**
-     * The English rendering of a customer's message (ADR-0033), or null when there is none.
-     * Null is ordinary: an English conversation, or the translator being unreachable.
-     */
-    translatedBody: string | null;
     noticeCode: string | null;
     createdAt: string;
+    /**
+     * A machine translation stored beside the author's words (ADR-0033). On a customer's
+     * message it is the English the Agent reads first; the customer's own words stay one
+     * click away and remain authoritative.
+     */
+    translatedBody?: string | null;
+    translatedLang?: string | null;
+    translationStatus?: 'pending' | 'translated' | 'untranslated' | null;
+    /** An Agent's translated reply, translated back — what the customer read. '' = could not check. */
+    backTranslatedBody?: string | null;
     /**
      * Files on this message. Never a URL - the bytes are behind a route that re-checks the
      * Agent on every fetch and mints a short-lived link (ADR-0040).
@@ -76,8 +104,10 @@ export interface InboxMessage {
 }
 
 export interface InboxCountsView {
-    waiting: number;
+    unassigned: number;
     mine: number;
+    /** The sidebar badge: Unassigned for an admin, their own unanswered chats for a Support Agent. */
+    waiting: number;
 }
 
 export interface ConversationDetail {
@@ -87,4 +117,17 @@ export interface ConversationDetail {
     linkedBookings: LinkedBookingView[];
     /** Agent-only. Never reaches the widget — see the notes table's own comment. */
     notes: SupportNoteView[];
+    /** This customer's other chats, newest first — where the earlier context is. */
+    previousConversations?: PreviousConversationView[];
+    /** Help Page articles the widget offered before they wrote (ADR-0043). */
+    suggestionsShown?: string[];
+}
+
+export interface PreviousConversationView {
+    id: string;
+    reference: string;
+    status: string;
+    createdAt: string;
+    lastMessageAt: string;
+    assignedAdminName: string | null;
 }

@@ -1,15 +1,18 @@
 import { describe, it, expect, afterEach, vi } from 'vitest';
 
 /**
- * `flight_bookings.ticket_numbers` is `text[]`. The row is written with
- * `ticket_numbers = ${JSON.stringify(tickets)}` — the parameter Postgres receives is the
- * STRING `'["0797586589419"]'`, not an array, and `[...]` is not valid Postgres array-literal
- * syntax (`{...}` is). Every real call failed:
+ * What issueTicket writes into `flight_bookings.ticket_numbers`, round-tripped through a real
+ * database.
  *
- *   malformed array literal: "["0797586589419"]"
+ * The column is `jsonb` — on live and on both local databases, checked 2026-09-17. This file
+ * originally described it as `text[]` and a "malformed array literal" failure; that error
+ * belongs to `booking_sessions.duffel_pre_order_tickets`, which really is `text[]`, and cannot
+ * come from a jsonb column. What these tests pin is still worth pinning: identifiers of any
+ * length are recorded, several are recorded, and an order with none leaves a real empty
+ * array rather than null.
  *
- * postgres.js serialises a plain JS array into a `text[]` parameter correctly on its own —
- * the fix is to stop stringifying and pass `tickets` itself.
+ * Needs DATABASE_URL and DUFFEL_ACCESS_TOKEN set; without the token issueTicket stops at
+ * "Duffel not configured" before it writes anything.
  *
  * Integration rather than unit: the defect is in what Postgres does with a bound parameter,
  * which a mocked `sql` tagged template would just echo back without ever proving anything.

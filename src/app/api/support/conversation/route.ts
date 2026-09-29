@@ -9,7 +9,7 @@ import {
     SupportValidationError,
     toPublicConversation,
 } from '@/lib/server/support/conversations';
-import { listMessages } from '@/lib/server/support/messages';
+import { listMessages, toPublicMessage } from '@/lib/server/support/messages';
 import { SUPPORT_COOKIE, supportCookieOptions } from '@/lib/server/support/tokens';
 
 export const dynamic = 'force-dynamic';
@@ -33,7 +33,10 @@ export async function GET(req: NextRequest) {
     if (!conversation) return NextResponse.json({ conversation: null, messages: [] });
 
     const messages = await listMessages(conversation.id);
-    return NextResponse.json({ conversation: toPublicConversation(conversation), messages });
+    return NextResponse.json({
+        conversation: toPublicConversation(conversation),
+        messages: messages.map(toPublicMessage),
+    });
 }
 
 /**
@@ -93,7 +96,7 @@ export async function POST(req: NextRequest) {
         cookieStore.set(SUPPORT_COOKIE, result.issuedGuestToken, supportCookieOptions());
     }
 
-    const messages = await listMessages(result.conversation.id);
+    const messages = (await listMessages(result.conversation.id)).map(toPublicMessage);
     return NextResponse.json({
         conversation: toPublicConversation(result.conversation),
         messages,

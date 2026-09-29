@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { findConversation, getSupportCaller } from '@/lib/server/support/conversations';
+import { findConversation, getConversationStatus, getSupportCaller } from '@/lib/server/support/conversations';
 import { subscribe } from '@/lib/server/support/events';
-import { getMessage, listMessages } from '@/lib/server/support/messages';
+import { getMessage, listMessages, toPublicMessage } from '@/lib/server/support/messages';
 
 export const dynamic = 'force-dynamic';
 
@@ -62,19 +62,29 @@ export async function GET(req: NextRequest) {
             // the client never has to reorder around a gap.
             try {
                 const backfill = await listMessages(conversationId, since);
-                for (const message of backfill) send('message', message);
+                for (const message of backfill) send('message', toPublicMessage(message));
             } catch (err) {
                 console.error('[support/stream] backfill failed:', err);
             }
 
-            send('ready', { conversationId, status: conversation.status });
-
             try {
                 unsubscribe = await subscribe(conversationId, event => {
+                    // A change to the conversation rather than to a message. Assigning it or
+                    // giving it back is nothing the customer sees — but being resolved is. It
+                    // used to be dropped here with the rest, so a customer whose chat was
+                    // resolved kept looking at it as though it were open, until they typed
+                    // again (QA BG-17). The status is read fresh; the event names no change.
+                    if (!event.messageId) {
+                        getConversationStatus(conversationId)
+                            .then(status => { if (status === 'resolved') send('status', { conversationId, status }); })
+                            .catch(err => console.error('[support/stream] status read failed:', err));
+                        return;
+                    }
+
                     // The notify carries ids only; the row is read here so a long message
                     // never has to fit through the 8000-byte NOTIFY payload.
                     getMessage(event.messageId)
-                        .then(message => { if (message) send('message', message); })
+                        .then(message => { if (message) send('message', toPublicMessage(message)); })
                         .catch(err => console.error('[support/stream] read failed:', err));
                 });
             } catch (err) {
@@ -83,6 +93,12 @@ export async function GET(req: NextRequest) {
                 close();
                 return;
             }
+
+            // Only once subscribed, with the status read after it: a resolution landing while
+            // the stream was still connecting would otherwise be missed by both, and the widget
+            // kept showing a finished chat as open.
+            const status = await getConversationStatus(conversationId).catch(() => conversation.status);
+            send('ready', { conversationId, status });
 
             heartbeat = setInterval(() => {
                 write(': keepalive\n\n');

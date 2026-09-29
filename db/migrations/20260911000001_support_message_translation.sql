@@ -1,38 +1,73 @@
 -- migrate:up
--- The machine rendering of a message, stored beside the words its author wrote.
+
+-- The stored translation ADR-0033 specified and nothing ever built.
 --
--- Per ADR-0033 a translation is recorded, never recomputed on read. An Agent's reply is a
--- statement made on the basis of a translation, so when a customer later disputes what they
--- were promised the question is "what did the Agent read when they wrote that" — and
--- re-translating cannot answer it. The same input yields different output across model
--- versions, and Chatwonder's /chat is stateful, so two calls on the same day need not agree
--- either. Translate-on-read would answer that question confidently and wrongly.
---
--- One column, not two, because there is one rendering per direction (ADR-0033): a guest row
--- holds its English rendering for the Agent, an agent row holds its rendering in the
--- customer's locale. Which language that is follows from sender_type and the conversation's
--- locale, both of which are already here and neither of which changes after the row is
--- written — so storing the language again would be a second copy of a fact, free to drift.
---
--- NULL is the ordinary case, not an error: an English conversation needs no rendering, and
--- so does a message sent while Chatwonder was unreachable. Every reader has to show the
--- original for those, marked untranslated.
+-- A support message carries two texts: the words its author wrote, which stay authoritative,
+-- and one machine translation stored beside them. A message not written in English gets an
+-- English rendering for the inbox; an Agent's English reply gets a rendering in the language
+-- the customer writes in. Neither is recomputed on read, because an Agent's reply is a statement made on the
+-- basis of a translation, and when a customer later disputes what they were promised the
+-- question is what the Agent *read* — which only a stored copy can answer.
 
 ALTER TABLE public.support_messages
     ADD COLUMN IF NOT EXISTS translated_body text;
 
--- A system row is stored as a notice_code and rendered from each reader's own locale files
--- (see 20260906000001), so it has no rendering of its own to hold. A translation on one
--- would be a second, competing source for words we already ship translated.
+-- The language `translated_body` is in — or, while pending or after a failure, the language
+-- it was to be made into. Stored rather than inferred from the conversation, because a
+-- conversation's locale can change and a translation cannot: it was made into one language,
+-- once, and says so.
+--
+-- It is also what decides who the translation is for: English is for the inbox, anything
+-- else for the customer. That is not the same as "the other party's message" — a Korean-
+-- speaking Agent's Korean reply is translated into English for colleagues, and the customer
+-- reads the Korean as typed — so it is recorded from the moment translation starts, and the
+-- right reader sees "translating…" or "could not translate".
 ALTER TABLE public.support_messages
-    DROP CONSTRAINT IF EXISTS support_messages_translation_not_system_check;
+    ADD COLUMN IF NOT EXISTS translated_lang text;
+
+-- Where the translation stands, as a fact about this row.
+--
+--   NULL           nothing to translate: an English conversation, or a system notice (those
+--                  render from each reader's own locale files and never need one)
+--   'pending'      delivered, translation running — the original is on screen meanwhile
+--   'translated'   translated_body holds a rendering and it passed the guard
+--   'untranslated' translation was attempted and failed or was refused
+--
+-- 'untranslated' is not an error state and nothing retries it. CONTEXT.md is explicit that a
+-- malfunction never changes a conversation's state: the message was already delivered in its
+-- author's words, and the marker is what tells the reader they are looking at the original.
+-- It matters more here than it might elsewhere — the translator measured refusing a fifth of
+-- distressed customer messages, and a refusal stored as a translation would show a stranded
+-- traveller as saying "I'm sorry, I cannot assist with that".
+ALTER TABLE public.support_messages
+    ADD COLUMN IF NOT EXISTS translation_status text;
 
 ALTER TABLE public.support_messages
-    ADD CONSTRAINT support_messages_translation_not_system_check
-    CHECK (translated_body IS NULL OR sender_type <> 'system');
+    DROP CONSTRAINT IF EXISTS support_messages_translation_status_check;
+ALTER TABLE public.support_messages
+    ADD CONSTRAINT support_messages_translation_status_check
+    CHECK (translation_status IS NULL
+        OR translation_status = ANY (ARRAY['pending', 'translated', 'untranslated']));
+
+-- A translation must name its language, and only a translated row may carry one. Without
+-- this a row could hold text with no way to say what language it is in, or be marked
+-- translated with nothing to show.
+ALTER TABLE public.support_messages
+    DROP CONSTRAINT IF EXISTS support_messages_translation_complete_check;
+ALTER TABLE public.support_messages
+    ADD CONSTRAINT support_messages_translation_complete_check
+    CHECK (
+        (translation_status = 'translated'
+            AND translated_body IS NOT NULL AND translated_lang IS NOT NULL)
+        OR (translation_status IS DISTINCT FROM 'translated' AND translated_body IS NULL)
+    );
 
 -- migrate:down
+
 ALTER TABLE public.support_messages
-    DROP CONSTRAINT IF EXISTS support_messages_translation_not_system_check;
+    DROP CONSTRAINT IF EXISTS support_messages_translation_complete_check;
 ALTER TABLE public.support_messages
-    DROP COLUMN IF EXISTS translated_body;
+    DROP CONSTRAINT IF EXISTS support_messages_translation_status_check;
+ALTER TABLE public.support_messages DROP COLUMN IF EXISTS translation_status;
+ALTER TABLE public.support_messages DROP COLUMN IF EXISTS translated_lang;
+ALTER TABLE public.support_messages DROP COLUMN IF EXISTS translated_body;

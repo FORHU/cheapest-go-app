@@ -7,6 +7,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createUser, createUserSession, getUserByEmail } from '@/lib/auth/session';
 import { rateLimit } from '@/lib/server/rate-limit';
 import { MINIMUM_ACCOUNT_AGE, isAtLeastAge, isPlausibleBirthDate } from '@/lib/age';
+import { NAME_MAX_LENGTH } from '@/lib/schemas/auth';
 
 export const dynamic = 'force-dynamic';
 
@@ -24,6 +25,16 @@ export async function POST(req: NextRequest) {
         }
         if (password.length < 8) {
             return NextResponse.json({ error: 'Password must be at least 8 characters.' }, { status: 400 });
+        }
+
+        // Names are capped here too, not only in the form (QA BG-9).
+        for (const [label, value] of [['First name', firstName], ['Last name', lastName]] as const) {
+            if (typeof value === 'string' && value.trim().length > NAME_MAX_LENGTH) {
+                return NextResponse.json(
+                    { error: `${label} must be ${NAME_MAX_LENGTH} characters or fewer.` },
+                    { status: 400 },
+                );
+            }
         }
 
         // ── Age gate ──

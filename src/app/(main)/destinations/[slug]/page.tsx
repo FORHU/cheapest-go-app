@@ -5,7 +5,7 @@ import Image from 'next/image';
 import { createAdminClient } from '@/utils/postgres/admin';
 import { buildDestinationSlug } from '@/lib/utils';
 import { getTranslations } from 'next-intl/server';
-import { hreflang } from '@/lib/seo/hreflang';
+import { hreflangAlternates } from '@/lib/seo/hreflang';
 
 interface PopularDestination {
     id: string;
@@ -40,7 +40,7 @@ export async function generateMetadata({
     return {
         title,
         description,
-        alternates: { canonical: `/destinations/${slug}`, languages: hreflang(`/destinations/${slug}`) },
+        alternates: await hreflangAlternates(`/destinations/${slug}`),
         openGraph: {
             title,
             description,

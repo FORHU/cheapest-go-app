@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { requireAgent } from '@/lib/server/support/admin-auth';
+import { requireAgent, refuseUnlessCanWrite } from '@/lib/server/support/admin-auth';
 import { getSqlAdmin } from '@/lib/db/postgres';
 import { isUrgency } from '@/lib/server/support/urgency';
 
@@ -19,6 +19,10 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
     if (!agent) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const { id } = await ctx.params;
+    // A Support Agent re-ranks only their own chats; an admin, any (ADR-0041).
+    const refused = await refuseUnlessCanWrite(agent, id);
+    if (refused) return refused;
+
     const body = (await req.json().catch(() => null)) as { priority?: unknown } | null;
 
     if (!body || !('priority' in body)) {

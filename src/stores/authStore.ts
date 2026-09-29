@@ -20,7 +20,8 @@ import {
     type ProfileInput,
 } from "@/lib/schemas/auth";
 import { RETURN_TO_PARAM, safeReturnTo } from "@/lib/auth/returnTo";
-import { useSearchStore } from "@/stores/searchStore";
+import { claimBookingInProgress, clearBookingInProgress } from "@/lib/booking/bookingInProgress";
+import { claimRecentSearches, stashRecentSearches } from "@/lib/search/recentSearchHandoff";
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -88,11 +89,22 @@ export const useAuthStore = create<AuthState>((set, get) => {
         closeAuthModal: () => set({ isAuthModalOpen: false, redirectTo: null }),
         setUser: (user) => set({ user, isLoading: false }),
 
-        /** Fetch the current session from the server on app boot. */
+        /**
+         * Fetch the current session from the server on app boot.
+         *
+         * Bounded: every sign-in screen disables itself on `isLoading`, which starts `true`
+         * and clears only here. Without a timeout, a request stalled on a poor mobile
+         * connection held those screens disabled indefinitely (found with QA BG-15). A check
+         * that has not answered in 10 s is treated as "not signed in"; the server still
+         * decides on every real request.
+         */
         initSession: async () => {
+            const controller = new AbortController();
+            const timer = setTimeout(() => controller.abort(), 10_000);
             try {
                 const res = await fetch('/api/auth/me', {
                     headers: { 'X-Requested-By': 'cheapestgo-client' },
+                    signal: controller.signal,
                 });
                 if (res.ok) {
                     const { user } = await res.json();
@@ -102,6 +114,8 @@ export const useAuthStore = create<AuthState>((set, get) => {
                 }
             } catch {
                 set({ user: null, isLoading: false });
+            } finally {
+                clearTimeout(timer);
             }
         },
 
@@ -149,9 +163,17 @@ export const useAuthStore = create<AuthState>((set, get) => {
 
         logout: () =>
             withLoading(async () => {
-                await apiFetch('/api/auth/logout', {});
-                set({ user: null });
-                useSearchStore.getState().clearRecentSearches();
+                try {
+                    await apiFetch('/api/auth/logout', {});
+                    set({ user: null });
+                    // Filed under this account, not thrown away: signing back in brings it
+                    // back, and nobody else at this browser sees it (BG-12).
+                    stashRecentSearches();
+                } finally {
+                    // Even if the request failed: the person clicked "Sign out", and the next
+                    // one at this browser must not open checkout onto their details (BG-1).
+                    clearBookingInProgress();
+                }
             }),
 
         socialLogin: async (provider, returnTo) => {
@@ -192,7 +214,10 @@ export const useAuthStore = create<AuthState>((set, get) => {
         },
 
         updateProfile: (data) => {
-            profileSchema.parse(data);
+            // The form shows `error.message` in a toast, and a raw ZodError's message is a
+            // JSON dump of its issues. Say the one thing that is wrong instead.
+            const parsed = profileSchema.safeParse(data);
+            if (!parsed.success) throw new Error(parsed.error.issues[0]?.message ?? 'Please check your name.');
             return withLoading(async () => {
                 const res = await apiFetch('/api/account/profile', {
                     firstName: data.firstName,
@@ -240,6 +265,19 @@ export const useAuthStore = create<AuthState>((set, get) => {
         },
     };
 });
+
+// Whichever way an account becomes the signed-in one — password, sign-up, the OAuth
+// return, or a session restored on load — the Booking in progress in this browser must
+// belong to it, or be wiped (BG-1). One subscription covers every path that sets `user`.
+if (typeof window !== 'undefined') {
+    useAuthStore.subscribe((state, prev) => {
+        const id = state.user?.id;
+        if (id && id !== prev.user?.id) {
+            claimBookingInProgress(id);
+            claimRecentSearches(id);
+        }
+    });
+}
 
 // Selectors
 export const useUser = () => useAuthStore((s) => s.user);

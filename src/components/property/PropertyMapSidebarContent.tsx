@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useRef, useCallback, useState, useMemo, useEffect } from 'react';
+import { useTranslations } from 'next-intl';
 import { createPortal } from 'react-dom';
 import { MapPin, Navigation, Car, Bike, X, GraduationCap, Trees, Utensils, Building2, Landmark, Coffee, Library, Pill, ShoppingBasket, Banknote, Church, Bus, Footprints, Search, Maximize, Minimize, ChevronLeft, ChevronRight, Layers, Star, Home, Bed } from 'lucide-react';
 import { Map as UIMap } from '@/components/ui/map';
@@ -46,6 +47,7 @@ interface PropertyMapSidebarProps {
 
 const PropertyMapSidebarContent = React.memo<PropertyMapSidebarProps>(
     ({ hotelDetails, coordinates, propertyName }) => {
+        const tMap = useTranslations('map');
         const mapRef = useRef<MapRef>(null);
         const gemsScrollRef = useRef<HTMLDivElement>(null);
         const [isLoaded, setIsLoaded] = useState(false);
@@ -700,7 +702,7 @@ const PropertyMapSidebarContent = React.memo<PropertyMapSidebarProps>(
                                             />
                                         </UIMap>
                                     ) : (
-                                        <div className="h-full flex items-center justify-center bg-slate-50 dark:bg-slate-800 text-slate-400">Map not available</div>
+                                        <div className="h-full flex items-center justify-center bg-slate-50 dark:bg-slate-800 text-slate-400">{tMap('notAvailable')}</div>
                                     )}
                                 </div>
                             </div>
@@ -794,7 +796,7 @@ const PropertyMapSidebarContent = React.memo<PropertyMapSidebarProps>(
                                     />
                                 </UIMap>
                             ) : (
-                                <div className="h-full flex items-center justify-center bg-slate-50 dark:bg-slate-800 text-slate-400">Map not available</div>
+                                <div className="h-full flex items-center justify-center bg-slate-50 dark:bg-slate-800 text-slate-400">{tMap('notAvailable')}</div>
                             )}
                         </div>
                     )}

@@ -6,14 +6,22 @@ import React, { useState } from 'react';
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 
-vi.mock('next-intl', () => ({
-    useTranslations: () => {
-        const t: any = (k: string) => k;
-        t.raw = () => [];
-        return t;
-    },
-    useLocale: () => 'en',
-}));
+// Real English copy, so the assertions below read on the strings a reader sees.
+vi.mock('next-intl', async () => {
+    const en = (await import('@/locales/en.json')).default as any;
+    return {
+        useTranslations: (namespace: string) => {
+            const t: any = (key: string) => {
+                let node: any = en;
+                for (const part of `${namespace}.${key}`.split('.')) node = node?.[part];
+                return typeof node === 'string' ? node : `${namespace}.${key}`;
+            };
+            t.raw = () => [];
+            return t;
+        },
+        useLocale: () => 'en',
+    };
+});
 
 import { LegalModal } from '@/components/legal/LegalModal';
 

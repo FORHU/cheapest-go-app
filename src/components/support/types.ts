@@ -48,14 +48,24 @@ export interface SupportMessageView {
     body: string;
     /** Set on system rows. Rendered from locale files; `body` is the fallback. */
     noticeCode: SupportNoticeCodeView | null;
-    /**
-     * The machine rendering stored beside `body` (ADR-0033), or null when there is none —
-     * an English conversation, or a message sent while the translator was unreachable.
-     */
-    translatedBody: string | null;
     createdAt: string;
     /** Files sent with this message. Empty on almost every row. */
     attachments: SupportAttachmentView[];
+    /**
+     * A machine translation stored beside the author's words (ADR-0033). On an Agent's reply
+     * it is in the customer's language, which is the text the customer reads first.
+     */
+    translatedBody?: string | null;
+    translatedLang?: string | null;
+    /** null when nothing needed translating; see `readerView` for how each is shown. */
+    translationStatus?: 'pending' | 'translated' | 'untranslated' | null;
+}
+
+/** One of the customer's finished chats, for "Previous conversation". */
+export interface PastConversationView {
+    reference: string;
+    createdAt: string;
+    lastMessageAt: string;
 }
 
 export interface SupportConversationView {

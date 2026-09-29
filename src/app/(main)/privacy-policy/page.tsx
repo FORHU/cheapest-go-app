@@ -10,7 +10,7 @@ import { hreflangAlternates } from '@/lib/seo/hreflang';
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations('legal.privacyPolicy');
-  return { title: t('title'), description: t('description'), alternates: hreflangAlternates('/privacy-policy') };
+  return { title: t('title'), description: t('description'), alternates: await hreflangAlternates('/privacy-policy') };
 }
 
 export default async function PrivacyPolicyPage() {

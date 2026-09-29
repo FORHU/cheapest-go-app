@@ -29,8 +29,15 @@ export const useMapViewport = ({
     useEffect(() => {
         if (disableInitialFit) return;
         if (!isMapLoaded || properties.length === 0) return;
-        // If we have a selection, don't refit bounds (prevents jumping if properties update while selected)
-        if (selectedId) return;
+        // Don't refit while the user is looking at something they picked — that would yank
+        // the map out from under them when prices or photos stream in.
+        //
+        // Only for a selection that is actually in this list, though. A selection left over
+        // from a previous search matches nothing, highlights nothing, and used to hold the
+        // camera indefinitely: pick a hotel in Paris, search New York, and the map stays in
+        // Paris while the list says New York. A selection nobody can see is not one to
+        // protect.
+        if (selectedId && properties.some((p) => p.id === selectedId)) return;
 
         // Only fit bounds if the property list has actually changed (prevents zooming out when dialogs close)
         if (hasFittedRef.current === propertiesKey) return;
@@ -65,7 +72,7 @@ export const useMapViewport = ({
                 bearing: 0,
             }
         );
-    }, [isMapLoaded, propertiesKey, mapRef, selectedId, disableInitialFit, properties]);
+    }, [isMapLoaded, properties, propertiesKey, mapRef, selectedId, disableInitialFit]);
 
     // 2. Fly to specific property when selected (skip if caller opted out)
     useEffect(() => {

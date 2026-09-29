@@ -253,6 +253,9 @@ jobs:
           V_MYSTIFLY_PASSWORD: ${{ secrets.MYSTIFLY_PASSWORD }}
           V_MYSTIFLY_USERNAME: ${{ secrets.MYSTIFLY_USERNAME }}
           V_JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          # Proves a request came through Cloudflare (a Transform Rule adds it as X-Origin-Auth), so
+          # rate limits can key on cf-connecting-ip per client. Unset = one shared bucket for all.
+          V_CF_ORIGIN_SECRET: ${{ secrets.CF_ORIGIN_SECRET }}
           # Support attachments (ADR-0040). The bucket is a var, not a secret: a bucket
           # name is not one, and the credentials that reach it come from the instance role
           # rather than from anything shipped here.
@@ -344,6 +347,7 @@ jobs:
           append_env MYSTIFLY_PASSWORD "$V_MYSTIFLY_PASSWORD"
           append_env MYSTIFLY_USERNAME "$V_MYSTIFLY_USERNAME"
           append_env JWT_SECRET "$V_JWT_SECRET"
+          append_env CF_ORIGIN_SECRET "$V_CF_ORIGIN_SECRET"
           append_env SUPPORT_ATTACHMENTS_BUCKET "$V_SUPPORT_ATTACHMENTS_BUCKET"
           append_env AWS_REGION "$V_AWS_REGION"
 
@@ -352,6 +356,14 @@ jobs:
 
           cat > deploy-remote.sh <<EOF
           set -euo pipefail
+          # Take turns with the other brand. Both deploys land on this one instance from the
+          # same push, and each prunes images; a prune that runs during the other brand's
+          # pull deletes the lease that pull holds, and it fails with "lease not found"
+          # (AirangGo, 2026-09-16). The lock file is shared by deploy-production.yml and
+          # deploy-airanggo.yml and released when this script exits. A deploy takes about
+          # 30s here, so 300s is only reached if the other one is stuck.
+          exec 9>/var/lock/ec2-brand-deploy.lock
+          flock -w 300 9 || { echo "Timed out waiting for the other brand deploy to release the lock" >&2; exit 1; }
           aws ecr get-login-password --region ${AWS_REGION} | docker login --username AWS --password-stdin ${ECR_REGISTRY}
 
           sudo mkdir -p ${ENV_DIR}
@@ -360,19 +372,19 @@ jobs:
 
           # Reclaim disk BEFORE pulling, not after.
           #
-          # On 2026-09-09 this deploy died on `no space left on device` while pulling the
-          # app image, and because the script is `set -e` the containers were never
-          # replaced — the previous image kept serving under `--restart unless-stopped`, so
+          # On 2026-09-09 this deploy died on "no space left on device" while pulling the
+          # app image, and because the script is "set -e" the containers were never
+          # replaced — the previous image kept serving under "--restart unless-stopped", so
           # the site answered 200 throughout while main had moved on. CI reported the
           # failure correctly; what misled was the healthy site, which is the only signal
           # anyone checks by hand.
           #
-          # The cause is that the cleanup below was `docker image prune -f`, which drops
-          # only DANGLING images. Every deploy pulls a new `:$IMAGE_TAG` and that tag keeps
+          # The cause is that the cleanup below was "docker image prune -f", which drops
+          # only DANGLING images. Every deploy pulls a new ":$IMAGE_TAG" and that tag keeps
           # the old image alive forever, at 1-2 GB each. Cleanup also ran last, after both
           # pulls, so it could never free space for the pull that needed it.
           #
-          # `-a` removes every image no CONTAINER references. The running app and cron
+          # "-a" removes every image no CONTAINER references. The running app and cron
           # containers reference theirs, so this cannot pull the site out from under itself;
           # it only reclaims the images previous deploys left behind.
           echo "disk before prune:"; df -h /var/lib/docker | tail -1
@@ -383,10 +395,21 @@ jobs:
           docker pull ${IMAGE}
           docker stop ${CONTAINER_NAME} >/dev/null 2>&1 || true
           docker rm ${CONTAINER_NAME} >/dev/null 2>&1 || true
+          # Published on loopback only: nginx on this box is the one thing that talks to
+          # the app, and publishing on 0.0.0.0 left it reachable on the public IP, around
+          # Cloudflare and so around its WAF and the header the rate limiter identifies
+          # customers by (ADR-0028).
+          #
+          # Two rules for anything written here, both learned the hard way on 2026-09-15.
+          # This text lands inside an unquoted heredoc that builds the remote script, so
+          # backticks in a comment are run as commands by the runner and the deploy dies
+          # before it starts. And a comment line between two continued lines of a command
+          # ends that command, which is how docker run was once invoked with no image.
+          # No backticks, no dollar signs, and nothing between the lines of the run below.
           docker run -d \
             --name ${CONTAINER_NAME} \
             --restart unless-stopped \
-            -p ${CONTAINER_PORT}:3000 \
+            -p 127.0.0.1:${CONTAINER_PORT}:3000 \
             --env-file ${ENV_FILE_PATH} \
             ${IMAGE}
 

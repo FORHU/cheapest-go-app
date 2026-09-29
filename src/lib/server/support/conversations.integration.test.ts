@@ -89,23 +89,58 @@ describe('a support conversation waits for a person from birth', () => {
         expect(await statusOf(conversation.id)).toBe('waiting_human');
     });
 
-    it('returns a reopened conversation to the queue rather than to the assistant', async (ctx) => {
+    it('resumes an open conversation rather than starting a second', async (ctx) => {
         if (!(await databaseReachable())) ctx.skip();
 
-        // A customer writing into a chat an Agent had marked done. There is no assistant
-        // to hand it to any more, so reopening it means queueing it.
         const { openConversation } = await import('./conversations');
         const userId = await makeUser();
 
         const first = await openConversation({ caller: { userId, guestToken: null }, locale: 'en' });
         createdConversations.push(first.conversation.id);
-        await resolve(first.conversation.id);
-
         const again = await openConversation({ caller: { userId, guestToken: null }, locale: 'en' });
 
         expect(again.created).toBe(false);
         expect(again.conversation.id).toBe(first.conversation.id);
-        expect(again.conversation.status).toBe('waiting_human');
-        expect(await statusOf(first.conversation.id)).toBe('waiting_human');
+    });
+
+    it('starts a new conversation, with its own reference, once the last one is resolved', async (ctx) => {
+        if (!(await databaseReachable())) ctx.skip();
+
+        // A resolved chat is finished (CONTEXT.md, "Support Chat"). It used to reopen —
+        // on merely opening the widget — and one reference collected unrelated topics.
+        const { openConversation, listPastConversations, findPastConversation } = await import('./conversations');
+        const userId = await makeUser();
+        const caller = { userId, guestToken: null };
+
+        const first = await openConversation({ caller, locale: 'en' });
+        createdConversations.push(first.conversation.id);
+        await resolve(first.conversation.id);
+
+        const next = await openConversation({ caller, locale: 'en' });
+        createdConversations.push(next.conversation.id);
+
+        expect(next.created).toBe(true);
+        expect(next.conversation.id).not.toBe(first.conversation.id);
+        expect(next.conversation.reference).not.toBe(first.conversation.reference);
+        expect(next.conversation.status).toBe('waiting_human');
+        // The finished one stays finished, and is the customer's history.
+        expect(await statusOf(first.conversation.id)).toBe('resolved');
+        expect((await listPastConversations(caller)).map(p => p.reference)).toEqual([first.conversation.reference]);
+        expect((await findPastConversation(caller, first.conversation.reference))?.id).toBe(first.conversation.id);
+    });
+
+    it("never lets one customer read another's past chat by its reference", async (ctx) => {
+        if (!(await databaseReachable())) ctx.skip();
+
+        // The reference names a chat and grants nothing (ADR-0038).
+        const { openConversation, findPastConversation } = await import('./conversations');
+        const owner = await makeUser();
+        const stranger = await makeUser();
+
+        const chat = await openConversation({ caller: { userId: owner, guestToken: null }, locale: 'en' });
+        createdConversations.push(chat.conversation.id);
+        await resolve(chat.conversation.id);
+
+        expect(await findPastConversation({ userId: stranger, guestToken: null }, chat.conversation.reference)).toBeNull();
     });
 });

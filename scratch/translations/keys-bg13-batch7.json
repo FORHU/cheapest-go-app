@@ -1,0 +1,9 @@
+{
+  "trips.status.cancellationStuck": { "en": "Cancellation Stuck", "ko": "취소 처리 지연", "ja": "キャンセル処理が停止", "zh": "取消处理受阻" },
+  "trips.flightBookingCard.passengersHeading": { "en": "Passengers", "ko": "탑승객", "ja": "搭乗者", "zh": "乘客" },
+  "trips.flightBookingCard.ticketDetails.grandTotal":   { "en": "Grand Total:", "ko": "총 결제 금액:", "ja": "合計金額：", "zh": "总计：" },
+  "trips.flightBookingCard.ticketDetails.totalFare":    { "en": "Total Fare:", "ko": "총 운임:", "ja": "運賃合計：", "zh": "票价合计：" },
+  "trips.flightBookingCard.ticketDetails.fareCalc":     { "en": "Fare Calc:", "ko": "운임 계산:", "ja": "運賃計算：", "zh": "票价计算：" },
+  "trips.flightBookingCard.ticketDetails.endorsements": { "en": "Endorsements:", "ko": "제한 사항:", "ja": "制限事項：", "zh": "背书/限制：" },
+  "trips.flightBookingCard.ticketDetails.itinerary":    { "en": "Itinerary:", "ko": "여정:", "ja": "旅程：", "zh": "行程：" }
+}

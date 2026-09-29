@@ -8,6 +8,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslations } from 'next-intl';
 import { cn } from '@/utils/cn';
 import SignInDropdown from '../auth/SignInDropdown';
+import { useSupportWidgetStore } from '@/stores/supportWidgetStore';
 
 const NAV_ITEMS = [
     { key: 'home', icon: Search, href: '/' },
@@ -19,6 +20,11 @@ export const MobileBottomNav = () => {
     const t = useTranslations('nav');
     const pathname = usePathname();
     const [isProfileOpen, setIsProfileOpen] = React.useState(false);
+    // On a phone the Support panel takes the whole screen, and this bar — a layer above it —
+    // sat over its message box, so nobody could type. Stepping aside while it is open is
+    // simpler than out-ranking it: the panel is kept below the app's modals on purpose.
+    // From `sm` up the panel is a floating card above the bar, so the bar stays.
+    const supportOpen = useSupportWidgetStore(state => state.isOpen);
 
     // Determine active index
     const activeIndex = React.useMemo(() => {
@@ -30,7 +36,10 @@ export const MobileBottomNav = () => {
 
     return (
         <>
-            <div className="lg:hidden fixed bottom-0 left-0 right-0 z-[100] px-3 pb-[calc(env(safe-area-inset-bottom,0px)+6px)]">
+            <div className={cn(
+                'lg:hidden fixed bottom-0 left-0 right-0 z-[100] px-3 pb-[calc(env(safe-area-inset-bottom,0px)+6px)]',
+                supportOpen && 'max-sm:hidden',
+            )}>
                 {/* Main Nav Container */}
                 <div className="relative bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl rounded-xl shadow-[0_-8px_30px_rgba(0,0,0,0.06)] dark:shadow-[0_-15px_40px_rgba(0,0,0,0.25)] border border-white/20 dark:border-white/10 h-11 flex items-center">
                     

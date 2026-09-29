@@ -145,6 +145,25 @@ _Avoid_: assuming OTV and ETG cover different hotels; treating ETG as a separate
 **LiteAPI** — a retired hotel supplier. The *integration* is gone: no client, no credentials, nothing calls it, and it supplies no inventory. Its *vocabulary* is not gone, and the difference matters when reading the code. `raw_liteapi_response` is a live column in the schema, LiteAPI's room-and-offer shape is still what v1's room types are modelled on, and v1's rate builder reads that shape before it reads the one OTV actually sends. api-v2 carries a smaller residue that nothing calls at all.
 _Avoid_: reading a LiteAPI name as evidence of a live supplier — every occurrence is either a column name, a type shape, or dead code. _Avoid_: the reverse error of assuming the names are cosmetic and safe to strip — the column is `NOT NULL` and a stored function reads it. _Avoid_: adding new code in LiteAPI's shape because the surrounding code is written that way.
 
+**OTV Portfolio** — every hotel our OTV access is entitled to sell, as OTV currently lists it.
+It is a supplier fact, not a catalogue of ours: hotels enter it and leave it on OTV’s schedule,
+and a hotel absent from it cannot be booked however much content we hold about it. Obtainable in
+full from the TravelGateX Hotels API, and separately as a CSV a person downloads from the TGX
+dashboard — the same portfolio by two routes, not two things.
+_Avoid_: treating the rows of `hotel_content` as the portfolio — that table also holds hotels OTV
+has since dropped, and hotels ETG supplies that OTV never carried. _Avoid_: calling a hotel
+missing from a search "not in the portfolio" without checking: a supplier timeout and a genuine
+absence look identical from a single search.
+
+**Supplier-Owned Field** — a column on a hotel that belongs to whoever supplies the hotel, and is
+overwritten from them without ceremony: what the hotel is called, where it is, its category, its
+Giata id. Distinct from **Enrichment** — images, descriptions, amenities, review scores, room
+groups, policies — which we accumulate from other sources over time and which no supplier refresh
+may destroy. The distinction is what makes a repeated portfolio sync safe to run: it can correct
+a moved hotel or a renamed one, and it cannot empty a hotel’s photo gallery.
+_Avoid_: a refresh that writes whatever the supplier returned — a thin response then hollows out
+rows that were complete. A supplier’s null is an absence of news, not news of an absence.
+
 **TGX Static Data** — a bulk hotel registry downloaded from TravelGateX, stored in `tgx_hotel_static`. Contains each hotel's TGX code, name, address, coordinates, and FastX mapping. Downloaded as part of TGX onboarding. Cross-supplier dedup via FastX has no active use case today (OTV is the only TGX supplier); the table is dormant until a second TGX supplier with distinct inventory is added.
 _Avoid_: using `tgx_hotel_static` as a geo-to-code lookup or as the primary source of display content.
 
@@ -195,6 +214,50 @@ _Avoid_: `REFUNDABLE` / `NON_REFUNDABLE` / `NON-REFUNDABLE` — all three reache
 _Avoid_: treating an empty Quote `cancelPenalties` as definitive — always check the Search fallback first. _Avoid_: adding a "contact property" CTA without a real contact channel wired up.
 
 **Planned Suppliers** — ONDA and Rakuten are the next hotel providers in the pipeline, added for **coverage expansion** (genuinely different hotel inventory from OTV/RateHawk, not price competition on the same hotels). Neither is active yet. When added, dedup against OTV results will be required.
+
+**Endonym** — what a city is called at home, when that differs from the English name: Roma for
+Rome, Wien for Vienna, Lissabon for Lisbon. Distinct from a **Sub-Area**, and the distinction
+is not pedantry — an Endonym is the *same place* under another name, so it has no parent city,
+no district framing and no bounds of its own; a Sub-Area is a smaller place inside another and
+has all three. Kept in their own list for that reason, and because the two collide: the
+Sub-Area dictionary already spends the key "roma" on the colonia in Mexico City.
+_Avoid_: resolving an Endonym through the Sub-Area dictionary — it would frame Rome as a
+district of Rome and bound the search by a city bbox, which is tighter than the city’s real
+hotel spread. _Avoid_: expecting the geocoder to find one: it is queried in English and ranks
+an exact match on its English index first, so on 2026-09-22 "Milano" returned a Polish village
+and Milan was not in the list at all.
+
+**Catalog Spelling** — the name `hotel_content` files a city under, which is the supplier’s
+name and not always the English one: Mexico City is filed as "Mexico", and 2,113 Lisbon hotels
+are filed as "Lissabon" beside 890 as "Lisbon". A city may have several at once, and all of
+them have to be searched or part of its inventory is invisible. A **Canonical City** — what an
+alias resolves to — is therefore not a Catalog Spelling: it is the key that maps to every
+spelling the catalog uses.
+_Avoid_: pointing an alias at a Catalog Spelling instead of the canonical — it reaches that
+one spelling and silently misses the rest. _Avoid_: assuming a spelling is stable: a supplier
+refresh rewrites it. The 2026-09-21 portfolio sync replaced the German names the supplier used
+to send with its English ones, and the dictionary, which had been correct, stopped matching
+overnight — "Ho-Chi-Minh-Stadt" went from most of the city to 63 hotels against 3,110.
+
+**Sub-Area** — a borough, district or neighbourhood the picker resolves to a parent city:
+Barking and Dagenham to London, Gangnam to Seoul, Shoreditch to London. Two facts travel with
+it and neither substitutes for the other — the **city whose inventory is searched**, because
+[ADR-0006](docs/adr/0006-granularity-ladder-is-etg-driven.md) leaves OTV serving the City rung
+alone and a borough has no supplier code of its own; and the **extent the results are shown
+within**, which is the sub-area’s own administrative bounds. The alias dictionary holds 16,634
+of these.
+
+A Sub-Area is therefore searched wide and presented narrow. Collapsing the two into one answer
+is what produced the 2026-09-22 report: a borough search was labelled a city search, so the
+bounds it arrived with were discarded, the catalog fell back to a 50 km circle around the
+borough’s centroid — the whole of Greater London — and the traveller was shown 220 hotels in
+a place they had not asked about. The borough holds 125.
+_Avoid_: reading a Sub-Area’s rung as "city" because its inventory is the city’s — the rung
+records what the traveller picked, and the map clips to a bbox at every rung except city.
+_Avoid_: searching under the Sub-Area’s own name: it matches no `hotel_content` row and no TGX
+destination, and any results are the radius quietly reaching the parent city instead.
+_Avoid_: widening to the parent city when a Sub-Area holds few hotels — the results header
+already offers "Show all in <city>", and widening without being asked is the confusion above.
 
 **Destination granularity** — a searched place resolves at one of five levels (the *granularity ladder*): **Country → Province/State → City → District → Specific** (a landmark/POI or address). The ladder has two resolution modes:
 - **Area rungs** (**Country**, **Province/State**, **City**) resolve to an **ETG region identifier** and are searched as a whole area. **City** *additionally* resolves on **OTV/TravelGateX** (destination or hotel codes); Country and Province do not.
@@ -249,9 +312,21 @@ _Avoid_: converting prices in the browser — two independent conversions drift 
 _Avoid_: showing a **Stay Total** with a "per night" label — the same number means something different to a supplier and to a guest, and the guest reads it as the cheaper of the two.
 _Note_: derived exactly once, and the search stream is where. A price that has already been divided looks no different from one that has not — both are numbers, and dividing a second time is silent — so a Nightly Rate arriving from a search is rendered and converted, never divided. On 2026-09-10 seven display surfaces divided again and the whole storefront advertised half: ₱1,587 on a map marker for a room the property page sold at ₱3,173. It showed on no one-night stay, which is why it survived.
 _Avoid_: a helper named for the conversion rather than for what it takes. "To per night" reads as safe to apply to anything, including a figure that is already per night; the name is what invited the second division after the first had been fixed.
+_Note_: always live — asked of the supplier when the page is shown, never replayed from an earlier search. A hotel's Nightly Rate is its cheapest room, and cheap rooms are the ones that sell, so a replayed rate is often a room that is gone; the guest's next search then shows the real one and reads as a price rise. Rates do rise over time as rooms sell — that is the market — but a guest should only ever see it happen once, not be shown a price that was already unavailable. Customers reported exactly this in September 2026: search, log out, search again, always higher; the first search was replaying rates up to twelve hours old.
+_Avoid_: blaming the difference on the account or the session. Nothing about a Nightly Rate depends on who is signed in.
 
 **Stay Total** — what a room costs for the whole date range asked about. This is what OTV/TGX actually quotes and what prebook confirms, so it is the only hotel price the platform receives directly and the basis of every charge.
 _Avoid_: passing one as a bare number. A price and the stay it covers travel together; a figure that has lost its night count cannot be restated per night by whoever renders it next, only guessed at.
+
+**Default Stay** — the dates a hotel search quotes for when nobody has named usable ones: a landing card that links straight to a city, a link that has gone stale in a chat window, a checkout that falls on or before the arrival. Next Friday to Sunday. It is a *hotel* term and says nothing about flights, where the cheapest departure is weeks out, not next weekend.
+_Avoid_: today or tomorrow. OTV holds near-zero inventory for same-day and next-day stays, so a page that quotes them reports "no rooms available" for a hotel with plenty — indistinguishable, to the traveller, from the hotel being full. On 2026-09-28 a landing card linked with no dates at all, the search bar filled in tomorrow, and every property opened from those results came back empty.
+_Avoid_: more than one rule for it. Three coexisted — next weekend, today+30, and tomorrow — so which stay a traveller was quoted depended on which card they happened to click.
+_Note_: a Default Stay is disclosed, never silent. The traveller is told the dates were chosen for them and where to change them; a quote they did not ask for and cannot see the basis of is worse than no quote.
+
+**Default Departure** — the same idea for flights, and deliberately a different date: a month out. A route can be named without a date at all — `/flights/MNL-ICN` is a page *about* a route — and a link shared last month names a day that has gone. Both get one.
+_Avoid_: reaching for the **Default Stay** because both are "the date we pick". They answer different questions — one is about what OTV has rooms for next weekend, the other about where the cheap fares are — and applying the hotel rule to flights would deep-link every route page to the most expensive departure window there is.
+_Avoid_: refusing to search instead. A missing or stale date is not a reason to show an error; a missing *route* is, because nothing can guess where someone meant to fly.
+_Note_: disclosed on the same terms as a Default Stay, on every width. The flight results said so only on narrow screens at first, so the widest screen was the one that never mentioned it.
 
 **Booked Amount** — a payment restated into the **Reporting Currency** using the rate in force at the moment it was taken. Fixed permanently at that instant, so a report for a past period returns the same figure however long afterwards it is run.
 _Avoid_: recomputing a past period at today's rate — a closed month never moves.
@@ -298,7 +373,9 @@ _Avoid_: re-introducing any cron that calls a hotel availability API without a r
 
 ## Support
 
-**Support Chat** — a conversation between one customer and CheapestGo about a trip they have or are trying to book, answered by an **Agent**. Opening one requires signing in, so every Support Chat has an account behind it and therefore a way to reach whoever started it.  A customer has at most one open Support Chat at a time; asking again resumes the one they have rather than starting a second.
+**Support Chat** — a conversation between one customer and CheapestGo about a trip they have or are trying to book, answered by an **Agent**. Opening one requires signing in, so every Support Chat has an account behind it and therefore a way to reach whoever started it.  A customer has at most one open Support Chat at a time; asking again resumes the one they have rather than starting a second. Once it is resolved it is finished: writing again starts a new Support Chat, with its own **Chat Reference**, and the resolved one becomes part of the customer's history.
+_Note_: only a person resolves a Support Chat — nothing closes one for going quiet. An open chat the customer returns to days later is still that chat, and it is the Agent's call to resolve it and let the next question start fresh.
+_Why a new chat rather than a reopened one_: a reference is how a customer and an Agent point at *one* issue, and Support Agents are paid per chat **Handled**. Reopening made one reference collect unrelated topics over days — small talk, a how-to question, a fresh "hello" — each credited again to whoever resolved it next.
 _Avoid_: "ticket" — it is not closed by the customer, nothing about it is promised to be answered off-line, and it is not a unit of work that can be handed on while the customer waits somewhere else. A **Chat Reference** now names one, so "not numbered" is no longer the reason; being numbered is what lets a customer cite a conversation, not what turns it into a queue item. _Avoid_: calling it a "session" — it outlives the browser tab it was opened in.
 _Note_: until 2026-09-07 a Support Chat was answered first by a model and reached an Agent only on hand-over. The model is gone and the vocabulary of hand-over went with it — a reader who finds `escalation_reason` or a `senderType` of `ai` in the schema is looking at residue, not at a capability.
 
@@ -311,16 +388,30 @@ _Why it exists_: a Support Chat requires an account, so before this page "Suppor
 _Note_: it is the destination of the support entry point for anyone not signed in, and it carries the way to a person at the bottom rather than the top — most of what support is asked is answered by the article above the button.
 _Avoid_: confusing it with `/support/login`, which is the staff door and has no customer content on it. _Avoid_: treating it as policy — the **Refund Policy** and the terms are the documents, and this links to them rather than restating them, which is also why it carries no effective date.
 
+**Suggested Answer** — a **Help Page** article the widget offers a customer while they are typing, because what they have written so far matches it. It is an offer, not a reply: it appears below the box they are writing in, never in the transcript, and it is attributed to nobody. The customer decides whether it answered them — saying it did ends the matter with no Support Chat in the queue, and saying it did not, or simply sending, is the ordinary path to an **Agent**.
+_Why it is not an answer_: only a person answers inside a Support Chat (ADR-0031, ADR-0043). The difference is not how good the text is — a Suggested Answer is a person's writing, checked and translated — it is whether someone chose to send it into *this* conversation, knowing who was asking and what about.
+_Avoid_: "bot", "auto-reply", "deflection". The first two describe something writing in the chat, which nothing does; the third names the company's interest in the thing rather than the customer's.
+_Note_: the articles are the Help Page's, not a second set written for the widget. One corpus, two places to read it — two would drift, and the drift shows up as a customer being told two different things by the same company on one day.
+
+**Handled** — a Support Chat counts as handled by the **Support Agent** it was assigned to at the moment it was resolved. The tally admins pay from: one resolution, one handled chat, credited to one person. A chat reopened and resolved again is handled again, by whoever holds it the second time.
+_Avoid_: counting replies, or crediting whoever wrote last — an admin who helped out, or a colleague who read along, did not handle it. _Avoid_: reconstructing it from who holds a chat now; it is recorded when it happens, because assignment moves afterwards and memory is what the disputes are about.
+
+**Unassigned** — a Support Chat no admin has given to a **Support Agent** yet. The admins' queue: what is in it is theirs to hand out, and nobody else's to answer.
+_Avoid_: using it interchangeably with **Waiting**. Unassigned is about who owns the chat; Waiting is about whether the customer has been answered. A chat assigned a minute ago is no longer Unassigned and still Waiting.
+
 **Waiting** — a Support Chat nobody has answered yet. Every Support Chat begins here, at any hour, from its first message. It is a state, not an event: nothing *happens* to put a chat in the queue, because the queue is where a chat starts.
 _Avoid_: "escalated", "raised", "handed over" — all three imply a prior owner, and there is never one. _Avoid_: treating an out-of-hours chat as a different kind of thing; it is the same state, differently explained.
 
-**Translation** — a machine rendering of one message into another language, stored beside that message and never in place of it. It runs both ways: a customer's words into the Agent's reading language, an Agent's reply into the customer's locale. Every translation is shown marked as machine-made, to the Agent and to the customer alike.
-_Avoid_: calling a translation "the message" — the message is what its author wrote, and that text stays authoritative wherever the two disagree. _Avoid_: treating the two renderings as two messages; it is one message, read twice.
+**Translation** — a machine rendering of one message into another language, stored beside that message and never in place of it. Which way it goes is decided by the language the message is written in, not by who wrote it: anything not in English is rendered in English for the inbox, and an Agent's English reply is rendered in the language the customer writes in. An Agent who answers a Korean customer in Korean is read by that customer exactly as typed; the English is for their colleagues. Every translation is shown marked as machine-made, to whichever reader it is for.
+_Avoid_: calling a translation "the message" — the message is what its author wrote, and that text stays authoritative wherever the two disagree. _Avoid_: treating the two renderings as two messages; it is one message, read twice. _Avoid_: taking the customer's language from the storefront they arrived on — a Korean traveller on the English site writes Korean.
+_Note_: a customer reads an Agent's reply once, in their own language. The reply reaches them when its translation has settled — translated, or, if translating failed, in the Agent's own words, marked — and not before; until then they see that support is replying. The wait is as long as translating takes and no longer: every translation settles, including one an outage or a restart interrupted. The inbox is the opposite: an Agent sees a customer's message at once, in the original, and the English follows.
+_Avoid_: showing the customer the English and swapping it for the translation a few seconds later — they read the reply twice, once in a language they asked not to read it in.
 _Why the original is kept_: an Agent answers on the basis of a translation, so a later question about what was promised is really a question about what the Agent read. Re-translating afterwards cannot reproduce it.
 
 **A malfunction never changes a conversation's state** — when translation is unavailable the message is delivered exactly as its author wrote it, marked untranslated, and nothing else moves: no hold, no queue change, no retry into silence.
 _Why_: a fault on a shared service is never local. The first time this broke it was one dead API key, which is broken for every conversation on the site at once — so any rule of the form "when it fails, do something different" fires for every customer simultaneously, and the something-different is always worse than the plain truth. A customer can paste English into a translator; they can do nothing whatever with a reply that never arrived.
 _Avoid_: a retry-then-hold path, or a "failed N times so hold" threshold — both re-introduce the site-wide surprise under a different name.
+_Note_: a customer waiting for a reply's translation (see **Translation**) is not an exception to this. The wait ends when translating ends, and a translator that is down ends it at once, with the reply delivered in the Agent's words. What must never happen is a reply that is waiting on something that is no longer coming.
 
 **Support Desk** — a second, narrower console for people whose whole job is answering Support Chats: the inbox and the Support Hours, and nothing else.
 _Note_: it is now a permission boundary as well as a workspace. A **Support Agent** account can reach the Desk and nothing else; an admin reaches it and every other admin screen too. It was a workspace only, before the role existed.
@@ -332,15 +423,21 @@ _Avoid_: "opening hours" — the site never closes and the widget never refuses 
 **Agent** — a CheapestGo staff member handling a customer, whether on a call or in a Support Chat. Already the word used throughout the admin screens.
 _Avoid_: "travel agent" (suggests a third party) and "operator" or "bot" — an Agent is always a person, and now the only thing that ever answers a Support Chat.
 
-**Support Agent** — an account that may do Agent work and nothing else: answer Support Chats, set the Support Hours, and look up a booking read-only to verify someone's claim. It cannot reach the back office, cannot change a booking, and cannot promote anyone.
+**Support Agent** — an account that may do Agent work and nothing else: answer the Support Chats **assigned to them**, read the rest, set the Support Hours, and look up a booking read-only to verify someone's claim. It cannot reach the back office, cannot change a booking, cannot promote anyone, and cannot assign a chat — not even to itself (see **Assignment**).
 _Avoid_: treating "Support Agent" and "**Agent**" as the same word. Agent is what someone is *doing* — an admin answering a chat is an Agent. Support Agent is what an account is *allowed* to do. Every Support Agent is an Agent; most Agents so far have been admins.
 _Avoid_: giving a Support Agent access by widening the back office — access is granted by building the screen inside the **Support Desk**, so anything not deliberately built for them stays out of reach.
 
-**Assignment** — which Agent owns a **Waiting** Support Chat. It is taken by answering: the first Agent to reply owns the conversation, and it leaves the unassigned queue for everyone else. There is no separate claiming step, and therefore no claim to go stale when someone opens a conversation and walks away.
-_Avoid_: treating Assignment as permission — any Agent can read any Support Chat; what Assignment says is who is dealing with it.
+**Assignment** — which **Support Agent** a Support Chat belongs to. It is given by an admin, never taken: a **Waiting** chat stays in the queue until an admin assigns it, and a Support Agent cannot claim, take or answer their way into one.
+_Why_: Support Agents' pay depends on the chats they handle, so any way of *taking* a chat — first to reply, a "take" button — makes the queue a race between colleagues, won by whoever watches it hardest rather than whoever the work should go to. Until 2026-09-11 Assignment was taken by answering, and that was exactly the race.
+_Avoid_: "claim" and "take" — both describe the Agent acting, and the Agent no longer does. _Avoid_: treating "the first to reply" as the owner; replying never moves a chat.
+_Note_: an admin may write in any Support Chat — to help, or to cover one that cannot wait — and doing so never changes whose it is. An admin who wants to own a chat assigns it to themselves, like anyone else. Help from an admin must not quietly take a chat, and the pay with it, away from the Support Agent it belongs to.
+_Note_: a Support Agent can give a chat back, and only back — to **Unassigned**, for an admin to hand out again. Never to a named colleague: that would be an Agent assigning. Giving back exists so a chat is not stranded with someone who has gone off shift.
+_Note_: a customer who writes again after their chat was resolved starts a new Support Chat, and it arrives **Unassigned** like any other — not with whoever had the last one. Usually the admin gives it to the same Support Agent; the point is that they decide, so a customer is never owned for good by whoever answered them first.
+_Note_: nothing assigns a chat but an admin — not a timer, not a rota. A chat that arrives with no admin around stays **Unassigned** until one is; the customer has already been told, by the **Support Hours**, when to expect someone, and the doorbell goes to whoever assigns.
+_Note_: a Support Agent may read every Support Chat — the queue and colleagues' chats alike — but writes only in their own. Reading is how they learn and how they cover for each other; writing is the work, and the work is what is paid for, so it follows Assignment exactly.
 
-**Resolved** — an Agent's statement that a Support Chat is finished. It is not an ending: a customer who writes again reopens the conversation, with the same transcript, and it returns to **Waiting** exactly as a fresh one would. Only an Agent resolves; the customer closing the widget means nothing.
-_Avoid_: "closed" — nothing is prevented afterwards. _Avoid_: reading a Resolved chat as one the customer agreed was finished; it records what the Agent believed.
+**Resolved** — an Agent's statement that a Support Chat is finished. It finishes that chat and nothing else: a customer who writes again gets a **new** Support Chat, with its own **Chat Reference**, arriving **Unassigned** and **Waiting** like any other, while the resolved one becomes history both sides can read back. Only an Agent resolves; the customer closing the widget means nothing.
+_Avoid_: "closed" — the customer is prevented from nothing; they write again whenever they like and are answered, in a new chat. _Avoid_: "reopened" — until 2026-09-11 writing again did reopen the same chat, and one reference then collected unrelated topics across days, each credited again under **Handled**; the word survives in a `reopened` assignment event and nowhere else. _Avoid_: reading a Resolved chat as one the customer agreed was finished; it records what the Agent believed.
 
 **Chat Reference** — the short code that names one Support Chat out loud, `CS-` and six characters, e.g. `CS-9QM2K7`. It exists so a customer writing from their own mail client, or an Agent naming a case to a colleague, can point at a conversation without a link.
 _Avoid_: treating it as a credential. Holding a Chat Reference grants nothing: a Support Chat is reached by signing in, and the reference only names the thing you must already be entitled to see. This is the deliberate difference from helpdesks whose reference number *is* the way in.

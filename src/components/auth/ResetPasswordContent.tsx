@@ -1,18 +1,30 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { ArrowLeft, Lock, Eye, EyeOff, Check, X } from 'lucide-react';
 import { useTranslations } from 'next-intl';
-import { useAuthStore } from '@/stores/authStore';
 import { usePasswordValidation } from '@/hooks';
 import { brandWordmark, canonicalBrandName } from '@/lib/brand';
 
 const BRAND_NAME = canonicalBrandName(process.env.NEXT_PUBLIC_BRAND_NAME);
 
+/** Long enough for a slow mobile connection, short enough that nobody waits on a dead one. */
+const RESET_TIMEOUT_MS = 20_000;
+
+/**
+ * The page a reset link from the email opens.
+ *
+ * It waits on nothing but its own request. It used to disable the form on the auth store's
+ * `isLoading`, which starts `true` and clears only when the app-wide session check answers —
+ * so the server-rendered page, and every moment before hydration or while `/api/auth/me`
+ * was slow, showed disabled fields and a spinner in place of the button. On a phone opened
+ * from the email that was the whole experience: "frozen in loading state" (QA BG-15).
+ * Someone resetting a password has no session to check.
+ */
 export function ResetPasswordContent() {
     const t = useTranslations('auth');
-    const { isLoading } = useAuthStore();
+    const [submitting, setSubmitting] = useState(false);
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
@@ -22,8 +34,20 @@ export function ResetPasswordContent() {
 
     const { requirements, allMet } = usePasswordValidation(password);
 
+    // The fields are usable from first paint now, so on a slow phone someone can type before
+    // the page hydrates. React does not adopt what was typed into a controlled input before
+    // it took over: the characters stay on screen while state stays empty, and the button
+    // stays disabled with nothing to explain it. Take whatever is in the fields on mount.
+    const passwordField = useRef<HTMLInputElement>(null);
+    const confirmField = useRef<HTMLInputElement>(null);
+    useEffect(() => {
+        if (passwordField.current?.value) setPassword(passwordField.current.value);
+        if (confirmField.current?.value) setConfirmPassword(confirmField.current.value);
+    }, []);
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        if (submitting) return;
         setError('');
 
         if (!allMet) { setError(t('messages.requirementsNotMet')); return; }
@@ -32,17 +56,25 @@ export function ResetPasswordContent() {
         const token = new URLSearchParams(window.location.search).get('token');
         if (!token) { setError(t('messages.invalidLink')); return; }
 
+        setSubmitting(true);
+        // A request that never answers must not become a spinner that never stops.
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), RESET_TIMEOUT_MS);
         try {
             const res = await fetch('/api/auth/reset-password', {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json', 'X-Requested-By': 'cheapestgo-client' },
                 body: JSON.stringify({ token, password }),
+                signal: controller.signal,
             });
-            const json = await res.json();
+            const json = await res.json().catch(() => ({}));
             if (!res.ok) throw new Error(json.error || t('messages.failedToReset'));
             setSuccess(true);
         } catch (err: any) {
-            setError(err?.message || t('messages.failedToReset'));
+            setError(err?.name === 'AbortError' || !err?.message ? t('messages.failedToReset') : err.message);
+        } finally {
+            clearTimeout(timer);
+            setSubmitting(false);
         }
     };
 
@@ -126,11 +158,12 @@ export function ResetPasswordContent() {
                                     <input
                                         type={showPassword ? 'text' : 'password'}
                                         id="password"
+                                        ref={passwordField}
                                         value={password}
                                         onChange={(e) => setPassword(e.target.value)}
                                         placeholder={t('resetPassword.newPasswordPlaceholder')}
                                         className="w-full pl-10 pr-12 py-3 border border-slate-200 dark:border-white/10 rounded-lg bg-white dark:bg-white/5 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
-                                        disabled={isLoading}
+                                        disabled={submitting}
                                     />
                                     <button
                                         type="button"
@@ -178,11 +211,12 @@ export function ResetPasswordContent() {
                                     <input
                                         type={showConfirmPassword ? 'text' : 'password'}
                                         id="confirmPassword"
+                                        ref={confirmField}
                                         value={confirmPassword}
                                         onChange={(e) => setConfirmPassword(e.target.value)}
                                         placeholder={t('resetPassword.confirmPasswordPlaceholder')}
                                         className="w-full pl-10 pr-12 py-3 border border-slate-200 dark:border-white/10 rounded-lg bg-white dark:bg-white/5 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
-                                        disabled={isLoading}
+                                        disabled={submitting}
                                     />
                                     <button
                                         type="button"
@@ -201,10 +235,10 @@ export function ResetPasswordContent() {
 
                             <button
                                 type="submit"
-                                disabled={isLoading || !allMet}
+                                disabled={submitting || !allMet}
                                 className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                             >
-                                {isLoading ? (
+                                {submitting ? (
                                     <div className="h-5 w-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                                 ) : (
                                     t('actions.resetPassword')

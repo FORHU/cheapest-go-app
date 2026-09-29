@@ -13,12 +13,18 @@ import {
     Mail,
 } from 'lucide-react';
 
-export const metadata: Metadata = {
-    title: 'About Us — CheapestGo',
-    description:
-        'CheapestGo is a modern online travel agency helping travelers across Southeast Asia find and book flights, hotels, and packages at transparent prices.',
-    alternates: hreflangAlternates('/about'),
-};
+// Not a static `metadata` object: that cannot await the request's locale, so it gave all
+// four languages the English canonical, title and description — and a search result shows
+// only the title and description. Through the translations, "CheapestGo" also becomes the
+// serving brand's name on AirangGo, which the hardcoded strings never did.
+export async function generateMetadata(): Promise<Metadata> {
+    const t = await getTranslations('about.meta');
+    return {
+        title: t('title'),
+        description: t('description'),
+        alternates: await hreflangAlternates('/about'),
+    };
+}
 
 const partners = ['Duffel', 'TravelgateX', 'Stripe'];
 

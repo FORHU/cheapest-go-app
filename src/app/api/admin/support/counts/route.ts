@@ -14,5 +14,5 @@ export async function GET() {
     const agent = await requireAgent();
     if (!agent) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-    return NextResponse.json(await inboxCounts(agent.id));
+    return NextResponse.json(await inboxCounts(agent));
 }

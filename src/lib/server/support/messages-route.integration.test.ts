@@ -2,21 +2,15 @@ import { describe, it, expect, vi, afterEach } from 'vitest';
 import { NextRequest } from 'next/server';
 
 /**
- * ADR-0031: no model answers a Support Chat any more, so `POST /api/support/conversation/
- * messages` must never hand a stored customer message to `startSupportTurn`.
+ * A customer writing into a chat that was resolved while their panel was still open.
  *
- * The only place in the app where that call could still fire is a customer writing into a
- * *resolved* conversation: fresh conversations are born `waiting_human` (a prior task), so
- * `conversation.status === 'ai_active'` is never true for one of those, and the sole
- * remaining trigger is the reopen this route runs through `inbox.reopenIfResolved`. That
- * makes this the route-level test for both halves of this task at once — it fails today
- * either because the model still gets invoked, or because the reopened conversation lands
- * on `ai_active` (the bug `inbox.integration.test.ts` covers directly) rather than
- * `waiting_human`.
+ * A resolved chat is finished (CONTEXT.md, "Support Chat"): the message must start a new
+ * conversation, with its own reference, in the queue a person watches — never reopen the old
+ * one, and never reach a model (ADR-0031).
  *
  * The caller's identity is mocked rather than a whole Lucia session — the thing under test
- * is what the route does with a stored message, not whether a session can be faked
- * convincingly — but the message, the reopen and the status read are all real Postgres.
+ * is what the route does with the message, not whether a session can be faked convincingly —
+ * but the message, the new conversation and the status reads are all real Postgres.
  *
  * Skips silently without DATABASE_URL.
  */
@@ -51,6 +45,8 @@ async function sql() {
     return getSqlAdmin();
 }
 
+const createdUsers: string[] = [];
+
 async function makeCustomer(): Promise<string> {
     const db = await sql();
     const rows = await db<{ id: string }[]>`
@@ -58,47 +54,17 @@ async function makeCustomer(): Promise<string> {
         VALUES (${`messages-route-test-${crypto.randomUUID()}@example.com`}, 'user')
         RETURNING id
     `;
+    createdUsers.push(rows[0].id);
     return rows[0].id;
 }
-
-async function makeResolvedConversation(userId: string): Promise<string> {
-    const db = await sql();
-    const rows = await db<{ id: string }[]>`
-        INSERT INTO support_conversations (user_id, source_brand, locale, status)
-        VALUES (${userId}, 'CheapestGo', 'en', 'resolved')
-        RETURNING id
-    `;
-    return rows[0].id;
-}
-
-async function statusOf(id: string): Promise<string> {
-    const db = await sql();
-    const rows = await db<{ status: string }[]>`
-        SELECT status FROM support_conversations WHERE id = ${id}
-    `;
-    return rows[0]?.status ?? 'gone';
-}
-
-async function aiMessageCount(id: string): Promise<number> {
-    const db = await sql();
-    const rows = await db<{ count: string }[]>`
-        SELECT count(*) FROM support_messages WHERE conversation_id = ${id} AND sender_type = 'ai'
-    `;
-    return Number(rows[0]?.count ?? 0);
-}
-
-const createdConversations: string[] = [];
-const createdUsers: string[] = [];
 
 afterEach(async () => {
     vi.mocked(getSession).mockReset();
     if (!process.env.DATABASE_URL) return;
     const db = await sql();
-    if (createdConversations.length) {
-        await db`DELETE FROM support_conversations WHERE id = ANY(${db.array(createdConversations)}::uuid[])`;
-        createdConversations.length = 0;
-    }
     if (createdUsers.length) {
+        // Conversations first: users.id is ON DELETE SET NULL and a chat needs an owner.
+        await db`DELETE FROM support_conversations WHERE user_id = ANY(${db.array(createdUsers)}::uuid[])`;
         await db`DELETE FROM users WHERE id = ANY(${db.array(createdUsers)}::uuid[])`;
         createdUsers.length = 0;
     }
@@ -114,25 +80,44 @@ function postMessage(body: string) {
 }
 
 describe('POST /api/support/conversation/messages', () => {
-    it('reopens a resolved conversation to a person, never to the model', async (ctx) => {
+    it('starts a new chat instead of reopening a resolved one, and never involves a model', async (ctx) => {
         if (!(await databaseReachable())) ctx.skip();
 
+        const db = await sql();
         const userId = await makeCustomer();
-        createdUsers.push(userId);
-        const conversationId = await makeResolvedConversation(userId);
-        createdConversations.push(conversationId);
+        const [old] = await db<{ id: string; reference: string }[]>`
+            INSERT INTO support_conversations (user_id, source_brand, locale, status)
+            VALUES (${userId}, 'CheapestGo', 'en', 'resolved')
+            RETURNING id, reference
+        `;
 
         vi.mocked(getSession).mockResolvedValue({
             user: { id: userId, email: 'customer@example.com', role: 'user' },
             session: { id: 'test-session' },
         } as never);
 
-        const res = await postMessage('Are you still there?');
+        const res = await postMessage('A new question, please.');
         expect(res.status).toBe(201);
+        const data = await res.json();
 
-        // No model ever ran a turn on this conversation.
-        expect(await aiMessageCount(conversationId)).toBe(0);
-        // Reopened into the queue a person watches, not into a status nothing answers.
-        expect(await statusOf(conversationId)).toBe('waiting_human');
+        // The widget is told, so it can switch to the new chat and its reference.
+        expect(data.started).toBe(true);
+        expect(data.conversation.reference).not.toBe(old.reference);
+
+        const rows = await db<{ id: string; status: string; guest: number; ai: number }[]>`
+            SELECT c.id, c.status,
+                   count(*) FILTER (WHERE m.sender_type = 'guest')::int AS guest,
+                   count(*) FILTER (WHERE m.sender_type = 'ai')::int AS ai
+              FROM support_conversations c LEFT JOIN support_messages m ON m.conversation_id = c.id
+             WHERE c.user_id = ${userId}
+             GROUP BY c.id, c.status
+        `;
+        const oldRow = rows.find(r => r.id === old.id)!;
+        const newRow = rows.find(r => r.id === data.conversation.id)!;
+
+        // The finished chat stays finished and untouched.
+        expect(oldRow).toMatchObject({ status: 'resolved', guest: 0 });
+        // The message is in the new one, queued for a person, and no model ran.
+        expect(newRow).toMatchObject({ status: 'waiting_human', guest: 1, ai: 0 });
     });
 });

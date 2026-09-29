@@ -39,9 +39,14 @@ const CurrencySelector: React.FC<CurrencySelectorProps> = ({
         setUserCurrency(currencyCode);
         setUserCountry(countryCode);
 
-        // Only re-fetch for property pages (rates are currency-specific from LiteAPI).
-        if (pathname && (pathname.includes('/property/') || pathname.includes('/flights'))) {
-            const params = new URLSearchParams(searchParams?.toString() || '');
+        // Pages whose URL names a currency take it from there, so the URL has to change with
+        // the choice. Checkout is the one that bit: it opens as `/checkout?currency=PHP` and
+        // gives the URL priority over the store, so switching to USD in the navbar was
+        // undone by the page on the next render — "price did not change" (QA BG-18). Property
+        // and flight pages re-quote in the chosen currency from the URL as well.
+        const params = new URLSearchParams(searchParams?.toString() || '');
+        const urlNamesCurrency = params.has('currency');
+        if (pathname && (urlNamesCurrency || pathname.includes('/property/') || pathname.includes('/flights'))) {
             params.set('currency', currencyCode);
             router.replace(`${pathname}?${params.toString()}`);
         }

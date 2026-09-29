@@ -266,6 +266,14 @@
       "liveRates": "Live rates",
       "updating": "Updating…",
       "rate": "1 {from} = {rate} {to}"
+    },
+    "timeZone": {
+      "backToClocks": "Back to clocks",
+      "searchPlaceholder": "Search city or zone",
+      "noMatch": "No matching time zone",
+      "default": "Default",
+      "auto": "Auto",
+      "allZones": "All time zones"
     }
   },
   "checkout": {
@@ -446,7 +454,12 @@
       "total": "Total",
       "updateDates": "Update dates",
       "youSave": "You save {amount} with this promo",
-      "yourRoom": "Your Room"
+      "yourRoom": "Your Room",
+      "freeCancellationBefore": "Free cancellation before {date}",
+      "freeCancellationShort": "Free cancellation",
+      "nonRefundable": "Non-refundable",
+      "termsNotProvided": "Cancellation terms not provided by supplier — confirm with property before booking",
+      "fetchingPolicy": "Fetching cancellation policy…"
     },
     "title": "Checkout | CheapestGo",
     "userDetails": {
@@ -541,11 +554,36 @@
       "description": "There was an error processing your authentication request. This could happen if the link expired or was already used.",
       "goHome": "Go to homepage",
       "signInAgain": "Try signing in again",
-      "title": "Authentication Error"
+      "title": "Authentication Error",
+      "retryDescription": "Something went wrong during authentication. Please try again."
     },
     "generic": "Something went wrong. Please try again.",
     "notFound": "Page not found.",
-    "searchFailed": "Search failed. Check your connection and try again."
+    "searchFailed": "Search failed. Check your connection and try again.",
+    "page": {
+      "title": "Something went wrong",
+      "description": "An unexpected error occurred. Please try again."
+    },
+    "search": {
+      "title": "Search failed",
+      "description": "We couldn't load the search results. This may be due to a network issue or invalid search parameters."
+    },
+    "property": {
+      "title": "Property unavailable",
+      "description": "We couldn't load this property. It may no longer be available or there was a connection issue."
+    },
+    "trips": {
+      "title": "Couldn't load your trips",
+      "description": "There was an error loading your booking history. Please try again."
+    },
+    "actions": {
+      "tryAgain": "Try again",
+      "retry": "Retry",
+      "retrySearch": "Retry search",
+      "backToHome": "Back to Home",
+      "backToSearch": "Back to search",
+      "goHome": "Go home"
+    }
   },
   "flightBook": {
     "address": {
@@ -973,7 +1011,11 @@
         "oneStop": "1 stop",
         "twoPlus": "2+ stops"
       },
-      "tryAgain": "Try Again"
+      "tryAgain": "Try Again",
+      "searchFlights": "Search Flights",
+      "findingFlights": "Finding flights…",
+      "clearAll": "Clear all",
+      "searchLabel": "Search"
     },
     "search": {
       "adult": "{count} adult",
@@ -989,7 +1031,41 @@
       "total_count": "({count} total)",
       "tryAgain": "Try Again",
       "providersUnreachable": "We couldn’t reach our flight partners",
-      "providersUnreachableDescription": "This is a problem on our side, not a sign that the route is unavailable. Try the search again."
+      "providersUnreachableDescription": "This is a problem on our side, not a sign that the route is unavailable. Try the search again.",
+      "bundle": {
+        "whereFrom": "Where are you flying from?",
+        "description": "Your hotel is booked. Search for a flight to complete your bundle and save up to 8%.",
+        "cta": "Search flights",
+        "active": "Flight + Hotel Bundle Active",
+        "hint": "Select a flight below — your bundle discount will be applied at checkout.",
+        "save": "Save up to 8%"
+      },
+      "invalid": {
+        "title": "Invalid Search Parameters",
+        "description": "Please provide origin, destination and departure date.",
+        "back": "Return to search"
+      },
+      "refine": {
+        "title": "Refine your search",
+        "description": "We couldn't resolve <strong>{origin}</strong> or <strong>{destination}</strong> to an airport code. Use the search bar to pick airports directly.",
+        "cta": "Search with Airport Picker"
+      },
+      "error": {
+        "title": "Search Error",
+        "tryAnother": "Try another search"
+      },
+      "filtersTitle": "Flight Filters",
+      "noMatch": {
+        "title": "No flights match your filters",
+        "description": "{count} flights found — your filters are hiding all of them.",
+        "reset": "Reset all filters"
+      },
+      "meta": {
+        "title": "Flights {origin} → {destination} | CheapestGo",
+        "titleNoRoute": "Flight Search Results | CheapestGo",
+        "description": "Compare and book the cheapest flights from {origin} to {destination}. Find the best deals on CheapestGo.",
+        "descriptionNoRoute": "Compare and book cheap flights worldwide. Find the best deals on CheapestGo."
+      }
     },
     "validation": {
       "fields": {
@@ -1028,7 +1104,7 @@
     "contactMinimal": "Contact us",
     "cookies": "Cookies",
     "cookiesMinimal": "Cookie preferences",
-    "copyright": "© 2026 FORHU Inc.. All rights reserved.",
+    "copyright": "© 2026 FORHU Inc. All rights reserved.",
     "copyrightMinimal": "CheapestGo © 2026",
     "enterprise": "Enterprise",
     "flights": "Flights",
@@ -1066,7 +1142,8 @@
       "reviews": "{count} reviews",
       "viewDeal": "View",
       "fetchingPrices": "Fetching prices…",
-      "fetchingPricesLong": "Fetching prices, hang tight…"
+      "fetchingPricesLong": "Fetching prices, hang tight…",
+      "fetchingShort": "Fetching…"
     },
     "collapse": "Collapse ↑",
     "filters": {
@@ -1162,7 +1239,8 @@
       "pricePerNight": "{min} – {max} /night",
       "search": "Search",
       "searchFallback": "Search",
-      "swipeToBrowse": "Swipe to browse"
+      "swipeToBrowse": "Swipe to browse",
+      "datesPicked": "We picked these dates for you — change them to see other prices."
     },
     "mobileSearch": {
       "addDates": "Add dates",
@@ -1178,7 +1256,8 @@
       "where": "Where",
       "whereQuestion": "Where?",
       "who": "Who",
-      "whoQuestion": "Who&apos;s coming?"
+      "whoQuestion": "Who&apos;s coming?",
+      "findingHotels": "Finding hotels…"
     },
     "perNight": "/night",
     "poiPopup": {
@@ -1271,7 +1350,12 @@
       "staysIn": "Stays in {destination}",
       "supplierUnavailable": "Our supplier may not cover this destination yet. Try different dates, adjust your filters, or search a nearby city.",
       "supplierUnavailableShort": "Our current supplier may not cover this destination yet. Try different dates or a nearby city.",
-      "tryDifferentDates": "Try different dates or a nearby city."
+      "tryDifferentDates": "Try different dates or a nearby city.",
+      "neighborhoodBanner": "<strong>Neighborhood search</strong> — prices shown are for browsing only. To book a hotel, search by city name (e.g. Seoul, Bangkok).",
+      "stillLoadingHotels": "Still loading hotels",
+      "stillLoadingIn": "Still loading hotels in {destination}",
+      "firstTimeIndexing": "This destination is being indexed for the first time. Please search again — results should appear now.",
+      "searchAgainButton": "Search again"
     },
     "subtitleDefault": "Handpicked stays at unbeatable prices",
     "subtitlePersonalized": "Top-rated stays in {country} · updated daily"
@@ -1493,6 +1577,25 @@
       "whereTo": "Where to?",
       "year": "Year",
       "yearsOld": "{age} years old"
+    },
+    "quickAccess": "Quick Access",
+    "ai": {
+      "understood": "AI Understood",
+      "searchWithDetails": "Search with these details",
+      "chips": {
+        "beachEscape": "Beach Escape",
+        "luxuryStay": "Luxury Stay",
+        "romanticTrip": "Romantic Trip",
+        "quickGetaway": "Quick Getaway",
+        "adventure": "Adventure"
+      },
+      "cards": {
+        "destination": "Destination",
+        "dates": "Dates",
+        "guests": "Guests",
+        "budget": "Budget"
+      },
+      "heresWhatIFound": "Here's what I found"
     }
   },
   "languagePicker": {
@@ -1661,7 +1764,7 @@
         },
         "intellectualProperty": {
           "title": "Intellectual Property",
-          "body": "All content on the CheapestGo Platform — including logos, text, graphics, software, and design — is the property of CheapestGo or its licensors and is protected by applicable intellectual property laws. You may not reproduce, distribute, or create derivative works from our content without prior written consent. Hotel and flight images and descriptions are provided by our partners (Duffel, Mystifly, TravelgateX, ONDA, Rakuten) and respective suppliers under license."
+          "body": "All content on the CheapestGo Platform — including logos, text, graphics, software, and design — is the property of CheapestGo or its licensors and is protected by applicable intellectual property laws. You may not reproduce, distribute, or create derivative works from our content without prior written consent. Hotel and flight images and descriptions are provided by our partners (Duffel, TravelgateX) and respective suppliers under license."
         },
         "disclaimers": {
           "title": "Disclaimers",
@@ -1723,7 +1826,7 @@
           ],
           "thirdPartyLabel": "Information from third parties:",
           "thirdPartyItems": [
-            "Travel availability and pricing data from our partners (Duffel, Mystifly, TravelgateX, ONDA, Rakuten)",
+            "Travel availability and pricing data from our partners (Duffel, TravelgateX)",
             "Payment confirmation and fraud signals from Stripe",
             "Analytics data from service providers we use to improve our platform"
           ]
@@ -1756,12 +1859,12 @@
               "linkHref": "https://stripe.com/privacy"
             },
             {
-              "label": "Travel Partners (Duffel, Mystifly, TravelgateX, ONDA, Rakuten)",
+              "label": "Travel Partners (Duffel, TravelgateX)",
               "text": "Search queries and booking details are processed through our partner APIs to retrieve availability and pricing."
             },
             {
-              "label": "Supabase",
-              "text": "Our database infrastructure is hosted on Supabase. Data is stored with encryption at rest and in transit."
+              "label": "Amazon Web Services (AWS)",
+              "text": "Our database infrastructure is hosted on Amazon Web Services (AWS). Data is stored with encryption at rest and in transit."
             },
             {
               "label": "Legal requirements",
@@ -1963,7 +2066,7 @@
               "heading": "Strictly Necessary Cookies",
               "body": "These cookies are essential for the Platform to function. They enable core features such as authentication, session management, security tokens, and payment processing. You cannot opt out of these cookies as they are required for the service to operate.",
               "items": [
-                "supabase-auth-token — authentication session",
+                "cg-session — authentication session",
                 "__stripe_mid / __stripe_sid — Stripe fraud prevention"
               ]
             },
@@ -2047,7 +2150,8 @@
           "address": "🏢 FORHU Inc. · 30 Wall Street, 8th Floor · New York, NY 10005 · USA"
         }
       }
-    }
+    },
+    "scrollToContinue": "Scroll to the bottom to continue"
   },
   "nav": {
     "account": "Account",
@@ -2062,11 +2166,14 @@
     "signIn": "Sign in",
     "signOut": "Sign out",
     "support": "Support",
-    "trips": "Trips"
+    "trips": "Trips",
+    "scrollToTop": "Scroll to top"
   },
   "popularDestinations": {
     "subtitle": "Explore top spots across Asia-Pacific — search flights and hotels in seconds.",
-    "title": "Popular Destinations"
+    "title": "Popular Destinations",
+    "scrollLeft": "Scroll left",
+    "scrollRight": "Scroll right"
   },
   "property": {
     "addressNotAvailable": "Address not available",
@@ -2146,7 +2253,9 @@
       "etgNotice": {
         "title": "Online booking not yet available",
         "description": "This property is managed by our partner booking system. Indicative prices are shown below. Please contact us to confirm availability and complete your reservation."
-      }
+      },
+      "showLess": "Show less",
+      "checkAtCheckout": "Check at checkout"
     },
     "savePercent": "SAVE {percent}%",
     "weather": {
@@ -2165,6 +2274,59 @@
         "veryHigh": "Very High"
       },
       "wind": "Wind"
+    },
+    "mapOverlay": {
+      "getDirections": "Get directions...",
+      "whereFrom": "Where from?",
+      "layers": "Layers",
+      "kmAway": "{distance} km away",
+      "viewOnMaps": "View on Maps",
+      "details": "Details",
+      "recenterMap": "Recenter Map",
+      "fullscreen": "Fullscreen",
+      "exitFullscreen": "Exit fullscreen",
+      "selectMode": "Select Mode"
+    },
+    "policies": {
+      "title": "Policies",
+      "checkInOut": "Check-in & Check-out",
+      "checkIn": "Check-in",
+      "checkOut": "Check-out",
+      "contactProperty": "Contact property",
+      "cancellationPolicy": "Cancellation Policy",
+      "refundable": "Refundable",
+      "nonRefundable": "Non-refundable",
+      "cancelBefore": "Cancel before <time>{time}</time>",
+      "feeSuffix": " - Fee: <fee>{amount}</fee>",
+      "noShowPenalty": "No-Show Penalty:",
+      "noShowBody": "{amount} if you don't check in without cancelling.",
+      "earlyDepartureFee": "Early Departure Fee:",
+      "earlyDepartureBody": "{amount} if you check out before your scheduled date.",
+      "importantInformation": "Important Information"
+    },
+    "poiDetails": {
+      "openingHours": "Opening Hours",
+      "openNow": "Open Now",
+      "closed": "Closed",
+      "yourRating": "Your Rating",
+      "commentPlaceholder": "Share your experience...",
+      "addPhoto": "Add Photo",
+      "justNow": "Just now",
+      "you": "You",
+      "postReview": "Post Review",
+      "communityPhotos": "Community Photos",
+      "brandReviews": "Cheapest Go Reviews",
+      "googleFoursquareReviews": "Google & Foursquare Reviews",
+      "foursquareRecommendations": "Foursquare Recommendations",
+      "googleReviews": "Google Reviews",
+      "noReviews": "No direct reviews available for this place yet."
+    },
+    "meta": {
+      "title": "{name} – Cheapest Rates | CheapestGo",
+      "description": "Book {name} at the cheapest price.",
+      "descriptionIn": "Book {name} in {location} at the cheapest price.",
+      "rated": "Rated {rating}/10.",
+      "closing": "Best deals on hotels with free cancellation options."
     }
   },
   "propertyGallery": {
@@ -2294,6 +2456,19 @@
       "dismiss": "Not now",
       "install": "Install",
       "title": "Get the CheapestGo app"
+    },
+    "iosGuide": {
+      "title": "Add to Home Screen",
+      "close": "Close guide",
+      "step1Title": "Tap the Share button",
+      "step1Body": "Find the share icon at the bottom of your Safari browser",
+      "step2Title": "Scroll down the menu",
+      "step2Body": "Scroll through the share sheet options",
+      "step3Title": "Tap \"Add to Home Screen\"",
+      "step3Body": "Look for the icon with a plus symbol",
+      "step4Title": "Tap \"Add\" to confirm",
+      "step4Body": "CheapestGo will appear on your home screen",
+      "hint": "Tap the <icon>Share</icon> icon at the bottom center of Safari to get started"
     }
   },
   "reviewsSection": {
@@ -2648,7 +2823,8 @@
       "refunded": "Refunded",
       "ticketed": "Confirmed",
       "ticketing": "Ticketing",
-      "unknown": "Unknown"
+      "unknown": "Unknown",
+      "cancellationStuck": "Cancellation Stuck"
     },
     "subtitle": "View and manage your bookings",
     "tabs": {
@@ -2667,7 +2843,68 @@
       "removeError": "Couldn't remove that item. Please try again.",
       "removeFromWishlist": "Remove from wishlist",
       "savedOn": "Saved {date}",
-      "searchAgain": "Search again"
+      "searchAgain": "Search again",
+      "saveToWishlist": "Save to wishlist"
+    },
+    "tripMap": {
+      "navigate": "Navigate",
+      "tooFar": "Too far to drive directly",
+      "flyingIn": "Flying in",
+      "locating": "Locating…",
+      "findingHotel": "Finding hotel…",
+      "gettingLocation": "Getting your location…",
+      "centerOnHotel": "Center on hotel",
+      "toggleTraffic": "Toggle traffic",
+      "driving": "Driving",
+      "walking": "Walking",
+      "away": "{distance} away",
+      "calculatingDistance": "Calculating distance…",
+      "navigationStarts": "Navigation starts when you're within 50 km",
+      "openInMaps": "Open in Maps",
+      "navigationReady": "Navigation ready when you land nearby",
+      "saveInMaps": "Save in Maps",
+      "determiningLocation": "Determining your location…",
+      "close": "Close map"
+    },
+    "cancellationFeeCard": {
+      "ifYouCancelNow": "If you cancel now:",
+      "fee": "Cancellation Fee",
+      "youllReceive": "You'll Receive"
+    },
+    "pages": {
+      "backToBooking": "Back to booking",
+      "ref": "Ref:"
+    },
+    "requestsPage": {
+      "title": "Special requests",
+      "note": "Requests are passed to the property but aren't guaranteed — availability depends on the hotel.",
+      "cancelled": "This booking is cancelled, so special requests can no longer be updated."
+    },
+    "requestsForm": {
+      "label": "Message to the property",
+      "placeholder": "e.g. Late check-in after 10 PM, extra bed, high floor…",
+      "saved": "Saved — the property has been notified.",
+      "saveError": "Failed to save your request. Please try again.",
+      "submit": "Save request"
+    },
+    "sharePage": {
+      "title": "Share booking confirmation",
+      "note": "Resend the confirmation email to yourself or anyone else — useful for a travel companion or your own records."
+    },
+    "shareForm": {
+      "sendTo": "Send to",
+      "sentTo": "Sent to {email}.",
+      "sendError": "Failed to send. Please try again.",
+      "submit": "Send confirmation"
+    },
+    "hotelConfirmed": {
+      "confirming": "Confirming your booking…",
+      "loading": "Loading your booking…"
+    },
+    "invoice": {
+      "downloadPdf": "Download PDF",
+      "generating": "Generating…",
+      "print": "Print"
     }
   },
   "about": {
@@ -2698,22 +2935,34 @@
     "startExploring": "Start exploring",
     "terms": "Terms of Service",
     "privacy": "Privacy Policy",
-    "refund": "Refund Policy"
+    "refund": "Refund Policy",
+    "meta": {
+      "title": "About Us — CheapestGo",
+      "description": "CheapestGo is a modern online travel agency helping travelers across Southeast Asia find and book flights, hotels, and packages at transparent prices."
+    }
   },
   "support": {
     "attachments": {
       "attach": "Attach a file",
       "uploading": "Uploading…",
       "remove": "Remove {name}",
-      "download": "Download {name}"
+      "download": "Download {name}",
+      "errors": {
+        "empty": "That file is empty.",
+        "tooLarge": "Files must be 10 MB or smaller.",
+        "unsupported": "That file type is not supported. Send an image or a PDF.",
+        "tooMany": "Too many uploads. Please wait a moment and try again.",
+        "unavailable": "Attachments are not available right now.",
+        "failed": "Could not upload that file. Please try again."
+      }
     },
     "title": "Support",
     "subtitle": "Ask about a booking or anything else.",
     "launcherOpen": "Get help",
     "launcherClose": "Close support",
     "typing": "CheapestGo is typing…",
+    "replying": "Support is replying…",
     "empty": "Ask us anything about your trip.",
-    "machineTranslated": "Machine translation",
     "sender": {
       "guest": "You",
       "ai": "CheapestGo",
@@ -2723,7 +2972,8 @@
     "composer": {
       "placeholder": "Type your message",
       "connecting": "Connecting…",
-      "send": "Send"
+      "send": "Send",
+      "remaining": "{count, plural, one {# character left} other {# characters left}}"
     },
     "escalate": {
       "ask": "Talk to a person",
@@ -2760,13 +3010,45 @@
       "skip": "Not about a trip",
       "about": "About",
       "change": "Change"
+    },
+    "translation": {
+      "translated": "Translated automatically",
+      "showOriginal": "Show original",
+      "showTranslation": "Show translation",
+      "pending": "Translating…",
+      "untranslated": "Not translated"
+    },
+    "history": {
+      "previous": "Previous conversation {reference}",
+      "back": "Back to your current chat",
+      "closed": "This conversation is closed. Write in your current chat to ask something new.",
+      "unavailable": "This conversation could not be loaded."
+    },
+    "suggestions": {
+      "heading": "Does one of these answer it?",
+      "solved": "That answered it",
+      "stillNeedHelp": "I still need help",
+      "solvedNote": "Glad that helped. Write to us any time if something else comes up.",
+      "quickHeading": "Common questions",
+      "automated": "Help Centre · automated",
+      "talkToPerson": "Talk to a person",
+      "chips": {
+        "confirmation": "Where's my confirmation?",
+        "refunds": "When do I get my refund?",
+        "changes": "Cancel or change a booking",
+        "priceGap": "The price changed at checkout",
+        "payment": "A payment problem"
+      }
     }
   },
   "map": {
     "closeMap": "Close map",
     "placesWithin": "Places within",
     "noProperties": "No properties to show",
-    "adjustFilters": "Try adjusting your search filters"
+    "adjustFilters": "Try adjusting your search filters",
+    "imageUnavailable": "Image unavailable",
+    "clickForDetails": "Click for details",
+    "notAvailable": "Map not available"
   },
   "help": {
     "title": "Help | CheapestGo",

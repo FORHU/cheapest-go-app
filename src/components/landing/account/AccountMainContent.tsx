@@ -9,6 +9,7 @@ import { clientFetch } from '@/lib/api/client';
 import { toast } from 'sonner';
 import { useTranslations } from 'next-intl';
 import { useRouter } from 'next/navigation';
+import { NAME_MAX_LENGTH } from '@/lib/schemas/auth';
 
 interface AccountMainContentProps {
     user: UserType;
@@ -418,6 +419,7 @@ export const AccountMainContent: React.FC<AccountMainContentProps> = ({ user, ac
                                         type="text"
                                         value={firstName}
                                         onChange={(e) => setFirstName(e.target.value)}
+                                        maxLength={NAME_MAX_LENGTH}
                                         className="w-full px-4 py-3 rounded-lg border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/5 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                                     />
                                 </div>
@@ -429,6 +431,7 @@ export const AccountMainContent: React.FC<AccountMainContentProps> = ({ user, ac
                                         type="text"
                                         value={lastName}
                                         onChange={(e) => setLastName(e.target.value)}
+                                        maxLength={NAME_MAX_LENGTH}
                                         className="w-full px-4 py-3 rounded-lg border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/5 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                                     />
                                 </div>
