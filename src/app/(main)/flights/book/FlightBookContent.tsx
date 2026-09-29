@@ -810,10 +810,11 @@ function BookingContent() {
                         <StripeEmbeddedCheckout
                             clientSecret={clientSecret}
                             onSuccess={pollForBooking}
+                            variant="flightBook"
                         />
                         <button
                             onClick={() => setStep('form')}
-                            className="w-full mt-4 py-3 bg-white hover:bg-slate-50 border border-slate-200 text-slate-600 dark:bg-slate-900 dark:border-slate-800 dark:text-slate-400 font-normal rounded-md text-sm transition-colors"
+                            className="w-full mt-3 lg:mt-4 h-11 lg:h-12 rounded-full border border-slate-200 dark:border-slate-700 bg-white hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-800 text-[#1c1b1f] dark:text-slate-300 font-normal text-[13px] lg:text-[14px] transition-colors"
                         >
                             {t('backToDetails')}
                         </button>
