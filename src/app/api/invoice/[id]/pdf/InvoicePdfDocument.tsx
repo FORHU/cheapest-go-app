@@ -13,7 +13,7 @@ const BRAND = canonicalBrandName(process.env.NEXT_PUBLIC_BRAND_NAME);
  * One itinerary card. Pre-formatted by the route handler (from itinerary-view.ts, the
  * same module the web page uses) rather than computed here — react-pdf renders on the
  * request path, so date/duration arithmetic belongs in one shared, unit-tested place,
- * not duplicated inside a page-layout component. See ADR-0042 on the cost of the two
+ * not duplicated inside a page-layout component. See ADR-0046 on the cost of the two
  * renderers computing a fact differently.
  */
 interface FlightSliceProps {
@@ -69,7 +69,7 @@ interface InvoicePdfProps {
      * Fare before tax and everything else, already formatted. Null when the booking's
      * offer recorded no fare, which is every booking taken before Duffel's base_amount
      * was parsed. The second figure is never labelled as tax alone — it carries any
-     * platform fee too (ADR-0042).
+     * platform fee too (ADR-0046).
      */
     breakdown: { formattedFare: string; formattedTaxesAndFees: string } | null;
 }
@@ -369,7 +369,7 @@ export function InvoicePdfDocument(props: InvoicePdfProps) {
                     One card per slice, spanning its first departure to its last arrival —
                     a connection's layover counts toward duration and stop count exactly
                     once. Grouping and arithmetic live in itinerary-view.ts, shared with the
-                    web page (ADR-0042); this component only lays out what it is given. */}
+                    web page (ADR-0046); this component only lays out what it is given. */}
                 {showFlight && flightDetails && (
                     <View style={s.section}>
                         <Text style={s.sectionLabel}>Itinerary</Text>
@@ -427,7 +427,7 @@ export function InvoicePdfDocument(props: InvoicePdfProps) {
                     Calculation. Restriction Endorsements and Fare Calculation are never
                     rendered — they come from a Mystifly ticket-display call that cannot
                     run while Duffel is the only live provider — and Fare/Taxes render only
-                    when a real per-offer fare was recorded (ADR-0042). A blank label or a
+                    when a real per-offer fare was recorded (ADR-0046). A blank label or a
                     zero would read as a fact, so the rows wait for real values. */}
                 <View style={s.section}>
                     <View style={s.twoCol}>

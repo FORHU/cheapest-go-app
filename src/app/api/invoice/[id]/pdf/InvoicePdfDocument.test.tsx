@@ -10,7 +10,7 @@ import { InvoicePdfDocument } from './InvoicePdfDocument';
  *
  * The rows the Figma draws but the data cannot fill — Fare, Taxes, Restriction
  * Endorsements, Fare Calculation — must not appear at all rather than appear empty
- * (ADR-0042), and the unverified trading-name line must stay gone.
+ * (ADR-0046), and the unverified trading-name line must stay gone.
  */
 
 const flightProps = {
