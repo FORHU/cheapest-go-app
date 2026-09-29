@@ -25,6 +25,8 @@ interface FormDatePickerProps {
      * opens 30-odd years back instead of making an adult page through decades.
      */
     defaultViewDate?: Date;
+    /** Classes for the wrapper around the trigger, which is inline-block by default. */
+    rootClassName?: string;
 }
 
 /**
@@ -64,6 +66,7 @@ export const FormDatePicker: React.FC<FormDatePickerProps> = ({
     maxDate,
     customTrigger,
     defaultViewDate,
+    rootClassName,
 }) => {
     const t = useTranslations('flightBook.datePicker');
     const monthsList = t.raw('months') as string[];
@@ -211,7 +214,7 @@ export const FormDatePicker: React.FC<FormDatePickerProps> = ({
     }, [selectedDate]);
 
     return (
-        <DropdownMenu onOpenChange={(open) => { if (!open) setView('calendar'); }}>
+        <DropdownMenu className={rootClassName} onOpenChange={(open) => { if (!open) setView('calendar'); }}>
             <DropdownMenuTrigger asChild>
                 {customTrigger ? (
                     <div className="cursor-pointer w-full h-full">{customTrigger}</div>

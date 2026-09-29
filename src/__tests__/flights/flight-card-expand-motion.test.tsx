@@ -5,7 +5,7 @@ import { NextIntlClientProvider } from 'next-intl';
 import en from '@/locales/en.json';
 
 /**
- * "Show all segments" used to reveal the itinerary by growing the panel's height alone,
+ * "Show flight itineraries" used to reveal the itinerary by growing the panel's height alone,
  * which reads as the card stretching rather than the itinerary arriving. The legs slide
  * down into the space as it opens.
  *
@@ -25,6 +25,8 @@ vi.mock('framer-motion', () => ({
                         'data-initial': JSON.stringify(p.initial ?? null),
                         'data-animate': JSON.stringify(p.animate ?? null),
                         'data-exit': JSON.stringify(p.exit ?? null),
+                        'data-layout': JSON.stringify(p.layout ?? null),
+                        'data-transition': JSON.stringify(p.transition ?? null),
                     },
                     p.children,
                 ),
@@ -99,7 +101,7 @@ function sliderWithin(panel: Element) {
     });
 }
 
-describe('FlightCard — opening "Show all segments"', () => {
+describe('FlightCard — opening "Show flight itineraries"', () => {
     it('reveals nothing until the toggle is pressed', () => {
         const { container } = renderIntl(<FlightCard offer={offer} />);
 
@@ -109,7 +111,7 @@ describe('FlightCard — opening "Show all segments"', () => {
     it('slides the itinerary down as the panel opens', () => {
         const { container } = renderIntl(<FlightCard offer={offer} />);
 
-        fireEvent.click(screen.getByText('Show all segments'));
+        fireEvent.click(screen.getByText('Show flight itineraries'));
         const panel = revealPanel(container)!;
 
         expect(panel).toBeTruthy();
@@ -119,7 +121,7 @@ describe('FlightCard — opening "Show all segments"', () => {
     it('slides from above, so the legs arrive into the space the panel opens', () => {
         const { container } = renderIntl(<FlightCard offer={offer} />);
 
-        fireEvent.click(screen.getByText('Show all segments'));
+        fireEvent.click(screen.getByText('Show flight itineraries'));
         const from = parse(sliderWithin(revealPanel(container)!)!, 'data-initial');
 
         expect(from.y).toBeLessThan(0);
@@ -128,10 +130,46 @@ describe('FlightCard — opening "Show all segments"', () => {
     it('carries the itinerary itself, not some empty wrapper beside it', () => {
         const { container } = renderIntl(<FlightCard offer={offer} />);
 
-        fireEvent.click(screen.getByText('Show all segments'));
+        fireEvent.click(screen.getByText('Show flight itineraries'));
         const slider = sliderWithin(revealPanel(container)!)!;
 
         expect(slider.textContent).toContain('Depart from');
+    });
+
+    it('slides the price rail to its new place instead of snapping there', () => {
+        // Opening moves the rail from beside the itinerary to below it. Declared as a
+        // layout animation, it travels there over the panel's own timing.
+        const { container } = renderIntl(<FlightCard offer={offer} />);
+        const rail = () => screen.getByRole('button', { name: 'Select' }).closest('[data-layout]')!;
+
+        expect(parse(rail(), 'data-layout')).toBeTruthy();
+
+        fireEvent.click(screen.getByText('Show flight itineraries'));
+        const panel = revealPanel(container)!;
+
+        expect(parse(rail(), 'data-layout')).toBeTruthy();
+        expect(parse(rail(), 'data-transition')?.duration).toBe(parse(panel, 'data-transition')?.duration);
+    });
+
+    it('also slides the itinerary column, so the two move together', () => {
+        renderIntl(<FlightCard offer={offer} />);
+        const column = screen.getByText('Show flight itineraries').closest('[data-layout]')!;
+
+        expect(parse(column, 'data-layout')).toBeTruthy();
+    });
+
+    it('turns one chevron over rather than swapping icons', () => {
+        renderIntl(<FlightCard offer={offer} />);
+        const chevron = () => screen.getByText('Show flight itineraries', { exact: false }).closest('button')!.querySelector('svg')!;
+
+        const before = chevron();
+        expect(before.getAttribute('class')).toContain('transition-transform');
+        expect(before.getAttribute('class')).not.toContain('rotate-180');
+
+        fireEvent.click(screen.getByText('Show flight itineraries'));
+        const after = screen.getByText('Hide flight itineraries').closest('button')!.querySelector('svg')!;
+        expect(after.getAttribute('class')).toContain('rotate-180');
+        expect(after.getAttribute('class')).toContain('lucide-chevron-down');
     });
 
     it('still keeps the panel clipped while it grows', () => {
@@ -139,7 +177,7 @@ describe('FlightCard — opening "Show all segments"', () => {
         // on top of it and must not replace it.
         const { container } = renderIntl(<FlightCard offer={offer} />);
 
-        fireEvent.click(screen.getByText('Show all segments'));
+        fireEvent.click(screen.getByText('Show flight itineraries'));
         const panel = revealPanel(container)!;
 
         expect(panel.className).toContain('overflow-hidden');

@@ -82,13 +82,13 @@ const MapPropertyCard = React.memo(function MapPropertyCard({
     }, [checkIn, checkOut]);
     const displayPrice = React.useMemo(
         () => convertCurrency(property.price, sourceCurrency, targetCurrency),
-        [property.price, sourceCurrency, targetCurrency, nights]
+        [property.price, sourceCurrency, targetCurrency]
     );
     const displayOriginalPrice = React.useMemo(
         () => property.originalPrice
             ? convertCurrency(property.originalPrice, sourceCurrency, targetCurrency)
             : undefined,
-        [property.originalPrice, sourceCurrency, targetCurrency, nights]
+        [property.originalPrice, sourceCurrency, targetCurrency]
     );
     const rating = property.rating ?? 0;
     const starRating = property.starRating ?? 0;

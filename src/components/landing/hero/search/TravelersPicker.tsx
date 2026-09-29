@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useRef, useEffect, useState, useMemo } from 'react';
+import React, { useRef, useEffect, useState, useMemo, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Minus, Plus, ChevronDown, X, Users } from 'lucide-react';
 import { useSearchStore, useTravelers, useActiveDropdown, RoomOccupancy } from '@/stores/searchStore';
@@ -132,9 +132,9 @@ export const TravelersPicker: React.FC<TravelersPickerProps> = ({ inline, forceO
     }, [adults, childrenAges, setTravelers]);
 
     const isOpen = forceOpen || activeDropdown === 'travelers';
-    const onClose = () => {
+    const onClose = useCallback(() => {
         if (!forceOpen) setActiveDropdown(null);
-    };
+    }, [forceOpen, setActiveDropdown]);
 
     useEffect(() => {
         const handleClickOutside = (e: MouseEvent | TouchEvent) => {
@@ -150,7 +150,7 @@ export const TravelersPicker: React.FC<TravelersPickerProps> = ({ inline, forceO
             document.removeEventListener('mousedown', handleClickOutside);
             document.removeEventListener('touchstart', handleClickOutside);
         };
-    }, [isOpen]);
+    }, [isOpen, onClose]);
 
     const handleChildAgeChange = (index: number, age: number) => {
         setChildrenAges(prev => {

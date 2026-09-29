@@ -11,6 +11,7 @@ import { TripTypeSelector } from '@/components/landing/hero/search/TripTypeSelec
 import { MagneticButton } from '@/components/ui';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useFlightSearch } from '@/hooks/search/useFlightSearch';
+import { airportLabel } from '@/lib/flights/airport-label';
 
 interface ResponsiveFlightHeaderProps {
     origin: string;
@@ -33,6 +34,7 @@ export const ResponsiveFlightHeader = ({
     const [isSearchModalOpen, setIsSearchModalOpen] = useState(false);
     const { setIsMobileFiltersOpen } = useSearchActions();
     const t = useTranslations('flights.results');
+    const ts = useTranslations('flights.search');
     const { flightState, handleFlightSearch, isSearching } = useFlightSearch();
     const hasFlightValue = flightState.flights.some(f => f.origin || f.destination || f.date);
 
@@ -42,12 +44,15 @@ export const ResponsiveFlightHeader = ({
     const destTitle = flightState.flights[0]?.destination?.title;
     const destCode = flightState.flights[0]?.destination?.code || destination;
 
-    const originLabel = originTitle
-        ? (originTitle.includes(originCode) ? originTitle : `${originTitle} (${originCode})`)
-        : originCode;
-    const destLabel = destTitle
-        ? (destTitle.includes(destCode) ? destTitle : `${destTitle} (${destCode})`)
-        : destCode;
+    // The airport's full name when the table knows the code — the same label the
+    // desktop title uses — else whatever the search box held.
+    const routeLabel = (code: string, title: string | undefined) => {
+        const full = airportLabel(code);
+        if (full !== code.toUpperCase()) return full;
+        return title ? (title.includes(code) ? title : `${title} (${code})`) : code;
+    };
+    const originLabel = routeLabel(originCode, originTitle);
+    const destLabel = routeLabel(destCode, destTitle);
 
     return (
         <>
@@ -59,7 +64,7 @@ export const ResponsiveFlightHeader = ({
                             className="flex-1 flex flex-col items-start justify-center min-w-0 pr-3"
                         >
                             <span className="text-[13px] font-normal text-blue-600 dark:text-blue-400 truncate w-full text-left">
-                                {originLabel} → {destLabel}
+                                {ts('routeTitle', { origin: originLabel, destination: destLabel })}
                             </span>
                             <span className="text-[10px] font-normal text-slate-500 dark:text-slate-400 truncate w-full text-left">
                                 {dateStr} • {passengersStr}

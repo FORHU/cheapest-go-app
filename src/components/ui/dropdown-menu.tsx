@@ -18,10 +18,13 @@ function DropdownMenu({
   children,
   open: controlledOpen,
   onOpenChange,
+  className,
 }: {
   children: React.ReactNode
   open?: boolean
   onOpenChange?: (open: boolean) => void
+  /** Classes for the wrapper, which is inline-block by default. */
+  className?: string
 }) {
   const [uncontrolledOpen, setUncontrolledOpen] = React.useState(false)
   const isControlled = controlledOpen !== undefined
@@ -50,7 +53,7 @@ function DropdownMenu({
 
   return (
     <DropdownMenuContext.Provider value={{ open, setOpen }}>
-      <div className="relative inline-block" ref={containerRef}>
+      <div className={cn("relative inline-block", className)} ref={containerRef}>
         {children}
       </div>
     </DropdownMenuContext.Provider>

@@ -830,7 +830,7 @@ function SearchMapView({
         (id: string) => {
             setSelectedId((prev) => (prev === id ? null : id));
         },
-        [mappableProperties]
+        []
     );
 
     const handleHover = useCallback((id: string | null) => {

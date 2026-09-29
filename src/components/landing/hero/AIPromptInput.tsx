@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { Sparkles } from 'lucide-react';
 import { useTranslations } from 'next-intl';
@@ -18,12 +18,15 @@ interface AIPromptInputProps {
 
 const AIPromptInput: React.FC<AIPromptInputProps> = ({ value, onChange, onSubmit, disabled }) => {
     const t = useTranslations('ai.prompts');
-    const PLACEHOLDER_PROMPTS = [
+    // Memoized so the array keeps a stable identity across renders — it's a dependency
+    // of animatePlaceholder below, and a fresh identity every render would restart the
+    // typewriter animation on every render instead of only when the prompt advances.
+    const PLACEHOLDER_PROMPTS = useMemo(() => [
         t('bali'),
         t('tokyo'),
         t('cebu'),
         t('manila'),
-    ];
+    ], [t]);
     const [displayPlaceholder, setDisplayPlaceholder] = useState('');
     const [promptIndex, setPromptIndex] = useState(0);
     const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -59,7 +62,7 @@ const AIPromptInput: React.FC<AIPromptInputProps> = ({ value, onChange, onSubmit
         };
 
         step();
-    }, [promptIndex]);
+    }, [promptIndex, PLACEHOLDER_PROMPTS]);
 
     useEffect(() => {
         // Only animate when input is empty

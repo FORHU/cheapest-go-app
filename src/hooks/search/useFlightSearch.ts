@@ -153,7 +153,7 @@ export const useFlightSearch = (): UseFlightSearchReturn => {
             return;
         }
 
-        setIsSearching(true);
+        setIsSearching(true, 'flights');
         setActiveDropdown(null);
 
         // ─── Construct URL ───────────────────────────────────────

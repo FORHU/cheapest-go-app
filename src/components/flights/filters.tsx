@@ -39,6 +39,86 @@ function minutesToClock(minute: number): string {
     return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
 }
 
+/** "08:30" into 510; anything that is not a clock time on one day into null. */
+function clockToMinutes(text: string): number | null {
+    const m = /^(\d{1,2}):(\d{2})$/.exec(text.trim());
+    if (!m) return null;
+    const h = Number(m[1]);
+    const min = Number(m[2]);
+    return h > 23 || min > 59 ? null : h * 60 + min;
+}
+
+/** A typed number, or null for an empty or unreadable field. */
+function parseNumber(text: string): number | null {
+    if (text.trim() === '') return null;
+    const n = Number(text);
+    return Number.isFinite(n) ? n : null;
+}
+
+const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
+
+/** `$`, `₩`, `¥` — the symbol alone, to sit in front of an amount field. */
+function currencySymbol(currency: string): string {
+    return formatCurrency(0, currency).replace(/[\d.,\s]/g, '') || currency;
+}
+
+/**
+ * A slider's value as a field the traveller can type into.
+ *
+ * The typing is a draft: it takes effect on Enter or on leaving the field, never per
+ * keystroke — a price of 1,200 would otherwise filter at 1, 12 and 120 on the way. The
+ * committed value is normalised (held inside the range) and written back into the field,
+ * so what it shows is always what is applied; a draft that does not parse is put back.
+ */
+function CommitField({
+    value,
+    format,
+    parse,
+    normalize,
+    onCommit,
+    className = '',
+    ...inputProps
+}: {
+    value: number;
+    format: (n: number) => string;
+    parse: (text: string) => number | null;
+    normalize: (n: number) => number;
+    onCommit: (n: number) => void;
+} & Omit<React.InputHTMLAttributes<HTMLInputElement>, 'value' | 'onChange' | 'onBlur' | 'onKeyDown'>) {
+    const shown = format(value);
+    const [draft, setDraft] = useState(shown);
+
+    // Follow the slider (and resets) while the field is not being typed into.
+    useEffect(() => setDraft(shown), [shown]);
+
+    const commit = () => {
+        const parsed = parse(draft);
+        if (parsed === null) {
+            setDraft(shown);
+            return;
+        }
+        const next = normalize(parsed);
+        setDraft(format(next));
+        onCommit(next);
+    };
+
+    return (
+        <input
+            {...inputProps}
+            value={draft}
+            onChange={e => setDraft(e.target.value)}
+            onBlur={commit}
+            onKeyDown={e => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    commit();
+                }
+            }}
+            className={`h-8 min-w-0 rounded-md border border-slate-200 bg-white px-2 text-[13px] text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none ${className}`}
+        />
+    );
+}
+
 // ── Pieces the panel repeats ─────────────────────────────────────────
 
 /** A titled group, ruled off from the one above it, with an optional reset. */
@@ -65,7 +145,7 @@ function Section({
                 {onReset && (
                     <button
                         onClick={onReset}
-                        className="text-[13px] text-blue-600 dark:text-blue-400 hover:underline"
+                        className="cursor-pointer text-[13px] text-blue-600 dark:text-blue-400 hover:underline"
                     >
                         {resetLabel}
                     </button>
@@ -111,13 +191,13 @@ function Toggle({ checked, onChange, label }: { checked: boolean; onChange: (v: 
             aria-checked={checked}
             aria-label={label}
             onClick={() => onChange(!checked)}
-            className={`relative inline-flex h-6 w-10 shrink-0 rounded-full transition-colors duration-200 ${
+            className={`relative inline-flex h-5 w-8 shrink-0 cursor-pointer rounded-full transition-colors duration-200 ${
                 checked ? 'bg-blue-600' : 'bg-slate-200 dark:bg-slate-700'
             }`}
         >
             <span
-                className={`mt-0.5 inline-block h-5 w-5 rounded-full bg-white shadow transition-transform duration-200 ${
-                    checked ? 'translate-x-[18px]' : 'translate-x-0.5'
+                className={`mt-0.5 inline-block h-4 w-4 rounded-full bg-white shadow transition-transform duration-200 ${
+                    checked ? 'translate-x-[14px]' : 'translate-x-0.5'
                 }`}
             />
         </button>
@@ -253,6 +333,27 @@ export default function FlightFilters({
     const maxDuration = state.maxDurationMinutes ?? bounds.duration[1];
     const refundableCount = allOffers.filter(o => (o.farePolicy?.isRefundable ?? o.refundable) === true).length;
 
+    /** A day window's two ends as clock-time fields, each held on its own side of the other. */
+    const timeFields = (label: string, window: [number, number], onChange: (next: [number, number]) => void) => (
+        <div className="flex w-full items-center gap-1.5">
+            {([0, 1] as const).map(end => (
+                <React.Fragment key={end}>
+                    {end === 1 && <span className="text-slate-400">–</span>}
+                    <CommitField
+                        type="time"
+                        aria-label={t(end === 0 ? 'rangeFrom' : 'rangeTo', { label })}
+                        value={window[end]}
+                        format={minutesToClock}
+                        parse={clockToMinutes}
+                        normalize={v => end === 0 ? clamp(v, DAY_START_MINUTE, window[1]) : clamp(v, window[0], DAY_END_MINUTE)}
+                        onCommit={v => onChange(end === 0 ? [v, window[1]] : [window[0], v])}
+                        className="flex-1 min-w-0"
+                    />
+                </React.Fragment>
+            ))}
+        </div>
+    );
+
     const hasPriceSpread = bounds.price[1] > bounds.price[0];
     const hasDurationSpread = bounds.duration[1] > bounds.duration[0];
 
@@ -351,9 +452,32 @@ export default function FlightFilters({
                 )}
                 {hasPriceSpread && (
                     <>
-                        <p className="mb-1 text-right text-[14px] text-slate-900 dark:text-slate-200">
-                            {formatCurrency(priceRange[0], currency)} – {formatCurrency(priceRange[1], currency)}
-                        </p>
+                        <div className="mb-2 flex items-center gap-2">
+                            {([0, 1] as const).map(end => (
+                                <React.Fragment key={end}>
+                                    {end === 1 && <span className="text-slate-400">–</span>}
+                                    <label className="relative flex-1">
+                                        <span className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-[12px] text-slate-400">
+                                            {currencySymbol(currency)}
+                                        </span>
+                                        <CommitField
+                                            type="number"
+                                            inputMode="numeric"
+                                            step={1}
+                                            aria-label={t(end === 0 ? 'rangeFrom' : 'rangeTo', { label: t('pricePerPerson') })}
+                                            value={priceRange[end]}
+                                            format={v => String(Math.round(v))}
+                                            parse={parseNumber}
+                                            normalize={v => end === 0
+                                                ? clamp(Math.round(v), bounds.price[0], priceRange[1])
+                                                : clamp(Math.round(v), priceRange[0], bounds.price[1])}
+                                            onCommit={v => update({ priceRange: end === 0 ? [v, priceRange[1]] : [priceRange[0], v] })}
+                                            className="w-full pl-6"
+                                        />
+                                    </label>
+                                </React.Fragment>
+                            ))}
+                        </div>
                         <RangeSlider
                             label={t('pricePerPerson')}
                             min={bounds.price[0]}
@@ -376,62 +500,45 @@ export default function FlightFilters({
                         : undefined
                 }
             >
-                <div className="flex items-center justify-between gap-2">
-                    <span className="text-[15px] text-slate-900 dark:text-slate-200">{t('departure')}</span>
-                    <span className="text-[13px] text-slate-500 dark:text-slate-400">
-                        {minutesToClock(departureWindow[0])} - {minutesToClock(departureWindow[1])}
-                    </span>
+                {/* Typed, not dragged: the label on its own line, the window's two ends
+                    under it sharing the card's width. */}
+                <div className="mb-3">
+                    <span className="mb-1 block text-[15px] text-slate-900 dark:text-slate-200">{t('departure')}</span>
+                    {timeFields(t('departure'), departureWindow, next => update({ departureWindow: next }))}
                 </div>
-                <RangeSlider
-                    className="mb-3 mt-1"
-                    label={t('departure')}
-                    min={DAY_START_MINUTE}
-                    max={DAY_END_MINUTE}
-                    step={5}
-                    value={departureWindow}
-                    onChange={next => update({ departureWindow: next })}
-                    formatValue={minutesToClock}
-                />
-
-                <div className="flex items-center justify-between gap-2">
-                    <span className="text-[15px] text-slate-900 dark:text-slate-200">{t('arrival')}</span>
-                    <span className="text-[13px] text-slate-500 dark:text-slate-400">
-                        {minutesToClock(arrivalWindow[0])} - {minutesToClock(arrivalWindow[1])}
-                    </span>
+                <div>
+                    <span className="mb-1 block text-[15px] text-slate-900 dark:text-slate-200">{t('arrival')}</span>
+                    {timeFields(t('arrival'), arrivalWindow, next => update({ arrivalWindow: next }))}
                 </div>
-                <RangeSlider
-                    className="mt-1"
-                    label={t('arrival')}
-                    min={DAY_START_MINUTE}
-                    max={DAY_END_MINUTE}
-                    step={5}
-                    value={arrivalWindow}
-                    onChange={next => update({ arrivalWindow: next })}
-                    formatValue={minutesToClock}
-                />
             </Section>
 
             {/* ── Flight duration ──
-                One knob in the design, so the lower end is pinned to the shortest flight
-                on offer and only the ceiling moves. */}
+                A ceiling only, typed in whole hours; the floor is the shortest flight
+                on offer. */}
             {hasDurationSpread && (
                 <Section
                     title={t('flightDuration')}
                     resetLabel={t('reset')}
                     onReset={state.maxDurationMinutes !== null ? () => update({ maxDurationMinutes: null }) : undefined}
                 >
-                    <p className="mb-1 text-[15px] text-slate-900 dark:text-slate-200">
-                        {t('underHours', { hours: Math.ceil(maxDuration / 60) })}
+                    <p className="mb-1 flex items-center gap-1.5 text-[15px] text-slate-900 dark:text-slate-200">
+                        {t.rich('underHoursInput', {
+                            field: () => (
+                                <CommitField
+                                    type="number"
+                                    inputMode="numeric"
+                                    step={1}
+                                    aria-label={t('flightDuration')}
+                                    value={Math.ceil(maxDuration / 60)}
+                                    format={String}
+                                    parse={parseNumber}
+                                    normalize={h => clamp(Math.round(h), Math.ceil(bounds.duration[0] / 60), Math.ceil(bounds.duration[1] / 60))}
+                                    onCommit={h => update({ maxDurationMinutes: clamp(h * 60, bounds.duration[0], bounds.duration[1]) })}
+                                    className="w-14 text-center"
+                                />
+                            ),
+                        })}
                     </p>
-                    <RangeSlider
-                        label={t('flightDuration')}
-                        min={bounds.duration[0]}
-                        max={bounds.duration[1]}
-                        step={15}
-                        value={[bounds.duration[0], maxDuration]}
-                        onChange={([, high]) => update({ maxDurationMinutes: high })}
-                        formatValue={v => `${Math.floor(v / 60)}h ${String(v % 60).padStart(2, '0')}m`}
-                    />
                 </Section>
             )}
 

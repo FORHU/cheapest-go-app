@@ -1,6 +1,7 @@
 "use client";
 
 import React from 'react';
+import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { type Property } from '@/types';
 import { ArrowLeft, User, Bed, MapPin, Check, Share2, ChevronLeft, ChevronRight, X } from 'lucide-react';
@@ -141,10 +142,12 @@ const RoomDetailsView: React.FC<RoomDetailsViewProps> = ({ property, room, onBac
                 >
                     {photos.length > 0 ? (
                         <>
-                            <img
+                            <Image
                                 src={photos[currentPhotoIndex]}
                                 alt={`${room.name} - Photo ${currentPhotoIndex + 1}`}
-                                className="w-full h-full object-cover transition-opacity duration-300"
+                                fill
+                                sizes="(max-width: 768px) 100vw, 800px"
+                                className="object-cover transition-opacity duration-300"
                             />
 
                             {/* Navigation Buttons */}
@@ -286,12 +289,16 @@ const RoomDetailsView: React.FC<RoomDetailsViewProps> = ({ property, room, onBac
                     </div>
 
                     {/* Image */}
-                    <img
-                        src={photos[currentPhotoIndex]}
-                        alt={`${room.name} - Photo ${currentPhotoIndex + 1}`}
-                        className="max-w-[90vw] max-h-[85vh] object-contain rounded-lg shadow-2xl select-none"
-                        onClick={(e) => e.stopPropagation()}
-                    />
+                    <div className="relative w-[90vw] h-[85vh]">
+                        <Image
+                            src={photos[currentPhotoIndex]}
+                            alt={`${room.name} - Photo ${currentPhotoIndex + 1}`}
+                            fill
+                            sizes="90vw"
+                            className="object-contain rounded-lg shadow-2xl select-none"
+                            onClick={(e) => e.stopPropagation()}
+                        />
+                    </div>
 
                     {/* Nav buttons */}
                     {photos.length > 1 && (

@@ -39,29 +39,37 @@ export function SupportTranscript({ messages, isTyping, isReplying = false }: Su
             role="log"
             aria-live="polite"
             aria-relevant="additions"
-            className="flex-1 min-h-0 overflow-y-auto px-4 py-3"
+            className="flex flex-1 min-h-0 flex-col overflow-y-auto px-4 py-3"
         >
-            {messages.length === 0 && !isTyping && !isReplying && (
-                <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
-                    {t('empty')}
-                </p>
-            )}
+            {/*
+              * Pushed to the bottom of the log, by the composer, the way a chat reads:
+              * the last message sent is the lowest one, and a short conversation does
+              * not hang from the top of an empty panel. Once it outgrows the panel it
+              * scrolls as before, kept on the newest message by the effect above.
+              */}
+            <div className="mt-auto">
+                {messages.length === 0 && !isTyping && !isReplying && (
+                    <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
+                        {t('empty')}
+                    </p>
+                )}
 
-            <ul className="flex flex-col gap-3">
-                {messages.map(message => (
-                    <SupportMessageRow key={message.id} message={message} />
-                ))}
-            </ul>
+                <ul className="flex flex-col gap-3">
+                    {messages.map(message => (
+                        <SupportMessageRow key={message.id} message={message} />
+                    ))}
+                </ul>
 
-            {isTyping && (
-                <p className="mt-3 text-xs text-slate-500 dark:text-slate-400">{t('typing')}</p>
-            )}
+                {isTyping && (
+                    <p className="mt-3 text-xs text-slate-500 dark:text-slate-400">{t('typing')}</p>
+                )}
 
-            {isReplying && !isTyping && (
-                <p className="mt-3 text-xs text-slate-500 dark:text-slate-400">{t('replying')}</p>
-            )}
+                {isReplying && !isTyping && (
+                    <p className="mt-3 text-xs text-slate-500 dark:text-slate-400">{t('replying')}</p>
+                )}
 
-            <div ref={endRef} />
+                <div ref={endRef} />
+            </div>
         </div>
     );
 }

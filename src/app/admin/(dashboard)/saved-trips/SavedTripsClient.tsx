@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useTransition } from 'react';
+import Image from 'next/image';
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import { toast } from 'sonner';
 import { Bookmark, Plane, Building2, Search, XCircle, Trash2, ExternalLink } from 'lucide-react';
@@ -56,7 +57,11 @@ export function SavedTripsClient({ data, searchParams }: SavedTripsClientProps) 
             if (searchTerm !== searchParams.q) updateParam({ q: searchTerm, page: 1 });
         }, 500);
         return () => clearTimeout(t);
-    }, [searchTerm]);
+        // Deliberately keyed on searchTerm alone: updateParam is a plain (unmemoized)
+        // function recreated every render, and searchParams.q is the URL's own current
+        // value — including either would reset this debounce timer on every render, not
+        // just when the user types.
+    }, [searchTerm]); // eslint-disable-line react-hooks/exhaustive-deps
 
     const handleDelete = async (id: string) => {
         if (!confirm('Remove this saved trip?')) return;
@@ -133,7 +138,7 @@ export function SavedTripsClient({ data, searchParams }: SavedTripsClientProps) 
                                     <TableCell className="pl-6">
                                         <div className="flex items-center gap-3">
                                             {trip.image_url ? (
-                                                <img src={trip.image_url} alt={trip.title} className="w-10 h-10 rounded-xl object-cover shrink-0" onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                                                <Image src={trip.image_url} alt={trip.title} width={40} height={40} className="w-10 h-10 rounded-xl object-cover shrink-0" onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }} />
                                             ) : (
                                                 <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${trip.type === 'flight' ? 'bg-blue-500/10 text-blue-600' : 'bg-emerald-500/10 text-emerald-600'}`}>
                                                     {trip.type === 'flight' ? <Plane size={16} /> : <Building2 size={16} />}

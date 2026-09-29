@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Search, ChevronDown } from 'lucide-react';
 import { FlightCard } from './flightCard';
 import { Skeleton } from '@/components/shared/Skeleton/Skeleton';
+import { RESULT_CARD_RESTING } from './FilterCard';
 import type { FlightOffer } from '@/types/flights';
 import { useTranslations } from 'next-intl';
 
@@ -12,10 +13,10 @@ const PAGE_SIZE = 15;
 
 // ─── Skeleton Card ───────────────────────────────────────────────────
 
-function FlightCardSkeleton({ index = 0 }: { index?: number }) {
+export function FlightCardSkeleton({ index = 0 }: { index?: number }) {
     return (
         <div
-            className="relative w-full bg-white dark:bg-slate-900 rounded-2xl overflow-hidden border border-slate-200/70 dark:border-slate-700 shadow-[0_10px_30px_-14px_rgba(15,23,42,0.14)] animate-pulse"
+            className={`relative w-full overflow-hidden animate-pulse ${RESULT_CARD_RESTING}`}
             style={{ animationDelay: `${index * 150}ms` }}
         >
             {/* Save/heart button placeholder (mobile only — top-right corner), mirrors
@@ -77,23 +78,23 @@ function FlightCardSkeleton({ index = 0 }: { index?: number }) {
                         </div>
                     </div>
 
-                    {/* "Show all segments" toggle placeholder — sibling of the content
+                    {/* "Show flight itineraries" toggle placeholder — sibling of the content
                         wrapper above, same as the real button's own bottom padding. */}
                     <div className="flex items-center gap-1 px-4 lg:px-6 pb-4 lg:pb-6">
                         <Skeleton width={14} height={14} rounded="sm" />
-                        <Skeleton width={92} height={10} className="lg:!w-[112px] lg:!h-[12px]" />
+                        <Skeleton width={110} height={10} className="lg:!w-[136px] lg:!h-[12px]" />
                     </div>
                 </div>
 
-                {/* ─── Price rail (right when collapsed) ─── */}
-                <div className="relative flex flex-row items-center justify-between gap-1 lg:gap-1.5 p-4 lg:p-6 border-t border-slate-100 dark:border-slate-800 lg:flex-col lg:w-[180px] lg:border-l lg:border-t-0">
+                {/* ─── Price rail (right when collapsed) — the real card's 240px ─── */}
+                <div data-skeleton="price-rail" className="relative flex flex-row items-center justify-between gap-1 lg:gap-1.5 p-4 lg:p-6 border-t border-slate-100 dark:border-slate-800 lg:flex-col lg:w-[240px] lg:shrink-0 lg:border-l lg:border-t-0">
                     {/* Save/heart button placeholder — desktop only, inline at the top */}
                     <div className="hidden lg:flex justify-end w-full mb-1">
                         <Skeleton width={28} height={28} rounded="full" />
                     </div>
 
                     <div>
-                        <Skeleton width={70} height={20} className="mb-0.5 lg:!w-[100px] lg:!h-7" />
+                        <Skeleton width={84} height={20} className="mb-0.5 lg:!w-[140px] lg:!h-7" />
                         <Skeleton width={50} height={10} className="lg:!w-[72px] lg:!h-3.5" />
                     </div>
 
@@ -159,7 +160,7 @@ export const FlightResults: React.FC<FlightResultsProps> = ({
             <div
                 role="status"
                 aria-live="polite"
-                className="flex min-h-[220px] w-full items-center justify-center rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900"
+                className={`flex min-h-[220px] w-full items-center justify-center ${RESULT_CARD_RESTING}`}
             >
                 <div className="flex items-center gap-3">
                     <SearchSpinner />

@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useMemo } from 'react';
+import Image from 'next/image';
 import { Sidebar } from '@/components/admin/Sidebar';
 import { TopNav } from '@/components/admin/TopNav';
 import { MobileAdminNav } from '@/components/admin/MobileAdminNav';
@@ -168,10 +169,13 @@ export function AdminLayoutClient({
                     {/* Page Banner */}
                     <div className="p-3 sm:p-6 lg:p-8 pb-0 lg:pb-0">
                         <div className="relative h-32 sm:h-64 w-full overflow-hidden rounded-2xl sm:rounded-3xl shadow-2xl">
-                            <img
+                            <Image
                                 src={bannerConfig.image}
                                 alt={bannerConfig.title}
-                                className="w-full h-full object-cover transition-opacity duration-500"
+                                fill
+                                sizes="100vw"
+                                priority
+                                className="object-cover transition-opacity duration-500"
                             />
                             <div className="absolute inset-0 bg-linear-to-b from-black/20 via-transparent to-black/60" />
 

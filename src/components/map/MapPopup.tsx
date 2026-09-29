@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
+import Image from 'next/image';
 import { Popup } from 'react-map-gl/mapbox';
 import { X, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useTranslations } from 'next-intl';
@@ -80,13 +81,13 @@ const MapPopup = React.memo(function MapPopup({
     }, [checkIn, checkOut]);
     const displayPrice = React.useMemo(
         () => convertCurrency(property.price, sourceCurrency, targetCurrency),
-        [property.price, sourceCurrency, targetCurrency, nights]
+        [property.price, sourceCurrency, targetCurrency]
     );
     const displayOriginalPrice = React.useMemo(
         () => property.originalPrice
             ? convertCurrency(property.originalPrice, sourceCurrency, targetCurrency)
             : undefined,
-        [property.originalPrice, sourceCurrency, targetCurrency, nights]
+        [property.originalPrice, sourceCurrency, targetCurrency]
     );
     const rating = property.rating ?? 0;
 
@@ -151,7 +152,7 @@ const MapPopup = React.memo(function MapPopup({
 
             {/* Image carousel */}
             <div
-                className="relative select-none"
+                className={`relative select-none ${isLandscape ? 'h-16' : 'h-24'}`}
                 onMouseEnter={() => setIsImageHovered(true)}
                 onMouseLeave={() => setIsImageHovered(false)}
                 onTouchStart={handleTouchStart}
@@ -159,7 +160,7 @@ const MapPopup = React.memo(function MapPopup({
             >
                 {/* Skeleton shown while next image loads */}
                 {imgLoading && (
-                    <div className={`absolute inset-x-0 top-0 bg-slate-200 dark:bg-slate-700 animate-pulse ${isLandscape ? 'h-16' : 'h-24'}`}>
+                    <div className="absolute inset-0 bg-slate-200 dark:bg-slate-700 animate-pulse">
                         <div className="absolute inset-0 flex items-center justify-center gap-1">
                             <span className="w-1.5 h-1.5 rounded-full bg-slate-400/60 dark:bg-slate-500/60 animate-bounce" style={{ animationDelay: '0ms' }} />
                             <span className="w-1.5 h-1.5 rounded-full bg-slate-400/60 dark:bg-slate-500/60 animate-bounce" style={{ animationDelay: '150ms' }} />
@@ -167,15 +168,19 @@ const MapPopup = React.memo(function MapPopup({
                         </div>
                     </div>
                 )}
-                <img
-                    key={images[imgIndex]}
-                    src={images[imgIndex] || undefined}
-                    alt={property.name}
-                    className={`w-full object-cover transition-opacity duration-300 ${isLandscape ? 'h-16' : 'h-24'} ${imgLoading ? 'opacity-0' : 'opacity-100'}`}
-                    loading="lazy"
-                    onLoad={() => setImgLoading(false)}
-                    onError={() => setImgLoading(false)}
-                />
+                {images[imgIndex] && (
+                    <Image
+                        key={images[imgIndex]}
+                        src={images[imgIndex]}
+                        alt={property.name}
+                        fill
+                        sizes="240px"
+                        className={`object-cover transition-opacity duration-300 ${imgLoading ? 'opacity-0' : 'opacity-100'}`}
+                        loading="lazy"
+                        onLoad={() => setImgLoading(false)}
+                        onError={() => setImgLoading(false)}
+                    />
+                )}
                 <button
                     onClick={onClose}
                     className="absolute top-1.5 right-1.5 w-6 h-6 bg-black/50 backdrop-blur-sm rounded-full flex items-center justify-center hover:bg-black/70 transition-colors cursor-pointer z-10"

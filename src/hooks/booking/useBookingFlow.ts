@@ -133,7 +133,9 @@ export function useBookingFlow(): UseBookingFlowReturn {
       if (roomName) params.roomName = roomName;
       return prebookMutation.mutateAsync(params);
     },
-    [prebookMutation.mutateAsync]
+    // prebookMutation.mutateAsync (not the whole mutation object, which react-query
+    // recreates on every status change) is the stable reference here.
+    [prebookMutation.mutateAsync, setPrebookId] // eslint-disable-line react-hooks/exhaustive-deps
   );
 
   /**

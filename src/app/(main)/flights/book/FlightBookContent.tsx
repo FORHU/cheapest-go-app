@@ -3,9 +3,9 @@
 import React, { useEffect } from 'react';
 import { useTranslations } from 'next-intl';
 import { motion } from 'framer-motion';
-import { Plane, User, Mail, Loader2, CheckCircle, AlertTriangle, MapPin, PartyPopper, Info, Clock, Shield, XCircle, X, BadgeDollarSign, RefreshCw, Users, BedDouble, ArrowRight, Armchair, Luggage, Sparkles, ChevronDown } from 'lucide-react';
+import { Plane, Mail, Loader2, CheckCircle, AlertTriangle, PartyPopper, Info, Clock, Shield, XCircle, X, BadgeDollarSign, RefreshCw, BedDouble, ArrowRight, Armchair, Luggage, Sparkles, Receipt } from 'lucide-react';
 import { FlightItinerarySummary } from '@/components/flights/FlightItinerarySummary';
-import { FlightItineraryDetails } from '@/components/flights/FlightItineraryDetails';
+import { FlightCard } from '@/components/flights/flightCard';
 import { useSearchParams, useRouter } from 'next/navigation';
 import BackButton from '@/components/common/BackButton';
 import StripeEmbeddedCheckout from '@/components/checkout/StripeEmbeddedCheckout';
@@ -20,70 +20,13 @@ import { FareRulesPanel } from './FareRulesPanel';
 import SeatMapPanel from '@/components/flights/SeatMapPanel';
 import BagSelectionPanel from '@/components/flights/BagSelectionPanel';
 import DuffelFareConditions from '@/components/flights/DuffelFareConditions';
-import PriceCalendar from '@/components/flights/PriceCalendar';
 import DuplicateBookingModal from '@/components/flights/DuplicateBookingModal';
-import { Suspense, useMemo } from 'react';
+import { FlightBookColumns } from '@/components/flights/booking/FlightBookColumns';
+import { PassengerDetailsCard } from '@/components/flights/booking/PassengerDetailsCard';
+import { BillingAddressCard, ContactInformationCard } from '@/components/flights/booking/ContactCards';
+import { BOOK_CARD, BOOK_CARD_ICON, BOOK_CARD_PADDING, BOOK_CARD_TITLE, BookCard, BookCollapsibleCard } from '@/components/flights/booking/BookCard';
 import { cn } from '@/lib/utils';
-import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuItem,
-    DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import { FormDatePicker } from '@/components/common/FormDatePicker';
 import { } from 'zod';
-
-// ─── Inline field validation ─────────────────────────────────────────
-
-/** Shared input styling, so the error variant only has to override the border. */
-const FIELD_BASE =
-    'w-full px-2.5 lg:px-3 py-2 lg:py-2.5 rounded-md border bg-white dark:bg-slate-800 ' +
-    'text-slate-900 dark:text-white text-[10px] lg:text-[13px] placeholder:text-slate-400 ' +
-    'focus:outline-none focus:ring-2';
-
-/** Border + focus ring for an input, red when that field failed validation. */
-function fieldClass(hasError: boolean, extra = ''): string {
-    return cn(
-        FIELD_BASE,
-        hasError
-            ? 'border-red-400 dark:border-red-500 focus:ring-red-500/50 focus:border-red-500'
-            : 'border-slate-200 dark:border-slate-700 focus:ring-indigo-500/50 focus:border-indigo-500',
-        extra,
-    );
-}
-
-/**
- * One field's complaint, rendered directly beneath its input.
- *
- * `role="alert"` so screen readers announce it when it appears — the message arrives
- * after submit, long after the input was read.
- */
-function FieldError({ message }: { message?: string }) {
-    if (!message) return null;
-    return (
-        <p role="alert" className="mt-1 text-[10px] lg:text-[11px] text-red-600 dark:text-red-400">
-            {message}
-        </p>
-    );
-}
-
-// ─── Date-of-birth picker default ────────────────────────────────────
-
-/**
- * Typical age of an adult passenger. Opening the birthdate calendar on today
- * means paging back three decades before reaching a plausible year.
- */
-const TYPICAL_ADULT_AGE = 30;
-
-/**
- * Month the birthdate calendar opens on. Relative rather than a fixed year, so
- * it stays sensible as time passes — a hardcoded 1996 would quietly become a
- * worse guess every year. Today that resolves to 1996.
- */
-function defaultBirthdateView(): Date {
-    const now = new Date();
-    return new Date(now.getFullYear() - TYPICAL_ADULT_AGE, 0, 1);
-}
 
 // ─── Error codes ─────────────────────────────────────────────────────
 
@@ -162,7 +105,7 @@ function FarePolicyPanel({ policy, policyChanged }: FarePolicyPanelProps) {
     }
 
     return (
-        <div className="bg-white dark:bg-slate-900 rounded-md border border-slate-200 dark:border-slate-700 p-3 lg:p-5 mb-3 lg:mb-6 shadow-sm space-y-2">
+        <div className={cn(BOOK_CARD, BOOK_CARD_PADDING, 'mb-3 lg:mb-6 space-y-3')}>
             {/* Policy downgrade warning */}
             {policyChanged && (
                 <div className="flex items-center gap-2 p-2.5 rounded-md bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-400 text-[11px]">
@@ -171,8 +114,8 @@ function FarePolicyPanel({ policy, policyChanged }: FarePolicyPanelProps) {
                 </div>
             )}
             <div className="flex items-center justify-between">
-                <h3 className="text-[11px] lg:text-xs font-normal text-slate-900 dark:text-white flex items-center gap-1.5">
-                    <RefreshCw className="w-3.5 h-3.5 text-indigo-500" />
+                <h3 className={cn(BOOK_CARD_TITLE, 'flex items-center gap-1.5')}>
+                    <RefreshCw className={BOOK_CARD_ICON} strokeWidth={1.75} aria-hidden />
                     {t('farePolicy.title')}
                 </h3>
                 {isLocked && (
@@ -253,52 +196,6 @@ const FLIGHT_BOOKING_STEPS = [
     'Finalizing booking details...',
 ] as const;
 
-const PASSENGER_TYPES = [
-    { code: 'ADT', label: 'Adult' },
-    { code: 'CHD', label: 'Child' },
-    { code: 'INF', label: 'Infant' },
-];
-
-const GENDERS = [
-    { value: 'M', label: 'Male' },
-    { value: 'F', label: 'Female' },
-];
-
-const NATIONALITIES = [
-    { code: 'KR', name: 'South Korea' },
-    { code: 'PH', name: 'Philippines' },
-    { code: 'US', name: 'United States' },
-    { code: 'JP', name: 'Japan' },
-    { code: 'CN', name: 'China' },
-    { code: 'GB', name: 'United Kingdom' },
-    { code: 'AU', name: 'Australia' },
-    { code: 'CA', name: 'Canada' },
-    { code: 'DE', name: 'Germany' },
-    { code: 'FR', name: 'France' },
-    { code: 'SG', name: 'Singapore' },
-    { code: 'TH', name: 'Thailand' },
-    { code: 'VN', name: 'Vietnam' },
-    { code: 'IN', name: 'India' },
-    { code: 'MY', name: 'Malaysia' },
-];
-
-const PHONE_CODES = [
-    { code: '82', country: 'KR', label: '+82 (KR)' },
-    { code: '63', country: 'PH', label: '+63 (PH)' },
-    { code: '1', country: 'US', label: '+1 (US/CA)' },
-    { code: '81', country: 'JP', label: '+81 (JP)' },
-    { code: '86', country: 'CN', label: '+86 (CN)' },
-    { code: '44', country: 'GB', label: '+44 (GB)' },
-    { code: '61', country: 'AU', label: '+61 (AU)' },
-    { code: '49', country: 'DE', label: '+49 (DE)' },
-    { code: '33', country: 'FR', label: '+33 (FR)' },
-    { code: '65', country: 'SG', label: '+65 (SG)' },
-    { code: '66', country: 'TH', label: '+66 (TH)' },
-    { code: '84', country: 'VN', label: '+84 (VN)' },
-    { code: '91', country: 'IN', label: '+91 (IN)' },
-    { code: '60', country: 'MY', label: '+60 (MY)' },
-];
-
 function BookingContent() {
     const t = useTranslations('flightBook');
     const [bookingStepIdx, setBookingStepIdx] = React.useState(0);
@@ -336,42 +233,6 @@ function BookingContent() {
         pollForBooking,
         setErrorMsg,
     } = useFlightBooking();
-
-    // ─── Price Calendar Props ──────────────────────────────────────────
-    const calendarProps = useMemo(() => {
-        if (!offer || !offer.segments) return null;
-
-        const searchCounts = typeof window !== 'undefined' ? sessionStorage.getItem('flightSearchPassengers') : null;
-        let adultsCount = 1;
-        if (searchCounts) {
-            try {
-                const { adults = 1 } = JSON.parse(searchCounts);
-                adultsCount = adults;
-            } catch { }
-        }
-
-        const outboundSegments = offer.segments.filter((s: any) => (s.segmentIndex ?? 0) === 0);
-        const returnSegments = offer.segments.filter((s: any) => (s.segmentIndex ?? 0) === 1);
-
-        if (!outboundSegments.length) return null;
-
-        const origin = outboundSegments[0].departure.airport;
-        const destination = outboundSegments[outboundSegments.length - 1].arrival.airport;
-        const departureDate = outboundSegments[0].departure.time?.slice(0, 10) || '';
-        const returnDate = returnSegments.length > 0 ? returnSegments[0].departure.time?.slice(0, 10) : undefined;
-
-        const primary = offer.segments[0];
-
-        return {
-            origin,
-            destination,
-            adults: adultsCount,
-            cabin: primary.cabinClass || 'economy',
-            initialDate: departureDate,
-            returnDate,
-            provider: offer.provider
-        };
-    }, [offer]);
 
     const [bagsOpen, setBagsOpen] = React.useState(false);
     const [seatsOpen, setSeatsOpen] = React.useState(false);
@@ -847,78 +708,25 @@ function BookingContent() {
     // ─── Booking Form ────────────────────────────────────────────────
 
     return (
-        <div className="min-h-screen pt-3 lg:pt-6 pb-20 px-3 lg:px-6">
-            <div className="max-w-3xl mx-auto">
-                {/* Header */}
-                <div className="mb-3 lg:mb-6">
+        <div className="min-h-screen pt-3 lg:pt-6 pb-20 px-3 lg:px-14">
+            <FlightBookColumns
+                top={
                     <BackButton
                         bareIcon
                         className="mb-2 bg-white/90 dark:bg-slate-900/90 backdrop-blur border border-slate-200/50 dark:border-slate-700/50 text-slate-700 dark:text-slate-300 w-8 h-8 lg:w-10 lg:h-10 rounded-full flex items-center justify-center shadow-sm p-0"
                     />
-                    <h1 className="text-sm lg:text-xl font-normal text-slate-900 dark:text-white">
-                        {(() => {
-                            const airport = getAirportByCode(primary.arrival.airport);
-                            const airportName = airport ? airport.name : primary.arrival.airport;
-                            return (offer as any).tripType === 'round-trip'
-                                ? t('header.roundTrip', { name: airportName, code: primary.arrival.airport })
-                                : t('header.oneWay', { name: airportName, code: primary.arrival.airport });
-                        })()}
-                    </h1>
-                </div>
-
-                {/* Flight Summary */}
-                <div className="bg-white dark:bg-slate-900 rounded-md border border-slate-200 dark:border-slate-700 p-3 lg:p-5 mb-3 lg:mb-6 shadow-sm">
-                    <div className="flex items-center gap-2 lg:gap-3 mb-2 lg:mb-3">
-                        <div className="w-8 h-8 lg:w-10 lg:h-10 rounded-md lg:rounded-md bg-white border border-slate-200 dark:border-slate-700 overflow-hidden flex items-center justify-center shadow-sm">
-                            <img
-                                src={`https://www.gstatic.com/flights/airline_logos/70px/${primary.airline.code}.png`}
-                                alt={primary.airline.name}
-                                className="w-full h-full object-contain p-1.5"
-                            />
-                        </div>
-                        <div>
-                            <div className="font-normal text-slate-900 dark:text-white text-[10px] lg:text-[13px]">{primary.airline.name}</div>
-                            <div className="text-[9px] lg:text-[11px] text-slate-500 dark:text-slate-400">{primary.flightNumber}</div>
-                        </div>
-                    </div>
-
-                    <div className="flex items-center gap-2 lg:gap-4">
-                        <div className="flex-1 min-w-0">
-                            <FlightItinerarySummary offer={offer} />
-                        </div>
-                        <div className="ml-auto text-right pl-2 lg:pl-4 border-l border-slate-200 dark:border-slate-700">
-                            <div className="text-sm lg:text-lg font-normal text-slate-900 dark:text-white">{formatPrice(offer.price.total + selectedSeats.reduce((s, x) => s + x.price, 0) + selectedBags.reduce((s, b) => s + b.price, 0), offer.price.currency, targetCurrency)}</div>
-                            <div className="text-[9px] lg:text-[11px] text-slate-500 dark:text-slate-400">{t('totalPrice')}</div>
-                        </div>
-                    </div>
-
-                    {/* The itinerary in full. This page used to show the strips above and
-                        nothing else, so the flight numbers, aircraft, terminals and layovers
-                        of the journey being paid for appeared nowhere on it. */}
-                    <div className="mt-3 lg:mt-4 pt-3 lg:pt-4 border-t border-slate-100 dark:border-slate-800">
-                        <FlightItineraryDetails offer={offer} />
-                    </div>
-
-                    {offer.seatsRemaining != null && offer.seatsRemaining > 0 && (
-                        <div className="mt-2 lg:mt-3 pt-2 lg:pt-3 border-t border-slate-100 dark:border-slate-800">
-                            <span className={`inline-flex items-center gap-1 px-2 py-0.5 lg:py-1 rounded-full text-[9px] lg:text-[11px] font-normal border ${offer.seatsRemaining <= 3
-                                ? 'bg-red-50 dark:bg-red-500/10 border-red-200 dark:border-red-800 text-red-600 dark:text-red-400'
-                                : offer.seatsRemaining <= 6
-                                    ? 'bg-amber-50 dark:bg-amber-500/10 border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-400'
-                                    : 'bg-emerald-50 dark:bg-emerald-500/10 border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-400'
-                                }`}>
-                                <Users className="w-3 h-3 lg:w-3.5 lg:h-3.5" />
-                                {offer.seatsRemaining <= 3
-                                    ? offer.seatsRemaining === 1
-                                        ? t('seatsRemaining.onlyLeft', { count: offer.seatsRemaining })
-                                        : t('seatsRemaining.onlyLeftPlural', { count: offer.seatsRemaining })
-                                    : offer.seatsRemaining <= 6
-                                        ? t('seatsRemaining.leftPlural', { count: offer.seatsRemaining })
-                                        : t('seatsRemaining.available', { count: offer.seatsRemaining })}
-                            </span>
-                        </div>
-                    )}
-                </div>
+                }
+                heading={(() => {
+                    const airport = getAirportByCode(primary.arrival.airport);
+                    const airportName = airport ? airport.name : primary.arrival.airport;
+                    return (offer as any).tripType === 'round-trip'
+                        ? t('header.roundTrip', { name: airportName, code: primary.arrival.airport })
+                        : t('header.oneWay', { name: airportName, code: primary.arrival.airport });
+                })()}
+                flight={<>
+                {/* The flight, as the search page shows it — its own card, opened on the
+                    itineraries, without the Select rail (the flight is already chosen). */}
+                <FlightCard offer={offer} variant="booking" />
                 {/* Deal context banner — shown when booking came from a deal card */}
                 {searchParams.get('dealDiscount') || searchParams.get('dealPrice') ? (() => {
                     const dealDiscount = searchParams.get('dealDiscount');
@@ -960,17 +768,6 @@ function BookingContent() {
                     );
                 })() : null}
 
-                {/* Price Calendar — moved from search page to booking page */}
-                {calendarProps && (
-                    <div className="mb-3 lg:mb-6">
-                        <Suspense fallback={<div className="h-10 w-full animate-pulse bg-slate-100 dark:bg-slate-800 rounded-md" />}>
-                            <PriceCalendar
-                                {...calendarProps}
-                            />
-                        </Suspense>
-                    </div>
-                )}
-
                 {/* Offer expiry countdown — only for Duffel */}
                 {offerExpiresAt && offer.provider === 'duffel' && (
                     <OfferExpiryBanner expiresAt={offerExpiresAt} />
@@ -995,6 +792,8 @@ function BookingContent() {
                         fareSourceCode={offer.offerId.split('|')[0]}
                     />
                 )}
+                </>}
+            >
 
                 {/* Booking Flow: Passenger Form OR Payment Element */}
                 {step === 'payment' && clientSecret ? (
@@ -1014,404 +813,115 @@ function BookingContent() {
                     <form onSubmit={handleSubmit} className="space-y-3 lg:space-y-6">
                         {/* Passengers */}
                         {passengers.map((pax, idx) => (
-                            <div key={idx} className="bg-white dark:bg-slate-900 rounded-md border border-slate-200 dark:border-slate-700 p-3 lg:p-5">
-                                <div className="flex items-center justify-between mb-3 lg:mb-4">
-                                    <h2 className="flex items-center gap-1.5 lg:gap-2 text-[11px] lg:text-[14px] font-normal text-slate-900 dark:text-white">
-                                        <User className="w-3.5 h-3.5 lg:w-4 lg:h-4 text-indigo-500" />
-                                        {t('passenger.title', { number: idx + 1 })}
-                                    </h2>
-                                    <div className="flex items-center gap-1.5 lg:gap-2">
-                                        <DropdownMenu>
-                                            <DropdownMenuTrigger asChild>
-                                                <button
-                                                    type="button"
-                                                    className="flex items-center gap-1.5 px-3 py-1.5 text-[10px] lg:text-xs font-normal bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-md text-slate-700 dark:text-slate-300 hover:border-slate-300 dark:hover:border-slate-600 transition-colors group"
-                                                >
-                                                    <span>{t(`passenger.${PASSENGER_TYPES.find(t => t.code === pax.type)?.label?.toLowerCase() || 'adult'}`)}</span>
-                                                    <ChevronDown size={12} className="text-slate-400 transition-transform group-data-[state=open]:rotate-180" />
-                                                </button>
-                                            </DropdownMenuTrigger>
-                                            <DropdownMenuContent align="end" className="rounded-xl min-w-25 z-1001">
-                                                {PASSENGER_TYPES.map((pt) => (
-                                                    <DropdownMenuItem
-                                                        key={pt.code}
-                                                        onClick={() => updatePassenger(idx, 'type', pt.code)}
-                                                        className={cn(
-                                                            "flex items-center gap-2 px-3 py-1.5 text-[10px] lg:text-[11px] font-normal transition-colors cursor-pointer",
-                                                            pax.type === pt.code
-                                                                ? "bg-blue-50 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400"
-                                                                : "text-slate-700 dark:text-slate-300"
-                                                        )}
-                                                    >
-                                                        <span>{t(`passenger.${pt.label?.toLowerCase() || 'adult'}`)}</span>
-                                                    </DropdownMenuItem>
-                                                ))}
-                                            </DropdownMenuContent>
-                                        </DropdownMenu>
-                                        {passengers.length > 1 && (
-                                            <button
-                                                type="button"
-                                                onClick={() => removePassenger(idx)}
-                                                className="text-[10px] lg:text-xs text-red-500 hover:text-red-400 font-normal"
-                                            >
-                                                {t('passenger.remove')}
-                                            </button>
-                                        )}
-                                    </div>
-                                </div>
-
-                                <div className="grid grid-cols-1 lg:grid-cols-2 gap-2.5 lg:gap-3">
-                                    <div>
-                                        <input
-                                            type="text" placeholder={t('passenger.firstName')} required
-                                            data-field={`passengers.${idx}.firstName`}
-                                            aria-invalid={!!fieldErrors[`passengers.${idx}.firstName`]}
-                                            value={pax.firstName}
-                                            onChange={(e) => updatePassenger(idx, 'firstName', e.target.value)}
-                                            onBlur={(e) => validateField(`passengers.${idx}.firstName`, e.target.value)}
-                                            className={fieldClass(!!fieldErrors[`passengers.${idx}.firstName`])}
-                                        />
-                                        <FieldError message={fieldErrors[`passengers.${idx}.firstName`]} />
-                                    </div>
-                                    <div>
-                                        <input
-                                            type="text" placeholder={t('passenger.lastName')} required
-                                            data-field={`passengers.${idx}.lastName`}
-                                            aria-invalid={!!fieldErrors[`passengers.${idx}.lastName`]}
-                                            value={pax.lastName}
-                                            onChange={(e) => updatePassenger(idx, 'lastName', e.target.value)}
-                                            onBlur={(e) => validateField(`passengers.${idx}.lastName`, e.target.value)}
-                                            className={fieldClass(!!fieldErrors[`passengers.${idx}.lastName`])}
-                                        />
-                                        <FieldError message={fieldErrors[`passengers.${idx}.lastName`]} />
-                                    </div>
-                                    <DropdownMenu>
-                                        <DropdownMenuTrigger asChild>
-                                            <button
-                                                type="button"
-                                                className="w-full flex items-center justify-between px-2.5 lg:px-3 py-2 lg:py-2.5 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-[10px] lg:text-[13px] focus:outline-none focus:ring-2 focus:ring-indigo-500/50 group"
-                                            >
-                                                <span className={cn(!pax.gender && "text-slate-400")}>
-                                                    {GENDERS.find(g => g.value === pax.gender) ? t(`genderOptions.${pax.gender === 'M' ? 'male' : 'female'}`) : t('passenger.gender')}
-                                                </span>
-                                                <ChevronDown size={14} className="text-slate-400 transition-transform group-data-[state=open]:rotate-180" />
-                                            </button>
-                                        </DropdownMenuTrigger>
-                                        <DropdownMenuContent align="start" className="rounded-xl min-w-35 z-1001">
-                                            {GENDERS.map((g) => (
-                                                <DropdownMenuItem
-                                                    key={g.value}
-                                                    onClick={() => updatePassenger(idx, 'gender', g.value)}
-                                                    className={cn(
-                                                        "flex items-center gap-2 px-3 py-2 text-[10px] lg:text-[12px] font-normal transition-colors cursor-pointer",
-                                                        pax.gender === g.value
-                                                            ? "bg-blue-50 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400"
-                                                            : "text-slate-700 dark:text-slate-300"
-                                                    )}
-                                                >
-                                                    <span>{t(`genderOptions.${g.value === 'M' ? 'male' : 'female'}`)}</span>
-                                                </DropdownMenuItem>
-                                            ))}
-                                        </DropdownMenuContent>
-                                    </DropdownMenu>
-                                    <div data-field={`passengers.${idx}.birthDate`}>
-                                        <FormDatePicker
-                                            placeholder={t('passenger.birthdate')}
-                                            value={pax.birthDate}
-                                            onChange={(val) => { updatePassenger(idx, 'birthDate', val); validateField(`passengers.${idx}.birthDate`, val); }}
-                                            maxDate={new Date()}
-                                            defaultViewDate={defaultBirthdateView()}
-                                            required
-                                        />
-                                        <FieldError message={fieldErrors[`passengers.${idx}.birthDate`]} />
-                                    </div>
-                                    <DropdownMenu>
-                                        <DropdownMenuTrigger asChild>
-                                            <button
-                                                type="button"
-                                                className="w-full flex items-center justify-between px-2.5 lg:px-3 py-2 lg:py-2.5 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-[10px] lg:text-[13px] focus:outline-none focus:ring-2 focus:ring-indigo-500/50 group"
-                                            >
-                                                <span>
-                                                    {NATIONALITIES.find(n => n.code === pax.nationality) ? t(`countries.${pax.nationality}`) : t('passenger.nationality')}
-                                                </span>
-                                                <ChevronDown size={14} className="text-slate-400 transition-transform group-data-[state=open]:rotate-180" />
-                                            </button>
-                                        </DropdownMenuTrigger>
-                                        <DropdownMenuContent align="start" className="rounded-xl min-w-50 max-h-75 overflow-y-auto z-1001">
-                                            {NATIONALITIES.map((n) => (
-                                                <DropdownMenuItem
-                                                    key={n.code}
-                                                    onClick={() => updatePassenger(idx, 'nationality', n.code)}
-                                                    className={cn(
-                                                        "flex items-center gap-2 px-3 py-2 text-[10px] lg:text-[12px] font-normal transition-colors cursor-pointer",
-                                                        pax.nationality === n.code
-                                                            ? "bg-blue-50 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400"
-                                                            : "text-slate-700 dark:text-slate-300"
-                                                    )}
-                                                >
-                                                    <span className="text-[9px] text-slate-400 font-bold w-6">{n.code}</span>
-                                                    <span>{t(`countries.${n.code}`)}</span>
-                                                </DropdownMenuItem>
-                                            ))}
-                                        </DropdownMenuContent>
-                                    </DropdownMenu>
-                                    <div>
-                                        <input
-                                            type="text" placeholder={t('passenger.passport')} required
-                                            data-field={`passengers.${idx}.passport`}
-                                            aria-invalid={!!fieldErrors[`passengers.${idx}.passport`]}
-                                            value={pax.passport}
-                                            onChange={(e) => updatePassenger(idx, 'passport', e.target.value)}
-                                            onBlur={(e) => validateField(`passengers.${idx}.passport`, e.target.value)}
-                                            className={fieldClass(!!fieldErrors[`passengers.${idx}.passport`])}
-                                        />
-                                        <FieldError message={fieldErrors[`passengers.${idx}.passport`]} />
-                                    </div>
-                                    <div className="lg:col-span-2" data-field={`passengers.${idx}.passportExpiry`}>
-                                        <FormDatePicker
-                                            value={pax.passportExpiry}
-                                            onChange={(val) => { updatePassenger(idx, 'passportExpiry', val); validateField(`passengers.${idx}.passportExpiry`, val); }}
-                                            minDate={new Date()}
-                                            required
-                                            placeholder={t('passenger.passportExpiry')}
-                                        />
-                                        <FieldError message={fieldErrors[`passengers.${idx}.passportExpiry`]} />
-                                    </div>
-                                </div>
-                            </div>
+                            <PassengerDetailsCard
+                                key={idx}
+                                index={idx}
+                                passenger={pax}
+                                errors={fieldErrors}
+                                canRemove={passengers.length > 1}
+                                onChange={(field, value) => updatePassenger(idx, field, value)}
+                                onValidate={validateField}
+                                onRemove={() => removePassenger(idx)}
+                            />
                         ))}
 
                         {/* Add Passenger Button */}
                         <button
                             type="button"
                             onClick={addPassenger}
-                            className="w-full py-2 lg:py-2.5 rounded-md border-2 border-dashed border-slate-300 dark:border-slate-700 text-[10px] lg:text-[13px] text-slate-500 dark:text-slate-400 hover:border-indigo-400 hover:text-indigo-500 transition-colors"
+                            className="w-full h-11 rounded-2xl border border-dashed border-slate-300 dark:border-slate-700 bg-white/60 dark:bg-slate-900/60 text-[13px] lg:text-[14px] text-[#1c1b1f] dark:text-slate-300 hover:border-blue-600 hover:text-blue-600 dark:hover:border-blue-400 dark:hover:text-blue-400 transition-colors"
                         >
                             {t('passenger.addPassenger')}
                         </button>
 
                         {/* Contact Info */}
-                        <div className="bg-white dark:bg-slate-900 rounded-md border border-slate-200 dark:border-slate-700 p-3 lg:p-5">
-                            <h2 className="flex items-center gap-1.5 lg:gap-2 text-[11px] lg:text-[14px] font-normal text-slate-900 dark:text-white mb-3 lg:mb-4">
-                                <Mail className="w-3.5 h-3.5 lg:w-4 lg:h-4 text-indigo-500" />
-                                {t('contact.title')}
-                            </h2>
-                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-2.5 lg:gap-3">
-                                <div>
-                                <input
-                                    type="email" placeholder={t('contact.email')} required
-                                    data-field="contact.email"
-                                    aria-invalid={!!fieldErrors['contact.email']}
-                                    value={contact.email}
-                                    onChange={(e) => { setContact(prev => ({ ...prev, email: e.target.value })); clearFieldError('contact.email'); }}
-                                    onBlur={(e) => validateField('contact.email', e.target.value)}
-                                    className={fieldClass(!!fieldErrors['contact.email'])}
-                                />
-                                <FieldError message={fieldErrors['contact.email']} />
-                                </div>
-                                <div>
-                                <div className="flex gap-1.5 lg:gap-2">
-                                    <DropdownMenu>
-                                        <DropdownMenuTrigger asChild>
-                                            <button
-                                                type="button"
-                                                className="w-22.5 lg:w-26.25 flex items-center justify-between px-1.5 lg:px-2 py-2 lg:py-2.5 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-[10px] lg:text-[13px] focus:outline-none focus:ring-2 focus:ring-indigo-500/50 group"
-                                            >
-                                                <span>+{contact.countryCode}</span>
-                                                <ChevronDown size={12} className="text-slate-400 transition-transform group-data-[state=open]:rotate-180" />
-                                            </button>
-                                        </DropdownMenuTrigger>
-                                        <DropdownMenuContent align="start" className="rounded-xl min-w-30 max-h-75 overflow-y-auto z-1001">
-                                            {PHONE_CODES.map((p) => (
-                                                <DropdownMenuItem
-                                                    key={p.code}
-                                                    onClick={() => setContact(prev => ({ ...prev, countryCode: p.code }))}
-                                                    className={cn(
-                                                        "flex items-center gap-2 px-3 py-2 text-[10px] lg:text-[12px] font-normal transition-colors cursor-pointer",
-                                                        contact.countryCode === p.code
-                                                            ? "bg-blue-50 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400"
-                                                            : "text-slate-700 dark:text-slate-300"
-                                                    )}
-                                                >
-                                                    <span>{p.label}</span>
-                                                </DropdownMenuItem>
-                                            ))}
-                                        </DropdownMenuContent>
-                                    </DropdownMenu>
-                                    <input
-                                        type="tel" placeholder={t('contact.phone')} required
-                                        data-field="contact.phone"
-                                        aria-invalid={!!fieldErrors['contact.phone']}
-                                        value={contact.phone}
-                                        onChange={(e) => { setContact(prev => ({ ...prev, phone: e.target.value })); clearFieldError('contact.phone'); }}
-                                        onBlur={(e) => validateField('contact.phone', e.target.value)}
-                                        className={fieldClass(!!fieldErrors['contact.phone'], 'flex-1')}
-                                    />
-                                </div>
-                                <FieldError message={fieldErrors['contact.phone']} />
-                                </div>
-                            </div>
-                        </div>
+                        <ContactInformationCard
+                            contact={contact}
+                            errors={fieldErrors}
+                            onChange={(field, value) => { setContact(prev => ({ ...prev, [field]: value })); clearFieldError(`contact.${field}`); }}
+                            onValidate={validateField}
+                        />
 
                         {/* Address */}
-                        <div className="bg-white dark:bg-slate-900 rounded-md border border-slate-200 dark:border-slate-700 p-3 lg:p-5">
-                            <h2 className="flex items-center gap-1.5 lg:gap-2 text-[11px] lg:text-[14px] font-normal text-slate-900 dark:text-white mb-3 lg:mb-4">
-                                <MapPin className="w-3.5 h-3.5 lg:w-4 lg:h-4 text-indigo-500" />
-                                {t('address.title')}
-                            </h2>
-                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-2.5 lg:gap-3">
-                                <input
-                                    type="text" placeholder={t('address.addressLine')} required
-                                    value={contact.addressLine}
-                                    onChange={(e) => setContact(prev => ({ ...prev, addressLine: e.target.value }))}
-                                    className="w-full px-2.5 lg:px-3 py-2 lg:py-2.5 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-[10px] lg:text-[13px] placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 lg:col-span-2"
-                                />
-                                <input
-                                    type="text" placeholder={t('address.city')} required
-                                    value={contact.city}
-                                    onChange={(e) => setContact(prev => ({ ...prev, city: e.target.value }))}
-                                    className="w-full px-2.5 lg:px-3 py-2 lg:py-2.5 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-[10px] lg:text-[13px] placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500"
-                                />
-                                <input
-                                    type="text" placeholder={t('address.postalCode')} required
-                                    value={contact.postalCode}
-                                    onChange={(e) => setContact(prev => ({ ...prev, postalCode: e.target.value }))}
-                                    className="w-full px-2.5 lg:px-3 py-2 lg:py-2.5 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-[10px] lg:text-[13px] placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500"
-                                />
-                                <DropdownMenu>
-                                    <DropdownMenuTrigger asChild>
-                                        <button
-                                            type="button"
-                                            className="w-full flex items-center justify-between px-2.5 lg:px-3 py-2 lg:py-2.5 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-[10px] lg:text-[13px] focus:outline-none focus:ring-2 focus:ring-indigo-500/50 lg:col-span-2 group"
-                                        >
-                                            <span>
-                                                {NATIONALITIES.find(n => n.code === contact.country) ? t(`countries.${contact.country}`) : t('address.country')}
-                                            </span>
-                                            <ChevronDown size={14} className="text-slate-400 transition-transform group-data-[state=open]:rotate-180" />
-                                        </button>
-                                    </DropdownMenuTrigger>
-                                    <DropdownMenuContent align="start" className="rounded-xl min-w-50 max-h-75 overflow-y-auto z-1001">
-                                        {NATIONALITIES.map((n) => (
-                                            <DropdownMenuItem
-                                                key={n.code}
-                                                onClick={() => setContact(prev => ({ ...prev, country: n.code }))}
-                                                className={cn(
-                                                    "flex items-center gap-2 px-3 py-2 text-[10px] lg:text-[12px] font-normal transition-colors cursor-pointer",
-                                                    contact.country === n.code
-                                                        ? "bg-blue-50 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400"
-                                                        : "text-slate-700 dark:text-slate-300"
-                                                )}
-                                            >
-                                                <span className="text-[9px] text-slate-400 font-bold w-6">{n.code}</span>
-                                                <span>{t(`countries.${n.code}`)}</span>
-                                            </DropdownMenuItem>
-                                        ))}
-                                    </DropdownMenuContent>
-                                </DropdownMenu>
-                            </div>
-                        </div>
+                        <BillingAddressCard
+                            contact={contact}
+                            errors={fieldErrors}
+                            onChange={(field, value) => setContact(prev => ({ ...prev, [field]: value }))}
+                        />
 
                         {/* ── Duffel extras: bags + seats (optional, inline) ──── */}
                         {offer.provider === 'duffel' && (
-                            <div className="space-y-2">
-                                {/* Bags */}
-                                <div className="bg-white dark:bg-slate-900 rounded-md border border-slate-200 dark:border-slate-700 overflow-hidden">
-                                    <button
-                                        type="button"
-                                        onClick={() => setBagsOpen(o => !o)}
-                                        className="w-full flex items-center gap-3 px-3 lg:px-4 py-3 text-left hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors"
-                                    >
-                                        <div className="w-8 h-8 rounded-md bg-sky-50 dark:bg-sky-900/30 flex items-center justify-center shrink-0">
-                                            <Luggage className="w-4 h-4 text-sky-500" />
+                            <div className="space-y-3 lg:space-y-6">
+                                {/* Bags — always mounted so the fetch fires at page load, not on first open */}
+                                <BookCollapsibleCard
+                                    icon={Luggage}
+                                    title={t('bags.title')}
+                                    subtitle={selectedBags.length > 0
+                                        ? (selectedBags.length === 1
+                                            ? t('bags.added', { count: selectedBags.length, price: formatPrice(selectedBags.reduce((s, b) => s + b.price, 0), offer.price.currency, targetCurrency) })
+                                            : t('bags.addedPlural', { count: selectedBags.length, price: formatPrice(selectedBags.reduce((s, b) => s + b.price, 0), offer.price.currency, targetCurrency) }))
+                                        : t('bags.optional')}
+                                    open={bagsOpen}
+                                    onToggle={() => setBagsOpen(o => !o)}
+                                    keepMounted
+                                >
+                                    {refreshingOffer ? (
+                                        <div className="flex items-center gap-2 py-6 text-sm text-slate-500 justify-center">
+                                            <Loader2 className="w-4 h-4 animate-spin" />
+                                            {t('bags.refreshing')}
                                         </div>
-                                        <div className="flex-1 min-w-0">
-                                            <p className="text-[11px] lg:text-[13px] font-normal text-slate-800 dark:text-slate-200">{t('bags.title')}</p>
-                                            <p className="text-[9px] lg:text-[11px] text-slate-400 dark:text-slate-500">
-                                                {selectedBags.length > 0
-                                                    ? (selectedBags.length === 1
-                                                        ? t('bags.added', { count: selectedBags.length, price: formatPrice(selectedBags.reduce((s, b) => s + b.price, 0), offer.price.currency, targetCurrency) })
-                                                        : t('bags.addedPlural', { count: selectedBags.length, price: formatPrice(selectedBags.reduce((s, b) => s + b.price, 0), offer.price.currency, targetCurrency) }))
-                                                    : t('bags.optional')}
-                                            </p>
-                                        </div>
-                                        <span className="text-[10px] text-slate-400 dark:text-slate-500 shrink-0">
-                                            {bagsOpen ? '▲' : '▼'}
-                                        </span>
-                                    </button>
-                                    {/* Always mounted so the fetch fires at page load, not on first open */}
-                                    <div className={!bagsOpen ? 'hidden' : 'px-3 lg:px-4 pb-3 pt-1 border-t border-slate-100 dark:border-slate-800'}>
-                                        {refreshingOffer ? (
-                                            <div className="flex items-center gap-2 py-6 text-sm text-slate-500 justify-center">
-                                                <Loader2 className="w-4 h-4 animate-spin" />
-                                                {t('bags.refreshing')}
-                                            </div>
-                                        ) : refreshFailed ? (
-                                            <AncillaryExpiredNotice />
-                                        ) : (
-                                            <BagSelectionPanel
-                                                key={effectiveOfferId}
-                                                offerId={effectiveOfferId}
-                                                duffelPassengerIds={((offer as any)._rawOffer?.passengers ?? (offer as any).raw?.passengers ?? []).map((p: any) => p.id)}
-                                                passengerCount={passengers.length}
-                                                passengerLabels={passengers.map((p, i) => `${t('passenger.title', { number: i + 1 })}${p.firstName ? ` (${p.firstName})` : ''}`)}
-                                                selectedBags={selectedBags}
-                                                onBagsChange={setSelectedBags}
-                                                currency={offer.price.currency}
-                                                onOfferExpired={refreshOffer}
-                                            />
-                                        )}
-                                    </div>
-                                </div>
+                                    ) : refreshFailed ? (
+                                        <AncillaryExpiredNotice />
+                                    ) : (
+                                        <BagSelectionPanel
+                                            key={effectiveOfferId}
+                                            offerId={effectiveOfferId}
+                                            duffelPassengerIds={((offer as any)._rawOffer?.passengers ?? (offer as any).raw?.passengers ?? []).map((p: any) => p.id)}
+                                            passengerCount={passengers.length}
+                                            passengerLabels={passengers.map((p, i) => `${t('passenger.title', { number: i + 1 })}${p.firstName ? ` (${p.firstName})` : ''}`)}
+                                            selectedBags={selectedBags}
+                                            onBagsChange={setSelectedBags}
+                                            currency={offer.price.currency}
+                                            onOfferExpired={refreshOffer}
+                                        />
+                                    )}
+                                </BookCollapsibleCard>
 
-                                {/* Seats */}
-                                <div className="bg-white dark:bg-slate-900 rounded-md border border-slate-200 dark:border-slate-700 overflow-hidden">
-                                    <button
-                                        type="button"
-                                        onClick={() => setSeatsOpen(o => !o)}
-                                        className="w-full flex items-center gap-3 px-3 lg:px-4 py-3 text-left hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors"
-                                    >
-                                        <div className="w-8 h-8 rounded-md bg-indigo-50 dark:bg-indigo-900/30 flex items-center justify-center shrink-0">
-                                            <Armchair className="w-4 h-4 text-indigo-500" />
+                                {/* Seats — always mounted so the fetch fires at page load, not on first open */}
+                                <BookCollapsibleCard
+                                    icon={Armchair}
+                                    title={t('seats.title')}
+                                    subtitle={selectedSeats.length > 0
+                                        ? (selectedSeats.length === 1
+                                            ? t('seats.selected', { count: selectedSeats.length, price: formatPrice(selectedSeats.reduce((s, x) => s + x.price, 0), offer.price.currency, targetCurrency) })
+                                            : t('seats.selectedPlural', { count: selectedSeats.length, price: formatPrice(selectedSeats.reduce((s, x) => s + x.price, 0), offer.price.currency, targetCurrency) }))
+                                        : t('seats.optional')}
+                                    open={seatsOpen}
+                                    onToggle={() => setSeatsOpen(o => !o)}
+                                    keepMounted
+                                >
+                                    {refreshingOffer ? (
+                                        <div className="flex items-center gap-2 py-6 text-sm text-slate-500 justify-center">
+                                            <Loader2 className="w-4 h-4 animate-spin" />
+                                            {t('bags.refreshing')}
                                         </div>
-                                        <div className="flex-1 min-w-0">
-                                            <p className="text-[11px] lg:text-[13px] font-normal text-slate-800 dark:text-slate-200">{t('seats.title')}</p>
-                                            <p className="text-[9px] lg:text-[11px] text-slate-400 dark:text-slate-500">
-                                                {selectedSeats.length > 0
-                                                    ? (selectedSeats.length === 1
-                                                        ? t('seats.selected', { count: selectedSeats.length, price: formatPrice(selectedSeats.reduce((s, x) => s + x.price, 0), offer.price.currency, targetCurrency) })
-                                                        : t('seats.selectedPlural', { count: selectedSeats.length, price: formatPrice(selectedSeats.reduce((s, x) => s + x.price, 0), offer.price.currency, targetCurrency) }))
-                                                    : t('seats.optional')}
-                                            </p>
-                                        </div>
-                                        <span className="text-[10px] text-slate-400 dark:text-slate-500 shrink-0">
-                                            {seatsOpen ? '▲' : '▼'}
-                                        </span>
-                                    </button>
-                                    {/* Always mounted so the fetch fires at page load, not on first open */}
-                                    <div className={!seatsOpen ? 'hidden' : 'px-3 lg:px-4 pb-3 pt-1 border-t border-slate-100 dark:border-slate-800'}>
-                                        {refreshingOffer ? (
-                                            <div className="flex items-center gap-2 py-6 text-sm text-slate-500 justify-center">
-                                                <Loader2 className="w-4 h-4 animate-spin" />
-                                                {t('bags.refreshing')}
-                                            </div>
-                                        ) : refreshFailed ? (
-                                            <AncillaryExpiredNotice />
-                                        ) : (
-                                            <SeatMapPanel
-                                                key={effectiveOfferId}
-                                                offerId={effectiveOfferId}
-                                                segments={offer.segments.map(s => ({ origin: s.departure.airport, destination: s.arrival.airport }))}
-                                                passengerCount={passengers.length}
-                                                passengerLabels={passengers.map((p, i) => `${t('passenger.title', { number: i + 1 })}${p.firstName ? ` (${p.firstName})` : ''}`)}
-                                                selectedSeats={selectedSeats}
-                                                onSeatsChange={setSelectedSeats}
-                                                currency={offer.price.currency}
-                                                onDone={() => setSeatsOpen(false)}
-                                                onOfferExpired={refreshOffer}
-                                            />
-                                        )}
-                                    </div>
-                                </div>
+                                    ) : refreshFailed ? (
+                                        <AncillaryExpiredNotice />
+                                    ) : (
+                                        <SeatMapPanel
+                                            key={effectiveOfferId}
+                                            offerId={effectiveOfferId}
+                                            segments={offer.segments.map(s => ({ origin: s.departure.airport, destination: s.arrival.airport }))}
+                                            passengerCount={passengers.length}
+                                            passengerLabels={passengers.map((p, i) => `${t('passenger.title', { number: i + 1 })}${p.firstName ? ` (${p.firstName})` : ''}`)}
+                                            selectedSeats={selectedSeats}
+                                            onSeatsChange={setSelectedSeats}
+                                            currency={offer.price.currency}
+                                            onDone={() => setSeatsOpen(false)}
+                                            onOfferExpired={refreshOffer}
+                                        />
+                                    )}
+                                </BookCollapsibleCard>
                             </div>
                         )}
 
@@ -1492,8 +1002,7 @@ function BookingContent() {
                         })()}
 
                         {/* Booking summary */}
-                        <div className="bg-white dark:bg-slate-900 rounded-md border border-slate-200 dark:border-slate-700 p-3 lg:p-5 shadow-sm">
-                            <h3 className="text-[10px] lg:text-xs font-normal text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-3">{t('orderSummary.title')}</h3>
+                        <BookCard icon={Receipt} title={t('orderSummary.title')} headingLevel="h3">
 
                             {/* Flight itinerary */}
                             <div className="mb-3 pb-3 border-b border-slate-100 dark:border-slate-800">
@@ -1502,32 +1011,32 @@ function BookingContent() {
 
                             {/* Meta row */}
                             <div className="flex flex-wrap gap-x-3 gap-y-1 mb-3 pb-3 border-b border-slate-100 dark:border-slate-800">
-                                <span className="text-[9px] lg:text-[11px] text-slate-500 dark:text-slate-400">{primary.airline.name} · {primary.flightNumber}</span>
-                                <span className="text-[9px] lg:text-[11px] text-slate-500 dark:text-slate-400">{primary.cabinClass?.replace('_', ' ').replace(/\b\w/g, c => c.toUpperCase()) || t('orderSummary.economy')}</span>
-                                <span className="text-[9px] lg:text-[11px] text-slate-500 dark:text-slate-400">{passengers.length === 1 ? t('orderSummary.passenger', { count: 1 }) : t('orderSummary.passengerPlural', { count: passengers.length })}</span>
+                                <span className="text-[11px] lg:text-[12px] text-[#939fb1] dark:text-slate-400">{primary.airline.name} · {primary.flightNumber}</span>
+                                <span className="text-[11px] lg:text-[12px] text-[#939fb1] dark:text-slate-400">{primary.cabinClass?.replace('_', ' ').replace(/\b\w/g, c => c.toUpperCase()) || t('orderSummary.economy')}</span>
+                                <span className="text-[11px] lg:text-[12px] text-[#939fb1] dark:text-slate-400">{passengers.length === 1 ? t('orderSummary.passenger', { count: 1 }) : t('orderSummary.passengerPlural', { count: passengers.length })}</span>
                             </div>
 
                             {/* Price breakdown */}
                             <div className="space-y-1.5">
                                 <div className="flex justify-between">
-                                    <span className="text-[10px] lg:text-[11px] text-slate-500 dark:text-slate-400">{t('orderSummary.baseFare')}</span>
-                                    <span className="text-[10px] lg:text-[11px] text-slate-900 dark:text-white">{formatPrice(offer.price.total, offer.price.currency, targetCurrency)}</span>
+                                    <span className="text-[12px] lg:text-[13px] text-[#939fb1] dark:text-slate-400">{t('orderSummary.baseFare')}</span>
+                                    <span className="text-[12px] lg:text-[13px] text-slate-900 dark:text-white">{formatPrice(offer.price.total, offer.price.currency, targetCurrency)}</span>
                                 </div>
                                 {selectedSeats.length > 0 && (
                                     <div className="flex justify-between">
-                                        <span className="text-[10px] lg:text-[11px] text-slate-500 dark:text-slate-400">{t('orderSummary.seatSelection')}</span>
-                                        <span className="text-[10px] lg:text-[11px] text-slate-900 dark:text-white">+{formatPrice(selectedSeats.reduce((s, x) => s + x.price, 0), offer.price.currency, targetCurrency)}</span>
+                                        <span className="text-[12px] lg:text-[13px] text-[#939fb1] dark:text-slate-400">{t('orderSummary.seatSelection')}</span>
+                                        <span className="text-[12px] lg:text-[13px] text-slate-900 dark:text-white">+{formatPrice(selectedSeats.reduce((s, x) => s + x.price, 0), offer.price.currency, targetCurrency)}</span>
                                     </div>
                                 )}
                                 {selectedBags.length > 0 && (
                                     <div className="flex justify-between">
-                                        <span className="text-[10px] lg:text-[11px] text-slate-500 dark:text-slate-400">{t('orderSummary.extraBags')}</span>
-                                        <span className="text-[10px] lg:text-[11px] text-slate-900 dark:text-white">+{formatPrice(selectedBags.reduce((s, b) => s + b.price, 0), offer.price.currency, targetCurrency)}</span>
+                                        <span className="text-[12px] lg:text-[13px] text-[#939fb1] dark:text-slate-400">{t('orderSummary.extraBags')}</span>
+                                        <span className="text-[12px] lg:text-[13px] text-slate-900 dark:text-white">+{formatPrice(selectedBags.reduce((s, b) => s + b.price, 0), offer.price.currency, targetCurrency)}</span>
                                     </div>
                                 )}
                                 <div className="flex justify-between pt-2 border-t border-slate-100 dark:border-slate-800">
-                                    <span className="text-[11px] lg:text-[13px] font-normal text-slate-900 dark:text-white">{t('orderSummary.total')}</span>
-                                    <span className="text-[11px] lg:text-[13px] font-normal text-slate-900 dark:text-white">
+                                    <span className="text-[14px] lg:text-[16px] font-normal text-slate-900 dark:text-white">{t('orderSummary.total')}</span>
+                                    <span className="text-[14px] lg:text-[16px] font-normal text-slate-900 dark:text-white">
                                         {formatPrice(
                                             offer.price.total + selectedSeats.reduce((s, x) => s + x.price, 0) + selectedBags.reduce((s, b) => s + b.price, 0),
                                             offer.price.currency,
@@ -1536,13 +1045,13 @@ function BookingContent() {
                                     </span>
                                 </div>
                             </div>
-                        </div>
+                        </BookCard>
 
                         {/* Submit */}
                         <button
                             type="submit"
                             disabled={step === 'submitting'}
-                            className="w-full py-2.5 lg:py-3 rounded-md bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white font-normal text-[10px] lg:text-[13px] transition-colors flex items-center justify-center gap-2"
+                            className="w-full h-11 lg:h-12 rounded-full bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white font-normal text-[13px] lg:text-[14px] transition-colors flex items-center justify-center gap-2"
                         >
                             {step === 'submitting' ? (
                                 <>
@@ -1565,7 +1074,7 @@ function BookingContent() {
                         </button>
                     </form>
                 )}
-            </div>
+            </FlightBookColumns>
         </div>
     );
 }
@@ -1637,7 +1146,7 @@ function DealGate({
             setHasError(true);
             setErrorMsg(err.message || t('dealGate.somethingWrong'));
         }
-    }, [origin, destination, departure, returnDate, cabinClass, isRoundTrip, onReady]);
+    }, [origin, destination, departure, returnDate, cabinClass, isRoundTrip, onReady, t]);
 
     React.useEffect(() => {
         if (searchFired.current) return;

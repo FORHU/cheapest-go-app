@@ -141,7 +141,12 @@ const SearchResultsContent = ({ initialProperties = [], totalCount: initialTotal
                 updateRecentSearchPrice(destination, cheapest.price, cheapest.currency || 'USD');
             }
         }
-    }, [destination, searchParams]);
+        // initialProperties/initialTotalCount are intentionally excluded: they're read fresh
+        // at effect-run time, consistent with the render that scheduled it. destination/
+        // searchParams (the URL) already change on every real new search, which is what
+        // should reset this state — the props themselves can get a new array/identity on
+        // unrelated parent re-renders and would otherwise wipe pagination on every one.
+    }, [destination, searchParams, updateRecentSearchPrice]); // eslint-disable-line react-hooks/exhaustive-deps
 
     // Count mappable properties (from allProperties for the map button badge)
     const mappableCount = useMemo(
@@ -193,7 +198,7 @@ const SearchResultsContent = ({ initialProperties = [], totalCount: initialTotal
         else if (sortBy === 'most-reviewed') props.sort((a, b) => (b.reviews ?? 0) - (a.reviews ?? 0));
 
         return props;
-    }, [allProperties, sortBy, propertyTypes, boardTypes, refundable]);
+    }, [allProperties, sortBy, propertyTypes, boardTypes, refundable, districtBbox, showAllCity]);
 
     const visibleProperties = filteredProperties.slice(0, page * PAGE_SIZE);
     const hasMore = visibleProperties.length < filteredProperties.length;

@@ -28,6 +28,7 @@ class PostgresJsAdapter implements Adapter {
                 s.user_id,
                 s.expires_at,
                 s.attributes   AS session_attrs,
+                s.last_active_at,
                 u.id           AS user_id,
                 u.email,
                 u.first_name,
@@ -45,7 +46,11 @@ class PostgresJsAdapter implements Adapter {
             id: r.session_id,
             userId: r.user_id,
             expiresAt: new Date(r.expires_at),
-            attributes: r.session_attrs ?? {},
+            // last_active_at is its own column, not part of the free-form `attributes`
+            // jsonb — folded in here (rather than adding it to Lucia's DatabaseSession type,
+            // which has no room for it) so getSessionAttributes() below can hand it to
+            // every caller of validateSession() as `session.lastActiveAt`.
+            attributes: { ...(r.session_attrs ?? {}), last_active_at: r.last_active_at },
         };
         const user: DatabaseUser = {
             id: r.user_id,
@@ -106,32 +111,51 @@ class PostgresJsAdapter implements Adapter {
 
 // ─── Lucia instance ───────────────────────────────────────────────────────────
 
-let _lucia: Lucia | null = null;
+/**
+ * Built by a plain function, rather than `new Lucia(...)` inline in `getLucia`, so its
+ * return type is inferred from the `getSessionAttributes`/`getUserAttributes` callbacks
+ * below instead of widened to the bare, attribute-less `Lucia`. `session.lastActiveAt` (the
+ * Idle Limit check in session.ts) and `user.role` both depend on that inference holding —
+ * annotating `getLucia`'s return type as plain `Lucia` here erased them before and let both
+ * read back as `undefined` at the type level while working at runtime, which is exactly the
+ * kind of gap a test wouldn't have SEEN, only `tsc` would.
+ */
+function createLucia() {
+    return new Lucia(new PostgresJsAdapter(), {
+        sessionCookie: {
+            name: 'cg-session',
+            attributes: {
+                secure: process.env.NODE_ENV === 'production',
+                sameSite: 'lax',
+            },
+        },
+        getUserAttributes(attrs: Record<string, unknown>) {
+            return {
+                email: attrs.email as string,
+                firstName: attrs.first_name as string | undefined,
+                lastName: attrs.last_name as string | undefined,
+                avatarUrl: attrs.avatar_url as string | undefined,
+                role: isRole(attrs.role) ? attrs.role : 'user',
+                bannedAt: attrs.banned_at as string | null,
+            };
+        },
+        getSessionAttributes(attrs: Record<string, unknown>) {
+            return {
+                // Presence — when this session last had a click, keypress, scroll or
+                // touch. Read by the Idle Limit check in session.ts.
+                lastActiveAt: attrs.last_active_at ? new Date(attrs.last_active_at as string) : null,
+            };
+        },
+    });
+}
 
-export function getLucia(): Lucia {
+type LuciaInstance = ReturnType<typeof createLucia>;
+
+let _lucia: LuciaInstance | null = null;
+
+export function getLucia(): LuciaInstance {
     if (!_lucia) {
-        _lucia = new Lucia(new PostgresJsAdapter(), {
-            sessionCookie: {
-                name: 'cg-session',
-                attributes: {
-                    secure: process.env.NODE_ENV === 'production',
-                    sameSite: 'lax',
-                },
-            },
-            getUserAttributes(attrs: Record<string, unknown>) {
-                return {
-                    email: attrs.email as string,
-                    firstName: attrs.first_name as string | undefined,
-                    lastName: attrs.last_name as string | undefined,
-                    avatarUrl: attrs.avatar_url as string | undefined,
-                    role: isRole(attrs.role) ? attrs.role : 'user',
-                    bannedAt: attrs.banned_at as string | null,
-                };
-            },
-            getSessionAttributes(_attrs: Record<string, unknown>) {
-                return {};
-            },
-        });
+        _lucia = createLucia();
     }
     return _lucia;
 }

@@ -49,6 +49,28 @@ export function middleware(request: NextRequest): NextResponse {
         return response;
     }
 
+    // 1b. Unprefixed path, returning non-English visitor: send them to their locale's
+    // prefixed URL instead of rendering translated content at the bare URL. A single
+    // cached page can't be both English and Korean for different visitors — this keeps
+    // "/" itself static and cacheable (see 1c) while still honoring the sticky locale
+    // cookie, just via a redirect rather than silent per-request personalization.
+    // /api is excluded — API routes must never be locale-redirected.
+    if (!pathname.startsWith('/api')) {
+        const cookieLocale = request.cookies.get('locale')?.value;
+        if (cookieLocale && (LOCALE_PREFIXES as readonly string[]).includes(cookieLocale)) {
+            const url = request.nextUrl.clone();
+            url.pathname = `/${cookieLocale}${pathname}`;
+            return NextResponse.redirect(url);
+        }
+    }
+
+    // 1c. Default locale, unprefixed path — set the header explicitly so
+    // getRequestConfig never has to fall back to reading cookies() itself, which would
+    // force the page into dynamic rendering and silently disable ISR (export const
+    // revalidate) on every default-locale page.
+    const headers = new Headers(request.headers);
+    headers.set(INTL_LOCALE_HEADER, 'en');
+
     // 2. Protected route guard — cookie presence only (no DB call).
     //    Full Lucia session validation happens in the route/layout.
     //
@@ -69,7 +91,7 @@ export function middleware(request: NextRequest): NextResponse {
         }
     }
 
-    return NextResponse.next();
+    return NextResponse.next({ request: { headers } });
 }
 
 export const config = {

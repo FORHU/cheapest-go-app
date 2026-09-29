@@ -15,7 +15,8 @@ import en from '@/locales/en.json';
  */
 
 vi.mock('framer-motion', () => ({
-    motion: new Proxy({}, { get: () => (p: any) => React.createElement('div', null, p.children) }),
+    // Keeps className: the rail and itinerary column are motion elements, and their layout classes are what these tests read.
+    motion: new Proxy({}, { get: () => (p: any) => React.createElement('div', { className: p.className }, p.children) }),
     AnimatePresence: ({ children }: any) => React.createElement(React.Fragment, null, children),
 }));
 vi.mock('@/stores/searchStore', () => ({ useUserCurrency: () => 'USD' }));
@@ -150,7 +151,7 @@ describe('FlightCard — the card is padded', () => {
 
         // Collapsed, this is the last thing in the card — its bottom is the card's.
         // The toggle spans the column, so its own padding is what insets its label.
-        const toggle = screen.getByText('Show all segments');
+        const toggle = screen.getByText('Show flight itineraries');
         const inset = insetFromCard(toggle, card);
         const own = declaredPadding(toggle.className);
 
@@ -183,7 +184,7 @@ describe('FlightCard — the card is padded', () => {
         const { container } = renderIntl(<FlightCard offer={offer} />);
         const card = container.firstElementChild!;
 
-        fireEvent.click(screen.getByText('Show all segments'));
+        fireEvent.click(screen.getByText('Show flight itineraries'));
         const inset = insetFromCard(screen.getAllByText('Depart from')[0], card);
 
         expect(inset.left).toBeGreaterThanOrEqual(MIN_PADDING_PX);
@@ -195,7 +196,7 @@ describe('FlightCard — the card is padded', () => {
         const { container } = renderIntl(<FlightCard offer={offer} />);
         const card = container.firstElementChild!;
 
-        fireEvent.click(screen.getByText('Show all segments'));
+        fireEvent.click(screen.getByText('Show flight itineraries'));
         const arrivals = screen.getAllByText('Arrive at');
         const inset = insetFromCard(arrivals[arrivals.length - 1], card);
 
@@ -219,7 +220,7 @@ describe('FlightCard — the card is padded', () => {
         const { container } = renderIntl(<FlightCard offer={offer} />);
         const card = container.firstElementChild!;
 
-        fireEvent.click(screen.getByText('Show all segments'));
+        fireEvent.click(screen.getByText('Show flight itineraries'));
         const inset = insetFromCard(screen.getAllByText('Depart from')[0], card, 'lg');
 
         expect(inset.left).toBeGreaterThanOrEqual(MIN_DESKTOP_PADDING_PX);

@@ -1,5 +1,3 @@
-export const revalidate = 300; // regenerate every 5 minutes
-
 import { Suspense } from "react";
 import { Hero } from "@/components/landing/hero";
 import { RecentlyViewed, YourRecentSearches, TopCitiesSection, TopDestinationsSection } from "@/components/landing/sections";

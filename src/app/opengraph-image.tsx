@@ -37,6 +37,9 @@ export default function Image() {
                 }}
             >
                 {logoSrc ? (
+                    // Renders through next/og's ImageResponse (Satori), not the browser DOM —
+                    // next/image doesn't work here.
+                    // eslint-disable-next-line @next/next/no-img-element
                     <img
                         src={logoSrc}
                         style={{ maxWidth: 600, maxHeight: 220, objectFit: 'contain' }}

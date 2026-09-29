@@ -5,11 +5,11 @@ import { getTranslations } from 'next-intl/server';
 import { SearchFetcher } from "@/components/flights/search-fetcher";
 import { SectionHeader } from "@/components/ui";
 import BackButton from "@/components/common/BackButton";
-import PriceCalendar from "@/components/flights/PriceCalendar";
 import PriceAlertButton from "@/components/flights/PriceAlertButton";
 import { Hotel, Sparkles } from "lucide-react";
 import type { CabinClass } from "@/types/flights";
 import { searchAirports } from "@/lib/airports";
+import { airportLabel } from "@/lib/flights/airport-label";
 
 export const dynamic = 'force-dynamic';
 
@@ -190,7 +190,7 @@ export default async function SearchPage({
                     <BackButton href="/" bareIcon className="mb-1 lg:mb-3 bg-white/90 dark:bg-slate-900/90 backdrop-blur border border-slate-200/50 dark:border-slate-700/50 text-slate-700 dark:text-slate-300 w-8 h-8 lg:w-10 lg:h-10 rounded-full flex items-center justify-center shadow-sm p-0!" />
                     <div className="flex items-start justify-between gap-2 lg:gap-4 flex-wrap">
                         <SectionHeader
-                            title={`${origin} → ${destination}`}
+                            title={fs('routeTitle', { origin: airportLabel(origin), destination: airportLabel(destination) })}
                             subtitle={subtitle}
                             className="!mb-0"
                         />

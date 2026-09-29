@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import Image from 'next/image';
 import { Popup } from 'react-map-gl/mapbox';
 import { X, Navigation, Car, Footprints } from 'lucide-react';
 import { useTranslations } from 'next-intl';
@@ -44,10 +45,12 @@ export const PoiPopup = React.memo(({ poi, distance, carDuration, walkDuration, 
                         <div className="absolute inset-0 bg-slate-200 dark:bg-slate-800 animate-pulse" />
                     )}
                     {imgStatus !== 'error' && (
-                        <img
+                        <Image
                             src={imageUrl}
                             alt={poi.name}
-                            className="w-full h-full object-cover"
+                            fill
+                            sizes="240px"
+                            className="object-cover"
                             loading="lazy"
                             onLoad={() => setImgStatus('loaded')}
                             onError={() => setImgStatus('error')}

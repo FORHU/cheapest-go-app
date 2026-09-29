@@ -63,7 +63,11 @@ export function PriceAlertsClient({ data, searchParams }: PriceAlertsClientProps
             if (searchTerm !== searchParams.q) updateParam({ q: searchTerm, page: 1 });
         }, 500);
         return () => clearTimeout(t);
-    }, [searchTerm]);
+        // Deliberately keyed on searchTerm alone: updateParam is a plain (unmemoized)
+        // function recreated every render, and searchParams.q is the URL's own current
+        // value — including either would reset this debounce timer on every render, not
+        // just when the user types.
+    }, [searchTerm]); // eslint-disable-line react-hooks/exhaustive-deps
 
     const doAction = async (action: string, id: string) => {
         setLoadingId(id);

@@ -22,6 +22,7 @@
 
 import { cabinClassFromRawOffer } from './duffel-cabin';
 import { findOrderFromTimedOutAttempt } from './duffel-order-reconcile';
+import { withDuffelServicePrices } from './duffel-service-prices';
 
 const DUFFEL_ORDERS_URL = 'https://api.duffel.com/air/orders';
 // Duffel's documented minimum: "You must set a HTTP client timeout of at least 130s".
@@ -226,7 +227,17 @@ export async function placeDuffelOrder(params: PlaceDuffelOrderParams): Promise<
             const pricedOffer = liveData.data;
             const pricedId = pricedOffer.id;
 
-            const availableSvcs: any[] = pricedOffer.available_services ?? [];
+            // The price action returns no services at all, so extras priced from it came
+            // to zero and Duffel refused the retried payment. Ask for them directly.
+            let availableSvcs: any[] = [];
+            if (includeServices) {
+                try {
+                    availableSvcs = (await withDuffelServicePrices(pricedOffer, seatServiceIds, bagServiceIds, duffelToken)).available_services ?? [];
+                } catch (svcErr: any) {
+                    console.error(`[placeDuffelOrder] could not re-price services on ${pricedId}: ${svcErr.message}`);
+                    break;
+                }
+            }
             let newSeatExtra = 0;
             let newBagExtra = 0;
             if (includeServices) {

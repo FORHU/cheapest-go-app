@@ -2,15 +2,16 @@
 
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowRight, Luggage, ShoppingBag, ChevronDown, ChevronUp, Shield, XCircle, BadgeDollarSign, Users } from 'lucide-react';
+import { ArrowRight, Luggage, ShoppingBag, ChevronDown, Shield, XCircle, BadgeDollarSign, Users } from 'lucide-react';
 import type { FlightOffer } from '@/types/flights';
 import { formatPrice, formatPriceWithCents, formatDuration, formatTimeIn, formatDurationLong, cabinLabel } from '@/utils/flight-utils';
 import { ArrivalDayOffset } from './ArrivalDayOffset';
 import { offerSlices } from '@/lib/flights/offer-slices';
 import { segmentTerminal } from '@/lib/flights/terminal-fallback';
-import { getAirportByCode } from '@/lib/airports';
+import { airportLabel } from '@/lib/flights/airport-label';
 import { FlightItineraryDetails } from '@/components/flights/FlightItineraryDetails';
 import SaveButton from '@/components/common/SaveButton';
+import { CARD_SURFACE_BASE, CARD_SURFACE_IDLE } from '@/components/flights/FilterCard';
 import { useTranslations, useLocale } from 'next-intl';
 
 import { useUserCurrency } from '@/stores/searchStore';
@@ -25,11 +26,6 @@ function providerLabel(provider: string): string {
     return provider;
 }
 
-function airportLabel(code: string | undefined): string {
-    if (!code) return '';
-    const name = getAirportByCode(code)?.name;
-    return name ? `${name} (${code})` : code;
-}
 
 function stopsLabel(stops: number, t: Translator): string {
     if (stops === 0) return t('nonstop');
@@ -37,6 +33,13 @@ function stopsLabel(stops: number, t: Translator): string {
     return t('stopsCount', { count: stops });
 }
 
+
+/**
+ * The one timing every part of "Show flight itineraries" moves on — the panel opening,
+ * the legs sliding into it, and the price rail and itinerary column sliding to their
+ * new places — so the card moves as one piece rather than in steps.
+ */
+const EXPAND_TRANSITION = { duration: 0.55, ease: [0.22, 1, 0.36, 1] as [number, number, number, number] };
 
 // ─── Airline Logo ────────────────────────────────────────────────────
 
@@ -73,12 +76,21 @@ export interface FlightCardProps {
     index?: number;
     onSelect?: (offer: FlightOffer) => void;
     isSelected?: boolean;
+    /**
+     * `booking`: the card on the book page, where the flight is already chosen —
+     * it opens on its itineraries and drops the Select rail, the save heart and
+     * the fare alternatives.
+     */
+    variant?: 'result' | 'booking';
 }
 
 // ─── FlightCard ──────────────────────────────────────────────────────
 
-export const FlightCard: React.FC<FlightCardProps> = ({ offer, index = 0, onSelect, isSelected = false }) => {
-    const [expanded, setExpanded] = useState(false);
+export const FlightCard: React.FC<FlightCardProps> = ({ offer, index = 0, onSelect, isSelected = false, variant = 'result' }) => {
+    const booking = variant === 'booking';
+    const [expanded, setExpanded] = useState(booking);
+    // Fare alternatives are a choice made on the search page, not at checkout.
+    const alternatives = booking ? [] : (offer.alternatives ?? []);
     const targetCurrency = useUserCurrency();
     const t = useTranslations('flights.card');
     // Times are rendered per locale — 12-hour where the locale says so, 24-hour where it
@@ -121,16 +133,15 @@ export const FlightCard: React.FC<FlightCardProps> = ({ offer, index = 0, onSele
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: index * 0.03, duration: 0.25 }}
             className={`
-                group relative bg-white dark:bg-slate-900 w-full
-                rounded-2xl overflow-hidden border transition-all duration-200
+                group relative w-full overflow-hidden ${CARD_SURFACE_BASE}
                 ${isSelected
                     ? 'border-blue-500 ring-2 ring-blue-500/15 shadow-[0_16px_40px_-16px_rgba(15,23,42,0.20)]'
-                    : 'border-slate-200/70 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600 shadow-[0_10px_30px_-14px_rgba(15,23,42,0.14)] hover:shadow-[0_16px_40px_-16px_rgba(15,23,42,0.18)]'
+                    : CARD_SURFACE_IDLE
                 }
             `}
         >
             {/* ─── Save/Heart Button (mobile only — top-right corner) ─── */}
-            <div className="absolute top-2 right-2 z-10 lg:hidden">
+            {!booking && <div className="absolute top-2 right-2 z-10 lg:hidden">
                 <SaveButton
                     type="flight"
                     title={`${primary.departure.airport} → ${outboundLast?.arrival?.airport} · ${primary.departure.time?.slice(0, 10) ?? ''}`}
@@ -142,14 +153,16 @@ export const FlightCard: React.FC<FlightCardProps> = ({ offer, index = 0, onSele
                     snapshot={{ offerId: offer.offerId, provider: offer.provider }}
                     size="sm"
                 />
-            </div>
+            </div>}
 
             {/* Row on desktop while collapsed, so the price rail runs alongside the
                 summary; forced to a column once expanded, so the rail drops below the
                 itinerary instead of stretching the full height of it as a side strip. */}
             <div className={`flex flex-col ${expanded ? '' : 'lg:flex-row'}`}>
-                {/* ─── Flight Info + Expand (left) ─── */}
-                <div className="flex-1 min-w-0">
+                {/* ─── Flight Info + Expand (left) ───
+                    `layout`: when the rail drops below, this column widens into the room
+                    it leaves, smoothly rather than in one frame. */}
+                <motion.div layout="position" transition={EXPAND_TRANSITION} className="flex-1 min-w-0">
                   <div className="p-4 lg:p-6">
                     {/* ─── Airline, its flight numbers, and the fare's badges ─── */}
                     <div className="flex flex-wrap items-start gap-x-3 gap-y-2 mb-3 lg:mb-4">
@@ -232,10 +245,10 @@ export const FlightCard: React.FC<FlightCardProps> = ({ offer, index = 0, onSele
                         <span className="inline-flex items-center gap-1 px-2 lg:px-2.5 py-0.5 lg:py-1 rounded-full text-[9px] lg:text-[11px] bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
                             {cabinLabel(primary.cabinClass)}
                         </span>
-                        {offer.alternatives && offer.alternatives.length > 0 && (
+                        {alternatives.length > 0 && (
                             <span className="inline-flex items-center gap-1 px-2 lg:px-2.5 py-0.5 lg:py-1 rounded-full text-[9px] lg:text-[11px] bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
                                 <BadgeDollarSign className="w-3 h-3 lg:w-3.5 lg:h-3.5" />
-                                {t('brandsAvailable', { count: offer.alternatives.length + 1 })}
+                                {t('brandsAvailable', { count: alternatives.length + 1 })}
                             </span>
                         )}
                         
@@ -339,11 +352,12 @@ export const FlightCard: React.FC<FlightCardProps> = ({ offer, index = 0, onSele
                   {/* ─── Expand Toggle ─── */}
                   {offer.segments.length > 1 && (
                       <button
+                          type="button"
                           onClick={() => setExpanded(!expanded)}
                           className="flex items-center gap-1 px-4 lg:px-6 pb-4 lg:pb-6 text-[10px] lg:text-xs text-slate-800 dark:text-slate-200 hover:text-slate-950 dark:hover:text-white transition-colors cursor-pointer"
                       >
-                          {expanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
-                          {expanded ? t('hideDetails') : (offer.alternatives && offer.alternatives.length > 0 ? t('compareOptions', { count: offer.alternatives.length + 1 }) : t('showAllSegments'))}
+                          <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-500 ${expanded ? 'rotate-180' : ''}`} />
+                          {expanded ? t('hideDetails') : (alternatives.length > 0 ? t('compareOptions', { count: alternatives.length + 1 }) : t('showAllSegments'))}
                       </button>
                   )}
 
@@ -354,7 +368,7 @@ export const FlightCard: React.FC<FlightCardProps> = ({ offer, index = 0, onSele
                               initial={{ height: 0, opacity: 0 }}
                               animate={{ height: 'auto', opacity: 1 }}
                               exit={{ height: 0, opacity: 0 }}
-                              transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
+                              transition={EXPAND_TRANSITION}
                               className="border-t border-slate-100 dark:border-slate-800 overflow-hidden"
                           >
                           {/* The height animation above opens the space; this slides the
@@ -367,10 +381,10 @@ export const FlightCard: React.FC<FlightCardProps> = ({ offer, index = 0, onSele
                               initial={{ y: -12 }}
                               animate={{ y: 0 }}
                               exit={{ y: -12 }}
-                              transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
+                              transition={EXPAND_TRANSITION}
                           >
                           {/* Alternatives / Brands Section */}
-                          {offer.alternatives && offer.alternatives.length > 0 && (
+                          {alternatives.length > 0 && (
                               <div className="bg-slate-50/50 dark:bg-slate-800/20 px-4 lg:px-6 py-4 border-b border-slate-100 dark:border-slate-800">
                                   <h4 className="text-[11px] font-normal text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
                                       <BadgeDollarSign className="w-3.5 h-3.5 text-blue-500" />
@@ -399,7 +413,7 @@ export const FlightCard: React.FC<FlightCardProps> = ({ offer, index = 0, onSele
                                       </div>
 
                                       {/* Alternatives */}
-                                      {offer.alternatives.map((alt) => (
+                                      {alternatives.map((alt) => (
                                           <div key={alt.offerId} className="flex flex-col p-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 hover:border-blue-300 transition-colors">
                                               <div className="flex justify-between items-start mb-1">
                                                   <span className="text-[11px] font-normal text-slate-600 dark:text-slate-300 px-1.5 py-0.5 bg-slate-100 dark:bg-slate-800 rounded uppercase">
@@ -435,12 +449,17 @@ export const FlightCard: React.FC<FlightCardProps> = ({ offer, index = 0, onSele
                           </motion.div>
                       )}
                   </AnimatePresence>
-                </div>
+                </motion.div>
 
-                {/* ─── Price + CTA (right when collapsed, below when expanded) ─── */}
-                <div
+                {/* ─── Price + CTA (right when collapsed, below when expanded) ───
+                    `layout`: opening moves this rail from beside the itinerary to below
+                    it; it slides there on the panel's timing instead of snapping.
+                    Not on the book page: the flight is already chosen there. */}
+                {!booking && <motion.div
+                    layout="position"
+                    transition={EXPAND_TRANSITION}
                     className={`relative flex flex-row items-center justify-between gap-1 lg:gap-1.5 p-4 lg:p-6 border-t border-slate-100 dark:border-slate-800 ${
-                        expanded ? 'w-full' : 'lg:flex-col lg:w-[180px] lg:border-l lg:border-t-0'
+                        expanded ? 'w-full' : 'lg:flex-col lg:w-[240px] lg:shrink-0 lg:border-l lg:border-t-0'
                     }`}
                 >
                     {/* Heart button — desktop only, inline. Hidden once expanded: it
@@ -463,7 +482,7 @@ export const FlightCard: React.FC<FlightCardProps> = ({ offer, index = 0, onSele
                     {/* The design states the fare to the cent. formatPrice rounds every
                         other price in the app, hotels included, and stays as it is. */}
                     <div className="lg:text-center">
-                        <span className="text-base lg:text-2xl font-semibold text-slate-900 dark:text-white leading-tight">
+                        <span className="whitespace-nowrap text-base lg:text-2xl font-semibold text-slate-900 dark:text-white leading-tight">
                             {formatPriceWithCents(offer.price.pricePerAdult, offer.price.currency, targetCurrency)}
                         </span>
                         <span className="ml-1 text-[9px] lg:text-xs text-slate-400 dark:text-slate-500">
@@ -480,7 +499,7 @@ export const FlightCard: React.FC<FlightCardProps> = ({ offer, index = 0, onSele
                             <ArrowRight className="w-3 h-3 lg:w-4 lg:h-4" />
                         </button>
                     </div>
-                </div>
+                </motion.div>}
             </div>
         </motion.div>
     );

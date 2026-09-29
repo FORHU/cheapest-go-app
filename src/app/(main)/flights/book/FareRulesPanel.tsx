@@ -3,6 +3,8 @@
 import React, { useEffect, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { ChevronDown, ChevronUp, FileText, Loader2, AlertTriangle } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { BOOK_CARD, BOOK_CARD_ICON, BOOK_CARD_ROW_PADDING, BOOK_CARD_TITLE } from '@/components/flights/booking/BookCard';
 
 interface RuleDetail {
     Category?: string;
@@ -71,14 +73,14 @@ export function FareRulesPanel({ fareSourceCode }: FareRulesPanelProps) {
     if (!loading && !error && fareRules.length === 0) return null;
 
     return (
-        <div className="bg-white dark:bg-slate-900 rounded-md border border-slate-200 dark:border-slate-700 mb-3 lg:mb-6 shadow-sm overflow-hidden">
+        <div className={cn(BOOK_CARD, 'mb-3 lg:mb-6 overflow-hidden')}>
             {/* Header — always visible */}
             <button
                 onClick={() => setExpanded(v => !v)}
-                className="w-full flex items-center justify-between px-3 lg:px-5 py-3 lg:py-4 text-left"
+                className={cn('w-full flex items-center justify-between gap-3 text-left', BOOK_CARD_ROW_PADDING)}
             >
-                <span className="flex items-center gap-1.5 text-[11px] lg:text-xs font-normal text-slate-900 dark:text-white">
-                    <FileText className="w-3.5 h-3.5 text-indigo-500 shrink-0" />
+                <span className={cn('flex items-center gap-1.5', BOOK_CARD_TITLE)}>
+                    <FileText className={BOOK_CARD_ICON} strokeWidth={1.75} aria-hidden />
                     {t('title')}
                     {!loading && fareRules.length > 0 && (
                         <span className="ml-1.5 text-[9px] lg:text-[11px] font-normal text-slate-400 dark:text-slate-500">
@@ -89,14 +91,14 @@ export function FareRulesPanel({ fareSourceCode }: FareRulesPanelProps) {
                 {loading
                     ? <Loader2 className="w-3.5 h-3.5 text-slate-400 animate-spin shrink-0" />
                     : expanded
-                    ? <ChevronUp className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                    : <ChevronDown className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                    ? <ChevronUp className="w-4 h-4 text-[#1c1b1f] dark:text-white shrink-0" />
+                    : <ChevronDown className="w-4 h-4 text-[#1c1b1f] dark:text-white shrink-0" />
                 }
             </button>
 
             {/* Body */}
             {expanded && (
-                <div className="border-t border-slate-100 dark:border-slate-800 px-3 lg:px-5 py-3 space-y-2">
+                <div className="border-t border-slate-100 dark:border-slate-800 px-4 lg:px-6 py-3 space-y-2">
                     {error ? (
                         <div className="flex items-center gap-2 text-xs text-amber-600 dark:text-amber-400">
                             <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
