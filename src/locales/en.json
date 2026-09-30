@@ -3081,5 +3081,36 @@
         "body": "That charge is an authorisation that was never completed, and your bank releases it on its own, usually within a few days. If it has not cleared, or if you were charged and a booking does exist that you did not intend, message us with the reference and we will trace it."
       }
     }
+  },
+  "golf": {
+    "metaTitle": "Golf Courses & Tee Times",
+    "metaDescription": "Browse golf courses we can arrange play at, and ask our team about tee times.",
+    "heading": "Golf courses",
+    "subheading": "Courses our team can arrange play at. Ask us about tee times and we'll confirm with the course.",
+    "filterLabel": "Country",
+    "allCountries": "All countries",
+    "empty": "No golf courses are listed here yet. Check back soon.",
+    "holes": "{holes} holes",
+    "par": "Par {par}",
+    "greenFeesFrom": "Green fees from {price}",
+    "amenitiesHeading": "Facilities",
+    "aboutHeading": "About the course",
+    "addressHeading": "Address",
+    "askTeeTimes": "Ask about tee times",
+    "askTeeTimesHint": "Tell our team your date, number of players and preferred time. We'll check with the course and get back to you.",
+    "backToList": "All golf courses",
+    "courseTitle": "{name} – Golf in {city}, {country}",
+    "amenities": {
+      "caddie": "Caddie",
+      "cart": "Golf cart",
+      "driving_range": "Driving range",
+      "putting_green": "Putting green",
+      "clubhouse": "Clubhouse",
+      "restaurant": "Restaurant",
+      "club_rental": "Club rental",
+      "pro_shop": "Pro shop",
+      "lessons": "Lessons",
+      "night_golf": "Night golf"
+    }
   }
 }

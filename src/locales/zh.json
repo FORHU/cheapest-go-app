@@ -3081,5 +3081,36 @@
       "savedOn": "保存于 {date}",
       "searchAgain": "重新搜索"
     }
+  },
+  "golf": {
+    "metaTitle": "高尔夫球场与开球时间",
+    "metaDescription": "浏览我们可为您安排打球的高尔夫球场，并向我们的团队咨询开球时间。",
+    "heading": "高尔夫球场",
+    "subheading": "我们的团队可为您安排打球的球场。咨询开球时间后，我们会与球场确认。",
+    "filterLabel": "国家",
+    "allCountries": "所有国家",
+    "empty": "目前还没有上线的高尔夫球场，敬请期待。",
+    "holes": "{holes}洞",
+    "par": "标准杆 {par}",
+    "greenFeesFrom": "果岭费 {price} 起",
+    "amenitiesHeading": "设施",
+    "aboutHeading": "球场介绍",
+    "addressHeading": "地址",
+    "askTeeTimes": "咨询开球时间",
+    "askTeeTimesHint": "请告诉我们您的日期、人数和期望时段，我们会向球场确认后回复您。",
+    "backToList": "所有高尔夫球场",
+    "courseTitle": "{name} – {country}{city}高尔夫",
+    "amenities": {
+      "caddie": "球童",
+      "cart": "球车",
+      "driving_range": "练习场",
+      "putting_green": "推杆果岭",
+      "clubhouse": "会所",
+      "restaurant": "餐厅",
+      "club_rental": "球杆租赁",
+      "pro_shop": "专卖店",
+      "lessons": "教学课程",
+      "night_golf": "夜间高尔夫"
+    }
   }
 }

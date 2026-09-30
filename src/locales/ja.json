@@ -3081,5 +3081,36 @@
       "savedOn": "{date}に保存",
       "searchAgain": "再検索"
     }
+  },
+  "golf": {
+    "metaTitle": "ゴルフ場とティータイム",
+    "metaDescription": "手配可能なゴルフ場を探して、ティータイムについてチームにお問い合わせください。",
+    "heading": "ゴルフ場",
+    "subheading": "私たちのチームがプレーを手配できるゴルフ場です。ティータイムをお問い合わせいただければ、ゴルフ場に確認いたします。",
+    "filterLabel": "国",
+    "allCountries": "すべての国",
+    "empty": "現在掲載中のゴルフ場はありません。しばらくしてから再度ご確認ください。",
+    "holes": "{holes}ホール",
+    "par": "パー{par}",
+    "greenFeesFrom": "グリーンフィー {price}〜",
+    "amenitiesHeading": "設備",
+    "aboutHeading": "コースについて",
+    "addressHeading": "住所",
+    "askTeeTimes": "ティータイムを問い合わせる",
+    "askTeeTimesHint": "ご希望の日付、人数、時間帯をお知らせください。ゴルフ場に確認してご連絡します。",
+    "backToList": "すべてのゴルフ場",
+    "courseTitle": "{name} – {city}（{country}）のゴルフ",
+    "amenities": {
+      "caddie": "キャディー",
+      "cart": "ゴルフカート",
+      "driving_range": "ドライビングレンジ",
+      "putting_green": "パッティンググリーン",
+      "clubhouse": "クラブハウス",
+      "restaurant": "レストラン",
+      "club_rental": "レンタルクラブ",
+      "pro_shop": "プロショップ",
+      "lessons": "レッスン",
+      "night_golf": "ナイターゴルフ"
+    }
   }
 }

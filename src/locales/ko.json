@@ -3081,5 +3081,36 @@
       "savedOn": "{date} 저장됨",
       "searchAgain": "다시 검색"
     }
+  },
+  "golf": {
+    "metaTitle": "골프장 및 티타임",
+    "metaDescription": "예약을 도와드릴 수 있는 골프장을 둘러보고 티타임을 문의하세요.",
+    "heading": "골프장",
+    "subheading": "저희 팀이 라운딩을 예약해 드릴 수 있는 골프장입니다. 티타임을 문의하시면 골프장에 확인해 드립니다.",
+    "filterLabel": "국가",
+    "allCountries": "모든 국가",
+    "empty": "아직 등록된 골프장이 없습니다. 곧 다시 확인해 주세요.",
+    "holes": "{holes}홀",
+    "par": "파 {par}",
+    "greenFeesFrom": "그린피 {price}부터",
+    "amenitiesHeading": "시설",
+    "aboutHeading": "코스 소개",
+    "addressHeading": "주소",
+    "askTeeTimes": "티타임 문의하기",
+    "askTeeTimesHint": "원하시는 날짜, 인원, 희망 시간대를 알려주세요. 골프장에 확인 후 연락드리겠습니다.",
+    "backToList": "모든 골프장",
+    "courseTitle": "{name} – {country} {city} 골프",
+    "amenities": {
+      "caddie": "캐디",
+      "cart": "골프 카트",
+      "driving_range": "드라이빙 레인지",
+      "putting_green": "퍼팅 그린",
+      "clubhouse": "클럽하우스",
+      "restaurant": "레스토랑",
+      "club_rental": "클럽 대여",
+      "pro_shop": "프로숍",
+      "lessons": "레슨",
+      "night_golf": "야간 골프"
+    }
   }
 }
