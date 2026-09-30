@@ -16,6 +16,16 @@ import { describe, it, expect, afterAll, vi } from 'vitest';
 
 let cookieJar = new Map<string, string>();
 
+/**
+ * Whether the cookie store accepts writes, as Next.js decides it per render.
+ *
+ * A Route Handler may write; a Server Component render may not, and the store throws
+ * rather than ignoring the call. `getSession()` runs in both, so a jar that always accepts
+ * is a jar that cannot see the failure — which is how a ten-minute-idle admin came to
+ * answer 500 on every page instead of being signed out.
+ */
+let cookieWritesRejected = false;
+
 vi.mock('next/headers', () => ({
     cookies: async () => ({
         get: (name: string) => {
@@ -23,6 +33,9 @@ vi.mock('next/headers', () => ({
             return value === undefined ? undefined : { name, value };
         },
         set: (name: string, value: string) => {
+            if (cookieWritesRejected) {
+                throw new Error('Cookies can only be modified in a Server Action or Route Handler.');
+            }
             cookieJar.set(name, value);
         },
     }),
@@ -149,6 +162,54 @@ describe('getSession — Idle Limit', () => {
             const { user } = await getSession();
             expect(user?.id).toBe(userId);
         } finally {
+            await cleanup(userId);
+        }
+    });
+});
+
+/**
+ * The same two outcomes, during a Server Component render.
+ *
+ * `getSession()` is documented for Server Components, and Next.js refuses a cookie write
+ * in one by throwing. Both of its writes are the tail end of a decision already committed
+ * to the database, so the person is signed out, or kept, either way — but only if the
+ * throw is caught. It was not, and the Idle Limit turned into a 500 on every admin page
+ * the moment a staff session passed ten minutes.
+ */
+describe('getSession — when the cookie store refuses writes', () => {
+    it('still signs an idle staff member out, rather than throwing', async (ctx) => {
+        if (!(await databaseReachable())) ctx.skip();
+
+        const { userId, sessionId } = await makeIdleSession('admin', 11);
+        cookieJar = new Map([[SESSION_COOKIE, sessionId]]);
+        cookieWritesRejected = true;
+
+        try {
+            const { session, user } = await getSession();
+            expect(session).toBeNull();
+            expect(user).toBeNull();
+            // The row is what enforces it, and the row is gone. The blank cookie was only
+            // ever the browser being told about a decision already taken here.
+            expect(await sessionRowExists(sessionId)).toBe(false);
+        } finally {
+            cookieWritesRejected = false;
+            await cleanup(userId);
+        }
+    });
+
+    it('still keeps an active session, rather than throwing on the sliding refresh', async (ctx) => {
+        if (!(await databaseReachable())) ctx.skip();
+
+        const { userId, sessionId } = await makeIdleSession('admin', 1);
+        cookieJar = new Map([[SESSION_COOKIE, sessionId]]);
+        cookieWritesRejected = true;
+
+        try {
+            const { user } = await getSession();
+            expect(user?.id).toBe(userId);
+            expect(await sessionRowExists(sessionId)).toBe(true);
+        } finally {
+            cookieWritesRejected = false;
             await cleanup(userId);
         }
     });

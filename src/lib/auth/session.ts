@@ -11,7 +11,7 @@ import { isRole, type Role } from './roles';
 import { hasExceededIdleLimit } from './idle';
 import { cookies } from 'next/headers';
 import { getLucia } from './lucia';
-import type { Session, User } from 'lucia';
+import type { Cookie, Session, User } from 'lucia';
 import { getSqlAdmin } from '@/lib/db/postgres';
 import { hash, verify } from '@node-rs/argon2';
 
@@ -30,6 +30,32 @@ export interface SessionUser {
     avatarUrl?: string;
     role: Role;
     bannedAt?: string | null;
+}
+
+/**
+ * Set a session cookie where that is allowed, and carry on where it is not.
+ *
+ * `getSession` is a read, called from Server Components as well as Route Handlers, and
+ * Next.js refuses a cookie write during a Server Component render — it throws rather than
+ * no-opping. Both of its writes are follow-ups to a decision already recorded in the
+ * database: the Idle Limit has invalidated the session row before the blank cookie is
+ * written, and Lucia has extended the row before the refreshed one is. Losing the write
+ * costs a stale expiry on the browser's copy, and the next request reads the row and
+ * behaves correctly regardless.
+ *
+ * Letting it throw instead is what took the admin down: a staff session ten minutes idle
+ * answered 500 on every page rather than signing the person out.
+ *
+ * Only the read path uses this. `createSession` and `invalidateSession` are called from
+ * Route Handlers and Server Actions, where a failed write means a person is not actually
+ * signed in or out, and must be allowed to throw.
+ */
+function writeCookieIfAllowed(cookieStore: Awaited<ReturnType<typeof cookies>>, cookie: Cookie): void {
+    try {
+        cookieStore.set(cookie.name, cookie.value, cookie.attributes);
+    } catch {
+        // Server Component render — the store is read-only here. See above.
+    }
 }
 
 /**
@@ -55,7 +81,7 @@ export async function getSession(): Promise<SessionResult> {
     if (hasExceededIdleLimit({ lastActiveAt: session.lastActiveAt ?? new Date(0), role, now: new Date() })) {
         await lucia.invalidateSession(sessionId);
         const blankCookie = lucia.createBlankSessionCookie();
-        cookieStore.set(blankCookie.name, blankCookie.value, blankCookie.attributes);
+        writeCookieIfAllowed(cookieStore, blankCookie);
         return { session: null, user: null };
     }
 
@@ -63,7 +89,7 @@ export async function getSession(): Promise<SessionResult> {
     // (This replaces Supabase's automatic token refresh in middleware)
     if (session.fresh) {
         const newCookie = lucia.createSessionCookie(session.id);
-        cookieStore.set(newCookie.name, newCookie.value, newCookie.attributes);
+        writeCookieIfAllowed(cookieStore, newCookie);
     }
 
     // In Lucia v3, user attributes are merged directly onto the User object

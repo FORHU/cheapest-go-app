@@ -66,6 +66,21 @@ const FILES = [
 
     // Who a Support Chat was given to, and who handled it — Assignment by admin (ADR-0041).
     '20260911000003_support_assignment_events.sql',
+
+    // Applied already, listed late: these four reached the databases without ever being
+    // added here, so a run of this script reported the schema as older than it was. They
+    // print SKIP, which is the point — the list is only a useful record of what has run if
+    // it is the whole of it.
+    '20260915000001_support_suggestion_events.sql',
+    '20260917000001_email_logs_dedup.sql',
+    '20260921000001_hotel_content_delisted_at.sql',
+    '20260921000002_hotel_content_latlng_index.sql',
+
+    // Presence per session, which the Idle Limit measures the absence of (ADR-0045). Left
+    // off this list when it was written, so it never ran: `getSessionAndUser` selects
+    // `s.last_active_at` on every authenticated request, and against a database without the
+    // column that is a 42703, not a fallback. Every signed-in page answered 500.
+    '20260923000001_session_last_active.sql',
 ];
 
 const dry = process.argv.includes('--dry');
