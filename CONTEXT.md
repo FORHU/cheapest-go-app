@@ -459,6 +459,11 @@ _Avoid_: thinking of it as a message with the audience turned off. A Note is an 
 **AI Search** — the hero's natural-language mode, which turns one sentence into search parameters and runs a search. Distinct from a Support Chat: it is a single turn, it holds no history, and it is about finding a trip rather than fixing one.
 _Avoid_: calling it a chat or an assistant. _Note_: as of 2026-09-05 it is a mock — a two-second delay and a hardcoded result — so treat it as a design placeholder, not a capability.
 
+## Golf
+
+**Golf Course** — a course CheapestGo can arrange play at, curated by the team in the admin (`golf_courses`). There is no supplier behind it: nothing is live, nothing is held, and the **green fee from** figure is an indicative price for the listing, never a quote. A course is a *draft* until an admin publishes it; only published courses reach the storefront, and that rule lives in `lib/server/golf/courses`, not in pages. In v1 the booking channel is the support chat — "Ask about tee times" opens it and the team confirms with the course. Course names and descriptions are written once by the team and are not per-language.
+_Avoid_: calling the green fee a price the customer will pay, or a listing "availability".
+
 ## Localization
 
 **Interface Language** — the words CheapestGo itself authors on the **storefront**: buttons, labels, map controls, policy headings, and the amenity vocabulary its own code maps supplier codes onto. Everything here is translatable by the team, into every locale the storefront offers, and English appearing in it reads as an unfinished product rather than an imported one. The back office is deliberately outside it — the only people who see admin are the team, so it stays English however many locales the storefront gains.
