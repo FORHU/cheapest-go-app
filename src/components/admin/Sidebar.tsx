@@ -25,6 +25,7 @@ import {
     Bell,
     Star,
     MapPin,
+    Flag,
     Tag,
     Bookmark,
     Smartphone,
@@ -78,6 +79,7 @@ const navGroups: NavGroup[] = [
         title: 'Content',
         items: [
             { label: 'Destinations', href: '/admin/destinations', icon: MapPin },
+            { label: 'Golf Courses', href: '/admin/golf', icon: Flag },
             { label: 'Deals & Vouchers', href: '/admin/deals',    icon: Tag },
             { label: 'Saved Trips',  href: '/admin/saved-trips',  icon: Bookmark },
         ],
