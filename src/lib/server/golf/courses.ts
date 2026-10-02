@@ -39,6 +39,17 @@ export async function listPublishedCourses({ country }: { country?: string } = {
     return plain(rows);
 }
 
+/** The home-page row: newest first, so a course an admin just published shows up there. */
+export async function listNewestPublishedCourses(limit: number): Promise<GolfCourse[]> {
+    const sql = getSqlAdmin();
+    const rows = await sql<GolfCourse[]>`
+        SELECT ${columns(sql)} FROM golf_courses
+         WHERE status = 'published'
+         ORDER BY created_at DESC
+         LIMIT ${limit}`;
+    return plain(rows);
+}
+
 export async function listPublishedCountries(): Promise<string[]> {
     const sql = getSqlAdmin();
     const rows = await sql<{ country: string }[]>`

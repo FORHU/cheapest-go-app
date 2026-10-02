@@ -2,7 +2,7 @@ import { describe, it, expect, afterAll } from 'vitest';
 import type { GolfCourseInput } from '@/lib/schemas/golf';
 import {
     createCourse, updateCourse, setCourseStatus, deleteCourses,
-    getPublishedCourseBySlug, listPublishedCourses, listPublishedCountries, listCoursesForAdmin,
+    getPublishedCourseBySlug, listPublishedCourses, listNewestPublishedCourses, listPublishedCountries, listCoursesForAdmin,
 } from './courses';
 import { SlugTakenError } from './errors';
 
@@ -58,6 +58,13 @@ describe.skipIf(!reachable)('golf courses', () => {
         expect(found).toMatchObject({ id: course.id, greenFeeFrom: 85, currency: 'USD', amenities: ['cart'] });
         expect((await listPublishedCourses({ country: course.country })).map(c => c.id)).toContain(course.id);
         expect(await listPublishedCountries()).toContain(course.country);
+    });
+
+    it('lists the newest published courses first, drafts excluded, up to the limit', async () => {
+        const older = await make({}, true);
+        const newer = await make({}, true);
+        await make(); // a draft, newer still
+        expect((await listNewestPublishedCourses(2)).map(c => c.id)).toEqual([newer.id, older.id]);
     });
 
     it('refuses a slug another course has', async () => {
