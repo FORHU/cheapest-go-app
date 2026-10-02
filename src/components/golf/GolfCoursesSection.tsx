@@ -15,7 +15,7 @@ export function GolfCoursesSection({ courses }: { courses: GolfCourse[] }) {
     return (
         <section className="w-full py-8 md:py-12">
             <div className="max-w-[1400px] mx-auto px-4 sm:px-6">
-                <div className="mb-5 flex items-end justify-between gap-4">
+                <div className="mb-5 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between sm:gap-4">
                     <div>
                         <h2 className="text-2xl md:text-3xl font-bold text-slate-900 dark:text-white mb-1">{t('homeTitle')}</h2>
                         <p className="text-slate-500 dark:text-slate-400 text-sm md:text-base">{t('homeSubtitle')}</p>

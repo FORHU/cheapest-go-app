@@ -17,7 +17,7 @@ interface SearchModeToggleProps {
 type Tab = { label: string; icon: React.ReactNode; mobileIcon: React.ReactNode } &
     ({ kind: 'mode'; id: SearchMode } | { kind: 'link'; id: string; href: string });
 
-const tabClass = 'relative flex items-center gap-1.5 px-3 py-1.5 sm:px-5 sm:py-2.5 rounded-full text-xs sm:text-sm font-bold transition-all duration-300';
+const tabClass = 'relative flex items-center whitespace-nowrap px-2.5 py-1.5 sm:px-5 sm:py-2.5 rounded-full text-xs sm:text-sm font-bold transition-all duration-300';
 const idleClass = 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200';
 
 const SearchModeToggle: React.FC<SearchModeToggleProps> = ({ mode, onModeChange }) => {
@@ -29,7 +29,7 @@ const SearchModeToggle: React.FC<SearchModeToggleProps> = ({ mode, onModeChange 
         { kind: 'mode', id: 'ai',      label: t('aiSearch'), icon: <Sparkles size={14} />,  mobileIcon: <Sparkles size={12} /> },
     ];
     const content = (m: Tab) => (
-        <span className="relative z-10 flex items-center gap-1.5">
+        <span className="relative z-10 flex items-center gap-1 sm:gap-1.5">
             <span className="hidden sm:inline">{m.icon}</span>
             <span className="sm:hidden">{m.mobileIcon}</span>
             {m.label}
