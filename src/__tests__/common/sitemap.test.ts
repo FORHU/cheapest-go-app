@@ -78,6 +78,11 @@ describe('sitemap', () => {
         expect(entries.filter(e => new URL(e.url).pathname.startsWith('/ko'))).toEqual([]);
     });
 
+    it('lists the golf course list once per served locale', () => {
+        const golf = entries.filter(e => toRoutePath(e.url) === '/golf');
+        expect(golf).toHaveLength(servedLocalePaths('/golf').length);
+    });
+
     it('contains no duplicate URLs', () => {
         const urls = entries.map(e => e.url);
         expect(new Set(urls).size).toBe(urls.length);

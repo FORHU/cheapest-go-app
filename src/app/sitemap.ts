@@ -29,6 +29,11 @@ export default function sitemap(): MetadataRoute.Sitemap {
         // ── Deals ───────────────────────────────────────────────────────────────
         ...localeVariants('/deals', { changeFrequency: 'daily', priority: 0.9 }),
 
+        // ── Golf ────────────────────────────────────────────────────────────────
+        // The list only. Course pages live at `/golf/[slug]`, a dynamic route the
+        // orphan guard in sitemap.test.ts rejects by design; crawlers reach them here.
+        ...localeVariants('/golf', { changeFrequency: 'weekly', priority: 0.7 }),
+
         // ── About ───────────────────────────────────────────────────────────────
         ...localeVariants('/about', { changeFrequency: 'monthly', priority: 0.6 }),
 
