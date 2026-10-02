@@ -749,9 +749,9 @@
       "changesAllowed": "Changes allowed",
       "finalRules": "Final fare rules confirmed by airline during booking.",
       "freeCancellation": "Free cancellation",
-      "indicativeOnly": "Indicative only — final policy confirmed at payment stage.",
+      "indicativeOnly": "Indicative only - final policy confirmed at payment stage",
       "nonRefundable": "Non-refundable",
-      "policyUpdated": "<strong>Fare policy updated.</strong> The refundability of this fare has changed since you selected it. Please review before proceeding.",
+      "policyUpdated": "<strong>Fare Policy Updated.</strong> The refundability of this fare has changed since you selected it. Please review before proceeding.",
       "refundableFee": "Refundable (fee: {fee})",
       "refundableFeesMayApply": "Refundable (fees may apply)",
       "title": "Fare Policy"
@@ -775,7 +775,7 @@
     },
     "offerExpiry": {
       "expired": "This offer has expired — please search again.",
-      "expiresIn": "Offer expires in {time} — complete your booking before time runs out."
+      "expiresIn": "Offer expires in {time} - complete your booking before the time runs out"
     },
     "orderSummary": {
       "baseFare": "Base fare",

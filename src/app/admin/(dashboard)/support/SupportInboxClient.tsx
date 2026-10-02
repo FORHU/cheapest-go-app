@@ -100,9 +100,9 @@ const EMPTY: Record<InboxFilterView, string> = {
  * message they have not understood.
  */
 const AGENT_TRANSLATION_LABELS = {
-    translated: 'Machine-translated',
-    showOriginal: 'Show original',
-    showTranslation: 'Show translation',
+    translated: 'Machine Translated',
+    showOriginal: 'See Original',
+    showTranslation: 'See Translation',
     pending: 'Translating…',
     untranslated: 'Could not translate — this is the customer’s original',
 };
@@ -173,6 +173,7 @@ export function SupportInboxClient({
     const [openId, setOpenId] = useState<string | null>(null);
     const [detail, setDetail] = useState<ConversationDetail | null>(null);
     const [loadingDetail, setLoadingDetail] = useState(false);
+    const [detailError, setDetailError] = useState(false);
     /** The details panel, where it opens over the chat (below `xl`). Always shown beside it above. */
     const [showDetails, setShowDetails] = useState(false);
     const [reply, setReply] = useState('');
@@ -223,10 +224,17 @@ export function SupportInboxClient({
 
     const loadDetail = useCallback(async (id: string) => {
         setLoadingDetail(true);
+        setDetailError(false);
         try {
             const response = await fetch(`/api/admin/support/conversations/${id}`);
-            if (!response.ok) return;
+            if (!response.ok) {
+                // Said out loud: a blank pane reads as "this chat is empty", not "this failed".
+                setDetailError(true);
+                return;
+            }
             setDetail(await response.json());
+        } catch {
+            setDetailError(true);
         } finally {
             setLoadingDetail(false);
         }
@@ -360,45 +368,64 @@ export function SupportInboxClient({
         && (currentRole === 'admin' || detail.conversation.assignedAdminId === currentAdminId);
 
     return (
-        <div className="flex h-[calc(100dvh-8rem)] flex-col gap-4">
+        <div className="flex h-[calc(100dvh-8rem)] flex-col gap-3">
             <header>
-                <h1 className="text-xl font-semibold text-slate-900 dark:text-slate-100">Support</h1>
-                <p className="text-sm text-slate-500 dark:text-slate-400">
-                    Conversations from the chat widget, across every brand.
+                <h1 className="text-2xl text-slate-900 dark:text-slate-100">Support</h1>
+                <p className="text-sm text-slate-400 dark:text-slate-500">
+                    Customer Inquiries sent from CheapestGo and AirangGo
                 </p>
             </header>
 
-            {currentRole === 'admin' && <TeamTally tally={tally} since={tallySince} />}
+            <div className="flex flex-wrap items-end justify-between gap-3">
+                <nav className="flex flex-wrap gap-1" aria-label="Inbox filters">
+                    {TABS[currentRole].map(tab => {
+                        const count = tab.filter === 'unassigned' ? counts.unassigned
+                            : tab.filter === 'mine' ? counts.mine
+                            : 0;
+                        const active = filter === tab.filter;
+                        return (
+                            <button
+                                key={tab.filter}
+                                type="button"
+                                onClick={() => chooseFilter(tab.filter)}
+                                aria-current={active ? 'page' : undefined}
+                                className={`relative border-b px-1.5 pb-1 pt-1.5 text-[15px] transition sm:min-w-[6.5rem] ${
+                                    active
+                                        ? 'border-blue-600 text-slate-900 dark:text-slate-100'
+                                        : 'border-transparent text-slate-700 hover:text-slate-900 dark:text-slate-300 dark:hover:text-slate-100'
+                                }`}
+                            >
+                                {tab.label}
+                                {/*
+                                  * A red count on the label, not "(3)" after it: the tabs are the
+                                  * same width whether or not anyone is waiting, so the eye finds
+                                  * the badge instead of reading every label for a number.
+                                  */}
+                                {count > 0 && (
+                                    <span
+                                        aria-label={`${count} waiting`}
+                                        className="absolute -top-1 right-2 flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-red-600 px-1 text-[9px] font-medium leading-none text-white"
+                                    >
+                                        {count > 99 ? '99+' : count}
+                                    </span>
+                                )}
+                            </button>
+                        );
+                    })}
+                </nav>
 
-            <nav className="flex flex-wrap gap-1" aria-label="Inbox filters">
-                {TABS[currentRole].map(tab => (
-                    <button
-                        key={tab.filter}
-                        type="button"
-                        onClick={() => chooseFilter(tab.filter)}
-                        aria-current={filter === tab.filter ? 'page' : undefined}
-                        className={`rounded-lg px-3 py-1.5 text-sm font-medium transition ${
-                            filter === tab.filter
-                                ? 'bg-blue-600 text-white'
-                                : 'text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-white/5'
-                        }`}
-                    >
-                        {tab.label}
-                        {tab.filter === 'unassigned' && counts.unassigned > 0 && ` (${counts.unassigned})`}
-                        {tab.filter === 'mine' && counts.mine > 0 && ` (${counts.mine})`}
-                    </button>
-                ))}
-            </nav>
+                {currentRole === 'admin' && <TeamTally tally={tally} since={tallySince} />}
+            </div>
 
-            <div className="flex min-h-0 min-w-0 flex-1 gap-4">
+            <div className="flex min-h-0 min-w-0 flex-1 overflow-hidden rounded-lg border border-slate-200 bg-white dark:border-white/10 dark:bg-slate-950">
                 <section
                     aria-label="Conversations"
-                    className={`min-h-0 w-full overflow-y-auto rounded-xl border border-slate-200 lg:w-72 lg:shrink-0 xl:w-80 dark:border-white/10 ${
+                    className={`min-h-0 w-full overflow-y-auto py-3 lg:w-64 lg:shrink-0 lg:border-r lg:border-slate-200 xl:w-72 dark:lg:border-white/10 ${
                         openId ? 'hidden lg:block' : ''
                     }`}
                 >
                     {conversations.length === 0 ? (
-                        <p className="p-4 text-sm text-slate-500 dark:text-slate-400">{EMPTY[filter]}</p>
+                        <p className="px-5 py-2 text-sm text-slate-500 dark:text-slate-400">{EMPTY[filter]}</p>
                     ) : (
                         <ul>
                             {conversations.map(item => (
@@ -406,57 +433,52 @@ export function SupportInboxClient({
                                     <button
                                         type="button"
                                         onClick={() => openConversation(item.id)}
-                                        className={`w-full border-b border-slate-100 px-4 py-3 text-left transition hover:bg-slate-50 dark:border-white/5 dark:hover:bg-white/5 ${
-                                            openId === item.id ? 'bg-blue-50 dark:bg-blue-950/30' : ''
+                                        title={item.reference}
+                                        className={`flex w-full min-w-0 items-center gap-2.5 px-5 py-1.5 text-left transition hover:bg-slate-50 dark:hover:bg-white/5 ${
+                                            openId === item.id ? 'bg-slate-100 dark:bg-white/10' : ''
                                         }`}
                                     >
-                                        <span className="flex items-center justify-between gap-2">
-                                            <span className="truncate text-sm font-medium text-slate-900 dark:text-slate-100">
-                                                {item.guestName ?? 'Signed-in customer'}
+                                        <Avatar name={item.guestName} className="h-11 w-11 text-base" />
+                                        <span className="min-w-0 flex-1">
+                                            <span className="flex min-w-0 items-center gap-2">
+                                                {/*
+                                                  * The brand in brackets after the name, so a
+                                                  * AirangGo customer is told apart at a glance
+                                                  * in a queue that never filters by brand
+                                                  * (ADR-0030).
+                                                  */}
+                                                <span className="min-w-0 truncate text-sm text-slate-900 dark:text-slate-100">
+                                                    <span>{item.guestName ?? 'Signed-in customer'}</span>
+                                                    {' ('}<span>{item.sourceBrand ?? 'CheapestGo'}</span>{')'}
+                                                </span>
+                                                <span className="ml-auto shrink-0">
+                                                    <UrgencyBadge
+                                                        urgency={item.urgency}
+                                                        overridden={item.priority !== null}
+                                                    />
+                                                </span>
                                             </span>
-                                            {/*
-                                              * Right-aligned so the badges form a column the
-                                              * eye can run down, rather than sitting at a
-                                              * different offset on every row behind a name.
-                                              */}
-                                            <UrgencyBadge
-                                                urgency={item.urgency}
-                                                overridden={item.priority !== null}
-                                            />
+                                            <span className="flex min-w-0 items-center gap-1.5 text-xs text-slate-400 dark:text-slate-500">
+                                                <span className="min-w-0 truncate">
+                                                    {previewLine(item, currentAdminId)}
+                                                </span>
+                                                <time
+                                                    dateTime={item.lastMessageAt}
+                                                    title={exactTime(item.lastMessageAt)}
+                                                    className="shrink-0 whitespace-nowrap"
+                                                >
+                                                    {timeAgo(item.lastMessageAt)}
+                                                </time>
+                                            </span>
+                                            {/* Whose it is, where that is not obvious from the view. */}
+                                            {filter !== 'mine' && item.assignedAdminId && (
+                                                <span className="block truncate text-[11px] text-slate-400 dark:text-slate-500">
+                                                    {item.assignedAdminId === currentAdminId
+                                                        ? 'Assigned to you'
+                                                        : `Assigned to ${item.assignedAdminName ?? 'someone'}`}
+                                                </span>
+                                            )}
                                         </span>
-                                        <span className="mt-0.5 flex min-w-0 items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
-                                            {/*
-                                              * Monospaced so a reference a customer reads out
-                                              * over the phone can be matched character by
-                                              * character against the list.
-                                              */}
-                                            {/*
-                                              * `whitespace-nowrap` because the reference is
-                                              * one word to a reader even though the hyphen
-                                              * lets the browser break it: in a 20rem column
-                                              * it was wrapping to "CS-" / "TW3RZ7", which is
-                                              * unreadable precisely when someone is matching
-                                              * it against what a customer just read out.
-                                              */}
-                                            <span className="whitespace-nowrap font-mono">{item.reference}</span>
-                                            <span aria-hidden>·</span>
-                                            <span className="truncate">{item.sourceBrand ?? 'CheapestGo'}</span>
-                                            <span aria-hidden>·</span>
-                                            <span
-                                                className="ml-auto shrink-0 whitespace-nowrap"
-                                                title={new Date(item.lastMessageAt).toLocaleString()}
-                                            >
-                                                {new Date(item.lastMessageAt).toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'short' })}
-                                            </span>
-                                        </span>
-                                        {/* Whose it is, where that is not obvious from the view. */}
-                                        {filter !== 'mine' && item.assignedAdminId && (
-                                            <span className="mt-0.5 block truncate text-xs text-slate-400">
-                                                {item.assignedAdminId === currentAdminId
-                                                    ? 'Assigned to you'
-                                                    : `Assigned to ${item.assignedAdminName ?? 'someone'}`}
-                                            </span>
-                                        )}
                                     </button>
                                 </li>
                             ))}
@@ -466,7 +488,7 @@ export function SupportInboxClient({
 
                 <section
                     aria-label="Conversation"
-                    className={`relative flex min-h-0 min-w-0 flex-1 overflow-hidden rounded-xl border border-slate-200 dark:border-white/10 ${
+                    className={`relative flex min-h-0 min-w-0 flex-1 overflow-hidden ${
                         openId ? '' : 'hidden lg:flex'
                     }`}
                 >
@@ -482,6 +504,19 @@ export function SupportInboxClient({
                         </p>
                     )}
 
+                    {openId && detailError && !detail && (
+                        <div role="alert" className="flex flex-col items-start gap-2 p-4 text-sm text-slate-600 dark:text-slate-300">
+                            <p>This conversation could not be loaded.</p>
+                            <button
+                                type="button"
+                                onClick={() => void loadDetail(openId)}
+                                className="rounded-md border border-slate-200 px-3 py-1 text-xs font-medium transition hover:bg-slate-50 dark:border-white/10 dark:hover:bg-white/5"
+                            >
+                                Try again
+                            </button>
+                        </div>
+                    )}
+
                     {detail && (
                         <>
                             {/*
@@ -490,7 +525,7 @@ export function SupportInboxClient({
                               * so the transcript always has the height — it is what is being read.
                               */}
                             <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-                            <header className="flex shrink-0 items-center gap-3 border-b border-slate-200 px-4 py-3 dark:border-white/10">
+                            <header className="flex min-h-[5.25rem] shrink-0 items-center gap-3 border-b border-slate-200 px-6 py-3 dark:border-white/10">
                                 {/* Back to the list, where the list and the chat do not fit side by side. */}
                                 <button
                                     type="button"
@@ -501,7 +536,7 @@ export function SupportInboxClient({
                                     <ChevronLeft className="h-4 w-4" />
                                 </button>
                                 <div className="min-w-0 flex-1">
-                                    <p className="flex min-w-0 items-center gap-2 text-sm font-semibold text-slate-900 dark:text-slate-100">
+                                    <p className="flex min-w-0 items-center gap-2 text-sm font-medium text-slate-900 dark:text-slate-100">
                                         <span className="truncate">
                                             {detail.conversation.guestName ?? 'Signed-in customer'}
                                         </span>
@@ -518,6 +553,13 @@ export function SupportInboxClient({
                                         {detail.conversation.userId ? ' · signed in' : ' · not signed in'}
                                     </p>
                                 </div>
+                                {/* When they last wrote — how long they have been waiting, read at a glance. */}
+                                <time
+                                    dateTime={detail.conversation.lastMessageAt}
+                                    className="hidden shrink-0 whitespace-nowrap text-xs text-slate-400 md:block dark:text-slate-500"
+                                >
+                                    {headerTime(detail.conversation.lastMessageAt)}
+                                </time>
                                 {/*
                                   * Named in full for assistive tech: the "Resolved" tab is
                                   * one word away, and two controls that sound alike is how
@@ -562,6 +604,7 @@ export function SupportInboxClient({
                                 messages={detail.messages}
                                 conversationId={detail.conversation.id}
                                 currentAdminId={currentAdminId}
+                                guestName={detail.conversation.guestName}
                             />
 
                             {/*
@@ -578,7 +621,7 @@ export function SupportInboxClient({
                             )}
                             {canWrite && <form
                                 onSubmit={sendReply}
-                                className="flex shrink-0 flex-col gap-2 border-t border-slate-200 px-4 py-3 dark:border-white/10"
+                                className="flex shrink-0 flex-col gap-2 border-t border-slate-200 px-6 py-4 sm:px-9 dark:border-white/10"
                             >
                                 {pendingFiles.length > 0 && (
                                     <ul className="flex flex-wrap gap-2">
@@ -612,7 +655,7 @@ export function SupportInboxClient({
                                     </p>
                                 )}
 
-                                <div className="flex items-center gap-2">
+                                <div className="flex h-8 items-center gap-1 rounded-full bg-slate-100 pl-3 pr-1 focus-within:ring-2 focus-within:ring-blue-500/40 dark:bg-white/10">
                                 <input
                                     ref={fileInput}
                                     type="file"
@@ -625,31 +668,38 @@ export function SupportInboxClient({
                                         event.target.value = '';
                                     }}
                                 />
+                                <input
+                                    type="text"
+                                    value={reply}
+                                    onChange={event => setReply(event.target.value)}
+                                    maxLength={MAX_MESSAGE_LENGTH}
+                                    placeholder="Aa"
+                                    aria-label="Reply to the customer"
+                                    className="h-full min-w-0 flex-1 bg-transparent text-sm text-slate-900 placeholder:text-slate-900 focus:outline-none dark:text-slate-100 dark:placeholder:text-slate-400"
+                                />
                                 <button
                                     type="button"
                                     onClick={() => fileInput.current?.click()}
                                     disabled={uploading}
                                     aria-label={uploading ? 'Uploading' : 'Attach a file'}
                                     title="Attach a file"
-                                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-slate-500 transition hover:bg-slate-100 disabled:opacity-50 dark:hover:bg-white/10"
+                                    className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-slate-400 transition hover:bg-slate-200 hover:text-slate-600 disabled:opacity-50 dark:hover:bg-white/10"
                                 >
-                                    <Paperclip className={uploading ? 'h-4 w-4 animate-pulse' : 'h-4 w-4'} />
+                                    <Paperclip className={uploading ? 'h-3.5 w-3.5 animate-pulse' : 'h-3.5 w-3.5'} />
                                 </button>
-                                <input
-                                    type="text"
-                                    value={reply}
-                                    onChange={event => setReply(event.target.value)}
-                                    maxLength={MAX_MESSAGE_LENGTH}
-                                    placeholder="Reply to the customer"
-                                    aria-label="Reply to the customer"
-                                    className="h-9 flex-1 rounded-lg border border-slate-200 px-3 text-sm dark:border-white/10 dark:bg-white/5"
-                                />
+                                {/*
+                                  * Enter sends; the button is there for the mouse, and stays muted
+                                  * until there is something to send, keeping the pill as quiet as
+                                  * the design draws it.
+                                  */}
                                 <button
                                     type="submit"
+                                    aria-label="Send"
+                                    title="Send"
                                     disabled={sending || (!reply.trim() && pendingFiles.length === 0)}
-                                    className="flex h-9 items-center gap-1.5 rounded-lg bg-blue-600 px-3 text-sm font-medium text-white transition hover:bg-blue-500 disabled:opacity-50"
+                                    className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-blue-600 text-white transition hover:bg-blue-500 disabled:bg-transparent disabled:text-slate-300 dark:disabled:text-slate-600"
                                 >
-                                    <Send className="h-4 w-4" /> Send
+                                    {sending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
                                 </button>
                                 </div>
 
@@ -814,17 +864,24 @@ function Transcript({
     messages,
     conversationId,
     currentAdminId,
+    guestName,
 }: {
     messages: InboxMessage[];
     conversationId: string;
     currentAdminId: string;
+    guestName: string | null;
 }) {
     return (
-        <div className="min-h-0 flex-1 space-y-1 overflow-y-auto px-4 py-3">
+        <div className="min-h-0 flex-1 space-y-1 overflow-y-auto px-6 py-4 sm:px-8">
             {messages.map((message, i) => {
                 const previous = i > 0 ? messages[i - 1] : null;
+                const next = i < messages.length - 1 ? messages[i + 1] : null;
                 const side = SIDE[message.senderType];
                 const isAgent = message.senderType === 'agent';
+                const isGuest = message.senderType === 'guest';
+                // The customer's avatar sits beside the last bubble of a run, messenger-style,
+                // so a burst of short messages reads as one person speaking.
+                const endsGuestRun = isGuest && next?.senderType !== 'guest';
 
                 // The caption names the author once per run of their messages: an admin may
                 // write in a chat they do not own without taking it (CONTEXT.md,
@@ -854,12 +911,18 @@ function Transcript({
                                     </span>
                                 )}
 
+                                <div className="flex max-w-[85%] items-end gap-1.5 md:max-w-[22rem]">
+                                {side === 'left' && (
+                                    endsGuestRun
+                                        ? <Avatar name={guestName} className="mb-0.5 h-6 w-6 text-[10px]" />
+                                        : <span aria-hidden className="w-6 shrink-0" />
+                                )}
                                 <div
                                     title={exactTime(message.createdAt)}
                                     className={
-                                        'max-w-[85%] rounded-2xl px-3 py-2 text-sm ' + (isAgent
+                                        'min-w-0 break-words rounded-xl px-3.5 py-2 text-xs leading-snug ' + (isAgent
                                             ? 'bg-blue-600 text-white'
-                                            : 'bg-slate-100 text-slate-900 dark:bg-white/5 dark:text-slate-100')
+                                            : 'bg-slate-200 text-slate-900 dark:bg-white/10 dark:text-slate-100')
                                     }
                                 >
                                     {/*
@@ -875,6 +938,7 @@ function Transcript({
                                         labels={AGENT_TRANSLATION_LABELS}
                                     />
                                 </div>
+                                </div>
 
                                 {/*
                                   * Outside the bubble on purpose. This is not what anyone said:
@@ -882,12 +946,12 @@ function Transcript({
                                   * their reply — and it turns amber when it has to warn, which
                                   * is unreadable on blue.
                                   */}
-                                <div className={'max-w-[85%] ' + (side === 'right' ? 'text-right' : '')}>
+                                <div className={'max-w-[85%] ' + (side === 'right' ? 'text-right' : 'pl-[1.875rem]')}>
                                     <CustomerReadsLine view={customerReadsView(message)} />
                                 </div>
 
                                 {message.attachments.length > 0 && (
-                                    <ul className={'mt-1 flex max-w-[85%] flex-col gap-1 ' + (side === 'right' ? 'items-end' : 'items-start')}>
+                                    <ul className={'mt-1 flex max-w-[85%] flex-col gap-1 ' + (side === 'right' ? 'items-end' : 'items-start pl-[1.875rem]')}>
                                         {message.attachments.map(file => {
                                             const Icon = file.contentType.startsWith('image/') ? ImageIcon : FileText;
                                             return (
@@ -939,7 +1003,7 @@ function TimeSeparator({ at, previousAt }: { at: string; previousAt: string | nu
 
     const sameDay = before !== null && now.toDateString() === before.toDateString();
     return (
-        <p className="my-3 text-center text-[11px] text-slate-400 dark:text-slate-500">
+        <p className="my-4 text-center text-xs text-slate-400 dark:text-slate-500">
             <time dateTime={at}>
                 {sameDay
                     ? now.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })
@@ -954,4 +1018,58 @@ function TimeSeparator({ at, previousAt }: { at: string; previousAt: string | nu
 /** The full timestamp, for a hover and for anything reading the title attribute. */
 function exactTime(at: string): string {
     return new Date(at).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
+}
+
+/** "Sep 29, 2026 | 5:57 PM", over the open chat. */
+function headerTime(at: string): string {
+    const date = new Date(at);
+    const day = date.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+    const time = date.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+    return `${day} | ${time}`;
+}
+
+/**
+ * How long ago, as short as a queue row can hold: "now", "1m", "3h", "2d", then the date.
+ * The exact time is on the element's title for anyone who needs it.
+ */
+function timeAgo(at: string, now = Date.now()): string {
+    const minutes = Math.floor((now - new Date(at).getTime()) / 60_000);
+    if (minutes < 1) return 'now';
+    if (minutes < 60) return `${minutes}m`;
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return `${hours}h`;
+    const days = Math.floor(hours / 24);
+    if (days < 7) return `${days}d`;
+    return new Date(at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+}
+
+/**
+ * "User: When will the refund…" — who spoke last and what they said. Who matters as much as
+ * what: a queue row ending in the customer's words is a customer waiting on an answer.
+ */
+function previewLine(item: InboxConversation, currentAdminId: string): string {
+    if (!item.lastMessageSenderType) return 'No messages yet';
+    const who = item.lastMessageSenderType === 'guest'
+        ? 'User'
+        : item.lastMessageSenderType === 'ai'
+            ? 'Assistant'
+            : item.lastMessageSenderAdminId === currentAdminId ? 'You' : 'Agent';
+    const said = item.lastMessagePreview?.trim() || 'Sent a file';
+    return `${who}: ${said}`;
+}
+
+/**
+ * A round placeholder with the customer's initial. There are no profile pictures on a support
+ * chat — a guest is a name typed into a widget — so the initial is the most there is to show.
+ */
+function Avatar({ name, className = '' }: { name: string | null; className?: string }) {
+    const initial = name?.trim().charAt(0).toUpperCase() ?? '';
+    return (
+        <span
+            aria-hidden
+            className={`flex shrink-0 items-center justify-center rounded-full bg-slate-200 font-medium text-slate-500 dark:bg-white/10 dark:text-slate-400 ${className}`}
+        >
+            {initial}
+        </span>
+    );
 }
