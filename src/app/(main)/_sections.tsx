@@ -9,6 +9,9 @@ import {
 import {
     getFlightDeals,
 } from "@/lib/server/landing/get-landing-data";
+import { GolfCoursesSection } from "@/components/golf/GolfCoursesSection";
+import { listNewestPublishedCourses } from "@/lib/server/golf/courses";
+import type { GolfCourse } from "@/lib/schemas/golf";
 
 // ─── Section skeleton — generic horizontal-scroll placeholder ────────────────
 export function SectionSkeleton() {
@@ -34,5 +37,17 @@ export function SectionSkeleton() {
 export async function DealsSectionStream() {
     const deals = await getFlightDeals();
     return <DealsSection deals={deals} />;
+}
+
+/** Up to four golf courses. Nothing when none are published or the query fails. */
+export async function GolfSectionStream() {
+    let courses: GolfCourse[];
+    try {
+        courses = await listNewestPublishedCourses(4);
+    } catch (error) {
+        console.error("[Landing] golf_courses error:", (error as Error).message ?? error);
+        return null;
+    }
+    return <GolfCoursesSection courses={courses} />;
 }
 

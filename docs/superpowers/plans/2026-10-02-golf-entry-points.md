@@ -219,7 +219,8 @@ vi.mock('@/components/golf/GolfCoursesSection', () => ({ GolfCoursesSection: () 
 
 const listNewest = vi.mocked(listNewestPublishedCourses);
 
-beforeEach(() => listNewest.mockReset());
+// Braces matter: a function returned from beforeEach runs as teardown, and mockReset returns the mock.
+beforeEach(() => { listNewest.mockReset(); });
 
 describe('GolfSectionStream', () => {
     it('hands the four newest courses to the section', async () => {

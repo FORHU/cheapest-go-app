@@ -6,6 +6,7 @@ import { HowItWorksSection } from "@/components/landing/sections/HowItWorksSecti
 import {
   SectionSkeleton,
   DealsSectionStream,
+  GolfSectionStream,
 } from "./_sections";
 import { getTranslations } from 'next-intl/server';
 import { canonicalBrandName } from '@/lib/brand';
@@ -61,6 +62,11 @@ export default async function Home() {
           {/* Data sections — each streams independently */}
           <Suspense fallback={<SectionSkeleton />}>
             <DealsSectionStream />
+          </Suspense>
+
+          {/* No skeleton: with nothing published the section does not exist */}
+          <Suspense fallback={null}>
+            <GolfSectionStream />
           </Suspense>
 
           <PopularDestinationsSection />
