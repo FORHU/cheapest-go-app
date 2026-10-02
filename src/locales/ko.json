@@ -1143,6 +1143,7 @@
     "enterprise": "기업 제휴",
     "flights": "항공편",
     "flightsApi": "항공편 API",
+    "golf": "골프",
     "hotels": "호텔",
     "legal": "법적 고지",
     "module": "모듈",
@@ -1644,6 +1645,7 @@
       "searchMode": {
         "aiSearch": "AI 검색",
         "flights": "항공편",
+        "golf": "골프",
         "stays": "숙소"
       },
       "searching": "검색 중...",
@@ -3100,6 +3102,9 @@
     "askTeeTimesHint": "원하시는 날짜, 인원, 희망 시간대를 알려주세요. 골프장에 확인 후 연락드리겠습니다.",
     "backToList": "모든 골프장",
     "courseTitle": "{name} – {country} {city} 골프",
+    "homeTitle": "골프장",
+    "homeSubtitle": "라운딩을 예약해 드릴 수 있는 골프장입니다. 티타임은 언제든 문의하세요.",
+    "seeAll": "모든 골프장 보기",
     "amenities": {
       "caddie": "캐디",
       "cart": "골프 카트",

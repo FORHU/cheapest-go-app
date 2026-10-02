@@ -1143,6 +1143,7 @@
     "enterprise": "法人向け",
     "flights": "フライト",
     "flightsApi": "フライト API",
+    "golf": "ゴルフ",
     "hotels": "ホテル",
     "legal": "法的情報",
     "module": "サービス",
@@ -1644,6 +1645,7 @@
       "searchMode": {
         "aiSearch": "AI 検索",
         "flights": "フライト",
+        "golf": "ゴルフ",
         "stays": "宿泊"
       },
       "searching": "検索中...",
@@ -3100,6 +3102,9 @@
     "askTeeTimesHint": "ご希望の日付、人数、時間帯をお知らせください。ゴルフ場に確認してご連絡します。",
     "backToList": "すべてのゴルフ場",
     "courseTitle": "{name} – {city}（{country}）のゴルフ",
+    "homeTitle": "ゴルフ場",
+    "homeSubtitle": "プレーを手配できるゴルフ場です。ティータイムはお気軽にお問い合わせください。",
+    "seeAll": "すべてのゴルフ場を見る",
     "amenities": {
       "caddie": "キャディー",
       "cart": "ゴルフカート",

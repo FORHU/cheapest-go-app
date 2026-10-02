@@ -1109,6 +1109,7 @@
     "enterprise": "Enterprise",
     "flights": "Flights",
     "flightsApi": "Flights API",
+    "golf": "Golf",
     "hotels": "Hotels",
     "legal": "Legal",
     "module": "Module",
@@ -1558,6 +1559,7 @@
       "searchMode": {
         "aiSearch": "AI Search",
         "flights": "Flights",
+        "golf": "Golf",
         "stays": "Stays"
       },
       "searchAirport": "Search airport...",
@@ -3100,6 +3102,9 @@
     "askTeeTimesHint": "Tell our team your date, number of players and preferred time. We'll check with the course and get back to you.",
     "backToList": "All golf courses",
     "courseTitle": "{name} – Golf in {city}, {country}",
+    "homeTitle": "Golf courses",
+    "homeSubtitle": "Courses we can arrange play at. Ask us about tee times.",
+    "seeAll": "See all golf courses",
     "amenities": {
       "caddie": "Caddie",
       "cart": "Golf cart",

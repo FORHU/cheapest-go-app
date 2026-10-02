@@ -1143,6 +1143,7 @@
     "enterprise": "企业服务",
     "flights": "航班",
     "flightsApi": "航班 API",
+    "golf": "高尔夫",
     "hotels": "酒店",
     "legal": "法律",
     "module": "模块",
@@ -1644,6 +1645,7 @@
       "searchMode": {
         "aiSearch": "AI 搜索",
         "flights": "航班",
+        "golf": "高尔夫",
         "stays": "住宿"
       },
       "searching": "搜索中...",
@@ -3100,6 +3102,9 @@
     "askTeeTimesHint": "请告诉我们您的日期、人数和期望时段，我们会向球场确认后回复您。",
     "backToList": "所有高尔夫球场",
     "courseTitle": "{name} – {country}{city}高尔夫",
+    "homeTitle": "高尔夫球场",
+    "homeSubtitle": "我们可为您安排打球的球场。欢迎咨询开球时间。",
+    "seeAll": "查看所有高尔夫球场",
     "amenities": {
       "caddie": "球童",
       "cart": "球车",
