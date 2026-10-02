@@ -3,6 +3,7 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import en from '@/locales/en.json';
 import type { GolfCourse } from '@/lib/schemas/golf';
 import { GolfCourseCard } from './GolfCourseCard';
+import { GolfCoursesSection } from './GolfCoursesSection';
 import { TeeTimeButton } from './TeeTimeButton';
 import { useSupportWidgetStore } from '@/stores/supportWidgetStore';
 
@@ -37,6 +38,22 @@ describe('GolfCourseCard', () => {
         render(<GolfCourseCard course={{ ...course, greenFeeFrom: null, par: null }} />);
         expect(screen.getByText('18 holes')).toBeInTheDocument();
         expect(screen.queryByText(/green fees/i)).not.toBeInTheDocument();
+    });
+});
+
+describe('GolfCoursesSection', () => {
+    it('renders nothing without courses', () => {
+        const { container } = render(<GolfCoursesSection courses={[]} />);
+        expect(container).toBeEmptyDOMElement();
+    });
+
+    it('shows the courses under one heading, with a link to all of them', () => {
+        const second = { ...course, id: 'c2', slug: 'manila-southwoods', name: 'Manila Southwoods' };
+        render(<GolfCoursesSection courses={[course, second]} />);
+        expect(screen.getByRole('heading', { level: 2, name: 'Golf courses' })).toBeInTheDocument();
+        expect(screen.getAllByRole('heading', { level: 3 }).map(h => h.textContent))
+            .toEqual(['Wack Wack East', 'Manila Southwoods']);
+        expect(screen.getByRole('link', { name: /see all golf courses/i })).toHaveAttribute('href', '/golf');
     });
 });
 

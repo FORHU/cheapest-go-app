@@ -5,8 +5,11 @@ import { useLocale, useTranslations } from 'next-intl';
 import type { GolfCourse } from '@/lib/schemas/golf';
 import { formatGreenFee } from './format';
 
-/** One course in the /golf grid. Works as a server or client component. */
-export function GolfCourseCard({ course }: { course: GolfCourse }) {
+/**
+ * One course card. Works as a server or client component. `titleAs` keeps the outline right:
+ * `h2` under the /golf page's `h1`, `h3` under the home section's `h2`.
+ */
+export function GolfCourseCard({ course, titleAs: Title = 'h2' }: { course: GolfCourse; titleAs?: 'h2' | 'h3' }) {
     const t = useTranslations('golf');
     const locale = useLocale();
     const facts = [t('holes', { holes: course.holes }), course.par ? t('par', { par: course.par }) : null]
@@ -25,7 +28,7 @@ export function GolfCourseCard({ course }: { course: GolfCourse }) {
                 )}
             </div>
             <div className="flex flex-1 flex-col gap-1 p-4">
-                <h2 className="font-semibold text-slate-900 dark:text-slate-100">{course.name}</h2>
+                <Title className="font-semibold text-slate-900 dark:text-slate-100">{course.name}</Title>
                 <p className="text-sm text-slate-500 dark:text-slate-400">{course.city}, {course.country}</p>
                 <p className="text-sm text-slate-600 dark:text-slate-300">{facts}</p>
                 {course.greenFeeFrom != null && (
