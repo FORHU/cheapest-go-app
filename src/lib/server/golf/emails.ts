@@ -1,6 +1,7 @@
 import { env } from '@/utils/env';
 import { FROM_NOREPLY, logEmail } from '@/lib/server/email';
 import type { GolfBooking } from '@/lib/schemas/golf';
+import { EXTRA_NAMES_EN } from '@/lib/golf/extras';
 
 /**
  * Golf Booking emails, one for each status a customer has to hear about. English, like the
@@ -80,6 +81,7 @@ export function buildGolfBookingEmail(kind: GolfEmailKind, b: GolfBooking): { su
         ['Players', String(b.players)],
         ['Lead player', b.leadName],
         ['Green fee', money(b.greenFeeTotal, b.currency)],
+        ...b.extras.map((e): [string, string] => [`${EXTRA_NAMES_EN[e.code]} × ${e.quantity}`, money(e.total, b.currency)]),
         ['Service fee', money(b.serviceFee, b.currency)],
         ['Total', money(b.total, b.currency)],
     ];

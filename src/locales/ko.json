@@ -3187,7 +3187,12 @@
       "cancelConfirmedHint": "{date}까지 무료로 취소할 수 있으며 {total} 전액이 환불됩니다.",
       "cancelEnded": "무료 취소 기간이 {date}에 종료되었습니다. 일정이 바뀌면 문의해 주세요.",
       "cancelFailed": "예약을 취소하지 못했습니다. 다시 시도하시거나 문의해 주세요.",
-      "noFreeCancel": "이 티타임은 무료 취소 기간이 이미 지났으므로, 골프장이 확정한 후에는 온라인으로 환불받을 수 없습니다."
+      "noFreeCancel": "이 티타임은 무료 취소 기간이 이미 지났으므로, 골프장이 확정한 후에는 온라인으로 환불받을 수 없습니다.",
+      "extrasHeading": "추가 옵션",
+      "extrasHint": "선택 사항입니다. 티타임을 확정할 때 저희 팀이 골프장에 함께 요청합니다.",
+      "extraEach": "개당 {price}",
+      "extraLine": "{name} × {count}",
+      "extrasUnavailable": "제공되는 옵션이 변경되었습니다. 다시 확인한 후 시도해 주세요."
     }
   }
 }

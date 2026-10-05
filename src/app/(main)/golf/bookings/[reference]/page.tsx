@@ -29,7 +29,7 @@ export default async function GolfBookingPage({ params }: Props) {
     // A redirect payment method, or a closed tab, can land the customer here before the webhook.
     const booking = found.status === 'held' ? ((await syncPayment(found.id).catch(() => null)) ?? found) : found;
 
-    const [t, locale] = await Promise.all([getTranslations('golf.booking'), getLocale()]);
+    const [t, tGolf, locale] = await Promise.all([getTranslations('golf.booking'), getTranslations('golf'), getLocale()]);
     const tz = booking.timezone ?? 'UTC';
     const money = (amount: number) => formatMoney(amount, booking.currency, locale);
     const courseClock = (iso: string, options: Intl.DateTimeFormatOptions) =>
@@ -80,6 +80,12 @@ export default async function GolfBookingPage({ params }: Props) {
                 </dl>
                 <dl className="mt-4 flex flex-col gap-2 border-t border-slate-200 pt-4 tabular-nums text-slate-600 dark:border-white/10 dark:text-slate-300">
                     <div className={row}><dt>{t('greenFee', { players: booking.players, price: money(booking.pricePerPlayer) })}</dt><dd>{money(booking.greenFeeTotal)}</dd></div>
+                    {booking.extras.map(extra => (
+                        <div key={extra.code} className={row}>
+                            <dt>{t('extraLine', { name: tGolf(`amenities.${extra.code}`), count: extra.quantity })}</dt>
+                            <dd>{money(extra.total)}</dd>
+                        </div>
+                    ))}
                     <div className={row}><dt>{t('serviceFee')}</dt><dd>{money(booking.serviceFee)}</dd></div>
                     <div className={`${row} font-semibold text-slate-900 dark:text-slate-100`}><dt>{t('total')}</dt><dd>{money(booking.total)}</dd></div>
                 </dl>

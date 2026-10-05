@@ -54,6 +54,14 @@ describe('buildGolfBookingEmail', () => {
         expect(late.html).toContain('Free cancellation ended on');
         expect(late.html).not.toContain('Free cancellation until');
     });
+
+    it('lists each extra as its own line', () => {
+        const { html } = buildGolfBookingEmail('requested', {
+            ...booking, extrasTotal: 90, extras: [{ code: 'club_rental', quantity: 2, unitPrice: 45, total: 90 }],
+        });
+        expect(html).toContain('Club rental × 2');
+        expect(html).toContain('90.00');
+    });
 });
 
 describe('sendGolfBookingEmail', () => {

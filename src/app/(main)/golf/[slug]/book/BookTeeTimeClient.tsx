@@ -1,11 +1,12 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useTransition } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Loader2 } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import StripeEmbeddedCheckout from '@/components/checkout/StripeEmbeddedCheckout';
+import { formatExtrasParam, type GolfExtraCode } from '@/lib/golf/extras';
 
 export interface TeeTimeSummary {
     courseName: string;
@@ -14,22 +15,49 @@ export interface TeeTimeSummary {
     time: string;
     greenFeeLabel: string;
     greenFee: string;
+    /** One line per chosen extra. */
+    extraLines: { label: string; amount: string }[];
     serviceFee: string;
     total: string;
     freeCancel: string;
 }
 
+export interface ExtraOption {
+    code: GolfExtraCode;
+    name: string;
+    /** "$45.00 each" */
+    each: string;
+    quantity: number;
+}
+
 /**
- * The lead player's name, then the card. The card is authorised, not charged: the team captures
- * after the course confirms (CONTEXT.md, "Golf Booking").
+ * Extras, the lead player's name, then the card. Choosing an extra changes the URL so the server
+ * prices the whole booking again; the card is authorised, not charged, until the team confirms
+ * with the course (CONTEXT.md, "Golf Booking").
  */
-export function BookTeeTimeClient({ teeTimeId, players, summary }: { teeTimeId: string; players: number; summary: TeeTimeSummary }) {
+export function BookTeeTimeClient({ teeTimeId, players, bookPath, extras, summary }: {
+    teeTimeId: string;
+    players: number;
+    bookPath: string;
+    extras: ExtraOption[];
+    summary: TeeTimeSummary;
+}) {
     const t = useTranslations('golf.booking');
     const router = useRouter();
+    const [repricing, startRepricing] = useTransition();
     const [leadName, setLeadName] = useState('');
     const [busy, setBusy] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [payment, setPayment] = useState<{ reference: string; clientSecret: string } | null>(null);
+
+    const chosen = extras.filter(e => e.quantity > 0).map(e => ({ code: e.code, quantity: e.quantity }));
+
+    const choose = (code: GolfExtraCode, quantity: number) => {
+        const param = formatExtrasParam(extras.map(e => ({ code: e.code, quantity: e.code === code ? quantity : e.quantity })));
+        startRepricing(() => {
+            router.replace(`${bookPath}?teeTime=${teeTimeId}&players=${players}${param ? `&extras=${param}` : ''}`, { scroll: false });
+        });
+    };
 
     const start = async (event: React.FormEvent) => {
         event.preventDefault();
@@ -39,13 +67,16 @@ export function BookTeeTimeClient({ teeTimeId, players, summary }: { teeTimeId: 
             const response = await fetch('/api/golf/bookings', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'X-Requested-By': 'cheapestgo-client' },
-                body: JSON.stringify({ teeTimeId, players, leadName }),
+                body: JSON.stringify({ teeTimeId, players, leadName, extras: chosen }),
             });
             const json = await response.json().catch(() => ({}));
             if (response.ok) setPayment({ reference: json.data.reference, clientSecret: json.data.clientSecret });
             else if (json.code === 'not_enough_spots') setError(t('notEnoughSpots', { count: json.spotsLeft ?? 0 }));
             else if (json.code === 'tee_time_unavailable') setError(t('unavailable'));
-            else if (json.fieldErrors?.leadName) setError(t('leadNameRequired'));
+            else if (json.code === 'extras_unavailable') {
+                setError(t('extrasUnavailable'));
+                router.refresh();
+            } else if (json.fieldErrors?.leadName) setError(t('leadNameRequired'));
             else if (response.status === 401) setError(t('loginRequired'));
             else setError(t('genericError'));
         } catch {
@@ -63,6 +94,29 @@ export function BookTeeTimeClient({ teeTimeId, players, summary }: { teeTimeId: 
             <section className="flex min-w-0 flex-col gap-5">
                 <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">{t('checkoutTitle')}</h1>
                 <p className="rounded-xl bg-blue-50 p-4 text-sm leading-relaxed text-blue-900 dark:bg-blue-950/40 dark:text-blue-100">{t('chargeNotice')}</p>
+
+                {extras.length > 0 && !payment && (
+                    <section className="flex flex-col gap-3 rounded-xl border border-slate-200 p-5 dark:border-white/10" aria-busy={repricing}>
+                        <div>
+                            <h2 className="font-semibold text-slate-900 dark:text-slate-100">{t('extrasHeading')}</h2>
+                            <p className="text-xs text-slate-500 dark:text-slate-400">{t('extrasHint')}</p>
+                        </div>
+                        {extras.map(extra => (
+                            <div key={extra.code} className="flex items-center justify-between gap-3">
+                                <label htmlFor={`extra-${extra.code}`} className="text-sm">
+                                    <span className="block font-medium text-slate-900 dark:text-slate-100">{extra.name}</span>
+                                    <span className="block text-xs text-slate-500 dark:text-slate-400">{extra.each}</span>
+                                </label>
+                                <select id={`extra-${extra.code}`} value={extra.quantity} disabled={repricing}
+                                    onChange={e => choose(extra.code, Number(e.target.value))}
+                                    className="rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-sm text-slate-900 dark:border-white/10 dark:bg-white/5 dark:text-slate-100">
+                                    {Array.from({ length: players + 1 }, (_, n) => <option key={n} value={n}>{n}</option>)}
+                                </select>
+                            </div>
+                        ))}
+                    </section>
+                )}
+
                 {payment ? (
                     <StripeEmbeddedCheckout
                         clientSecret={payment.clientSecret}
@@ -77,7 +131,7 @@ export function BookTeeTimeClient({ teeTimeId, players, summary }: { teeTimeId: 
                             className="rounded-lg border border-slate-200 px-3 py-2 text-slate-900 dark:border-white/10 dark:bg-white/5 dark:text-slate-100" />
                         <p className="text-xs text-slate-500 dark:text-slate-400">{t('leadNameHint')}</p>
                         {error && <p role="alert" className="text-sm text-red-600 dark:text-red-400">{error}</p>}
-                        <button type="submit" disabled={busy}
+                        <button type="submit" disabled={busy || repricing}
                             className="mt-3 flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-6 py-3 font-semibold text-white transition hover:bg-blue-700 disabled:opacity-60">
                             {busy && <Loader2 className="h-4 w-4 animate-spin" aria-hidden />} {t('continueToPayment')}
                         </button>
@@ -93,8 +147,11 @@ export function BookTeeTimeClient({ teeTimeId, players, summary }: { teeTimeId: 
                     <div className={row}><dt>{t('timeLabel')}</dt><dd className="text-right">{summary.time}</dd></div>
                     <div className={row}><dt>{t('playersLabel')}</dt><dd className="text-right">{players}</dd></div>
                 </dl>
-                <dl className="mt-4 flex flex-col gap-2 border-t border-slate-200 pt-4 tabular-nums text-slate-600 dark:border-white/10 dark:text-slate-300">
+                <dl className={`mt-4 flex flex-col gap-2 border-t border-slate-200 pt-4 tabular-nums text-slate-600 dark:border-white/10 dark:text-slate-300 ${repricing ? 'opacity-60' : ''}`}>
                     <div className={row}><dt>{summary.greenFeeLabel}</dt><dd>{summary.greenFee}</dd></div>
+                    {summary.extraLines.map(line => (
+                        <div key={line.label} className={row}><dt>{line.label}</dt><dd>{line.amount}</dd></div>
+                    ))}
                     <div className={row}><dt>{t('serviceFee')}</dt><dd>{summary.serviceFee}</dd></div>
                     <div className={`${row} font-semibold text-slate-900 dark:text-slate-100`}><dt>{t('total')}</dt><dd>{summary.total}</dd></div>
                 </dl>
