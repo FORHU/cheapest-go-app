@@ -16,6 +16,13 @@ export const AMENITY_LABELS: Record<GolfAmenity, string> = {
     lessons: 'Lessons', night_golf: 'Night golf',
 };
 
+/** Suggestions only: any IANA name is accepted and checked on the server. */
+const COMMON_TIME_ZONES = [
+    'Asia/Manila', 'Asia/Seoul', 'Asia/Tokyo', 'Asia/Shanghai', 'Asia/Hong_Kong', 'Asia/Taipei',
+    'Asia/Singapore', 'Asia/Kuala_Lumpur', 'Asia/Bangkok', 'Asia/Ho_Chi_Minh', 'Asia/Jakarta',
+    'Asia/Dubai', 'Australia/Sydney', 'Europe/London', 'America/New_York', 'America/Los_Angeles',
+];
+
 const inputClass =
     'w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm dark:border-white/10 dark:bg-white/5';
 
@@ -46,6 +53,8 @@ export function GolfCourseForm({
     const [images, setImages] = useState((initial?.imageUrls ?? []).join('\n'));
     const [amenities, setAmenities] = useState<GolfAmenity[]>(initial?.amenities ?? []);
     const [description, setDescription] = useState(initial?.description ?? '');
+    const [timezone, setTimezone] = useState(initial?.timezone ?? '');
+    const [freeCancelHours, setFreeCancelHours] = useState(String(initial?.freeCancelHours ?? 48));
     const [errors, setErrors] = useState<FieldErrors>({});
     const [saving, setSaving] = useState(false);
 
@@ -61,6 +70,7 @@ export function GolfCourseForm({
                 holes: Number(holes), par: toNumber(par), greenFeeFrom: toNumber(greenFee), currency,
                 imageUrls: images.split('\n').map(line => line.trim()).filter(Boolean),
                 amenities,
+                timezone, freeCancelHours: Number(freeCancelHours),
             });
             if (result?.fieldErrors) setErrors(result.fieldErrors);
         } finally {
@@ -103,6 +113,20 @@ export function GolfCourseForm({
                 {field('par', 'Par', <input id="par" type="number" inputMode="numeric" className={inputClass} value={par} onChange={e => setPar(e.target.value)} />)}
                 {field('greenFeeFrom', 'Green fee from', <input id="greenFeeFrom" type="number" min="0" step="0.01" className={inputClass} value={greenFee} onChange={e => setGreenFee(e.target.value)} />, 'Indicative, not a quote')}
                 {field('currency', 'Currency', <input id="currency" maxLength={3} className={`${inputClass} uppercase`} value={currency} onChange={e => setCurrency(e.target.value)} />)}
+            </div>
+
+            <div className="grid gap-4 sm:grid-cols-2">
+                {field('timezone', 'Time zone', (
+                    <>
+                        <input id="timezone" list="golf-time-zones" className={`${inputClass} font-mono`} value={timezone}
+                            onChange={e => setTimezone(e.target.value)} placeholder="Asia/Manila" />
+                        <datalist id="golf-time-zones">{COMMON_TIME_ZONES.map(zone => <option key={zone} value={zone} />)}</datalist>
+                    </>
+                ), 'Needed before adding tee times. Tee times are set on this clock.')}
+                {field('freeCancelHours', 'Free cancellation (hours before tee time)', (
+                    <input id="freeCancelHours" type="number" min="0" max="720" className={inputClass} value={freeCancelHours}
+                        onChange={e => setFreeCancelHours(e.target.value)} />
+                ), 'Recorded on each booking when it is made.')}
             </div>
 
             <fieldset>

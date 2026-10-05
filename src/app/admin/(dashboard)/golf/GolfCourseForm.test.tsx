@@ -43,4 +43,18 @@ describe('GolfCourseForm', () => {
         fireEvent.click(screen.getByRole('button', { name: /save/i }));
         expect(await screen.findByText('Another course already uses this slug')).toBeInTheDocument();
     });
+
+    it('sends the time zone and free-cancellation hours', async () => {
+        const onSubmit = vi.fn(async () => undefined);
+        render(<GolfCourseForm onSubmit={onSubmit} onCancel={vi.fn()} />);
+        type(/^name/i, 'Wack Wack');
+        type(/^country/i, 'Philippines');
+        type(/^city/i, 'Manila');
+        type(/^time zone/i, 'Asia/Manila');
+        type(/^free cancellation/i, '72');
+        fireEvent.click(screen.getByRole('button', { name: /save/i }));
+
+        await waitFor(() => expect(onSubmit).toHaveBeenCalled());
+        expect((onSubmit.mock.calls[0] as unknown[])[0]).toMatchObject({ timezone: 'Asia/Manila', freeCancelHours: 72 });
+    });
 });
