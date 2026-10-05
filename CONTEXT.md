@@ -461,8 +461,14 @@ _Avoid_: calling it a chat or an assistant. _Note_: as of 2026-09-05 it is a moc
 
 ## Golf
 
-**Golf Course** — a course CheapestGo can arrange play at, curated by the team in the admin (`golf_courses`). There is no supplier behind it: nothing is live, nothing is held, and the **green fee from** figure is an indicative price for the listing, never a quote. A course is a *draft* until an admin publishes it; only published courses reach the storefront, and that rule lives in `lib/server/golf/courses`, not in pages. In v1 the booking channel is the support chat — "Ask about tee times" opens it and the team confirms with the course. Course names and descriptions are written once by the team and are not per-language.
-_Avoid_: calling the green fee a price the customer will pay, or a listing "availability".
+**Golf Course** — a course CheapestGo can arrange play at, curated by the team in the admin (`golf_courses`). There is no supplier behind it, and the **green fee from** figure is an indicative price for the listing, never a quote. A course is a *draft* until an admin publishes it; only published courses reach the storefront, and that rule lives in `lib/server/golf/courses`, not in pages. A course with a time zone and at least one schedule sells **Tee Times**; every course can still be asked about in the support chat ("Ask about tee times"). Course names and descriptions are written once by the team and are not per-language.
+_Avoid_: calling the green fee a price the customer will pay.
+
+**Tee Time** — one start time at a Golf Course with 1–4 spots, generated from a weekly schedule the team sets in admin (`golf_tee_time_schedules` → `golf_tee_times`), stored as an instant and always shown on the course's own clock. Our tee times are not the course's tee sheet: selling one is a promise to *ask* the course, which is why a Golf Booking is a request until the team confirms it. Spots are taken by one conditional update and given back in the same transaction that closes a booking (`lib/server/golf/bookings`).
+_Avoid_: calling a tee time the course's live availability — it is our allocation.
+
+**Golf Booking** — a customer's request for a Tee Time (`golf_bookings`): `held` while they pay (15 minutes), `requested` once the card is authorised, `confirmed` when the team has checked with the course and captured the payment. A request the team declines, or does not decide within 48 hours (or 2 hours before the tee time), is `declined` and never charged. A confirmed booking is refunded in full, fee included, until the free-cancellation cutoff recorded on it; after that it cannot be cancelled online.
+_Avoid_: saying a requested booking is paid — the card is only authorised.
 
 ## Localization
 
