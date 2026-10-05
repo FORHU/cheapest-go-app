@@ -7,6 +7,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
     LayoutDashboard,
     CalendarRange,
+    CalendarCheck,
     Users,
     Building2,
     BarChart3,
@@ -80,6 +81,7 @@ const navGroups: NavGroup[] = [
         items: [
             { label: 'Destinations', href: '/admin/destinations', icon: MapPin },
             { label: 'Golf Courses', href: '/admin/golf', icon: Flag },
+            { label: 'Golf Bookings', href: '/admin/golf/bookings', icon: CalendarCheck },
             { label: 'Deals & Vouchers', href: '/admin/deals',    icon: Tag },
             { label: 'Saved Trips',  href: '/admin/saved-trips',  icon: Bookmark },
         ],
