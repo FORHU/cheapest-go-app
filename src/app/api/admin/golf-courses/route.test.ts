@@ -14,12 +14,15 @@ vi.mock('@/lib/server/golf/courses', () => ({
     createCourse: vi.fn(async (input: { slug: string }) => ({ id: 'c1', status: 'draft', ...input })),
     updateCourse: vi.fn(async () => null),
     setCourseStatus: vi.fn(async () => true),
+    setCourseTimezone: vi.fn(async (id: string, timezone: string) => ({ id, timezone })),
     deleteCourses: vi.fn(async (ids: string[]) => ids.length),
 }));
 
 import { GET, POST } from './route';
-import { createCourse, deleteCourses } from '@/lib/server/golf/courses';
-import { CourseHasBookingsError, SlugTakenError } from '@/lib/server/golf/errors';
+import { createCourse, deleteCourses, setCourseStatus, setCourseTimezone, updateCourse } from '@/lib/server/golf/courses';
+import {
+    CourseHasBookingsError, CourseNotBookableError, SlugTakenError, TimezoneLockedError,
+} from '@/lib/server/golf/errors';
 
 const post = (body: unknown) =>
     POST(new Request('http://localhost/api/admin/golf-courses', {
@@ -74,5 +77,27 @@ describe('/api/admin/golf-courses', () => {
         vi.mocked(deleteCourses).mockRejectedValueOnce(new CourseHasBookingsError());
         const res = await post({ action: 'delete', id: crypto.randomUUID() });
         expect(res.status).toBe(409);
+    });
+
+    it('answers publishing a course that cannot be booked with 409', async () => {
+        vi.mocked(setCourseStatus).mockRejectedValueOnce(new CourseNotBookableError());
+        const res = await post({ action: 'publish', id: crypto.randomUUID() });
+        expect(res.status).toBe(409);
+        expect((await res.json()).error).toContain('time zone');
+    });
+
+    it('answers a locked time zone with 409 on the field', async () => {
+        vi.mocked(updateCourse).mockRejectedValueOnce(new TimezoneLockedError());
+        const res = await post({ action: 'update', id: crypto.randomUUID(), course });
+        expect(res.status).toBe(409);
+        expect((await res.json()).fieldErrors.timezone).toBeDefined();
+    });
+
+    it('sets a time zone, refusing an invented one', async () => {
+        const id = crypto.randomUUID();
+        expect((await post({ action: 'set-timezone', id, timezone: 'Mars/Base' })).status).toBe(400);
+        const res = await post({ action: 'set-timezone', id, timezone: 'Asia/Manila' });
+        expect(res.status).toBe(200);
+        expect(setCourseTimezone).toHaveBeenCalledWith(id, 'Asia/Manila');
     });
 });

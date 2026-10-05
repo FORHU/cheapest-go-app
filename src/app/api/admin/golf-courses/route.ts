@@ -5,9 +5,12 @@ import { rateLimit } from '@/lib/server/rate-limit';
 import { logAdminAction } from '@/lib/server/admin/audit';
 import { golfCourseInputSchema } from '@/lib/schemas/golf';
 import {
-    listCoursesForAdmin, createCourse, updateCourse, setCourseStatus, deleteCourses,
+    listCoursesForAdmin, createCourse, updateCourse, setCourseStatus, setCourseTimezone, deleteCourses,
 } from '@/lib/server/golf/courses';
-import { CourseHasBookingsError, SlugTakenError } from '@/lib/server/golf/errors';
+import {
+    CourseHasBookingsError, CourseNotBookableError, SlugTakenError, TimezoneLockedError,
+} from '@/lib/server/golf/errors';
+import { isValidTimeZone } from '@/lib/golf/time';
 
 export const dynamic = 'force-dynamic';
 
@@ -76,6 +79,19 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ success: true });
         }
 
+        if (action === 'set-timezone') {
+            const id = idSchema.safeParse(body.id);
+            if (!id.success) return fail(400, 'id is required');
+            const timezone = typeof body.timezone === 'string' ? body.timezone.trim() : '';
+            if (!isValidTimeZone(timezone)) {
+                return fail(400, 'Some fields need attention', { timezone: ['Use a time zone name such as Asia/Manila'] });
+            }
+            const updated = await setCourseTimezone(id.data, timezone);
+            if (!updated) return fail(404, 'Course not found');
+            logAdminAction({ action: 'set_golf_course_timezone', ...who, targetId: id.data, details: { timezone } });
+            return NextResponse.json({ success: true, data: updated });
+        }
+
         if (action === 'delete') {
             const ids = z.array(idSchema).min(1).safeParse(body.ids ?? (body.id ? [body.id] : []));
             if (!ids.success) return fail(400, 'id or ids required');
@@ -88,6 +104,8 @@ export async function POST(req: NextRequest) {
             return fail(409, err.message, { slug: ['Another course already uses this slug'] });
         }
         if (err instanceof CourseHasBookingsError) return fail(409, err.message);
+        if (err instanceof CourseNotBookableError) return fail(409, err.message);
+        if (err instanceof TimezoneLockedError) return fail(409, err.message, { timezone: [err.message] });
         throw err;
     }
 

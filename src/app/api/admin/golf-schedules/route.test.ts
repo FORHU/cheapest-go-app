@@ -17,7 +17,7 @@ vi.mock('@/lib/server/golf/teeTimes', () => ({
 
 import { GET, POST } from './route';
 import { createSchedule, deleteSchedule } from '@/lib/server/golf/teeTimes';
-import { CourseNotSchedulableError } from '@/lib/server/golf/errors';
+import { CourseNotSchedulableError, LastScheduleError } from '@/lib/server/golf/errors';
 
 const courseId = '6f1c2e0a-9b7d-4c1e-a2f5-3d8e1b0c7a44';
 const schedule = { name: 'Weekday mornings', daysOfWeek: [1, 2, 3, 4, 5], firstTee: '06:00', lastTee: '11:00', intervalMinutes: 10, pricePerPlayer: 2500 };
@@ -60,5 +60,10 @@ describe('/api/admin/golf-schedules', () => {
         expect((await post({ action: 'delete', id: courseId })).status).toBe(200);
         vi.mocked(deleteSchedule).mockResolvedValueOnce(false);
         expect((await post({ action: 'delete', id: courseId })).status).toBe(404);
+    });
+
+    it("refuses deleting a published course's last schedule with 409", async () => {
+        vi.mocked(deleteSchedule).mockRejectedValueOnce(new LastScheduleError());
+        expect((await post({ action: 'delete', id: courseId })).status).toBe(409);
     });
 });

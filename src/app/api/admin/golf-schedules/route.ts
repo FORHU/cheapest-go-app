@@ -5,7 +5,7 @@ import { rateLimit } from '@/lib/server/rate-limit';
 import { logAdminAction } from '@/lib/server/admin/audit';
 import { teeTimeScheduleInputSchema } from '@/lib/schemas/golf';
 import { createSchedule, deleteSchedule, listSchedules } from '@/lib/server/golf/teeTimes';
-import { CourseNotSchedulableError } from '@/lib/server/golf/errors';
+import { CourseNotSchedulableError, LastScheduleError } from '@/lib/server/golf/errors';
 
 export const dynamic = 'force-dynamic';
 
@@ -62,7 +62,12 @@ export async function POST(req: NextRequest) {
     if (body.action === 'delete') {
         const id = idSchema.safeParse(body.id);
         if (!id.success) return fail(400, 'id is required');
-        if (!(await deleteSchedule(id.data))) return fail(404, 'Schedule not found');
+        try {
+            if (!(await deleteSchedule(id.data))) return fail(404, 'Schedule not found');
+        } catch (err) {
+            if (err instanceof LastScheduleError) return fail(409, err.message);
+            throw err;
+        }
         logAdminAction({ action: 'delete_golf_schedule', ...who, targetId: id.data });
         return NextResponse.json({ success: true });
     }
