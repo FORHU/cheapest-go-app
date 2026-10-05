@@ -7,7 +7,7 @@ import { golfCourseInputSchema } from '@/lib/schemas/golf';
 import {
     listCoursesForAdmin, createCourse, updateCourse, setCourseStatus, deleteCourses,
 } from '@/lib/server/golf/courses';
-import { SlugTakenError } from '@/lib/server/golf/errors';
+import { CourseHasBookingsError, SlugTakenError } from '@/lib/server/golf/errors';
 
 export const dynamic = 'force-dynamic';
 
@@ -87,6 +87,7 @@ export async function POST(req: NextRequest) {
         if (err instanceof SlugTakenError) {
             return fail(409, err.message, { slug: ['Another course already uses this slug'] });
         }
+        if (err instanceof CourseHasBookingsError) return fail(409, err.message);
         throw err;
     }
 

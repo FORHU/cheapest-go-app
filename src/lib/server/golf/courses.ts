@@ -1,7 +1,7 @@
 import type postgres from 'postgres';
 import { getSqlAdmin } from '@/lib/db/postgres';
 import type { GolfCourse, GolfCourseInput, GolfCourseStatus } from '@/lib/schemas/golf';
-import { SlugTakenError } from './errors';
+import { CourseHasBookingsError, SlugTakenError } from './errors';
 
 /**
  * Every query about Golf Courses (CONTEXT.md, "Golf Course").
@@ -16,7 +16,7 @@ function columns(sql: postgres.Sql) {
     return sql`
         id, slug, name, country, city, address, description, holes, par,
         green_fee_from::float8 AS "greenFeeFrom", currency, image_urls AS "imageUrls",
-        amenities, status
+        amenities, status, timezone, free_cancel_hours AS "freeCancelHours"
     `;
 }
 
@@ -104,11 +104,12 @@ export async function createCourse(input: GolfCourseInput): Promise<GolfCourse> 
         const rows = await sql<GolfCourse[]>`
             INSERT INTO golf_courses
                 (slug, name, country, city, address, description, holes, par,
-                 green_fee_from, currency, image_urls, amenities)
+                 green_fee_from, currency, image_urls, amenities, timezone, free_cancel_hours)
             VALUES
                 (${input.slug}, ${input.name}, ${input.country}, ${input.city}, ${input.address},
                  ${input.description}, ${input.holes}, ${input.par}, ${input.greenFeeFrom},
-                 ${input.currency}, ${input.imageUrls}::text[], ${input.amenities}::text[])
+                 ${input.currency}, ${input.imageUrls}::text[], ${input.amenities}::text[],
+                 ${input.timezone}, ${input.freeCancelHours})
             RETURNING ${columns(sql)}`;
         return plain(rows)[0];
     } catch (err) {
@@ -127,7 +128,8 @@ export async function updateCourse(id: string, input: GolfCourseInput): Promise<
                 city = ${input.city}, address = ${input.address}, description = ${input.description},
                 holes = ${input.holes}, par = ${input.par}, green_fee_from = ${input.greenFeeFrom},
                 currency = ${input.currency}, image_urls = ${input.imageUrls}::text[],
-                amenities = ${input.amenities}::text[], updated_at = now()
+                amenities = ${input.amenities}::text[], timezone = ${input.timezone},
+                free_cancel_hours = ${input.freeCancelHours}, updated_at = now()
              WHERE id = ${id}
             RETURNING ${columns(sql)}`;
         return plain(rows)[0] ?? null;
@@ -149,6 +151,12 @@ export async function setCourseStatus(id: string, status: GolfCourseStatus): Pro
 export async function deleteCourses(ids: string[]): Promise<number> {
     if (ids.length === 0) return 0;
     const sql = getSqlAdmin();
-    const rows = await sql`DELETE FROM golf_courses WHERE id IN ${sql(ids)} RETURNING id`;
-    return rows.length;
+    try {
+        const rows = await sql`DELETE FROM golf_courses WHERE id IN ${sql(ids)} RETURNING id`;
+        return rows.length;
+    } catch (err) {
+        // golf_bookings restricts deletes: a booking must keep its course.
+        if ((err as { code?: string })?.code === '23503') throw new CourseHasBookingsError();
+        throw err;
+    }
 }

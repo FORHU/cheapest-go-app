@@ -31,7 +31,7 @@ function input(over: Partial<GolfCourseInput> = {}): GolfCourseInput {
     return {
         name: 'Test Course', country: `Testland-${run}`, city: 'Testville', slug: `golf-test-${run}-${made++}`,
         address: null, description: '', holes: 18, par: 72, greenFeeFrom: 85, currency: 'USD',
-        imageUrls: [], amenities: ['cart'], ...over,
+        imageUrls: [], amenities: ['cart'], timezone: null, freeCancelHours: 48, ...over,
     };
 }
 

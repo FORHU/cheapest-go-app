@@ -18,8 +18,8 @@ vi.mock('@/lib/server/golf/courses', () => ({
 }));
 
 import { GET, POST } from './route';
-import { createCourse } from '@/lib/server/golf/courses';
-import { SlugTakenError } from '@/lib/server/golf/errors';
+import { createCourse, deleteCourses } from '@/lib/server/golf/courses';
+import { CourseHasBookingsError, SlugTakenError } from '@/lib/server/golf/errors';
 
 const post = (body: unknown) =>
     POST(new Request('http://localhost/api/admin/golf-courses', {
@@ -68,5 +68,11 @@ describe('/api/admin/golf-courses', () => {
 
     it('rejects an unknown action', async () => {
         expect((await post({ action: 'explode' })).status).toBe(400);
+    });
+
+    it('answers deleting a course with bookings with 409', async () => {
+        vi.mocked(deleteCourses).mockRejectedValueOnce(new CourseHasBookingsError());
+        const res = await post({ action: 'delete', id: crypto.randomUUID() });
+        expect(res.status).toBe(409);
     });
 });
