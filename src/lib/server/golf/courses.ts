@@ -1,7 +1,7 @@
 import type postgres from 'postgres';
 import { getSqlAdmin } from '@/lib/db/postgres';
 import type { GolfCourse, GolfCourseInput, GolfCourseStatus } from '@/lib/schemas/golf';
-import { CourseHasBookingsError, SlugTakenError } from './errors';
+import { CourseHasBookingsError, CourseNotBookableError, SlugTakenError, TimezoneLockedError } from './errors';
 
 /**
  * Every query about Golf Courses (CONTEXT.md, "Golf Course").
@@ -21,13 +21,22 @@ function columns(sql: postgres.Sql) {
 }
 
 /** postgres.js returns a RowList; plain objects cross the server/client boundary cleanly. */
-function plain(rows: readonly GolfCourse[]): GolfCourse[] {
+function plain<T extends GolfCourse>(rows: readonly T[]): T[] {
     return rows.map(row => ({ ...row, currency: row.currency.trim() }));
 }
 
 function isSlugConflict(err: unknown): boolean {
     const e = err as { code?: string; constraint_name?: string };
     return e?.code === '23505' && e.constraint_name === 'golf_courses_slug_key';
+}
+
+/** The course's clock and whether it has schedules; undefined when there is no such course. */
+async function clockState(sql: postgres.Sql, id: string) {
+    const [row] = await sql<{ timezone: string | null; hasSchedules: boolean }[]>`
+        SELECT c.timezone,
+               EXISTS (SELECT 1 FROM golf_tee_time_schedules s WHERE s.course_id = c.id) AS "hasSchedules"
+          FROM golf_courses c WHERE c.id = ${id}`;
+    return row;
 }
 
 export async function listPublishedCourses({ country }: { country?: string } = {}): Promise<GolfCourse[]> {
@@ -64,8 +73,11 @@ export async function getPublishedCourseBySlug(slug: string): Promise<GolfCourse
     return plain(rows)[0] ?? null;
 }
 
+/** An admin list row: the course, and whether customers can book it. */
+export type AdminGolfCourse = GolfCourse & { bookable: boolean };
+
 export interface AdminCoursePage {
-    courses: GolfCourse[];
+    courses: AdminGolfCourse[];
     total: number;
     page: number;
     pageSize: number;
@@ -82,8 +94,11 @@ export async function listCoursesForAdmin({ q = '', page = 1 }: { q?: string; pa
         : sql``;
 
     const [rows, [{ count }]] = await Promise.all([
-        sql<GolfCourse[]>`
-            SELECT ${columns(sql)} FROM golf_courses ${where}
+        sql<AdminGolfCourse[]>`
+            SELECT ${columns(sql)},
+                   (timezone IS NOT NULL AND EXISTS (
+                       SELECT 1 FROM golf_tee_time_schedules s WHERE s.course_id = golf_courses.id)) AS bookable
+              FROM golf_courses ${where}
              ORDER BY updated_at DESC
              LIMIT ${ADMIN_PAGE_SIZE} OFFSET ${(current - 1) * ADMIN_PAGE_SIZE}`,
         sql<{ count: number }[]>`SELECT count(*)::int AS count FROM golf_courses ${where}`,
@@ -121,6 +136,10 @@ export async function createCourse(input: GolfCourseInput): Promise<GolfCourse> 
 /** null when no course has this id. */
 export async function updateCourse(id: string, input: GolfCourseInput): Promise<GolfCourse | null> {
     const sql = getSqlAdmin();
+    const state = await clockState(sql, id);
+    if (!state) return null;
+    // Tee times were generated on this clock (and a published course must keep one).
+    if (state.hasSchedules && state.timezone !== input.timezone) throw new TimezoneLockedError();
     try {
         const rows = await sql<GolfCourse[]>`
             UPDATE golf_courses SET
@@ -139,12 +158,36 @@ export async function updateCourse(id: string, input: GolfCourseInput): Promise<
     }
 }
 
-/** false when no course has this id. */
+/**
+ * false when no course has this id. Publishing is refused unless the course can be booked — a
+ * time zone and at least one schedule — so a published course always offers tee times.
+ */
 export async function setCourseStatus(id: string, status: GolfCourseStatus): Promise<boolean> {
     const sql = getSqlAdmin();
+    if (status === 'draft') {
+        const rows = await sql`UPDATE golf_courses SET status = 'draft', updated_at = now() WHERE id = ${id} RETURNING id`;
+        return rows.length > 0;
+    }
     const rows = await sql`
-        UPDATE golf_courses SET status = ${status}, updated_at = now() WHERE id = ${id} RETURNING id`;
-    return rows.length > 0;
+        UPDATE golf_courses c SET status = 'published', updated_at = now()
+         WHERE c.id = ${id} AND c.timezone IS NOT NULL
+           AND EXISTS (SELECT 1 FROM golf_tee_time_schedules s WHERE s.course_id = c.id)
+        RETURNING c.id`;
+    if (rows.length > 0) return true;
+    if (await clockState(sql, id)) throw new CourseNotBookableError();
+    return false;
+}
+
+/** Sets the clock a course's tee times are on; null when no course has this id. */
+export async function setCourseTimezone(id: string, timezone: string): Promise<GolfCourse | null> {
+    const sql = getSqlAdmin();
+    const state = await clockState(sql, id);
+    if (!state) return null;
+    if (state.hasSchedules && state.timezone !== timezone) throw new TimezoneLockedError();
+    const rows = await sql<GolfCourse[]>`
+        UPDATE golf_courses SET timezone = ${timezone}, updated_at = now() WHERE id = ${id}
+        RETURNING ${columns(sql)}`;
+    return plain(rows)[0] ?? null;
 }
 
 /** How many were deleted. */

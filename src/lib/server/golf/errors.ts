@@ -51,3 +51,27 @@ export class GolfBookingError extends Error {
         return HTTP_STATUS[this.code];
     }
 }
+
+/** Published means bookable: publishing needs a time zone and at least one tee-time schedule. */
+export class CourseNotBookableError extends Error {
+    constructor() {
+        super('Add a time zone and at least one tee-time schedule before publishing this course.');
+        this.name = 'CourseNotBookableError';
+    }
+}
+
+/** Tee times were generated on the course's clock, so it cannot change while schedules exist. */
+export class TimezoneLockedError extends Error {
+    constructor() {
+        super("This course has tee-time schedules, so its time zone can't change. Delete its schedules first.");
+        this.name = 'TimezoneLockedError';
+    }
+}
+
+/** A published course must stay bookable, so its last schedule cannot go. */
+export class LastScheduleError extends Error {
+    constructor() {
+        super("This is the course's last schedule. Unpublish the course before deleting it.");
+        this.name = 'LastScheduleError';
+    }
+}

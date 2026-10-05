@@ -1,10 +1,10 @@
 import { describe, it, expect, afterAll } from 'vitest';
 import type { GolfCourseInput } from '@/lib/schemas/golf';
 import {
-    createCourse, updateCourse, setCourseStatus, deleteCourses,
+    createCourse, updateCourse, setCourseStatus, setCourseTimezone, deleteCourses,
     getPublishedCourseBySlug, listPublishedCourses, listNewestPublishedCourses, listPublishedCountries, listCoursesForAdmin,
 } from './courses';
-import { SlugTakenError } from './errors';
+import { CourseNotBookableError, SlugTakenError, TimezoneLockedError } from './errors';
 
 /**
  * Golf Courses against a real database: every rule here — drafts off the storefront, the
@@ -35,10 +35,23 @@ function input(over: Partial<GolfCourseInput> = {}): GolfCourseInput {
     };
 }
 
+/** A schedule row only: publishing needs one, these tests need no tee times. */
+async function addSchedule(courseId: string) {
+    const { getSqlAdmin } = await import('@/lib/db/postgres');
+    await getSqlAdmin()`
+        INSERT INTO golf_tee_time_schedules
+            (course_id, name, days_of_week, first_tee, last_tee, interval_minutes, spots, price_per_player)
+        VALUES (${courseId}, 'Test', '{1}', '07:00', '07:00', 10, 4, 100)`;
+}
+
 async function make(over: Partial<GolfCourseInput> = {}, publish = false) {
-    const course = await createCourse(input(over));
+    const course = await createCourse(input(publish ? { timezone: 'Asia/Manila', ...over } : over));
     created.push(course.id);
-    if (publish) await setCourseStatus(course.id, 'published');
+    if (publish) {
+        // Published means bookable (CONTEXT.md, "Golf Course").
+        await addSchedule(course.id);
+        await setCourseStatus(course.id, 'published');
+    }
     return course;
 }
 
@@ -84,5 +97,32 @@ describe.skipIf(!reachable)('golf courses', () => {
         const result = await listCoursesForAdmin({ q: `Findable ${run}`, page: 1 });
         expect(result.courses.map(c => c.id)).toEqual([course.id]);
         expect(result.total).toBe(1);
+    });
+
+    it('publishes only a course that can be booked', async () => {
+        const course = await make();
+        await expect(setCourseStatus(course.id, 'published')).rejects.toBeInstanceOf(CourseNotBookableError);
+        await setCourseTimezone(course.id, 'Asia/Manila');
+        await expect(setCourseStatus(course.id, 'published')).rejects.toBeInstanceOf(CourseNotBookableError);
+        await addSchedule(course.id);
+        expect(await setCourseStatus(course.id, 'published')).toBe(true);
+        expect(await setCourseStatus(crypto.randomUUID(), 'published')).toBe(false);
+    });
+
+    it('locks the time zone while the course has schedules', async () => {
+        const course = await make({ timezone: 'Asia/Manila' });
+        await addSchedule(course.id);
+        await expect(setCourseTimezone(course.id, 'Asia/Tokyo')).rejects.toBeInstanceOf(TimezoneLockedError);
+        await expect(updateCourse(course.id, input({ slug: course.slug, timezone: null }))).rejects.toBeInstanceOf(TimezoneLockedError);
+        const renamed = await updateCourse(course.id, input({ slug: course.slug, timezone: 'Asia/Manila', name: 'Same clock' }));
+        expect(renamed?.name).toBe('Same clock');
+        expect(await setCourseTimezone(crypto.randomUUID(), 'Asia/Tokyo')).toBeNull();
+    });
+
+    it('tells the admin which courses can be booked', async () => {
+        const ready = await make({ name: `Bookable ${run}` }, true);
+        const notYet = await make({ name: `Bookable ${run} later` });
+        const result = await listCoursesForAdmin({ q: `Bookable ${run}`, page: 1 });
+        expect(Object.fromEntries(result.courses.map(c => [c.id, c.bookable]))).toEqual({ [ready.id]: true, [notYet.id]: false });
     });
 });
