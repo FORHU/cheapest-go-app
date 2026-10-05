@@ -57,8 +57,9 @@ Unpublishing, editing anything else, and deleting a draft's schedules are unaffe
     zone**; the schedule form stays disabled until it is saved;
   - time zone set → shown as text, with "locked while the course has schedules" when it is;
   - a draft course gets a **Publish** button, enabled once the course is bookable;
-  - it reads the course from the list's fresh data (by id), so a saved time zone or a publish
-    shows at once.
+  - it keeps its own copy of the course's time zone and status, updated from the API's replies,
+    and refreshes the list behind it — a course can move to another page of the list once it
+    is updated, so re-reading it from the list is not reliable.
 - `COMMON_TIME_ZONES` moves out of `GolfCourseForm.tsx` into an export both use.
 
 ## Demo courses (local data, once)
