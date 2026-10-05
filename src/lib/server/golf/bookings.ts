@@ -6,8 +6,10 @@ import { convertCurrencyStrict, refreshExchangeRates } from '@/lib/currency';
 import { mintUniqueBookingReference } from '@/lib/bookingReference';
 import { canonicalBrandName } from '@/lib/brand';
 import { cancellationFor, decideBy, freeCancelUntil, holdExpiresAt } from '@/lib/golf/rules';
+import { priceExtras, sameExtras, type ExtraChoice } from '@/lib/golf/extras';
 import type { GolfBooking, GolfBookingStatus, GolfCloseReason } from '@/lib/schemas/golf';
 import { getBookableTeeTime } from './teeTimes';
+import { listCourseExtras } from './extras';
 import { GolfBookingError } from './errors';
 import { sendGolfBookingEmail } from './emails';
 
@@ -58,7 +60,13 @@ function selectBookings(sql: postgres.Sql) {
                b.payment_intent_id AS "paymentIntentId", b.status, b.hold_expires_at AS "holdExpiresAt",
                b.requested_at AS "requestedAt", b.decide_by AS "decideBy", b.confirmed_at AS "confirmedAt",
                b.closed_at AS "closedAt", b.close_reason AS "closeReason",
-               b.refund_amount::float8 AS "refundAmount", b.free_cancel_until AS "freeCancelUntil"
+               b.refund_amount::float8 AS "refundAmount", b.free_cancel_until AS "freeCancelUntil",
+               b.extras_total::float8 AS "extrasTotal",
+               COALESCE((SELECT json_agg(json_build_object(
+                                'code', e.code, 'quantity', e.quantity,
+                                'unitPrice', e.unit_price::float8, 'total', e.total::float8)
+                            ORDER BY array_position(ARRAY['club_rental', 'caddie', 'cart'], e.code))
+                           FROM golf_booking_extras e WHERE e.booking_id = b.id), '[]'::json) AS extras
           FROM golf_bookings b
           JOIN golf_courses c ON c.id = b.course_id
           JOIN golf_tee_times t ON t.id = b.tee_time_id`;
@@ -184,6 +192,8 @@ export interface HoldInput {
     teeTimeId: string;
     players: number;
     leadName: string;
+    /** Club rental, caddie, cart; priced against the course's current offer. */
+    extras?: ExtraChoice[];
 }
 
 export interface HoldResult {
@@ -222,27 +232,38 @@ export async function holdTeeTime(input: HoldInput, now = new Date()): Promise<H
              OR (user_id = ${input.userId} AND tee_time_id <> ${input.teeTimeId}))`;
     for (const { id } of stale) await endHold(id, now);
 
+    const bookable = await getBookableTeeTime(input.teeTimeId, now);
+    if (!bookable) throw new GolfBookingError('tee_time_unavailable', 'That tee time can no longer be booked. Please pick another.');
+    const { teeTime, course } = bookable;
+
+    const choices = input.extras ?? [];
+    const priced = priceExtras(choices, await listCourseExtras(course.id), input.players);
+    if (!priced.ok) {
+        throw new GolfBookingError(
+            'extras_unavailable', 'The extras on offer have changed. Please review them and try again.',
+            { extra: priced.code, reason: priced.reason },
+        );
+    }
+
     const [live] = await sql<{ id: string; players: number }[]>`
         SELECT id, players FROM golf_bookings
          WHERE user_id = ${input.userId} AND tee_time_id = ${input.teeTimeId} AND status = 'held'`;
     if (live) {
-        if (live.players === input.players) {
-            const resumed = await resume(live.id);
-            if (resumed) return resumed;
-        }
+        // Resumed only for the same party and the same extras: anything else changes the amount
+        // the card must be authorised for.
+        const resumed = live.players === input.players ? await resume(live.id) : null;
+        if (resumed && sameExtras(resumed.booking.extras, choices)) return resumed;
         await endHold(live.id, now);
     }
 
-    const bookable = await getBookableTeeTime(input.teeTimeId, now);
-    if (!bookable) throw new GolfBookingError('tee_time_unavailable', 'That tee time can no longer be booked. Please pick another.');
-    const { teeTime, course } = bookable;
-    if (teeTime.spotsLeft < input.players) throw notEnoughSpots(teeTime.spotsLeft);
-
+    // No early "enough spots?" check: this customer's own hold may have been holding the spots a
+    // moment ago, and the conditional UPDATE below is the real guard either way.
     const greenFeeTotal = round2(teeTime.pricePerPlayer * input.players);
+    const base = round2(greenFeeTotal + priced.total);
     if (teeTime.currency !== 'USD') await refreshExchangeRates();
-    const fee = golfServiceFee(greenFeeTotal, teeTime.currency, convertCurrencyStrict);
+    const fee = golfServiceFee(base, teeTime.currency, convertCurrencyStrict);
     const total = round2(fee.chargedTotal);
-    const serviceFee = round2(total - greenFeeTotal);
+    const serviceFee = round2(total - base);
     const brand = canonicalBrandName(process.env.NEXT_PUBLIC_BRAND_NAME);
     const reference = await mintUniqueBookingReference(brand, async ref =>
         (await sql`SELECT 1 FROM golf_bookings WHERE reference = ${ref}`).length > 0);
@@ -259,14 +280,21 @@ export async function holdTeeTime(input: HoldInput, now = new Date()): Promise<H
             const [row] = await tx<{ id: string }[]>`
                 INSERT INTO golf_bookings
                     (reference, user_id, course_id, tee_time_id, players, lead_name, contact_email,
-                     price_per_player, green_fee_total, service_fee, total, currency,
+                     price_per_player, green_fee_total, service_fee, extras_total, total, currency,
                      hold_expires_at, free_cancel_until)
                 VALUES
                     (${reference}, ${input.userId}, ${course.id}, ${teeTime.id}, ${input.players},
                      ${input.leadName}, ${input.email}, ${teeTime.pricePerPlayer}, ${greenFeeTotal},
-                     ${serviceFee}, ${total}, ${teeTime.currency}, ${holdExpiresAt(now)},
+                     ${serviceFee}, ${priced.total}, ${total}, ${teeTime.currency}, ${holdExpiresAt(now)},
                      ${freeCancelUntil(new Date(teeTime.startsAt), course.freeCancelHours)})
                 RETURNING id`;
+            if (priced.lines.length > 0) {
+                await tx`
+                    INSERT INTO golf_booking_extras ${tx(priced.lines.map(line => ({
+                        booking_id: row.id, code: line.code, quantity: line.quantity,
+                        unit_price: line.unitPrice, total: line.total,
+                    })))}`;
+            }
             return row.id;
         });
     } catch (err) {
@@ -299,6 +327,7 @@ export async function holdTeeTime(input: HoldInput, now = new Date()): Promise<H
                 courseSlug: course.slug,
                 teeTimeStartsAt: teeTime.startsAt,
                 greenFeeTotal: String(greenFeeTotal),
+                extrasTotal: String(priced.total),
                 serviceFee: String(serviceFee),
                 markupRate: String(fee.markupRate),
             },

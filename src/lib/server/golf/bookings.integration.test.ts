@@ -30,11 +30,13 @@ vi.mock('@/lib/stripe/server', () => ({
 vi.mock('./emails', () => ({ sendGolfBookingEmail: vi.fn(async () => undefined) }));
 
 import { stripe } from '@/lib/stripe/server';
-import { toStripeAmount } from '@/lib/pricing';
+import { golfServiceFee, toStripeAmount } from '@/lib/pricing';
 import { addDays } from '@/lib/golf/time';
+import type { ExtraChoice } from '@/lib/golf/extras';
 import type { GolfCourseInput } from '@/lib/schemas/golf';
 import { createCourse, deleteCourses, setCourseStatus } from './courses';
 import { createSchedule, listAvailableTeeTimes } from './teeTimes';
+import { listCourseExtras, setCourseExtras } from './extras';
 import {
     cancelByCustomer, confirmBooking, declineBooking, getBookingById, holdTeeTime, sweepGolfBookings, syncPayment,
 } from './bookings';
@@ -91,6 +93,7 @@ beforeAll(async () => {
         const [row] = await db<{ id: string }[]>`INSERT INTO users (email) VALUES (${`golf-${run}-${n}@example.com`}) RETURNING id`;
         users.push(row.id);
     }
+    await setCourseExtras(courseId, [{ code: 'club_rental', price: 45 }, { code: 'cart', price: 25 }]);
 });
 
 afterAll(async () => {
@@ -113,8 +116,8 @@ async function spotsLeft(teeTimeId: string): Promise<number> {
     return row.spotsLeft;
 }
 
-const hold = (user: number, teeTimeId: string, players = 1, now = NOW) =>
-    holdTeeTime({ userId: users[user], email: `golf-${run}-${user}@example.com`, teeTimeId, players, leadName: 'Test Player' }, now);
+const hold = (user: number, teeTimeId: string, players = 1, now = NOW, extras: ExtraChoice[] = []) =>
+    holdTeeTime({ userId: users[user], email: `golf-${run}-${user}@example.com`, teeTimeId, players, leadName: 'Test Player', extras }, now);
 
 /** What Stripe does when the customer's card is authorised. */
 const authorise = (paymentIntentId: string | null) => {
@@ -225,5 +228,35 @@ describe.skipIf(!reachable)('golf bookings against a real database', () => {
         await expect(cancelByCustomer(booking.reference, users[1], later(120))).rejects.toMatchObject({ code: 'not_found' });
         await expect(cancelByCustomer(booking.reference, users[0], new Date(booking.freeCancelUntil)))
             .rejects.toMatchObject({ code: 'free_cancellation_ended' });
+    });
+
+    it('lets the admin replace what a course offers', async () => {
+        expect(await listCourseExtras(courseId)).toEqual([{ code: 'club_rental', price: 45 }, { code: 'cart', price: 25 }]);
+        expect(await setCourseExtras(courseId, [{ code: 'caddie', price: 30 }])).toEqual([{ code: 'caddie', price: 30 }]);
+        await setCourseExtras(courseId, [{ code: 'cart', price: 25 }, { code: 'club_rental', price: 45 }]);
+        expect(await setCourseExtras(crypto.randomUUID(), [])).toBeNull();
+    });
+
+    it('locks extras into the hold and charges the fee on green fee plus extras', async () => {
+        const id = await teeTime(13);
+        const { booking } = await hold(0, id, 2, NOW, [{ code: 'cart', quantity: 1 }, { code: 'club_rental', quantity: 2 }]);
+        expect(booking.extras).toEqual([
+            { code: 'club_rental', quantity: 2, unitPrice: 45, total: 90 },
+            { code: 'cart', quantity: 1, unitPrice: 25, total: 25 },
+        ]);
+        expect(booking.extrasTotal).toBe(115);
+        const charged = Math.round(golfServiceFee(315, 'USD', amount => amount).chargedTotal * 100) / 100;
+        expect(booking.total).toBe(charged);
+        expect(booking.serviceFee).toBe(Math.round((charged - 315) * 100) / 100);
+    });
+
+    it('starts a new hold when the extras change, and refuses an extra not on offer', async () => {
+        const id = await teeTime(14);
+        const first = await hold(0, id, 1, NOW, [{ code: 'cart', quantity: 1 }]);
+        expect((await hold(0, id, 1, NOW, [{ code: 'cart', quantity: 1 }])).booking.reference).toBe(first.booking.reference);
+        const changed = await hold(0, id, 1, NOW, []);
+        expect(changed.booking.reference).not.toBe(first.booking.reference);
+        expect((await getBookingById(first.booking.id))?.status).toBe('expired');
+        await expect(hold(0, id, 1, NOW, [{ code: 'caddie', quantity: 1 }])).rejects.toMatchObject({ code: 'extras_unavailable' });
     });
 });

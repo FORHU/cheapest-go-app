@@ -37,15 +37,15 @@ describe('POST /api/golf/bookings', () => {
     });
 
     it('holds the tee time for the session\'s customer and returns the client secret', async () => {
-        const res = await post({ teeTimeId, players: 2, leadName: 'Ana Cruz' });
+        const res = await post({ teeTimeId, players: 2, leadName: 'Ana Cruz', extras: [] });
         expect(res.status).toBe(201);
-        expect(holdTeeTime).toHaveBeenCalledWith({ userId: 'u1', email: 'ana@example.com', teeTimeId, players: 2, leadName: 'Ana Cruz' });
+        expect(holdTeeTime).toHaveBeenCalledWith({ userId: 'u1', email: 'ana@example.com', teeTimeId, players: 2, leadName: 'Ana Cruz', extras: [] });
         expect((await res.json()).data).toMatchObject({ reference: 'CG-ABC234', clientSecret: 'pi_1_secret', total: 212.2 });
     });
 
     it('passes a refusal through with its code and detail', async () => {
         vi.mocked(holdTeeTime).mockRejectedValueOnce(new GolfBookingError('not_enough_spots', 'Only 1 spot(s) left', { spotsLeft: 1 }));
-        const res = await post({ teeTimeId, players: 2, leadName: 'Ana Cruz' });
+        const res = await post({ teeTimeId, players: 2, leadName: 'Ana Cruz', extras: [] });
         expect(res.status).toBe(409);
         expect(await res.json()).toMatchObject({ code: 'not_enough_spots', spotsLeft: 1 });
     });

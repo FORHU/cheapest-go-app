@@ -24,9 +24,11 @@ export class CourseNotSchedulableError extends Error {
 
 export type GolfBookingErrorCode =
     | 'tee_time_unavailable' | 'not_enough_spots' | 'payment_unavailable'
-    | 'not_found' | 'wrong_status' | 'not_cancellable' | 'free_cancellation_ended';
+    | 'not_found' | 'wrong_status' | 'not_cancellable' | 'free_cancellation_ended'
+    | 'extras_unavailable';
 
 const HTTP_STATUS: Record<GolfBookingErrorCode, number> = {
+    extras_unavailable: 409,
     tee_time_unavailable: 409,
     not_enough_spots: 409,
     payment_unavailable: 502,
