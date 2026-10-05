@@ -107,7 +107,8 @@ function escapeHtml(str: string | null | undefined): string {
 // ─── Email Logging ────────────────────────────────────────────────────
 
 export type EmailLogStatus = 'queued' | 'sent' | 'failed';
-export type EmailType = 'confirmation' | 'ticketed' | 'refund' | 'cancellation' | 'awaiting_ticket' | 'price_alert';
+export type EmailType = 'confirmation' | 'ticketed' | 'refund' | 'cancellation' | 'awaiting_ticket' | 'price_alert'
+    | 'golf_requested' | 'golf_confirmed' | 'golf_declined' | 'golf_cancelled';
 
 /**
  * Returns true if an email of this type has already been sent (or queued)
@@ -153,7 +154,7 @@ async function checkEmailDuplicate(
     return null;
 }
 
-async function logEmail(params: {
+export async function logEmail(params: {
     bookingId?: string;
     recipient: string;
     subject: string;
