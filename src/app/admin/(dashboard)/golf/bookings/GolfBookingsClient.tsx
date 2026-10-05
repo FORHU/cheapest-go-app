@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { CalendarCheck, Loader2 } from 'lucide-react';
 import type { GolfBooking } from '@/lib/schemas/golf';
+import { EXTRA_NAMES_EN } from '@/lib/golf/extras';
 
 /** Admin-only, so English (CONTEXT.md, "Interface Language"). */
 
@@ -122,7 +123,14 @@ export function GolfBookingsClient({ bookings, view }: { bookings: GolfBooking[]
                                 <td className="px-4 py-2 font-mono text-xs">{b.reference}</td>
                                 <td className="px-4 py-2">{b.courseName}</td>
                                 <td className="px-4 py-2 tabular-nums">{courseTime(b.startsAt, b.timezone)}</td>
-                                <td className="px-4 py-2 tabular-nums">{b.players}</td>
+                                <td className="px-4 py-2">
+                                    <span className="tabular-nums">{b.players}</span>
+                                    {b.extras.length > 0 && (
+                                        <span className="block text-xs text-slate-500">
+                                            {b.extras.map(e => `${EXTRA_NAMES_EN[e.code]} × ${e.quantity}`).join(', ')}
+                                        </span>
+                                    )}
+                                </td>
                                 <td className="px-4 py-2">
                                     <span className="block text-slate-900 dark:text-slate-100">{b.leadName}</span>
                                     <span className="block text-xs text-slate-500">{b.contactEmail}</span>

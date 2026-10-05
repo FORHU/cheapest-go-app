@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 import { Loader2, Trash2 } from 'lucide-react';
 import type { GolfCourse, TeeTimeSchedule, TeeTimeScheduleInputRaw } from '@/lib/schemas/golf';
 import { COMMON_TIME_ZONES } from './timeZones';
+import { CourseExtras } from './CourseExtras';
 
 /** Admin-only, so English (CONTEXT.md, "Interface Language"). */
 const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -278,6 +279,8 @@ export function TeeTimeSchedules({ course, publishHint = false, onChanged }: {
                     </button>
                 </div>
             </form>
+
+            <CourseExtras courseId={course.id} currency={course.currency} />
 
             {status === 'draft' ? (
                 <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200 p-4 dark:border-white/10">
