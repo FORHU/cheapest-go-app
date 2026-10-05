@@ -8,7 +8,7 @@ import { toast } from 'sonner';
 import { CalendarCheck, Clock, Eye, EyeOff, Flag, Pencil, Plus, Search, Trash2 } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/Dialog';
 import type { GolfCourse, GolfCourseInputRaw } from '@/lib/schemas/golf';
-import type { AdminCoursePage } from '@/lib/server/golf/courses';
+import type { AdminCoursePage, AdminGolfCourse } from '@/lib/server/golf/courses';
 import { GolfCourseForm, type FieldErrors } from './GolfCourseForm';
 import { TeeTimeSchedules } from './TeeTimeSchedules';
 
@@ -28,8 +28,8 @@ export function GolfCoursesClient({ data, q }: { data: AdminCoursePage; q: strin
     /** null = closed, 'new' = creating, a course = editing it. */
     const [editing, setEditing] = useState<GolfCourse | 'new' | null>(null);
     const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
-    /** The course whose tee-time schedules are open, if any. */
-    const [scheduling, setScheduling] = useState<GolfCourse | null>(null);
+    /** The course whose tee times are open, and whether it was opened from Publish. */
+    const [scheduling, setScheduling] = useState<{ course: AdminGolfCourse; fromPublish: boolean } | null>(null);
 
     const go = (params: { q?: string; page?: number }) => {
         const next = new URLSearchParams();
@@ -90,7 +90,7 @@ export function GolfCoursesClient({ data, q }: { data: AdminCoursePage; q: strin
             </form>
 
             <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-white/10">
-                <table className="w-full min-w-[720px] text-left text-sm">
+                <table className="w-full min-w-[820px] text-left text-sm">
                     <thead className="bg-slate-50 text-xs text-slate-500 dark:bg-white/5 dark:text-slate-400">
                         <tr>
                             <th className="px-4 py-2 font-medium">Course</th>
@@ -98,12 +98,13 @@ export function GolfCoursesClient({ data, q }: { data: AdminCoursePage; q: strin
                             <th className="px-4 py-2 font-medium">Holes</th>
                             <th className="px-4 py-2 font-medium">From</th>
                             <th className="px-4 py-2 font-medium">Status</th>
+                            <th className="px-4 py-2 font-medium">Booking</th>
                             <th className="px-4 py-2 text-right font-medium">Actions</th>
                         </tr>
                     </thead>
                     <tbody>
                         {data.courses.length === 0 && (
-                            <tr><td colSpan={6} className="px-4 py-8 text-center text-slate-500">
+                            <tr><td colSpan={7} className="px-4 py-8 text-center text-slate-500">
                                 {q ? 'No courses match that search.' : 'No courses yet. Add the first one.'}
                             </td></tr>
                         )}
@@ -131,6 +132,13 @@ export function GolfCoursesClient({ data, q }: { data: AdminCoursePage; q: strin
                                     </span>
                                 </td>
                                 <td className="px-4 py-2">
+                                    <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${course.bookable
+                                        ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300'
+                                        : 'bg-amber-100 text-amber-800 dark:bg-amber-950/50 dark:text-amber-300'}`}>
+                                        {course.bookable ? 'Bookable' : 'Needs tee times'}
+                                    </span>
+                                </td>
+                                <td className="px-4 py-2">
                                     <span className="flex items-center justify-end gap-1">
                                         {confirmDelete === course.id ? (
                                             <>
@@ -144,17 +152,24 @@ export function GolfCoursesClient({ data, q }: { data: AdminCoursePage; q: strin
                                                 {course.status === 'published' && (
                                                     <Link href={`/golf/${course.slug}`} target="_blank" className="rounded px-2 py-1 text-xs text-blue-600 hover:underline">View</Link>
                                                 )}
-                                                <button type="button" aria-label={`Tee times for ${course.name}`} title="Tee times" onClick={() => setScheduling(course)}
+                                                <button type="button" aria-label={`Tee times for ${course.name}`} title="Tee times" onClick={() => setScheduling({ course, fromPublish: false })}
                                                     className="rounded p-1.5 text-slate-500 hover:bg-slate-100 dark:hover:bg-white/10"><Clock className="h-4 w-4" /></button>
                                                 <button type="button" aria-label={`Edit ${course.name}`} title="Edit" onClick={() => setEditing(course)}
                                                     className="rounded p-1.5 text-slate-500 hover:bg-slate-100 dark:hover:bg-white/10"><Pencil className="h-4 w-4" /></button>
                                                 <button type="button"
                                                     aria-label={course.status === 'published' ? `Unpublish ${course.name}` : `Publish ${course.name}`}
                                                     title={course.status === 'published' ? 'Unpublish' : 'Publish'}
-                                                    onClick={() => void act(
-                                                        { action: course.status === 'published' ? 'unpublish' : 'publish', id: course.id },
-                                                        course.status === 'published' ? 'Course unpublished' : 'Course published',
-                                                    )}
+                                                    onClick={() => {
+                                                        // Published means bookable: send the admin to what is missing instead.
+                                                        if (course.status === 'draft' && !course.bookable) {
+                                                            setScheduling({ course, fromPublish: true });
+                                                            return;
+                                                        }
+                                                        void act(
+                                                            { action: course.status === 'published' ? 'unpublish' : 'publish', id: course.id },
+                                                            course.status === 'published' ? 'Course unpublished' : 'Course published',
+                                                        );
+                                                    }}
                                                     className="rounded p-1.5 text-slate-500 hover:bg-slate-100 dark:hover:bg-white/10">
                                                     {course.status === 'published' ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                                                 </button>
@@ -199,9 +214,12 @@ export function GolfCoursesClient({ data, q }: { data: AdminCoursePage; q: strin
             <Dialog open={scheduling !== null} onOpenChange={open => { if (!open) setScheduling(null); }}>
                 <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-3xl">
                     <DialogHeader>
-                        <DialogTitle>Tee times · {scheduling?.name}</DialogTitle>
+                        <DialogTitle>Tee times · {scheduling?.course.name}</DialogTitle>
                     </DialogHeader>
-                    {scheduling && <TeeTimeSchedules key={scheduling.id} course={scheduling} />}
+                    {scheduling && (
+                        <TeeTimeSchedules key={scheduling.course.id} course={scheduling.course}
+                            publishHint={scheduling.fromPublish} onChanged={() => router.refresh()} />
+                    )}
                 </DialogContent>
             </Dialog>
         </div>

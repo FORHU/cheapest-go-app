@@ -6,6 +6,7 @@ import {
     GOLF_AMENITIES, GOLF_HOLES, slugify,
     type GolfAmenity, type GolfCourse, type GolfCourseInputRaw,
 } from '@/lib/schemas/golf';
+import { COMMON_TIME_ZONES } from './timeZones';
 
 export type FieldErrors = Partial<Record<string, string[]>>;
 
@@ -15,13 +16,6 @@ export const AMENITY_LABELS: Record<GolfAmenity, string> = {
     clubhouse: 'Clubhouse', restaurant: 'Restaurant', club_rental: 'Club rental', pro_shop: 'Pro shop',
     lessons: 'Lessons', night_golf: 'Night golf',
 };
-
-/** Suggestions only: any IANA name is accepted and checked on the server. */
-const COMMON_TIME_ZONES = [
-    'Asia/Manila', 'Asia/Seoul', 'Asia/Tokyo', 'Asia/Shanghai', 'Asia/Hong_Kong', 'Asia/Taipei',
-    'Asia/Singapore', 'Asia/Kuala_Lumpur', 'Asia/Bangkok', 'Asia/Ho_Chi_Minh', 'Asia/Jakarta',
-    'Asia/Dubai', 'Australia/Sydney', 'Europe/London', 'America/New_York', 'America/Los_Angeles',
-];
 
 const inputClass =
     'w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm dark:border-white/10 dark:bg-white/5';
