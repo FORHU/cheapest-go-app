@@ -155,12 +155,14 @@ export const HOTEL_MARKUP_SPEC: MarkupSpec = {
 };
 
 /**
- * Golf: the hotel numbers until golf's own Platform Cost is measured. Golf has no supplier
- * platform fee yet — the course is paid directly — so Stripe is the cost being recovered.
+ * Golf: the hotel numbers, as configured, until golf's own Platform Cost is measured. Golf has
+ * no supplier platform fee yet — the course is paid directly — so Stripe is the cost being
+ * recovered. Follows HOTEL_MARKUP_* rather than copying its defaults, so a change to the hotel
+ * rate does not leave golf quietly charging the old one.
  */
 export const GOLF_MARKUP_SPEC: MarkupSpec = {
-    rate: parseMarkupEnv('GOLF_MARKUP_PERCENTAGE', 0.059),
-    flat: parseFlatEnv('GOLF_MARKUP_FLAT_USD', 0.40),
+    rate: parseMarkupEnv('GOLF_MARKUP_PERCENTAGE', HOTEL_MARKUP_SPEC.rate),
+    flat: parseFlatEnv('GOLF_MARKUP_FLAT_USD', HOTEL_MARKUP_SPEC.flat),
     cap: parseMarkupEnv('MARKUP_CAP', 0.12),
 };
 
