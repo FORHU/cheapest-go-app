@@ -4461,3 +4461,17 @@ _Avoid_: saying a requested booking is paid — the card is only authorised.
 - [ ] **Step 3: Unit and route tests** — `npx vitest run` → all pass.
 - [ ] **Step 4: Database tests** — `DATABASE_URL=… npx vitest run src/lib/server/golf` → all pass, none skipped.
 - [ ] **Step 5: Manual, with Stripe test keys** — in admin, give a published course a time zone and a schedule; on its page pick a tee time, log in, pay with `4242 4242 4242 4242`; the status page shows "Waiting for the course" and Stripe shows the PaymentIntent as uncaptured; Confirm in `/admin/golf/bookings` → captured, status "Confirmed"; repeat and Decline → PaymentIntent cancelled; cancel a confirmed one as the customer → refunded.
+
+---
+
+## Execution notes (2026-10-05)
+
+Executed task by task in this session; every task's tests were seen failing first, then passing. Departures from the plan above, each in its own commit:
+
+- **Task 13:** the webhook also skips golf intents in its `payment_intent.succeeded` branch. A capture there is the team confirming in admin; without the skip every golf capture logged a false "missing bookingSessionId" error.
+- **Integration tests:** the tee-time and booking suites backdate their courses before publishing them. `courses.integration.test.ts` asks for the newest published courses in the whole database and ran beside them; it failed about one run in four until then.
+- **Found by the manual run against Stripe test mode** (QA course, user and session created for the run and deleted after it):
+  - `GOLF_MARKUP_SPEC` now follows the *configured* hotel spec. It had copied the hotel defaults, so with `HOTEL_MARKUP_PERCENTAGE=0.05` set, golf charged 5.9%.
+  - Checkout and the confirmation email no longer promise "free cancellation until" a time already past. A tee time booked inside the course's window says free cancellation has ended (`golf.booking.noFreeCancel`).
+- **Manual run, verified:** generation cron (236 tee times), picker only on courses with schedules, login redirect keeps the checkout URL, CSRF refusals (403), hold → test card → `requires_capture`, status page sync → `requested` with the right deadline, admin confirm → captured, admin decline → cancelled with nothing charged, customer cancel → full refund, spots restored each time, all five emails sent (to Resend's `delivered@resend.dev` sink).
+- **Not exercised:** the webhook's golf branch (needs the Stripe CLI forwarding events to a local server); the status page and the sweep perform the same sync, and both were exercised.
