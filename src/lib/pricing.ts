@@ -154,6 +154,16 @@ export const HOTEL_MARKUP_SPEC: MarkupSpec = {
     cap: parseMarkupEnv('MARKUP_CAP', 0.12),
 };
 
+/**
+ * Golf: the hotel numbers until golf's own Platform Cost is measured. Golf has no supplier
+ * platform fee yet — the course is paid directly — so Stripe is the cost being recovered.
+ */
+export const GOLF_MARKUP_SPEC: MarkupSpec = {
+    rate: parseMarkupEnv('GOLF_MARKUP_PERCENTAGE', 0.059),
+    flat: parseFlatEnv('GOLF_MARKUP_FLAT_USD', 0.40),
+    cap: parseMarkupEnv('MARKUP_CAP', 0.12),
+};
+
 // Log effective rates once at module load so they appear in Vercel/server startup logs.
 // Makes misconfiguration immediately visible without needing to trace a booking.
 if (typeof process !== 'undefined') {
@@ -392,6 +402,24 @@ export function hotelServiceFee(
     baseInChargeCurrency: number,
     currency: string,
     convert: (amount: number, from: string, to: string) => number,
+) {
+    return serviceFeeFor(HOTEL_MARKUP_SPEC, baseInChargeCurrency, currency, convert);
+}
+
+/** The golf twin of {@link hotelServiceFee}: same shape, golf's own spec. */
+export function golfServiceFee(
+    baseInChargeCurrency: number,
+    currency: string,
+    convert: (amount: number, from: string, to: string) => number,
+) {
+    return serviceFeeFor(GOLF_MARKUP_SPEC, baseInChargeCurrency, currency, convert);
+}
+
+function serviceFeeFor(
+    spec: MarkupSpec,
+    baseInChargeCurrency: number,
+    currency: string,
+    convert: (amount: number, from: string, to: string) => number,
 ): {
     serviceFee: number;
     chargedTotal: number;
@@ -401,11 +429,11 @@ export function hotelServiceFee(
 } {
     let flat = 0;
     try {
-        flat = convert(HOTEL_MARKUP_SPEC.flat, 'USD', currency);
+        flat = convert(spec.flat, 'USD', currency);
     } catch {
         flat = 0;
     }
-    const pricing = applyMarkup(baseInChargeCurrency, HOTEL_MARKUP_SPEC, flat);
+    const pricing = applyMarkup(baseInChargeCurrency, spec, flat);
     return {
         serviceFee: pricing.markupAmount,
         chargedTotal: pricing.chargedPrice,
