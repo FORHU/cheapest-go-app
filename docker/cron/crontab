@@ -21,6 +21,9 @@
 */10 * * * * curl -sf -X GET  $APP_URL/api/cron/cleanup-orphaned-duffel-orders -H "Authorization: Bearer $CRON_SECRET" -o /dev/null
 */15 * * * * curl -sf -X POST $APP_URL/api/internal/retry-emails               -H "Authorization: Bearer $CRON_SECRET" -o /dev/null
 */30 * * * * curl -sf -X GET  $APP_URL/api/cron/refresh-popular-flights        -H "Authorization: Bearer $CRON_SECRET" -o /dev/null
+# Tee-time holds last 15 minutes and requests have a decision deadline (CONTEXT.md, "Golf Booking").
+# The hold path also closes expired holds on the tee time it touches, so this is a backstop.
+*/5  * * * * curl -sf -X GET  $APP_URL/api/cron/golf-sweep                    -H "Authorization: Bearer $CRON_SECRET" -o /dev/null
 
 # ── Sub-daily ─────────────────────────────────────────────────────────────────
 0 */6  * * * curl -sf -X GET $APP_URL/api/cron/sync-flight-deals    -H "Authorization: Bearer $CRON_SECRET" -o /dev/null
@@ -33,6 +36,8 @@
 0 2 * * * curl -sf -X GET $APP_URL/api/cron/etg-reviews-sync   -H "Authorization: Bearer $CRON_SECRET" -o /dev/null
 0 3 * * * curl -sf -X GET $APP_URL/api/cron/cache-cleanup       -H "Authorization: Bearer $CRON_SECRET" -o /dev/null
 0 4 * * * curl -sf -X GET $APP_URL/api/cron/cleanup-sessions    -H "Authorization: Bearer $CRON_SECRET" -o /dev/null
+# Extends every golf schedule's tee times to the 60-day horizon. Idempotent.
+0 5 * * * curl -sf -X GET $APP_URL/api/cron/golf-generate-tee-times -H "Authorization: Bearer $CRON_SECRET" -o /dev/null
 # Retention for support attachments (ADR-0040). Daily and off-peak: the working set is
 # whatever crossed 90 days since its conversation was resolved, which is a trickle, and
 # each row costs an S3 delete. Runs after cleanup-sessions so the two do not overlap.

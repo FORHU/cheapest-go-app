@@ -16,6 +16,8 @@ const ALLOWED_CRONS = new Set([
     'sync-dest-cache',
     'cleanup-orphaned-duffel-orders',
     'geocode-hotels',
+    'golf-sweep',
+    'golf-generate-tee-times',
 ]);
 
 export async function POST(req: NextRequest) {

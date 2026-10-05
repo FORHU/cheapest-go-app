@@ -19,6 +19,8 @@ const CRONS: CronDef[] = [
     { id: 'sync-flight-deals',             label: 'Sync Flight Deals',             description: 'Syncs curated flight deals from providers into the deals table.',   schedule: 'Hourly' },
     { id: 'cache-cleanup',                  label: 'Cache Cleanup',                 description: 'Purges expired search cache rows and stale hotel review items.',    schedule: 'Daily' },
     { id: 'cleanup-sessions',              label: 'Session Cleanup',               description: 'Deletes expired auth sessions and password reset tokens.',          schedule: 'Daily 4am' },
+    { id: 'golf-sweep',                     label: 'Golf Booking Sweep',            description: 'Ends unpaid tee-time holds and declines requests past their decision deadline.', schedule: 'Every 5 min' },
+    { id: 'golf-generate-tee-times',        label: 'Generate Tee Times',            description: 'Extends every golf schedule\'s tee times to the 60-day horizon.',   schedule: 'Daily 5am' },
     { id: 'otv-credit-check',              label: 'OTV Credit Check',              description: 'Monitors TravelgateX OTV credit balance and alerts when low.',      schedule: 'Daily' },
     { id: 'fill-dest-cache',               label: 'Fill Destination Cache',        description: 'Pre-populates TGX destination code cache for fast hotel lookups.',  schedule: 'Daily' },
     { id: 'sync-dest-cache',               label: 'Sync Destination Cache',        description: 'Syncs destination cache with latest TravelgateX city data.',       schedule: 'Daily' },

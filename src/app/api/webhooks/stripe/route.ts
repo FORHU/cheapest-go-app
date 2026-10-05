@@ -9,6 +9,7 @@ import { issueTicket } from '@/lib/server/flights/issue-ticket';
 import { createBooking } from '@/lib/server/flights/create-booking';
 import { fromStripeAmount } from '@/lib/pricing';
 import { fetchStripeFee } from '@/lib/stripe/fee';
+import { syncPayment } from '@/lib/server/golf/bookings';
 
 // Must cover the whole chain this handler drives: create-booking (itself allowed
 // 120s) plus issue-ticket. At 30s the platform killed the request mid-booking,
@@ -119,6 +120,20 @@ export async function POST(req: NextRequest) {
     // ── Mystifly: manual capture → amount_capturable_updated ────────────────
     if (event.type === 'payment_intent.amount_capturable_updated') {
         const pi = event.data.object as Stripe.PaymentIntent;
+
+        // Golf holds authorise too; the team captures after the course confirms. A failure is
+        // left uncommitted so Stripe retries — the status page and the sweep sync it as well.
+        if (pi.metadata?.type === 'golf') {
+            try {
+                if (pi.metadata.golfBookingId) await syncPayment(pi.metadata.golfBookingId);
+            } catch (err) {
+                console.error('[Webhook] Golf payment sync failed:', err);
+                return NextResponse.json({ error: 'Golf payment sync failed' }, { status: 500 });
+            }
+            await commitEvent();
+            return NextResponse.json({ received: true });
+        }
+
         const { bookingSessionId, provider } = pi.metadata ?? {};
 
         if (!bookingSessionId) {
@@ -182,6 +197,12 @@ export async function POST(req: NextRequest) {
     else if (event.type === 'payment_intent.succeeded') {
         const pi = event.data.object as Stripe.PaymentIntent;
         const { bookingSessionId, provider } = pi.metadata ?? {};
+
+        // A golf capture is the team confirming in admin (confirmBooking), which records it.
+        if (pi.metadata?.type === 'golf') {
+            await commitEvent();
+            return NextResponse.json({ received: true });
+        }
 
         if (!bookingSessionId) {
             console.error('[Webhook] payment_intent.succeeded missing bookingSessionId', pi.id);
