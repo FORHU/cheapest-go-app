@@ -46,6 +46,10 @@ const daily: TeeTimeScheduleInput = {
 async function make(over: Partial<GolfCourseInput> = {}) {
     const c = await createCourse(course(over));
     created.push(c.id);
+    // Backdated before any test publishes it: courses.integration.test.ts runs in parallel and
+    // asks for the newest published courses in the whole database.
+    const { getSqlAdmin } = await import('@/lib/db/postgres');
+    await getSqlAdmin()`UPDATE golf_courses SET created_at = '2000-01-01' WHERE id = ${c.id}`;
     return c;
 }
 
