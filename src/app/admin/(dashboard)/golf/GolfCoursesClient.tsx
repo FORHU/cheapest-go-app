@@ -5,11 +5,12 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
-import { Eye, EyeOff, Flag, Pencil, Plus, Search, Trash2 } from 'lucide-react';
+import { CalendarCheck, Clock, Eye, EyeOff, Flag, Pencil, Plus, Search, Trash2 } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/Dialog';
 import type { GolfCourse, GolfCourseInputRaw } from '@/lib/schemas/golf';
 import type { AdminCoursePage } from '@/lib/server/golf/courses';
 import { GolfCourseForm, type FieldErrors } from './GolfCourseForm';
+import { TeeTimeSchedules } from './TeeTimeSchedules';
 
 async function call(body: Record<string, unknown>) {
     const response = await fetch('/api/admin/golf-courses', {
@@ -27,6 +28,8 @@ export function GolfCoursesClient({ data, q }: { data: AdminCoursePage; q: strin
     /** null = closed, 'new' = creating, a course = editing it. */
     const [editing, setEditing] = useState<GolfCourse | 'new' | null>(null);
     const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
+    /** The course whose tee-time schedules are open, if any. */
+    const [scheduling, setScheduling] = useState<GolfCourse | null>(null);
 
     const go = (params: { q?: string; page?: number }) => {
         const next = new URLSearchParams();
@@ -67,10 +70,16 @@ export function GolfCoursesClient({ data, q }: { data: AdminCoursePage; q: strin
                         Courses shown on /golf. New courses start as drafts; publish to put them on the storefront.
                     </p>
                 </div>
-                <button type="button" onClick={() => setEditing('new')}
-                    className="flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-500">
-                    <Plus className="h-4 w-4" /> Add course
-                </button>
+                <div className="flex items-center gap-2">
+                    <Link href="/admin/golf/bookings"
+                        className="flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 dark:border-white/10 dark:text-slate-200 dark:hover:bg-white/5">
+                        <CalendarCheck className="h-4 w-4" /> Bookings
+                    </Link>
+                    <button type="button" onClick={() => setEditing('new')}
+                        className="flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-500">
+                        <Plus className="h-4 w-4" /> Add course
+                    </button>
+                </div>
             </header>
 
             <form onSubmit={e => { e.preventDefault(); go({ q: search.trim() }); }} className="relative max-w-sm">
@@ -135,6 +144,8 @@ export function GolfCoursesClient({ data, q }: { data: AdminCoursePage; q: strin
                                                 {course.status === 'published' && (
                                                     <Link href={`/golf/${course.slug}`} target="_blank" className="rounded px-2 py-1 text-xs text-blue-600 hover:underline">View</Link>
                                                 )}
+                                                <button type="button" aria-label={`Tee times for ${course.name}`} title="Tee times" onClick={() => setScheduling(course)}
+                                                    className="rounded p-1.5 text-slate-500 hover:bg-slate-100 dark:hover:bg-white/10"><Clock className="h-4 w-4" /></button>
                                                 <button type="button" aria-label={`Edit ${course.name}`} title="Edit" onClick={() => setEditing(course)}
                                                     className="rounded p-1.5 text-slate-500 hover:bg-slate-100 dark:hover:bg-white/10"><Pencil className="h-4 w-4" /></button>
                                                 <button type="button"
@@ -182,6 +193,15 @@ export function GolfCoursesClient({ data, q }: { data: AdminCoursePage; q: strin
                             onCancel={() => setEditing(null)}
                         />
                     )}
+                </DialogContent>
+            </Dialog>
+
+            <Dialog open={scheduling !== null} onOpenChange={open => { if (!open) setScheduling(null); }}>
+                <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-3xl">
+                    <DialogHeader>
+                        <DialogTitle>Tee times · {scheduling?.name}</DialogTitle>
+                    </DialogHeader>
+                    {scheduling && <TeeTimeSchedules key={scheduling.id} course={scheduling} />}
                 </DialogContent>
             </Dialog>
         </div>
