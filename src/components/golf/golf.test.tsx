@@ -20,7 +20,7 @@ vi.mock('next-intl', () => ({
 const course: GolfCourse = {
     id: 'c1', slug: 'wack-wack-east-manila', name: 'Wack Wack East', country: 'Philippines', city: 'Manila',
     address: null, description: '', holes: 18, par: 72, greenFeeFrom: 85, currency: 'USD',
-    imageUrls: [], amenities: [], status: 'published',
+    imageUrls: [], amenities: [], status: 'published', timezone: null, freeCancelHours: 48,
 };
 
 beforeEach(() => useSupportWidgetStore.setState({ isOpen: false }));

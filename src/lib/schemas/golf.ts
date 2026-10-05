@@ -1,8 +1,10 @@
 import { z } from 'zod';
+import { isValidTimeZone } from '@/lib/golf/time';
 
 /**
- * Golf Course listings (CONTEXT.md, "Golf Course"). Client-safe: types, the input schema the
- * admin form and the API share, and the slug rule. Queries live in lib/server/golf/courses.
+ * Golf (CONTEXT.md, "Golf Course", "Tee Time", "Golf Booking"). Client-safe: types, the input
+ * schemas the admin forms, the API and the checkout share, and the slug rule. Queries live in
+ * lib/server/golf.
  */
 
 export const GOLF_AMENITIES = [
@@ -32,6 +34,10 @@ export interface GolfCourse {
     imageUrls: string[];
     amenities: GolfAmenity[];
     status: GolfCourseStatus;
+    /** IANA zone the course's tee times are set in; null until an admin sets it. */
+    timezone: string | null;
+    /** Free cancellation ends this many hours before a tee time. */
+    freeCancelHours: number;
 }
 
 /** Lowercase a-z0-9 words joined by single hyphens; '' when nothing latin survives. */
@@ -68,6 +74,13 @@ export const golfCourseInputSchema = z
             .optional()
             .default([]),
         amenities: z.array(z.enum(GOLF_AMENITIES)).optional().default([]).transform(a => [...new Set(a)]),
+        timezone: z
+            .string()
+            .trim()
+            .nullish()
+            .transform(v => v || null)
+            .refine(v => v === null || isValidTimeZone(v), 'Use a time zone name such as Asia/Manila'),
+        freeCancelHours: z.number().int().min(0, 'Between 0 and 720 hours').max(720, 'Between 0 and 720 hours').optional().default(48),
     })
     .transform(v => ({ ...v, slug: v.slug ? slugify(v.slug) : slugify(v.name, v.city) }))
     .refine(v => v.slug.length > 0, {
@@ -79,3 +92,96 @@ export const golfCourseInputSchema = z
 export type GolfCourseInputRaw = z.input<typeof golfCourseInputSchema>;
 /** What the database module accepts. */
 export type GolfCourseInput = z.output<typeof golfCourseInputSchema>;
+
+// ── Tee times ────────────────────────────────────────────────────────────────
+
+const timeOfDay = z.string().trim().regex(/^([01]\d|2[0-3]):[0-5]\d$/, 'Use 24-hour time, e.g. 06:30');
+
+/** A weekly pattern of tee times. Different prices for different times of day are separate schedules. */
+export const teeTimeScheduleInputSchema = z
+    .object({
+        name: requiredText('Name', 80),
+        daysOfWeek: z
+            .array(z.number().int().min(0).max(6))
+            .min(1, 'Pick at least one day')
+            .transform(days => [...new Set(days)].sort((a, b) => a - b)),
+        firstTee: timeOfDay,
+        lastTee: timeOfDay,
+        intervalMinutes: z.number().int().min(5, 'Between 5 and 60 minutes').max(60, 'Between 5 and 60 minutes'),
+        spots: z.number().int().min(1, 'Between 1 and 4').max(4, 'Between 1 and 4').optional().default(4),
+        pricePerPlayer: z.number().min(0, 'Price cannot be negative').max(100_000),
+    })
+    .refine(v => v.lastTee >= v.firstTee, { path: ['lastTee'], message: 'Last tee must be at or after the first' });
+
+export type TeeTimeScheduleInputRaw = z.input<typeof teeTimeScheduleInputSchema>;
+export type TeeTimeScheduleInput = z.output<typeof teeTimeScheduleInputSchema>;
+
+export interface TeeTimeSchedule {
+    id: string;
+    courseId: string;
+    name: string;
+    daysOfWeek: number[];
+    /** "HH:MM", course-local. */
+    firstTee: string;
+    lastTee: string;
+    intervalMinutes: number;
+    spots: number;
+    pricePerPlayer: number;
+}
+
+export interface TeeTime {
+    id: string;
+    /** ISO instant. */
+    startsAt: string;
+    /** "07:38" on the course's clock. */
+    localTime: string;
+    spots: number;
+    spotsLeft: number;
+    pricePerPlayer: number;
+    currency: string;
+}
+
+// ── Bookings ─────────────────────────────────────────────────────────────────
+
+export const holdRequestSchema = z.object({
+    teeTimeId: z.string().uuid(),
+    players: z.number().int().min(1).max(4),
+    leadName: requiredText('Lead player name', 120),
+});
+
+export type GolfBookingStatus = 'held' | 'requested' | 'confirmed' | 'expired' | 'declined' | 'cancelled';
+
+export type GolfCloseReason =
+    | 'hold_expired' | 'declined_by_team' | 'not_confirmed_in_time'
+    | 'cancelled_by_customer' | 'cancelled_by_team';
+
+/** Instants are ISO strings so a booking crosses the server/client boundary as it is. */
+export interface GolfBooking {
+    id: string;
+    reference: string;
+    userId: string;
+    courseId: string;
+    courseName: string;
+    courseSlug: string;
+    timezone: string | null;
+    teeTimeId: string;
+    startsAt: string;
+    players: number;
+    leadName: string;
+    contactEmail: string;
+    pricePerPlayer: number;
+    greenFeeTotal: number;
+    serviceFee: number;
+    total: number;
+    currency: string;
+    paymentIntentId: string | null;
+    status: GolfBookingStatus;
+    holdExpiresAt: string;
+    requestedAt: string | null;
+    decideBy: string | null;
+    confirmedAt: string | null;
+    closedAt: string | null;
+    closeReason: GolfCloseReason | null;
+    refundAmount: number;
+    freeCancelUntil: string;
+}
