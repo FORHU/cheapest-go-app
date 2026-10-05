@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { isValidTimeZone } from '@/lib/golf/time';
+import { GOLF_EXTRAS, type ExtraLine } from '@/lib/golf/extras';
 
 /**
  * Golf (CONTEXT.md, "Golf Course", "Tee Time", "Golf Booking"). Client-safe: types, the input
@@ -143,11 +144,31 @@ export interface TeeTime {
 
 // ── Bookings ─────────────────────────────────────────────────────────────────
 
+const extraChoiceSchema = z.object({
+    code: z.enum(GOLF_EXTRAS),
+    quantity: z.number().int().min(1).max(4),
+});
+
 export const holdRequestSchema = z.object({
     teeTimeId: z.string().uuid(),
     players: z.number().int().min(1).max(4),
     leadName: requiredText('Lead player name', 120),
+    extras: z
+        .array(extraChoiceSchema)
+        .max(GOLF_EXTRAS.length)
+        .optional()
+        .default([])
+        .refine(list => new Set(list.map(e => e.code)).size === list.length, 'Each extra can be chosen once'),
 });
+
+/** The extras a course offers, at its price per item (admin). */
+export const golfExtrasInputSchema = z
+    .array(z.object({
+        code: z.enum(GOLF_EXTRAS),
+        price: z.number().min(0, 'Price cannot be negative').max(100_000),
+    }))
+    .max(GOLF_EXTRAS.length)
+    .refine(list => new Set(list.map(e => e.code)).size === list.length, 'Each extra can be offered once');
 
 export type GolfBookingStatus = 'held' | 'requested' | 'confirmed' | 'expired' | 'declined' | 'cancelled';
 
@@ -171,6 +192,9 @@ export interface GolfBooking {
     contactEmail: string;
     pricePerPlayer: number;
     greenFeeTotal: number;
+    /** Sum of the extras' lines; the service fee is charged on green fee + extras. */
+    extrasTotal: number;
+    extras: ExtraLine[];
     serviceFee: number;
     total: number;
     currency: string;

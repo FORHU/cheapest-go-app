@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { golfCourseInputSchema, holdRequestSchema, slugify, teeTimeScheduleInputSchema } from './golf';
+import { golfCourseInputSchema, golfExtrasInputSchema, holdRequestSchema, slugify, teeTimeScheduleInputSchema } from './golf';
 
 const valid = { name: 'Wack Wack East', country: 'Philippines', city: 'Mandaluyong', holes: 18 };
 
@@ -82,5 +82,23 @@ describe('holdRequestSchema', () => {
         expect(holdRequestSchema.parse(ok).leadName).toBe('Ana Cruz');
         expect(holdRequestSchema.safeParse({ ...ok, players: 5 }).success).toBe(false);
         expect(holdRequestSchema.safeParse({ ...ok, leadName: '' }).success).toBe(false);
+    });
+});
+
+describe('extras in a hold request', () => {
+    const ok = { teeTimeId: '6f1c2e0a-9b7d-4c1e-a2f5-3d8e1b0c7a44', players: 2, leadName: 'Ana' };
+
+    it('defaults to none, and refuses an unknown extra or one chosen twice', () => {
+        expect(holdRequestSchema.parse(ok).extras).toEqual([]);
+        expect(holdRequestSchema.safeParse({ ...ok, extras: [{ code: 'cart', quantity: 1 }, { code: 'cart', quantity: 2 }] }).success).toBe(false);
+        expect(holdRequestSchema.safeParse({ ...ok, extras: [{ code: 'jetpack', quantity: 1 }] }).success).toBe(false);
+    });
+});
+
+describe('golfExtrasInputSchema', () => {
+    it('takes one price per offered extra', () => {
+        expect(golfExtrasInputSchema.parse([{ code: 'caddie', price: 30 }])).toEqual([{ code: 'caddie', price: 30 }]);
+        expect(golfExtrasInputSchema.safeParse([{ code: 'caddie', price: -1 }]).success).toBe(false);
+        expect(golfExtrasInputSchema.safeParse([{ code: 'cart', price: 1 }, { code: 'cart', price: 2 }]).success).toBe(false);
     });
 });

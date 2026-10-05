@@ -14,7 +14,7 @@ const booking: GolfBooking = {
     id: 'b1', reference: 'CG-ABC234', userId: 'u1', courseId: 'c1', courseName: 'Wack <Wack>',
     courseSlug: 'wack-wack', timezone: 'Asia/Manila', teeTimeId: 't1', startsAt: '2026-10-09T23:38:00.000Z',
     players: 2, leadName: 'Ana & Co', contactEmail: 'ana@example.com', pricePerPlayer: 2500,
-    greenFeeTotal: 5000, serviceFee: 318, total: 5318, currency: 'PHP', paymentIntentId: 'pi_1',
+    greenFeeTotal: 5000, extrasTotal: 0, extras: [], serviceFee: 318, total: 5318, currency: 'PHP', paymentIntentId: 'pi_1',
     status: 'requested', holdExpiresAt: '2026-10-06T10:15:00.000Z', requestedAt: '2026-10-06T10:05:00.000Z',
     decideBy: '2026-10-08T10:05:00.000Z', confirmedAt: null, closedAt: null, closeReason: null,
     refundAmount: 0, freeCancelUntil: '2026-10-07T23:38:00.000Z',
