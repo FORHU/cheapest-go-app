@@ -5,7 +5,7 @@ import {
     courseHasSchedules, createSchedule, deleteSchedule, generateTeeTimes,
     getBookableTeeTime, listAvailableTeeTimes, listSchedules,
 } from './teeTimes';
-import { CourseNotSchedulableError } from './errors';
+import { CourseNotSchedulableError, LastScheduleError } from './errors';
 
 /**
  * Tee times against a real database: generation, the 24-hour lead and "published only" are
@@ -91,13 +91,20 @@ describe.skipIf(!reachable)('tee times against a real database', () => {
         expect(await getBookableTeeTime('not-a-uuid', NOW)).toBeNull();
     });
 
-    it('takes a deleted schedule\'s unbooked tee times with it', async () => {
+    it('takes a deleted schedule\'s unbooked tee times with it, but never a published course\'s last', async () => {
         const c = await make();
-        const result = await createSchedule(c.id, daily, NOW);
-        expect(await deleteSchedule(result!.schedule.id, NOW)).toBe(true);
+        const early = await createSchedule(c.id, daily, NOW);
+        const late = await createSchedule(c.id, { ...daily, name: 'Daily late', firstTee: '09:00', lastTee: '09:00' }, NOW);
         await setCourseStatus(c.id, 'published');
-        expect((await listAvailableTeeTimes(c.slug, '2030-01-08', NOW))?.teeTimes).toEqual([]);
+
+        expect(await deleteSchedule(early!.schedule.id, NOW)).toBe(true);
+        expect((await listAvailableTeeTimes(c.slug, '2030-01-08', NOW))?.teeTimes.map(t => t.localTime)).toEqual(['09:00']);
+
+        await expect(deleteSchedule(late!.schedule.id, NOW)).rejects.toBeInstanceOf(LastScheduleError);
+        await setCourseStatus(c.id, 'draft');
+        expect(await deleteSchedule(late!.schedule.id, NOW)).toBe(true);
         expect(await listSchedules(c.id)).toEqual([]);
         expect(await courseHasSchedules(c.id)).toBe(false);
+        expect(await deleteSchedule(late!.schedule.id, NOW)).toBe(false);
     });
 });

@@ -81,12 +81,12 @@ beforeAll(async () => {
     // Backdated before it is published: courses.integration.test.ts runs in parallel and asks
     // for the newest published courses in the whole database.
     await db`UPDATE golf_courses SET created_at = '2000-01-01' WHERE id = ${courseId}`;
-    await setCourseStatus(courseId, 'published');
-    // One 08:00 tee time a day with two spots.
+    // One 08:00 tee time a day with two spots; published after, since publishing needs it.
     await createSchedule(courseId, {
         name: 'Daily 08:00', daysOfWeek: [0, 1, 2, 3, 4, 5, 6], firstTee: '08:00', lastTee: '08:00',
         intervalMinutes: 10, spots: 2, pricePerPlayer: 100,
     }, NOW);
+    await setCourseStatus(courseId, 'published');
     for (const n of [0, 1]) {
         const [row] = await db<{ id: string }[]>`INSERT INTO users (email) VALUES (${`golf-${run}-${n}@example.com`}) RETURNING id`;
         users.push(row.id);

@@ -4,7 +4,7 @@ import type { TeeTime, TeeTimeSchedule, TeeTimeScheduleInput } from '@/lib/schem
 import { expandSchedule } from '@/lib/golf/schedule';
 import { addDays, localDate, localTime, zonedTimeToUtc } from '@/lib/golf/time';
 import { HORIZON_DAYS, MIN_LEAD_HOURS, isBookableStart } from '@/lib/golf/rules';
-import { CourseNotSchedulableError } from './errors';
+import { CourseNotSchedulableError, LastScheduleError } from './errors';
 
 /**
  * Tee-time schedules and the tee times they generate (CONTEXT.md, "Tee Time"). A tee time is a
@@ -95,6 +95,17 @@ export async function createSchedule(
 export async function deleteSchedule(id: string, now = new Date()): Promise<boolean> {
     const sql = getSqlAdmin();
     return sql.begin(async tx => {
+        const [schedule] = await tx<{ published: boolean; others: number }[]>`
+            SELECT c.status = 'published' AS published,
+                   (SELECT count(*)::int FROM golf_tee_time_schedules o
+                     WHERE o.course_id = s.course_id AND o.id <> s.id) AS others
+              FROM golf_tee_time_schedules s
+              JOIN golf_courses c ON c.id = s.course_id
+             WHERE s.id = ${id}
+               FOR UPDATE OF c`;
+        if (!schedule) return false;
+        // Published means bookable: the last schedule stays until the course is unpublished.
+        if (schedule.published && schedule.others === 0) throw new LastScheduleError();
         await tx`
             DELETE FROM golf_tee_times t
              WHERE t.schedule_id = ${id} AND t.starts_at > ${now}
