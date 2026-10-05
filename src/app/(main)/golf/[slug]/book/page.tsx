@@ -51,6 +51,12 @@ export default async function BookTeeTimePage({ params, searchParams }: Props) {
     const money = (amount: number) => formatMoney(amount, teeTime.currency, locale);
     const courseClock = (options: Intl.DateTimeFormatOptions, instant: Date) =>
         new Intl.DateTimeFormat(locale, { timeZone: course.timezone, ...options }).format(instant);
+    // A tee time inside the course's free-cancellation window was never freely cancellable:
+    // say so, rather than show a cutoff that is already behind us.
+    const cutoff = freeCancelUntil(startsAt, course.freeCancelHours);
+    const freeCancel = cutoff.getTime() > Date.now()
+        ? t('freeCancel', { date: courseClock({ dateStyle: 'medium', timeStyle: 'short' }, cutoff) })
+        : t('noFreeCancel');
 
     return (
         <BookTeeTimeClient
@@ -65,9 +71,7 @@ export default async function BookTeeTimePage({ params, searchParams }: Props) {
                 greenFee: money(greenFee),
                 serviceFee: money(Math.round((total - greenFee) * 100) / 100),
                 total: money(total),
-                freeCancel: t('freeCancel', {
-                    date: courseClock({ dateStyle: 'medium', timeStyle: 'short' }, freeCancelUntil(startsAt, course.freeCancelHours)),
-                }),
+                freeCancel,
             }}
         />
     );

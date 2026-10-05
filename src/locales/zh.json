@@ -3186,7 +3186,8 @@
       "cancelRequestedHint": "现在取消将释放您卡上的预授权，您不会被扣款。",
       "cancelConfirmedHint": "{date} 前可免费取消，将全额退款 {total}。",
       "cancelEnded": "免费取消已于 {date} 结束。如行程有变，请联系我们。",
-      "cancelFailed": "无法取消此预订，请重试或联系我们。"
+      "cancelFailed": "无法取消此预订，请重试或联系我们。",
+      "noFreeCancel": "该开球时间的免费取消期限已过，球场确认后将无法在线退款。"
     }
   }
 }

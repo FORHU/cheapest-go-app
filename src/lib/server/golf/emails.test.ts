@@ -45,6 +45,15 @@ describe('buildGolfBookingEmail', () => {
         const free = buildGolfBookingEmail('cancelled', { ...booking, status: 'cancelled', refundAmount: 0, closeReason: 'cancelled_by_customer' });
         expect(free.html).toContain('You were not charged.');
     });
+
+    it('promises free cancellation only while it is still open', () => {
+        const early = buildGolfBookingEmail('confirmed', { ...booking, status: 'confirmed', confirmedAt: '2026-10-06T12:00:00.000Z' });
+        expect(early.html).toContain('Free cancellation until');
+        // Booked inside the course's window: the cutoff had passed before the team confirmed.
+        const late = buildGolfBookingEmail('confirmed', { ...booking, status: 'confirmed', confirmedAt: '2026-10-08T00:00:00.000Z' });
+        expect(late.html).toContain('Free cancellation ended on');
+        expect(late.html).not.toContain('Free cancellation until');
+    });
 });
 
 describe('sendGolfBookingEmail', () => {

@@ -44,7 +44,11 @@ function wording(kind: GolfEmailKind, b: GolfBooking): { subject: string; lead: 
             return {
                 subject: `Tee time confirmed – ${course}`,
                 lead: `${course} has confirmed your tee time.`,
-                note: `We've charged ${money(b.total, b.currency)}. Free cancellation until ${when(b.freeCancelUntil, b.timezone)}.`,
+                // A tee time booked inside the course's window was never freely cancellable;
+                // promising a cutoff already behind us would be a promise we cannot keep.
+                note: new Date(b.freeCancelUntil).getTime() > new Date(b.confirmedAt ?? Date.now()).getTime()
+                    ? `We've charged ${money(b.total, b.currency)}. Free cancellation until ${when(b.freeCancelUntil, b.timezone)}.`
+                    : `We've charged ${money(b.total, b.currency)}. Free cancellation ended on ${when(b.freeCancelUntil, b.timezone)}, so this booking can't be refunded online.`,
             };
         case 'declined':
             return {

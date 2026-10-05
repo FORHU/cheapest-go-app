@@ -3186,7 +3186,8 @@
       "cancelRequestedHint": "Cancelling now releases the amount reserved on your card. You won't be charged.",
       "cancelConfirmedHint": "Free cancellation until {date}. You'll get a full refund of {total}.",
       "cancelEnded": "Free cancellation ended on {date}. Contact us if your plans change.",
-      "cancelFailed": "We couldn't cancel this booking. Please try again or contact us."
+      "cancelFailed": "We couldn't cancel this booking. Please try again or contact us.",
+      "noFreeCancel": "Free cancellation has already ended for this tee time, so once the course confirms it can't be refunded online."
     }
   }
 }
