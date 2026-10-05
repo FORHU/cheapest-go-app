@@ -3116,6 +3116,77 @@
       "pro_shop": "Pro shop",
       "lessons": "Lessons",
       "night_golf": "Night golf"
+    },
+    "booking": {
+      "panelTitle": "Book a tee time",
+      "date": "Date",
+      "players": "Players",
+      "loading": "Loading tee times…",
+      "none": "No tee times left on this date. Try another day.",
+      "loadError": "We couldn't load tee times. Please try again.",
+      "pickTime": "Available tee times",
+      "spotsLeft": "{count} left",
+      "continue": "Continue",
+      "hint": "Times are the course's local time. Prices are per player.",
+      "orAsk": "Prefer to talk to us first?",
+      "checkoutTitle": "Request your tee time",
+      "summaryHeading": "Your tee time",
+      "course": "Course",
+      "dateLabel": "Date",
+      "timeLabel": "Tee time",
+      "playersLabel": "Players",
+      "greenFee": "Green fee ({players} × {price})",
+      "serviceFee": "Service fee",
+      "total": "Total",
+      "leadName": "Lead player's full name",
+      "leadNameHint": "The name the course will put on its tee sheet.",
+      "leadNameRequired": "Enter the lead player's name.",
+      "continueToPayment": "Continue to payment",
+      "chargeNotice": "We reserve this amount on your card now and only charge it once the course confirms your tee time, usually within 48 hours. If the course can't take it, the reservation is released and you pay nothing.",
+      "freeCancel": "Free cancellation until {date}.",
+      "unavailable": "This tee time is no longer available.",
+      "backToCourse": "Back to the course",
+      "notEnoughSpots": "Only {count} spots are left at this time. Choose fewer players or another time.",
+      "loginRequired": "Please log in to book a tee time.",
+      "genericError": "Something went wrong. Please try again.",
+      "bookingTitle": "Tee time booking",
+      "reference": "Reference",
+      "leadPlayer": "Lead player",
+      "courseTime": "{time} course time",
+      "status": {
+        "held": {
+          "title": "Payment not finished",
+          "body": "We're holding this tee time for you until {time}. If you closed the payment form, go back to the course to start again."
+        },
+        "requested": {
+          "title": "Waiting for the course",
+          "body": "Your card is authorised for {total} but not charged. We're confirming with the course and will email you by {date}."
+        },
+        "confirmed": {
+          "title": "Confirmed",
+          "body": "Your tee time is booked and we've charged {total}."
+        },
+        "expired": {
+          "title": "Hold ended",
+          "body": "The hold ran out before payment finished. You haven't been charged."
+        },
+        "declined": {
+          "title": "Not confirmed",
+          "body": "We couldn't confirm this tee time with the course. Your card was not charged."
+        },
+        "cancelled": {
+          "title": "Cancelled",
+          "refunded": "We've refunded {amount}. It can take 5–10 business days to appear on your statement.",
+          "notCharged": "You were not charged."
+        }
+      },
+      "cancel": "Cancel booking",
+      "cancelConfirm": "Yes, cancel it",
+      "keep": "Keep it",
+      "cancelRequestedHint": "Cancelling now releases the amount reserved on your card. You won't be charged.",
+      "cancelConfirmedHint": "Free cancellation until {date}. You'll get a full refund of {total}.",
+      "cancelEnded": "Free cancellation ended on {date}. Contact us if your plans change.",
+      "cancelFailed": "We couldn't cancel this booking. Please try again or contact us."
     }
   }
 }

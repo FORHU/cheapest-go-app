@@ -3116,6 +3116,77 @@
       "pro_shop": "プロショップ",
       "lessons": "レッスン",
       "night_golf": "ナイターゴルフ"
+    },
+    "booking": {
+      "panelTitle": "ティータイムを予約",
+      "date": "日付",
+      "players": "人数",
+      "loading": "ティータイムを読み込み中…",
+      "none": "この日に空いているティータイムはありません。別の日をお試しください。",
+      "loadError": "ティータイムを読み込めませんでした。もう一度お試しください。",
+      "pickTime": "予約可能なティータイム",
+      "spotsLeft": "残り{count}枠",
+      "continue": "次へ",
+      "hint": "時間はゴルフ場の現地時間です。料金は1人あたりです。",
+      "orAsk": "先にご相談されたい場合はこちら",
+      "checkoutTitle": "ティータイムをリクエスト",
+      "summaryHeading": "ご予約内容",
+      "course": "ゴルフ場",
+      "dateLabel": "日付",
+      "timeLabel": "ティータイム",
+      "playersLabel": "人数",
+      "greenFee": "グリーンフィー（{players} × {price}）",
+      "serviceFee": "サービス料",
+      "total": "合計",
+      "leadName": "代表者のフルネーム",
+      "leadNameHint": "ゴルフ場のスタート表に記載されるお名前です。",
+      "leadNameRequired": "代表者のお名前を入力してください。",
+      "continueToPayment": "お支払いへ進む",
+      "chargeNotice": "この金額をカードで仮押さえし、ゴルフ場がティータイムを確定した時点で請求します（通常48時間以内）。確定できなかった場合は仮押さえを解除し、料金は発生しません。",
+      "freeCancel": "{date}まで無料でキャンセルできます。",
+      "unavailable": "このティータイムは予約できなくなりました。",
+      "backToCourse": "ゴルフ場のページに戻る",
+      "notEnoughSpots": "この時間の残りは{count}枠です。人数を減らすか、別の時間をお選びください。",
+      "loginRequired": "ティータイムを予約するにはログインしてください。",
+      "genericError": "問題が発生しました。もう一度お試しください。",
+      "bookingTitle": "ティータイム予約",
+      "reference": "予約番号",
+      "leadPlayer": "代表者",
+      "courseTime": "{time}（現地時間）",
+      "status": {
+        "held": {
+          "title": "お支払いが完了していません",
+          "body": "{time}までこのティータイムを確保しています。お支払い画面を閉じた場合は、ゴルフ場のページからやり直してください。"
+        },
+        "requested": {
+          "title": "ゴルフ場の確認待ち",
+          "body": "{total}をカードで仮押さえしていますが、まだ請求していません。ゴルフ場に確認中で、{date}までにメールでお知らせします。"
+        },
+        "confirmed": {
+          "title": "予約確定",
+          "body": "ティータイムが確定し、{total}を請求しました。"
+        },
+        "expired": {
+          "title": "確保期限切れ",
+          "body": "お支払いが完了する前に確保期限が切れました。料金は請求されていません。"
+        },
+        "declined": {
+          "title": "確定できませんでした",
+          "body": "ゴルフ場でこのティータイムを確定できませんでした。カードへの請求はありません。"
+        },
+        "cancelled": {
+          "title": "キャンセル済み",
+          "refunded": "{amount}を返金しました。明細に反映されるまで5〜10営業日かかる場合があります。",
+          "notCharged": "料金は請求されていません。"
+        }
+      },
+      "cancel": "予約をキャンセル",
+      "cancelConfirm": "キャンセルする",
+      "keep": "キャンセルしない",
+      "cancelRequestedHint": "今キャンセルすると、カードの仮押さえが解除されます。料金は請求されません。",
+      "cancelConfirmedHint": "{date}まで無料でキャンセルでき、{total}が全額返金されます。",
+      "cancelEnded": "無料キャンセルの期限は{date}に終了しました。ご予定が変わった場合はお問い合わせください。",
+      "cancelFailed": "この予約をキャンセルできませんでした。もう一度お試しいただくか、お問い合わせください。"
     }
   }
 }

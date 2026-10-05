@@ -3116,6 +3116,77 @@
       "pro_shop": "프로숍",
       "lessons": "레슨",
       "night_golf": "야간 골프"
+    },
+    "booking": {
+      "panelTitle": "티타임 예약",
+      "date": "날짜",
+      "players": "인원",
+      "loading": "티타임을 불러오는 중…",
+      "none": "이 날짜에는 남은 티타임이 없습니다. 다른 날짜를 선택해 주세요.",
+      "loadError": "티타임을 불러오지 못했습니다. 다시 시도해 주세요.",
+      "pickTime": "예약 가능한 티타임",
+      "spotsLeft": "{count}자리 남음",
+      "continue": "계속",
+      "hint": "시간은 골프장 현지 시간이며, 요금은 1인 기준입니다.",
+      "orAsk": "먼저 상담하고 싶으신가요?",
+      "checkoutTitle": "티타임 요청",
+      "summaryHeading": "예약 내용",
+      "course": "골프장",
+      "dateLabel": "날짜",
+      "timeLabel": "티타임",
+      "playersLabel": "인원",
+      "greenFee": "그린피 ({players} × {price})",
+      "serviceFee": "서비스 수수료",
+      "total": "합계",
+      "leadName": "대표 플레이어 성명",
+      "leadNameHint": "골프장 티시트에 기재될 이름입니다.",
+      "leadNameRequired": "대표 플레이어 이름을 입력해 주세요.",
+      "continueToPayment": "결제로 진행",
+      "chargeNotice": "지금은 카드에 이 금액을 승인만 해 두고, 골프장이 티타임을 확정하면 결제합니다(보통 48시간 이내). 골프장이 예약을 받을 수 없으면 승인이 해제되며 비용은 청구되지 않습니다.",
+      "freeCancel": "{date}까지 무료로 취소할 수 있습니다.",
+      "unavailable": "이 티타임은 더 이상 예약할 수 없습니다.",
+      "backToCourse": "골프장으로 돌아가기",
+      "notEnoughSpots": "이 시간에는 {count}자리만 남아 있습니다. 인원을 줄이거나 다른 시간을 선택해 주세요.",
+      "loginRequired": "티타임을 예약하려면 로그인해 주세요.",
+      "genericError": "문제가 발생했습니다. 다시 시도해 주세요.",
+      "bookingTitle": "티타임 예약",
+      "reference": "예약 번호",
+      "leadPlayer": "대표 플레이어",
+      "courseTime": "{time} (현지 시간)",
+      "status": {
+        "held": {
+          "title": "결제가 완료되지 않았습니다",
+          "body": "{time}까지 이 티타임을 확보해 두었습니다. 결제 창을 닫으셨다면 골프장 페이지에서 다시 시작해 주세요."
+        },
+        "requested": {
+          "title": "골프장 확인 대기 중",
+          "body": "카드에 {total}이 승인되었지만 아직 결제되지 않았습니다. 골프장에 확인 중이며 {date}까지 이메일로 알려 드립니다."
+        },
+        "confirmed": {
+          "title": "확정됨",
+          "body": "티타임이 예약되었으며 {total}이 결제되었습니다."
+        },
+        "expired": {
+          "title": "확보 시간 만료",
+          "body": "결제가 완료되기 전에 확보 시간이 끝났습니다. 비용은 청구되지 않았습니다."
+        },
+        "declined": {
+          "title": "확정되지 않음",
+          "body": "골프장에서 이 티타임을 확정하지 못했습니다. 카드에 비용이 청구되지 않았습니다."
+        },
+        "cancelled": {
+          "title": "취소됨",
+          "refunded": "{amount}이 환불되었습니다. 명세서에 반영되기까지 영업일 기준 5~10일이 걸릴 수 있습니다.",
+          "notCharged": "비용이 청구되지 않았습니다."
+        }
+      },
+      "cancel": "예약 취소",
+      "cancelConfirm": "네, 취소합니다",
+      "keep": "유지하기",
+      "cancelRequestedHint": "지금 취소하면 카드 승인이 해제되며 비용이 청구되지 않습니다.",
+      "cancelConfirmedHint": "{date}까지 무료로 취소할 수 있으며 {total} 전액이 환불됩니다.",
+      "cancelEnded": "무료 취소 기간이 {date}에 종료되었습니다. 일정이 바뀌면 문의해 주세요.",
+      "cancelFailed": "예약을 취소하지 못했습니다. 다시 시도하시거나 문의해 주세요."
     }
   }
 }

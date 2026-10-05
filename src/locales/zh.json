@@ -3116,6 +3116,77 @@
       "pro_shop": "专卖店",
       "lessons": "教学课程",
       "night_golf": "夜间高尔夫"
+    },
+    "booking": {
+      "panelTitle": "预订开球时间",
+      "date": "日期",
+      "players": "人数",
+      "loading": "正在加载开球时间…",
+      "none": "该日期已没有可预订的开球时间，请换一天试试。",
+      "loadError": "无法加载开球时间，请重试。",
+      "pickTime": "可预订的开球时间",
+      "spotsLeft": "剩余 {count} 位",
+      "continue": "继续",
+      "hint": "时间为球场当地时间，价格按每位球员计算。",
+      "orAsk": "想先和我们沟通？",
+      "checkoutTitle": "申请开球时间",
+      "summaryHeading": "您的开球时间",
+      "course": "球场",
+      "dateLabel": "日期",
+      "timeLabel": "开球时间",
+      "playersLabel": "人数",
+      "greenFee": "果岭费（{players} × {price}）",
+      "serviceFee": "服务费",
+      "total": "总计",
+      "leadName": "领队球员全名",
+      "leadNameHint": "球场将以此姓名登记在出发表上。",
+      "leadNameRequired": "请输入领队球员姓名。",
+      "continueToPayment": "继续付款",
+      "chargeNotice": "我们现在会在您的卡上预授权此金额，待球场确认开球时间后才扣款（通常在 48 小时内）。如果球场无法接受预订，预授权将被释放，您无需支付任何费用。",
+      "freeCancel": "{date} 前可免费取消。",
+      "unavailable": "该开球时间已无法预订。",
+      "backToCourse": "返回球场",
+      "notEnoughSpots": "该时间仅剩 {count} 位。请减少人数或选择其他时间。",
+      "loginRequired": "请登录后预订开球时间。",
+      "genericError": "出错了，请重试。",
+      "bookingTitle": "开球时间预订",
+      "reference": "预订编号",
+      "leadPlayer": "领队球员",
+      "courseTime": "{time}（当地时间）",
+      "status": {
+        "held": {
+          "title": "付款未完成",
+          "body": "我们为您保留此开球时间至 {time}。如果您关闭了付款页面，请返回球场页面重新开始。"
+        },
+        "requested": {
+          "title": "等待球场确认",
+          "body": "您的卡已预授权 {total}，尚未扣款。我们正在与球场确认，并会在 {date} 前通过电子邮件通知您。"
+        },
+        "confirmed": {
+          "title": "已确认",
+          "body": "您的开球时间已预订，我们已扣款 {total}。"
+        },
+        "expired": {
+          "title": "保留已结束",
+          "body": "付款完成前保留时间已到。您未被扣款。"
+        },
+        "declined": {
+          "title": "未能确认",
+          "body": "我们无法与球场确认此开球时间。您的卡未被扣款。"
+        },
+        "cancelled": {
+          "title": "已取消",
+          "refunded": "我们已退款 {amount}。可能需要 5–10 个工作日才会显示在您的账单上。",
+          "notCharged": "您未被扣款。"
+        }
+      },
+      "cancel": "取消预订",
+      "cancelConfirm": "确认取消",
+      "keep": "保留预订",
+      "cancelRequestedHint": "现在取消将释放您卡上的预授权，您不会被扣款。",
+      "cancelConfirmedHint": "{date} 前可免费取消，将全额退款 {total}。",
+      "cancelEnded": "免费取消已于 {date} 结束。如行程有变，请联系我们。",
+      "cancelFailed": "无法取消此预订，请重试或联系我们。"
     }
   }
 }
