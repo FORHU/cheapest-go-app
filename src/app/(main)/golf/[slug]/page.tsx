@@ -6,8 +6,11 @@ import { ChevronLeft, Check, Flag, MapPin } from 'lucide-react';
 import { getLocale, getTranslations } from 'next-intl/server';
 import { hreflangAlternates } from '@/lib/seo/hreflang';
 import { getPublishedCourseBySlug } from '@/lib/server/golf/courses';
+import { courseHasSchedules } from '@/lib/server/golf/teeTimes';
+import { localDate } from '@/lib/golf/time';
 import { formatGreenFee } from '@/components/golf/format';
 import { TeeTimeButton } from '@/components/golf/TeeTimeButton';
+import { TeeTimePicker } from '@/components/golf/TeeTimePicker';
 
 export const dynamic = 'force-dynamic';
 
@@ -36,6 +39,7 @@ export default async function GolfCoursePage({ params }: Params) {
     // Drafts come back null here, so they 404 like a course that does not exist.
     const course = await getPublishedCourseBySlug(slug);
     if (!course) notFound();
+    const sellsTeeTimes = course.timezone ? await courseHasSchedules(course.id) : false;
 
     const [t, locale] = await Promise.all([getTranslations('golf'), getLocale()]);
     const [cover, ...gallery] = course.imageUrls;
@@ -109,8 +113,19 @@ export default async function GolfCoursePage({ params }: Params) {
                             {t('greenFeesFrom', { price: formatGreenFee(course.greenFeeFrom, course.currency, locale) })}
                         </p>
                     )}
-                    <p className="my-4 text-sm text-slate-500 dark:text-slate-400">{t('askTeeTimesHint')}</p>
-                    <TeeTimeButton />
+                    {sellsTeeTimes ? (
+                        <>
+                            <div className="my-5 border-t border-slate-200 dark:border-white/10" />
+                            <TeeTimePicker slug={course.slug} today={localDate(new Date(), course.timezone!)} />
+                            <p className="mb-3 mt-6 text-sm text-slate-500 dark:text-slate-400">{t('booking.orAsk')}</p>
+                            <TeeTimeButton secondary />
+                        </>
+                    ) : (
+                        <>
+                            <p className="my-4 text-sm text-slate-500 dark:text-slate-400">{t('askTeeTimesHint')}</p>
+                            <TeeTimeButton />
+                        </>
+                    )}
                 </aside>
             </div>
         </main>
