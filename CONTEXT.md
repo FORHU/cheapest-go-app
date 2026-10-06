@@ -318,6 +318,16 @@ _Avoid_: blaming the difference on the account or the session. Nothing about a N
 **Stay Total** — what a room costs for the whole date range asked about. This is what OTV/TGX actually quotes and what prebook confirms, so it is the only hotel price the platform receives directly and the basis of every charge.
 _Avoid_: passing one as a bare number. A price and the stay it covers travel together; a figure that has lost its night count cannot be restated per night by whoever renders it next, only guessed at.
 
+**Room** — one bookable kind of room at a hotel, named by the supplier: "1 Bedroom Executive Double room". What a guest chooses between, and what one card on a property page stands for.
+_Avoid_: letting a Room mean one purchasable line. A supplier returns a priced line per **Rate**, not per Room, so a page that draws one card per line shows the same room three times at three prices and reads as a pricing fault. On 2026-10-01 Parque Espana listed "1 Bedroom Executive Double room" three times at ₩119,064, ₩131,640 and ₩135,192 — one room, three rates.
+
+**Rate** — one way to buy a **Room**: a price, a board arrangement, and cancellation terms. Several belong to one Room, and what separates them is the terms, not the room. The cheapest is what the Room advertises; the rest are the choice behind it.
+_Avoid_: ranking rates by price alone when two are otherwise identical. Same board and same refundability at two prices is not a choice, it is the same rate twice, and only the cheaper should survive.
+
+**Room Group** — ETG's unit of static room *content*: photos, amenities, bedding. It is not bookable and carries no price. Tied to a **Room** by name alone, because the two suppliers name the same room differently and share no identifier.
+_Note_: the only source of room photography the platform has. A hotel whose groups were never fetched has no room photos at all, and a room card then has nothing to show but the building.
+_Avoid_: matching a group to a room on a grade word. "Deluxe" hands one set of photos to every deluxe room in the hotel, and a guest books from the photo.
+
 **Default Stay** — the dates a hotel search quotes for when nobody has named usable ones: a landing card that links straight to a city, a link that has gone stale in a chat window, a checkout that falls on or before the arrival. Next Friday to Sunday. It is a *hotel* term and says nothing about flights, where the cheapest departure is weeks out, not next weekend.
 _Avoid_: today or tomorrow. OTV holds near-zero inventory for same-day and next-day stays, so a page that quotes them reports "no rooms available" for a hotel with plenty — indistinguishable, to the traveller, from the hotel being full. On 2026-09-28 a landing card linked with no dates at all, the search bar filled in tomorrow, and every property opened from those results came back empty.
 _Avoid_: more than one rule for it. Three coexisted — next weekend, today+30, and tomorrow — so which stay a traveller was quoted depended on which card they happened to click.
