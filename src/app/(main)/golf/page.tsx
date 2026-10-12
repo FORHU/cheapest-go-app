@@ -77,6 +77,12 @@ export default async function GolfPage({ searchParams }: { searchParams: Promise
             {(results?.length ?? 0) === 0 && unlisted.length === 0 && (
                 <p className="mt-16 max-w-md text-g-muted">{filtered ? ts('empty') : t('empty')}</p>
             )}
+
+            <p className="mt-16 border-t border-g-rule pt-6 text-sm">
+                <Link href="/golf/list-your-course" className="font-medium text-g-accent underline-offset-4 hover:underline">
+                    {t('partner.cta')}
+                </Link>
+            </p>
         </div>
     );
 }

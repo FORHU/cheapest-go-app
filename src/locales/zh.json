@@ -3237,6 +3237,77 @@
       "nextMonth": "下个月",
       "chooseDate": "选择日期",
       "anyTime": "不限时间"
+    },
+    "staff": {
+      "portal": {
+        "title": "球场管理后台",
+        "noCourses": "您尚未关联任何球场。",
+        "noCoursesHelp": "请联系我们的团队将您添加到球场，或接受邮件中的邀请。",
+        "tabsLabel": "预订",
+        "tabWaiting": "待处理",
+        "tabUpcoming": "即将开始",
+        "tabPast": "过往",
+        "emptyWaiting": "暂无待处理的请求。新请求会显示在这里，并会通过邮件通知您。",
+        "emptyUpcoming": "没有即将开始的已确认球位。",
+        "emptyPast": "暂无过往预订。",
+        "statusHeld": "待付款",
+        "statusRequested": "待处理",
+        "statusConfirmed": "已确认",
+        "statusExpired": "已过期",
+        "statusDeclined": "已拒绝",
+        "statusCancelled": "已取消",
+        "onePlayer": "1 位球员",
+        "players": "{count} 位球员",
+        "reference": "预订编号 {reference}",
+        "decideBy": "请在 {date} 前答复",
+        "confirm": "确认",
+        "decline": "拒绝",
+        "actionError": "出了点问题，请重试。"
+      },
+      "join": {
+        "title": "管理{course}",
+        "unknownTitle": "找不到此邀请",
+        "unknownBody": "请确认您打开了邮件中的完整链接，或请求发送新的邀请。",
+        "expiredTitle": "此邀请已过期",
+        "expiredBody": "邀请有效期为七天。请联系邀请您的人重新发送。",
+        "usedTitle": "此邀请已被接受",
+        "usedBody": "每个邀请只能使用一次。如果是您本人接受的，球场已在您的账户中。",
+        "revokedTitle": "此邀请已被撤回",
+        "revokedBody": "请向邀请您的人确认是否会发送新的邀请。",
+        "goToPortal": "前往球场后台",
+        "invited": "您受邀为{course}确认球位请求。",
+        "signInLine": "请使用 {email} 登录或创建账户，然后返回接受邀请。",
+        "signInCta": "登录或创建账户",
+        "staffAccount": "您当前以 {email} 登录，这已是员工账户。球场权限需授予单独的客户账户，请退出登录并使用 {invited}。",
+        "wrongAccount": "此邀请发送给 {invited}。",
+        "wrongAccountHelp": "您当前以 {email} 登录。请退出登录，再使用受邀地址登录后接受。",
+        "scope": "您只能看到此球场的请求，并可确认或拒绝。",
+        "accept": "接受并管理{course}"
+      },
+      "request": {
+        "title": "收录或认领您的球场",
+        "intro": "在 CheapestGo，球场自行确认球位。请告诉我们您的球场信息，我们的团队会进行审核。",
+        "staffAccount": "您当前使用员工账户登录。球场权限需授予客户账户，请退出登录并使用您将用来管理球场的账户。",
+        "pendingTitle": "您为{course}提交的请求正在审核中。",
+        "pendingBody": "我们会在几天内审核请求，决定后将通过邮件通知 {email}。",
+        "rejectedTitle": "您上次为{course}提交的请求未获批准。",
+        "rejectedHint": "您可以在下方提交新的请求。",
+        "sentTitle": "请求已发送。",
+        "fromAccount": "请求将由您的账户 {email} 发出。该账户将用于管理球场。",
+        "listedLabel": "您的球场是否已收录？",
+        "notListed": "否，尚未收录",
+        "yourName": "您的姓名",
+        "courseName": "球场名称",
+        "country": "国家",
+        "city": "城市",
+        "message": "还有什么需要我们了解的（选填）",
+        "messagePlaceholder": "您在球场的职务、可供核实的网站、联系球场商店的方式。",
+        "send": "发送请求",
+        "error": "出了点问题，请重试。"
+      }
+    },
+    "partner": {
+      "cta": "经营球场？在此申请收录或认领。"
     }
   }
 }

@@ -3237,6 +3237,77 @@
       "nextMonth": "Next month",
       "chooseDate": "Choose a date",
       "anyTime": "Any time"
+    },
+    "staff": {
+      "portal": {
+        "title": "Course portal",
+        "noCourses": "You are not attached to a course yet.",
+        "noCoursesHelp": "Ask our team to add you to your course, or accept the invitation emailed to you.",
+        "tabsLabel": "Bookings",
+        "tabWaiting": "Waiting for you",
+        "tabUpcoming": "Upcoming",
+        "tabPast": "Past",
+        "emptyWaiting": "Nothing is waiting. New requests appear here, and we'll email you when one arrives.",
+        "emptyUpcoming": "No confirmed tee times coming up.",
+        "emptyPast": "No past bookings yet.",
+        "statusHeld": "Payment pending",
+        "statusRequested": "Waiting",
+        "statusConfirmed": "Confirmed",
+        "statusExpired": "Expired",
+        "statusDeclined": "Declined",
+        "statusCancelled": "Cancelled",
+        "onePlayer": "1 player",
+        "players": "{count} players",
+        "reference": "Reference {reference}",
+        "decideBy": "Decide by {date}",
+        "confirm": "Confirm",
+        "decline": "Decline",
+        "actionError": "Something went wrong. Please try again."
+      },
+      "join": {
+        "title": "Manage {course}",
+        "unknownTitle": "We couldn't find this invitation",
+        "unknownBody": "Check that you opened the whole link from your email, or ask for a new invitation.",
+        "expiredTitle": "This invitation has expired",
+        "expiredBody": "Invitations last seven days. Ask the person who invited you to send a new one.",
+        "usedTitle": "This invitation has already been accepted",
+        "usedBody": "Each invitation works once. If this was you, the course is already on your account.",
+        "revokedTitle": "This invitation was withdrawn",
+        "revokedBody": "Ask the person who invited you whether a new one is coming.",
+        "goToPortal": "Go to the course portal",
+        "invited": "You have been invited to confirm tee-time requests for {course}.",
+        "signInLine": "Sign in or create an account with {email}, then come back to accept.",
+        "signInCta": "Sign in or create an account",
+        "staffAccount": "You are signed in as {email}, which is already a staff account. Course access goes on a separate customer account, so sign out and use {invited}.",
+        "wrongAccount": "This invitation is for {invited}.",
+        "wrongAccountHelp": "You are signed in as {email}. Sign out, then sign in with the invited address to accept.",
+        "scope": "You will see requests for this course only, and you can confirm or decline them.",
+        "accept": "Accept and manage {course}"
+      },
+      "request": {
+        "title": "List or claim your course",
+        "intro": "Courses confirm their own tee times on CheapestGo. Tell us about yours and our team will review it.",
+        "staffAccount": "You are signed in with a staff account. Course access goes on a customer account, so sign out and use the account you will manage the course with.",
+        "pendingTitle": "Your request for {course} is waiting.",
+        "pendingBody": "We review requests within a few days and will email {email} when it is decided.",
+        "rejectedTitle": "Your last request, for {course}, was not approved.",
+        "rejectedHint": "You can send a new one below.",
+        "sentTitle": "Request sent.",
+        "fromAccount": "Requests are sent from your account, {email}. That is the account that will manage the course.",
+        "listedLabel": "Is your course already listed?",
+        "notListed": "No, it isn't listed yet",
+        "yourName": "Your name",
+        "courseName": "Course name",
+        "country": "Country",
+        "city": "City",
+        "message": "Anything we should know (optional)",
+        "messagePlaceholder": "Your role at the course, a website we can check, how to reach the pro shop.",
+        "send": "Send request",
+        "error": "Something went wrong. Please try again."
+      }
+    },
+    "partner": {
+      "cta": "Run a golf course? List it or claim it here."
     }
   }
 }

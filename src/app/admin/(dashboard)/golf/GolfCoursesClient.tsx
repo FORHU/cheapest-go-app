@@ -5,12 +5,13 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
-import { CalendarCheck, Clock, Eye, EyeOff, Flag, Pencil, Plus, Search, Trash2 } from 'lucide-react';
+import { CalendarCheck, Clock, Eye, EyeOff, Flag, Inbox, Pencil, Plus, Search, Trash2, Users } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/Dialog';
 import type { GolfCourse, GolfCourseInputRaw } from '@/lib/schemas/golf';
 import type { AdminCoursePage, AdminGolfCourse } from '@/lib/server/golf/courses';
 import { GolfCourseForm, type FieldErrors } from './GolfCourseForm';
 import { TeeTimeSchedules } from './TeeTimeSchedules';
+import { CourseStaff } from './CourseStaff';
 
 async function call(body: Record<string, unknown>) {
     const response = await fetch('/api/admin/golf-courses', {
@@ -22,7 +23,7 @@ async function call(body: Record<string, unknown>) {
     return { ok: response.ok, json: json as { error?: string; fieldErrors?: FieldErrors } };
 }
 
-export function GolfCoursesClient({ data, q }: { data: AdminCoursePage; q: string }) {
+export function GolfCoursesClient({ data, q, pendingRequests = 0 }: { data: AdminCoursePage; q: string; pendingRequests?: number }) {
     const router = useRouter();
     const [search, setSearch] = useState(q);
     /** null = closed, 'new' = creating, a course = editing it. */
@@ -30,6 +31,8 @@ export function GolfCoursesClient({ data, q }: { data: AdminCoursePage; q: strin
     const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
     /** The course whose tee times are open, and whether it was opened from Publish. */
     const [scheduling, setScheduling] = useState<{ course: AdminGolfCourse; fromPublish: boolean } | null>(null);
+    /** The course whose staff dialog is open. */
+    const [staffing, setStaffing] = useState<AdminGolfCourse | null>(null);
 
     const go = (params: { q?: string; page?: number }) => {
         const next = new URLSearchParams();
@@ -71,6 +74,13 @@ export function GolfCoursesClient({ data, q }: { data: AdminCoursePage; q: strin
                     </p>
                 </div>
                 <div className="flex items-center gap-2">
+                    <Link href="/admin/golf/requests"
+                        className="flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 dark:border-white/10 dark:text-slate-200 dark:hover:bg-white/5">
+                        <Inbox className="h-4 w-4" /> Requests
+                        {pendingRequests > 0 && (
+                            <span className="rounded-full bg-blue-600 px-1.5 text-xs font-semibold tabular-nums text-white">{pendingRequests}</span>
+                        )}
+                    </Link>
                     <Link href="/admin/golf/bookings"
                         className="flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 dark:border-white/10 dark:text-slate-200 dark:hover:bg-white/5">
                         <CalendarCheck className="h-4 w-4" /> Bookings
@@ -154,6 +164,8 @@ export function GolfCoursesClient({ data, q }: { data: AdminCoursePage; q: strin
                                                 )}
                                                 <button type="button" aria-label={`Tee times for ${course.name}`} title="Tee times" onClick={() => setScheduling({ course, fromPublish: false })}
                                                     className="rounded p-1.5 text-slate-500 hover:bg-slate-100 dark:hover:bg-white/10"><Clock className="h-4 w-4" /></button>
+                                                <button type="button" aria-label={`Staff for ${course.name}`} title="Staff" onClick={() => setStaffing(course)}
+                                                    className="rounded p-1.5 text-slate-500 hover:bg-slate-100 dark:hover:bg-white/10"><Users className="h-4 w-4" /></button>
                                                 <button type="button" aria-label={`Edit ${course.name}`} title="Edit" onClick={() => setEditing(course)}
                                                     className="rounded p-1.5 text-slate-500 hover:bg-slate-100 dark:hover:bg-white/10"><Pencil className="h-4 w-4" /></button>
                                                 <button type="button"
@@ -208,6 +220,15 @@ export function GolfCoursesClient({ data, q }: { data: AdminCoursePage; q: strin
                             onCancel={() => setEditing(null)}
                         />
                     )}
+                </DialogContent>
+            </Dialog>
+
+            <Dialog open={staffing !== null} onOpenChange={open => { if (!open) setStaffing(null); }}>
+                <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-xl">
+                    <DialogHeader>
+                        <DialogTitle>Staff · {staffing?.name}</DialogTitle>
+                    </DialogHeader>
+                    {staffing && <CourseStaff key={staffing.id} courseId={staffing.id} courseName={staffing.name} />}
                 </DialogContent>
             </Dialog>
 

@@ -3237,6 +3237,77 @@
       "nextMonth": "次の月",
       "chooseDate": "日付を選択",
       "anyTime": "時間を指定しない"
+    },
+    "staff": {
+      "portal": {
+        "title": "コース管理ポータル",
+        "noCourses": "まだコースが紐づけられていません。",
+        "noCoursesHelp": "担当コースへの追加を当社チームに依頼するか、メールで届いた招待を承認してください。",
+        "tabsLabel": "予約",
+        "tabWaiting": "対応待ち",
+        "tabUpcoming": "今後の予約",
+        "tabPast": "過去の予約",
+        "emptyWaiting": "対応待ちの予約はありません。新しいリクエストはここに表示され、届いた際にメールでお知らせします。",
+        "emptyUpcoming": "確定済みの今後のティータイムはありません。",
+        "emptyPast": "過去の予約はまだありません。",
+        "statusHeld": "支払い待ち",
+        "statusRequested": "対応待ち",
+        "statusConfirmed": "確定",
+        "statusExpired": "期限切れ",
+        "statusDeclined": "辞退",
+        "statusCancelled": "キャンセル",
+        "onePlayer": "1名",
+        "players": "{count}名",
+        "reference": "予約番号 {reference}",
+        "decideBy": "回答期限 {date}",
+        "confirm": "承認する",
+        "decline": "辞退する",
+        "actionError": "問題が発生しました。もう一度お試しください。"
+      },
+      "join": {
+        "title": "{course}を管理する",
+        "unknownTitle": "この招待が見つかりません",
+        "unknownBody": "メールのリンク全体を開いているかご確認いただくか、新しい招待を依頼してください。",
+        "expiredTitle": "この招待は期限切れです",
+        "expiredBody": "招待の有効期間は7日間です。招待した方に新しい招待の送付を依頼してください。",
+        "usedTitle": "この招待はすでに承認されています",
+        "usedBody": "各招待は1回のみ有効です。ご自身で承認した場合、コースはすでにアカウントに追加されています。",
+        "revokedTitle": "この招待は取り消されました",
+        "revokedBody": "招待した方に、新しい招待が届くかご確認ください。",
+        "goToPortal": "コース管理ポータルへ",
+        "invited": "{course}のティータイムリクエストを承認するよう招待されています。",
+        "signInLine": "{email} でサインインまたはアカウントを作成し、戻って承認してください。",
+        "signInCta": "サインインまたはアカウント作成",
+        "staffAccount": "{email} でサインイン中ですが、これはすでにスタッフアカウントです。コースへのアクセスは別のお客様アカウントに付与されます。サインアウトして {invited} をお使いください。",
+        "wrongAccount": "この招待は {invited} 宛てです。",
+        "wrongAccountHelp": "現在 {email} でサインインしています。サインアウトし、招待されたアドレスでサインインして承認してください。",
+        "scope": "このコースのリクエストのみ表示され、承認または辞退できます。",
+        "accept": "承認して{course}を管理する"
+      },
+      "request": {
+        "title": "コースを掲載・申請する",
+        "intro": "CheapestGoでは、コースご自身でティータイムを承認します。コースの情報をお知らせください。当社チームが確認します。",
+        "staffAccount": "スタッフアカウントでサインインしています。コースへのアクセスはお客様アカウントに付与されます。サインアウトし、コースを管理するアカウントをお使いください。",
+        "pendingTitle": "{course}のリクエストは審査中です。",
+        "pendingBody": "リクエストは数日以内に確認し、結果が決まりましたら {email} にメールでお知らせします。",
+        "rejectedTitle": "前回の{course}のリクエストは承認されませんでした。",
+        "rejectedHint": "下のフォームから新しいリクエストを送信できます。",
+        "sentTitle": "リクエストを送信しました。",
+        "fromAccount": "リクエストはお客様のアカウント {email} から送信されます。このアカウントでコースを管理します。",
+        "listedLabel": "コースはすでに掲載されていますか？",
+        "notListed": "いいえ、まだ掲載されていません",
+        "yourName": "お名前",
+        "courseName": "コース名",
+        "country": "国",
+        "city": "都市",
+        "message": "お知らせしたいこと（任意）",
+        "messagePlaceholder": "コースでのお立場、確認できるウェブサイト、プロショップへの連絡方法など。",
+        "send": "リクエストを送信",
+        "error": "問題が発生しました。もう一度お試しください。"
+      }
+    },
+    "partner": {
+      "cta": "ゴルフ場を運営していますか？こちらから掲載・申請できます。"
     }
   }
 }
