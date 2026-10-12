@@ -38,7 +38,7 @@
 
 ### Task 1: Migration
 
-- [ ] **Step 1: Write**
+- [x] **Step 1: Write**
 
 ```sql file=db/migrations/20261005000002_golf_extras.sql
 -- migrate:up
@@ -77,7 +77,7 @@ DROP TABLE IF EXISTS public.golf_booking_extras;
 DROP TABLE IF EXISTS public.golf_course_extras;
 ```
 
-- [ ] **Step 2: Apply locally**
+- [x] **Step 2: Apply locally**
 
 ```bash
 sed -n '/-- migrate:up/,/-- migrate:down/p' db/migrations/20261005000002_golf_extras.sql \
@@ -85,7 +85,7 @@ sed -n '/-- migrate:up/,/-- migrate:down/p' db/migrations/20261005000002_golf_ex
 ```
 Expected: `CREATE TABLE` ×2, `ALTER TABLE`.
 
-- [ ] **Step 3: Commit** — `git add db/migrations/20261005000002_golf_extras.sql && git commit -m "feat(golf): extras tables"`
+- [x] **Step 3: Commit** — `git add db/migrations/20261005000002_golf_extras.sql && git commit -m "feat(golf): extras tables"`
 
 ---
 
@@ -93,7 +93,7 @@ Expected: `CREATE TABLE` ×2, `ALTER TABLE`.
 
 **Files:** Create `src/lib/golf/extras.ts` (+ test); Modify `src/lib/schemas/golf.ts` (+ test), `src/lib/server/golf/emails.test.ts` (fixture)
 
-- [ ] **Step 1: Failing tests**
+- [x] **Step 1: Failing tests**
 
 ```ts file=src/lib/golf/extras.test.ts
 import { describe, it, expect } from 'vitest';
@@ -170,9 +170,9 @@ describe('golfExtrasInputSchema', () => {
 });
 ```
 
-- [ ] **Step 2: Run, expect FAIL** — `npx vitest run src/lib/golf/extras.test.ts src/lib/schemas/golf.test.ts`
+- [x] **Step 2: Run, expect FAIL** — `npx vitest run src/lib/golf/extras.test.ts src/lib/schemas/golf.test.ts`
 
-- [ ] **Step 3: Implement**
+- [x] **Step 3: Implement**
 
 ```ts file=src/lib/golf/extras.ts
 /**
@@ -315,9 +315,9 @@ export const golfExtrasInputSchema = z
 
 In `src/lib/server/golf/emails.test.ts`, the `booking` fixture gains `extrasTotal: 0, extras: [],` after `greenFeeTotal: 5000,`.
 
-- [ ] **Step 4: Run, expect PASS** — `npx vitest run src/lib/golf src/lib/schemas src/lib/server/golf/emails.test.ts`
+- [x] **Step 4: Run, expect PASS** — `npx vitest run src/lib/golf src/lib/schemas src/lib/server/golf/emails.test.ts`
 
-- [ ] **Step 5: Commit** — `git add src/lib/golf src/lib/schemas src/lib/server/golf/emails.test.ts && git commit -m "feat(golf): price extras per item; extras in the hold request"`
+- [x] **Step 5: Commit** — `git add src/lib/golf src/lib/schemas src/lib/server/golf/emails.test.ts && git commit -m "feat(golf): price extras per item; extras in the hold request"`
 
 ---
 
@@ -325,7 +325,7 @@ In `src/lib/server/golf/emails.test.ts`, the `booking` fixture gains `extrasTota
 
 **Files:** Create `src/lib/server/golf/extras.ts`; Modify `src/lib/server/golf/errors.ts`, `src/lib/server/golf/bookings.ts`, `bookings.integration.test.ts`, `src/app/api/golf/bookings/route.test.ts`
 
-- [ ] **Step 1: Failing tests** — in `bookings.integration.test.ts`:
+- [x] **Step 1: Failing tests** — in `bookings.integration.test.ts`:
 
 Imports: add `import { golfServiceFee } from '@/lib/pricing';`, `import type { ExtraChoice } from '@/lib/golf/extras';`, `import { listCourseExtras, setCourseExtras } from './extras';`.
 
@@ -378,9 +378,9 @@ In `src/app/api/golf/bookings/route.test.ts`, the hold expectation becomes:
         expect(holdTeeTime).toHaveBeenCalledWith({ userId: 'u1', email: 'ana@example.com', teeTimeId, players: 2, leadName: 'Ana Cruz', extras: [] });
 ```
 
-- [ ] **Step 2: Run, expect FAIL** — the database test command on `src/lib/server/golf/bookings.integration.test.ts` → cannot resolve `./extras`.
+- [x] **Step 2: Run, expect FAIL** — the database test command on `src/lib/server/golf/bookings.integration.test.ts` → cannot resolve `./extras`.
 
-- [ ] **Step 3: Course extras**
+- [x] **Step 3: Course extras**
 
 ```ts file=src/lib/server/golf/extras.ts
 import { getSqlAdmin } from '@/lib/db/postgres';
@@ -415,9 +415,9 @@ export async function setCourseExtras(courseId: string, offers: ExtraOffer[]): P
 }
 ```
 
-- [ ] **Step 4: errors.ts** — `GolfBookingErrorCode` gains `| 'extras_unavailable'` and `HTTP_STATUS` gains `extras_unavailable: 409,`.
+- [x] **Step 4: errors.ts** — `GolfBookingErrorCode` gains `| 'extras_unavailable'` and `HTTP_STATUS` gains `extras_unavailable: 409,`.
 
-- [ ] **Step 5: bookings.ts**
+- [x] **Step 5: bookings.ts**
 
 Imports: add `import { priceExtras, sameExtras, type ExtraChoice } from '@/lib/golf/extras';` and `import { listCourseExtras } from './extras';`.
 
@@ -487,9 +487,9 @@ In the hold's `INSERT INTO golf_bookings`, add `extras_total` after `service_fee
 
 In the PaymentIntent metadata, after `greenFeeTotal: String(greenFeeTotal),` add `extrasTotal: String(priced.total),`.
 
-- [ ] **Step 6: Run, expect PASS** — the database test command on `src/lib/server/golf`, and `npx vitest run src/app/api/golf`.
+- [x] **Step 6: Run, expect PASS** — the database test command on `src/lib/server/golf`, and `npx vitest run src/app/api/golf`.
 
-- [ ] **Step 7: Commit** — `git add src/lib/server/golf src/app/api/golf && git commit -m "feat(golf): holds price extras against the course's offer and lock them in"`
+- [x] **Step 7: Commit** — `git add src/lib/server/golf src/app/api/golf && git commit -m "feat(golf): holds price extras against the course's offer and lock them in"`
 
 ---
 
@@ -497,7 +497,7 @@ In the PaymentIntent metadata, after `greenFeeTotal: String(greenFeeTotal),` add
 
 **Files:** Create `src/app/api/admin/golf-extras/route.ts` (+ test), `src/app/admin/(dashboard)/golf/CourseExtras.tsx` (+ test); Modify `TeeTimeSchedules.tsx`, `bookings/GolfBookingsClient.tsx`
 
-- [ ] **Step 1: Failing tests**
+- [x] **Step 1: Failing tests**
 
 ```ts file=src/app/api/admin/golf-extras/route.test.ts
 import { describe, it, expect, vi, beforeEach } from 'vitest';
@@ -591,9 +591,9 @@ describe('CourseExtras', () => {
 });
 ```
 
-- [ ] **Step 2: Run, expect FAIL** — `npx vitest run src/app/api/admin/golf-extras "src/app/admin/(dashboard)/golf/CourseExtras.test.tsx"`
+- [x] **Step 2: Run, expect FAIL** — `npx vitest run src/app/api/admin/golf-extras "src/app/admin/(dashboard)/golf/CourseExtras.test.tsx"`
 
-- [ ] **Step 3: Route**
+- [x] **Step 3: Route**
 
 ```ts file=src/app/api/admin/golf-extras/route.ts
 import { NextRequest, NextResponse } from 'next/server';
@@ -650,7 +650,7 @@ export async function POST(req: NextRequest) {
 }
 ```
 
-- [ ] **Step 4: Admin Extras section**
+- [x] **Step 4: Admin Extras section**
 
 ```tsx file=src/app/admin/(dashboard)/golf/CourseExtras.tsx
 'use client';
@@ -752,7 +752,7 @@ In `TeeTimeSchedules.tsx` add `import { CourseExtras } from './CourseExtras';` a
             <CourseExtras courseId={course.id} currency={course.currency} />
 ```
 
-- [ ] **Step 5: Bookings queue** — in `GolfBookingsClient.tsx` add `import { EXTRA_NAMES_EN } from '@/lib/golf/extras';` and replace `<td className="px-4 py-2 tabular-nums">{b.players}</td>` with:
+- [x] **Step 5: Bookings queue** — in `GolfBookingsClient.tsx` add `import { EXTRA_NAMES_EN } from '@/lib/golf/extras';` and replace `<td className="px-4 py-2 tabular-nums">{b.players}</td>` with:
 ```tsx
                                 <td className="px-4 py-2">
                                     <span className="tabular-nums">{b.players}</span>
@@ -764,9 +764,9 @@ In `TeeTimeSchedules.tsx` add `import { CourseExtras } from './CourseExtras';` a
                                 </td>
 ```
 
-- [ ] **Step 6: Run, expect PASS** — `npx vitest run src/app/api/admin/golf-extras "src/app/admin/(dashboard)/golf"`
+- [x] **Step 6: Run, expect PASS** — `npx vitest run src/app/api/admin/golf-extras "src/app/admin/(dashboard)/golf"`
 
-- [ ] **Step 7: Commit** — `git add src/app/api/admin/golf-extras "src/app/admin/(dashboard)/golf" && git commit -m "feat(golf): admin sets a course's extras and sees them on bookings"`
+- [x] **Step 7: Commit** — `git add src/app/api/admin/golf-extras "src/app/admin/(dashboard)/golf" && git commit -m "feat(golf): admin sets a course's extras and sees them on bookings"`
 
 ---
 
@@ -774,7 +774,7 @@ In `TeeTimeSchedules.tsx` add `import { CourseExtras } from './CourseExtras';` a
 
 **Files:** Modify `src/locales/{en,ja,ko,zh}.json`, `src/app/(main)/golf/[slug]/book/page.tsx` (whole file), `BookTeeTimeClient.tsx` (whole file), `src/app/(main)/golf/bookings/[reference]/page.tsx`, `src/lib/server/golf/emails.ts` (+ test); Create `src/app/(main)/golf/[slug]/book/BookTeeTimeClient.test.tsx`
 
-- [ ] **Step 1: Copy**
+- [x] **Step 1: Copy**
 
 ```bash
 node -e "
@@ -794,7 +794,7 @@ for (const [locale, add] of Object.entries(keys)) {
 console.log('extras copy added');"
 ```
 
-- [ ] **Step 2: Failing tests**
+- [x] **Step 2: Failing tests**
 
 ```tsx file=src/app/(main)/golf/[slug]/book/BookTeeTimeClient.test.tsx
 import { describe, it, expect, vi, beforeEach } from 'vitest';
@@ -870,9 +870,9 @@ Append to `src/lib/server/golf/emails.test.ts` inside `describe('buildGolfBookin
     });
 ```
 
-- [ ] **Step 3: Run, expect FAIL** — `npx vitest run "src/app/(main)/golf/[slug]/book" src/lib/server/golf/emails.test.ts`
+- [x] **Step 3: Run, expect FAIL** — `npx vitest run "src/app/(main)/golf/[slug]/book" src/lib/server/golf/emails.test.ts`
 
-- [ ] **Step 4: Checkout page**
+- [x] **Step 4: Checkout page**
 
 ```tsx file=src/app/(main)/golf/[slug]/book/page.tsx
 import type { Metadata } from 'next';
@@ -984,7 +984,7 @@ export default async function BookTeeTimePage({ params, searchParams }: Props) {
 }
 ```
 
-- [ ] **Step 5: Checkout client**
+- [x] **Step 5: Checkout client**
 
 ```tsx file=src/app/(main)/golf/[slug]/book/BookTeeTimeClient.tsx
 'use client';
@@ -1151,7 +1151,7 @@ export function BookTeeTimeClient({ teeTimeId, players, bookPath, extras, summar
 }
 ```
 
-- [ ] **Step 6: Status page** — in `src/app/(main)/golf/bookings/[reference]/page.tsx`, the translations line becomes
+- [x] **Step 6: Status page** — in `src/app/(main)/golf/bookings/[reference]/page.tsx`, the translations line becomes
 ```ts
     const [t, tGolf, locale] = await Promise.all([getTranslations('golf.booking'), getTranslations('golf'), getLocale()]);
 ```
@@ -1165,20 +1165,20 @@ and directly after the green-fee row (`…<dd>{money(booking.greenFeeTotal)}</dd
                     ))}
 ```
 
-- [ ] **Step 7: Emails** — in `emails.ts` add `import { EXTRA_NAMES_EN } from '@/lib/golf/extras';` and, in `buildGolfBookingEmail`'s `rows`, directly after the `['Green fee', …]` entry:
+- [x] **Step 7: Emails** — in `emails.ts` add `import { EXTRA_NAMES_EN } from '@/lib/golf/extras';` and, in `buildGolfBookingEmail`'s `rows`, directly after the `['Green fee', …]` entry:
 ```ts
         ...b.extras.map((e): [string, string] => [`${EXTRA_NAMES_EN[e.code]} × ${e.quantity}`, money(e.total, b.currency)]),
 ```
 
-- [ ] **Step 8: Run, expect PASS** — `npx vitest run "src/app/(main)/golf" src/lib/server/golf/emails.test.ts src/locales` and `npx tsc --noEmit -p .`
+- [x] **Step 8: Run, expect PASS** — `npx vitest run "src/app/(main)/golf" src/lib/server/golf/emails.test.ts src/locales` and `npx tsc --noEmit -p .`
 
-- [ ] **Step 9: Commit** — `git add src/locales "src/app/(main)/golf" src/lib/server/golf/emails.ts src/lib/server/golf/emails.test.ts && git commit -m "feat(golf): customers choose extras at checkout; extras on the booking page and emails"`
+- [x] **Step 9: Commit** — `git add src/locales "src/app/(main)/golf" src/lib/server/golf/emails.ts src/lib/server/golf/emails.test.ts && git commit -m "feat(golf): customers choose extras at checkout; extras on the booking page and emails"`
 
 ---
 
 ### Task 6: Demo extras and live check
 
-- [ ] **Step 1: Demo offer** (local database only):
+- [x] **Step 1: Demo offer** (local database only):
 ```bash
 docker exec -i cheapest-go-app-postgres-1 sh -c 'psql -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d "$POSTGRES_DB"' <<'SQL'
 INSERT INTO golf_course_extras (course_id, code, price)
@@ -1192,4 +1192,4 @@ Expected: `INSERT 0 12`.
 
 - [ ] **Step 2: Live check on :3001** with a QA user and session (≥ 30-day expiry, cookie `cg-session`, email `delivered@resend.dev`): the checkout page for a demo tee time with `&extras=club_rental:2,cart:1` shows both lines and a total that includes them; `POST /api/golf/bookings` with those extras returns that total; the Stripe test-mode PaymentIntent amount equals it. Then delete the QA booking, user and session.
 
-- [ ] **Step 3: Full verification** — `npx tsc --noEmit -p .`, `npx vitest run`, the database test command on `src/lib/server/golf`, and `npx eslint` on the changed folders.
+- [x] **Step 3: Full verification** — `npx tsc --noEmit -p .`, `npx vitest run`, the database test command on `src/lib/server/golf`, and `npx eslint` on the changed folders.
