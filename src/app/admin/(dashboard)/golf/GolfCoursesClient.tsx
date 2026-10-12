@@ -224,7 +224,7 @@ export function GolfCoursesClient({ data, q, pendingRequests = 0 }: { data: Admi
             </Dialog>
 
             <Dialog open={staffing !== null} onOpenChange={open => { if (!open) setStaffing(null); }}>
-                <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-xl">
+                <DialogContent className="max-h-[90dvh] overflow-y-auto p-6 sm:max-w-xl">
                     <DialogHeader>
                         <DialogTitle>Staff · {staffing?.name}</DialogTitle>
                     </DialogHeader>

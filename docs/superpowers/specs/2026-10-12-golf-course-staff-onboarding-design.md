@@ -102,3 +102,19 @@ so the route does not confirm that it exists.
   rule.
 - Routes: auth and scope (an agent of course A cannot confirm a booking of course B).
 - Components: the join page states, the request form, the queue's confirm and decline.
+
+## Implementation notes
+
+- **A course is told when a request arrives.** Without it, "the course confirms for itself" would
+  mean a course polling a page. When a booking becomes `requested`, `notifyCourseOfRequest` emails
+  the course's staff (never throws; no contact details or prices in it). New email type
+  `golf_course_new_request`.
+- **Return paths survive sign-in for course staff.** `landingFor(role, returnTo)` honours a
+  `/course…` return path for `course_staff`, so a second invitation link is not lost to the
+  portal redirect.
+- **An admin cannot set `course_staff` from the Users page** (`MANUALLY_ASSIGNABLE_ROLES`), and
+  changing a person to any other role releases their course attachments.
+- **The customer-facing pages are localized** (`golf.staff.*`, en/ja/ko/zh); the admin screens are
+  English, like the rest of the admin. Server error messages are English.
+- **Entry point:** `/golf` links to `/golf/list-your-course` (`golf.partner.cta`).
+- ADR-0048 records the decisions that are easy to get wrong.
