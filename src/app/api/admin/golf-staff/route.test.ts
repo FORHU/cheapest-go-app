@@ -18,6 +18,7 @@ vi.mock('@/lib/server/golf/staff', () => ({
     listStaffOf: vi.fn(async () => []),
     revokeCourseAccess: vi.fn(),
 }));
+vi.mock('@/lib/server/golf/changes', () => ({ listChanges: vi.fn(async () => []) }));
 vi.mock('@/lib/server/golf/staffEmails', () => ({ sendCourseInvitationEmail: vi.fn(async () => undefined) }));
 
 import { GET, POST } from './route';
@@ -48,7 +49,7 @@ describe('/api/admin/golf-staff', () => {
 
     it('lists staff and invitations for a course, and needs its id', async () => {
         const res = await GET(new Request(`http://localhost/api/admin/golf-staff?courseId=${courseId}`) as never);
-        expect(await res.json()).toEqual({ success: true, data: { staff: [], invitations: [] } });
+        expect(await res.json()).toEqual({ success: true, data: { staff: [], invitations: [], changes: [] } });
         expect((await GET(new Request('http://localhost/api/admin/golf-staff') as never)).status).toBe(400);
     });
 

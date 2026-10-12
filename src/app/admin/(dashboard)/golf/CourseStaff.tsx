@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Loader2, Mail, UserMinus } from 'lucide-react';
 import { toast } from 'sonner';
 import type { CourseInvitation } from '@/lib/schemas/golfStaff';
+import type { CourseChange } from '@/lib/schemas/golfTeeSheet';
 import type { CourseStaffMember } from '@/lib/server/golf/staff';
 
 const inputClass = 'w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 dark:border-white/10 dark:bg-white/5 dark:text-slate-100';
@@ -32,6 +33,7 @@ async function call(body: Record<string, unknown>) {
 export function CourseStaff({ courseId, courseName }: { courseId: string; courseName: string }) {
     const [staff, setStaff] = useState<CourseStaffMember[] | null>(null);
     const [invitations, setInvitations] = useState<CourseInvitation[]>([]);
+    const [changes, setChanges] = useState<CourseChange[]>([]);
     const [email, setEmail] = useState('');
     const [busy, setBusy] = useState(false);
     const [failed, setFailed] = useState(false);
@@ -44,6 +46,7 @@ export function CourseStaff({ courseId, courseName }: { courseId: string; course
             const json = await response.json();
             setStaff(json.data.staff);
             setInvitations(json.data.invitations);
+            setChanges(json.data.changes ?? []);
             setFailed(false);
         } catch {
             setFailed(true);
@@ -121,6 +124,22 @@ export function CourseStaff({ courseId, courseName }: { courseId: string; course
                     ))}
                 </ul>
             </section>
+
+            {changes.length > 0 && (
+                <section aria-label="Recent changes">
+                    <h3 className="mb-2 text-sm font-semibold text-slate-900 dark:text-slate-100">Recent changes</h3>
+                    <ul className="divide-y divide-slate-100 dark:divide-white/5">
+                        {changes.map(change => (
+                            <li key={change.id} className="py-2 text-sm">
+                                <span className="block text-slate-900 dark:text-slate-100">{change.summary}</span>
+                                <span className="block text-xs text-slate-500">
+                                    {change.by ?? 'Former staff'} · {new Intl.DateTimeFormat('en-GB', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(change.createdAt))}
+                                </span>
+                            </li>
+                        ))}
+                    </ul>
+                </section>
+            )}
 
             {invitations.length > 0 && (
                 <section aria-label="Invitations">

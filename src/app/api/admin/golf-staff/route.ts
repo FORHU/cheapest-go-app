@@ -6,6 +6,7 @@ import { rateLimit } from '@/lib/server/rate-limit';
 import { logAdminAction } from '@/lib/server/admin/audit';
 import { createInvitation, listInvitations, revokeInvitation } from '@/lib/server/golf/invitations';
 import { listStaffOf, revokeCourseAccess } from '@/lib/server/golf/staff';
+import { listChanges } from '@/lib/server/golf/changes';
 import { sendCourseInvitationEmail } from '@/lib/server/golf/staffEmails';
 import { CourseStaffError } from '@/lib/server/golf/errors';
 import { invitationInputSchema } from '@/lib/schemas/golfStaff';
@@ -32,8 +33,10 @@ export async function GET(req: NextRequest) {
 
     const courseId = uuid.safeParse(new URL(req.url).searchParams.get('courseId'));
     if (!courseId.success) return fail(400, 'courseId is required');
-    const [staff, invitations] = await Promise.all([listStaffOf(courseId.data), listInvitations(courseId.data)]);
-    return NextResponse.json({ success: true, data: { staff, invitations } });
+    const [staff, invitations, changes] = await Promise.all([
+        listStaffOf(courseId.data), listInvitations(courseId.data), listChanges(courseId.data, 15),
+    ]);
+    return NextResponse.json({ success: true, data: { staff, invitations, changes } });
 }
 
 export async function POST(req: NextRequest) {
