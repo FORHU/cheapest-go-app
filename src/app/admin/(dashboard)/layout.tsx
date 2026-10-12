@@ -4,7 +4,7 @@ import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
 import { AdminLayoutClient } from './AdminLayoutClient';
 import { getSession } from '@/lib/auth/session';
-import { canAdminister, canStaffSupport } from '@/lib/auth/roles';
+import { canAdminister, canStaffCourses, canStaffSupport } from '@/lib/auth/roles';
 
 export const metadata: Metadata = {
     title: 'Admin | CheapestGo',
@@ -22,7 +22,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         // A Support Agent is staff, not a customer — send them to the console they can
         // actually use rather than bouncing them onto the marketing site with no
         // explanation. Anyone else goes home.
-        redirect(canStaffSupport(user.role) ? '/admin/desk' : '/');
+        redirect(canStaffSupport(user.role) ? '/admin/desk' : canStaffCourses(user.role) ? '/course' : '/');
     }
 
     const userProfile = {

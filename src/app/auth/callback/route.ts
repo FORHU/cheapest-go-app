@@ -180,7 +180,7 @@ export async function GET(request: Request) {
         const { user } = await getSession();
         if (user) {
             const returnTo = safeReturnTo(searchParams.get('next') ?? '/');
-            const landing = landingFor(user.role);
+            const landing = landingFor(user.role, returnTo);
             const target = landing ?? returnTo;
             return NextResponse.redirect(`${origin}${target}`);
         }

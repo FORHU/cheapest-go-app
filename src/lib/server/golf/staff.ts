@@ -95,6 +95,16 @@ export async function staffCanManage(userId: string, courseId: string): Promise<
     return rows.length > 0;
 }
 
+/** Addresses to tell when something needs this course's attention. */
+export async function listStaffEmailsOf(courseId: string): Promise<string[]> {
+    const sql = getSqlAdmin();
+    const rows = await sql<{ email: string }[]>`
+        SELECT u.email FROM golf_course_staff s JOIN users u ON u.id = s.user_id
+         WHERE s.course_id = ${courseId} AND u.role = 'course_staff' AND u.banned_at IS NULL
+         ORDER BY s.created_at`;
+    return rows.map(r => r.email);
+}
+
 export async function listStaffOf(courseId: string): Promise<CourseStaffMember[]> {
     const sql = getSqlAdmin();
     const rows = await sql<{ userId: string; email: string; first: string | null; last: string | null; since: Date }[]>`

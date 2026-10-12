@@ -101,7 +101,7 @@ export function useLoginForm(options: UseLoginFormOptions = {}): UseLoginFormRet
 
             // Normal sign-in. Staff still land where they work rather than on the
             // marketing site — an admin at /admin/overview, a Support Agent at the desk.
-            const landing = landingFor(user.role);
+            const landing = landingFor(user.role, readReturnTo(searchParams, '/'));
             if (landing) {
                 router.push(landing);
                 return;

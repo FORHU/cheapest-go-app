@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { buildInvitationEmail, buildRequestDecisionEmail } from './staffEmails';
+import { buildInvitationEmail, buildNewRequestEmail, buildRequestDecisionEmail } from './staffEmails';
 
 describe('buildInvitationEmail', () => {
     const now = new Date('2026-10-12T00:00:00Z');
@@ -36,5 +36,26 @@ describe('buildRequestDecisionEmail', () => {
         const { html } = buildRequestDecisionEmail({ approved: false, courseName: 'Mission Hills', note: 'We could not verify you represent the club.' });
         expect(html).toContain('We could not verify you represent the club.');
         expect(html).not.toContain('Open the course portal');
+    });
+});
+
+describe('buildNewRequestEmail', () => {
+    const booking = {
+        courseName: 'Wack Wack East', startsAt: '2026-10-20T00:00:00.000Z', timezone: 'Asia/Manila',
+        players: 2, leadName: 'Ana Cruz', decideBy: '2026-10-14T00:00:00.000Z',
+    };
+
+    it('says who wants to play, when, and by when it needs an answer', () => {
+        const { subject, html } = buildNewRequestEmail(booking, 'https://cheapestgo.com/course');
+        expect(subject).toContain('Wack Wack East');
+        expect(html).toContain('Ana Cruz would like to play with 2 players');
+        expect(html).toContain('Tue, 20 Oct 2026, 08:00');
+        expect(html).toContain('Please confirm or decline by');
+        expect(html).toContain('href="https://cheapestgo.com/course"');
+    });
+
+    it('carries no contact details or prices: the course answers in the portal', () => {
+        const { html } = buildNewRequestEmail(booking, 'https://cheapestgo.com/course');
+        expect(html).not.toMatch(/@|\$|USD/);
     });
 });

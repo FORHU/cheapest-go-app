@@ -59,10 +59,16 @@ export function canStaffCourses(role: Role | null | undefined): boolean {
  * Null is for customers, where the `next` parameter or wherever they came from is a better
  * answer than anything a role can supply.
  */
-export function landingFor(role: Role | null | undefined): string | null {
+export function landingFor(role: Role | null | undefined, returnTo?: string | null): string | null {
     if (role === 'admin') return '/admin/overview';
     if (role === 'support_agent') return '/admin/desk';
-    if (role === 'course_staff') return '/course';
+    if (role === 'course_staff') {
+        // An emailed link (a second invitation) must survive signing in: honour a return path that
+        // is inside the portal, and only that.
+        return returnTo && (returnTo === '/course' || returnTo.startsWith('/course/') || returnTo.startsWith('/course?'))
+            ? returnTo
+            : '/course';
+    }
     return null;
 }
 

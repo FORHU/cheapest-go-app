@@ -63,7 +63,8 @@ ALTER TABLE public.email_logs DROP CONSTRAINT IF EXISTS email_logs_email_type_ch
 ALTER TABLE public.email_logs ADD CONSTRAINT email_logs_email_type_check CHECK (email_type = ANY (ARRAY[
     'confirmation', 'ticketed', 'refund', 'cancellation', 'awaiting_ticket', 'price_alert',
     'support_escalation', 'golf_requested', 'golf_confirmed', 'golf_declined', 'golf_cancelled',
-    'golf_course_invitation', 'golf_course_request_approved', 'golf_course_request_rejected']));
+    'golf_course_invitation', 'golf_course_request_approved', 'golf_course_request_rejected',
+    'golf_course_new_request']));
 
 -- migrate:down
 DELETE FROM public.email_logs WHERE email_type LIKE 'golf\_course\_%';

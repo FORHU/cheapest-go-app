@@ -92,6 +92,16 @@ describe('landingFor', () => {
         expect(landingFor('course_staff')).toBe('/course');
     });
 
+    it('lets course staff keep a return path inside the portal, and nothing else', () => {
+        const link = '/course/join?token=abc';
+        expect(landingFor('course_staff', link)).toBe(link);
+        expect(landingFor('course_staff', '/hotels')).toBe('/course');
+        expect(landingFor('course_staff', '/courses-evil')).toBe('/course');
+        // Other staff are not redirected by a return path at all.
+        expect(landingFor('admin', link)).toBe('/admin/overview');
+        expect(landingFor('user', link)).toBeNull();
+    });
+
     it('sends a customer nowhere in particular', () => {
         // null means "the caller decides" — the `next` param, or wherever they came from.
         expect(landingFor('user')).toBeNull();

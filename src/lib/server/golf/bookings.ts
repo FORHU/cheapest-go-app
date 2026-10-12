@@ -12,6 +12,7 @@ import { listCourseExtras } from './extras';
 import { quoteGolf } from './quote';
 import { GolfBookingError } from './errors';
 import { sendGolfBookingEmail } from './emails';
+import { notifyCourseOfRequest } from './staffEmails';
 
 /**
  * Golf Bookings (CONTEXT.md, "Golf Booking"): held → requested → confirmed, or expired,
@@ -183,7 +184,11 @@ export async function syncPayment(id: string, now = new Date()): Promise<GolfBoo
          WHERE id = ${id} AND status = 'held'
         RETURNING id`;
     const updated = await getBookingById(id);
-    if (moved.length > 0 && updated) await sendGolfBookingEmail('requested', updated);
+    if (moved.length > 0 && updated) {
+        await sendGolfBookingEmail('requested', updated);
+        // The course confirms for itself now, so it has to hear a request has arrived.
+        await notifyCourseOfRequest(updated);
+    }
     return updated;
 }
 

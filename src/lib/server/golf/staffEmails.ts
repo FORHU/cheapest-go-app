@@ -1,4 +1,6 @@
+import type { GolfBooking } from '@/lib/schemas/golf';
 import { deliverEmail } from './deliver';
+import { listStaffEmailsOf } from './staff';
 
 /**
  * The three emails course-staff onboarding sends: an invitation, and the outcome of a request.
@@ -72,6 +74,44 @@ export function buildRequestDecisionEmail(
             ],
         }),
     };
+}
+
+function when(iso: string, tz: string | null): string {
+    return new Intl.DateTimeFormat('en-GB', {
+        timeZone: tz ?? 'UTC', weekday: 'short', day: 'numeric', month: 'short', year: 'numeric',
+        hour: '2-digit', minute: '2-digit', hourCycle: 'h23',
+    }).format(new Date(iso));
+}
+
+/** Tells a course a tee time was asked for, and by when it needs an answer. */
+export function buildNewRequestEmail(b: Pick<GolfBooking, 'courseName' | 'startsAt' | 'timezone' | 'players' | 'leadName' | 'decideBy'>, link: string): { subject: string; html: string } {
+    return {
+        subject: `New tee time request – ${b.courseName}`,
+        html: layout({
+            title: `A tee time was requested at ${b.courseName}`,
+            paragraphs: [
+                `${b.leadName} would like to play with ${b.players} ${b.players === 1 ? 'player' : 'players'} on ${when(b.startsAt, b.timezone)} (course time).`,
+                b.decideBy
+                    ? `Please confirm or decline by ${when(b.decideBy, b.timezone)}. If we don't hear from you, the request is released and nobody is charged.`
+                    : 'Please confirm or decline as soon as you can.',
+            ],
+            cta: { label: 'Review the request', href: link },
+        }),
+    };
+}
+
+/** Never throws: telling the course is best-effort, and the booking must go on. */
+export async function notifyCourseOfRequest(b: GolfBooking): Promise<void> {
+    try {
+        const recipients = await listStaffEmailsOf(b.courseId);
+        if (recipients.length === 0) return;
+        const { subject, html } = buildNewRequestEmail(b, `${SITE_URL()}/course`);
+        await Promise.all(recipients.map(to => deliverEmail({
+            emailType: 'golf_course_new_request', referenceId: `${b.reference}:${to}`, to, subject, html,
+        })));
+    } catch (err) {
+        console.error('[golf] could not notify course staff of', b.reference, err);
+    }
 }
 
 export async function sendCourseInvitationEmail(
