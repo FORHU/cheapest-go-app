@@ -71,13 +71,14 @@ export function ExtrasSection({ extras, currency, courseId, onSaved }: {
                                     aria-label={`${t('extrasOffered')}: ${tAmenity(code)}`} className="h-4 w-4 accent-[var(--g-accent)]" />
                                 {tAmenity(code)}
                             </label>
-                            <label className="block text-xs text-g-muted">
-                                <span className="sr-only">{[tAmenity(code), t('extrasPrice', { currency })].join(': ')}</span>
+                            <div className="flex items-baseline gap-2 text-xs text-g-muted">
                                 <input type="number" inputMode="decimal" min={0} step="0.01" disabled={!on} value={on ? offered[code] : ''}
+                                    aria-label={[tAmenity(code), t('extrasPrice', { currency })].join(': ')}
                                     placeholder={t('extrasPrice', { currency })}
                                     onChange={e => setOffered(current => ({ ...current, [code]: e.target.value }))}
                                     className={`${inputClass} mt-0 text-right disabled:opacity-40`} />
-                            </label>
+                                <span aria-hidden>{currency}</span>
+                            </div>
                         </li>
                     );
                 })}

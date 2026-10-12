@@ -123,9 +123,9 @@ export function TeeSheetClient({ sheet, courses }: { sheet: TeeSheetOverview; co
                 {sheet.day.teeTimes.length === 0 ? (
                     <p className="mt-4 text-sm text-g-muted">{t('dayEmpty')}</p>
                 ) : (
-                    <ul className="mt-4 grid gap-px border border-g-rule bg-g-rule sm:grid-cols-2">
+                    <ul className="mt-4 border-t border-g-rule sm:columns-2 sm:gap-x-10">
                         {sheet.day.teeTimes.map(tt => (
-                            <li key={tt.id} className="flex items-center justify-between gap-3 bg-g-paper px-4 py-3">
+                            <li key={tt.id} className="flex break-inside-avoid items-center justify-between gap-3 border-b border-g-rule py-3">
                                 <div>
                                     <p className="font-mono text-lg font-medium tabular-nums text-g-ink">{tt.localTime}</p>
                                     <p className="text-xs tabular-nums text-g-muted">
@@ -134,7 +134,7 @@ export function TeeSheetClient({ sheet, courses }: { sheet: TeeSheetOverview; co
                                 </div>
                                 <div className="flex flex-col items-end gap-1 text-xs">
                                     <span className={`rounded-sm px-2 py-0.5 font-medium ${tt.status === 'open'
-                                        ? 'bg-g-accent text-g-accent-ink'
+                                        ? 'text-g-accent'
                                         : 'bg-g-sunk text-g-muted'}`}>{state(tt)}</span>
                                     {tt.booked > 0 && <span className="tabular-nums text-g-muted">{t('booked', { count: tt.booked })}</span>}
                                 </div>
