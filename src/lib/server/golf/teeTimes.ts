@@ -5,6 +5,9 @@ import { expandSchedule } from '@/lib/golf/schedule';
 import { addDays, localDate, localTime, zonedTimeToUtc } from '@/lib/golf/time';
 import { MIN_LEAD_HOURS, isBookableStart } from '@/lib/golf/rules';
 import { CourseNotSchedulableError, LastScheduleError } from './errors';
+import { applyBlocks } from './blocks';
+import { inTransaction } from './dryRun';
+import { noImpact, type Impact } from '@/lib/schemas/golfTeeSheet';
 
 /**
  * Tee-time schedules and the tee times they generate (CONTEXT.md, "Tee Time"). A tee time is a
@@ -35,7 +38,7 @@ function toTeeTime(row: TeeTimeRow, tz: string): TeeTime {
     };
 }
 
-function scheduleColumns(sql: postgres.Sql) {
+function scheduleColumns(sql: postgres.Sql | postgres.TransactionSql) {
     return sql`
         s.id, s.course_id AS "courseId", s.name, s.days_of_week AS "daysOfWeek",
         to_char(s.first_tee, 'HH24:MI') AS "firstTee", to_char(s.last_tee, 'HH24:MI') AS "lastTee",
@@ -149,6 +152,8 @@ export async function generateTeeTimes({ courseId, now = new Date() }: { courseI
             created += result.count;
         }
     }
+    // Tee times that did not exist yesterday must honour the blocks a course already has.
+    await applyBlocks(sql, { courseId, now });
     return created;
 }
 
@@ -228,4 +233,171 @@ export async function getBookableTeeTime(id: string, now = new Date()): Promise<
             bookingWindowDays: row.bookingWindowDays, weatherPolicy: row.weatherPolicy, coverUrl: row.coverUrl,
         },
     };
+}
+
+// ── Changing a schedule from the portal ──────────────────────────────────────
+
+type CourseClock = { timezone: string; currency: string; windowDays: number };
+
+/**
+ * Makes a schedule's future tee times match its pattern, and counts what that did:
+ *
+ * - a tee time the pattern still produces and no live booking sits on takes the new price and
+ *   spots; one with a live booking is left alone, so nothing a customer holds moves under them;
+ * - a tee time the pattern no longer produces is deleted when no booking ever pointed at it, and
+ *   closed when one did (closed means nothing new is sold; its bookings are not touched);
+ * - tee times the pattern now produces that do not exist are created, and blocks are applied.
+ */
+async function reconcileSchedule(
+    tx: postgres.TransactionSql,
+    { courseId, scheduleId, input, clock, now }:
+    { courseId: string; scheduleId: string; input: TeeTimeScheduleInput; clock: CourseClock; now: Date },
+): Promise<Impact> {
+    const wanted = new Map<number, Date>();
+    for (const start of expandSchedule(input, clock.timezone, localDate(now, clock.timezone), clock.windowDays)) {
+        if (start.getTime() > now.getTime()) wanted.set(start.getTime(), start);
+    }
+
+    const existing = await tx<{ id: string; startsAt: Date; live: boolean; history: boolean }[]>`
+        SELECT t.id, t.starts_at AS "startsAt",
+               EXISTS (SELECT 1 FROM golf_bookings b WHERE b.tee_time_id = t.id
+                        AND b.status IN ('held', 'requested', 'confirmed')) AS live,
+               EXISTS (SELECT 1 FROM golf_bookings b WHERE b.tee_time_id = t.id) AS history
+          FROM golf_tee_times t
+         WHERE t.schedule_id = ${scheduleId} AND t.starts_at > ${now}`;
+
+    const impact = noImpact();
+    const keep: string[] = [];
+    const retireDelete: string[] = [];
+    const retireClose: string[] = [];
+    for (const row of existing) {
+        if (wanted.has(row.startsAt.getTime())) {
+            wanted.delete(row.startsAt.getTime());
+            if (row.live) impact.leftAlone += 1; else keep.push(row.id);
+        } else if (row.history) {
+            retireClose.push(row.id);
+        } else {
+            retireDelete.push(row.id);
+        }
+    }
+
+    if (keep.length > 0) {
+        const updated = await tx`
+            UPDATE golf_tee_times SET price_per_player = ${input.pricePerPlayer}, spots = ${input.spots}, spots_left = ${input.spots}
+             WHERE id IN ${tx(keep)}
+               AND (price_per_player <> ${input.pricePerPlayer} OR spots <> ${input.spots})
+            RETURNING id`;
+        impact.updated = updated.length;
+    }
+    if (retireDelete.length > 0) {
+        const gone = await tx`DELETE FROM golf_tee_times WHERE id IN ${tx(retireDelete)} RETURNING id`;
+        impact.deleted = gone.length;
+    }
+    if (retireClose.length > 0) {
+        const closed = await tx`
+            UPDATE golf_tee_times SET status = 'closed', closed_by_block_id = NULL
+             WHERE id IN ${tx(retireClose)} AND status <> 'closed' RETURNING id`;
+        impact.closed += closed.length;
+    }
+
+    const rows = [...wanted.values()].map(start => ({
+        course_id: courseId, schedule_id: scheduleId, starts_at: start, spots: input.spots,
+        spots_left: input.spots, price_per_player: input.pricePerPlayer, currency: clock.currency.trim(),
+    }));
+    for (let i = 0; i < rows.length; i += 1000) {
+        const result = await tx`
+            INSERT INTO golf_tee_times ${tx(rows.slice(i, i + 1000))}
+            ON CONFLICT (course_id, starts_at) DO NOTHING`;
+        impact.created += result.count;
+    }
+    impact.closed += await applyBlocks(tx, { courseId, now });
+    return impact;
+}
+
+async function lockClock(tx: postgres.TransactionSql, courseId: string): Promise<CourseClock | null> {
+    const [course] = await tx<{ timezone: string | null; currency: string; windowDays: number }[]>`
+        SELECT timezone, currency, booking_window_days AS "windowDays" FROM golf_courses WHERE id = ${courseId} FOR UPDATE`;
+    if (!course) return null;
+    if (!course.timezone) throw new CourseNotSchedulableError();
+    return { timezone: course.timezone, currency: course.currency, windowDays: course.windowDays };
+}
+
+/** Adds a schedule and creates its tee times, counting them. `dryRun` writes nothing. */
+export async function createScheduleCounted(
+    { courseId, input, now = new Date(), dryRun = false }:
+    { courseId: string; input: TeeTimeScheduleInput; now?: Date; dryRun?: boolean },
+): Promise<{ schedule: TeeTimeSchedule; impact: Impact } | null> {
+    return inTransaction(dryRun, async tx => {
+        const clock = await lockClock(tx, courseId);
+        if (!clock) return null;
+        const [{ id }] = await tx<{ id: string }[]>`
+            INSERT INTO golf_tee_time_schedules
+                (course_id, name, days_of_week, first_tee, last_tee, interval_minutes, spots, price_per_player)
+            VALUES
+                (${courseId}, ${input.name}, ${input.daysOfWeek}::smallint[], ${input.firstTee}::time,
+                 ${input.lastTee}::time, ${input.intervalMinutes}, ${input.spots}, ${input.pricePerPlayer})
+            RETURNING id`;
+        const impact = await reconcileSchedule(tx, { courseId, scheduleId: id, input, clock, now });
+        const [schedule] = await tx<TeeTimeSchedule[]>`
+            SELECT ${scheduleColumns(tx)} FROM golf_tee_time_schedules s WHERE s.id = ${id}`;
+        return { schedule: plainSchedule(schedule), impact };
+    });
+}
+
+/** Changes a schedule and reconciles its future tee times. null when it is not this course's. */
+export async function updateSchedule(
+    { courseId, scheduleId, input, now = new Date(), dryRun = false }:
+    { courseId: string; scheduleId: string; input: TeeTimeScheduleInput; now?: Date; dryRun?: boolean },
+): Promise<{ schedule: TeeTimeSchedule; impact: Impact } | null> {
+    return inTransaction(dryRun, async tx => {
+        const clock = await lockClock(tx, courseId);
+        if (!clock) return null;
+        const [owned] = await tx`SELECT 1 FROM golf_tee_time_schedules WHERE id = ${scheduleId} AND course_id = ${courseId}`;
+        if (!owned) return null;
+
+        await tx`
+            UPDATE golf_tee_time_schedules SET
+                name = ${input.name}, days_of_week = ${input.daysOfWeek}::smallint[],
+                first_tee = ${input.firstTee}::time, last_tee = ${input.lastTee}::time,
+                interval_minutes = ${input.intervalMinutes}, spots = ${input.spots},
+                price_per_player = ${input.pricePerPlayer}, updated_at = now()
+             WHERE id = ${scheduleId}`;
+        const impact = await reconcileSchedule(tx, { courseId, scheduleId, input, clock, now });
+        const [schedule] = await tx<TeeTimeSchedule[]>`
+            SELECT ${scheduleColumns(tx)} FROM golf_tee_time_schedules s WHERE s.id = ${scheduleId}`;
+        return { schedule: plainSchedule(schedule), impact };
+    });
+}
+
+/**
+ * What deleting a schedule would do, or does: future tee times nobody ever booked are deleted,
+ * the rest are closed (their bookings are untouched). Same rule as deleteSchedule, with counts.
+ */
+export async function deleteScheduleCounted(
+    { courseId, scheduleId, now = new Date(), dryRun = false }:
+    { courseId: string; scheduleId: string; now?: Date; dryRun?: boolean },
+): Promise<{ impact: Impact } | null> {
+    return inTransaction(dryRun, async tx => {
+        const [schedule] = await tx<{ published: boolean; others: number }[]>`
+            SELECT c.status = 'published' AS published,
+                   (SELECT count(*)::int FROM golf_tee_time_schedules o
+                     WHERE o.course_id = s.course_id AND o.id <> s.id) AS others
+              FROM golf_tee_time_schedules s
+              JOIN golf_courses c ON c.id = s.course_id
+             WHERE s.id = ${scheduleId} AND c.id = ${courseId}
+               FOR UPDATE OF c`;
+        if (!schedule) return null;
+        if (schedule.published && schedule.others === 0) throw new LastScheduleError();
+
+        const deleted = await tx`
+            DELETE FROM golf_tee_times t
+             WHERE t.schedule_id = ${scheduleId} AND t.starts_at > ${now}
+               AND NOT EXISTS (SELECT 1 FROM golf_bookings b WHERE b.tee_time_id = t.id)
+            RETURNING t.id`;
+        const closed = await tx`
+            UPDATE golf_tee_times SET status = 'closed', closed_by_block_id = NULL
+             WHERE schedule_id = ${scheduleId} AND starts_at > ${now} AND status <> 'closed' RETURNING id`;
+        await tx`DELETE FROM golf_tee_time_schedules WHERE id = ${scheduleId}`;
+        return { impact: { ...noImpact(), deleted: deleted.length, closed: closed.length } };
+    });
 }
