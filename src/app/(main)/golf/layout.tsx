@@ -1,16 +1,8 @@
-import { Newsreader } from 'next/font/google';
-
 /**
- * The golf pages' own surface: warm paper and fairway ink (the `.golf-theme` tokens in
- * globals.css) and an editorial serif for headings. The font is loaded here, not at the root, so
- * no other page pays for it. Pages inside are plain `div`s: the site layout already owns `main`.
+ * The golf pages' surface. The palette and the heading face are the site's own, carried by the
+ * `.golf-theme` tokens in globals.css, so this only scopes them: no font is loaded here and the
+ * page background is the site's. Pages inside are plain `div`s: the site layout already owns `main`.
  */
-const newsreader = Newsreader({ subsets: ['latin'], variable: '--font-golf-serif', display: 'swap', axes: ['opsz'] });
-
 export default function GolfLayout({ children }: { children: React.ReactNode }) {
-    return (
-        <div className={`${newsreader.variable} golf-theme min-h-[70dvh] bg-g-paper text-g-ink`}>
-            {children}
-        </div>
-    );
+    return <div className="golf-theme min-h-[70dvh] text-g-ink">{children}</div>;
 }

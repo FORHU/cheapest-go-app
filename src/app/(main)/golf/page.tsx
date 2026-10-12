@@ -44,7 +44,7 @@ export default async function GolfPage({ searchParams }: { searchParams: Promise
     return (
         <div className="mx-auto max-w-6xl px-4 pb-24 pt-12 md:pt-16">
             <header className="grid gap-6 md:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)] md:items-end md:gap-12">
-                <h1 className="font-golf text-5xl font-medium leading-[1.02] tracking-tight text-balance text-g-ink md:text-7xl">{t('heading')}</h1>
+                <h1 className="font-golf text-5xl font-extrabold leading-[1.02] tracking-tight text-balance text-g-ink md:text-7xl">{t('heading')}</h1>
                 <p className="max-w-md text-base leading-relaxed text-pretty text-g-muted md:pb-2">{t('subheading')}</p>
             </header>
 

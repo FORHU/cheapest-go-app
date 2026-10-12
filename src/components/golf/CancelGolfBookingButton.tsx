@@ -38,7 +38,7 @@ export function CancelGolfBookingButton({ reference }: { reference: string }) {
             {confirming ? (
                 <div className="flex flex-wrap gap-2">
                     <button type="button" onClick={cancel} disabled={busy}
-                        className={`${base} flex items-center gap-2 bg-[#8c2f1f] text-white hover:bg-[#742518] dark:bg-[#d4806f] dark:text-[#1c0f0b] dark:hover:bg-[#e29a8b]`}>
+                        className={`${base} flex items-center gap-2 bg-red-600 text-white hover:bg-red-700 dark:bg-red-500 dark:hover:bg-red-400`}>
                         {busy && <Loader2 className="h-4 w-4 animate-spin" aria-hidden />} {t('cancelConfirm')}
                     </button>
                     <button type="button" onClick={() => setConfirming(false)} disabled={busy}
@@ -48,11 +48,11 @@ export function CancelGolfBookingButton({ reference }: { reference: string }) {
                 </div>
             ) : (
                 <button type="button" onClick={() => setConfirming(true)}
-                    className={`${base} self-start border border-[#8c2f1f]/40 text-[#8c2f1f] hover:bg-[#8c2f1f]/5 dark:border-[#d4806f]/50 dark:text-[#d4806f]`}>
+                    className={`${base} self-start border border-red-300 text-red-700 hover:bg-red-50 dark:border-red-500/40 dark:text-red-300 dark:hover:bg-red-950/30`}>
                     {t('cancel')}
                 </button>
             )}
-            {error && <p role="alert" className="text-sm text-[#8c2f1f] dark:text-[#d4806f]">{error}</p>}
+            {error && <p role="alert" className="text-sm text-red-600 dark:text-red-400">{error}</p>}
         </div>
     );
 }

@@ -159,7 +159,7 @@ export function GolfDatePicker({ label, name, value, defaultValue = '', onChange
                             className="flex h-9 w-9 items-center justify-center rounded-sm text-g-ink transition-colors hover:bg-g-sunk disabled:opacity-30 disabled:hover:bg-transparent">
                             <ChevronLeft className="h-4 w-4" aria-hidden />
                         </button>
-                        <p className="font-golf text-lg font-medium tracking-tight text-g-ink" aria-live="polite">{formats.month.format(at(`${view}-01`))}</p>
+                        <p className="font-golf text-lg font-bold tracking-tight text-g-ink" aria-live="polite">{formats.month.format(at(`${view}-01`))}</p>
                         <button type="button" aria-label={t('nextMonth')} disabled={!canGoForward}
                             onClick={() => { setView(shiftMonth(view, 1)); setFocus(clampDate(shiftMonthKeepingDay(focus, 1), min, max)); }}
                             className="flex h-9 w-9 items-center justify-center rounded-sm text-g-ink transition-colors hover:bg-g-sunk disabled:opacity-30 disabled:hover:bg-transparent">

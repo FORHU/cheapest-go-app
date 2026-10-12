@@ -20,9 +20,9 @@ export function GolfFactBlock({ course }: { course: Pick<GolfCourse, 'holes' | '
     return (
         <dl className="golf-theme grid grid-cols-[repeat(auto-fit,minmax(8.5rem,1fr))] gap-px border border-g-rule bg-g-rule">
             {facts.map(([label, value]) => (
-                <div key={label} className="bg-g-paper px-4 py-3">
+                <div key={label} className="bg-g-surface px-4 py-3">
                     <dt className="text-xs text-g-muted">{label}</dt>
-                    <dd className="font-golf mt-0.5 text-2xl font-medium leading-tight tabular-nums text-g-ink">{value}</dd>
+                    <dd className="font-golf mt-0.5 text-2xl font-bold leading-tight tabular-nums text-g-ink">{value}</dd>
                 </div>
             ))}
         </dl>

@@ -32,7 +32,7 @@ export function GolfPolicyBlock({ windowDays, cancel, weatherPolicy }: {
 
     return (
         <section aria-labelledby="golf-policy-heading" className="golf-theme border-t-2 border-g-ink pt-3">
-            <h2 id="golf-policy-heading" className="font-golf text-xl font-medium tracking-tight text-g-ink">{t('heading')}</h2>
+            <h2 id="golf-policy-heading" className="font-golf text-xl font-bold tracking-tight text-g-ink">{t('heading')}</h2>
             <ul className="mt-2 divide-y divide-g-rule text-sm leading-relaxed text-g-muted">
                 {items.map(item => <li key={item} className="py-2 first:pt-1">{item}</li>)}
             </ul>

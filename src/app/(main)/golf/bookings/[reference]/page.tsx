@@ -50,8 +50,8 @@ export default async function GolfBookingPage({ params }: Props) {
 
     const Icon = booking.status === 'confirmed' ? CheckCircle2
         : booking.status === 'held' || booking.status === 'requested' ? Clock : XCircle;
-    const tone = booking.status === 'confirmed' ? 'text-g-accent'
-        : booking.status === 'held' || booking.status === 'requested' ? 'text-[#9a6a12] dark:text-[#d9a441]' : 'text-g-muted';
+    const tone = booking.status === 'confirmed' ? 'text-emerald-600 dark:text-emerald-400'
+        : booking.status === 'held' || booking.status === 'requested' ? 'text-amber-500' : 'text-g-muted';
 
     const cancellation = cancellationFor(
         { status: booking.status, total: booking.total, freeCancelUntil: new Date(booking.freeCancelUntil) },
@@ -65,7 +65,7 @@ export default async function GolfBookingPage({ params }: Props) {
                 <Icon className={`mt-2 h-7 w-7 shrink-0 ${tone}`} aria-hidden />
                 <div>
                     <p className="text-sm tabular-nums text-g-muted">{t('bookingTitle')} · {booking.reference}</p>
-                    <h1 className="font-golf mt-1 text-4xl font-medium leading-tight tracking-tight text-balance text-g-ink md:text-5xl">{t(`status.${booking.status}.title`)}</h1>
+                    <h1 className="font-golf mt-1 text-4xl font-extrabold leading-tight tracking-tight text-balance text-g-ink md:text-5xl">{t(`status.${booking.status}.title`)}</h1>
                     <p className="mt-3 max-w-[60ch] text-lg leading-relaxed text-pretty text-g-ink/80">{body}</p>
                 </div>
             </header>
@@ -88,7 +88,7 @@ export default async function GolfBookingPage({ params }: Props) {
                         </div>
                     ))}
                     <div className={row}><dt>{t('serviceFee')}</dt><dd>{money(booking.serviceFee)}</dd></div>
-                    <div className={`${row} mt-1 items-baseline border-t border-g-ink pt-3 text-g-ink`}><dt className="font-medium">{t('total')}</dt><dd className="font-golf text-2xl font-medium">{money(booking.total)}</dd></div>
+                    <div className={`${row} mt-1 items-baseline border-t border-g-ink pt-3 text-g-ink`}><dt className="font-bold">{t('total')}</dt><dd className="font-golf text-2xl font-medium">{money(booking.total)}</dd></div>
                 </dl>
             </section>
 

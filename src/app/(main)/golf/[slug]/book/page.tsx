@@ -45,7 +45,7 @@ export default async function BookTeeTimePage({ params, searchParams }: Props) {
     if (!bookable || bookable.course.slug !== slug) {
         return (
             <div className="mx-auto max-w-xl px-4 py-24">
-                <h1 className="font-golf text-4xl font-medium leading-tight tracking-tight text-balance text-g-ink">{t('unavailable')}</h1>
+                <h1 className="font-golf text-4xl font-bold leading-tight tracking-tight text-balance text-g-ink">{t('unavailable')}</h1>
                 <Link href={`/golf/${slug}`} className="mt-6 inline-block font-medium text-g-accent underline-offset-4 hover:underline">{t('backToCourse')}</Link>
             </div>
         );

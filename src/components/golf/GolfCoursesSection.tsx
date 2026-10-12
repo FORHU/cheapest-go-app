@@ -17,7 +17,7 @@ export function GolfCoursesSection({ courses }: { courses: GolfCourse[] }) {
             <div className="max-w-[1400px] mx-auto px-4 sm:px-6">
                 <div className="mb-6 flex flex-col gap-2 border-b border-g-rule pb-4 sm:flex-row sm:items-end sm:justify-between sm:gap-4">
                     <div>
-                        <h2 className="font-golf mb-1 text-3xl font-medium tracking-tight text-g-ink md:text-4xl">{t('homeTitle')}</h2>
+                        <h2 className="font-golf mb-1 text-3xl font-bold tracking-tight text-g-ink md:text-4xl">{t('homeTitle')}</h2>
                         <p className="text-sm text-g-muted md:text-base">{t('homeSubtitle')}</p>
                     </div>
                     <Link href="/golf"

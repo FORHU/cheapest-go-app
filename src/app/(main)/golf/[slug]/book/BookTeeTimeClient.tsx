@@ -95,13 +95,13 @@ export function BookTeeTimeClient({ teeTimeId, players, bookPath, extras, summar
     return (
         <div className="mx-auto grid max-w-5xl gap-12 px-4 pb-24 pt-10 lg:grid-cols-[minmax(0,1fr)_23rem]">
             <section className="flex min-w-0 flex-col gap-5">
-                <h1 className="font-golf text-4xl font-medium leading-tight tracking-tight text-balance text-g-ink md:text-5xl">{t('checkoutTitle')}</h1>
+                <h1 className="font-golf text-4xl font-extrabold leading-tight tracking-tight text-balance text-g-ink md:text-5xl">{t('checkoutTitle')}</h1>
                 <p className="border-l-2 border-g-accent bg-g-sunk px-4 py-3 text-sm leading-relaxed text-g-ink">{t('chargeNotice')}</p>
 
                 {extras.length > 0 && !payment && (
                     <section className="flex flex-col gap-4 border-y border-g-rule py-6" aria-busy={repricing}>
                         <div>
-                            <h2 className="font-golf text-2xl font-medium tracking-tight text-g-ink">{t('extrasHeading')}</h2>
+                            <h2 className="font-golf text-2xl font-bold tracking-tight text-g-ink">{t('extrasHeading')}</h2>
                             <p className="text-xs text-g-muted">{t('extrasHint')}</p>
                         </div>
                         {extras.map(extra => (
@@ -133,7 +133,7 @@ export function BookTeeTimeClient({ teeTimeId, players, bookPath, extras, summar
                             onChange={e => setLeadName(e.target.value)}
                             className="rounded-sm border border-g-rule bg-g-surface px-3 py-2.5 text-g-ink transition-colors focus:border-g-accent" />
                         <p className="text-xs text-g-muted">{t('leadNameHint')}</p>
-                        {error && <p role="alert" className="text-sm text-[#8c2f1f] dark:text-[#d4806f]">{error}</p>}
+                        {error && <p role="alert" className="text-sm text-red-600 dark:text-red-400">{error}</p>}
                         <button type="submit" disabled={busy || repricing}
                             className="mt-3 flex items-center justify-center gap-2 rounded-sm bg-g-accent px-6 py-3 font-semibold text-g-accent-ink transition duration-200 hover:bg-g-accent-hover disabled:opacity-60 motion-safe:active:scale-[0.98]">
                             {busy && <Loader2 className="h-4 w-4 animate-spin" aria-hidden />} {t('continueToPayment')}
@@ -143,7 +143,7 @@ export function BookTeeTimeClient({ teeTimeId, players, bookPath, extras, summar
             </section>
 
             <aside className="h-fit border-t-4 border-g-accent bg-g-surface p-6 text-sm lg:sticky lg:top-24">
-                <h2 className="font-golf mb-4 text-2xl font-medium tracking-tight text-g-ink">{t('summaryHeading')}</h2>
+                <h2 className="font-golf mb-4 text-2xl font-bold tracking-tight text-g-ink">{t('summaryHeading')}</h2>
                 <dl className="flex flex-col gap-2.5 text-g-muted">
                     <div className={row}><dt>{t('course')}</dt><dd className="text-right"><Link href={summary.courseHref} className="font-medium text-g-accent underline-offset-4 hover:underline">{summary.courseName}</Link></dd></div>
                     <div className={row}><dt>{t('dateLabel')}</dt><dd className="text-right">{summary.date}</dd></div>
@@ -156,7 +156,7 @@ export function BookTeeTimeClient({ teeTimeId, players, bookPath, extras, summar
                         <div key={line.label} className={row}><dt>{line.label}</dt><dd>{line.amount}</dd></div>
                     ))}
                     <div className={row}><dt>{t('serviceFee')}</dt><dd>{summary.serviceFee}</dd></div>
-                    <div className={`${row} mt-1 items-baseline border-t border-g-ink pt-3 text-g-ink`}><dt className="font-medium">{t('total')}</dt><dd className="font-golf text-2xl font-medium">{summary.total}</dd></div>
+                    <div className={`${row} mt-1 items-baseline border-t border-g-ink pt-3 text-g-ink`}><dt className="font-bold">{t('total')}</dt><dd className="font-golf text-2xl font-medium">{summary.total}</dd></div>
                 </dl>
             </aside>
         </div>

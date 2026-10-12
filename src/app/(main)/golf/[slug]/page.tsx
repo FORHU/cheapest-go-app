@@ -52,7 +52,7 @@ export default async function GolfCoursePage({ params }: Params) {
     const [t, locale] = await Promise.all([getTranslations('golf'), getLocale()]);
     const [cover, ...gallery] = course.imageUrls;
     const paragraphs = course.description.split(/\n\s*\n/).map(p => p.trim()).filter(Boolean);
-    const heading = 'font-golf text-2xl font-medium tracking-tight text-g-ink';
+    const heading = 'font-golf text-2xl font-bold tracking-tight text-g-ink';
 
     return (
         <div className="mx-auto max-w-6xl px-4 pb-24 pt-8">
@@ -61,11 +61,11 @@ export default async function GolfCoursePage({ params }: Params) {
             </Link>
 
             <header className="mt-6 max-w-4xl">
-                <h1 className="font-golf text-5xl font-medium leading-[1.02] tracking-tight text-balance text-g-ink md:text-7xl">{course.name}</h1>
+                <h1 className="font-golf text-5xl font-extrabold leading-[1.02] tracking-tight text-balance text-g-ink md:text-7xl">{course.name}</h1>
                 <p className="mt-4 flex items-center gap-1.5 text-g-muted"><MapPin className="h-4 w-4" aria-hidden /> {course.city}, {course.country}</p>
             </header>
 
-            <div className={`relative mt-8 w-full overflow-hidden rounded-sm bg-[#e4dfd0] dark:bg-[#1a251f] ${cover ? 'aspect-[16/8]' : 'aspect-[16/4]'}`}>
+            <div className={`relative mt-8 w-full overflow-hidden rounded-sm bg-g-sunk ${cover ? 'aspect-[16/8]' : 'aspect-[16/4]'}`}>
                 {cover ? (
                     <Image src={cover} alt={course.name} fill unoptimized priority sizes="(min-width: 1152px) 1152px, 100vw" className="object-cover" />
                 ) : (
@@ -122,7 +122,7 @@ export default async function GolfCoursePage({ params }: Params) {
                 <aside className="h-fit border-t-4 border-g-accent bg-g-surface p-6 lg:sticky lg:top-24">
                     {soonest?.from ? (
                         <>
-                            <p className="font-golf text-2xl font-medium leading-snug tabular-nums text-balance text-g-ink">
+                            <p className="font-golf text-2xl font-bold leading-snug tabular-nums text-balance text-g-ink">
                                 {t('search.fromPrice', { price: formatMoney(soonest.from.perPlayer, soonest.from.currency, locale) })}
                             </p>
                             <p className="mt-1 text-xs text-g-muted">
@@ -130,7 +130,7 @@ export default async function GolfCoursePage({ params }: Params) {
                             </p>
                         </>
                     ) : course.greenFeeFrom != null && (
-                        <p className="font-golf text-2xl font-medium tabular-nums text-g-ink">
+                        <p className="font-golf text-2xl font-bold tabular-nums text-g-ink">
                             {t('greenFeesFrom', { price: formatGreenFee(course.greenFeeFrom, course.currency, locale) })}
                         </p>
                     )}

@@ -43,7 +43,7 @@ export function TeeTimePicker({ slug, today, windowDays }: { slug: string; today
 
     return (
         <div className="flex flex-col gap-4">
-            <h2 className="font-golf text-2xl font-medium tracking-tight text-g-ink">{t('panelTitle')}</h2>
+            <h2 className="font-golf text-2xl font-bold tracking-tight text-g-ink">{t('panelTitle')}</h2>
             <div className="grid gap-5">
                 <GolfDatePicker label={t('date')} value={date} onChange={next => { if (next) setDate(next); }}
                     min={first} max={addDays(today, windowDays)} today={today} />
@@ -60,7 +60,7 @@ export function TeeTimePicker({ slug, today, windowDays }: { slug: string; today
                     </div>
                 </div>
             )}
-            {failed && <p role="alert" className="text-sm text-[#8c2f1f] dark:text-[#d4806f]">{t('loadError')}</p>}
+            {failed && <p role="alert" className="text-sm text-red-600 dark:text-red-400">{t('loadError')}</p>}
             {teeTimes?.length === 0 && <p className="text-sm text-g-muted">{t('none')}</p>}
 
             {teeTimes && teeTimes.length > 0 && (

@@ -19,7 +19,7 @@ export function GolfCourseCard({ course, titleAs: Title = 'h2' }: { course: Golf
 
     return (
         <Link href={`/golf/${course.slug}`} className="golf-theme group flex flex-col text-g-ink">
-            <div className="relative aspect-[5/4] w-full overflow-hidden rounded-sm bg-[#e4dfd0] dark:bg-[#1a251f]">
+            <div className="relative aspect-[5/4] w-full overflow-hidden rounded-sm bg-g-sunk">
                 {course.imageUrls[0] ? (
                     <Image src={course.imageUrls[0]} alt={course.name} fill unoptimized sizes="(min-width: 1024px) 33vw, 100vw"
                         className="object-cover transition duration-500 ease-out motion-safe:group-hover:scale-[1.03]" />
@@ -28,7 +28,7 @@ export function GolfCourseCard({ course, titleAs: Title = 'h2' }: { course: Golf
                 )}
             </div>
             <div className="flex flex-1 flex-col gap-1 pt-3">
-                <Title className="font-golf text-2xl font-medium leading-tight tracking-tight underline-offset-4 decoration-g-accent/50 group-hover:underline">
+                <Title className="font-golf text-2xl font-bold leading-tight tracking-tight underline-offset-4 decoration-g-accent/50 group-hover:underline">
                     {course.name}
                 </Title>
                 <p className="text-sm text-g-muted">{course.city}, {course.country}</p>

@@ -26,7 +26,7 @@ export function GolfSearchResultCard({ result, params }: { result: CourseSearchR
     return (
         <article className={`golf-theme grid gap-5 py-7 sm:grid-cols-[15rem_1fr] md:grid-cols-[17rem_1fr_12rem] md:gap-8 ${matches ? '' : 'opacity-80'}`}>
             <Link href={courseHref} aria-label={course.name} tabIndex={-1}
-                className="relative aspect-[4/3] w-full overflow-hidden rounded-sm bg-[#e4dfd0] sm:aspect-[5/4] dark:bg-[#1a251f]">
+                className="relative aspect-[4/3] w-full overflow-hidden rounded-sm bg-g-sunk sm:aspect-[5/4]">
                 {course.imageUrls[0] ? (
                     <Image src={course.imageUrls[0]} alt="" fill unoptimized sizes="(min-width: 768px) 17rem, 100vw"
                         className={`object-cover ${matches ? '' : 'grayscale'}`} />
@@ -37,7 +37,7 @@ export function GolfSearchResultCard({ result, params }: { result: CourseSearchR
 
             <div className="flex min-w-0 flex-col gap-3">
                 <div>
-                    <h2 className="font-golf text-2xl font-medium leading-tight tracking-tight text-g-ink md:text-3xl">
+                    <h2 className="font-golf text-2xl font-bold leading-tight tracking-tight text-g-ink md:text-3xl">
                         <Link href={courseHref} className="underline-offset-4 decoration-g-accent/50 hover:underline">{course.name}</Link>
                     </h2>
                     <p className="mt-1 text-sm text-g-muted">{course.city}, {course.country} · {facts}</p>
@@ -80,7 +80,7 @@ export function GolfSearchResultCard({ result, params }: { result: CourseSearchR
             <div className="flex flex-col gap-1 border-t border-g-rule pt-4 sm:col-span-2 md:col-span-1 md:items-end md:border-l md:border-t-0 md:pl-6 md:pt-0 md:text-right">
                 {from && (
                     <>
-                        <p className="font-golf text-xl font-medium leading-snug tabular-nums text-balance text-g-ink">
+                        <p className="font-golf text-xl font-bold leading-snug tabular-nums text-balance text-g-ink">
                             {ts('fromPrice', { price: money(from.perPlayer, from.currency) })}
                         </p>
                         <p className="text-xs tabular-nums text-g-muted">
