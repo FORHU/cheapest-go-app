@@ -3232,7 +3232,11 @@
       "nearestHeading": "티타임이 있는 가까운 날짜",
       "nearestDate": "{date} · 1인 {price}부터",
       "empty": "이 조건에 맞는 티타임이 있는 골프장이 없습니다. 다른 날짜나 시간을 선택해 보세요.",
-      "viewCourse": "코스 보기"
+      "viewCourse": "코스 보기",
+      "prevMonth": "이전 달",
+      "nextMonth": "다음 달",
+      "chooseDate": "날짜 선택",
+      "anyTime": "시간 무관"
     }
   }
 }

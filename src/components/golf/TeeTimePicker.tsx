@@ -7,8 +7,8 @@ import { useLocale, useTranslations } from 'next-intl';
 import type { TeeTime } from '@/lib/schemas/golf';
 import { addDays } from '@/lib/golf/time';
 import { formatMoney } from './format';
-
-const fieldClass = 'mt-1 w-full rounded-none border-0 border-b border-g-rule bg-transparent px-0 py-1.5 text-base tabular-nums text-g-ink transition-colors focus:border-g-accent focus:outline-none focus-visible:outline-none';
+import { GolfDatePicker } from './GolfDatePicker';
+import { GolfPlayersField } from './GolfPlayersField';
 
 /**
  * Picks a tee time on the course page. Times are on the course's clock, the one the customer
@@ -44,18 +44,10 @@ export function TeeTimePicker({ slug, today, windowDays }: { slug: string; today
     return (
         <div className="flex flex-col gap-4">
             <h2 className="font-golf text-2xl font-medium tracking-tight text-g-ink">{t('panelTitle')}</h2>
-            <div className="grid grid-cols-[1fr_4.5rem] gap-5">
-                <label className="text-xs font-medium text-g-muted">
-                    {t('date')}
-                    <input id="golf-date" type="date" value={date} min={first} max={addDays(today, windowDays)}
-                        onChange={e => { if (e.target.value) setDate(e.target.value); }} className={fieldClass} />
-                </label>
-                <label className="text-xs font-medium text-g-muted">
-                    {t('players')}
-                    <select id="golf-players" value={players} onChange={e => setPlayers(Number(e.target.value))} className={fieldClass}>
-                        {[1, 2, 3, 4].map(n => <option key={n} value={n}>{n}</option>)}
-                    </select>
-                </label>
+            <div className="grid gap-5">
+                <GolfDatePicker label={t('date')} value={date} onChange={next => { if (next) setDate(next); }}
+                    min={first} max={addDays(today, windowDays)} today={today} />
+                <GolfPlayersField label={t('players')} value={players} onChange={setPlayers} />
             </div>
 
             {teeTimes === null && !failed && (

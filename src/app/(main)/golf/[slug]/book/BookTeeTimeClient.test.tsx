@@ -44,7 +44,8 @@ describe('BookTeeTimeClient', () => {
     it('lists the chosen extras and re-prices on the server when one changes', () => {
         page();
         expect(screen.getByText('Club rental × 1')).toBeInTheDocument();
-        fireEvent.change(screen.getByLabelText(/Golf cart/), { target: { value: '1' } });
+        fireEvent.click(screen.getByRole('combobox', { name: /Golf cart/ }));
+        fireEvent.click(screen.getByRole('option', { name: '1' }));
         expect(router.replace).toHaveBeenCalledWith('/golf/wack-wack/book?teeTime=t1&players=2&extras=club_rental:1,cart:1', { scroll: false });
     });
 

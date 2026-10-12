@@ -3232,7 +3232,11 @@
       "nearestHeading": "最近有球位的日期",
       "nearestDate": "{date} · 每人 {price} 起",
       "empty": "没有球场在此条件下有球位。请尝试其他日期或时间。",
-      "viewCourse": "查看球场"
+      "viewCourse": "查看球场",
+      "prevMonth": "上个月",
+      "nextMonth": "下个月",
+      "chooseDate": "选择日期",
+      "anyTime": "不限时间"
     }
   }
 }

@@ -7,6 +7,7 @@ import { Loader2 } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import StripeEmbeddedCheckout from '@/components/checkout/StripeEmbeddedCheckout';
 import { GolfPolicyBlock, type CancelPolicy } from '@/components/golf/GolfPolicyBlock';
+import { GolfSelect } from '@/components/golf/GolfSelect';
 import { formatExtrasParam, type GolfExtraCode } from '@/lib/golf/extras';
 
 export interface TeeTimeSummary {
@@ -105,15 +106,13 @@ export function BookTeeTimeClient({ teeTimeId, players, bookPath, extras, summar
                         </div>
                         {extras.map(extra => (
                             <div key={extra.code} className="flex items-center justify-between gap-3">
-                                <label htmlFor={`extra-${extra.code}`} className="text-sm">
+                                <div className="text-sm">
                                     <span className="block font-medium text-g-ink">{extra.name}</span>
                                     <span className="block text-xs tabular-nums text-g-muted">{extra.each}</span>
-                                </label>
-                                <select id={`extra-${extra.code}`} value={extra.quantity} disabled={repricing}
-                                    onChange={e => choose(extra.code, Number(e.target.value))}
-                                    className="rounded-sm border border-g-rule bg-g-surface px-2 py-1.5 text-sm tabular-nums text-g-ink transition-colors focus:border-g-accent">
-                                    {Array.from({ length: players + 1 }, (_, n) => <option key={n} value={n}>{n}</option>)}
-                                </select>
+                                </div>
+                                <GolfSelect ariaLabel={extra.name} compact align="right" disabled={repricing}
+                                    value={String(extra.quantity)} onChange={quantity => choose(extra.code, Number(quantity))}
+                                    options={Array.from({ length: players + 1 }, (_, n) => ({ value: String(n), label: String(n) }))} />
                             </div>
                         ))}
                     </section>

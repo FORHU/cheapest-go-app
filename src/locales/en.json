@@ -3232,7 +3232,11 @@
       "nearestHeading": "Nearest dates with tee times",
       "nearestDate": "{date} · from {price} per player",
       "empty": "No courses have tee times for these filters. Try other dates or times.",
-      "viewCourse": "View course"
+      "viewCourse": "View course",
+      "prevMonth": "Previous month",
+      "nextMonth": "Next month",
+      "chooseDate": "Choose a date",
+      "anyTime": "Any time"
     }
   }
 }

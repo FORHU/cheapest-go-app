@@ -3232,7 +3232,11 @@
       "nearestHeading": "空きのある近い日付",
       "nearestDate": "{date} · 1人あたり{price}から",
       "empty": "この条件に合うティータイムのあるコースはありません。日付や時間を変えてお試しください。",
-      "viewCourse": "コースを見る"
+      "viewCourse": "コースを見る",
+      "prevMonth": "前の月",
+      "nextMonth": "次の月",
+      "chooseDate": "日付を選択",
+      "anyTime": "時間を指定しない"
     }
   }
 }

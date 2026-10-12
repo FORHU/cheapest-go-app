@@ -65,8 +65,14 @@ describe('GolfSearchForm', () => {
         const form = container.querySelector('form')!;
         expect(form).toHaveAttribute('method', 'get');
         expect(form).toHaveAttribute('action', '/golf');
-        expect(screen.getByLabelText('Date')).toHaveValue('2026-10-20');
-        expect(screen.getByLabelText('Players')).toHaveValue('3');
+        // The custom controls write into the form as hidden fields, so it submits like a native one.
+        expect(container.querySelector('input[name="date"]')).toHaveValue('2026-10-20');
+        expect(container.querySelector('input[name="from"]')).toHaveValue('07:00');
+        expect(container.querySelector('input[name="to"]')).toHaveValue('');
+        expect(screen.getByRole('radio', { name: '3' })).toBeChecked();
+        expect(screen.getByRole('button', { name: /Date.*Oct 20, 2026/ })).toBeInTheDocument();
+        expect(screen.getByRole('combobox', { name: /Earliest tee time/ })).toHaveTextContent('07:00');
+        expect(screen.getByRole('combobox', { name: /Latest tee time/ })).toHaveTextContent('Any time');
         expect(container.querySelector('input[name="country"]')).toHaveValue('Japan');
         expect(screen.getByRole('link', { name: 'Clear filters' })).toHaveAttribute('href', '/golf?country=Japan');
     });
