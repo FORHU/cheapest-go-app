@@ -32,6 +32,13 @@ describe('isBookableStart', () => {
         expect(isBookableStart(at('2026-10-07T00:00:00Z'), now)).toBe(true);
         expect(isBookableStart(at('2026-12-10T00:00:00Z'), now)).toBe(false);
     });
+
+    it("uses the course's own booking window", () => {
+        // A 7-day window plus a day for zone edges: Oct 14 00:00 is in, Oct 15 00:00 is out.
+        expect(isBookableStart(at('2026-10-14T00:00:00Z'), now, 7)).toBe(true);
+        expect(isBookableStart(at('2026-10-15T00:00:00Z'), now, 7)).toBe(false);
+        expect(isBookableStart(at('2026-12-01T00:00:00Z'), now, 90)).toBe(true);
+    });
 });
 
 describe('cancellationFor', () => {

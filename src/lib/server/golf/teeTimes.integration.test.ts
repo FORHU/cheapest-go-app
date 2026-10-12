@@ -34,7 +34,7 @@ function course(over: Partial<GolfCourseInput> = {}): GolfCourseInput {
         name: `Tee Time Test ${run}`, country: 'Philippines', city: 'Manila',
         slug: `tee-time-test-${run}-${created.length}`, address: null, description: '', holes: 18,
         par: null, greenFeeFrom: null, currency: 'PHP', imageUrls: [], amenities: [],
-        timezone: 'Asia/Manila', freeCancelHours: 48, ...over,
+        timezone: 'Asia/Manila', freeCancelHours: 48, bookingWindowDays: 60, weatherPolicy: '', yardage: null, yearOpened: null, designer: null, grass: null, ...over,
     };
 }
 
@@ -106,5 +106,31 @@ describe.skipIf(!reachable)('tee times against a real database', () => {
         expect(await listSchedules(c.id)).toEqual([]);
         expect(await courseHasSchedules(c.id)).toBe(false);
         expect(await deleteSchedule(late!.schedule.id, NOW)).toBe(false);
+    });
+});
+
+describe.skipIf(!reachable)('a course\'s own booking window', () => {
+    it('generates, lists and sells only inside the window', async () => {
+        const c = await make({ bookingWindowDays: 7 });
+        const result = await createSchedule(c.id, daily, NOW);
+        // Four a day for 7 days, less today's four (07:00–07:30 is before 08:00 in Manila).
+        expect(result?.generated).toBe(24);
+        await setCourseStatus(c.id, 'published');
+
+        expect((await listAvailableTeeTimes(c.slug, '2030-01-10', NOW))?.teeTimes).toHaveLength(4);
+        expect((await listAvailableTeeTimes(c.slug, '2030-01-20', NOW))?.teeTimes).toEqual([]);
+    });
+
+    it('stops selling tee times that already exist when the window shrinks', async () => {
+        const c = await make({ bookingWindowDays: 60 });
+        await createSchedule(c.id, daily, NOW);
+        await setCourseStatus(c.id, 'published');
+        const far = await listAvailableTeeTimes(c.slug, '2030-02-20', NOW);
+        expect(far?.teeTimes.length).toBe(4);
+
+        const { getSqlAdmin } = await import('@/lib/db/postgres');
+        await getSqlAdmin()`UPDATE golf_courses SET booking_window_days = 14 WHERE id = ${c.id}`;
+        expect(await getBookableTeeTime(far!.teeTimes[0].id, NOW)).toBeNull();
+        expect((await listAvailableTeeTimes(c.slug, '2030-02-20', NOW))?.teeTimes).toEqual([]);
     });
 });

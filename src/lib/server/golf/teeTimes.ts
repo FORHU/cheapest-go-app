@@ -3,7 +3,7 @@ import { getSqlAdmin } from '@/lib/db/postgres';
 import type { TeeTime, TeeTimeSchedule, TeeTimeScheduleInput } from '@/lib/schemas/golf';
 import { expandSchedule } from '@/lib/golf/schedule';
 import { addDays, localDate, localTime, zonedTimeToUtc } from '@/lib/golf/time';
-import { HORIZON_DAYS, MIN_LEAD_HOURS, isBookableStart } from '@/lib/golf/rules';
+import { MIN_LEAD_HOURS, isBookableStart } from '@/lib/golf/rules';
 import { CourseNotSchedulableError, LastScheduleError } from './errors';
 
 /**
@@ -117,21 +117,21 @@ export async function deleteSchedule(id: string, now = new Date()): Promise<bool
 }
 
 /**
- * Creates the tee times every schedule promises for the next HORIZON_DAYS course-local days.
+ * Creates the tee times every schedule promises for the next `booking_window_days` of its course.
  * Idempotent: a tee time that already exists at the same course and start is left alone, so a
  * re-run never resets spots already sold. Returns how many were created.
  */
 export async function generateTeeTimes({ courseId, now = new Date() }: { courseId?: string; now?: Date } = {}): Promise<number> {
     const sql = getSqlAdmin();
-    const schedules = await sql<(TeeTimeSchedule & { timezone: string; currency: string })[]>`
-        SELECT ${scheduleColumns(sql)}, c.timezone, c.currency
+    const schedules = await sql<(TeeTimeSchedule & { timezone: string; currency: string; windowDays: number })[]>`
+        SELECT ${scheduleColumns(sql)}, c.timezone, c.currency, c.booking_window_days AS "windowDays"
           FROM golf_tee_time_schedules s
           JOIN golf_courses c ON c.id = s.course_id
          WHERE c.timezone IS NOT NULL ${courseId ? sql`AND s.course_id = ${courseId}` : sql``}`;
 
     let created = 0;
     for (const s of schedules) {
-        const starts = expandSchedule(s, s.timezone, localDate(now, s.timezone), HORIZON_DAYS)
+        const starts = expandSchedule(s, s.timezone, localDate(now, s.timezone), s.windowDays)
             .filter(start => start.getTime() > now.getTime());
         const rows = starts.map(start => ({
             course_id: s.courseId,
@@ -163,21 +163,23 @@ export interface CourseAvailability {
  */
 export async function listAvailableTeeTimes(slug: string, date: string, now = new Date()): Promise<CourseAvailability | null> {
     const sql = getSqlAdmin();
-    const [course] = await sql<{ id: string; timezone: string | null }[]>`
-        SELECT id, timezone FROM golf_courses WHERE slug = ${slug} AND status = 'published'`;
+    const [course] = await sql<{ id: string; timezone: string | null; windowDays: number }[]>`
+        SELECT id, timezone, booking_window_days AS "windowDays" FROM golf_courses WHERE slug = ${slug} AND status = 'published'`;
     if (!course?.timezone) return null;
     const tz = course.timezone;
 
     const dayStart = zonedTimeToUtc(date, '00:00', tz);
     const dayEnd = zonedTimeToUtc(addDays(date, 1), '00:00', tz);
     const earliest = new Date(Math.max(dayStart.getTime(), now.getTime() + MIN_LEAD_HOURS * HOUR));
+    // Past the course's window nothing is bookable, so nothing is listed (same edge as isBookableStart).
+    const latest = new Date(Math.min(dayEnd.getTime(), now.getTime() + (course.windowDays + 1) * 24 * HOUR + 1));
 
     const rows = await sql<TeeTimeRow[]>`
         SELECT id, starts_at AS "startsAt", spots, spots_left AS "spotsLeft",
                price_per_player::float8 AS "pricePerPlayer", currency
           FROM golf_tee_times
          WHERE course_id = ${course.id} AND status = 'open' AND spots_left > 0
-           AND starts_at >= ${earliest} AND starts_at < ${dayEnd}
+           AND starts_at >= ${earliest} AND starts_at < ${latest}
          ORDER BY starts_at`;
     return { timezone: tz, teeTimes: rows.map(r => toTeeTime(r, tz)) };
 }
@@ -192,13 +194,16 @@ export interface BookableTeeTime {
         country: string;
         timezone: string;
         freeCancelHours: number;
+        bookingWindowDays: number;
+        weatherPolicy: string;
         coverUrl: string | null;
     };
 }
 
 type BookableRow = TeeTimeRow & {
     courseId: string; slug: string; name: string; city: string; country: string;
-    timezone: string; freeCancelHours: number; coverUrl: string | null;
+    timezone: string; freeCancelHours: number; bookingWindowDays: number; weatherPolicy: string;
+    coverUrl: string | null;
 };
 
 /** A tee time a customer may book at `now`, with its course; null for anything else. */
@@ -209,16 +214,18 @@ export async function getBookableTeeTime(id: string, now = new Date()): Promise<
         SELECT t.id, t.starts_at AS "startsAt", t.spots, t.spots_left AS "spotsLeft",
                t.price_per_player::float8 AS "pricePerPlayer", t.currency,
                c.id AS "courseId", c.slug, c.name, c.city, c.country, c.timezone,
-               c.free_cancel_hours AS "freeCancelHours", c.image_urls[1] AS "coverUrl"
+               c.free_cancel_hours AS "freeCancelHours", c.booking_window_days AS "bookingWindowDays",
+               c.weather_policy AS "weatherPolicy", c.image_urls[1] AS "coverUrl"
           FROM golf_tee_times t
           JOIN golf_courses c ON c.id = t.course_id
          WHERE t.id = ${id} AND t.status = 'open' AND c.status = 'published' AND c.timezone IS NOT NULL`;
-    if (!row || !isBookableStart(row.startsAt, now)) return null;
+    if (!row || !isBookableStart(row.startsAt, now, row.bookingWindowDays)) return null;
     return {
         teeTime: toTeeTime(row, row.timezone),
         course: {
             id: row.courseId, slug: row.slug, name: row.name, city: row.city, country: row.country,
-            timezone: row.timezone, freeCancelHours: row.freeCancelHours, coverUrl: row.coverUrl,
+            timezone: row.timezone, freeCancelHours: row.freeCancelHours,
+            bookingWindowDays: row.bookingWindowDays, weatherPolicy: row.weatherPolicy, coverUrl: row.coverUrl,
         },
     };
 }

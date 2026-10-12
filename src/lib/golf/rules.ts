@@ -9,8 +9,10 @@ import type { GolfBookingStatus } from '@/lib/schemas/golf';
 export const HOLD_MINUTES = 15;
 /** The team needs time to check with the course, so tee times sooner than this are not sold. */
 export const MIN_LEAD_HOURS = 24;
-/** Tee times are generated, and sold, this many course-local days ahead. */
+/** A course's booking window unless it sets its own: tee times are generated, and sold, this far ahead. */
 export const HORIZON_DAYS = 60;
+/** The longest booking window a course may set. */
+export const MAX_BOOKING_WINDOW_DAYS = 90;
 /** A request is confirmed or declined within this long … */
 export const DECIDE_WITHIN_HOURS = 48;
 /** … and never later than this long before the tee time. */
@@ -34,10 +36,10 @@ export function freeCancelUntil(startsAt: Date, freeCancelHours: number): Date {
     return new Date(startsAt.getTime() - freeCancelHours * HOUR);
 }
 
-/** Far enough ahead for the team to check, and inside the horizon (plus a day for zone edges). */
-export function isBookableStart(startsAt: Date, now: Date): boolean {
+/** Far enough ahead for the team to check, and inside the course's window (plus a day for zone edges). */
+export function isBookableStart(startsAt: Date, now: Date, windowDays: number = HORIZON_DAYS): boolean {
     const lead = startsAt.getTime() - now.getTime();
-    return lead >= MIN_LEAD_HOURS * HOUR && lead <= (HORIZON_DAYS + 1) * 24 * HOUR;
+    return lead >= MIN_LEAD_HOURS * HOUR && lead <= (windowDays + 1) * 24 * HOUR;
 }
 
 export type CustomerCancellation =

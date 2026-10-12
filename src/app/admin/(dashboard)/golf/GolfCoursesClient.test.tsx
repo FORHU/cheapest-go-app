@@ -10,7 +10,7 @@ import { GolfCoursesClient } from './GolfCoursesClient';
 const draft: AdminGolfCourse = {
     id: 'c1', slug: 'wack-wack', name: 'Wack Wack', country: 'Philippines', city: 'Manila', address: null,
     description: '', holes: 18, par: 72, greenFeeFrom: 85, currency: 'USD', imageUrls: [], amenities: [],
-    status: 'draft', timezone: null, freeCancelHours: 48, bookable: false,
+    status: 'draft', timezone: null, freeCancelHours: 48, bookingWindowDays: 60, weatherPolicy: '', yardage: null, yearOpened: null, designer: null, grass: null, bookable: false,
 };
 const page = (courses: AdminGolfCourse[]): AdminCoursePage => ({ courses, total: courses.length, page: 1, pageSize: 20, totalPages: 1 });
 

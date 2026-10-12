@@ -1,8 +1,7 @@
 import type postgres from 'postgres';
 import { getSqlAdmin } from '@/lib/db/postgres';
 import { stripe } from '@/lib/stripe/server';
-import { golfServiceFee, toStripeAmount } from '@/lib/pricing';
-import { convertCurrencyStrict, refreshExchangeRates } from '@/lib/currency';
+import { toStripeAmount } from '@/lib/pricing';
 import { mintUniqueBookingReference } from '@/lib/bookingReference';
 import { canonicalBrandName } from '@/lib/brand';
 import { cancellationFor, decideBy, freeCancelUntil, holdExpiresAt } from '@/lib/golf/rules';
@@ -10,6 +9,7 @@ import { priceExtras, sameExtras, type ExtraChoice } from '@/lib/golf/extras';
 import type { GolfBooking, GolfBookingStatus, GolfCloseReason } from '@/lib/schemas/golf';
 import { getBookableTeeTime } from './teeTimes';
 import { listCourseExtras } from './extras';
+import { quoteGolf } from './quote';
 import { GolfBookingError } from './errors';
 import { sendGolfBookingEmail } from './emails';
 
@@ -61,7 +61,7 @@ function selectBookings(sql: postgres.Sql) {
                b.requested_at AS "requestedAt", b.decide_by AS "decideBy", b.confirmed_at AS "confirmedAt",
                b.closed_at AS "closedAt", b.close_reason AS "closeReason",
                b.refund_amount::float8 AS "refundAmount", b.free_cancel_until AS "freeCancelUntil",
-               b.extras_total::float8 AS "extrasTotal",
+               b.weather_policy AS "weatherPolicy", b.extras_total::float8 AS "extrasTotal",
                COALESCE((SELECT json_agg(json_build_object(
                                 'code', e.code, 'quantity', e.quantity,
                                 'unitPrice', e.unit_price::float8, 'total', e.total::float8)
@@ -259,11 +259,9 @@ export async function holdTeeTime(input: HoldInput, now = new Date()): Promise<H
     // No early "enough spots?" check: this customer's own hold may have been holding the spots a
     // moment ago, and the conditional UPDATE below is the real guard either way.
     const greenFeeTotal = round2(teeTime.pricePerPlayer * input.players);
-    const base = round2(greenFeeTotal + priced.total);
-    if (teeTime.currency !== 'USD') await refreshExchangeRates();
-    const fee = golfServiceFee(base, teeTime.currency, convertCurrencyStrict);
-    const total = round2(fee.chargedTotal);
-    const serviceFee = round2(total - base);
+    const { total, serviceFee, markupRate } = await quoteGolf({
+        greenFeeTotal, extrasTotal: priced.total, currency: teeTime.currency,
+    });
     const brand = canonicalBrandName(process.env.NEXT_PUBLIC_BRAND_NAME);
     const reference = await mintUniqueBookingReference(brand, async ref =>
         (await sql`SELECT 1 FROM golf_bookings WHERE reference = ${ref}`).length > 0);
@@ -281,12 +279,13 @@ export async function holdTeeTime(input: HoldInput, now = new Date()): Promise<H
                 INSERT INTO golf_bookings
                     (reference, user_id, course_id, tee_time_id, players, lead_name, contact_email,
                      price_per_player, green_fee_total, service_fee, extras_total, total, currency,
-                     hold_expires_at, free_cancel_until)
+                     hold_expires_at, free_cancel_until, weather_policy)
                 VALUES
                     (${reference}, ${input.userId}, ${course.id}, ${teeTime.id}, ${input.players},
                      ${input.leadName}, ${input.email}, ${teeTime.pricePerPlayer}, ${greenFeeTotal},
                      ${serviceFee}, ${priced.total}, ${total}, ${teeTime.currency}, ${holdExpiresAt(now)},
-                     ${freeCancelUntil(new Date(teeTime.startsAt), course.freeCancelHours)})
+                     ${freeCancelUntil(new Date(teeTime.startsAt), course.freeCancelHours)},
+                     ${course.weatherPolicy})
                 RETURNING id`;
             if (priced.lines.length > 0) {
                 await tx`
@@ -329,7 +328,7 @@ export async function holdTeeTime(input: HoldInput, now = new Date()): Promise<H
                 greenFeeTotal: String(greenFeeTotal),
                 extrasTotal: String(priced.total),
                 serviceFee: String(serviceFee),
-                markupRate: String(fee.markupRate),
+                markupRate: String(markupRate),
             },
             description: `${reference} · ${course.name} — tee time`,
         }, { idempotencyKey: `golf-pi-${bookingId}` });

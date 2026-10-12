@@ -74,7 +74,7 @@ beforeAll(async () => {
     const input: GolfCourseInput = {
         name: `Booking Test ${run}`, country: 'Philippines', city: 'Manila', slug: `booking-test-${run}`,
         address: null, description: '', holes: 18, par: null, greenFeeFrom: null, currency: 'USD',
-        imageUrls: [], amenities: [], timezone: 'Asia/Manila', freeCancelHours: 48,
+        imageUrls: [], amenities: [], timezone: 'Asia/Manila', freeCancelHours: 48, bookingWindowDays: 60, weatherPolicy: '', yardage: null, yearOpened: null, designer: null, grass: null,
     };
     const course = await createCourse(input);
     courseId = course.id;
@@ -258,5 +258,38 @@ describe.skipIf(!reachable)('golf bookings against a real database', () => {
         expect(changed.booking.reference).not.toBe(first.booking.reference);
         expect((await getBookingById(first.booking.id))?.status).toBe('expired');
         await expect(hold(0, id, 1, NOW, [{ code: 'caddie', quantity: 1 }])).rejects.toMatchObject({ code: 'extras_unavailable' });
+    });
+});
+
+describe.skipIf(!reachable)('a hold records the course\'s rules and the all-in price search showed', () => {
+    it('copies the weather rule onto the booking and charges exactly the searched price', async () => {
+        const db = await sql();
+        await db`UPDATE golf_courses SET weather_policy = 'Rain delay under 1 hour: play on.' WHERE id = ${courseId}`;
+        const id = await teeTime(40);
+        const { searchCourses } = await import('./search');
+        const found = await searchCourses({ country: 'Philippines', date: addDays('2031-03-03', 40), players: 2, courseId }, NOW);
+        const { booking } = await hold(0, id, 2);
+        expect(booking.weatherPolicy).toBe('Rain delay under 1 hour: play on.');
+
+        // A later edit must not rewrite what this customer agreed to.
+        await db`UPDATE golf_courses SET weather_policy = 'No refunds.' WHERE id = ${courseId}`;
+        expect((await getBookingById(booking.id))?.weatherPolicy).toBe('Rain delay under 1 hour: play on.');
+
+        const { quoteGolf } = await import('./quote');
+        const quote = await quoteGolf({ greenFeeTotal: 200, currency: 'USD' });
+        expect(booking.total).toBe(quote.total);
+        expect(found[0].from?.total).toBe(booking.total);
+        await db`UPDATE golf_courses SET weather_policy = '' WHERE id = ${courseId}`;
+    });
+
+    it('refuses a tee time past the course\'s booking window', async () => {
+        const db = await sql();
+        const id = await teeTime(30);
+        await db`UPDATE golf_courses SET booking_window_days = 14 WHERE id = ${courseId}`;
+        try {
+            await expect(hold(0, id, 1)).rejects.toMatchObject({ code: 'tee_time_unavailable' });
+        } finally {
+            await db`UPDATE golf_courses SET booking_window_days = 60 WHERE id = ${courseId}`;
+        }
     });
 });

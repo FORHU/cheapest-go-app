@@ -16,7 +16,9 @@ function columns(sql: postgres.Sql) {
     return sql`
         id, slug, name, country, city, address, description, holes, par,
         green_fee_from::float8 AS "greenFeeFrom", currency, image_urls AS "imageUrls",
-        amenities, status, timezone, free_cancel_hours AS "freeCancelHours"
+        amenities, status, timezone, free_cancel_hours AS "freeCancelHours",
+        booking_window_days AS "bookingWindowDays", weather_policy AS "weatherPolicy",
+        yardage, year_opened AS "yearOpened", designer, grass
     `;
 }
 
@@ -64,6 +66,17 @@ export async function listPublishedCountries(): Promise<string[]> {
     const rows = await sql<{ country: string }[]>`
         SELECT DISTINCT country FROM golf_courses WHERE status = 'published' ORDER BY country`;
     return rows.map(r => r.country);
+}
+
+/** Published courses with these ids, by name; unknown and draft ids are simply absent. */
+export async function getPublishedCoursesByIds(ids: string[]): Promise<GolfCourse[]> {
+    if (ids.length === 0) return [];
+    const sql = getSqlAdmin();
+    const rows = await sql<GolfCourse[]>`
+        SELECT ${columns(sql)} FROM golf_courses
+         WHERE status = 'published' AND id IN ${sql(ids)}
+         ORDER BY name`;
+    return plain(rows);
 }
 
 export async function getPublishedCourseBySlug(slug: string): Promise<GolfCourse | null> {
@@ -119,12 +132,15 @@ export async function createCourse(input: GolfCourseInput): Promise<GolfCourse> 
         const rows = await sql<GolfCourse[]>`
             INSERT INTO golf_courses
                 (slug, name, country, city, address, description, holes, par,
-                 green_fee_from, currency, image_urls, amenities, timezone, free_cancel_hours)
+                 green_fee_from, currency, image_urls, amenities, timezone, free_cancel_hours,
+                 booking_window_days, weather_policy, yardage, year_opened, designer, grass)
             VALUES
                 (${input.slug}, ${input.name}, ${input.country}, ${input.city}, ${input.address},
                  ${input.description}, ${input.holes}, ${input.par}, ${input.greenFeeFrom},
                  ${input.currency}, ${input.imageUrls}::text[], ${input.amenities}::text[],
-                 ${input.timezone}, ${input.freeCancelHours})
+                 ${input.timezone}, ${input.freeCancelHours}, ${input.bookingWindowDays},
+                 ${input.weatherPolicy}, ${input.yardage}, ${input.yearOpened}, ${input.designer},
+                 ${input.grass})
             RETURNING ${columns(sql)}`;
         return plain(rows)[0];
     } catch (err) {
@@ -148,7 +164,10 @@ export async function updateCourse(id: string, input: GolfCourseInput): Promise<
                 holes = ${input.holes}, par = ${input.par}, green_fee_from = ${input.greenFeeFrom},
                 currency = ${input.currency}, image_urls = ${input.imageUrls}::text[],
                 amenities = ${input.amenities}::text[], timezone = ${input.timezone},
-                free_cancel_hours = ${input.freeCancelHours}, updated_at = now()
+                free_cancel_hours = ${input.freeCancelHours},
+                booking_window_days = ${input.bookingWindowDays}, weather_policy = ${input.weatherPolicy},
+                yardage = ${input.yardage}, year_opened = ${input.yearOpened},
+                designer = ${input.designer}, grass = ${input.grass}, updated_at = now()
              WHERE id = ${id}
             RETURNING ${columns(sql)}`;
         return plain(rows)[0] ?? null;

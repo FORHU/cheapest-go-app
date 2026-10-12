@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { isValidTimeZone } from '@/lib/golf/time';
 import { GOLF_EXTRAS, type ExtraLine } from '@/lib/golf/extras';
+import { HORIZON_DAYS, MAX_BOOKING_WINDOW_DAYS } from '@/lib/golf/rules';
 
 /**
  * Golf (CONTEXT.md, "Golf Course", "Tee Time", "Golf Booking"). Client-safe: types, the input
@@ -39,6 +40,14 @@ export interface GolfCourse {
     timezone: string | null;
     /** Free cancellation ends this many hours before a tee time. */
     freeCancelHours: number;
+    /** Tee times open (and are sold) this many course-local days ahead. */
+    bookingWindowDays: number;
+    /** What happens in bad weather, in the course's words; '' when it has not said. */
+    weatherPolicy: string;
+    yardage: number | null;
+    yearOpened: number | null;
+    designer: string | null;
+    grass: string | null;
 }
 
 /** Lowercase a-z0-9 words joined by single hyphens; '' when nothing latin survives. */
@@ -82,6 +91,12 @@ export const golfCourseInputSchema = z
             .transform(v => v || null)
             .refine(v => v === null || isValidTimeZone(v), 'Use a time zone name such as Asia/Manila'),
         freeCancelHours: z.number().int().min(0, 'Between 0 and 720 hours').max(720, 'Between 0 and 720 hours').optional().default(48),
+        bookingWindowDays: z.number().int().min(1, 'Between 1 and 90 days').max(MAX_BOOKING_WINDOW_DAYS, 'Between 1 and 90 days').optional().default(HORIZON_DAYS),
+        weatherPolicy: z.string().trim().max(500, 'At most 500 characters').optional().default(''),
+        yardage: z.number().int().min(1000, 'Between 1,000 and 12,000 yards').max(12_000, 'Between 1,000 and 12,000 yards').nullish().transform(v => v ?? null),
+        yearOpened: z.number().int().min(1800, 'Between 1800 and 2100').max(2100, 'Between 1800 and 2100').nullish().transform(v => v ?? null),
+        designer: z.string().trim().max(120, 'Too long').nullish().transform(v => v || null),
+        grass: z.string().trim().max(80, 'Too long').nullish().transform(v => v || null),
     })
     .transform(v => ({ ...v, slug: v.slug ? slugify(v.slug) : slugify(v.name, v.city) }))
     .refine(v => v.slug.length > 0, {
@@ -208,4 +223,6 @@ export interface GolfBooking {
     closeReason: GolfCloseReason | null;
     refundAmount: number;
     freeCancelUntil: string;
+    /** The course's weather rule as it was when the hold started. */
+    weatherPolicy: string;
 }
