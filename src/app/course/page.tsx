@@ -5,11 +5,10 @@ import { canStaffCourses } from '@/lib/auth/roles';
 import { listCoursesOf } from '@/lib/server/golf/staff';
 import { listBookingsForCourses } from '@/lib/server/golf/bookings';
 import { toCourseBookingView } from '@/lib/server/golf/courseAccess';
-import { CourseNav } from './CourseNav';
 import { CourseQueueClient } from './CourseQueueClient';
 
 export const dynamic = 'force-dynamic';
-export const metadata: Metadata = { title: 'Course portal', robots: { index: false, follow: false } };
+export const metadata: Metadata = { title: 'Requests | Course portal', robots: { index: false, follow: false } };
 
 /** What a course sees: its own tee-time requests, with Confirm and Decline. */
 export default async function CoursePortalPage() {
@@ -27,14 +26,11 @@ export default async function CoursePortalPage() {
     ]);
 
     return (
-        <>
-            {courses.length > 0 && <CourseNav active="requests" courseId={courses[0].id} />}
-            <CourseQueueClient
-                courses={courses}
-                waiting={waiting.map(toCourseBookingView)}
-                upcoming={upcoming.map(toCourseBookingView)}
-                past={past.map(toCourseBookingView)}
-            />
-        </>
+        <CourseQueueClient
+            courses={courses}
+            waiting={waiting.map(toCourseBookingView)}
+            upcoming={upcoming.map(toCourseBookingView)}
+            past={past.map(toCourseBookingView)}
+        />
     );
 }

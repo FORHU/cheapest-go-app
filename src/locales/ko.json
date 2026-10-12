@@ -3262,7 +3262,24 @@
         "decideBy": "{date}까지 응답",
         "confirm": "확정",
         "decline": "거절",
-        "actionError": "문제가 발생했습니다. 다시 시도해 주세요."
+        "actionError": "문제가 발생했습니다. 다시 시도해 주세요.",
+        "subtitle": "응답을 기다리는 티타임 요청",
+        "colReference": "예약 번호",
+        "colTeeTime": "티타임(골프장 현지 시간)",
+        "colPlayers": "인원",
+        "colLead": "대표 플레이어",
+        "colFee": "그린피",
+        "colDecide": "응답 기한",
+        "colStatus": "상태",
+        "colActions": "작업",
+        "yes": "예",
+        "no": "아니요",
+        "declineAsk": "거절하시겠어요?",
+        "confirmedToast": "{reference} 확정됨",
+        "declinedToast": "{reference} 거절됨",
+        "hintWaiting": "요청을 확정하면 고객의 결제가 진행되고, 거절하면 카드 승인이 해제됩니다. 기한까지 응답이 없는 요청은 자동으로 해제됩니다.",
+        "hintUpcoming": "앞으로 진행될 확정된 티타임입니다.",
+        "hintPast": "진행됨, 거절됨, 취소된 예약(최신순)입니다."
       },
       "join": {
         "title": "{course} 관리",
@@ -3373,7 +3390,10 @@
         "apply": "적용",
         "applying": "적용 중…",
         "error": "문제가 발생했습니다. 다시 시도해 주세요.",
-        "done": "완료되었습니다."
+        "done": "완료되었습니다.",
+        "subtitle": "골프장의 스케줄, 차단, 추가 옵션",
+        "navBackToSite": "사이트로 돌아가기",
+        "navWaiting": "{count}건 대기 중"
       }
     },
     "partner": {

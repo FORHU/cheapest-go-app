@@ -5,11 +5,10 @@ import { canStaffCourses } from '@/lib/auth/roles';
 import { isIsoDate } from '@/lib/golf/time';
 import { listCoursesOf } from '@/lib/server/golf/staff';
 import { getTeeSheet } from '@/lib/server/golf/teeSheet';
-import { CourseNav } from '../CourseNav';
 import { TeeSheetClient } from './TeeSheetClient';
 
 export const dynamic = 'force-dynamic';
-export const metadata: Metadata = { title: 'Tee sheet', robots: { index: false, follow: false } };
+export const metadata: Metadata = { title: 'Tee sheet | Course portal', robots: { index: false, follow: false } };
 
 /** A course runs its own tee sheet: schedules, blocks and extras, with a history of changes. */
 export default async function TeeSheetPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
@@ -27,10 +26,5 @@ export default async function TeeSheetPage({ searchParams }: { searchParams: Pro
     const sheet = await getTeeSheet(chosen.id, date);
     if (!sheet) redirect('/course');
 
-    return (
-        <>
-            <CourseNav active="tee-sheet" courseId={chosen.id} />
-            <TeeSheetClient sheet={sheet} courses={courses.map(c => ({ id: c.id, name: c.name }))} />
-        </>
-    );
+    return <TeeSheetClient sheet={sheet} courses={courses.map(c => ({ id: c.id, name: c.name }))} />;
 }

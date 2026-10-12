@@ -5,7 +5,10 @@ import { useLocale, useTranslations } from 'next-intl';
 import { GolfDatePicker } from '@/components/golf/GolfDatePicker';
 import { GolfSelect } from '@/components/golf/GolfSelect';
 import type { CourseBlock } from '@/lib/schemas/golfTeeSheet';
-import { inputClass, labelClass, primaryButton, secondaryButton, timeOptions, withValue, type Review } from './shared';
+import {
+    cardClass, dayChipClass, headingClass, hintClass, inputClass, labelClass, primaryButton, secondaryButton,
+    timeOptions, withValue, type Review,
+} from './shared';
 
 const WEEK = [1, 2, 3, 4, 5, 6, 0];
 
@@ -48,27 +51,26 @@ function BlockForm({ initialDate, review, onCancel }: { initialDate: string; rev
     };
 
     return (
-        <form onSubmit={submit} className="grid gap-6 border-t border-g-ink pt-6 sm:grid-cols-2">
+        <form onSubmit={submit} className="grid gap-4 rounded-lg border border-slate-200 bg-slate-50/60 p-4 dark:border-white/10 dark:bg-white/[0.02] sm:grid-cols-2">
             <div>
-                <GolfDatePicker label={t('blockFrom')} value={from} onChange={next => { if (next) { setFrom(next); if (to < next) setTo(next); } }} />
+                <GolfDatePicker appearance="boxed" label={t('blockFrom')} value={from}
+                    onChange={next => { if (next) { setFrom(next); if (to < next) setTo(next); } }} />
                 {err('startsOn')}
             </div>
             <div>
-                <GolfDatePicker label={t('blockTo')} value={to} min={from} onChange={next => { if (next) setTo(next); }} />
+                <GolfDatePicker appearance="boxed" label={t('blockTo')} value={to} min={from}
+                    onChange={next => { if (next) setTo(next); }} />
                 {err('endsOn')}
             </div>
 
             <fieldset className="sm:col-span-2">
                 <legend className={labelClass}>{t('blockWeekdays')}</legend>
-                <div className="mt-2 flex flex-wrap gap-2">
+                <div className="mt-1 flex flex-wrap gap-2">
                     {WEEK.map(d => {
                         const on = weekdays.includes(d);
                         return (
-                            <button key={d} type="button" aria-pressed={on}
-                                onClick={() => setWeekdays(current => on ? current.filter(x => x !== d) : [...current, d])}
-                                className={`rounded-sm border px-3 py-1.5 text-sm transition-colors ${on
-                                    ? 'border-g-accent bg-g-accent text-g-accent-ink'
-                                    : 'border-g-rule text-g-ink hover:border-g-ink'}`}>
+                            <button key={d} type="button" aria-pressed={on} className={dayChipClass(on)}
+                                onClick={() => setWeekdays(current => on ? current.filter(x => x !== d) : [...current, d])}>
                                 {weekday.format(new Date(Date.UTC(2023, 0, 1 + d)))}
                             </button>
                         );
@@ -77,13 +79,13 @@ function BlockForm({ initialDate, review, onCancel }: { initialDate: string; rev
             </fieldset>
 
             <fieldset className="sm:col-span-2">
-                <div className="flex flex-wrap gap-6 text-sm text-g-ink">
+                <div className="flex flex-wrap gap-6 text-sm text-slate-900 dark:text-slate-100">
                     <label className="flex items-center gap-2">
-                        <input type="radio" name="block-window" checked={!windowed} onChange={() => setWindowed(false)} className="accent-[var(--g-accent)]" />
+                        <input type="radio" name="block-window" checked={!windowed} onChange={() => setWindowed(false)} className="accent-blue-600" />
                         {t('blockAllDay')}
                     </label>
                     <label className="flex items-center gap-2">
-                        <input type="radio" name="block-window" checked={windowed} onChange={() => setWindowed(true)} className="accent-[var(--g-accent)]" />
+                        <input type="radio" name="block-window" checked={windowed} onChange={() => setWindowed(true)} className="accent-blue-600" />
                         {t('blockBetween')}
                     </label>
                 </div>
@@ -92,11 +94,11 @@ function BlockForm({ initialDate, review, onCancel }: { initialDate: string; rev
             {windowed && (
                 <>
                     <div>
-                        <GolfSelect label={t('blockFirst')} value={first} onChange={setFirst} options={withValue(options, first)} mono />
+                        <GolfSelect appearance="boxed" label={t('blockFirst')} value={first} onChange={setFirst} options={withValue(options, first)} mono />
                         {err('fromTime')}
                     </div>
                     <div>
-                        <GolfSelect label={t('blockLast')} value={last} onChange={setLast} options={withValue(options, last)} mono />
+                        <GolfSelect appearance="boxed" label={t('blockLast')} value={last} onChange={setLast} options={withValue(options, last)} mono />
                         {err('toTime')}
                     </div>
                 </>
@@ -104,14 +106,14 @@ function BlockForm({ initialDate, review, onCancel }: { initialDate: string; rev
 
             <label className={`${labelClass} sm:col-span-2`}>
                 {t('blockNote')}
-                <input className={inputClass} value={note} maxLength={300} placeholder={t('blockNotePlaceholder')}
+                <input className={`${inputClass} mt-1`} value={note} maxLength={300} placeholder={t('blockNotePlaceholder')}
                     onChange={e => setNote(e.target.value)} />
                 {err('note')}
             </label>
 
             {error && <p role="alert" className="text-sm text-red-600 dark:text-red-400 sm:col-span-2">{error}</p>}
 
-            <div className="flex gap-3 sm:col-span-2">
+            <div className="flex gap-2 sm:col-span-2">
                 <button type="submit" disabled={busy} className={primaryButton}>{t('review')}</button>
                 <button type="button" onClick={onCancel} className={secondaryButton}>{t('cancel')}</button>
             </div>
@@ -149,11 +151,11 @@ export function BlockSection({ blocks, hasTimeZone, startDate, openRequest, revi
     ].filter(Boolean).join(' · ');
 
     return (
-        <section aria-labelledby="sheet-blocks" className="border-t border-g-ink pt-4">
-            <div className="flex flex-wrap items-end justify-between gap-3">
+        <section aria-labelledby="sheet-blocks" className={cardClass}>
+            <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
-                    <h2 id="sheet-blocks" className="font-golf text-2xl font-bold tracking-tight">{t('blocksTitle')}</h2>
-                    <p className="mt-1 max-w-xl text-sm text-g-muted">{t('blocksHint')}</p>
+                    <h2 id="sheet-blocks" className={headingClass}>{t('blocksTitle')}</h2>
+                    <p className={`${hintClass} mt-0.5 max-w-xl`}>{t('blocksHint')}</p>
                 </div>
                 {!open && hasTimeZone && (
                     <button type="button" onClick={() => { setFormDate(startDate); setOpen(true); }} className={primaryButton}>{t('addBlock')}</button>
@@ -161,21 +163,21 @@ export function BlockSection({ blocks, hasTimeZone, startDate, openRequest, revi
             </div>
 
             {open && (
-                <div className="mt-6">
+                <div className="mt-4">
                     <BlockForm key={formDate} initialDate={formDate} review={review} onCancel={() => setOpen(false)} />
                 </div>
             )}
 
             {blocks.length === 0 && !open ? (
-                <p className="mt-4 text-sm text-g-muted">{t('blocksEmpty')}</p>
+                <p className={`${hintClass} mt-4`}>{t('blocksEmpty')}</p>
             ) : (
-                <ul className="mt-4 divide-y divide-g-rule">
+                <ul className="mt-4 divide-y divide-slate-100 dark:divide-white/5">
                     {blocks.map(b => (
-                        <li key={b.id} className="flex flex-wrap items-start justify-between gap-3 py-4">
+                        <li key={b.id} className="flex flex-wrap items-start justify-between gap-3 py-3 first:pt-0 last:pb-0">
                             <div className="min-w-0">
-                                <p className="font-medium tabular-nums text-g-ink">{describe(b)}</p>
-                                {b.note && <p className="mt-0.5 text-sm text-g-muted">{b.note}</p>}
-                                <p className="mt-0.5 text-xs tabular-nums text-g-muted">{t('blockClosing', { count: b.closedTeeTimes })}</p>
+                                <p className="text-sm font-medium tabular-nums text-slate-900 dark:text-slate-100">{describe(b)}</p>
+                                {b.note && <p className="mt-0.5 text-sm text-slate-500 dark:text-slate-400">{b.note}</p>}
+                                <p className="mt-0.5 text-xs tabular-nums text-slate-500 dark:text-slate-400">{t('blockClosing', { count: b.closedTeeTimes })}</p>
                             </div>
                             <button type="button" onClick={() => void review({ action: 'block_remove', blockId: b.id }, { surface: true })}
                                 className={secondaryButton}>

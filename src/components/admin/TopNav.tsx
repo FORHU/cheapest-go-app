@@ -50,11 +50,13 @@ interface TopNavProps {
      * `requireAdmin`, the palette searches bookings and customers, and the brand switcher
      * does not scope the support inbox (ADR-0030).
      */
-    variant?: 'admin' | 'desk';
+    variant?: 'admin' | 'desk' | 'course';
 }
 
 export function TopNav({ onMenuClick, isCollapsed, variant = 'admin' }: TopNavProps) {
-    const isDesk = variant === 'desk';
+    // The desk and the course portal are narrower consoles with the same three things missing:
+    // notifications and the palette sit behind `requireAdmin`, and neither scopes by brand.
+    const isDesk = variant !== 'admin';
     const { theme, toggleTheme } = useTheme();
     const router = useRouter();
     const user = useAuthStore((s) => s.user);

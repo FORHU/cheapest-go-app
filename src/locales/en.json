@@ -3262,7 +3262,24 @@
         "decideBy": "Decide by {date}",
         "confirm": "Confirm",
         "decline": "Decline",
-        "actionError": "Something went wrong. Please try again."
+        "actionError": "Something went wrong. Please try again.",
+        "subtitle": "Tee-time requests waiting for you",
+        "colReference": "Reference",
+        "colTeeTime": "Tee time (course time)",
+        "colPlayers": "Players",
+        "colLead": "Lead player",
+        "colFee": "Green fee",
+        "colDecide": "Decide by",
+        "colStatus": "Status",
+        "colActions": "Actions",
+        "yes": "Yes",
+        "no": "No",
+        "declineAsk": "Decline?",
+        "confirmedToast": "{reference} confirmed",
+        "declinedToast": "{reference} declined",
+        "hintWaiting": "Confirm a request to take the customer's payment, or decline it to release their card. Requests nobody answers are released automatically at their deadline.",
+        "hintUpcoming": "Confirmed tee times still to be played.",
+        "hintPast": "Played, declined and cancelled bookings, newest first."
       },
       "join": {
         "title": "Manage {course}",
@@ -3373,7 +3390,10 @@
         "apply": "Apply",
         "applying": "Applying…",
         "error": "Something went wrong. Please try again.",
-        "done": "Done."
+        "done": "Done.",
+        "subtitle": "Schedules, blocks and extras for your course",
+        "navBackToSite": "Back to the site",
+        "navWaiting": "{count} waiting"
       }
     },
     "partner": {

@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { CalendarRange } from 'lucide-react';
 import { useLocale, useTranslations } from 'next-intl';
 import { GolfDatePicker } from '@/components/golf/GolfDatePicker';
 import { formatMoney } from '@/components/golf/format';
@@ -12,13 +13,14 @@ import { BlockSection } from './BlockSection';
 import { ExtrasSection } from './ExtrasSection';
 import { ImpactConfirm } from './ImpactConfirm';
 import { ScheduleSection } from './ScheduleSection';
-import { secondaryButton, type Review } from './shared';
+import { cardClass, headingClass, hintClass, secondaryButton, type Review } from './shared';
 
 interface Pending { body: Record<string, unknown>; impact: Impact }
 
 /**
- * A course's tee sheet. Every change is asked about first (the server runs it and rolls it back
- * to count what it would do), shown for confirmation, then applied for real and recorded.
+ * A course's tee sheet, in the admin's idiom. Every change is asked about first (the server runs
+ * it and rolls it back to count what it would do), shown for confirmation, then applied for real
+ * and recorded.
  */
 export function TeeSheetClient({ sheet, courses }: { sheet: TeeSheetOverview; courses: { id: string; name: string }[] }) {
     const t = useTranslations('golf.staff.sheet');
@@ -88,55 +90,64 @@ export function TeeSheetClient({ sheet, courses }: { sheet: TeeSheetOverview; co
     const stamp = new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeStyle: 'short' });
     const state = (tt: TeeSheetOverview['day']['teeTimes'][number]) =>
         tt.status === 'open' ? t('stateOpen') : tt.closedBy === 'block' ? t('stateBlocked') : t('stateClosed');
+    const stateStyle = (tt: TeeSheetOverview['day']['teeTimes'][number]) =>
+        tt.status === 'open'
+            ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300'
+            : tt.closedBy === 'block'
+                ? 'bg-amber-100 text-amber-800 dark:bg-amber-950/50 dark:text-amber-300'
+                : 'bg-slate-100 text-slate-600 dark:bg-white/10 dark:text-slate-300';
 
     return (
-        <div className="mx-auto flex max-w-4xl flex-col gap-12 px-4 pb-24 pt-10">
+        <div className="flex flex-col gap-4">
             <header>
-                <h1 className="font-golf text-4xl font-extrabold leading-tight tracking-tight text-g-ink md:text-5xl">{t('title')}</h1>
-                {courses.length > 1 ? (
-                    <nav aria-label={t('courseLabel')} className="mt-4 flex flex-wrap gap-x-5 gap-y-2">
-                        {courses.map(c => (
-                            <Link key={c.id} href={`/course/tee-sheet?course=${c.id}`}
-                                aria-current={c.id === course.id ? 'page' : undefined}
-                                className={`border-b-2 pb-1 text-sm transition-colors ${c.id === course.id
-                                    ? 'border-g-accent font-semibold text-g-ink'
-                                    : 'border-transparent text-g-muted hover:text-g-ink'}`}>
-                                {c.name}
-                            </Link>
-                        ))}
-                    </nav>
-                ) : (
-                    <p className="mt-3 text-g-muted">{course.name}</p>
-                )}
-                {pageError && <p role="alert" className="mt-4 text-sm text-red-600 dark:text-red-400">{pageError}</p>}
+                <h1 className="flex items-center gap-2 text-xl font-semibold text-slate-900 dark:text-slate-100">
+                    <CalendarRange className="h-5 w-5" /> {t('title')}
+                </h1>
+                <p className="text-sm text-slate-500 dark:text-slate-400">{course.name}</p>
             </header>
 
-            <section aria-labelledby="sheet-day">
-                <div className="flex flex-wrap items-end justify-between gap-4 border-t border-g-ink pt-4">
-                    <h2 id="sheet-day" className="font-golf text-2xl font-bold tracking-tight">{t('dayTitle')}</h2>
+            {courses.length > 1 && (
+                <nav aria-label={t('courseLabel')} className="flex gap-1 overflow-x-auto border-b border-slate-200 dark:border-white/10">
+                    {courses.map(c => (
+                        <Link key={c.id} href={`/course/tee-sheet?course=${c.id}`}
+                            aria-current={c.id === course.id ? 'page' : undefined}
+                            className={`-mb-px whitespace-nowrap border-b-2 px-3 py-2 text-sm font-medium ${c.id === course.id
+                                ? 'border-blue-600 text-blue-600'
+                                : 'border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-200'}`}>
+                            {c.name}
+                        </Link>
+                    ))}
+                </nav>
+            )}
+
+            {pageError && (
+                <p role="alert" className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-950/30 dark:text-red-300">{pageError}</p>
+            )}
+
+            <section aria-labelledby="sheet-day" className={cardClass}>
+                <div className="flex flex-wrap items-end justify-between gap-3">
+                    <h2 id="sheet-day" className={headingClass}>{t('dayTitle')}</h2>
                     <div className="w-48">
-                        <GolfDatePicker label={t('dayDate')} value={sheet.day.date} today={sheet.day.date}
+                        <GolfDatePicker appearance="boxed" label={t('dayDate')} value={sheet.day.date} today={sheet.day.date}
                             onChange={date => { if (date) goTo({ date }); }} />
                     </div>
                 </div>
 
                 {sheet.day.teeTimes.length === 0 ? (
-                    <p className="mt-4 text-sm text-g-muted">{t('dayEmpty')}</p>
+                    <p className={`${hintClass} mt-4`}>{t('dayEmpty')}</p>
                 ) : (
-                    <ul className="mt-4 border-t border-g-rule sm:columns-2 sm:gap-x-10">
+                    <ul className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
                         {sheet.day.teeTimes.map(tt => (
-                            <li key={tt.id} className="flex break-inside-avoid items-center justify-between gap-3 border-b border-g-rule py-3">
+                            <li key={tt.id} className="flex items-center justify-between gap-3 rounded-lg border border-slate-200 px-3 py-2 dark:border-white/10">
                                 <div>
-                                    <p className="font-mono text-lg font-medium tabular-nums text-g-ink">{tt.localTime}</p>
-                                    <p className="text-xs tabular-nums text-g-muted">
+                                    <p className="font-mono text-base font-medium tabular-nums text-slate-900 dark:text-slate-100">{tt.localTime}</p>
+                                    <p className="text-xs tabular-nums text-slate-500 dark:text-slate-400">
                                         {formatMoney(tt.pricePerPlayer, tt.currency, locale)} · {t('spotsLeft', { left: tt.spotsLeft, total: tt.spots })}
                                     </p>
                                 </div>
                                 <div className="flex flex-col items-end gap-1 text-xs">
-                                    <span className={`rounded-sm px-2 py-0.5 font-medium ${tt.status === 'open'
-                                        ? 'text-g-accent'
-                                        : 'bg-g-sunk text-g-muted'}`}>{state(tt)}</span>
-                                    {tt.booked > 0 && <span className="tabular-nums text-g-muted">{t('booked', { count: tt.booked })}</span>}
+                                    <span className={`rounded-full px-2 py-0.5 font-medium ${stateStyle(tt)}`}>{state(tt)}</span>
+                                    {tt.booked > 0 && <span className="tabular-nums text-slate-500 dark:text-slate-400">{t('booked', { count: tt.booked })}</span>}
                                 </div>
                             </li>
                         ))}
@@ -144,7 +155,7 @@ export function TeeSheetClient({ sheet, courses }: { sheet: TeeSheetOverview; co
                 )}
 
                 {course.timezone && (
-                    <p className="mt-3">
+                    <p className="mt-4">
                         <button type="button" onClick={() => setBlockOpenRequest(n => n + 1)} className={secondaryButton}>{t('blockDay')}</button>
                     </p>
                 )}
@@ -158,16 +169,16 @@ export function TeeSheetClient({ sheet, courses }: { sheet: TeeSheetOverview; co
             <ExtrasSection key={JSON.stringify(sheet.extras)} extras={sheet.extras} currency={course.currency}
                 courseId={course.id} onSaved={() => router.refresh()} />
 
-            <section aria-labelledby="sheet-history" className="border-t border-g-ink pt-4">
-                <h2 id="sheet-history" className="font-golf text-2xl font-bold tracking-tight">{t('historyTitle')}</h2>
+            <section aria-labelledby="sheet-history" className={cardClass}>
+                <h2 id="sheet-history" className={headingClass}>{t('historyTitle')}</h2>
                 {sheet.changes.length === 0 ? (
-                    <p className="mt-4 text-sm text-g-muted">{t('historyEmpty')}</p>
+                    <p className={`${hintClass} mt-3`}>{t('historyEmpty')}</p>
                 ) : (
-                    <ul className="mt-4 divide-y divide-g-rule">
+                    <ul className="mt-3 divide-y divide-slate-100 dark:divide-white/5">
                         {sheet.changes.map(change => (
-                            <li key={change.id} className="py-3 text-sm">
-                                <p className="text-g-ink">{change.summary}</p>
-                                <p className="mt-0.5 text-xs tabular-nums text-g-muted">
+                            <li key={change.id} className="py-2.5 text-sm first:pt-0 last:pb-0">
+                                <p className="text-slate-900 dark:text-slate-100">{change.summary}</p>
+                                <p className="mt-0.5 text-xs tabular-nums text-slate-500 dark:text-slate-400">
                                     {t('historyBy', { who: change.by ?? '—', date: stamp.format(new Date(change.createdAt)) })}
                                 </p>
                             </li>

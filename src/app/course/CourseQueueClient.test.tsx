@@ -16,6 +16,9 @@ vi.mock('next-intl', () => ({
 const router = vi.hoisted(() => ({ refresh: vi.fn() }));
 vi.mock('next/navigation', () => ({ useRouter: () => router }));
 
+const toast = vi.hoisted(() => ({ success: vi.fn(), error: vi.fn() }));
+vi.mock('sonner', () => ({ toast }));
+
 import { CourseQueueClient } from './CourseQueueClient';
 
 const course = { id: 'c1', slug: 'mine', name: 'Mine GC', city: 'Manila', country: 'Philippines', status: 'published' as const };
@@ -41,9 +44,10 @@ describe('CourseQueueClient', () => {
     it('shows the waiting request with what the course needs to recognise it', () => {
         page();
         expect(screen.getByRole('heading', { name: 'Course portal' })).toBeInTheDocument();
-        expect(screen.getByText(/Ana Cruz · 2 players/)).toBeInTheDocument();
+        expect(screen.getByText('Ana Cruz')).toBeInTheDocument();
+        expect(screen.getByText('2 players')).toBeInTheDocument();
         expect(screen.getByText('Golf cart × 1')).toBeInTheDocument();
-        expect(screen.getByText('Reference CG-ABC234')).toBeInTheDocument();
+        expect(screen.getByText('CG-ABC234')).toBeInTheDocument();
         // 08:00 on the course's own clock, not the viewer's.
         expect(screen.getByText('08:00')).toBeInTheDocument();
         expect(screen.getByRole('tab', { name: /Waiting for you/ })).toHaveAttribute('aria-selected', 'true');
@@ -56,20 +60,36 @@ describe('CourseQueueClient', () => {
         const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
         expect(url).toBe('/api/course/golf-bookings');
         expect(JSON.parse(String(init.body))).toEqual({ action: 'confirm', id: 'b1' });
+        expect(toast.success).toHaveBeenCalledWith('CG-ABC234 confirmed');
     });
 
-    it('declines', async () => {
+    it('asks before declining, as the admin does, and declines on Yes', async () => {
         page();
         fireEvent.click(screen.getByRole('button', { name: 'Decline' }));
+        // Asking is not deciding: the card is only released once it is confirmed.
+        expect(fetchMock).not.toHaveBeenCalled();
+        expect(screen.getByText('Decline?')).toBeInTheDocument();
+        fireEvent.click(screen.getByRole('button', { name: 'Yes' }));
         await waitFor(() => expect(fetchMock).toHaveBeenCalled());
         expect(JSON.parse(String((fetchMock.mock.calls[0] as [string, RequestInit])[1].body))).toEqual({ action: 'decline', id: 'b1' });
+        expect(toast.success).toHaveBeenCalledWith('CG-ABC234 declined');
     });
 
-    it('says what went wrong on the row and leaves it in place', async () => {
+    it('backs out of a decline on No without calling the server', () => {
+        page();
+        fireEvent.click(screen.getByRole('button', { name: 'Decline' }));
+        fireEvent.click(screen.getByRole('button', { name: 'No' }));
+        expect(fetchMock).not.toHaveBeenCalled();
+        expect(screen.getByRole('button', { name: 'Decline' })).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: 'Confirm' })).toBeInTheDocument();
+    });
+
+    it('says what went wrong and leaves the row in place', async () => {
         fetchMock.mockResolvedValueOnce(new Response(JSON.stringify({ error: 'That booking was already decided.' }), { status: 409 }));
         page();
         fireEvent.click(screen.getByRole('button', { name: 'Confirm' }));
-        expect(await screen.findByRole('alert')).toHaveTextContent('That booking was already decided.');
+        await waitFor(() => expect(toast.error).toHaveBeenCalledWith('That booking was already decided.'));
+        expect(toast.success).not.toHaveBeenCalled();
         expect(router.refresh).not.toHaveBeenCalled();
         expect(screen.getByRole('button', { name: 'Confirm' })).toBeEnabled();
     });
@@ -77,7 +97,7 @@ describe('CourseQueueClient', () => {
     it('moves between tabs, and shows no actions on settled bookings', () => {
         page({ upcoming: [booking({ id: 'b2', status: 'confirmed', leadName: 'Ben Reyes' })] });
         fireEvent.click(screen.getByRole('tab', { name: 'Upcoming' }));
-        expect(screen.getByText(/Ben Reyes/)).toBeInTheDocument();
+        expect(screen.getByText('Ben Reyes')).toBeInTheDocument();
         expect(screen.getByText('Confirmed')).toBeInTheDocument();
         expect(screen.queryByRole('button', { name: 'Confirm' })).not.toBeInTheDocument();
     });
@@ -91,7 +111,13 @@ describe('CourseQueueClient', () => {
     });
 
     it('names the course on each row only when the account has several', () => {
+        const { unmount } = page();
+        // One course: its name is in the header only.
+        expect(screen.getAllByText('Mine GC')).toHaveLength(1);
+        unmount();
         page({ courses: [course, { ...course, id: 'c2', name: 'Other GC' }] });
-        expect(screen.getByText(/· Mine GC$/)).toBeInTheDocument();
+        // Several: the header lists both, and the row says which one it is for.
+        expect(screen.getByText('Mine GC · Other GC')).toBeInTheDocument();
+        expect(screen.getByText('Mine GC')).toBeInTheDocument();
     });
 });

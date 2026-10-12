@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import { Check, ChevronDown } from 'lucide-react';
 import { useDismiss } from './useDismiss';
-import { fieldLabelClass, fieldTriggerClass, popoverClass } from './field';
+import { boxedLabelClass, boxedTriggerClass, fieldLabelClass, fieldTriggerClass, popoverClass, type FieldAppearance } from './field';
 
 export interface GolfSelectOption {
     value: string;
@@ -27,6 +27,8 @@ export interface GolfSelectProps {
     compact?: boolean;
     /** Which edge of the field the list lines up with. */
     align?: 'left' | 'right';
+    /** `ruled` (the storefront) or `boxed`, to sit among the admin's boxed inputs. */
+    appearance?: FieldAppearance;
 }
 
 /**
@@ -35,7 +37,7 @@ export interface GolfSelectProps {
  * work as in a native select, and the value reaches a plain form through a hidden input.
  */
 export function GolfSelect({
-    label, ariaLabel, name, value, defaultValue, onChange, options, disabled, mono, compact, align = 'left',
+    label, ariaLabel, name, value, defaultValue, onChange, options, disabled, mono, compact, align = 'left', appearance = 'ruled',
 }: GolfSelectProps) {
     const id = useId();
     const labelId = `${id}-label`;
@@ -114,11 +116,11 @@ export function GolfSelect({
     const selectedLabel = options[selectedIndex]?.label ?? '';
     const trigger = compact
         ? 'flex h-9 w-16 items-center justify-between gap-1 rounded-sm border border-g-rule bg-g-surface px-2.5 text-left text-sm tabular-nums text-g-ink transition-colors hover:border-g-ink focus-visible:border-g-accent disabled:cursor-not-allowed disabled:opacity-50'
-        : fieldTriggerClass;
+        : appearance === 'boxed' ? boxedTriggerClass : fieldTriggerClass;
 
     return (
         <div ref={rootRef} className={`golf-theme relative ${compact ? 'shrink-0' : 'min-w-0'}`}>
-            {label && <span id={labelId} className={fieldLabelClass}>{label}</span>}
+            {label && <span id={labelId} className={appearance === 'boxed' ? boxedLabelClass : fieldLabelClass}>{label}</span>}
             <button type="button" role="combobox" disabled={disabled}
                 aria-haspopup="listbox" aria-expanded={open} aria-controls={listId}
                 aria-labelledby={label ? labelId : undefined} aria-label={label ? undefined : ariaLabel}

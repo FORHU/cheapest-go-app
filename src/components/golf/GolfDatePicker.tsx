@@ -6,7 +6,7 @@ import { useLocale, useTranslations } from 'next-intl';
 import { addDays } from '@/lib/golf/time';
 import { clampDate, isSelectable, monthGrid, monthOf, shiftMonth, shiftMonthKeepingDay } from '@/lib/golf/calendar';
 import { useDismiss } from './useDismiss';
-import { fieldLabelClass, fieldTriggerClass, popoverClass } from './field';
+import { boxedLabelClass, boxedTriggerClass, fieldLabelClass, fieldTriggerClass, popoverClass, type FieldAppearance } from './field';
 
 /** First day of the week for a locale: 0 = Sunday … 6 = Saturday. Sunday when the engine cannot say. */
 function weekStartFor(locale: string): number {
@@ -41,6 +41,8 @@ export interface GolfDatePickerProps {
     placeholder?: string;
     /** When set, a footer action with this text clears the date. */
     clearLabel?: string;
+    /** `ruled` (the storefront) or `boxed`, to sit among the admin's boxed inputs. */
+    appearance?: FieldAppearance;
 }
 
 /**
@@ -48,7 +50,7 @@ export interface GolfDatePickerProps {
  * plain "YYYY-MM-DD" string, so it works inside a server-rendered GET form (hidden input) and as
  * controlled state alike. Arrow keys move by day and week, PageUp/PageDown by month, Escape closes.
  */
-export function GolfDatePicker({ label, name, value, defaultValue = '', onChange, min, max, today, placeholder, clearLabel }: GolfDatePickerProps) {
+export function GolfDatePicker({ label, name, value, defaultValue = '', onChange, min, max, today, placeholder, clearLabel, appearance = 'ruled' }: GolfDatePickerProps) {
     const t = useTranslations('golf.search');
     const locale = useLocale();
     const id = useId();
@@ -140,11 +142,11 @@ export function GolfDatePicker({ label, name, value, defaultValue = '', onChange
 
     return (
         <div ref={rootRef} className="golf-theme relative min-w-0">
-            <span id={labelId} className={fieldLabelClass}>{label}</span>
+            <span id={labelId} className={appearance === 'boxed' ? boxedLabelClass : fieldLabelClass}>{label}</span>
             <button ref={triggerRef} id={buttonId} type="button" aria-haspopup="dialog" aria-expanded={open}
                 aria-labelledby={`${labelId} ${buttonId}`}
                 onClick={() => (open ? close() : openCalendar())}
-                className={fieldTriggerClass}>
+                className={appearance === 'boxed' ? boxedTriggerClass : fieldTriggerClass}>
                 <span className={`truncate tabular-nums ${current ? 'text-g-ink' : 'text-g-muted'}`}>{shown}</span>
                 <CalendarDays className="h-4 w-4 shrink-0 text-g-muted" aria-hidden />
             </button>

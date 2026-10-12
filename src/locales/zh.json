@@ -3262,7 +3262,24 @@
         "decideBy": "请在 {date} 前答复",
         "confirm": "确认",
         "decline": "拒绝",
-        "actionError": "出了点问题，请重试。"
+        "actionError": "出了点问题，请重试。",
+        "subtitle": "等待您处理的球位请求",
+        "colReference": "预订编号",
+        "colTeeTime": "开球时间（球场当地时间）",
+        "colPlayers": "人数",
+        "colLead": "主订人",
+        "colFee": "果岭费",
+        "colDecide": "答复期限",
+        "colStatus": "状态",
+        "colActions": "操作",
+        "yes": "是",
+        "no": "否",
+        "declineAsk": "确认拒绝？",
+        "confirmedToast": "{reference} 已确认",
+        "declinedToast": "{reference} 已拒绝",
+        "hintWaiting": "确认请求将向顾客收款，拒绝则释放其银行卡预授权。到期无人答复的请求会自动释放。",
+        "hintUpcoming": "尚未进行的已确认球位。",
+        "hintPast": "已完成、已拒绝和已取消的预订，按时间倒序。"
       },
       "join": {
         "title": "管理{course}",
@@ -3373,7 +3390,10 @@
         "apply": "应用",
         "applying": "应用中…",
         "error": "出了点问题，请重试。",
-        "done": "已完成。"
+        "done": "已完成。",
+        "subtitle": "球场的排期、封锁与附加项目",
+        "navBackToSite": "返回网站",
+        "navWaiting": "{count} 条待处理"
       }
     },
     "partner": {

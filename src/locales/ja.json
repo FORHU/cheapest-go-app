@@ -3262,7 +3262,24 @@
         "decideBy": "回答期限 {date}",
         "confirm": "承認する",
         "decline": "辞退する",
-        "actionError": "問題が発生しました。もう一度お試しください。"
+        "actionError": "問題が発生しました。もう一度お試しください。",
+        "subtitle": "ティータイムのリクエストへの対応",
+        "colReference": "予約番号",
+        "colTeeTime": "ティータイム（コース現地時間）",
+        "colPlayers": "人数",
+        "colLead": "代表者",
+        "colFee": "グリーンフィー",
+        "colDecide": "回答期限",
+        "colStatus": "ステータス",
+        "colActions": "操作",
+        "yes": "はい",
+        "no": "いいえ",
+        "declineAsk": "辞退しますか？",
+        "confirmedToast": "{reference} を承認しました",
+        "declinedToast": "{reference} を辞退しました",
+        "hintWaiting": "リクエストを承認するとお客様のお支払いが確定し、辞退するとカードの保留が解除されます。期限までに回答がないリクエストは自動的に解除されます。",
+        "hintUpcoming": "これからプレーされる確定済みのティータイムです。",
+        "hintPast": "プレー済み、辞退、キャンセルされた予約です（新しい順）。"
       },
       "join": {
         "title": "{course}を管理する",
@@ -3373,7 +3390,10 @@
         "apply": "適用する",
         "applying": "適用中…",
         "error": "問題が発生しました。もう一度お試しください。",
-        "done": "完了しました。"
+        "done": "完了しました。",
+        "subtitle": "コースのスケジュール・ブロック・オプション",
+        "navBackToSite": "サイトに戻る",
+        "navWaiting": "{count}件対応待ち"
       }
     },
     "partner": {

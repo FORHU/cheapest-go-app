@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { Loader2 } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { GOLF_EXTRAS, type ExtraOffer, type GolfExtraCode } from '@/lib/golf/extras';
-import { inputClass, primaryButton } from './shared';
+import { cardClass, headingClass, hintClass, inputClass, primaryButton } from './shared';
 
 /**
  * The extras a course offers and their prices. Saved as a set; they apply to the next customer
@@ -57,26 +57,26 @@ export function ExtrasSection({ extras, currency, courseId, onSaved }: {
     };
 
     return (
-        <section aria-labelledby="sheet-extras" className="border-t border-g-ink pt-4">
-            <h2 id="sheet-extras" className="font-golf text-2xl font-bold tracking-tight">{t('extrasTitle')}</h2>
-            <p className="mt-1 text-sm text-g-muted">{t('extrasHint')}</p>
+        <section aria-labelledby="sheet-extras" className={cardClass}>
+            <h2 id="sheet-extras" className={headingClass}>{t('extrasTitle')}</h2>
+            <p className={`${hintClass} mt-0.5`}>{t('extrasHint')}</p>
 
-            <ul className="mt-4 divide-y divide-g-rule">
+            <ul className="mt-4 divide-y divide-slate-100 dark:divide-white/5">
                 {GOLF_EXTRAS.map(code => {
                     const on = code in offered;
                     return (
-                        <li key={code} className="grid grid-cols-[1fr_auto] items-center gap-4 py-3 sm:grid-cols-[1fr_12rem]">
-                            <label className="flex items-center gap-3 text-g-ink">
+                        <li key={code} className="grid grid-cols-[1fr_auto] items-center gap-4 py-2.5 first:pt-0 last:pb-0 sm:grid-cols-[1fr_11rem]">
+                            <label className="flex items-center gap-3 text-sm text-slate-900 dark:text-slate-100">
                                 <input type="checkbox" checked={on} onChange={e => toggle(code, e.target.checked)}
-                                    aria-label={`${t('extrasOffered')}: ${tAmenity(code)}`} className="h-4 w-4 accent-[var(--g-accent)]" />
+                                    aria-label={`${t('extrasOffered')}: ${tAmenity(code)}`} className="h-4 w-4 accent-blue-600" />
                                 {tAmenity(code)}
                             </label>
-                            <div className="flex items-baseline gap-2 text-xs text-g-muted">
+                            <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
                                 <input type="number" inputMode="decimal" min={0} step="0.01" disabled={!on} value={on ? offered[code] : ''}
                                     aria-label={[tAmenity(code), t('extrasPrice', { currency })].join(': ')}
                                     placeholder={t('extrasPrice', { currency })}
                                     onChange={e => setOffered(current => ({ ...current, [code]: e.target.value }))}
-                                    className={`${inputClass} mt-0 text-right disabled:opacity-40`} />
+                                    className={`${inputClass} text-right`} />
                                 <span aria-hidden>{currency}</span>
                             </div>
                         </li>
@@ -89,7 +89,8 @@ export function ExtrasSection({ extras, currency, courseId, onSaved }: {
                     {busy && <Loader2 className="h-4 w-4 animate-spin" aria-hidden />} {t('extrasSave')}
                 </button>
                 {message && (
-                    <p role={message.ok ? 'status' : 'alert'} className={`text-sm ${message.ok ? 'text-g-muted' : 'text-red-600 dark:text-red-400'}`}>{message.text}</p>
+                    <p role={message.ok ? 'status' : 'alert'}
+                        className={`text-sm ${message.ok ? 'text-emerald-700 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>{message.text}</p>
                 )}
             </div>
         </section>
