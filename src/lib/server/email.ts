@@ -108,7 +108,8 @@ function escapeHtml(str: string | null | undefined): string {
 
 export type EmailLogStatus = 'queued' | 'sent' | 'failed';
 export type EmailType = 'confirmation' | 'ticketed' | 'refund' | 'cancellation' | 'awaiting_ticket' | 'price_alert'
-    | 'golf_requested' | 'golf_confirmed' | 'golf_declined' | 'golf_cancelled';
+    | 'golf_requested' | 'golf_confirmed' | 'golf_declined' | 'golf_cancelled'
+    | 'golf_course_invitation' | 'golf_course_request_approved' | 'golf_course_request_rejected';
 
 /**
  * Returns true if an email of this type has already been sent (or queued)

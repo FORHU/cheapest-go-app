@@ -1,7 +1,9 @@
 import { describe, it, expect } from 'vitest';
 import {
     ROLES,
+    MANUALLY_ASSIGNABLE_ROLES,
     canAdminister,
+    canStaffCourses,
     canStaffSupport,
     landingFor,
     isRole,
@@ -20,12 +22,13 @@ import {
  * The bias is deliberate: a role that is not explicitly allowed is refused.
  */
 
-const everyRole: Role[] = ['user', 'admin', 'support_agent'];
+const everyRole: Role[] = ['user', 'admin', 'support_agent', 'course_staff'];
 
 describe('canAdminister', () => {
     it('is true only for an admin', () => {
         expect(canAdminister('admin')).toBe(true);
         expect(canAdminister('support_agent')).toBe(false);
+        expect(canAdminister('course_staff')).toBe(false);
         expect(canAdminister('user')).toBe(false);
     });
 
@@ -50,9 +53,27 @@ describe('canStaffSupport', () => {
         expect(canStaffSupport('user')).toBe(false);
     });
 
+    it('is false for course staff: a course sees its own bookings, not the support chats', () => {
+        expect(canStaffSupport('course_staff')).toBe(false);
+    });
+
     it('refuses anything it does not recognise', () => {
         expect(canStaffSupport('agent' as Role)).toBe(false);
         expect(canStaffSupport(null)).toBe(false);
+    });
+});
+
+describe('canStaffCourses', () => {
+    it('is true only for course staff', () => {
+        expect(canStaffCourses('course_staff')).toBe(true);
+        expect(canStaffCourses('admin')).toBe(false);
+        expect(canStaffCourses('support_agent')).toBe(false);
+        expect(canStaffCourses('user')).toBe(false);
+    });
+
+    it('refuses anything it does not recognise', () => {
+        expect(canStaffCourses('course' as Role)).toBe(false);
+        expect(canStaffCourses(null)).toBe(false);
     });
 });
 
@@ -65,6 +86,10 @@ describe('landingFor', () => {
         // Not the homepage, and not a page telling them they are not supposed to be here.
         // They are staff; they just are not administrators.
         expect(landingFor('support_agent')).toBe('/admin/desk');
+    });
+
+    it('sends course staff to their own portal', () => {
+        expect(landingFor('course_staff')).toBe('/course');
     });
 
     it('sends a customer nowhere in particular', () => {
@@ -92,6 +117,7 @@ describe('roleLabel', () => {
         // support agent is not — and reading that about yourself is quietly wrong.
         expect(roleLabel('admin')).toBe('Administrator');
         expect(roleLabel('support_agent')).toBe('Support Agent');
+        expect(roleLabel('course_staff')).toBe('Course staff');
         expect(roleLabel('user')).toBe('Standard User');
     });
 
@@ -100,6 +126,11 @@ describe('roleLabel', () => {
     });
 
     it('lists every role exactly once', () => {
-        expect([...ROLES].sort()).toEqual(['admin', 'support_agent', 'user']);
+        expect([...ROLES].sort()).toEqual(['admin', 'course_staff', 'support_agent', 'user']);
+    });
+
+    it('leaves course staff out of the roles an admin sets by hand', () => {
+        expect([...MANUALLY_ASSIGNABLE_ROLES].sort()).toEqual(['admin', 'support_agent', 'user']);
+        for (const role of MANUALLY_ASSIGNABLE_ROLES) expect(ROLES).toContain(role);
     });
 });

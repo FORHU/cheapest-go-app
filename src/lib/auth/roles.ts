@@ -11,9 +11,16 @@
  * loses access rather than gaining it.
  */
 
-export const ROLES = ['user', 'admin', 'support_agent'] as const;
+export const ROLES = ['user', 'admin', 'support_agent', 'course_staff'] as const;
 
 export type Role = (typeof ROLES)[number];
+
+/**
+ * The roles an admin may set by hand on the Users page. `course_staff` is deliberately not one:
+ * the role only means something together with the courses in `golf_course_staff`, so it is
+ * given by adding a person to a course (an invitation or an approved request), never alone.
+ */
+export const MANUALLY_ASSIGNABLE_ROLES = ['user', 'admin', 'support_agent'] as const;
 
 /** Narrow an unvalidated value — a session field, a request body — to a known role. */
 export function isRole(value: unknown): value is Role {
@@ -36,6 +43,17 @@ export function canStaffSupport(role: Role | null | undefined): boolean {
 }
 
 /**
+ * May act for the Golf Courses they have been attached to (confirm or decline their requests).
+ *
+ * Not true for an admin: an admin works from the back office, which already reaches every
+ * course. Which courses a `course_staff` account may act for is `golf_course_staff`, read by
+ * `requireCourseStaff()` — this only says the role is the right kind.
+ */
+export function canStaffCourses(role: Role | null | undefined): boolean {
+    return role === 'course_staff';
+}
+
+/**
  * Where signing in should put someone, or null to let the caller decide.
  *
  * Null is for customers, where the `next` parameter or wherever they came from is a better
@@ -44,6 +62,7 @@ export function canStaffSupport(role: Role | null | undefined): boolean {
 export function landingFor(role: Role | null | undefined): string | null {
     if (role === 'admin') return '/admin/overview';
     if (role === 'support_agent') return '/admin/desk';
+    if (role === 'course_staff') return '/course';
     return null;
 }
 
@@ -54,6 +73,8 @@ export function roleLabel(role: Role | null | undefined): string {
             return 'Administrator';
         case 'support_agent':
             return 'Support Agent';
+        case 'course_staff':
+            return 'Course staff';
         default:
             return 'Standard User';
     }

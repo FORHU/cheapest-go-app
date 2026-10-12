@@ -1,5 +1,4 @@
-import { env } from '@/utils/env';
-import { FROM_NOREPLY, logEmail } from '@/lib/server/email';
+import { deliverEmail } from './deliver';
 import type { GolfBooking } from '@/lib/schemas/golf';
 import { EXTRA_NAMES_EN } from '@/lib/golf/extras';
 
@@ -106,26 +105,6 @@ ${rows.map(([k, v]) => `<tr><td style="padding:6px 0;color:#64748b">${escapeHtml
 }
 
 export async function sendGolfBookingEmail(kind: GolfEmailKind, b: GolfBooking): Promise<void> {
-    const emailType = `golf_${kind}` as const;
-    try {
-        const { subject, html } = buildGolfBookingEmail(kind, b);
-        const base = { bookingId: b.reference, recipient: b.contactEmail, subject, emailType };
-        const key = env.RESEND_API_KEY;
-        if (!key) {
-            await logEmail({ ...base, status: 'queued', htmlBody: html });
-            return;
-        }
-        const response = await fetch('https://api.resend.com/emails', {
-            method: 'POST',
-            headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
-            body: JSON.stringify({ from: FROM_NOREPLY, to: [b.contactEmail], subject, html }),
-        });
-        if (response.ok) {
-            await logEmail({ ...base, status: 'sent' });
-        } else {
-            await logEmail({ ...base, status: 'failed', errorMessage: await response.text(), htmlBody: html });
-        }
-    } catch (err) {
-        console.error(`[golf] ${emailType} email for ${b.reference} failed:`, err);
-    }
+    const { subject, html } = buildGolfBookingEmail(kind, b);
+    await deliverEmail({ emailType: `golf_${kind}` as const, referenceId: b.reference, to: b.contactEmail, subject, html });
 }

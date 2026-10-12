@@ -1,4 +1,4 @@
-import { isRole, type Role } from '@/lib/auth/roles';
+import { isRole, MANUALLY_ASSIGNABLE_ROLES, type Role } from '@/lib/auth/roles';
 
 /**
  * Whether one account may be given a role by another.
@@ -24,8 +24,8 @@ export function validateRoleChange({ actorId, targetId, newRole }: RoleChangeInp
     if (typeof targetId !== 'string' || !targetId) {
         return { ok: false, error: 'Missing or invalid userId' };
     }
-    if (!isRole(newRole)) {
-        return { ok: false, error: 'Invalid role. Must be "user", "admin" or "support_agent".' };
+    if (!isRole(newRole) || !(MANUALLY_ASSIGNABLE_ROLES as readonly string[]).includes(newRole)) {
+        return { ok: false, error: 'Invalid role. Must be "user", "admin" or "support_agent". Course staff are added to a course from Golf Courses.' };
     }
 
     // Demoting yourself, in any direction, locks you out. `support_agent` looks like a

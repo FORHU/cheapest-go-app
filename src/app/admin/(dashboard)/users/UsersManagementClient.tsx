@@ -1,6 +1,6 @@
 "use client";
 
-import { ROLES, roleLabel, type Role } from '@/lib/auth/roles';
+import { ROLES, MANUALLY_ASSIGNABLE_ROLES, roleLabel, type Role } from '@/lib/auth/roles';
 import React, { useState, useMemo } from 'react';
 
 import { StatCard } from '@/components/admin/StatCard';
@@ -50,6 +50,12 @@ const ROLE_CHANGE_COPY: Record<Role, { title: string; description: string; confi
         description:
             'This user will get the Support Desk: the customer conversations waiting there and the support hours. Nothing else in the admin opens for them.',
         confirm: 'Make Support Agent',
+    },
+    // Never chosen from this screen (see MANUALLY_ASSIGNABLE_ROLES); here so the table is total.
+    course_staff: {
+        title: 'Course staff',
+        description: 'Course staff are added to a course from Golf Courses, by an invitation or an approved request.',
+        confirm: 'OK',
     },
     user: {
         title: 'Make Standard User',
@@ -287,7 +293,8 @@ export function UsersManagementClient({ initialUsers }: UsersManagementClientPro
                                                 })}
                                                 className="h-8 rounded-lg border border-slate-200 bg-white px-2 text-xs font-bold text-slate-700 disabled:opacity-50 dark:border-white/10 dark:bg-white/5 dark:text-slate-200"
                                             >
-                                                {ROLES.map(role => (
+                                                {/* Course staff are made on the course; a current one still has to display. */}
+                                                {(user.role === 'course_staff' ? ROLES : MANUALLY_ASSIGNABLE_ROLES).map(role => (
                                                     <option key={role} value={role}>
                                                         {roleLabel(role)}
                                                     </option>

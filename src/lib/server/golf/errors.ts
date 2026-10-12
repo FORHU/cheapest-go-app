@@ -77,3 +77,36 @@ export class LastScheduleError extends Error {
         this.name = 'LastScheduleError';
     }
 }
+
+export type CourseStaffErrorCode =
+    | 'user_not_found' | 'course_not_found' | 'not_eligible' | 'invalid_email'
+    | 'invitation_invalid' | 'wrong_account'
+    | 'request_pending' | 'request_not_found' | 'request_decided';
+
+const STAFF_HTTP_STATUS: Record<CourseStaffErrorCode, number> = {
+    user_not_found: 404,
+    course_not_found: 404,
+    not_eligible: 409,
+    invalid_email: 400,
+    invitation_invalid: 410,
+    wrong_account: 403,
+    request_pending: 409,
+    request_not_found: 404,
+    request_decided: 409,
+};
+
+/** A course-staff step refused for a reason the person or the admin can act on. */
+export class CourseStaffError extends Error {
+    constructor(
+        public readonly code: CourseStaffErrorCode,
+        message: string,
+        public readonly detail: Record<string, unknown> = {},
+    ) {
+        super(message);
+        this.name = 'CourseStaffError';
+    }
+
+    get httpStatus(): number {
+        return STAFF_HTTP_STATUS[this.code];
+    }
+}
