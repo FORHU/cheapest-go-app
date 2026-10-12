@@ -1,6 +1,6 @@
 # Duffel flights: authorise the card, then buy the ticket — design
 
-**Date:** 2026-10-12
+**Date:** 2026-10-12 (revised the same day after reading the code, see the last section)
 **Branch:** `landing-sections`
 **Status:** approved in conversation; written here for review
 
@@ -27,37 +27,46 @@ cancel the order and hope the supplier lets us. The mobile route does the same
   (MNL→ICN 49%, CRK→LHR 15%, MNL→SIN 78%): a second booking flow for half the traffic, with
   deadlines, and `instant` would still need these safeguards. Re-measure on live credentials if
   this is revisited.
-- **A switch, default off.** `DUFFEL_MANUAL_CAPTURE` is read once, when `/book` creates the intent,
-  and the result is stamped on the intent as `captureFlow: authorise_first | order_first`. Everything
-  after that routes by the stamp, never by the current flag, so flipping the flag cannot strand a
-  payment already in flight.
+- **A switch, default off.** `DUFFEL_MANUAL_CAPTURE=on` is read once, when `/book` creates the
+  intent, and the result is stamped on the intent as `captureFlow: authorise_first | order_first`.
+  Everything after that routes by the stamp, never by the current flag, so flipping the flag cannot
+  strand a payment already in flight.
 - **Small rises are absorbed, big ones are asked about.** A fare that rises by no more than the
   existing tolerance (`getFlightPriceTolerance()`: $0.50 live, $10.00 sandbox) between the hold and
   the order is paid from our margin; the customer is charged what they saw. Above it, the hold is
   released and the new price is shown for them to accept. A fare that falls is passed on: we capture
   the lower amount.
+- **The legacy path is not touched.** The order-first code in `/book` stays exactly as written
+  until the flag has run clean and the path is deleted. The new path places orders with the
+  existing `place-duffel-order.ts`, which is made equivalent to `/book`'s inline logic first.
+- **Web first.** The mobile route has its own client; it stays order-first until that client is
+  checked against `requires_capture`.
 
 ## Flow (flag on)
 
-1. `/book` (web and mobile) validates and revalidates as today, then creates the session and an
-   intent for amount **A**, `capture_method: 'manual'`, metadata `captureFlow: authorise_first`.
-   **No order is placed.** It returns `clientSecret`, `sessionId`, `paymentIntentId` as before.
-2. The client confirms the intent. A declined card fails here; nothing has been bought.
+1. `/book` validates and revalidates as today, validates the phone (the order will not be placed
+   until later, so a bad number must stop here), creates the session and an intent for amount **A**,
+   `capture_method: 'manual'`, metadata `captureFlow: authorise_first`. **No order is placed.** It
+   returns `clientSecret`, `sessionId`, `paymentIntentId` as before.
+2. The client confirms the intent. A declined card fails here; nothing has been bought. The
+   embedded checkout already treats `requires_capture` as success and starts polling.
 3. Stripe sends `payment_intent.amount_capturable_updated`. The webhook runs
    `finaliseDuffelAuthorised({ sessionId, paymentIntentId })`:
    1. claim the session (below), so only one path places the order;
-   2. `placeDuffelOrder(...)` — the machinery extracted from `/book`: offer refresh, Price Action,
-      price-change retries, timeout recovery;
-   3. **refused** → `paymentIntents.cancel`, session `failed`, customer told they were not charged;
-   4. **placed** → write the order onto the session exactly as `/book` does today
-      (`duffel_pre_order_*`, corrected `flight`) and set `original_price` to the order's actual total,
-      so reporting shows what Duffel charged us rather than the quote; then `paymentIntents.capture`
-      (`amount_to_capture` = min(A, recomputed amount));
-   5. call `createBooking` unchanged: its Duffel handler already reads the order from the session.
-      The webhook then tickets, emails and writes the ledger as it does for Duffel today.
+   2. refuse a duplicate: the same traveller already holds an order for this offer and these
+      passengers from another session (two tabs, two authorisations);
+   3. `placeDuffelOrder(...)`: Price Action, price-change retries, timeout recovery, same-itinerary
+      refresh;
+   4. **refused** → record why on the session (`failure`), cancel the intent (releases the hold, no
+      refund), mark the booking failed so the existing polling sees it;
+   5. **placed** → stake the order id on the session at once, write the order onto it exactly as
+      `/book` does today (`duffel_pre_order_*`, corrected `flight`, `original_price` = what Duffel
+      charged us), then `paymentIntents.capture` with `amount_to_capture` = min(A, recomputed);
+   6. call `createBooking` unchanged: its Duffel handler already reads the order from the session.
+      The caller then tickets, emails and writes the ledger as it does for Duffel today.
 4. `/confirm` is the fallback for the same function. For `authorise_first` intents it accepts
-   `requires_capture` (or `succeeded` if the webhook already captured) and calls
-   `finaliseDuffelAuthorised`. The claim makes the two paths place one order.
+   `requires_capture` (or `succeeded` if the webhook already captured). The claim makes the two
+   paths place one order.
 
 ## The charge amount
 
@@ -66,78 +75,128 @@ number must come from somewhere the client cannot understate:
 
 - **A** = `computeOrderTotal(rawOffer, seatServiceIds, bagServiceIds)` (server-derived from the
   offer's `available_services`, never the client's seat/bag totals) → markup → FX, using the
-  same functions as now. The pricing audit columns (`currency`, `original_price`, `charged_price`,
-  `markup_pct`, `payment_currency`) are written at intent creation instead of after the order.
-- At order time the Price Action total gives **A′** by the same markup and FX.
+  same functions as now. The pricing audit columns are written at intent creation.
+- At order time the actual order total gives **A′** by the same markup and FX.
   - `A′ ≤ A`: capture A′.
-  - `A′ > A` and the base fare rose by no more than the tolerance: place the order, capture A.
-  - rise above the tolerance and not already confirmed by the traveller: cancel the intent and
-    return `price_changed` with the new price, reusing the 409 flow the client already has.
+  - `A′ > A`: only possible when the base fare rose by no more than the tolerance (or the
+    traveller had already confirmed a higher price): place the order, capture A.
+  - rise above the tolerance and not already confirmed: refuse with `price_changed` and the new
+    price.
 
 ## Claiming the session
 
 `createBooking` locks `status IN ('pending','initiated','payment_initiated','payment_authorized')`
 and sets `processing`. Finalisation needs its own claim before placing an order, then hands over:
 
-- atomic `UPDATE … SET status = 'ordering' WHERE status IN ('initiated','payment_initiated','payment_authorized')`;
-- immediately write `duffel_pre_order_id` once the order exists — the "stake a claim" write `/book`
-  makes at 1453, so the existing orphan sweep, which selects on that column, can always find it;
-- set the status back to `payment_authorized` with the order columns, so `createBooking`'s lock works.
+- atomic update to a new status `ordering` (the `booking_sessions_status_check` constraint is
+  widened by the migration) from `initiated`, `payment_initiated` or `payment_authorized`;
+- a claim older than 8 minutes may be taken over (an order attempt can legitimately run 130s plus
+  one 130s retry); the new claimer first looks for an order the old one placed, using the existing
+  timeout reconciliation, and resumes from a staked order id if there is one;
+- the order id is written the moment the order exists, so the orphan sweep, which selects on that
+  column, can always find it;
+- on handing over, the status returns to `payment_authorized` with the order columns, so
+  `createBooking`'s lock works.
 
-Anything that lists statuses (auto-recover, admin views, the orphan sweep) is audited for
-`ordering` in the plan.
+## How the traveller learns the outcome
+
+The checkout already races two things after the card step: `/api/flights/booking-status` polling
+and `/api/flights/confirm`. Both only know "failed" today and answer `booking_failed_refunded`
+("your payment has been refunded"), which is wrong for a released hold.
+
+- A new `booking_sessions.failure` column holds `{ errorCode, priceChange? }`. Both endpoints read
+  it when the booking row is `failed` and answer the stored code; sessions without it keep the
+  legacy answer.
+- Codes reuse existing copy, all of which already says the card was not charged:
+  `flight_unavailable`, `seats_unavailable`, `supplier_outage`, `balance_insufficient`,
+  `phone_number_invalid`, `duplicate_booking`, `booking_failed`. No new strings.
+- `price_changed` carries `priceChange`; the client returns to the form with the existing
+  price-change prompt (`confirmPriceChange`), which resubmits with the new price confirmed.
+
+## Recovery
+
+- **Webhook and `/confirm` both missed.** The existing auto-recover job expires sessions whose
+  Duffel intent is not `succeeded`, which would leave a live hold on the card. For
+  `authorise_first` intents it instead runs finalisation again; the claim and the resume logic make
+  that safe. A hold still unfinalised after 2 hours is cancelled and the session expired, and an
+  order that was staked but never captured is cancelled with it.
+- **Orphan cleanup** is unchanged, and cannot race finalisation: it only selects sessions in
+  `payment_initiated` or `initiated`, and a claimed session is `ordering`, then
+  `payment_authorized`.
 
 ## What changes where
 
 | Unit | Change |
 |---|---|
-| `src/lib/server/flights/duffel-order.ts` (new) | `placeDuffelOrder`: extracted from `/book` ~900–1450; used by both paths |
-| `src/lib/server/flights/finalise-authorised.ts` (new) | `finaliseDuffelAuthorised`, claim, capture or cancel |
-| `api/flights/book`, `api/mobile/flights/book` | flag-gated: no order, manual capture, stamp, persist `confirmed_price` and `capture_flow` |
-| `api/webhooks/stripe` | new Duffel branch on `amount_capturable_updated`; `payment_intent.succeeded` ignores `authorise_first` intents so the legacy handler's auto-refund can never touch a good booking |
-| `api/flights/confirm` | accept `requires_capture` for `authorise_first`, call finalise |
-| auto-recover job | cancel `authorise_first` intents still `requires_capture` with no order after ~15 minutes |
-| migration | `booking_sessions.capture_flow text`, `booking_sessions.confirmed_price numeric`, both nullable |
-
-The legacy `order_first` path stays as written until the flag has run clean; removing it (and
-pre-order reuse) is a later change.
+| `db/migrations/…_flights_authorise_first.sql` | `booking_sessions.confirmed_price`, `failure`; status check gains `ordering` |
+| `flights/capture-flow.ts` (new) | read the flag once; read the stamp |
+| `flights/duffel-order-total.ts`, `duffel-order-passengers.ts`, `duffel-order-errors.ts`, `flight-charge.ts` (new) | pure pieces the order path needs |
+| `flights/place-duffel-order.ts` (exists, unused) | made equivalent to `/book`'s inline logic, then used |
+| `flights/finalise-authorised.ts` (new) | claim, refuse or order, capture, record |
+| `flights/post-booking.ts` (new) | ticketing, email, ledger moved out of the webhook file so more than one caller can use them |
+| `api/flights/book` | flag-gated edits only: no order, manual capture, stamp, persist `confirmed_price` |
+| `api/webhooks/stripe` | Duffel branch on `amount_capturable_updated`; `succeeded` ignores `authorise_first` |
+| `api/flights/confirm`, `booking-status` | accept `requires_capture`; answer stored failures |
+| `api/internal/auto-recover` | finalise or release `authorise_first` holds |
+| `hooks/flights/useFlightBooking.ts` | price change after authorisation returns to the form |
 
 ## Failure handling
 
 | Case | Result |
 |---|---|
 | Card declined | stops at the client; nothing bought |
-| Offer expired or unavailable at order time | cancel intent; "this fare is no longer available, you were not charged" |
-| Fare rose above tolerance | cancel intent; `price_changed` with the new price |
-| Order placed, capture fails | rare (already authorised). Cancel the Duffel order, notify the team, mark failed. Cancelling an instant order may not recover the fare (fare rules decide), which is why it alerts rather than assumes |
+| Offer expired or unavailable at order time | refuse `flight_unavailable`; hold released |
+| Same flights no longer sold, or seats and bags cannot carry over | refuse `flight_unavailable`; hold released |
+| Fare rose above tolerance | refuse `price_changed` with the new price; hold released |
+| Duplicate authorisation for the same offer and passengers | refuse `duplicate_booking`; hold released |
+| Order placed, capture fails | rare (already authorised). Cancel the Duffel order, notify the team, refuse `booking_failed`. Cancelling an instant order may not recover the fare (fare rules decide), which is why it alerts rather than assumes |
+| Captured, then recording the booking fails | never refunded here: the order and the money both exist; the team is notified and auto-recover records it |
 | Webhook and `/confirm` both fire | one order: the claim fails for the second |
-| Both miss | auto-recover releases the hold; no order exists to undo |
-| Process dies after the order, before capture | claim write means the orphan sweep finds the order |
+| Both miss | auto-recover finalises, or releases after 2 hours |
+| Process dies after the order, before capture | the staked id lets the next claimer resume, or the orphan sweep find it |
 
-Each refusal is logged with a distinct reason (`offer_unavailable`, `price_rise`,
-`capture_failed_after_order`, `declined_at_client`) so the effect on conversion can be measured.
+Each refusal is logged with a distinct code so the effect on conversion can be measured.
 
 ## Testing
 
-Unit, with Duffel and Stripe mocked:
-- `placeDuffelOrder`: success, `offer_no_longer_available`, `price_changed` inside and outside the
-  tolerance, timeout recovery finding an order, timeout with none.
-- `finaliseDuffelAuthorised`: success captures once; refusal cancels and never captures; capture
-  failure cancels the order; a second concurrent call places no second order; `A′ < A` captures A′.
-- Webhook routing: `authorise_first` goes to finalise and `succeeded` is ignored for it; an
-  `order_first` intent still takes the legacy path unchanged.
-- `/book`: flag off is byte-for-byte today's response; flag on places no order and returns a manual
-  intent.
+Unit, with Duffel, Stripe and the database mocked:
+- `place-duffel-order`: raw order adopted after a timeout; only same-itinerary offers are
+  re-quoted; price changes are reported in bare fares; a price change still unresolved after the
+  retries is reported.
+- `finaliseDuffelAuthorised`: success captures once, after the order id is staked; each refusal
+  cancels and never captures; capture failure cancels the order; a second claim places nothing; a
+  duplicate is refused; A′ < A captures A′; an existing order is resumed rather than rebought; an
+  unexpected error hands the claim back.
+- Failure responses, recovery decisions, price-change parsing, charge arithmetic, flag reading.
+
+Manual, in the Duffel sandbox with Stripe test cards (declined, authorised, 3DS), flag off then on.
 
 ## Rollout
 
-Deploy with the flag off; enable in sandbox; enable in live and watch the refusal reasons. Turning
-it off sends new bookings back to the old path at once; intents already authorised finish by their
+Deploy with the flag off; enable in sandbox; enable in live and watch the refusal codes. Turning it
+off sends new bookings back to the old path at once; intents already authorised finish by their
 stamp.
 
 ## Out of scope
 
-- Hold orders; `api/booking/create-payment` (a different product).
-- Removing the legacy path or pre-order reuse.
+- Hold orders; the mobile routes; `api/booking/create-payment` (a different product).
+- Deleting the legacy path and pre-order reuse.
 - Statement wording: customers see a pending hold, then a capture. Support should know.
 - Card authorisations last about seven days, so no new expiry risk.
+
+## Revision notes
+
+First draft proposed extracting the order code from `/book` into a new module. Reading the code
+changed that:
+
+- `place-duffel-order.ts` already exists. It was extracted for the mobile route, which imports it
+  but never calls it. It has drifted from `/book`: a carrier-and-nearest-price refresh pool where
+  `/book` requires the same itinerary, price changes reported with ancillaries mixed in, and a
+  timeout-recovery branch that reads fields a raw Duffel order does not have. The new path uses it
+  after these are fixed; `/book` keeps its inline copy untouched until the legacy flow is deleted.
+- `booking_sessions.status` is constrained, so the `ordering` claim needs a migration.
+- Recovery finalises held intents instead of cancelling them at 15 minutes.
+- The first draft did not say how a refusal reaches the traveller, nor guard two authorisations of
+  the same trip. Both are added.
+- The mobile routes are deferred, and no `capture_flow` column is needed: the intent's metadata
+  carries the stamp and the session's existing `capture_method` records it.
