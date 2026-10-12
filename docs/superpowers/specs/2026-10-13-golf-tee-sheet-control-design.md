@@ -19,9 +19,10 @@ confirms or declines requests.
 - **A block is a date or date range with optional weekdays and an optional first/last tee time**,
   plus a private note. A narrow enough window blocks one tee time, so whole days, competitions
   and single held-back slots are one tool.
-- **Live bookings are never touched.** A tee time with a held, requested or confirmed booking is
-  not changed, closed or deleted by anything here. Prices and spots change only on tee times with
-  no live booking; bookings keep the price they locked.
+- **Bookings are never cancelled or changed.** A tee time with a held, requested or confirmed
+  booking keeps its price and spots when a schedule is edited. A block or a dropped time stops
+  *new* sales on it (the tee time is closed) and the bookings on it are listed for the course to
+  deal with; nothing here cancels, refunds or reprices a booking.
 - **Every change shows its impact first.** The same code path runs in a transaction that is rolled
   back, so the preview cannot disagree with what is applied.
 - **Out of scope:** closing a day that has bookings *with automatic refunds* (piece D), the "still
@@ -42,8 +43,9 @@ confirms or declines requests.
 - **Matching** is on the course's own clock: the tee time's local date within the range, its local
   weekday in `weekdays` (when set), and its local time between `from_time` and `to_time`
   inclusive (when set).
-- **Adding a block** closes open, future tee times it matches that have no live booking, recording
-  the block. Tee times generated later are closed the same way (`generateTeeTimes` applies blocks).
+- **Adding a block** closes open, future tee times it matches, recording the block. A tee time
+  that already has live bookings is closed too (nothing new is sold on it); its bookings stay and
+  are reported. Tee times generated later are closed the same way (`generateTeeTimes` applies blocks).
 - **Removing a block** first re-points tee times that another block still covers, reopens the
   rest, then deletes the block.
 - **Editing a schedule in place** updates the row, then reconciles its future tee times that have

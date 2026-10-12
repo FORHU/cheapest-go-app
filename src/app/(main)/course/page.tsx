@@ -5,6 +5,7 @@ import { canStaffCourses } from '@/lib/auth/roles';
 import { listCoursesOf } from '@/lib/server/golf/staff';
 import { listBookingsForCourses } from '@/lib/server/golf/bookings';
 import { toCourseBookingView } from '@/lib/server/golf/courseAccess';
+import { CourseNav } from './CourseNav';
 import { CourseQueueClient } from './CourseQueueClient';
 
 export const dynamic = 'force-dynamic';
@@ -26,11 +27,14 @@ export default async function CoursePortalPage() {
     ]);
 
     return (
-        <CourseQueueClient
-            courses={courses}
-            waiting={waiting.map(toCourseBookingView)}
-            upcoming={upcoming.map(toCourseBookingView)}
-            past={past.map(toCourseBookingView)}
-        />
+        <>
+            {courses.length > 0 && <CourseNav active="requests" courseId={courses[0].id} />}
+            <CourseQueueClient
+                courses={courses}
+                waiting={waiting.map(toCourseBookingView)}
+                upcoming={upcoming.map(toCourseBookingView)}
+                past={past.map(toCourseBookingView)}
+            />
+        </>
     );
 }
