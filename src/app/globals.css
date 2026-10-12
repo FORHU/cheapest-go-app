@@ -52,6 +52,55 @@
   --transition-duration-800: 800ms;
 }
 
+/* ─── Golf: warm paper, fairway ink ─────────────────────────────────────────── */
+/* One accent (fairway green) on tinted neutrals. Scoped to `.golf-theme`, so the rest of the
+   site keeps its palette; the dark values swap with the app's `.dark` class. */
+.golf-theme {
+  --g-paper: #f4f1e8;
+  --g-surface: #faf8f2;
+  --g-sunk: #ebe6d8;
+  --g-ink: #17261d;
+  --g-muted: #5c6a5f;
+  --g-rule: #d6cfbc;
+  --g-accent: #2b5a3c;
+  --g-accent-hover: #1f4630;
+  --g-accent-ink: #f7f4ea;
+}
+.dark .golf-theme {
+  --g-paper: #0f1612;
+  --g-surface: #141d18;
+  --g-sunk: #1a251f;
+  --g-ink: #ece8dc;
+  --g-muted: #9aa89e;
+  --g-rule: #263329;
+  --g-accent: #86b894;
+  --g-accent-hover: #a2cdb0;
+  --g-accent-ink: #0f1612;
+}
+.golf-theme :focus-visible {
+  outline: 2px solid var(--g-accent);
+  outline-offset: 2px;
+}
+
+@theme inline {
+  --color-g-paper: var(--g-paper);
+  --color-g-surface: var(--g-surface);
+  --color-g-sunk: var(--g-sunk);
+  --color-g-ink: var(--g-ink);
+  --color-g-muted: var(--g-muted);
+  --color-g-rule: var(--g-rule);
+  --color-g-accent: var(--g-accent);
+  --color-g-accent-hover: var(--g-accent-hover);
+  --color-g-accent-ink: var(--g-accent-ink);
+}
+
+/* The display serif is loaded by the golf layout; elsewhere (the home row) it falls back. */
+@utility font-golf {
+  font-family: var(--font-golf-serif, 'Iowan Old Style'), 'Palatino Linotype', Georgia, serif;
+  font-optical-sizing: auto;
+  font-variant-numeric: lining-nums;
+}
+
 /* ─── Fluid Micro Typography Utilities ──────────────────────────────────────── */
 /* For the common arbitrary pixel sizes (9px–11px) used across the codebase      */
 @utility text-fluid-3xs {

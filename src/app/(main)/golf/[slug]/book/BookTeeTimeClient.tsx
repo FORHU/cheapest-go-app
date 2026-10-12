@@ -92,26 +92,26 @@ export function BookTeeTimeClient({ teeTimeId, players, bookPath, extras, summar
     const row = 'flex justify-between gap-4';
 
     return (
-        <main className="mx-auto grid max-w-5xl gap-8 px-4 py-10 lg:grid-cols-[1fr_22rem]">
+        <div className="mx-auto grid max-w-5xl gap-12 px-4 pb-24 pt-10 lg:grid-cols-[minmax(0,1fr)_23rem]">
             <section className="flex min-w-0 flex-col gap-5">
-                <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">{t('checkoutTitle')}</h1>
-                <p className="rounded-xl bg-blue-50 p-4 text-sm leading-relaxed text-blue-900 dark:bg-blue-950/40 dark:text-blue-100">{t('chargeNotice')}</p>
+                <h1 className="font-golf text-4xl font-medium leading-tight tracking-tight text-balance text-g-ink md:text-5xl">{t('checkoutTitle')}</h1>
+                <p className="border-l-2 border-g-accent bg-g-sunk px-4 py-3 text-sm leading-relaxed text-g-ink">{t('chargeNotice')}</p>
 
                 {extras.length > 0 && !payment && (
-                    <section className="flex flex-col gap-3 rounded-xl border border-slate-200 p-5 dark:border-white/10" aria-busy={repricing}>
+                    <section className="flex flex-col gap-4 border-y border-g-rule py-6" aria-busy={repricing}>
                         <div>
-                            <h2 className="font-semibold text-slate-900 dark:text-slate-100">{t('extrasHeading')}</h2>
-                            <p className="text-xs text-slate-500 dark:text-slate-400">{t('extrasHint')}</p>
+                            <h2 className="font-golf text-2xl font-medium tracking-tight text-g-ink">{t('extrasHeading')}</h2>
+                            <p className="text-xs text-g-muted">{t('extrasHint')}</p>
                         </div>
                         {extras.map(extra => (
                             <div key={extra.code} className="flex items-center justify-between gap-3">
                                 <label htmlFor={`extra-${extra.code}`} className="text-sm">
-                                    <span className="block font-medium text-slate-900 dark:text-slate-100">{extra.name}</span>
-                                    <span className="block text-xs text-slate-500 dark:text-slate-400">{extra.each}</span>
+                                    <span className="block font-medium text-g-ink">{extra.name}</span>
+                                    <span className="block text-xs tabular-nums text-g-muted">{extra.each}</span>
                                 </label>
                                 <select id={`extra-${extra.code}`} value={extra.quantity} disabled={repricing}
                                     onChange={e => choose(extra.code, Number(e.target.value))}
-                                    className="rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-sm text-slate-900 dark:border-white/10 dark:bg-white/5 dark:text-slate-100">
+                                    className="rounded-sm border border-g-rule bg-g-surface px-2 py-1.5 text-sm tabular-nums text-g-ink transition-colors focus:border-g-accent">
                                     {Array.from({ length: players + 1 }, (_, n) => <option key={n} value={n}>{n}</option>)}
                                 </select>
                             </div>
@@ -128,38 +128,38 @@ export function BookTeeTimeClient({ teeTimeId, players, bookPath, extras, summar
                         returnUrl={`${window.location.origin}${statusPath}`}
                     />
                 ) : (
-                    <form onSubmit={start} className="flex flex-col gap-2 rounded-xl border border-slate-200 p-5 dark:border-white/10">
-                        <label htmlFor="lead-name" className="text-sm font-medium text-slate-700 dark:text-slate-200">{t('leadName')}</label>
+                    <form onSubmit={start} className="flex flex-col gap-2 border-t-2 border-g-ink pt-6">
+                        <label htmlFor="lead-name" className="text-sm font-medium text-g-ink">{t('leadName')}</label>
                         <input id="lead-name" required maxLength={120} autoComplete="name" value={leadName}
                             onChange={e => setLeadName(e.target.value)}
-                            className="rounded-lg border border-slate-200 px-3 py-2 text-slate-900 dark:border-white/10 dark:bg-white/5 dark:text-slate-100" />
-                        <p className="text-xs text-slate-500 dark:text-slate-400">{t('leadNameHint')}</p>
-                        {error && <p role="alert" className="text-sm text-red-600 dark:text-red-400">{error}</p>}
+                            className="rounded-sm border border-g-rule bg-g-surface px-3 py-2.5 text-g-ink transition-colors focus:border-g-accent" />
+                        <p className="text-xs text-g-muted">{t('leadNameHint')}</p>
+                        {error && <p role="alert" className="text-sm text-[#8c2f1f] dark:text-[#d4806f]">{error}</p>}
                         <button type="submit" disabled={busy || repricing}
-                            className="mt-3 flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-6 py-3 font-semibold text-white transition hover:bg-blue-700 disabled:opacity-60">
+                            className="mt-3 flex items-center justify-center gap-2 rounded-sm bg-g-accent px-6 py-3 font-semibold text-g-accent-ink transition duration-200 hover:bg-g-accent-hover disabled:opacity-60 motion-safe:active:scale-[0.98]">
                             {busy && <Loader2 className="h-4 w-4 animate-spin" aria-hidden />} {t('continueToPayment')}
                         </button>
                     </form>
                 )}
             </section>
 
-            <aside className="h-fit rounded-2xl border border-slate-200 p-5 text-sm dark:border-white/10">
-                <h2 className="mb-3 text-base font-semibold text-slate-900 dark:text-slate-100">{t('summaryHeading')}</h2>
-                <dl className="flex flex-col gap-2 text-slate-600 dark:text-slate-300">
-                    <div className={row}><dt>{t('course')}</dt><dd className="text-right"><Link href={summary.courseHref} className="text-blue-600 hover:underline">{summary.courseName}</Link></dd></div>
+            <aside className="h-fit border-t-4 border-g-accent bg-g-surface p-6 text-sm lg:sticky lg:top-24">
+                <h2 className="font-golf mb-4 text-2xl font-medium tracking-tight text-g-ink">{t('summaryHeading')}</h2>
+                <dl className="flex flex-col gap-2.5 text-g-muted">
+                    <div className={row}><dt>{t('course')}</dt><dd className="text-right"><Link href={summary.courseHref} className="font-medium text-g-accent underline-offset-4 hover:underline">{summary.courseName}</Link></dd></div>
                     <div className={row}><dt>{t('dateLabel')}</dt><dd className="text-right">{summary.date}</dd></div>
                     <div className={row}><dt>{t('timeLabel')}</dt><dd className="text-right">{summary.time}</dd></div>
                     <div className={row}><dt>{t('playersLabel')}</dt><dd className="text-right">{players}</dd></div>
                 </dl>
-                <dl className={`mt-4 flex flex-col gap-2 border-t border-slate-200 pt-4 tabular-nums text-slate-600 dark:border-white/10 dark:text-slate-300 ${repricing ? 'opacity-60' : ''}`}>
+                <dl className={`mt-5 flex flex-col gap-2.5 border-t border-g-rule pt-5 tabular-nums text-g-muted ${repricing ? 'opacity-60' : ''}`}>
                     <div className={row}><dt>{summary.greenFeeLabel}</dt><dd>{summary.greenFee}</dd></div>
                     {summary.extraLines.map(line => (
                         <div key={line.label} className={row}><dt>{line.label}</dt><dd>{line.amount}</dd></div>
                     ))}
                     <div className={row}><dt>{t('serviceFee')}</dt><dd>{summary.serviceFee}</dd></div>
-                    <div className={`${row} font-semibold text-slate-900 dark:text-slate-100`}><dt>{t('total')}</dt><dd>{summary.total}</dd></div>
+                    <div className={`${row} mt-1 items-baseline border-t border-g-ink pt-3 text-g-ink`}><dt className="font-medium">{t('total')}</dt><dd className="font-golf text-2xl font-medium">{summary.total}</dd></div>
                 </dl>
             </aside>
-        </main>
+        </div>
     );
 }

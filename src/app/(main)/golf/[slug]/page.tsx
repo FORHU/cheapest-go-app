@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import Image from 'next/image';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { ChevronLeft, Check, Flag, MapPin } from 'lucide-react';
+import { ChevronLeft, Flag, MapPin } from 'lucide-react';
 import { getLocale, getTranslations } from 'next-intl/server';
 import { hreflangAlternates } from '@/lib/seo/hreflang';
 import { getPublishedCourseBySlug } from '@/lib/server/golf/courses';
@@ -52,59 +52,60 @@ export default async function GolfCoursePage({ params }: Params) {
     const [t, locale] = await Promise.all([getTranslations('golf'), getLocale()]);
     const [cover, ...gallery] = course.imageUrls;
     const paragraphs = course.description.split(/\n\s*\n/).map(p => p.trim()).filter(Boolean);
+    const heading = 'font-golf text-2xl font-medium tracking-tight text-g-ink';
 
     return (
-        <main className="min-h-screen pb-20">
-            <div className="relative h-72 w-full overflow-hidden bg-emerald-900 md:h-96">
+        <div className="mx-auto max-w-6xl px-4 pb-24 pt-8">
+            <Link href="/golf" className="inline-flex items-center gap-1 text-sm text-g-muted underline-offset-4 hover:text-g-ink hover:underline">
+                <ChevronLeft className="h-4 w-4" aria-hidden /> {t('backToList')}
+            </Link>
+
+            <header className="mt-6 max-w-4xl">
+                <h1 className="font-golf text-5xl font-medium leading-[1.02] tracking-tight text-balance text-g-ink md:text-7xl">{course.name}</h1>
+                <p className="mt-4 flex items-center gap-1.5 text-g-muted"><MapPin className="h-4 w-4" aria-hidden /> {course.city}, {course.country}</p>
+            </header>
+
+            <div className={`relative mt-8 w-full overflow-hidden rounded-sm bg-[#e4dfd0] dark:bg-[#1a251f] ${cover ? 'aspect-[16/8]' : 'aspect-[16/4]'}`}>
                 {cover ? (
-                    <Image src={cover} alt={course.name} fill unoptimized priority className="object-cover" />
+                    <Image src={cover} alt={course.name} fill unoptimized priority sizes="(min-width: 1152px) 1152px, 100vw" className="object-cover" />
                 ) : (
-                    <Flag className="absolute left-1/2 top-1/2 h-16 w-16 -translate-x-1/2 -translate-y-1/2 text-emerald-700" aria-hidden />
+                    <Flag className="absolute left-1/2 top-1/2 h-12 w-12 -translate-x-1/2 -translate-y-1/2 text-g-muted/50" aria-hidden />
                 )}
-                <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
-                <div className="absolute inset-x-0 bottom-0 mx-auto max-w-5xl px-4 pb-8 text-white">
-                    <Link href="/golf" className="mb-3 inline-flex items-center gap-1 text-sm text-white/80 hover:text-white">
-                        <ChevronLeft className="h-4 w-4" /> {t('backToList')}
-                    </Link>
-                    <h1 className="text-3xl font-bold drop-shadow md:text-5xl">{course.name}</h1>
-                    <p className="mt-2 flex items-center gap-1.5 text-white/85"><MapPin className="h-4 w-4" /> {course.city}, {course.country}</p>
-                </div>
             </div>
 
-            <div className="mx-auto grid max-w-5xl gap-10 px-4 pt-8 lg:grid-cols-[1fr_20rem]">
+            <div className="mt-12 grid gap-14 lg:grid-cols-[minmax(0,1fr)_21rem] lg:gap-16">
                 <div className="min-w-0">
+                    <section className="mb-12" aria-labelledby="golf-facts-heading">
+                        <h2 id="golf-facts-heading" className="sr-only">{t('facts.heading')}</h2>
+                        <GolfFactBlock course={course} />
+                    </section>
+
+                    {paragraphs.length > 0 && (
+                        <section className="mb-12 max-w-[65ch]">
+                            <h2 className={`${heading} mb-4`}>{t('aboutHeading')}</h2>
+                            <div className="space-y-4 text-lg leading-relaxed text-pretty text-g-ink/85">
+                                {paragraphs.map((p, i) => <p key={i}>{p}</p>)}
+                            </div>
+                        </section>
+                    )}
+
                     {gallery.length > 0 && (
-                        <div className="mb-8 grid grid-cols-2 gap-3 sm:grid-cols-3">
-                            {gallery.map(url => (
-                                <div key={url} className="relative aspect-[4/3] overflow-hidden rounded-xl bg-slate-100">
+                        <div className="mb-12 grid grid-cols-6 gap-3">
+                            {gallery.map((url, i) => (
+                                <div key={url}
+                                    className={`relative overflow-hidden rounded-sm bg-g-sunk ${i % 3 === 0 ? 'col-span-6 aspect-[16/7] sm:col-span-4 sm:aspect-[4/3]' : 'col-span-3 aspect-[4/3] sm:col-span-2 sm:aspect-[3/4]'}`}>
                                     <Image src={url} alt={course.name} fill unoptimized className="object-cover" />
                                 </div>
                             ))}
                         </div>
                     )}
 
-                    <section className="mb-8" aria-labelledby="golf-facts-heading">
-                        <h2 id="golf-facts-heading" className="mb-3 text-xl font-semibold text-slate-900 dark:text-slate-100">{t('facts.heading')}</h2>
-                        <GolfFactBlock course={course} />
-                    </section>
-
-                    {paragraphs.length > 0 && (
-                        <section className="mb-8">
-                            <h2 className="mb-3 text-xl font-semibold text-slate-900 dark:text-slate-100">{t('aboutHeading')}</h2>
-                            <div className="space-y-3 text-slate-600 dark:text-slate-300">
-                                {paragraphs.map((p, i) => <p key={i}>{p}</p>)}
-                            </div>
-                        </section>
-                    )}
-
                     {course.amenities.length > 0 && (
-                        <section className="mb-8">
-                            <h2 className="mb-3 text-xl font-semibold text-slate-900 dark:text-slate-100">{t('amenitiesHeading')}</h2>
-                            <ul className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                        <section className="mb-12">
+                            <h2 className={`${heading} mb-4`}>{t('amenitiesHeading')}</h2>
+                            <ul className="grid grid-cols-1 border-t border-g-rule sm:grid-cols-2 sm:gap-x-10">
                                 {course.amenities.map(a => (
-                                    <li key={a} className="flex items-center gap-2 text-slate-700 dark:text-slate-200">
-                                        <Check className="h-4 w-4 text-emerald-600" aria-hidden /> {t(`amenities.${a}`)}
-                                    </li>
+                                    <li key={a} className="border-b border-g-rule py-2.5 text-g-ink">{t(`amenities.${a}`)}</li>
                                 ))}
                             </ul>
                         </section>
@@ -112,46 +113,46 @@ export default async function GolfCoursePage({ params }: Params) {
 
                     {course.address && (
                         <section>
-                            <h2 className="mb-2 text-xl font-semibold text-slate-900 dark:text-slate-100">{t('addressHeading')}</h2>
-                            <p className="text-slate-600 dark:text-slate-300">{course.address}</p>
+                            <h2 className={`${heading} mb-2`}>{t('addressHeading')}</h2>
+                            <p className="text-g-muted">{course.address}</p>
                         </section>
                     )}
                 </div>
 
-                <aside className="h-fit rounded-2xl border border-slate-200 p-5 lg:sticky lg:top-24 dark:border-white/10">
+                <aside className="h-fit border-t-4 border-g-accent bg-g-surface p-6 lg:sticky lg:top-24">
                     {soonest?.from ? (
                         <>
-                            <p className="text-lg font-semibold text-emerald-700 dark:text-emerald-400">
+                            <p className="font-golf text-2xl font-medium leading-snug tabular-nums text-balance text-g-ink">
                                 {t('search.fromPrice', { price: formatMoney(soonest.from.perPlayer, soonest.from.currency, locale) })}
                             </p>
-                            <p className="text-xs text-slate-500 dark:text-slate-400">
+                            <p className="mt-1 text-xs text-g-muted">
                                 {t('search.priceNote', { players: DEFAULT_PLAYERS })}
                             </p>
                         </>
                     ) : course.greenFeeFrom != null && (
-                        <p className="mt-1 text-lg font-semibold text-emerald-700 dark:text-emerald-400">
+                        <p className="font-golf text-2xl font-medium tabular-nums text-g-ink">
                             {t('greenFeesFrom', { price: formatGreenFee(course.greenFeeFrom, course.currency, locale) })}
                         </p>
                     )}
                     {sellsTeeTimes ? (
                         <>
-                            <div className="my-5 border-t border-slate-200 dark:border-white/10" />
+                            <div className="my-6 border-t border-g-rule" />
                             <TeeTimePicker slug={course.slug} today={localDate(new Date(), course.timezone!)} windowDays={course.bookingWindowDays} />
-                            <div className="mt-5">
+                            <div className="mt-8">
                                 <GolfPolicyBlock windowDays={course.bookingWindowDays}
                                     cancel={{ kind: 'hours', hours: course.freeCancelHours }} weatherPolicy={course.weatherPolicy} />
                             </div>
-                            <p className="mb-3 mt-6 text-sm text-slate-500 dark:text-slate-400">{t('booking.orAsk')}</p>
+                            <p className="mb-3 mt-8 text-sm text-g-muted">{t('booking.orAsk')}</p>
                             <TeeTimeButton secondary />
                         </>
                     ) : (
                         <>
-                            <p className="my-4 text-sm text-slate-500 dark:text-slate-400">{t('askTeeTimesHint')}</p>
+                            <p className="my-5 text-sm leading-relaxed text-g-muted">{t('askTeeTimesHint')}</p>
                             <TeeTimeButton />
                         </>
                     )}
                 </aside>
             </div>
-        </main>
+        </div>
     );
 }

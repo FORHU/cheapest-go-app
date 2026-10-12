@@ -50,8 +50,8 @@ export default async function GolfBookingPage({ params }: Props) {
 
     const Icon = booking.status === 'confirmed' ? CheckCircle2
         : booking.status === 'held' || booking.status === 'requested' ? Clock : XCircle;
-    const tone = booking.status === 'confirmed' ? 'text-emerald-600'
-        : booking.status === 'held' || booking.status === 'requested' ? 'text-amber-500' : 'text-slate-400';
+    const tone = booking.status === 'confirmed' ? 'text-g-accent'
+        : booking.status === 'held' || booking.status === 'requested' ? 'text-[#9a6a12] dark:text-[#d9a441]' : 'text-g-muted';
 
     const cancellation = cancellationFor(
         { status: booking.status, total: booking.total, freeCancelUntil: new Date(booking.freeCancelUntil) },
@@ -60,26 +60,26 @@ export default async function GolfBookingPage({ params }: Props) {
     const row = 'flex justify-between gap-4';
 
     return (
-        <main className="mx-auto flex max-w-2xl flex-col gap-6 px-4 py-10">
-            <header className="flex items-start gap-3">
-                <Icon className={`mt-1 h-7 w-7 shrink-0 ${tone}`} aria-hidden />
+        <div className="mx-auto flex max-w-2xl flex-col gap-8 px-4 pb-24 pt-12">
+            <header className="flex items-start gap-4 border-b border-g-ink pb-8">
+                <Icon className={`mt-2 h-7 w-7 shrink-0 ${tone}`} aria-hidden />
                 <div>
-                    <p className="text-sm text-slate-500 dark:text-slate-400">{t('bookingTitle')} · {booking.reference}</p>
-                    <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">{t(`status.${booking.status}.title`)}</h1>
-                    <p className="mt-2 text-slate-600 dark:text-slate-300">{body}</p>
+                    <p className="text-sm tabular-nums text-g-muted">{t('bookingTitle')} · {booking.reference}</p>
+                    <h1 className="font-golf mt-1 text-4xl font-medium leading-tight tracking-tight text-balance text-g-ink md:text-5xl">{t(`status.${booking.status}.title`)}</h1>
+                    <p className="mt-3 max-w-[60ch] text-lg leading-relaxed text-pretty text-g-ink/80">{body}</p>
                 </div>
             </header>
 
-            <section className="rounded-2xl border border-slate-200 p-5 text-sm dark:border-white/10">
-                <dl className="flex flex-col gap-2 text-slate-600 dark:text-slate-300">
-                    <div className={row}><dt>{t('course')}</dt><dd className="text-right"><Link href={`/golf/${booking.courseSlug}`} className="text-blue-600 hover:underline">{booking.courseName}</Link></dd></div>
+            <section className="border-t-4 border-g-accent bg-g-surface p-6 text-sm">
+                <dl className="flex flex-col gap-2.5 text-g-muted">
+                    <div className={row}><dt>{t('course')}</dt><dd className="text-right"><Link href={`/golf/${booking.courseSlug}`} className="font-medium text-g-accent underline-offset-4 hover:underline">{booking.courseName}</Link></dd></div>
                     <div className={row}><dt>{t('dateLabel')}</dt><dd className="text-right">{courseClock(booking.startsAt, { dateStyle: 'full' })}</dd></div>
                     <div className={row}><dt>{t('timeLabel')}</dt><dd className="text-right">{t('courseTime', { time: localTime(new Date(booking.startsAt), tz) })}</dd></div>
                     <div className={row}><dt>{t('playersLabel')}</dt><dd className="text-right">{booking.players}</dd></div>
                     <div className={row}><dt>{t('leadPlayer')}</dt><dd className="text-right">{booking.leadName}</dd></div>
                     <div className={row}><dt>{t('reference')}</dt><dd className="text-right font-mono">{booking.reference}</dd></div>
                 </dl>
-                <dl className="mt-4 flex flex-col gap-2 border-t border-slate-200 pt-4 tabular-nums text-slate-600 dark:border-white/10 dark:text-slate-300">
+                <dl className="mt-5 flex flex-col gap-2.5 border-t border-g-rule pt-5 tabular-nums text-g-muted">
                     <div className={row}><dt>{t('greenFee', { players: booking.players, price: money(booking.pricePerPlayer) })}</dt><dd>{money(booking.greenFeeTotal)}</dd></div>
                     {booking.extras.map(extra => (
                         <div key={extra.code} className={row}>
@@ -88,7 +88,7 @@ export default async function GolfBookingPage({ params }: Props) {
                         </div>
                     ))}
                     <div className={row}><dt>{t('serviceFee')}</dt><dd>{money(booking.serviceFee)}</dd></div>
-                    <div className={`${row} font-semibold text-slate-900 dark:text-slate-100`}><dt>{t('total')}</dt><dd>{money(booking.total)}</dd></div>
+                    <div className={`${row} mt-1 items-baseline border-t border-g-ink pt-3 text-g-ink`}><dt className="font-medium">{t('total')}</dt><dd className="font-golf text-2xl font-medium">{money(booking.total)}</dd></div>
                 </dl>
             </section>
 
@@ -102,12 +102,12 @@ export default async function GolfBookingPage({ params }: Props) {
             )}
 
             {booking.status === 'held' && (
-                <Link href={`/golf/${booking.courseSlug}`} className="self-start font-medium text-blue-600 hover:underline">{t('backToCourse')}</Link>
+                <Link href={`/golf/${booking.courseSlug}`} className="self-start font-medium text-g-accent underline-offset-4 hover:underline">{t('backToCourse')}</Link>
             )}
 
             {cancellation.allowed && (
                 <section className="flex flex-col gap-3">
-                    <p className="text-sm text-slate-600 dark:text-slate-300">
+                    <p className="max-w-[60ch] text-sm leading-relaxed text-g-muted">
                         {cancellation.charged
                             ? t('cancelConfirmedHint', { date: dateTime(booking.freeCancelUntil), total: money(booking.total) })
                             : t('cancelRequestedHint')}
@@ -118,10 +118,10 @@ export default async function GolfBookingPage({ params }: Props) {
 
             {!cancellation.allowed && cancellation.reason === 'free_cancellation_ended' && (
                 <section className="flex flex-col gap-3">
-                    <p className="text-sm text-slate-600 dark:text-slate-300">{t('cancelEnded', { date: dateTime(booking.freeCancelUntil) })}</p>
+                    <p className="max-w-[60ch] text-sm leading-relaxed text-g-muted">{t('cancelEnded', { date: dateTime(booking.freeCancelUntil) })}</p>
                     <div><TeeTimeButton secondary /></div>
                 </section>
             )}
-        </main>
+        </div>
     );
 }

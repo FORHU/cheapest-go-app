@@ -8,7 +8,7 @@ import type { TeeTime } from '@/lib/schemas/golf';
 import { addDays } from '@/lib/golf/time';
 import { formatMoney } from './format';
 
-const fieldClass = 'mt-1 w-full rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-sm text-slate-900 dark:border-white/10 dark:bg-white/5 dark:text-slate-100';
+const fieldClass = 'mt-1 w-full rounded-none border-0 border-b border-g-rule bg-transparent px-0 py-1.5 text-base tabular-nums text-g-ink transition-colors focus:border-g-accent focus:outline-none focus-visible:outline-none';
 
 /**
  * Picks a tee time on the course page. Times are on the course's clock, the one the customer
@@ -42,15 +42,15 @@ export function TeeTimePicker({ slug, today, windowDays }: { slug: string; today
     const chosen = teeTimes?.find(tt => tt.id === selected && tt.spotsLeft >= players);
 
     return (
-        <div className="flex flex-col gap-3">
-            <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">{t('panelTitle')}</h2>
-            <div className="grid grid-cols-[1fr_5rem] gap-2">
-                <label className="text-xs font-medium text-slate-600 dark:text-slate-300">
+        <div className="flex flex-col gap-4">
+            <h2 className="font-golf text-2xl font-medium tracking-tight text-g-ink">{t('panelTitle')}</h2>
+            <div className="grid grid-cols-[1fr_4.5rem] gap-5">
+                <label className="text-xs font-medium text-g-muted">
                     {t('date')}
                     <input id="golf-date" type="date" value={date} min={first} max={addDays(today, windowDays)}
                         onChange={e => { if (e.target.value) setDate(e.target.value); }} className={fieldClass} />
                 </label>
-                <label className="text-xs font-medium text-slate-600 dark:text-slate-300">
+                <label className="text-xs font-medium text-g-muted">
                     {t('players')}
                     <select id="golf-players" value={players} onChange={e => setPlayers(Number(e.target.value))} className={fieldClass}>
                         {[1, 2, 3, 4].map(n => <option key={n} value={n}>{n}</option>)}
@@ -59,12 +59,17 @@ export function TeeTimePicker({ slug, today, windowDays }: { slug: string; today
             </div>
 
             {teeTimes === null && !failed && (
-                <p className="flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400">
-                    <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> {t('loading')}
-                </p>
+                <div>
+                    <p className="flex items-center gap-2 text-sm text-g-muted">
+                        <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> {t('loading')}
+                    </p>
+                    <div className="mt-3 grid grid-cols-2 gap-2" aria-hidden>
+                        {Array.from({ length: 6 }, (_, i) => <div key={i} className="h-[3.25rem] animate-pulse rounded-sm bg-g-sunk" />)}
+                    </div>
+                </div>
             )}
-            {failed && <p role="alert" className="text-sm text-red-600 dark:text-red-400">{t('loadError')}</p>}
-            {teeTimes?.length === 0 && <p className="text-sm text-slate-500 dark:text-slate-400">{t('none')}</p>}
+            {failed && <p role="alert" className="text-sm text-[#8c2f1f] dark:text-[#d4806f]">{t('loadError')}</p>}
+            {teeTimes?.length === 0 && <p className="text-sm text-g-muted">{t('none')}</p>}
 
             {teeTimes && teeTimes.length > 0 && (
                 <ul className="grid max-h-72 grid-cols-2 gap-2 overflow-y-auto pr-1" aria-label={t('pickTime')}>
@@ -74,11 +79,11 @@ export function TeeTimePicker({ slug, today, windowDays }: { slug: string; today
                             <li key={tt.id}>
                                 <button type="button" disabled={tt.spotsLeft < players} aria-pressed={active}
                                     onClick={() => setSelected(tt.id)}
-                                    className={`w-full rounded-lg border px-2 py-1.5 text-left transition disabled:cursor-not-allowed disabled:opacity-40 ${active
-                                        ? 'border-blue-600 bg-blue-50 dark:bg-blue-950/40'
-                                        : 'border-slate-200 hover:border-blue-400 dark:border-white/10'}`}>
-                                    <span className="block font-semibold tabular-nums text-slate-900 dark:text-slate-100">{tt.localTime}</span>
-                                    <span className="block text-xs text-slate-500 dark:text-slate-400">
+                                    className={`w-full rounded-sm border px-3 py-2 text-left transition duration-150 disabled:cursor-not-allowed disabled:opacity-40 ${active
+                                        ? 'border-g-accent bg-g-accent text-g-accent-ink'
+                                        : 'border-g-rule text-g-ink hover:border-g-accent hover:bg-g-sunk'}`}>
+                                    <span className="block font-mono text-base font-medium tabular-nums">{tt.localTime}</span>
+                                    <span className={`block text-xs tabular-nums ${active ? 'text-g-accent-ink/80' : 'text-g-muted'}`}>
                                         {t('spotsLeft', { count: tt.spotsLeft })} · {formatMoney(tt.allInPerPlayer ?? tt.pricePerPlayer, tt.currency, locale)}
                                     </span>
                                 </button>
@@ -90,11 +95,11 @@ export function TeeTimePicker({ slug, today, windowDays }: { slug: string; today
 
             {chosen ? (
                 <Link href={`/golf/${slug}/book?teeTime=${chosen.id}&players=${players}`}
-                    className="rounded-xl bg-blue-600 px-6 py-3 text-center font-semibold text-white shadow-md transition hover:bg-blue-700">
+                    className="rounded-sm bg-g-accent px-6 py-3 text-center font-semibold text-g-accent-ink transition duration-200 hover:bg-g-accent-hover motion-safe:active:scale-[0.98]">
                     {t('continue')}
                 </Link>
             ) : (
-                <p className="text-xs text-slate-500 dark:text-slate-400">{t('hint')}</p>
+                <p className="text-xs leading-relaxed text-g-muted">{t('hint')}</p>
             )}
         </div>
     );

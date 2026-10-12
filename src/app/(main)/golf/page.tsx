@@ -36,21 +36,23 @@ export default async function GolfPage({ searchParams }: { searchParams: Promise
         ? (await listPublishedCourses({ country: params.country })).filter(c => !results?.some(r => r.course.id === c.id))
         : [];
 
-    const pill = (active: boolean) =>
-        `rounded-full border px-3 py-1 text-sm transition ${active
-            ? 'border-blue-600 bg-blue-600 text-white'
-            : 'border-slate-200 text-slate-600 hover:border-slate-300 dark:border-white/10 dark:text-slate-300'}`;
+    const tab = (active: boolean) =>
+        `border-b-2 pb-1 text-sm transition-colors ${active
+            ? 'border-g-accent font-semibold text-g-ink'
+            : 'border-transparent text-g-muted hover:text-g-ink'}`;
 
     return (
-        <main className="mx-auto min-h-screen max-w-6xl px-4 pb-20 pt-10">
-            <h1 className="text-3xl font-bold text-slate-900 dark:text-slate-100">{t('heading')}</h1>
-            <p className="mt-2 max-w-2xl text-slate-500 dark:text-slate-400">{t('subheading')}</p>
+        <div className="mx-auto max-w-6xl px-4 pb-24 pt-12 md:pt-16">
+            <header className="grid gap-6 md:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)] md:items-end md:gap-12">
+                <h1 className="font-golf text-5xl font-medium leading-[1.02] tracking-tight text-balance text-g-ink md:text-7xl">{t('heading')}</h1>
+                <p className="max-w-md text-base leading-relaxed text-pretty text-g-muted md:pb-2">{t('subheading')}</p>
+            </header>
 
             {countries.length > 1 && (
-                <nav aria-label={t('filterLabel')} className="mt-6 flex flex-wrap gap-2">
-                    <Link href={`/golf${searchQuery({ ...params, country: undefined })}`} className={pill(!params.country)}>{t('allCountries')}</Link>
+                <nav aria-label={t('filterLabel')} className="mt-10 flex flex-wrap gap-x-6 gap-y-2">
+                    <Link href={`/golf${searchQuery({ ...params, country: undefined })}`} className={tab(!params.country)}>{t('allCountries')}</Link>
                     {countries.map(c => (
-                        <Link key={c} href={`/golf${searchQuery({ ...params, country: c })}`} className={pill(params.country === c)}>{c}</Link>
+                        <Link key={c} href={`/golf${searchQuery({ ...params, country: c })}`} className={tab(params.country === c)}>{c}</Link>
                     ))}
                 </nav>
             )}
@@ -59,22 +61,22 @@ export default async function GolfPage({ searchParams }: { searchParams: Promise
 
             {results && results.length > 0 && (
                 <>
-                    <p className="mt-4 text-xs text-slate-500 dark:text-slate-400">{ts('priceNote', { players: params.players })}</p>
-                    <div className="mt-4 flex flex-col gap-5">
+                    <p className="mt-4 text-xs text-g-muted">{ts('priceNote', { players: params.players })}</p>
+                    <div className="mt-2 divide-y divide-g-rule border-b border-g-rule">
                         {results.map(result => <GolfSearchResultCard key={result.course.id} result={result} params={params} />)}
                     </div>
                 </>
             )}
 
             {unlisted.length > 0 && (
-                <div className="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+                <div className="mt-12 grid gap-x-6 gap-y-10 sm:grid-cols-2 lg:grid-cols-3">
                     {unlisted.map(course => <GolfCourseCard key={course.id} course={course} />)}
                 </div>
             )}
 
             {(results?.length ?? 0) === 0 && unlisted.length === 0 && (
-                <p className="mt-12 text-center text-slate-500 dark:text-slate-400">{filtered ? ts('empty') : t('empty')}</p>
+                <p className="mt-16 max-w-md text-g-muted">{filtered ? ts('empty') : t('empty')}</p>
             )}
-        </main>
+        </div>
     );
 }

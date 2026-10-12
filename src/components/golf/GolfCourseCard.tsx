@@ -7,7 +7,8 @@ import { formatGreenFee } from './format';
 
 /**
  * One course card. Works as a server or client component. `titleAs` keeps the outline right:
- * `h2` under the /golf page's `h1`, `h3` under the home section's `h2`.
+ * `h2` under the /golf page's `h1`, `h3` under the home section's `h2`. No box: the photograph
+ * and a hairline carry the card, so a grid of them reads as a page, not a wall of panels.
  */
 export function GolfCourseCard({ course, titleAs: Title = 'h2' }: { course: GolfCourse; titleAs?: 'h2' | 'h3' }) {
     const t = useTranslations('golf');
@@ -17,22 +18,23 @@ export function GolfCourseCard({ course, titleAs: Title = 'h2' }: { course: Golf
         .join(' · ');
 
     return (
-        <Link href={`/golf/${course.slug}`}
-            className="group flex flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white transition hover:shadow-lg dark:border-white/10 dark:bg-slate-900">
-            <div className="relative aspect-[4/3] w-full overflow-hidden bg-emerald-50 dark:bg-emerald-950/30">
+        <Link href={`/golf/${course.slug}`} className="golf-theme group flex flex-col text-g-ink">
+            <div className="relative aspect-[5/4] w-full overflow-hidden rounded-sm bg-[#e4dfd0] dark:bg-[#1a251f]">
                 {course.imageUrls[0] ? (
                     <Image src={course.imageUrls[0]} alt={course.name} fill unoptimized sizes="(min-width: 1024px) 33vw, 100vw"
-                        className="object-cover transition duration-300 group-hover:scale-105" />
+                        className="object-cover transition duration-500 ease-out motion-safe:group-hover:scale-[1.03]" />
                 ) : (
-                    <Flag className="absolute left-1/2 top-1/2 h-10 w-10 -translate-x-1/2 -translate-y-1/2 text-emerald-300" aria-hidden />
+                    <Flag className="absolute left-1/2 top-1/2 h-9 w-9 -translate-x-1/2 -translate-y-1/2 text-g-muted/60" aria-hidden />
                 )}
             </div>
-            <div className="flex flex-1 flex-col gap-1 p-4">
-                <Title className="font-semibold text-slate-900 dark:text-slate-100">{course.name}</Title>
-                <p className="text-sm text-slate-500 dark:text-slate-400">{course.city}, {course.country}</p>
-                <p className="text-sm text-slate-600 dark:text-slate-300">{facts}</p>
+            <div className="flex flex-1 flex-col gap-1 pt-3">
+                <Title className="font-golf text-2xl font-medium leading-tight tracking-tight underline-offset-4 decoration-g-accent/50 group-hover:underline">
+                    {course.name}
+                </Title>
+                <p className="text-sm text-g-muted">{course.city}, {course.country}</p>
+                <p className="text-sm text-g-muted tabular-nums">{facts}</p>
                 {course.greenFeeFrom != null && (
-                    <p className="mt-auto pt-2 text-sm font-medium text-emerald-700 dark:text-emerald-400">
+                    <p className="mt-auto border-t border-g-rule pt-2 text-sm font-medium tabular-nums text-g-accent">
                         {t('greenFeesFrom', { price: formatGreenFee(course.greenFeeFrom, course.currency, locale) })}
                     </p>
                 )}

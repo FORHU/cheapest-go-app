@@ -3,7 +3,8 @@ import type { GolfCourse } from '@/lib/schemas/golf';
 
 /**
  * The same facts in the same order on every course, so two courses can be compared at a glance.
- * A fact the course has not given is left out, never shown as a dash.
+ * A fact the course has not given is left out, never shown as a dash. Laid out like a scorecard
+ * header: hairline cells, figures in the serif.
  */
 export function GolfFactBlock({ course }: { course: Pick<GolfCourse, 'holes' | 'par' | 'yardage' | 'yearOpened' | 'designer' | 'grass'> }) {
     const t = useTranslations('golf.facts');
@@ -17,11 +18,11 @@ export function GolfFactBlock({ course }: { course: Pick<GolfCourse, 'holes' | '
     ];
 
     return (
-        <dl className="grid grid-cols-2 gap-x-6 gap-y-3 sm:grid-cols-3">
+        <dl className="golf-theme grid grid-cols-[repeat(auto-fit,minmax(8.5rem,1fr))] gap-px border border-g-rule bg-g-rule">
             {facts.map(([label, value]) => (
-                <div key={label}>
-                    <dt className="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">{label}</dt>
-                    <dd className="font-medium text-slate-900 dark:text-slate-100">{value}</dd>
+                <div key={label} className="bg-g-paper px-4 py-3">
+                    <dt className="text-xs text-g-muted">{label}</dt>
+                    <dd className="font-golf mt-0.5 text-2xl font-medium leading-tight tabular-nums text-g-ink">{value}</dd>
                 </div>
             ))}
         </dl>

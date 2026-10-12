@@ -14,10 +14,10 @@ export function TeeTimeButton({ secondary = false }: { secondary?: boolean }) {
     const open = useSupportWidgetStore(s => s.open);
     return (
         <button type="button" onClick={open}
-            className={secondary
-                ? 'inline-flex items-center justify-center gap-2 rounded-xl border border-slate-300 px-6 py-3 font-semibold text-slate-700 transition hover:bg-slate-50 dark:border-white/15 dark:text-slate-200 dark:hover:bg-white/5'
-                : 'inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-6 py-3 font-semibold text-white shadow-md transition hover:bg-blue-700'}>
-            <MessageCircle className="h-5 w-5" aria-hidden /> {t('askTeeTimes')}
+            className={`golf-theme inline-flex items-center justify-center gap-2 rounded-sm px-5 py-2.5 text-sm font-semibold transition duration-200 motion-safe:active:scale-[0.98] ${secondary
+                ? 'border border-g-rule text-g-ink hover:border-g-accent hover:text-g-accent'
+                : 'bg-g-accent text-g-accent-ink hover:bg-g-accent-hover'}`}>
+            <MessageCircle className="h-4 w-4" aria-hidden /> {t('askTeeTimes')}
         </button>
     );
 }

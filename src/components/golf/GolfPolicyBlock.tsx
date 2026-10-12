@@ -31,10 +31,10 @@ export function GolfPolicyBlock({ windowDays, cancel, weatherPolicy }: {
     ].filter((item): item is string => item !== null);
 
     return (
-        <section aria-labelledby="golf-policy-heading" className="rounded-xl border border-slate-200 p-4 dark:border-white/10">
-            <h2 id="golf-policy-heading" className="text-sm font-semibold text-slate-900 dark:text-slate-100">{t('heading')}</h2>
-            <ul className="mt-2 flex list-disc flex-col gap-1.5 pl-5 text-sm text-slate-600 dark:text-slate-300">
-                {items.map(item => <li key={item}>{item}</li>)}
+        <section aria-labelledby="golf-policy-heading" className="golf-theme border-t-2 border-g-ink pt-3">
+            <h2 id="golf-policy-heading" className="font-golf text-xl font-medium tracking-tight text-g-ink">{t('heading')}</h2>
+            <ul className="mt-2 divide-y divide-g-rule text-sm leading-relaxed text-g-muted">
+                {items.map(item => <li key={item} className="py-2 first:pt-1">{item}</li>)}
             </ul>
         </section>
     );
