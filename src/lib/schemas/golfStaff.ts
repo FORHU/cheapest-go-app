@@ -63,3 +63,21 @@ export interface CourseInvitation {
     expiresAt: string;
     createdAt: string;
 }
+
+/** A booking as the course it is for sees it: enough to recognise it, nothing about the payer. */
+export interface CourseBookingView {
+    id: string;
+    reference: string;
+    status: 'held' | 'requested' | 'confirmed' | 'expired' | 'declined' | 'cancelled';
+    courseId: string;
+    courseName: string;
+    timezone: string | null;
+    startsAt: string;
+    players: number;
+    leadName: string;
+    extras: { code: string; quantity: number }[];
+    greenFeeTotal: number;
+    currency: string;
+    decideBy: string | null;
+    requestedAt: string | null;
+}

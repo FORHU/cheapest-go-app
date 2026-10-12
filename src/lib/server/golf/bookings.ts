@@ -87,16 +87,27 @@ export async function getBookingForUser(reference: string, userId: string): Prom
 
 export type AdminBookingView = 'waiting' | 'upcoming' | 'past';
 
-/** The admin queue. Abandoned checkouts (expired holds) are left out of every view. */
-export async function listBookingsForAdmin(view: AdminBookingView, now = new Date()): Promise<GolfBooking[]> {
+async function listByView(view: AdminBookingView, now: Date, courseIds?: string[]): Promise<GolfBooking[]> {
     const sql = getSqlAdmin();
     const where =
         view === 'waiting' ? sql`b.status = 'requested'`
             : view === 'upcoming' ? sql`b.status = 'confirmed' AND t.starts_at >= ${now}`
                 : sql`(b.status IN ('declined', 'cancelled') OR (b.status = 'confirmed' AND t.starts_at < ${now}))`;
+    const scope = courseIds ? sql`AND b.course_id IN ${sql(courseIds)}` : sql``;
     const order = view === 'past' ? sql`b.updated_at DESC` : sql`t.starts_at`;
-    const rows = await sql<BookingRow[]>`${selectBookings(sql)} WHERE ${where} ORDER BY ${order} LIMIT 100`;
+    const rows = await sql<BookingRow[]>`${selectBookings(sql)} WHERE ${where} ${scope} ORDER BY ${order} LIMIT 100`;
     return rows.map(toBooking);
+}
+
+/** The admin queue. Abandoned checkouts (expired holds) are left out of every view. */
+export function listBookingsForAdmin(view: AdminBookingView, now = new Date()): Promise<GolfBooking[]> {
+    return listByView(view, now);
+}
+
+/** The same queue, narrowed to the courses a course-staff account acts for. */
+export async function listBookingsForCourses(courseIds: string[], view: AdminBookingView, now = new Date()): Promise<GolfBooking[]> {
+    if (courseIds.length === 0) return [];
+    return listByView(view, now, courseIds);
 }
 
 // ── Money ────────────────────────────────────────────────────────────────────

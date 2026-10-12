@@ -7,6 +7,7 @@ import { logAdminAction } from '@/lib/server/admin/audit';
 import { validateRoleChange } from '@/lib/server/admin/roleChange';
 import { roleLabel, canStaffSupport } from '@/lib/auth/roles';
 import { releaseConversationsOf } from '@/lib/server/support/assignment';
+import { releaseCourseAccess } from '@/lib/server/golf/staff';
 
 export async function POST(req: NextRequest) {
     const rl = await rateLimit(req, { limit: 10, windowMs: 60_000, prefix: 'admin-promote' });
@@ -62,6 +63,14 @@ export async function POST(req: NextRequest) {
             } catch (err) {
                 console.error('[Admin Promote] could not release support chats:', err);
             }
+        }
+
+        // A role that is no longer course staff takes its courses with it, so a later regrant starts
+        // from nothing rather than reviving access nobody remembers giving. Never fatal.
+        try {
+            await releaseCourseAccess(userId);
+        } catch (err) {
+            console.error('[Admin Promote] could not release course access:', err);
         }
 
         logAdminAction({
