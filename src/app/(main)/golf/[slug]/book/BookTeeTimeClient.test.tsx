@@ -20,7 +20,7 @@ const summary = {
     courseName: 'Wack Wack', courseHref: '/golf/wack-wack', date: 'Wednesday, 7 October 2026', time: '07:00 course time',
     greenFeeLabel: 'Green fee (2 × $85.00)', greenFee: '$170.00',
     extraLines: [{ label: 'Club rental × 1', amount: '$45.00' }],
-    serviceFee: '$13.09', total: '$228.09', freeCancel: 'Free cancellation until Oct 5, 2026, 7:00 AM.',
+    serviceFee: '$13.09', total: '$228.09',
 };
 const extras = [
     { code: 'club_rental' as const, name: 'Club rental', each: '$45.00 each', quantity: 1 },
@@ -36,7 +36,8 @@ beforeEach(() => {
 });
 
 const page = () => render(
-    <BookTeeTimeClient teeTimeId="t1" players={2} bookPath="/golf/wack-wack/book" extras={extras} summary={summary} />,
+    <BookTeeTimeClient teeTimeId="t1" players={2} bookPath="/golf/wack-wack/book" extras={extras} summary={summary}
+        policy={{ cancel: { kind: 'until', date: 'Oct 5, 2026, 7:00 AM' }, weatherPolicy: '' }} />,
 );
 
 describe('BookTeeTimeClient', () => {

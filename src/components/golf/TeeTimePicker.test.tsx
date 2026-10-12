@@ -25,14 +25,14 @@ beforeEach(() => respond(teeTimes));
 
 describe('TeeTimePicker', () => {
     it('asks for tomorrow on the course clock and lists the times', async () => {
-        render(<TeeTimePicker slug="wack-wack" today="2026-10-11" />);
+        render(<TeeTimePicker slug="wack-wack" today="2026-10-11" windowDays={60} />);
         expect(await screen.findByText('07:00')).toBeInTheDocument();
-        expect(fetch).toHaveBeenCalledWith('/api/golf/courses/wack-wack/tee-times?date=2026-10-12');
+        expect(fetch).toHaveBeenCalledWith('/api/golf/courses/wack-wack/tee-times?date=2026-10-12&players=2');
         expect(screen.getByText('4 left', { exact: false })).toBeInTheDocument();
     });
 
     it('disables times without room for the party and sends the chosen one to checkout', async () => {
-        render(<TeeTimePicker slug="wack-wack" today="2026-10-11" />);
+        render(<TeeTimePicker slug="wack-wack" today="2026-10-11" windowDays={60} />);
         await screen.findByText('07:00');
         expect(screen.getByRole('button', { name: /07:10/ })).toBeDisabled();
         fireEvent.click(screen.getByRole('button', { name: /07:00/ }));
@@ -41,7 +41,21 @@ describe('TeeTimePicker', () => {
 
     it('says when a date has nothing left', async () => {
         respond([]);
-        render(<TeeTimePicker slug="wack-wack" today="2026-10-11" />);
+        render(<TeeTimePicker slug="wack-wack" today="2026-10-11" windowDays={60} />);
         expect(await screen.findByText(en.golf.booking.none)).toBeInTheDocument();
+    });
+});
+
+describe('TeeTimePicker all-in prices', () => {
+    it('shows the all-in price per player when the server quoted one', async () => {
+        vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({
+            success: true,
+            data: { timezone: 'Asia/Manila', teeTimes: [
+                { id: 't1', startsAt: '2026-10-11T23:00:00.000Z', localTime: '07:00', spots: 4, spotsLeft: 4, pricePerPlayer: 2500, allInPerPlayer: 2631, currency: 'PHP' },
+            ] },
+        }))));
+        render(<TeeTimePicker slug="wack-wack" today="2026-10-11" windowDays={60} />);
+        expect(await screen.findByText(/₱2,631\.00/)).toBeInTheDocument();
+        expect(screen.queryByText(/₱2,500\.00/)).not.toBeInTheDocument();
     });
 });

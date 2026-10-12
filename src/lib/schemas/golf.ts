@@ -153,7 +153,10 @@ export interface TeeTime {
     localTime: string;
     spots: number;
     spotsLeft: number;
+    /** Green fee per player, before the service fee. */
     pricePerPlayer: number;
+    /** All-in per player for the party asked about (CONTEXT.md, "All-in price"); absent when not asked. */
+    allInPerPlayer?: number;
     currency: string;
 }
 

@@ -3127,7 +3127,7 @@
       "pickTime": "Available tee times",
       "spotsLeft": "{count} left",
       "continue": "Continue",
-      "hint": "Times are the course's local time. Prices are per player.",
+      "hint": "Times are the course's local time. Prices are per player, all-in (service fee included).",
       "orAsk": "Prefer to talk to us first?",
       "checkoutTitle": "Request your tee time",
       "summaryHeading": "Your tee time",
@@ -3193,6 +3193,46 @@
       "extraEach": "{price} each",
       "extraLine": "{name} × {count}",
       "extrasUnavailable": "The extras on offer have changed. Please review them and try again."
+    },
+    "policy": {
+      "heading": "Booking rules",
+      "window": "Tee times open {days} days ahead.",
+      "cancelHours": "Free cancellation up to {hours} hours before the tee time.",
+      "cancelUntil": "Free cancellation until {date}.",
+      "cancelNone": "This tee time is inside the free-cancellation window, so it can't be cancelled online.",
+      "refund": "A cancelled booking is refunded to your card in full, service fee included.",
+      "weatherCourse": "Weather: {rule}",
+      "weatherDefault": "Weather: if the course closes for bad weather, we cancel and refund you in full.",
+      "confirmation": "The course confirms your tee time, usually within 48 hours. Your card is only charged once it does."
+    },
+    "facts": {
+      "heading": "Course facts",
+      "holes": "Holes",
+      "par": "Par",
+      "yardage": "Yardage",
+      "yards": "{yards} yards",
+      "opened": "Opened",
+      "designer": "Designer",
+      "grass": "Grass"
+    },
+    "search": {
+      "filtersLabel": "Find a tee time",
+      "date": "Date",
+      "anyDate": "Any date",
+      "players": "Players",
+      "from": "Earliest tee time",
+      "to": "Latest tee time",
+      "submit": "Search",
+      "reset": "Clear filters",
+      "priceNote": "Prices include our service fee and are shown for {players} players.",
+      "fromPrice": "From {price} per player, all-in",
+      "partyTotal": "{total} for {players} players",
+      "eachPrice": "{price} per player",
+      "noTeeTimesOn": "No tee times on {date}",
+      "nearestHeading": "Nearest dates with tee times",
+      "nearestDate": "{date} · from {price} per player",
+      "empty": "No courses have tee times for these filters. Try other dates or times.",
+      "viewCourse": "View course"
     }
   }
 }

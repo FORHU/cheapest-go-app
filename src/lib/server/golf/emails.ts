@@ -84,6 +84,7 @@ export function buildGolfBookingEmail(kind: GolfEmailKind, b: GolfBooking): { su
         ...b.extras.map((e): [string, string] => [`${EXTRA_NAMES_EN[e.code]} × ${e.quantity}`, money(e.total, b.currency)]),
         ['Service fee', money(b.serviceFee, b.currency)],
         ['Total', money(b.total, b.currency)],
+        ...(b.weatherPolicy ? [['Weather rule', b.weatherPolicy] as [string, string]] : []),
     ];
     const link = `${SITE_URL}/golf/bookings/${encodeURIComponent(b.reference)}`;
     const html = `<!doctype html>

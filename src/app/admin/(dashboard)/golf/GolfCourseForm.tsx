@@ -49,6 +49,12 @@ export function GolfCourseForm({
     const [description, setDescription] = useState(initial?.description ?? '');
     const [timezone, setTimezone] = useState(initial?.timezone ?? '');
     const [freeCancelHours, setFreeCancelHours] = useState(String(initial?.freeCancelHours ?? 48));
+    const [bookingWindowDays, setBookingWindowDays] = useState(String(initial?.bookingWindowDays ?? 60));
+    const [weatherPolicy, setWeatherPolicy] = useState(initial?.weatherPolicy ?? '');
+    const [yardage, setYardage] = useState(initial?.yardage != null ? String(initial.yardage) : '');
+    const [yearOpened, setYearOpened] = useState(initial?.yearOpened != null ? String(initial.yearOpened) : '');
+    const [designer, setDesigner] = useState(initial?.designer ?? '');
+    const [grass, setGrass] = useState(initial?.grass ?? '');
     const [errors, setErrors] = useState<FieldErrors>({});
     const [saving, setSaving] = useState(false);
 
@@ -65,6 +71,8 @@ export function GolfCourseForm({
                 imageUrls: images.split('\n').map(line => line.trim()).filter(Boolean),
                 amenities,
                 timezone, freeCancelHours: Number(freeCancelHours),
+                bookingWindowDays: Number(bookingWindowDays), weatherPolicy,
+                yardage: toNumber(yardage), yearOpened: toNumber(yearOpened), designer, grass,
             });
             if (result?.fieldErrors) setErrors(result.fieldErrors);
         } finally {
@@ -121,6 +129,24 @@ export function GolfCourseForm({
                     <input id="freeCancelHours" type="number" min="0" max="720" className={inputClass} value={freeCancelHours}
                         onChange={e => setFreeCancelHours(e.target.value)} />
                 ), 'Recorded on each booking when it is made.')}
+            </div>
+
+            <div className="grid gap-4 sm:grid-cols-2">
+                {field('bookingWindowDays', 'Booking window (days ahead)', (
+                    <input id="bookingWindowDays" type="number" min="1" max="90" className={inputClass} value={bookingWindowDays}
+                        onChange={e => setBookingWindowDays(e.target.value)} />
+                ), 'How far ahead tee times open, 1–90. Shortening it keeps existing tee times but stops selling the ones beyond it.')}
+                {field('weatherPolicy', 'Weather rule', (
+                    <textarea id="weatherPolicy" rows={3} maxLength={500} className={inputClass} value={weatherPolicy}
+                        onChange={e => setWeatherPolicy(e.target.value)} />
+                ), "Shown before payment and copied onto each booking. Leave blank if the course hasn't said.")}
+            </div>
+
+            <div className="grid gap-4 sm:grid-cols-4">
+                {field('yardage', 'Yardage', <input id="yardage" type="number" inputMode="numeric" className={inputClass} value={yardage} onChange={e => setYardage(e.target.value)} />, 'Total yards, 1,000–12,000')}
+                {field('yearOpened', 'Year opened', <input id="yearOpened" type="number" inputMode="numeric" className={inputClass} value={yearOpened} onChange={e => setYearOpened(e.target.value)} />)}
+                {field('designer', 'Designer', <input id="designer" className={inputClass} value={designer} onChange={e => setDesigner(e.target.value)} />)}
+                {field('grass', 'Grass', <input id="grass" className={inputClass} value={grass} onChange={e => setGrass(e.target.value)} />)}
             </div>
 
             <fieldset>

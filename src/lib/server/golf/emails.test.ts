@@ -17,7 +17,7 @@ const booking: GolfBooking = {
     greenFeeTotal: 5000, extrasTotal: 0, extras: [], serviceFee: 318, total: 5318, currency: 'PHP', paymentIntentId: 'pi_1',
     status: 'requested', holdExpiresAt: '2026-10-06T10:15:00.000Z', requestedAt: '2026-10-06T10:05:00.000Z',
     decideBy: '2026-10-08T10:05:00.000Z', confirmedAt: null, closedAt: null, closeReason: null,
-    refundAmount: 0, freeCancelUntil: '2026-10-07T23:38:00.000Z',
+    refundAmount: 0, freeCancelUntil: '2026-10-07T23:38:00.000Z', weatherPolicy: '',
 };
 
 describe('buildGolfBookingEmail', () => {
@@ -70,5 +70,13 @@ describe('sendGolfBookingEmail', () => {
         expect(logEmail).toHaveBeenCalledWith(expect.objectContaining({
             bookingId: 'CG-ABC234', recipient: 'ana@example.com', emailType: 'golf_confirmed', status: 'queued',
         }));
+    });
+
+    it('repeats the weather rule the customer agreed to, only when the course has one', () => {
+        const none = buildGolfBookingEmail('confirmed', booking);
+        expect(none.html).not.toContain('Weather rule');
+        const ruled = buildGolfBookingEmail('confirmed', { ...booking, weatherPolicy: 'Play on through light rain.' });
+        expect(ruled.html).toContain('Weather rule');
+        expect(ruled.html).toContain('Play on through light rain.');
     });
 });

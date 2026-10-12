@@ -37,6 +37,27 @@ describe('GolfCourseForm', () => {
         });
     });
 
+    it('sends the booking window, weather rule and course facts', async () => {
+        const onSubmit = vi.fn(async () => undefined);
+        render(<GolfCourseForm onSubmit={onSubmit} onCancel={vi.fn()} />);
+        type(/^name/i, 'Wack Wack');
+        type(/^country/i, 'Philippines');
+        type(/^city/i, 'Manila');
+        type(/booking window/i, '14');
+        type(/weather rule/i, 'Play on in light rain.');
+        type(/^yardage/i, '7100');
+        type(/year opened/i, '1930');
+        type(/^designer/i, 'Willie Park');
+        type(/^grass/i, '');
+        fireEvent.click(screen.getByRole('button', { name: /save/i }));
+
+        await waitFor(() => expect(onSubmit).toHaveBeenCalled());
+        expect((onSubmit.mock.calls[0] as unknown[])[0]).toMatchObject({
+            bookingWindowDays: 14, weatherPolicy: 'Play on in light rain.',
+            yardage: 7100, yearOpened: 1930, designer: 'Willie Park', grass: '',
+        });
+    });
+
     it('shows the errors the server returned beside their fields', async () => {
         render(<GolfCourseForm onSubmit={async () => ({ fieldErrors: { slug: ['Another course already uses this slug'] } })} onCancel={vi.fn()} />);
         type(/^name/i, 'X');

@@ -470,6 +470,13 @@ _Avoid_: calling a tee time the course's live availability — it is our allocat
 **Golf Booking** — a customer's request for a Tee Time (`golf_bookings`): `held` while they pay (15 minutes), `requested` once the card is authorised, `confirmed` when the team has checked with the course and captured the payment. A request the team declines, or does not decide within 48 hours (or 2 hours before the tee time), is `declined` and never charged. A confirmed booking is refunded in full, fee included, until the free-cancellation cutoff recorded on it; after that it cannot be cancelled online.
 _Avoid_: saying a requested booking is paid — the card is only authorised.
 
+**All-in price** — what a Golf Booking costs the customer for a given party: green fee plus the service fee, from `quoteGolf` (`lib/server/golf/quote`), the same function checkout charges with. Search, the course page and checkout all show it, so a result's price is the amount the card is authorised for. It depends on the number of players (the fee has a flat part), so search prices a stated party, default 2. Extras are optional and never part of it (ADR-0047).
+_Avoid_: showing the green fee in a result and adding the fee at checkout.
+
+**Booking window** — how many course-local days ahead a course's Tee Times are generated and sold (`golf_courses.booking_window_days`, 1–90, default 60). Beyond it a tee time may exist but is neither listed nor bookable. The 24-hour minimum lead stays global.
+
+**Course rules** — what a customer agrees to before paying, shown by `GolfPolicyBlock` on the course page, at checkout and on the booking page: the booking window, the free-cancellation cutoff, the refund (in full, fee included), the course's weather rule (display text, copied onto the booking at the hold) and the confirmation promise (the course confirms, usually within 48 hours; the card is charged only then).
+
 ## Localization
 
 **Interface Language** — the words CheapestGo itself authors on the **storefront**: buttons, labels, map controls, policy headings, and the amenity vocabulary its own code maps supplier codes onto. Everything here is translatable by the team, into every locale the storefront offers, and English appearing in it reads as an unfinished product rather than an imported one. The back office is deliberately outside it — the only people who see admin are the team, so it stays English however many locales the storefront gains.

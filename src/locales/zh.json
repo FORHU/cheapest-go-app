@@ -3127,7 +3127,7 @@
       "pickTime": "可预订的开球时间",
       "spotsLeft": "剩余 {count} 位",
       "continue": "继续",
-      "hint": "时间为球场当地时间，价格按每位球员计算。",
+      "hint": "时间为球场当地时间，价格按每位球员计算，含服务费。",
       "orAsk": "想先和我们沟通？",
       "checkoutTitle": "申请开球时间",
       "summaryHeading": "您的开球时间",
@@ -3193,6 +3193,46 @@
       "extraEach": "每项 {price}",
       "extraLine": "{name} × {count}",
       "extrasUnavailable": "可选的附加服务已有变动。请重新查看后再试。"
+    },
+    "policy": {
+      "heading": "预订规则",
+      "window": "球位可提前 {days} 天预订。",
+      "cancelHours": "开球前 {hours} 小时可免费取消。",
+      "cancelUntil": "{date} 前可免费取消。",
+      "cancelNone": "该球位已超出免费取消期限，无法在线取消。",
+      "refund": "取消的预订将全额退回至您的银行卡，含服务费。",
+      "weatherCourse": "天气：{rule}",
+      "weatherDefault": "天气：如球场因恶劣天气关闭，我们将取消并全额退款。",
+      "confirmation": "球场确认您的球位，通常在 48 小时内。确认后才会向您的银行卡扣款。"
+    },
+    "facts": {
+      "heading": "球场信息",
+      "holes": "洞数",
+      "par": "标准杆",
+      "yardage": "总码数",
+      "yards": "{yards} 码",
+      "opened": "开业",
+      "designer": "设计师",
+      "grass": "草种"
+    },
+    "search": {
+      "filtersLabel": "查找球位",
+      "date": "日期",
+      "anyDate": "不限日期",
+      "players": "人数",
+      "from": "最早开球时间",
+      "to": "最晚开球时间",
+      "submit": "搜索",
+      "reset": "清除筛选",
+      "priceNote": "所示价格含服务费，按 {players} 人计算。",
+      "fromPrice": "每人 {price} 起（含全部费用）",
+      "partyTotal": "{players} 人共 {total}",
+      "eachPrice": "每人 {price}",
+      "noTeeTimesOn": "{date} 没有可订球位",
+      "nearestHeading": "最近有球位的日期",
+      "nearestDate": "{date} · 每人 {price} 起",
+      "empty": "没有球场在此条件下有球位。请尝试其他日期或时间。",
+      "viewCourse": "查看球场"
     }
   }
 }

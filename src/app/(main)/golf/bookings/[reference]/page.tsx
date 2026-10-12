@@ -10,6 +10,7 @@ import { cancellationFor } from '@/lib/golf/rules';
 import { localTime } from '@/lib/golf/time';
 import { formatMoney } from '@/components/golf/format';
 import { CancelGolfBookingButton } from '@/components/golf/CancelGolfBookingButton';
+import { GolfPolicyBlock } from '@/components/golf/GolfPolicyBlock';
 import { TeeTimeButton } from '@/components/golf/TeeTimeButton';
 
 export const dynamic = 'force-dynamic';
@@ -90,6 +91,15 @@ export default async function GolfBookingPage({ params }: Props) {
                     <div className={`${row} font-semibold text-slate-900 dark:text-slate-100`}><dt>{t('total')}</dt><dd>{money(booking.total)}</dd></div>
                 </dl>
             </section>
+
+            {['held', 'requested', 'confirmed'].includes(booking.status) && (
+                <GolfPolicyBlock
+                    cancel={new Date(booking.freeCancelUntil).getTime() > Date.now()
+                        ? { kind: 'until', date: dateTime(booking.freeCancelUntil) }
+                        : { kind: 'none' }}
+                    weatherPolicy={booking.weatherPolicy}
+                />
+            )}
 
             {booking.status === 'held' && (
                 <Link href={`/golf/${booking.courseSlug}`} className="self-start font-medium text-blue-600 hover:underline">{t('backToCourse')}</Link>

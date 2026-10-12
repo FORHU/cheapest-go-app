@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { Loader2 } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import StripeEmbeddedCheckout from '@/components/checkout/StripeEmbeddedCheckout';
+import { GolfPolicyBlock, type CancelPolicy } from '@/components/golf/GolfPolicyBlock';
 import { formatExtrasParam, type GolfExtraCode } from '@/lib/golf/extras';
 
 export interface TeeTimeSummary {
@@ -19,7 +20,6 @@ export interface TeeTimeSummary {
     extraLines: { label: string; amount: string }[];
     serviceFee: string;
     total: string;
-    freeCancel: string;
 }
 
 export interface ExtraOption {
@@ -35,12 +35,14 @@ export interface ExtraOption {
  * prices the whole booking again; the card is authorised, not charged, until the team confirms
  * with the course (CONTEXT.md, "Golf Booking").
  */
-export function BookTeeTimeClient({ teeTimeId, players, bookPath, extras, summary }: {
+export function BookTeeTimeClient({ teeTimeId, players, bookPath, extras, summary, policy }: {
     teeTimeId: string;
     players: number;
     bookPath: string;
     extras: ExtraOption[];
     summary: TeeTimeSummary;
+    /** The rules the customer is agreeing to, shown directly above the payment. */
+    policy: { cancel: CancelPolicy; weatherPolicy: string };
 }) {
     const t = useTranslations('golf.booking');
     const router = useRouter();
@@ -117,6 +119,8 @@ export function BookTeeTimeClient({ teeTimeId, players, bookPath, extras, summar
                     </section>
                 )}
 
+                <GolfPolicyBlock cancel={policy.cancel} weatherPolicy={policy.weatherPolicy} />
+
                 {payment ? (
                     <StripeEmbeddedCheckout
                         clientSecret={payment.clientSecret}
@@ -155,7 +159,6 @@ export function BookTeeTimeClient({ teeTimeId, players, bookPath, extras, summar
                     <div className={row}><dt>{t('serviceFee')}</dt><dd>{summary.serviceFee}</dd></div>
                     <div className={`${row} font-semibold text-slate-900 dark:text-slate-100`}><dt>{t('total')}</dt><dd>{summary.total}</dd></div>
                 </dl>
-                <p className="mt-4 text-xs text-slate-500 dark:text-slate-400">{summary.freeCancel}</p>
             </aside>
         </main>
     );

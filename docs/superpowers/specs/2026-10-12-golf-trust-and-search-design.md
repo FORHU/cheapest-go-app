@@ -107,3 +107,16 @@ inputs with zod; bad values fall back to defaults on the page and 400 on the JSO
 ## Docs
 
 CONTEXT.md terms "All-in price" and "Booking window"; ADR noting the window is per course.
+
+## Implementation notes
+
+- The course page's tee-time picker also shows all-in prices: `GET /api/golf/courses/[slug]/tee-times`
+  takes `players` (default 2) and returns `allInPerPlayer` per tee time, from `quoteGolf`.
+  Changing the party size refetches and keeps the chosen time; changing the date clears it.
+- The admin form states, in a hint, that shortening a window keeps existing tee times but stops
+  selling those beyond it. A live "N tee times outside the window" count was left out: nothing
+  acts on it yet.
+- The cheapest course card on `/golf` without a date or time filter also lists published courses
+  that currently have no bookable tee time, as plain cards, so a course never disappears from
+  the page just because it is fully booked.
+- ADR-0047 records the all-in price and per-course window decisions.

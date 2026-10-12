@@ -3127,7 +3127,7 @@
       "pickTime": "予約可能なティータイム",
       "spotsLeft": "残り{count}枠",
       "continue": "次へ",
-      "hint": "時間はゴルフ場の現地時間です。料金は1人あたりです。",
+      "hint": "時間はゴルフ場の現地時間です。料金は1人あたり、サービス料込みです。",
       "orAsk": "先にご相談されたい場合はこちら",
       "checkoutTitle": "ティータイムをリクエスト",
       "summaryHeading": "ご予約内容",
@@ -3193,6 +3193,46 @@
       "extraEach": "1点あたり{price}",
       "extraLine": "{name} × {count}",
       "extrasUnavailable": "提供されているオプションが変更されました。内容をご確認のうえ、もう一度お試しください。"
+    },
+    "policy": {
+      "heading": "予約ルール",
+      "window": "ティータイムは{days}日先まで予約できます。",
+      "cancelHours": "ティータイムの{hours}時間前まで無料でキャンセルできます。",
+      "cancelUntil": "{date}まで無料でキャンセルできます。",
+      "cancelNone": "このティータイムは無料キャンセル期間を過ぎているため、オンラインではキャンセルできません。",
+      "refund": "キャンセルされた予約は、サービス料を含め全額がカードに返金されます。",
+      "weatherCourse": "天候: {rule}",
+      "weatherDefault": "天候: 悪天候でコースが閉鎖された場合は、キャンセルして全額を返金します。",
+      "confirmation": "コースがティータイムを確認します（通常48時間以内）。確認後に初めてカードに請求されます。"
+    },
+    "facts": {
+      "heading": "コース情報",
+      "holes": "ホール数",
+      "par": "パー",
+      "yardage": "ヤーデージ",
+      "yards": "{yards}ヤード",
+      "opened": "開場",
+      "designer": "設計",
+      "grass": "芝"
+    },
+    "search": {
+      "filtersLabel": "ティータイムを探す",
+      "date": "日付",
+      "anyDate": "日付を指定しない",
+      "players": "人数",
+      "from": "最も早い時間",
+      "to": "最も遅い時間",
+      "submit": "検索",
+      "reset": "条件をクリア",
+      "priceNote": "表示価格はサービス料込みで、{players}名分です。",
+      "fromPrice": "1人あたり{price}から（すべて込み）",
+      "partyTotal": "{players}名で{total}",
+      "eachPrice": "1人あたり{price}",
+      "noTeeTimesOn": "{date}に空きはありません",
+      "nearestHeading": "空きのある近い日付",
+      "nearestDate": "{date} · 1人あたり{price}から",
+      "empty": "この条件に合うティータイムのあるコースはありません。日付や時間を変えてお試しください。",
+      "viewCourse": "コースを見る"
     }
   }
 }

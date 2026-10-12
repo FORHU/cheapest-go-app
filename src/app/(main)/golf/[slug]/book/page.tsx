@@ -5,8 +5,7 @@ import { getLocale, getTranslations } from 'next-intl/server';
 import { getAuthenticatedUser } from '@/lib/server/auth';
 import { getBookableTeeTime } from '@/lib/server/golf/teeTimes';
 import { listCourseExtras } from '@/lib/server/golf/extras';
-import { golfServiceFee } from '@/lib/pricing';
-import { convertCurrencyStrict, refreshExchangeRates } from '@/lib/currency';
+import { quoteGolf } from '@/lib/server/golf/quote';
 import { freeCancelUntil } from '@/lib/golf/rules';
 import { formatExtrasParam, parseExtrasParam, priceExtras, sanitizeExtras, type GolfExtraCode } from '@/lib/golf/extras';
 import { formatMoney } from '@/components/golf/format';
@@ -61,10 +60,7 @@ export default async function BookTeeTimePage({ params, searchParams }: Props) {
 
     const startsAt = new Date(teeTime.startsAt);
     const greenFee = round2(teeTime.pricePerPlayer * players);
-    const base = round2(greenFee + extrasTotal);
-    if (teeTime.currency !== 'USD') await refreshExchangeRates();
-    const fee = golfServiceFee(base, teeTime.currency, convertCurrencyStrict);
-    const total = round2(fee.chargedTotal);
+    const { total, serviceFee } = await quoteGolf({ greenFeeTotal: greenFee, extrasTotal, currency: teeTime.currency });
     const money = (amount: number) => formatMoney(amount, teeTime.currency, locale);
     const extraName = (code: GolfExtraCode) => tGolf(`amenities.${code}`);
     const courseClock = (options: Intl.DateTimeFormatOptions, instant: Date) =>
@@ -72,9 +68,6 @@ export default async function BookTeeTimePage({ params, searchParams }: Props) {
     // A tee time inside the course's free-cancellation window was never freely cancellable:
     // say so, rather than show a cutoff that is already behind us.
     const cutoff = freeCancelUntil(startsAt, course.freeCancelHours);
-    const freeCancel = cutoff.getTime() > Date.now()
-        ? t('freeCancel', { date: courseClock({ dateStyle: 'medium', timeStyle: 'short' }, cutoff) })
-        : t('noFreeCancel');
 
     return (
         <BookTeeTimeClient
@@ -98,9 +91,14 @@ export default async function BookTeeTimePage({ params, searchParams }: Props) {
                     label: t('extraLine', { name: extraName(line.code), count: line.quantity }),
                     amount: money(line.total),
                 })),
-                serviceFee: money(round2(total - base)),
+                serviceFee: money(serviceFee),
                 total: money(total),
-                freeCancel,
+            }}
+            policy={{
+                cancel: cutoff.getTime() > Date.now()
+                    ? { kind: 'until', date: courseClock({ dateStyle: 'medium', timeStyle: 'short' }, cutoff) }
+                    : { kind: 'none' },
+                weatherPolicy: course.weatherPolicy,
             }}
         />
     );

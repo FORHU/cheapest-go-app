@@ -7,8 +7,12 @@ import { getLocale, getTranslations } from 'next-intl/server';
 import { hreflangAlternates } from '@/lib/seo/hreflang';
 import { getPublishedCourseBySlug } from '@/lib/server/golf/courses';
 import { courseHasSchedules } from '@/lib/server/golf/teeTimes';
+import { searchCourses } from '@/lib/server/golf/search';
+import { DEFAULT_PLAYERS } from '@/lib/golf/search';
 import { localDate } from '@/lib/golf/time';
-import { formatGreenFee } from '@/components/golf/format';
+import { formatGreenFee, formatMoney } from '@/components/golf/format';
+import { GolfFactBlock } from '@/components/golf/GolfFactBlock';
+import { GolfPolicyBlock } from '@/components/golf/GolfPolicyBlock';
 import { TeeTimeButton } from '@/components/golf/TeeTimeButton';
 import { TeeTimePicker } from '@/components/golf/TeeTimePicker';
 
@@ -40,10 +44,13 @@ export default async function GolfCoursePage({ params }: Params) {
     const course = await getPublishedCourseBySlug(slug);
     if (!course) notFound();
     const sellsTeeTimes = course.timezone ? await courseHasSchedules(course.id) : false;
+    // The all-in price comes from the quote checkout uses; a course with nothing bookable has none.
+    const [soonest] = sellsTeeTimes
+        ? await searchCourses({ courseId: course.id, players: DEFAULT_PLAYERS }).catch(() => [])
+        : [];
 
     const [t, locale] = await Promise.all([getTranslations('golf'), getLocale()]);
     const [cover, ...gallery] = course.imageUrls;
-    const facts = [t('holes', { holes: course.holes }), course.par ? t('par', { par: course.par }) : null].filter(Boolean);
     const paragraphs = course.description.split(/\n\s*\n/).map(p => p.trim()).filter(Boolean);
 
     return (
@@ -76,6 +83,11 @@ export default async function GolfCoursePage({ params }: Params) {
                         </div>
                     )}
 
+                    <section className="mb-8" aria-labelledby="golf-facts-heading">
+                        <h2 id="golf-facts-heading" className="mb-3 text-xl font-semibold text-slate-900 dark:text-slate-100">{t('facts.heading')}</h2>
+                        <GolfFactBlock course={course} />
+                    </section>
+
                     {paragraphs.length > 0 && (
                         <section className="mb-8">
                             <h2 className="mb-3 text-xl font-semibold text-slate-900 dark:text-slate-100">{t('aboutHeading')}</h2>
@@ -107,8 +119,16 @@ export default async function GolfCoursePage({ params }: Params) {
                 </div>
 
                 <aside className="h-fit rounded-2xl border border-slate-200 p-5 lg:sticky lg:top-24 dark:border-white/10">
-                    <p className="text-sm text-slate-600 dark:text-slate-300">{facts.join(' · ')}</p>
-                    {course.greenFeeFrom != null && (
+                    {soonest?.from ? (
+                        <>
+                            <p className="text-lg font-semibold text-emerald-700 dark:text-emerald-400">
+                                {t('search.fromPrice', { price: formatMoney(soonest.from.perPlayer, soonest.from.currency, locale) })}
+                            </p>
+                            <p className="text-xs text-slate-500 dark:text-slate-400">
+                                {t('search.priceNote', { players: DEFAULT_PLAYERS })}
+                            </p>
+                        </>
+                    ) : course.greenFeeFrom != null && (
                         <p className="mt-1 text-lg font-semibold text-emerald-700 dark:text-emerald-400">
                             {t('greenFeesFrom', { price: formatGreenFee(course.greenFeeFrom, course.currency, locale) })}
                         </p>
@@ -116,7 +136,11 @@ export default async function GolfCoursePage({ params }: Params) {
                     {sellsTeeTimes ? (
                         <>
                             <div className="my-5 border-t border-slate-200 dark:border-white/10" />
-                            <TeeTimePicker slug={course.slug} today={localDate(new Date(), course.timezone!)} />
+                            <TeeTimePicker slug={course.slug} today={localDate(new Date(), course.timezone!)} windowDays={course.bookingWindowDays} />
+                            <div className="mt-5">
+                                <GolfPolicyBlock windowDays={course.bookingWindowDays}
+                                    cancel={{ kind: 'hours', hours: course.freeCancelHours }} weatherPolicy={course.weatherPolicy} />
+                            </div>
                             <p className="mb-3 mt-6 text-sm text-slate-500 dark:text-slate-400">{t('booking.orAsk')}</p>
                             <TeeTimeButton secondary />
                         </>

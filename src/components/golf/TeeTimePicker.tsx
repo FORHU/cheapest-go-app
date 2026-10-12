@@ -6,7 +6,6 @@ import { Loader2 } from 'lucide-react';
 import { useLocale, useTranslations } from 'next-intl';
 import type { TeeTime } from '@/lib/schemas/golf';
 import { addDays } from '@/lib/golf/time';
-import { HORIZON_DAYS } from '@/lib/golf/rules';
 import { formatMoney } from './format';
 
 const fieldClass = 'mt-1 w-full rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-sm text-slate-900 dark:border-white/10 dark:bg-white/5 dark:text-slate-100';
@@ -16,7 +15,7 @@ const fieldClass = 'mt-1 w-full rounded-lg border border-slate-200 bg-white px-2
  * will play by; `today` is the course-local date, worked out on the server. Tomorrow is the
  * first date offered because the team needs a day to confirm with the course.
  */
-export function TeeTimePicker({ slug, today }: { slug: string; today: string }) {
+export function TeeTimePicker({ slug, today, windowDays }: { slug: string; today: string; windowDays: number }) {
     const t = useTranslations('golf.booking');
     const locale = useLocale();
     const first = addDays(today, 1);
@@ -30,13 +29,15 @@ export function TeeTimePicker({ slug, today }: { slug: string; today: string }) 
         let cancelled = false;
         setTeeTimes(null);
         setFailed(false);
-        setSelected(null);
-        fetch(`/api/golf/courses/${encodeURIComponent(slug)}/tee-times?date=${date}`)
+        fetch(`/api/golf/courses/${encodeURIComponent(slug)}/tee-times?date=${date}&players=${players}`)
             .then(response => (response.ok ? response.json() : Promise.reject(new Error(String(response.status)))))
             .then(json => { if (!cancelled) setTeeTimes(json.data.teeTimes); })
             .catch(() => { if (!cancelled) setFailed(true); });
         return () => { cancelled = true; };
-    }, [slug, date]);
+    }, [slug, date, players]);
+
+    // A different day is a different list; a different party size keeps the chosen time.
+    useEffect(() => { setSelected(null); }, [date]);
 
     const chosen = teeTimes?.find(tt => tt.id === selected && tt.spotsLeft >= players);
 
@@ -46,7 +47,7 @@ export function TeeTimePicker({ slug, today }: { slug: string; today: string }) 
             <div className="grid grid-cols-[1fr_5rem] gap-2">
                 <label className="text-xs font-medium text-slate-600 dark:text-slate-300">
                     {t('date')}
-                    <input id="golf-date" type="date" value={date} min={first} max={addDays(today, HORIZON_DAYS)}
+                    <input id="golf-date" type="date" value={date} min={first} max={addDays(today, windowDays)}
                         onChange={e => { if (e.target.value) setDate(e.target.value); }} className={fieldClass} />
                 </label>
                 <label className="text-xs font-medium text-slate-600 dark:text-slate-300">
@@ -78,7 +79,7 @@ export function TeeTimePicker({ slug, today }: { slug: string; today: string }) 
                                         : 'border-slate-200 hover:border-blue-400 dark:border-white/10'}`}>
                                     <span className="block font-semibold tabular-nums text-slate-900 dark:text-slate-100">{tt.localTime}</span>
                                     <span className="block text-xs text-slate-500 dark:text-slate-400">
-                                        {t('spotsLeft', { count: tt.spotsLeft })} · {formatMoney(tt.pricePerPlayer, tt.currency, locale)}
+                                        {t('spotsLeft', { count: tt.spotsLeft })} · {formatMoney(tt.allInPerPlayer ?? tt.pricePerPlayer, tt.currency, locale)}
                                     </span>
                                 </button>
                             </li>
