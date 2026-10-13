@@ -224,3 +224,54 @@ describe('finaliseDuffelAuthorised', () => {
         expect(h.store.release).toHaveBeenCalledWith('sess_1');
     });
 });
+
+/**
+ * One rule, stated on its own: our Duffel balance is spent only once the traveller's card is held.
+ * A hold is `requires_capture`. Anything else means no money is promised to us yet, and an order
+ * bought then is exactly the loss this flow exists to prevent.
+ */
+describe('the card is held before Duffel is paid, and charged only after', () => {
+    const notHeld = ['requires_payment_method', 'requires_confirmation', 'requires_action', 'processing', 'canceled'];
+
+    it.each(notHeld)('spends nothing at Duffel while the intent is %s', async (status) => {
+        const h = harness({ pi: intent({ status }) });
+
+        const outcome = await finaliseDuffelAuthorised(input, h.deps);
+
+        expect(outcome).toEqual({ kind: 'not_authorised', reason: status });
+        expect(h.deps.placeOrder).not.toHaveBeenCalled();
+        expect(h.deps.stripe.paymentIntents.capture).not.toHaveBeenCalled();
+        expect(h.deps.createBooking).not.toHaveBeenCalled();
+    });
+
+    it('checks the card first, buys the order second, and takes the money last', async () => {
+        const h = harness();
+
+        await finaliseDuffelAuthorised(input, h.deps);
+
+        const read = vi.mocked(h.deps.stripe.paymentIntents.retrieve).mock.invocationCallOrder[0];
+        const bought = vi.mocked(h.deps.placeOrder).mock.invocationCallOrder[0];
+        const charged = vi.mocked(h.deps.stripe.paymentIntents.capture).mock.invocationCallOrder[0];
+
+        expect(read).toBeLessThan(bought);
+        expect(bought).toBeLessThan(charged);
+    });
+
+    it('does not take the money for an order it never managed to buy', async () => {
+        const h = harness({ deps: {
+            placeOrder: vi.fn(async () => ({ kind: 'error', status: 502, data: { errors: [{ code: 'x' }] } })) as any,
+        } });
+
+        await finaliseDuffelAuthorised(input, h.deps);
+
+        expect(h.deps.stripe.paymentIntents.capture).not.toHaveBeenCalled();
+    });
+
+    it('only ever captures once, however many paths reach it', async () => {
+        const h = harness();
+
+        await finaliseDuffelAuthorised(input, h.deps);
+
+        expect(h.deps.stripe.paymentIntents.capture).toHaveBeenCalledTimes(1);
+    });
+});
