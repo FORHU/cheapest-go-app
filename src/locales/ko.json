@@ -2905,6 +2905,7 @@
         "cancelFailed": "취소 실패 — 아래에서 재시도",
         "cancelStuck": "취소 처리 지연 — 아래에서 재시도",
         "cancelled": "취소됨",
+        "cancelledByDuffel": "Duffel에서 취소됨",
         "contactSupport": "취소하려면 고객센터로 문의",
         "emailToCancel": "취소하려면 crm@myfarebox.com으로 이메일",
         "flightCompleted": "운항 완료",

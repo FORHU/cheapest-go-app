@@ -2721,6 +2721,7 @@
         "cancelFailed": "Cancel failed — retry below",
         "cancelStuck": "Cancellation stuck — retry below",
         "cancelled": "Cancelled",
+        "cancelledByDuffel": "Cancelled by Duffel",
         "contactSupport": "Contact support to cancel",
         "emailToCancel": "Email crm@myfarebox.com to cancel",
         "flightCompleted": "Flight completed",

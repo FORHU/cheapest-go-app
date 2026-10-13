@@ -2905,6 +2905,7 @@
         "cancelFailed": "取消失败 — 请在下方重试",
         "cancelStuck": "取消处理停滞 — 请在下方重试",
         "cancelled": "已取消",
+        "cancelledByDuffel": "已被 Duffel 取消",
         "contactSupport": "请联系客服取消",
         "emailToCancel": "请发送邮件至 crm@myfarebox.com 取消",
         "flightCompleted": "航班已完成",

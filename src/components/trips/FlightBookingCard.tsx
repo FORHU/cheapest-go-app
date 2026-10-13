@@ -15,6 +15,7 @@ import { FormDatePicker } from '@/components/common/FormDatePicker';
 import { bookingToFlightOffer } from '@/lib/trips/booking-itinerary';
 import { FlightSummaryHeader } from '@/components/trips/FlightSummaryHeader';
 import { FlightItineraryDetails } from '@/components/flights/FlightItineraryDetails';
+import { DUFFEL_RECONCILABLE_STATUSES } from '@/lib/flights/duffel-reconcilable-statuses';
 
 interface FlightBookingCardProps {
     booking: FlightBookingRecord;
@@ -274,6 +275,8 @@ export default function FlightBookingCard({ booking, onCancelled }: FlightBookin
     const [cancelSuccessStatus, setCancelSuccessStatus] = useState<string | null>(null);
     const [localRefundAmount, setLocalRefundAmount] = useState<number | null>(null);
     const [localRefundCurrency, setLocalRefundCurrency] = useState<string | null>(null);
+    // Who ended the booking, as stored, until a look at Duffel learns it was cancelled there.
+    const [localCancelledBy, setLocalCancelledBy] = useState<FlightBookingRecord['cancelled_by']>(booking.cancelled_by ?? null);
     const [showFlightItinerary, setShowFlightItinerary] = useState(false);
     const [showTripDetails, setShowTripDetails] = useState(false);
     const [tripDetails, setTripDetails] = useState<any>(null);
@@ -414,6 +417,33 @@ export default function FlightBookingCard({ booking, onCancelled }: FlightBookin
     const requiresManualCancellation = lastLog?.requiresManualCancellation === true;
 
     const canCancel = CANCELLABLE_STATUSES.has(localStatus) && !requiresManualCancellation;
+
+    // A cancellation made in Duffel's dashboard (or by the airline) reaches us by webhook, which
+    // needs a public URL registered with Duffel and may not have arrived. So when a live Duffel
+    // booking is opened, look at the order itself. Once per card: the server decides whether it was
+    // cancelled, and does what the Cancel button would (refunds the card, records who cancelled).
+    // Says nothing when the look fails: the card is as it was.
+    useEffect(() => {
+        if (booking.provider !== 'duffel' || isPast) return;
+        if (!DUFFEL_RECONCILABLE_STATUSES.includes(localStatus)) return;
+        let ignore = false;
+        fetch('/api/flights/sync-booking', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ bookingId: booking.id }),
+        })
+            .then(r => r.json())
+            .then(data => {
+                if (ignore || !data?.success || !data.changed) return;
+                setLocalStatus(data.status as FlightBookingRecord['status']);
+                setLocalCancelledBy('supplier');
+                if (data.refundAmount !== undefined) setLocalRefundAmount(data.refundAmount);
+                if (data.refundCurrency) setLocalRefundCurrency(data.refundCurrency);
+                onCancelled?.(booking.id);
+            })
+            .catch(() => {});
+        return () => { ignore = true; };
+    }, [booking.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
     let tripType = t('flightBookingCard.tripTypes.oneWay');
     let mainDestination = lastSegment?.destination;
@@ -1036,6 +1066,20 @@ export default function FlightBookingCard({ booking, onCancelled }: FlightBookin
             <StateChip tone={tone}>{icon}{label}</StateChip>
         );
 
+        // Ended from outside: Duffel's dashboard or the airline cancelled the order. Say who, then
+        // say whether the money came back, as "Refunded" alone reads as the traveller's own doing.
+        if (localCancelledBy === 'supplier' && ['cancelled', 'refund_pending', 'refunded', 'refund_failed'].includes(localStatus)) {
+            const outcome = localStatus === 'refunded' ? t('flightBookingCard.stateChips.refunded')
+                : localStatus === 'refund_pending' ? t('flightBookingCard.stateChips.refundProcessing')
+                : localStatus === 'refund_failed' ? t('flightBookingCard.stateChips.refundFailed')
+                : null;
+            return (
+                <div className="flex flex-col items-end gap-0.5">
+                    {chip('rose', <XCircle className="w-3 h-3 shrink-0" />, t('flightBookingCard.stateChips.cancelledByDuffel'))}
+                    {outcome && <span className="text-[9px] text-slate-400 whitespace-nowrap">{outcome}</span>}
+                </div>
+            );
+        }
         if (localStatus === 'cancel_requested') {
             return chip('amber', <AlertTriangle className="w-3 h-3 shrink-0" />, t('flightBookingCard.stateChips.cancelStuck'));
         }

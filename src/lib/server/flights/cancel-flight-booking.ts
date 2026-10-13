@@ -26,7 +26,7 @@ import { classifyOrderForCancellation } from '@/lib/server/flights/duffel-order-
  */
 
 /** The columns a cancellation needs, so every caller loads the same row. */
-export const CANCEL_BOOKING_COLUMNS = 'id, user_id, status, provider, pnr, payment_intent_id, created_at, cancellation_log, session_id, total_price, charged_price, payment_currency, refund_amount, refund_penalty_amount, refund_currency, supplier_currency, duffel_order_id';
+export const CANCEL_BOOKING_COLUMNS = 'id, user_id, status, provider, pnr, payment_intent_id, created_at, cancellation_log, session_id, total_price, charged_price, payment_currency, refund_amount, refund_penalty_amount, refund_currency, supplier_currency, duffel_order_id, cancelled_by';
 
 export interface CancelFlightBookingInput {
     supabase: any;
@@ -34,8 +34,11 @@ export interface CancelFlightBookingInput {
     bookingId: string;
     /** A Duffel quote the traveller has already seen, so the quote step is skipped. */
     preQuotedCancellationId?: string;
-    /** What started this. Only changes the wording of the booking's log. */
-    trigger?: 'traveller' | 'duffel_webhook';
+    /**
+     * What started this. Only changes the wording of the booking's log: who is recorded as having
+     * cancelled comes from what Duffel's order says, not from who asked us to look.
+     */
+    trigger?: 'traveller' | 'duffel_webhook' | 'duffel_sync';
     /**
      * The statuses this caller may act on. The button also accepts `cancel_requested` so a request
      * that crashed can be retried; the webhook must not, because that status means the button's own
@@ -93,7 +96,9 @@ export async function cancelFlightBooking(input: CancelFlightBookingInput): Prom
             newStatus: 'cancel_requested',
             note: input.trigger === 'duffel_webhook'
                 ? 'Cancellation confirmed at Duffel; booking reconciled from its webhook'
-                : 'User initiated cancellation',
+                : input.trigger === 'duffel_sync'
+                    ? 'Cancellation found at Duffel; booking reconciled from its order'
+                    : 'User initiated cancellation',
         };
 
         const { data: updatedRows, error: requestErr } = await supabase
@@ -270,6 +275,9 @@ export async function cancelFlightBooking(input: CancelFlightBookingInput): Prom
                 refund_penalty_amount: penaltyAmount,
                 refund_currency: refundCurrency,
                 supplier_cancellation_id: supplierCancellationId ?? null,
+                // Said once, by the first cancellation to reach the supplier's answer. A refund retry
+                // skips the supplier and cannot tell, so it keeps what was recorded.
+                cancelled_by: booking.cancelled_by ?? (supplierAlreadyCancelled ? 'supplier' : 'traveller'),
                 payment_currency: booking.payment_currency ?? 'USD',
                 supplier_currency: refundCurrency,
                 cancellation_log: [...(booking.cancellation_log ?? []), logEntry, cancelLog, refundPendingLog],

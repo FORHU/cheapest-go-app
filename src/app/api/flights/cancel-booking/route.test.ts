@@ -39,9 +39,11 @@ function query(table: string) {
         in: (col: string, vals: unknown[]) => { filters.push(r => vals.includes(r[col])); return chain; },
         single: async () => {
             const m = run();
-            return m.length ? { data: m[0], error: null } : { data: null, error: { message: 'not found' } };
+            // A copy, as a database returns: handing back the stored object would let this route's own
+            // status update change the booking it is holding, which no real query does.
+            return m.length ? { data: structuredClone(m[0]), error: null } : { data: null, error: { message: 'not found' } };
         },
-        maybeSingle: async () => ({ data: run()[0] ?? null, error: null }),
+        maybeSingle: async () => { const r = run()[0]; return { data: r ? structuredClone(r) : null, error: null }; },
         then: (resolve: (v: unknown) => unknown) => resolve({ data: run(), error: null }),
     };
     return chain;
@@ -241,5 +243,58 @@ describe('POST /api/flights/cancel-booking — behaviour that must not change', 
 
         // It went down the normal path (asked Duffel to cancel), rather than refunding on the strength of a quote.
         expect(supplierCalls(calls)).toHaveLength(1);
+    });
+});
+
+describe('POST /api/flights/cancel-booking — who the booking records as having cancelled it', () => {
+    it('records the supplier when Duffel had already cancelled the order', async () => {
+        duffel(CANCELLED_AT_DUFFEL);
+
+        await cancel();
+
+        // The Trips card says "Cancelled by Duffel" from this, not from reading the log's wording.
+        expect(row().cancelled_by).toBe('supplier');
+    });
+
+    it('records the supplier on a cancellation held for a person too, not only on a refund', async () => {
+        duffel({
+            ...CANCELLED_AT_DUFFEL,
+            cancellation: { refund_amount: null, refund_currency: null, refund_to: 'awaiting_payment', confirmed_at: '2026-10-13T03:50:00Z' },
+        });
+
+        await cancel();
+
+        expect(row().status).toBe('cancelled');
+        expect(row().cancelled_by).toBe('supplier');
+    });
+
+    it('records the traveller when this request is what cancelled the order', async () => {
+        duffel(LIVE_ORDER);
+
+        await cancel();
+
+        expect(row().status).toBe('refunded');
+        expect(row().cancelled_by).toBe('traveller');
+    });
+
+    it('does not rewrite who cancelled when a failed refund is retried', async () => {
+        // The retry skips the supplier, so it cannot tell the order was cancelled elsewhere; it must not
+        // conclude that the traveller did it.
+        h.tables.flight_bookings = [booking({ status: 'refund_failed', refund_amount: 110, refund_currency: 'USD', cancelled_by: 'supplier' })];
+        duffel(CANCELLED_AT_DUFFEL);
+
+        await cancel();
+
+        expect(row().status).toBe('refunded');
+        expect(row().cancelled_by).toBe('supplier');
+    });
+
+    it('leaves a booking that was never cancelled with no recorded canceller', async () => {
+        duffel({ id: 'ord_1', cancelled_at: null, cancellation: null, available_actions: ['change'] });
+
+        await cancel();
+
+        expect(row().status).toBe('cancel_failed');
+        expect(row().cancelled_by ?? null).toBeNull();
     });
 });

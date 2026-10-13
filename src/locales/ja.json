@@ -2905,6 +2905,7 @@
         "cancelFailed": "キャンセル失敗 — 下から再試行",
         "cancelStuck": "キャンセル処理が停止中 — 下から再試行",
         "cancelled": "キャンセル済み",
+        "cancelledByDuffel": "Duffelによりキャンセル",
         "contactSupport": "キャンセルはサポートへ連絡",
         "emailToCancel": "キャンセルは crm@myfarebox.com へメール",
         "flightCompleted": "フライト完了",

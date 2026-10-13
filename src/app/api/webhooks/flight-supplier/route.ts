@@ -5,6 +5,7 @@ import { sendFlightBookingConfirmationEmail, sendFlightRefundEmail } from '@/lib
 import { env } from '@/utils/env';
 import { verifyDuffelSignature, parseDuffelEvent } from '@/lib/server/flights/duffel-webhook';
 import { cancelFlightBooking, CANCEL_BOOKING_COLUMNS } from '@/lib/server/flights/cancel-flight-booking';
+import { DUFFEL_RECONCILABLE_STATUSES } from '@/lib/server/flights/sync-duffel-cancellation';
 
 export const maxDuration = 60;
 
@@ -20,12 +21,10 @@ export const maxDuration = 60;
  * (in its dashboard, or by the airline) and our booking has to catch up. See handleDuffelEvent.
  */
 
-/**
- * Statuses a Duffel-side cancellation may act on. Deliberately NOT `cancel_requested`: that means
- * the traveller's own Cancel is in flight and owns the booking (and Duffel confirms the cancellation
- * it just made as an event of its own). Not `refund_failed` either: that has its own admin retry.
- */
-const DUFFEL_RECONCILABLE_STATUSES = ['ticketed', 'confirmed', 'booked', 'pnr_created', 'awaiting_ticket', 'cancel_failed'];
+// The statuses a Duffel-side cancellation may act on are shared with the pull check
+// (sync-duffel-cancellation), so the two ways of learning the same fact cannot disagree. Note that
+// `cancel_requested` is left out: the traveller's own Cancel is in flight and owns the booking, and
+// Duffel confirms the cancellation it just made as an event of its own.
 
 async function handleDuffelEvent(req: NextRequest, rawBody: string, payload: any): Promise<NextResponse> {
     // ── Signature: X-Duffel-Signature "t=<unix>,v1=<hex>", HMAC-SHA256 over "<t>.<raw body>" ──
