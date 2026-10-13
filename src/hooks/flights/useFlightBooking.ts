@@ -10,6 +10,7 @@ import type { SelectedBag } from '@/types/bags';
 import { useUser } from '@/stores/authStore';
 import { useUserCurrency } from '@/stores/searchStore';
 import { clientFetch } from '@/lib/api/client';
+import { priceChangeFromFailure } from '@/lib/flights/price-change-failure';
 
 export type BookingStep = 'form' | 'submitting' | 'payment' | 'success' | 'error';
 
@@ -826,6 +827,16 @@ export function useFlightBooking() {
             const d = winner.data;
             if (d.failed) {
                 clearRecovery();
+                // Authorised, then the fare moved: the hold is already released, so offer the new
+                // price on the form, exactly as a change found before payment would.
+                const moved = priceChangeFromFailure(d);
+                if (moved) {
+                    setPriceChangedData(moved);
+                    setErrorMsg('');
+                    setStep('form');
+                    idempotencyKeyRef.current = generateId();
+                    return;
+                }
                 setErrorMsg(d.errorCode ? 'CODE:' + d.errorCode : (d.error || 'CODE:booking_failed_refunded'));
                 setStep('error');
                 return;
@@ -839,6 +850,15 @@ export function useFlightBooking() {
         // confirm won
         const { data, ok } = winner;
         if (!data || !ok || data.success === false) {
+            const moved = priceChangeFromFailure(data);
+            if (moved) {
+                clearRecovery();
+                setPriceChangedData(moved);
+                setErrorMsg('');
+                setStep('form');
+                idempotencyKeyRef.current = generateId();
+                return;
+            }
             const errMsg = data?.errorCode ? 'CODE:' + data.errorCode : (data?.error || 'CODE:booking_card_not_charged');
 
             // `booking_pending` means the payment landed and the booking is still
