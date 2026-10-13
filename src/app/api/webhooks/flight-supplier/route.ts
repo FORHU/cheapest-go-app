@@ -3,65 +3,146 @@ import { createAdminClient } from '@/utils/postgres/admin';
 import { createNotification } from '@/lib/server/admin/notify';
 import { sendFlightBookingConfirmationEmail, sendFlightRefundEmail } from '@/lib/server/email';
 import { env } from '@/utils/env';
+import { verifyDuffelSignature, parseDuffelEvent } from '@/lib/server/flights/duffel-webhook';
+import { cancelFlightBooking, CANCEL_BOOKING_COLUMNS } from '@/lib/server/flights/cancel-flight-booking';
+
+export const maxDuration = 60;
 
 /**
  * Generic Webhook Receiver for Async Flight Supplier Events
- * 
+ *
  * Airlines often issue tickets or process refunds asynchronously.
  * This webhook consumes events from Duffel and Mystifly, updates
  * the local booking status, and inserts any strictly financial events
  * (like refunds resolving) into the `booking_financial_events` ledger.
+ *
+ * Duffel's only event acted on is `order_cancellation.confirmed`: an order was cancelled at Duffel
+ * (in its dashboard, or by the airline) and our booking has to catch up. See handleDuffelEvent.
  */
+
+/**
+ * Statuses a Duffel-side cancellation may act on. Deliberately NOT `cancel_requested`: that means
+ * the traveller's own Cancel is in flight and owns the booking (and Duffel confirms the cancellation
+ * it just made as an event of its own). Not `refund_failed` either: that has its own admin retry.
+ */
+const DUFFEL_RECONCILABLE_STATUSES = ['ticketed', 'confirmed', 'booked', 'pnr_created', 'awaiting_ticket', 'cancel_failed'];
+
+async function handleDuffelEvent(req: NextRequest, rawBody: string, payload: any): Promise<NextResponse> {
+    // ── Signature: X-Duffel-Signature "t=<unix>,v1=<hex>", HMAC-SHA256 over "<t>.<raw body>" ──
+    const secret = process.env.DUFFEL_WEBHOOK_SECRET;
+    if (!secret) {
+        if (process.env.NODE_ENV === 'production') {
+            // A missing secret in production is a misconfiguration: refuse rather than act unauthenticated.
+            console.error('[Flight Webhook] DUFFEL_WEBHOOK_SECRET not set in production — rejecting event');
+            return NextResponse.json({ error: 'Webhook secret not configured' }, { status: 500 });
+        }
+        console.warn('[Flight Webhook] DUFFEL_WEBHOOK_SECRET not configured — skipping signature verification (dev only)');
+    } else if (!verifyDuffelSignature(rawBody, req.headers.get('x-duffel-signature'), secret)) {
+        console.error('[Flight Webhook] Invalid or missing X-Duffel-Signature');
+        return NextResponse.json({ error: 'Unauthorized - Invalid signature' }, { status: 401 });
+    }
+
+    const event = parseDuffelEvent(payload);
+    if (!event) {
+        console.log('[Flight Webhook] Duffel payload with no event type ignored');
+        return NextResponse.json({ received: true });
+    }
+
+    if (event.type !== 'order_cancellation.confirmed') {
+        // Everything else Duffel sends (order.created, payments, pings…) needs nothing from us.
+        // 200 so it is not retried.
+        console.log(`[Flight Webhook] Duffel event ${event.type} (${event.id ?? 'no id'}) — nothing to do`);
+        return NextResponse.json({ received: true, ignored: true });
+    }
+
+    if (!event.orderId) {
+        // Say which fields were there, never their values.
+        const keys = Object.keys(payload?.data?.object ?? payload?.data ?? {});
+        console.error(`[Flight Webhook] ${event.type} ${event.id ?? ''} names no order. Resource fields: ${keys.join(', ') || '(none)'}`);
+        return NextResponse.json({ received: true });
+    }
+
+    const supabase = createAdminClient();
+
+    // Our rows keep the Duffel order id in duffel_order_id; provider_order_id is empty for them.
+    let { data: booking } = await supabase
+        .from('flight_bookings')
+        .select(CANCEL_BOOKING_COLUMNS)
+        .eq('duffel_order_id', event.orderId)
+        .maybeSingle();
+    if (!booking) {
+        ({ data: booking } = await supabase
+            .from('flight_bookings')
+            .select(CANCEL_BOOKING_COLUMNS)
+            .eq('provider_order_id', event.orderId)
+            .maybeSingle());
+    }
+
+    if (!booking) {
+        console.log(`[Flight Webhook] ${event.type}: no booking for Duffel order ${event.orderId}`);
+        return NextResponse.json({ received: true });
+    }
+
+    if (!DUFFEL_RECONCILABLE_STATUSES.includes(booking.status)) {
+        // Already refunded/cancelled (nothing to do), or the traveller's own Cancel is working on it.
+        console.log(`[Flight Webhook] Booking ${booking.id} is ${booking.status} — Duffel's cancellation of ${event.orderId} needs nothing more`);
+        return NextResponse.json({ received: true });
+    }
+
+    console.log(`[Flight Webhook] Duffel cancelled ${event.orderId}; reconciling booking ${booking.id} (${booking.status})`);
+    const result = await cancelFlightBooking({
+        supabase,
+        booking,
+        bookingId: booking.id,
+        trigger: 'duffel_webhook',
+        eligibleStatuses: DUFFEL_RECONCILABLE_STATUSES,
+    });
+
+    if (result.status >= 500) {
+        // Our side failed. 500 makes Duffel retry for up to 72 hours, and the cancellation is safe to
+        // repeat: a refund is keyed on the booking, and a booking already refunded is left alone.
+        createNotification(
+            'Duffel cancellation could not be reconciled',
+            `Duffel cancelled order ${event.orderId} (booking ${booking.id}, PNR ${booking.pnr}) but reconciling it failed. Duffel will retry; check the booking if it keeps failing.`,
+            'booking',
+        );
+        return NextResponse.json({ error: 'Reconciliation failed' }, { status: 500 });
+    }
+
+    if (result.status >= 400) {
+        // A refusal on our terms (not eligible, supplier needs a person). Retrying cannot change it.
+        console.error(`[Flight Webhook] Booking ${booking.id} not reconciled (HTTP ${result.status})`);
+        createNotification(
+            'Duffel cancellation needs attention',
+            `Duffel cancelled order ${event.orderId} (booking ${booking.id}, PNR ${booking.pnr}) but the booking could not be reconciled automatically. Review it in the admin.`,
+            'booking',
+        );
+    }
+
+    return NextResponse.json({ received: true });
+}
+
 export async function POST(req: NextRequest) {
     try {
         const rawBody = await req.text();
-        const payload = JSON.parse(rawBody);
+        let payload: any;
+        try {
+            payload = JSON.parse(rawBody);
+        } catch {
+            return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 });
+        }
 
-        // ── Webhook Signature Verification ──────────────────────────────
-        const duffelSignature = req.headers.get('duffel-signature');
+        // ── Duffel ──────────────────────────────────────────────────────
+        // Duffel events carry `type`; Mystifly's carry `event_type`. Duffel's has its own handler:
+        // its signature scheme, payload nesting and event names are not Mystifly's.
+        if (typeof payload?.type === 'string' && payload.event_type === undefined) {
+            return await handleDuffelEvent(req, rawBody, payload);
+        }
+
+        // ── Mystifly webhook signature verification ─────────────────────
         const mystiflyToken = req.headers.get('x-mystifly-webhook-token');
 
-        // Duffel webhook verification
-        if (payload.type && payload.type.startsWith('order.')) {
-            const DUFFEL_WEBHOOK_SECRET = process.env.DUFFEL_WEBHOOK_SECRET;
-            const isProduction = process.env.NODE_ENV === 'production';
-
-            if (!DUFFEL_WEBHOOK_SECRET) {
-                if (isProduction) {
-                    // In production, a missing secret is a misconfiguration — reject to prevent unauthenticated processing
-                    console.error('[Flight Webhook] DUFFEL_WEBHOOK_SECRET not set in production — rejecting event');
-                    return NextResponse.json({ error: 'Webhook secret not configured' }, { status: 500 });
-                }
-                console.warn('[Flight Webhook] DUFFEL_WEBHOOK_SECRET not configured - skipping signature verification (dev only)');
-            } else if (!duffelSignature) {
-                console.error('[Flight Webhook] Missing Duffel-Signature header');
-                return NextResponse.json({ error: 'Unauthorized - Missing signature' }, { status: 401 });
-            } else {
-                // Verify HMAC-SHA256 signature using timing-safe comparison to prevent timing attacks
-                const crypto = await import('crypto');
-                const expectedSignature = crypto
-                    .createHmac('sha256', DUFFEL_WEBHOOK_SECRET)
-                    .update(rawBody)
-                    .digest('hex');
-
-                const sigValid = (() => {
-                    try {
-                        const a = Buffer.from(duffelSignature, 'hex');
-                        const b = Buffer.from(expectedSignature, 'hex');
-                        return a.length === b.length && crypto.timingSafeEqual(a, b);
-                    } catch {
-                        return false;
-                    }
-                })();
-
-                if (!sigValid) {
-                    console.error('[Flight Webhook] Invalid Duffel signature');
-                    return NextResponse.json({ error: 'Unauthorized - Invalid signature' }, { status: 401 });
-                }
-            }
-        }
-        // Mystifly webhook verification
-        else if (payload.event_type && (payload.pnr || payload.order_id)) {
+        if (payload.event_type && (payload.pnr || payload.order_id)) {
             const MYSTIFLY_WEBHOOK_SECRET = process.env.MYSTIFLY_WEBHOOK_SECRET;
 
             if (!MYSTIFLY_WEBHOOK_SECRET) {
@@ -85,26 +166,8 @@ export async function POST(req: NextRequest) {
         let refundAmount = 0;
         let currency = 'USD';
 
-        // Duffel Webhook Strategy
-        if (payload.type && payload.type.startsWith('order.')) {
-            provider = 'duffel';
-            referenceId = payload.data?.id;
-
-            if (payload.type === 'order.tickets_generated') {
-                eventType = 'ticketed';
-                newStatus = 'ticketed';
-            } else if (payload.type === 'order.ticketing_failed') {
-                eventType = 'ticketing_failed';
-                newStatus = 'failed';
-            } else if (payload.type === 'order.cancellation.confirmed') {
-                eventType = 'refunded';
-                newStatus = 'refunded';
-                refundAmount = parseFloat(payload.data?.refund_amount || '0');
-                currency = payload.data?.refund_currency || 'USD';
-            }
-        }
         // Mystifly Webhook Strategy (Hypothetical PNR event payload)
-        else if (payload.event_type && (payload.pnr || payload.order_id)) {
+        if (payload.event_type && (payload.pnr || payload.order_id)) {
             provider = 'mystifly_v2';
             referenceId = payload.pnr || payload.order_id;
 
