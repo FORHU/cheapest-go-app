@@ -3055,3 +3055,46 @@ git commit -m "docs(flights): record sandbox acceptance for authorise-first" -m 
 - The mobile routes (`api/mobile/flights/book` and its confirm). They keep the order-first flow regardless of the flag. They need their own client verified against `requires_capture` first; because they already import `place-duffel-order.ts`, the follow-up is small.
 - Deleting the legacy order-first code in `/book`, pre-order reuse, and the inline error mapper. This waits until the flag has run clean in live.
 - Turning the flag on in production. That is an operational decision after Step 7–9 have passed in sandbox.
+
+---
+
+## Execution notes (2026-10-13)
+
+Tasks 1–16 were executed as written, plus Task 17 steps 1–2. These are the places the code
+differs from what the plan text above shows, in the order they were found.
+
+1. **Task 8, dependencies are built lazily.** The plan's `{ ...defaultDeps(), ...overrides }`
+   reached for the database and Stripe even when every dependency was injected, so all 18 unit
+   tests failed with `DATABASE_URL is not set`. `finalise-authorised.ts` now has
+   `defaultFactories` and `resolveDeps`, which build a default only for what was not overridden.
+2. **Task 9, `booking-status` reads the session's failure directly.** The plan read it only when a
+   failed booking row was found, but that row is written by `markFailed` without a `user_id` and
+   the route filters by user, so the poll could never see an authorise-first refusal; only
+   `/confirm` would. The route now reads `booking_sessions.failure` (scoped to the user) in
+   parallel and answers from it when there is no visible row.
+3. **Task 14, recovery waits for a traveller who is still paying.** The plan expired any
+   `authorise_first` session whose intent had not reached `requires_capture`. Auto-recover looks
+   at sessions older than 5 minutes, and a 3DS challenge can be well inside that, so the session
+   would have been expired under the traveller and their later authorisation left as a hold
+   nobody finalises. `decideAuthorisedRecovery` now has `wait` (still within the 30-minute session
+   plus a margin) and `release` (past it: cancel the intent so a late payment cannot leave a
+   hold), and `expire` is only for an intent that is already cancelled.
+4. **Task 3** produced 9 tests, not 8. **Task 4** was written implementation-alongside-test
+   rather than with a separate red run (the module did not exist, so it could only fail on the
+   import).
+5. **Task 13, one observable change with the flag off:** new intents carry
+   `captureFlow: 'order_first'` in their metadata. Nothing reads it as anything but order-first,
+   and an intent with no stamp is treated identically.
+
+### Observed, not changed
+
+- The legacy `payment_intent.canceled`/`payment_failed` handler in the webhook writes
+  `status: 'payment_failed'`, which is not in `booking_sessions_status_check`, so that update is
+  rejected and the error is not looked at. Pre-existing; unrelated to this change.
+- `markFailed` inserts the failed `flight_bookings` row without a `user_id`, which is why the
+  user-scoped status poll has never been able to see a legacy failure either.
+
+### Not run
+
+Task 17 steps 3–10 (sandbox acceptance with Stripe test cards and the Duffel sandbox) need a
+browser, the sandbox credentials and a running app, and were not run.
