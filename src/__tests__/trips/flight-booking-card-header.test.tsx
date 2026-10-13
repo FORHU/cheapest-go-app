@@ -330,12 +330,15 @@ describe('a booking Duffel has cancelled', () => {
             expect(screen.getAllByText('Cancelled by Duffel')).toHaveLength(2);
         });
 
-        it('still says whether the money came back, beneath it', () => {
+        it('does not say "Refunded" again beside it: the refund box already says the money came back', () => {
             stubFetch({});
             renderIntl(<FlightBookingCard booking={{ ...booking, status: 'refunded', cancelled_by: 'supplier', refund_amount: 120, refund_currency: 'USD' }} />);
 
             const chip = screen.getAllByText('Cancelled by Duffel')[0].closest('span')!;
-            expect(chip.parentElement!.textContent).toContain('Refunded');
+            expect(chip.parentElement!.textContent).toBe('Cancelled by Duffel');
+            expect(screen.queryAllByText('Refunded')).toHaveLength(0);
+            // Stated once, by the box that carries the amount.
+            expect(screen.getAllByText('Total Refund').length).toBeGreaterThan(0);
         });
 
         it('says a refund is on its way for a supplier cancellation not yet refunded', () => {
@@ -384,6 +387,7 @@ describe('a booking Duffel has cancelled', () => {
 
             expect(await screen.findAllByText('Cancelled by Duffel')).toHaveLength(2);
             expect(screen.queryByText('Upcoming Flight')).toBeNull();
+            expect(screen.queryAllByText('Refunded')).toHaveLength(0);
         });
 
         it('leaves the chip alone when Duffel says the booking is live', async () => {

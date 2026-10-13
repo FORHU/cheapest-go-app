@@ -1066,11 +1066,12 @@ export default function FlightBookingCard({ booking, onCancelled }: FlightBookin
             <StateChip tone={tone}>{icon}{label}</StateChip>
         );
 
-        // Ended from outside: Duffel's dashboard or the airline cancelled the order. Say who, then
-        // say whether the money came back, as "Refunded" alone reads as the traveller's own doing.
+        // Ended from outside: Duffel's dashboard or the airline cancelled the order. Say who, as
+        // "Refunded" alone reads as the traveller's own doing. A refund that has come back is not
+        // said again here: the refund box beneath carries the amount. What is still in progress
+        // (or has failed) is the only thing left to add.
         if (localCancelledBy === 'supplier' && ['cancelled', 'refund_pending', 'refunded', 'refund_failed'].includes(localStatus)) {
-            const outcome = localStatus === 'refunded' ? t('flightBookingCard.stateChips.refunded')
-                : localStatus === 'refund_pending' ? t('flightBookingCard.stateChips.refundProcessing')
+            const outcome = localStatus === 'refund_pending' ? t('flightBookingCard.stateChips.refundProcessing')
                 : localStatus === 'refund_failed' ? t('flightBookingCard.stateChips.refundFailed')
                 : null;
             return (
