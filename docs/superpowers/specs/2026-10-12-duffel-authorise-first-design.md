@@ -118,8 +118,11 @@ and `/api/flights/confirm`. Both only know "failed" today and answer `booking_fa
 - **Webhook and `/confirm` both missed.** The existing auto-recover job expires sessions whose
   Duffel intent is not `succeeded`, which would leave a live hold on the card. For
   `authorise_first` intents it instead runs finalisation again; the claim and the resume logic make
-  that safe. A hold still unfinalised after 2 hours is cancelled and the session expired, and an
-  order that was staked but never captured is cancelled with it.
+  that safe. A session whose card has not been authorised yet is left alone for its 30-minute life
+  (plus a margin), because auto-recover looks at sessions older than five minutes and a 3DS
+  challenge can be inside that. After it, the intent is cancelled so a late payment cannot leave a
+  hold. A hold still unfinalised after 2 hours is cancelled and the session expired, and an order
+  that was staked but never captured is cancelled with it.
 - **Orphan cleanup** is unchanged, and cannot race finalisation: it only selects sessions in
   `payment_initiated` or `initiated`, and a claimed session is `ordering`, then
   `payment_authorized`.
@@ -200,3 +203,16 @@ changed that:
   the same trip. Both are added.
 - The mobile routes are deferred, and no `capture_flow` column is needed: the intent's metadata
   carries the stamp and the session's existing `capture_method` records it.
+
+## Acceptance
+
+**Automated, 2026-10-13, on `landing-sections`:** `tsc --noEmit` clean; eslint clean over every
+touched area; the full vitest suite 1828 passed, 87 skipped, 0 failed. The claim is exercised
+against the real local database (`finalise-authorised.integration.test.ts`: taken once, not taken
+over while recent, taken over when stale, not claimed once booked or failed, released).
+
+**Sandbox, not yet run:** a declined card buys nothing; an authorised card is ordered, captured
+and recorded exactly once; 3DS; an expired offer releases the hold and says the card was not
+charged; two tabs paying the same trip produce one ticket; a missed webhook is recovered by
+auto-recover; flag off behaves as before. Listed with expected results in the plan, Task 17
+steps 3–10.
