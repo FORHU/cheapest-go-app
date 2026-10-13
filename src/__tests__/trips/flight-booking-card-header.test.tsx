@@ -323,52 +323,98 @@ describe('a booking Duffel has cancelled', () => {
     afterEach(() => { vi.unstubAllGlobals(); });
 
     describe('as the stored booking says it', () => {
-        it('names Duffel as who cancelled, in place of "Refunded"', () => {
+        const REFUNDED = { status: 'refunded', refund_amount: 120, refund_currency: 'USD' };
+
+        /**
+         * The one block that says who ended the booking and what came back: the pill, and whatever
+         * sits with it. Both layouts render in jsdom, so there are two; the first is enough.
+         */
+        function block(label: string) {
+            return screen.getAllByText(label)[0].closest('span')!.parentElement!;
+        }
+
+        it('says who cancelled and what came back together, in one block', () => {
             stubFetch({});
-            renderIntl(<FlightBookingCard booking={{ ...booking, status: 'refunded', cancelled_by: 'supplier', refund_amount: 120, refund_currency: 'USD' }} />);
+            renderIntl(<FlightBookingCard booking={{ ...booking, ...REFUNDED, cancelled_by: 'supplier' }} />);
+
+            const text = block('Cancelled by Duffel').textContent;
+            expect(text).toContain('Cancelled by Duffel');
+            expect(text).toContain('Refunded $120');
+        });
+
+        it('has no second refund box beside that block', () => {
+            stubFetch({});
+            renderIntl(<FlightBookingCard booking={{ ...booking, ...REFUNDED, cancelled_by: 'supplier' }} />);
+
+            // The "Total Refund" box was the other half of the same fact, drawn apart from the pill.
+            expect(screen.queryAllByText('Total Refund')).toHaveLength(0);
+        });
+
+        it('says it the same way for a booking the traveller cancelled', () => {
+            stubFetch({});
+            renderIntl(<FlightBookingCard booking={{ ...booking, ...REFUNDED, cancelled_by: 'traveller' }} />);
+
+            const text = block('Cancelled by you').textContent;
+            expect(text).toContain('Cancelled by you');
+            expect(text).toContain('Refunded $120');
+            expect(screen.queryByText('Cancelled by Duffel')).toBeNull();
+        });
+
+        it('says a refund is on its way, with the amount, while it is processing', () => {
+            stubFetch({});
+            renderIntl(<FlightBookingCard booking={{ ...booking, status: 'refund_pending', refund_amount: 120, refund_currency: 'USD', cancelled_by: 'supplier' }} />);
+
+            const text = block('Cancelled by Duffel').textContent;
+            expect(text).toContain('Refund processing $120');
+            expect(text).not.toContain('Refunded');
+        });
+
+        it('says the refund failed beside who cancelled', () => {
+            stubFetch({});
+            renderIntl(<FlightBookingCard booking={{ ...booking, status: 'refund_failed', cancelled_by: 'supplier' }} />);
+
+            expect(block('Cancelled by Duffel').textContent).toContain('Refund Failed');
+        });
+
+        it('says no refund was issued for a cancellation held for a person', () => {
+            stubFetch({});
+            renderIntl(<FlightBookingCard booking={{ ...booking, status: 'cancelled', refund_amount: 0, cancelled_by: 'supplier' }} />);
+
+            const text = block('Cancelled by Duffel').textContent;
+            expect(text).toContain('No refund issued');
+            expect(text).not.toContain('Refunded');
+        });
+
+        it('carries the penalty in the same block', () => {
+            stubFetch({});
+            renderIntl(<FlightBookingCard booking={{ ...booking, ...REFUNDED, refund_penalty_amount: 13.96, cancelled_by: 'supplier' }} />);
+
+            expect(block('Cancelled by Duffel').textContent).toContain('Penalty applied: $14');
+        });
+
+        it('draws the pill in the design\'s shape, whoever cancelled', () => {
+            stubFetch({});
+            renderIntl(<FlightBookingCard booking={{ ...booking, ...REFUNDED, cancelled_by: 'supplier' }} />);
+
+            const classes = String(screen.getAllByText('Cancelled by Duffel')[0].closest('span')!.className);
+            for (const shape of ['rounded-full', 'border', 'px-2', 'py-0.5']) expect(classes).toContain(shape);
+        });
+
+        it('says it at both widths', () => {
+            stubFetch({});
+            renderIntl(<FlightBookingCard booking={{ ...booking, ...REFUNDED, cancelled_by: 'supplier' }} />);
 
             expect(screen.getAllByText('Cancelled by Duffel')).toHaveLength(2);
+            expect(screen.getAllByText('Refunded $120')).toHaveLength(2);
         });
 
-        it('does not say "Refunded" again beside it: the refund box already says the money came back', () => {
+        it('keeps the plain "Refunded" pill for a cancellation that predates the record of who cancelled', () => {
             stubFetch({});
-            renderIntl(<FlightBookingCard booking={{ ...booking, status: 'refunded', cancelled_by: 'supplier', refund_amount: 120, refund_currency: 'USD' }} />);
-
-            const chip = screen.getAllByText('Cancelled by Duffel')[0].closest('span')!;
-            expect(chip.parentElement!.textContent).toBe('Cancelled by Duffel');
-            expect(screen.queryAllByText('Refunded')).toHaveLength(0);
-            // Stated once, by the box that carries the amount.
-            expect(screen.getAllByText('Total Refund').length).toBeGreaterThan(0);
-        });
-
-        it('says a refund is on its way for a supplier cancellation not yet refunded', () => {
-            stubFetch({});
-            renderIntl(<FlightBookingCard booking={{ ...booking, status: 'refund_pending', cancelled_by: 'supplier' }} />);
-
-            const chip = screen.getAllByText('Cancelled by Duffel')[0].closest('span')!;
-            expect(chip.parentElement!.textContent).toContain('Refund processing');
-        });
-
-        it('says Cancelled by Duffel for a cancellation held for a person too', () => {
-            stubFetch({});
-            renderIntl(<FlightBookingCard booking={{ ...booking, status: 'cancelled', cancelled_by: 'supplier' }} />);
-
-            expect(screen.getAllByText('Cancelled by Duffel')).toHaveLength(2);
-        });
-
-        it('keeps saying "Refunded" for a booking the traveller cancelled', () => {
-            stubFetch({});
-            renderIntl(<FlightBookingCard booking={{ ...booking, status: 'refunded', cancelled_by: 'traveller', refund_amount: 120, refund_currency: 'USD' }} />);
+            renderIntl(<FlightBookingCard booking={{ ...booking, ...REFUNDED }} />);
 
             expect(screen.queryByText('Cancelled by Duffel')).toBeNull();
+            expect(screen.queryByText('Cancelled by you')).toBeNull();
             expect(screen.getAllByText('Refunded').length).toBeGreaterThan(0);
-        });
-
-        it('keeps saying "Refunded" for a cancellation that predates the record of who cancelled', () => {
-            stubFetch({});
-            renderIntl(<FlightBookingCard booking={{ ...booking, status: 'refunded', refund_amount: 120, refund_currency: 'USD' }} />);
-
-            expect(screen.queryByText('Cancelled by Duffel')).toBeNull();
         });
     });
 
@@ -387,7 +433,9 @@ describe('a booking Duffel has cancelled', () => {
 
             expect(await screen.findAllByText('Cancelled by Duffel')).toHaveLength(2);
             expect(screen.queryByText('Upcoming Flight')).toBeNull();
-            expect(screen.queryAllByText('Refunded')).toHaveLength(0);
+            // What came back arrives with who cancelled, in the same block, with no refund box beside it.
+            expect(screen.getAllByText('Refunded $120')).toHaveLength(2);
+            expect(screen.queryAllByText('Total Refund')).toHaveLength(0);
         });
 
         it('leaves the chip alone when Duffel says the booking is live', async () => {

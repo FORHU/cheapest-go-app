@@ -1060,24 +1060,55 @@ export default function FlightBookingCard({ booking, onCancelled }: FlightBookin
         }
     };
 
+    // A cancelled booking whose canceller is on record is drawn as one block: who, and what came
+    // back. null for every other state (and for a cancellation that predates the record), which
+    // keep the pill and, for a refund, the box in the price column.
+    const cancelledBlock = (() => {
+        const ended = ['cancelled', 'refund_pending', 'refunded', 'refund_failed'].includes(localStatus);
+        if (!ended || (localCancelledBy !== 'supplier' && localCancelledBy !== 'traveller')) return null;
+        const refundAmt = localRefundAmount ?? booking.refund_amount ?? 0;
+        const refundCurr = localRefundCurrency ?? booking.refund_currency ?? 'USD';
+        const penalty = booking.refund_penalty_amount ?? 0;
+        return {
+            refundMoney: refundAmt > 0 ? formatCurrency(convertPrice(refundAmt, refundCurr), displayCurrency) : null,
+            penaltyMoney: penalty > 0 ? formatCurrency(convertPrice(penalty, booking.refund_currency || 'USD'), displayCurrency) : null,
+        };
+    })();
+
     // Helper to render the right side state chip
     const renderStateChip = () => {
         const chip = (tone: StateChipTone, icon: React.ReactNode, label: React.ReactNode) => (
             <StateChip tone={tone}>{icon}{label}</StateChip>
         );
 
-        // Ended from outside: Duffel's dashboard or the airline cancelled the order. Say who, as
-        // "Refunded" alone reads as the traveller's own doing. A refund that has come back is not
-        // said again here: the refund box beneath carries the amount. What is still in progress
-        // (or has failed) is the only thing left to add.
-        if (localCancelledBy === 'supplier' && ['cancelled', 'refund_pending', 'refunded', 'refund_failed'].includes(localStatus)) {
-            const outcome = localStatus === 'refund_pending' ? t('flightBookingCard.stateChips.refundProcessing')
-                : localStatus === 'refund_failed' ? t('flightBookingCard.stateChips.refundFailed')
-                : null;
+        // A cancelled booking, said once: who ended it and what came back, together. They used to be
+        // a pill ("Refunded") and, apart from it, a box ("Total Refund"), and which of the two a card
+        // showed depended on who had cancelled. Only for a booking whose canceller is on record; one
+        // that predates the record keeps the plain pill and the box below.
+        if (cancelledBlock) {
+            const { refundMoney, penaltyMoney } = cancelledBlock;
+            const refundLine = localStatus === 'refunded'
+                ? { tone: 'text-emerald-600 dark:text-emerald-400', text: refundMoney ? t('flightBookingCard.stateChips.refundedAmount', { amount: refundMoney }) : t('flightBookingCard.stateChips.refunded') }
+                : localStatus === 'refund_pending'
+                    ? { tone: 'text-purple-600 dark:text-purple-400', text: refundMoney ? t('flightBookingCard.stateChips.refundProcessingAmount', { amount: refundMoney }) : t('flightBookingCard.stateChips.refundProcessing') }
+                    : localStatus === 'refund_failed'
+                        ? { tone: 'text-rose-600 dark:text-rose-400', text: t('flightBookingCard.stateChips.refundFailed') }
+                        : { tone: 'text-slate-500 dark:text-slate-400', text: t('flightBookingCard.noRefund') };
             return (
-                <div className="flex flex-col items-end gap-0.5">
-                    {chip('rose', <XCircle className="w-3 h-3 shrink-0" />, t('flightBookingCard.stateChips.cancelledByDuffel'))}
-                    {outcome && <span className="text-[9px] text-slate-400 whitespace-nowrap">{outcome}</span>}
+                <div className="flex flex-col items-end gap-1">
+                    {chip(
+                        'rose',
+                        <XCircle className="w-3 h-3 shrink-0" />,
+                        localCancelledBy === 'supplier' ? t('flightBookingCard.stateChips.cancelledByDuffel') : t('flightBookingCard.stateChips.cancelledByYou'),
+                    )}
+                    <div className="text-right">
+                        <div className={`text-xs font-bold ${refundLine.tone}`}>{refundLine.text}</div>
+                        {penaltyMoney && (
+                            <div className="text-[9px] text-slate-400 dark:text-slate-500 mt-0.5">
+                                {t('flightBookingCard.penaltyApplied', { amount: penaltyMoney })}
+                            </div>
+                        )}
+                    </div>
                 </div>
             );
         }
@@ -1398,7 +1429,7 @@ export default function FlightBookingCard({ booking, onCancelled }: FlightBookin
                                 the summary beside it and showed up as blank space under the
                                 flight info. */}
                             <div className="flex flex-col items-end gap-2 w-full mt-2 empty:hidden">
-                                {(localStatus === 'cancelled' || localStatus === 'refunded' || localStatus === 'refund_pending') && (() => {
+                                {!cancelledBlock && (localStatus === 'cancelled' || localStatus === 'refunded' || localStatus === 'refund_pending') && (() => {
                                     const refundAmt = localRefundAmount !== null ? localRefundAmount : (booking.refund_amount ?? 0);
                                     const refundCurr = localRefundCurrency ?? booking.refund_currency ?? 'USD';
                                     const hasRefund = refundAmt > 0;
