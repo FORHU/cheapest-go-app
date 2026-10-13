@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAuthenticatedUser } from '@/lib/server/auth';
 import { createAdminClient } from '@/utils/postgres/admin';
 import { env } from '@/utils/env';
+import { failedBookingBody } from '@/lib/server/flights/failure-response';
 
 export const dynamic = 'force-dynamic';
 
@@ -26,24 +27,34 @@ export async function GET(req: NextRequest) {
 
         const supabase = createAdminClient();
 
-        const { data: booking } = await supabase
-            .from('flight_bookings')
-            .select('id, pnr, status')
-            .eq('session_id', sessionId)
-            .eq('user_id', user.id)
-            .maybeSingle();
+        const [{ data: booking }, { data: session }] = await Promise.all([
+            supabase
+                .from('flight_bookings')
+                .select('id, pnr, status')
+                .eq('session_id', sessionId)
+                .eq('user_id', user.id)
+                .maybeSingle(),
+            // A refusal after authorisation records why on the session. Older failures have none.
+            supabase
+                .from('booking_sessions')
+                .select('failure')
+                .eq('id', sessionId)
+                .eq('user_id', user.id)
+                .maybeSingle(),
+        ]);
+        const failure = (session as any)?.failure ?? null;
 
         if (!booking) {
+            // The failed booking row is written without a user, so the lookup above cannot see it.
+            // The session's own record of the refusal is what the traveller should be told.
+            if (failure) {
+                return NextResponse.json({ found: true, failed: true, ...failedBookingBody(failure) });
+            }
             return NextResponse.json({ found: false });
         }
 
         if (booking.status === 'failed') {
-            return NextResponse.json({
-                found: true,
-                failed: true,
-                errorCode: 'booking_failed_refunded',
-                error: 'Booking failed — the flight offer was no longer available. Your payment has been automatically refunded.',
-            });
+            return NextResponse.json({ found: true, failed: true, ...failedBookingBody(failure) });
         }
 
         return NextResponse.json({
