@@ -14,6 +14,7 @@ import { stripe } from '@/lib/stripe/server';
 import { sendFlightCancellationEmail, sendFlightCancellationRefundEmail, mapFlightSegmentsForEmail } from '@/lib/server/email';
 import { checkCsrf } from '@/lib/server/csrf';
 import { createNotification } from '@/lib/server/admin/notify';
+import { classifyOrderForCancellation } from '@/lib/server/flights/duffel-order-cancellation';
 
 /**
  * POST /api/flights/cancel-booking
@@ -158,6 +159,7 @@ export async function POST(req: NextRequest) {
         let supplierCancellationId: string | undefined;
         let refundTo: string | undefined; // Duffel: where the refund goes (card, voucher, balance…)
         let requiresManualCancellation = false;
+        let supplierAlreadyCancelled = false;
 
         if (booking.status === 'refund_failed') {
             // Airline already cancelled — reuse the stored refund amount and skip supplier call
@@ -187,6 +189,7 @@ export async function POST(req: NextRequest) {
                     requiresManualCancellation = result.requiresManualCancellation === true
                         || /tkt-in-process|ticketed status|cancellation denied/i.test(supplierError ?? '');
                     refundTo = result.refundTo;
+                    supplierAlreadyCancelled = result.alreadyCancelledAtSupplier === true;
                 }
             } catch (supplierErr: any) {
                 supplierError = supplierErr.message;
@@ -272,6 +275,9 @@ export async function POST(req: NextRequest) {
             penaltyAmount,
             currency: refundCurrency,
             ...(refundTo && { refundTo }),
+            ...(supplierAlreadyCancelled && {
+                note: 'Order was already cancelled at Duffel; reconciled from its confirmed cancellation, nothing was cancelled by this request',
+            }),
         };
         const refundPendingLog = {
             at: new Date().toISOString(),
@@ -552,6 +558,8 @@ interface CancelResult {
     error?: string;
     providerMissing?: boolean;
     requiresManualCancellation?: boolean;
+    /** Duffel had already cancelled the order (dashboard, airline): nothing was cancelled by this call. */
+    alreadyCancelledAtSupplier?: boolean;
 }
 
 async function cancelMystifly(booking: any): Promise<CancelResult> {
@@ -648,8 +656,32 @@ async function cancelDuffel(booking: any, preQuotedCancellationId?: string): Pro
 
         const orderData = await orderRes.json();
         const availableActions: string[] = orderData?.data?.available_actions ?? [];
+        const orderState = classifyOrderForCancellation(orderData?.data);
 
-        if (!availableActions.includes('cancel')) {
+        // Cancelled outside this app (Duffel's dashboard, the airline). Look at this BEFORE the
+        // available actions: Duffel does not document them for a cancelled order, so "no cancel
+        // action" cannot be read as "needs a person". Take the refund Duffel recorded and let the
+        // rest of this route do what it always does with a supplier-confirmed cancellation.
+        if (orderState.kind === 'already_cancelled') {
+            clearTimeout(timeoutId);
+            console.warn(`[cancel-booking] Order ${orderId} is already cancelled at Duffel — reconciling (refund ${orderState.refundAmount ?? 'unknown'} ${orderState.refundCurrency ?? ''})`);
+            const known = orderState.refundAmount !== null;
+            const refunded = orderState.refundAmount ?? 0;
+            return {
+                success: true,
+                refundAmount: refunded,
+                // An unknown refund carries no penalty either, so the existing "zero refund and zero
+                // penalty" review notification fires and a person decides, rather than the customer
+                // silently getting nothing.
+                penaltyAmount: known ? Math.max(0, (booking.total_price || 0) - refunded) : 0,
+                currency: orderState.refundCurrency ?? booking.currency ?? 'USD',
+                cancellationId: orderData?.data?.cancellation?.id,
+                refundTo: orderState.refundTo ?? undefined,
+                alreadyCancelledAtSupplier: true,
+            };
+        }
+
+        if (orderState.kind === 'not_cancellable') {
             console.warn(`[cancel-booking] Order ${orderId} not cancellable via API. Available actions:`, availableActions);
             return { success: false, requiresManualCancellation: true, error: 'Booking cannot be cancelled via API. Contact support for manual cancellation.' };
         }
