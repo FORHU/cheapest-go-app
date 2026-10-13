@@ -15,14 +15,17 @@
  * It is provider-internal: callers pass an already-built set of Duffel order
  * passengers and the raw offer, and receive a normalised result they map to HTTP.
  *
- * NOTE: the web /api/flights/book route still has its own inline copy of this logic.
- * It should be migrated onto this helper in a follow-up (with sandbox QA) so the two
- * booking paths can't drift.
+ * NOTE: the web /api/flights/book route keeps its own inline copy of this logic for the
+ * order-first flow, which is to be deleted rather than migrated. This helper is what the
+ * authorise-first flow (finalise-authorised.ts) places orders with, so it is kept equivalent
+ * to that copy: same-itinerary refresh pool, bare-fare price reporting, raw-order adoption
+ * after a timeout, and a price change still unresolved after the retries is reported.
  */
 
 import { cabinClassFromRawOffer } from './duffel-cabin';
 import { findOrderFromTimedOutAttempt } from './duffel-order-reconcile';
 import { withDuffelServicePrices } from './duffel-service-prices';
+import { sameItineraryOffers } from './offer-itinerary-match';
 
 const DUFFEL_ORDERS_URL = 'https://api.duffel.com/air/orders';
 // Duffel's documented minimum: "You must set a HTTP client timeout of at least 130s".
@@ -114,11 +117,15 @@ export async function placeDuffelOrder(params: PlaceDuffelOrderParams): Promise<
         offerId: string,
         paxList: any[],
         total: string,
+        baseAmount: number,
         currency: string,
         includeServices: boolean,
         key: string,
     ): Promise<TryPlaceOrderResult> => {
         let currentTotal = total;
+        // The bare fare behind `total`. Price changes are reported in bare fares so the number a
+        // traveller confirms is the same unit the next attempt compares against.
+        let currentBase = baseAmount;
         let currentCurrency = currency;
 
         const orderAbort = new AbortController();
@@ -163,12 +170,14 @@ export async function placeDuffelOrder(params: PlaceDuffelOrderParams): Promise<
                 });
 
                 if (recovered) {
-                    console.warn(`[placeDuffelOrder] Timed-out attempt succeeded — adopting order ${recovered.orderId} (${recovered.pnr})`);
+                    // `findOrderFromTimedOutAttempt` resolves to the RAW Duffel order, which is the
+                    // shape a normal 201 carries, so it goes back unchanged.
+                    console.warn(`[placeDuffelOrder] Timed-out attempt succeeded — adopting order ${recovered.id} (${recovered.booking_reference})`);
                     return {
                         isPriceChangedError: false,
                         isOfferUnavailable: false,
                         res: new Response(null, { status: 200 }),
-                        data: { data: { id: recovered.orderId, booking_reference: recovered.pnr, documents: recovered.tickets.map((t: string) => ({ type: 'electronic_ticket', unique_identifier: t })) } },
+                        data: { data: recovered },
                         finalTotal: currentTotal,
                         finalCurrency: currentCurrency,
                     };
@@ -264,10 +273,11 @@ export async function placeDuffelOrder(params: PlaceDuffelOrderParams): Promise<
             currentCurrency = pricedOffer.total_currency ?? currentCurrency;
 
             if (priceDelta > priceTolerance && !priceAlreadyConfirmed) {
-                return { isPriceChangedError: true, isOfferUnavailable: false, oldPrice: oldTotalNum, newPrice: newTotalNum, newCurrency: currentCurrency };
+                return { isPriceChangedError: true, isOfferUnavailable: false, oldPrice: currentBase, newPrice: freshBase, newCurrency: currentCurrency };
             }
 
             currentTotal = newTotalNum.toFixed(2);
+            currentBase = freshBase;
             const retryAbort = new AbortController();
             const retryTimeout = setTimeout(() => retryAbort.abort(), orderTimeoutMs);
             try {
@@ -287,11 +297,22 @@ export async function placeDuffelOrder(params: PlaceDuffelOrderParams): Promise<
             if (res.ok) break;
         }
 
+        // Still price_changed after the retries, with a Price Action that did produce a new number:
+        // report it, so the traveller can accept the new fare. A "100 changed to 100" prompt is
+        // worse than none, hence the comparison.
+        if (
+            res.status === 422
+            && data?.errors?.[0]?.code === 'price_changed'
+            && Math.abs(currentBase - baseAmount) > 0.005
+        ) {
+            return { isPriceChangedError: true, isOfferUnavailable: false, oldPrice: baseAmount, newPrice: currentBase, newCurrency: currentCurrency };
+        }
+
         return { isPriceChangedError: false, isOfferUnavailable: false, res, data, finalTotal: currentTotal, finalCurrency: currentCurrency };
     };
 
     // ── Attempt 1: the offer the user selected ──────────────────────────────────
-    const attempt1 = await tryPlaceOrder(rawOffer.id, params.passengers, params.total, params.currency, true, idempotencyKey);
+    const attempt1 = await tryPlaceOrder(rawOffer.id, params.passengers, params.total, parseFloat(rawOffer.total_amount ?? '0'), params.currency, true, idempotencyKey);
     if (attempt1.isPriceChangedError) {
         return { kind: 'price_changed', oldPrice: attempt1.oldPrice!, newPrice: attempt1.newPrice!, currency: attempt1.newCurrency ?? params.currency };
     }
@@ -303,6 +324,12 @@ export async function placeDuffelOrder(params: PlaceDuffelOrderParams): Promise<
         return { kind: 'error', status: attempt1.res.status, data: attempt1.data };
     }
 
+    // The first attempt was refused as "gone" without a body to show for it. Whatever the refresh
+    // comes to, a caller mapping the failure must still see why we were here.
+    const refreshFailureData = attempt1.data ?? {
+        errors: [{ code: 'offer_no_longer_available', message: 'The offer is no longer available' }],
+    };
+
     // ── Auto-refresh: the offer expired — re-quote fresh offers for the same carrier ──
     console.warn('[placeDuffelOrder] offer expired — rebuilding offer_request');
     try {
@@ -313,7 +340,7 @@ export async function placeDuffelOrder(params: PlaceDuffelOrderParams): Promise<
             return { origin, destination, departure_date };
         }).filter((s: any) => s.origin && s.destination && s.departure_date);
 
-        if (slices.length === 0) return { kind: 'error', status: 422, data: attempt1.data };
+        if (slices.length === 0) return { kind: 'error', status: 422, data: refreshFailureData };
 
         const paxTypes: any[] = (rawOffer.passengers ?? []).map((p: any) => ({ type: p.type ?? 'adult' }));
         const cabinClass: string = cabinClassFromRawOffer(rawOffer);
@@ -324,7 +351,7 @@ export async function placeDuffelOrder(params: PlaceDuffelOrderParams): Promise<
             body: JSON.stringify({ data: { slices, passengers: paxTypes, cabin_class: cabinClass } }),
         });
         const orData = await orRes.json();
-        if (!orRes.ok) return { kind: 'error', status: 422, data: attempt1.data };
+        if (!orRes.ok) return { kind: 'error', status: 422, data: refreshFailureData };
 
         let offers: any[] = orData.data?.offers ?? [];
         if (offers.length === 0 && orData.data?.id) {
@@ -332,25 +359,14 @@ export async function placeDuffelOrder(params: PlaceDuffelOrderParams): Promise<
             const offersData = await offersRes.json();
             offers = offersData.data ?? [];
         }
-        if (offers.length === 0) return { kind: 'error', status: 422, data: attempt1.data };
+        if (offers.length === 0) return { kind: 'error', status: 422, data: refreshFailureData };
 
-        const targetCarrier = rawOffer.validating_carrier_iata_code
-            ?? rawOffer.slices?.[0]?.segments?.[0]?.operating_carrier?.iata_code
-            ?? rawOffer.slices?.[0]?.segments?.[0]?.marketing_carrier?.iata_code;
-        const targetTotal = parseFloat(rawOffer.total_amount ?? '0');
-
-        const matchingOffers = targetCarrier
-            ? offers.filter((o: any) => {
-                const carrier = o.validating_carrier_iata_code
-                    ?? o.slices?.[0]?.segments?.[0]?.operating_carrier?.iata_code
-                    ?? o.slices?.[0]?.segments?.[0]?.marketing_carrier?.iata_code;
-                return carrier === targetCarrier;
-            })
-            : offers;
-
-        const sortedPool = (matchingOffers.length > 0 ? matchingOffers : offers).sort((a: any, b: any) =>
-            Math.abs(parseFloat(a.total_amount) - targetTotal) - Math.abs(parseFloat(b.total_amount) - targetTotal),
-        );
+        // Only offers for the SAME journey: same marketing carrier, flight numbers and departure
+        // instants, segment by segment, cheapest first. A carrier-and-nearest-price match can ticket
+        // a traveller onto a flight sixteen hours from the one they chose. Nothing matching means
+        // unavailable: substituting a different flight is not a recovery.
+        const sortedPool = sameItineraryOffers(rawOffer, offers);
+        if (sortedPool.length === 0) return { kind: 'error', status: 422, data: refreshFailureData };
 
         const hadAncillaries = (seatServiceIds?.length ?? 0) > 0 || (bagServiceIds?.length ?? 0) > 0;
         const maxAttempts = Math.min(sortedPool.length, refreshPoolSize);
@@ -377,7 +393,7 @@ export async function placeDuffelOrder(params: PlaceDuffelOrderParams): Promise<
                 id: freshPaxTemplates[idx]?.id ?? pax.id,
             }));
 
-            const attempt2 = await tryPlaceOrder(freshOffer.id, refreshedPassengers, freshBaseTotal.toFixed(2), freshOffer.total_currency, false, crypto.randomUUID());
+            const attempt2 = await tryPlaceOrder(freshOffer.id, refreshedPassengers, freshBaseTotal.toFixed(2), freshBaseTotal, freshOffer.total_currency, false, crypto.randomUUID());
 
             if (attempt2.res?.status && attempt2.res.status >= 500) {
                 return { kind: 'error', status: attempt2.res.status, data: attempt2.data };
@@ -393,9 +409,9 @@ export async function placeDuffelOrder(params: PlaceDuffelOrderParams): Promise<
             return { kind: 'error', status: attempt2.res?.status ?? 422, data: attempt2.data };
         }
 
-        return { kind: 'error', status: 422, data: attempt1.data };
+        return { kind: 'error', status: 422, data: refreshFailureData };
     } catch (refreshErr: any) {
         console.error('[placeDuffelOrder] auto-refresh failed:', refreshErr.message);
-        return { kind: 'error', status: 422, data: attempt1.data };
+        return { kind: 'error', status: 422, data: refreshFailureData };
     }
 }
