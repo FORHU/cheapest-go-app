@@ -344,7 +344,7 @@ export function sqlSessionStore(sql: ReturnType<typeof getSqlAdmin>): SessionSto
                        duffel_pre_order_pnr = ${f.pnr},
                        duffel_pre_order_tickets = ${f.tickets}::text[],
                        duffel_pre_order_ticketed = ${f.ticketed},
-                       flight = ${JSON.stringify(f.flight)}::jsonb,
+                       flight = ${sql.json(f.flight as any)}::jsonb,
                        original_price = ${f.originalPrice},
                        charged_price = ${f.chargedPrice},
                        status = 'payment_authorized',
@@ -359,7 +359,7 @@ export function sqlSessionStore(sql: ReturnType<typeof getSqlAdmin>): SessionSto
         },
 
         async fail(sessionId, failure) {
-            await sql`UPDATE booking_sessions SET failure = ${JSON.stringify(failure)}::jsonb WHERE id = ${sessionId}`;
+            await sql`UPDATE booking_sessions SET failure = ${sql.json(failure as any)}::jsonb WHERE id = ${sessionId}`;
         },
 
         async otherLiveOrder({ userId, offerId, excludeSessionId, passengers, windowMs }) {
