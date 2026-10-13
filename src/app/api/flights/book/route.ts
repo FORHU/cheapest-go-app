@@ -36,6 +36,8 @@ import { mintBookingReference } from '@/lib/bookingReference';
 import { revalidateFlight } from '@/lib/server/flights/revalidate-flight';
 import { withDuffelServicePrices } from '@/lib/server/flights/duffel-service-prices';
 import { canonicalBrandName } from '@/lib/brand';
+import { resolveCaptureFlow } from '@/lib/server/flights/capture-flow';
+import { toE164Phone } from '@/lib/server/flights/duffel-order-passengers';
 
 export const dynamic = 'force-dynamic';
 
@@ -618,6 +620,11 @@ export async function POST(req: NextRequest) {
         const serverFarePolicy = revalData.farePolicy || farePolicy;
         const sanitizedFlight = { ...flight };
 
+        // Authorise-first (ADR-0050): decided once, here, and stamped on the PaymentIntent below.
+        // When on, no order is bought in this request; it is bought once the card is authorised.
+        const captureFlow = provider === 'duffel' ? resolveCaptureFlow() : 'order_first';
+        const authoriseFirst = captureFlow === 'authorise_first';
+
         // ── Step 1: Create Booking Session (direct DB insert) ──
         const sessionStart = Date.now();
         const expiresAt = new Date(Date.now() + 30 * 60 * 1000).toISOString();
@@ -697,6 +704,16 @@ export async function POST(req: NextRequest) {
             }
         }
 
+        // Authorise-first buys the order after the card is held, so a number Duffel would refuse
+        // has to stop here, before anyone is asked for a card.
+        if (authoriseFirst && !toE164Phone(contact as any).ok) {
+            return NextResponse.json({
+                success: false,
+                errorCode: 'phone_number_invalid',
+                error: 'Invalid phone number. Please enter a valid phone number with country code (e.g. for South Korea: country code 82, number 10-1234-5678).',
+            }, { status: 400 });
+        }
+
         // ── Step 1.4 (Duffel only): did a previous attempt already buy this? ──
         //
         // The payment screen's "Back to details" returns to the form, and
@@ -706,7 +723,8 @@ export async function POST(req: NextRequest) {
         // tickets were issued 61 seconds apart after a currency change.
         //
         // Leaving duffelPreOrder set here is what skips Step 1.5 entirely.
-        if (provider === 'duffel' && (flight as any)._rawOffer?.id && env.DUFFEL_TOKEN) {
+        // (Authorise-first has no order before payment, so there is nothing to reuse.)
+        if (provider === 'duffel' && !authoriseFirst && (flight as any)._rawOffer?.id && env.DUFFEL_TOKEN) {
             const found = await findLivePreOrderForOffer({
                 db,
                 userId,
@@ -789,7 +807,7 @@ export async function POST(req: NextRequest) {
             }
         }
 
-        if (provider === 'duffel' && !duffelPreOrder) {
+        if (provider === 'duffel' && !duffelPreOrder && !authoriseFirst) {
             const rawOffer = (flight as any)._rawOffer;
             if (!rawOffer?.id) throw new Error('Duffel offer data missing — cannot book.');
 
@@ -1471,7 +1489,11 @@ export async function POST(req: NextRequest) {
         // reference. See src/lib/pricing.ts for the full strategy rationale.
         const stripeBase = duffelPreOrder
             ? parseFloat(duffelPreOrder.orderTotal)
-            : effectiveFlightTotal + Math.max(0, seatTotal ?? 0) + Math.max(0, bagTotal ?? 0);
+            : authoriseFirst
+                // No order exists yet. The server's own arithmetic on the offer's
+                // available_services, never the client's seat/bag totals, is what the card is held for.
+                ? parseFloat(computeOrderTotal((flight as any)._rawOffer, seatServiceIds, bagServiceIds).total)
+                : effectiveFlightTotal + Math.max(0, seatTotal ?? 0) + Math.max(0, bagTotal ?? 0);
 
         // The currency `stripeBase` is denominated in.
         //
@@ -1484,7 +1506,11 @@ export async function POST(req: NextRequest) {
         // Falls back to the SUPPLIER's currency, never the client's: settlementCurrency is
         // read from the offer before any order exists, and is the pair the FX readiness
         // guard already cleared.
-        const baseCurrency = (duffelPreOrder?.orderCurrency || settlementCurrency).toLowerCase();
+        const baseCurrency = (
+            duffelPreOrder?.orderCurrency
+            || (authoriseFirst ? (flight as any)._rawOffer?.total_currency : undefined)
+            || settlementCurrency
+        ).toLowerCase();
 
         // Apply the markup, now that the base's currency is known.
         //
@@ -1563,9 +1589,10 @@ export async function POST(req: NextRequest) {
         const paymentIntent = await stripe.paymentIntents.create({
             amount: flightStripeAmount,
             currency: chargeInCurrency,
-            // Duffel is the only reachable provider and its orders are placed before the
-            // charge, so there is nothing to hold funds for — capture immediately.
-            capture_method: 'automatic',
+            // Order-first: the order was placed before this charge, so there is nothing to hold
+            // funds for and the capture is immediate. Authorise-first: the card is only held here,
+            // and is captured once the order has been bought (finalise-authorised.ts).
+            capture_method: authoriseFirst ? 'manual' : 'automatic',
             metadata: {
                 // FORHU Inc settles several products into this one Stripe account and one
                 // pooled daily payout, so the bank cannot tell them apart. These two fields
@@ -1574,6 +1601,8 @@ export async function POST(req: NextRequest) {
                 brand,
                 bookingSessionId: sessionId,
                 provider: provider,
+                // Routing key for everything after this point; see capture-flow.ts.
+                captureFlow,
                 userId: userId,
                 passengerEmail: contact.email,
                 // Store pricing breakdown in metadata for audit trail
@@ -1597,7 +1626,7 @@ export async function POST(req: NextRequest) {
         }, { idempotencyKey: piIdempotencyKey });
         logApiCall({
             provider: 'stripe', endpoint: 'paymentIntents.create', durationMs: Date.now() - stripeStart,
-            requestParams: { amount: flightStripeAmount, currency: chargeInCurrency, captureMethod: 'automatic', markupRate: pricing.markupRate },
+            requestParams: { amount: flightStripeAmount, currency: chargeInCurrency, captureMethod: authoriseFirst ? 'manual' : 'automatic', markupRate: pricing.markupRate },
             responseStatus: 200, userId,
             responseSummary: { paymentIntentId: paymentIntent.id, sessionId, chargedPrice: pricing.chargedPrice },
         });
@@ -1625,6 +1654,9 @@ export async function POST(req: NextRequest) {
                 charged_price: chargePrice,
                 markup_pct: pricing.markupRate,
                 payment_currency: chargeInCurrency.toUpperCase(),
+                // Authorise-first: what finalisation needs to place the order later, under the
+                // same tolerance rule this route applies.
+                ...(authoriseFirst ? { capture_method: 'manual', confirmed_price: confirmedPrice ?? null } : {}),
                 ...(duffelPreOrder ? {
                     duffel_pre_order_id: duffelPreOrder.orderId,
                     duffel_pre_order_pnr: duffelPreOrder.pnr,
