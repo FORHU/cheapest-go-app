@@ -36,12 +36,13 @@ const CLOCK: Record<string, { hour12: boolean; am?: string; pm?: string; markerF
  * reader's own zone rather than the airport's. Using the wrong one of these two pairs
  * silently prints a time that is off by the gap between two timezones.
  */
-export function formatBookingTime(iso: string): string {
-    return new Date(iso).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+export function formatBookingTime(iso: string, locale = 'en-US'): string {
+    // en-US keeps its 12-hour clock; every other locale gets its own convention.
+    return new Date(iso).toLocaleTimeString(locale, { hour: 'numeric', minute: '2-digit' });
 }
 
-export function formatBookingDate(iso: string): string {
-    return new Date(iso).toLocaleDateString('en-US', {
+export function formatBookingDate(iso: string, locale = 'en-US'): string {
+    return new Date(iso).toLocaleDateString(locale, {
         weekday: 'short', month: 'short', day: 'numeric', year: 'numeric',
     });
 }

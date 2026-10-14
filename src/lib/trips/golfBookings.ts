@@ -15,6 +15,7 @@ export interface TripGolfBooking {
     status: TripGolfStatus;
     courseName: string;
     courseSlug: string;
+    city: string;
     /** ISO instant of the tee time. */
     startsAt: string;
     /** The course's clock, which the tee time is read on. */

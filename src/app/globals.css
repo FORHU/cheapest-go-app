@@ -140,6 +140,42 @@
   @apply text-fluid-xs font-normal text-blue-600 dark:text-blue-400;
 }
 
+/*
+ * Small tracked capitals: the design system's label style (11px, uppercase, open tracking).
+ * Tracked caps are a Latin convention. Japanese, Korean and Chinese have no case and their glyphs
+ * are already evenly set, so there the tracking drops to a hair and nothing is transformed.
+ */
+@utility label-caps {
+  font-size: 0.6875rem;
+  line-height: 1rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+
+  &:lang(ja),
+  &:lang(ko),
+  &:lang(zh) {
+    text-transform: none;
+    letter-spacing: 0.02em;
+    font-size: 0.75rem;
+  }
+}
+
+/*
+ * The size of a status chip. 11px is the design system's chip size for Latin; the same pixels are
+ * too small for the stroke detail of kana, hangul and hanzi, so those get 12px.
+ */
+@utility chip-text {
+  font-size: 0.6875rem;
+  line-height: 1rem;
+
+  &:lang(ja),
+  &:lang(ko),
+  &:lang(zh) {
+    font-size: 0.75rem;
+  }
+}
+
 /* Custom Utilities for Grid Backgrounds */
 @utility bg-grid-obsidian {
   background-image: linear-gradient(to right, rgba(255, 255, 255, 0.03) 1px, transparent 1px), linear-gradient(to bottom, rgba(255, 255, 255, 0.03) 1px, transparent 1px);

@@ -2751,6 +2751,7 @@
       "players": "{count} 位球手",
       "reference": "预订编号 {reference}",
       "view": "查看预订",
+      "chargedOnConfirmation": "确认后扣款",
       "status": {
         "requested": "等待确认",
         "confirmed": "已确认",
@@ -2790,7 +2791,8 @@
       "stayDates": "{from} 至 {to}",
       "total": "总计",
       "totalPaid": "已付总额",
-      "tripCompleted": "行程已完成"
+      "tripCompleted": "行程已完成",
+      "typeLabel": "酒店"
     },
     "cancellationFeeCard": {
       "fee": "取消费用",
@@ -2873,6 +2875,7 @@
       "cancellationFailed": "取消失败",
       "changeFlight": "更改航班",
       "couldNotLoadTripDetails": "无法加载行程详情",
+      "typeLabel": "机票",
       "departFrom": "出发",
       "details": "详情",
       "eTicket": "E-TKT",

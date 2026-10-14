@@ -31,7 +31,7 @@ import { EMPTY_TRIPS, type TripsData } from '@/lib/trips/fetchTripsData';
 import type { TripGolfBooking } from '@/lib/trips/golfBookings';
 
 const golf = (over: Partial<TripGolfBooking> = {}): TripGolfBooking => ({
-    kind: 'golf', id: 'g1', reference: 'CG-ABC234', status: 'confirmed', courseName: 'Wack Wack Golf', courseSlug: 'wack-wack',
+    kind: 'golf', id: 'g1', reference: 'CG-ABC234', status: 'confirmed', courseName: 'Wack Wack Golf', courseSlug: 'wack-wack', city: 'Mandaluyong',
     startsAt: '2030-01-20T00:00:00.000Z', timezone: 'Asia/Manila', players: 2, total: 5200, currency: 'PHP',
     created_at: '2030-01-01T00:00:00.000Z', ...over,
 });
@@ -46,7 +46,7 @@ describe('TripsContent with golf', () => {
         const g = golf();
         render(<TripsContent initialData={data({ golfBookings: [g], upcomingGolfBookings: [g] })} />);
         expect(screen.getByText('Wack Wack Golf')).toBeInTheDocument();
-        expect(within(screen.getByRole('button', { name: /Upcoming/ })).getByText('1')).toBeInTheDocument();
+        expect(within(screen.getByRole('tab', { name: /Upcoming/ })).getByText('1')).toBeInTheDocument();
     });
 
     it('is not an empty page when golf is all there is', () => {
@@ -93,7 +93,7 @@ describe('TripsContent with golf', () => {
             bookings: [hotel('h-old', '2030-01-01T00:00:00.000Z'), hotel('h-mid', '2030-02-01T00:00:00.000Z')],
             golfBookings: [newest],
         })} />);
-        const order = screen.getAllByText(/Newest GC|h-mid|h-old/).map(el => el.textContent);
+        const order = screen.getAllByText(/^(Newest GC|h-mid|h-old)$/).map(el => el.textContent);
         expect(order).toEqual(['Newest GC', 'h-mid', 'h-old']);
     });
 });

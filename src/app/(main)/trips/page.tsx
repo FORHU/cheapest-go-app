@@ -16,18 +16,27 @@ export async function generateMetadata(): Promise<Metadata> {
 
 function TripsSkeleton() {
   return (
-    <div className="max-w-5xl mx-auto px-4 py-10 space-y-6">
-      {/* Tabs skeleton */}
-      <div className="flex gap-4">
-        {[1, 2, 3].map(i => (
-          <Skeleton key={i} width={100} height={36} rounded="lg" />
-        ))}
+    // The page's own frame and rhythm, so nothing jumps when the content arrives.
+    <main aria-busy="true" className="min-h-screen px-4 pt-6 pb-24 sm:px-6 sm:pt-10 lg:px-8">
+      <div className="mx-auto w-full max-w-5xl">
+        <div className="mb-6 flex items-center gap-3 sm:mb-8">
+          <Skeleton width={40} height={40} rounded="xl" />
+          <Skeleton width={180} height={32} rounded="lg" />
+        </div>
+        {/* Tabs skeleton: four, at the 44px a tab is */}
+        <div className="mb-6 flex gap-3 border-b border-slate-200 dark:border-white/10 sm:mb-8">
+          {[96, 56, 40, 88].map(width => (
+            <Skeleton key={width} width={width} height={44} rounded="lg" />
+          ))}
+        </div>
+        {/* Card skeletons: a booking card's height */}
+        <div className="space-y-3 sm:space-y-4">
+          {[1, 2, 3].map(i => (
+            <Skeleton key={i} height={176} rounded="xl" />
+          ))}
+        </div>
       </div>
-      {/* Card skeletons */}
-      {[1, 2, 3].map(i => (
-        <Skeleton key={i} height={160} rounded="xl" />
-      ))}
-    </div>
+    </main>
   );
 }
 

@@ -2,72 +2,74 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { Flag, ChevronRight } from 'lucide-react';
+import { Clock, Flag, Users } from 'lucide-react';
 import { useLocale, useTranslations } from 'next-intl';
-import { formatMoney } from '@/components/golf/format';
 import type { TripGolfBooking, TripGolfStatus } from '@/lib/trips/golfBookings';
+import { BookingCardShell, DateBlock, primaryActionClass, type StatusTone } from './BookingCardShell';
 
 /**
- * A golf booking in the bookings list, in the same family as the hotel and flight cards: what it
- * is, when, for whom, what was paid and where it stands. Cancelling, the receipt and the rest live
- * on the booking's own page, which this links to, so the one rule for them is not copied here.
+ * A golf booking in the bookings list, drawn in the shared card shell so it sits with hotels and
+ * flights. Cancelling, the receipt and the rest live on the booking's own page, which this links
+ * to, so the one rule for them is not copied here.
  */
 
-const STATUS_TONE: Record<TripGolfStatus, string> = {
-    requested: 'bg-[#ffda09]/[0.52] dark:bg-[#ffda09]/80 text-slate-900',
-    confirmed: 'bg-emerald-300/[0.52] dark:bg-emerald-300/80 text-emerald-950',
-    declined: 'bg-rose-300/[0.52] dark:bg-rose-300/80 text-rose-950',
-    cancelled: 'bg-slate-300/[0.52] dark:bg-slate-300/80 text-slate-900',
+const STATUS_TONE: Record<TripGolfStatus, StatusTone> = {
+    requested: 'amber',
+    confirmed: 'emerald',
+    declined: 'rose',
+    cancelled: 'slate',
 };
+
+/** Whole amounts without cents, real cents kept: "$491" and "$491.37", as the other cards set money. */
+function money(amount: number, currency: string, locale: string): string {
+    try {
+        return new Intl.NumberFormat(locale, { style: 'currency', currency, minimumFractionDigits: 0, maximumFractionDigits: 2 }).format(amount);
+    } catch {
+        return `${currency} ${amount}`;
+    }
+}
 
 export default function GolfBookingCard({ booking }: { booking: TripGolfBooking }) {
     const t = useTranslations('trips.golfCard');
+    const tPaid = useTranslations('trips.bookingCard');
     const locale = useLocale();
 
     // The tee time is read on the course's clock: that is the one the golfer will play by.
-    const teeTime = new Intl.DateTimeFormat(locale, {
-        dateStyle: 'medium', timeStyle: 'short', ...(booking.timezone ? { timeZone: booking.timezone } : {}),
-    }).format(new Date(booking.startsAt));
+    const zone = booking.timezone ? { timeZone: booking.timezone } : {};
+    const time = new Intl.DateTimeFormat(locale, { timeStyle: 'short', ...zone }).format(new Date(booking.startsAt));
+
+    // Nothing was taken for a declined or cancelled booking, so its amount steps back.
+    const notCharged = booking.status === 'declined' || booking.status === 'cancelled';
+    // The date takes the accent only while the tee time is still ahead and still on.
+    const ahead = !notCharged && new Date(booking.startsAt).getTime() >= Date.now();
 
     return (
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl p-3 sm:p-4 hover:border-slate-300 dark:hover:border-slate-600 transition-colors">
-            <div className="flex items-start gap-3">
-                <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-lg bg-emerald-50 dark:bg-emerald-900/30 flex items-center justify-center shrink-0">
-                    <Flag className="w-5 h-5 text-emerald-600 dark:text-emerald-400" aria-hidden />
-                </div>
-
-                <div className="flex-1 min-w-0">
-                    <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                        <span className="text-[10px] font-semibold uppercase tracking-wide text-emerald-700 dark:text-emerald-400">{t('badge')}</span>
-                        <span className={`inline-flex items-center text-[11px] px-2.5 py-0.5 rounded-full whitespace-nowrap ${STATUS_TONE[booking.status]}`}>
-                            {t(`status.${booking.status}`)}
-                        </span>
-                    </div>
-                    <h3 className="text-sm sm:text-base font-semibold text-slate-900 dark:text-white truncate mt-0.5">{booking.courseName}</h3>
-                    <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 tabular-nums">{teeTime}</p>
-                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                        <span>{t(booking.players === 1 ? 'player' : 'players', { count: booking.players })}</span>
-                        <span aria-hidden> · </span>
-                        <span>{t('reference', { reference: booking.reference })}</span>
-                    </p>
-                </div>
-
-                <div className="text-right shrink-0">
-                    <p className="text-sm sm:text-base font-bold text-slate-900 dark:text-white tabular-nums">
-                        {formatMoney(booking.total, booking.currency, locale)}
-                    </p>
-                </div>
-            </div>
-
-            <div className="mt-3 flex justify-end">
-                <Link
-                    href={`/golf/bookings/${booking.reference}`}
-                    className="inline-flex items-center gap-1 text-xs sm:text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline"
-                >
+        <BookingCardShell
+            lead={<DateBlock iso={booking.startsAt} timeZone={booking.timezone} locale={locale} tone={ahead ? 'upcoming' : 'inactive'} />}
+            typeIcon={Flag}
+            typeLabel={t('badge')}
+            status={{ tone: STATUS_TONE[booking.status], label: t(`status.${booking.status}`) }}
+            title={booking.courseName}
+            subtitle={booking.city}
+            facts={[
+                { icon: Clock, label: time, mono: true },
+                { icon: Users, label: t(booking.players === 1 ? 'player' : 'players', { count: booking.players }) },
+                { label: t('reference', { reference: booking.reference }), mono: true },
+            ]}
+            money={{
+                amount: money(booking.total, booking.currency, locale),
+                muted: notCharged,
+                // A request is authorised, not paid, until the team confirms with the course.
+                caption: booking.status === 'confirmed' ? tPaid('totalPaid')
+                    : booking.status === 'requested' ? t('chargedOnConfirmation')
+                        : undefined,
+            }}
+            primary={
+                <Link href={`/golf/bookings/${booking.reference}`} className={primaryActionClass}>
                     {t('view')}
-                    <ChevronRight className="w-4 h-4" aria-hidden />
+                    <span className="sr-only">: {booking.courseName}</span>
                 </Link>
-            </div>
-        </div>
+            }
+        />
     );
 }

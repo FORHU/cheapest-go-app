@@ -4,7 +4,7 @@ import { groupGolfBookings, type TripGolfBooking } from './golfBookings';
 const NOW = new Date('2030-01-10T00:00:00Z');
 
 const booking = (over: Partial<TripGolfBooking> = {}): TripGolfBooking => ({
-    kind: 'golf', id: 'b1', reference: 'CG-ABC234', status: 'confirmed', courseName: 'Wack Wack', courseSlug: 'wack-wack',
+    kind: 'golf', id: 'b1', reference: 'CG-ABC234', status: 'confirmed', courseName: 'Wack Wack', courseSlug: 'wack-wack', city: 'Mandaluyong',
     startsAt: '2030-01-20T00:00:00.000Z', timezone: 'Asia/Manila', players: 2, total: 5000, currency: 'PHP',
     created_at: '2030-01-01T00:00:00.000Z', ...over,
 });

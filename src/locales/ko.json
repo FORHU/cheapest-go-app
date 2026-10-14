@@ -2751,6 +2751,7 @@
       "players": "{count}명",
       "reference": "예약 번호 {reference}",
       "view": "예약 보기",
+      "chargedOnConfirmation": "확정 시 결제",
       "status": {
         "requested": "확인 대기 중",
         "confirmed": "확정",
@@ -2790,7 +2791,8 @@
       "stayDates": "{from} ~ {to}",
       "total": "총액",
       "totalPaid": "총 결제 금액",
-      "tripCompleted": "여행 완료"
+      "tripCompleted": "여행 완료",
+      "typeLabel": "호텔"
     },
     "cancellationFeeCard": {
       "fee": "취소 수수료",
@@ -2873,6 +2875,7 @@
       "cancellationFailed": "취소 실패",
       "changeFlight": "항공편 변경",
       "couldNotLoadTripDetails": "여행 정보를 불러오지 못했습니다",
+      "typeLabel": "항공권",
       "departFrom": "출발",
       "details": "상세",
       "eTicket": "E-TKT",

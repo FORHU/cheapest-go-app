@@ -2751,6 +2751,7 @@
       "players": "{count}名",
       "reference": "予約番号 {reference}",
       "view": "予約を見る",
+      "chargedOnConfirmation": "確定時にお支払い",
       "status": {
         "requested": "確認待ち",
         "confirmed": "確定",
@@ -2790,7 +2791,8 @@
       "stayDates": "{from}〜{to}",
       "total": "合計",
       "totalPaid": "お支払い総額",
-      "tripCompleted": "旅行完了"
+      "tripCompleted": "旅行完了",
+      "typeLabel": "ホテル"
     },
     "cancellationFeeCard": {
       "fee": "キャンセル料",
@@ -2873,6 +2875,7 @@
       "cancellationFailed": "キャンセル失敗",
       "changeFlight": "便を変更",
       "couldNotLoadTripDetails": "旅行の詳細を読み込めませんでした",
+      "typeLabel": "航空券",
       "departFrom": "出発",
       "details": "詳細",
       "eTicket": "E-TKT",

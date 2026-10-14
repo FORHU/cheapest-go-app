@@ -2,10 +2,11 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import Image from 'next/image';
+import Link from 'next/link';
 import { createPortal } from 'react-dom';
 import { AnimatePresence, motion } from 'framer-motion';
-import { useTranslations } from 'next-intl';
-import { CheckCircle, XCircle, AlertTriangle, Loader2, RefreshCw, RotateCcw, ChevronDown, ChevronUp, Plane, Receipt, ArrowLeftRight, Check, Download } from 'lucide-react';
+import { useLocale, useTranslations } from 'next-intl';
+import { CheckCircle, XCircle, AlertTriangle, Loader2, RefreshCw, RotateCcw, ChevronDown, ChevronUp, Plane, Receipt, ArrowLeftRight, Check, Download, Clock, Users, Armchair } from 'lucide-react';
 import type { FlightBookingRecord } from '@/services/booking.service';
 import { formatCurrency } from '@/lib/utils';
 import { formatBookingDate, formatBookingTime } from '@/utils/flight-utils';
@@ -13,7 +14,10 @@ import { convertCurrency } from '@/lib/currency';
 import { useUserCurrency } from '@/stores/searchStore';
 import { FormDatePicker } from '@/components/common/FormDatePicker';
 import { bookingToFlightOffer } from '@/lib/trips/booking-itinerary';
-import { FlightSummaryHeader } from '@/components/trips/FlightSummaryHeader';
+import {
+    BookingCardShell, DateBlock, StatusChip as StateChip, dangerActionClass, ghostActionClass, linkActionClass, primaryActionClass,
+    type StatusTone as StateChipTone,
+} from '@/components/trips/BookingCardShell';
 import { FlightItineraryDetails } from '@/components/flights/FlightItineraryDetails';
 
 interface FlightBookingCardProps {
@@ -23,42 +27,6 @@ interface FlightBookingCardProps {
 
 // Statuses that allow initiating (or retrying) a cancellation request
 const CANCELLABLE_STATUSES = new Set(['confirmed', 'ticketed', 'booked', 'pnr_created', 'awaiting_ticket', 'cancel_failed', 'refund_failed', 'cancel_requested']);
-
-// ─── Status chip ─────────────────────────────────────────────────────
-
-/**
- * One shape for every status the card can be in.
- *
- * The design draws status as a single rounded pill; what changes between a refunded
- * booking and a failed cancellation is the tone, never the chrome. This used to be nine
- * hand-written spans, only one of which was a pill, so the most important line on the
- * card changed shape depending on what had happened to the booking.
- */
-type StateChipTone = 'amber' | 'emerald' | 'rose' | 'purple' | 'teal' | 'slate';
-
-/**
- * The design fills the pill rather than tinting it — #ffda09 at 52%, carrying near-black
- * text, which is what lets a status read at a glance from across the list. The amber tone
- * is the one the design draws; the rest follow its treatment in their own hue.
- */
-const STATE_CHIP_TONES: Record<StateChipTone, string> = {
-    amber: 'bg-[#ffda09]/[0.52] dark:bg-[#ffda09]/80 text-slate-900 border-transparent',
-    emerald: 'bg-emerald-300/[0.52] dark:bg-emerald-300/80 text-emerald-950 border-transparent',
-    rose: 'bg-rose-300/[0.52] dark:bg-rose-300/80 text-rose-950 border-transparent',
-    purple: 'bg-purple-300/[0.52] dark:bg-purple-300/80 text-purple-950 border-transparent',
-    teal: 'bg-teal-300/[0.52] dark:bg-teal-300/80 text-teal-950 border-transparent',
-    slate: 'bg-slate-300/[0.52] dark:bg-slate-300/80 text-slate-900 border-transparent',
-};
-
-function StateChip({ tone, children }: { tone: StateChipTone; children: React.ReactNode }) {
-    return (
-        <span
-            className={`inline-flex items-center gap-1.5 text-[11px] px-2.5 py-0.5 rounded-full border whitespace-nowrap ${STATE_CHIP_TONES[tone]}`}
-        >
-            {children}
-        </span>
-    );
-}
 
 // ─── Cancel Confirmation Modal ───────────────────────────────────────
 
@@ -263,6 +231,7 @@ function CancelModal({ booking, onConfirm, onClose, isLoading, error, displayCur
 
 export default function FlightBookingCard({ booking, onCancelled }: FlightBookingCardProps) {
     const t = useTranslations('trips');
+    const locale = useLocale();
     // The post-ticketing panels (void, refund, change flight) — hardcoded English until BG-13.
     const tm = useTranslations('trips.flightBookingCard.manage');
     const [showCancelModal, setShowCancelModal] = useState(false);
@@ -1030,6 +999,36 @@ export default function FlightBookingCard({ booking, onCancelled }: FlightBookin
         }
     };
 
+    // Ahead and still on: a cancelled, refunded or failed booking's date goes quiet.
+    const liveAhead = Boolean(isUpcoming)
+        && !['cancelled', 'cancelled_provider_missing', 'refunded', 'refund_pending', 'failed'].includes(localStatus as string);
+
+    const seats = (booking.passengers ?? []).filter(p => p.seat_number).map(p => p.seat_number as string);
+
+    // What came back for a booking that has been cancelled.
+    const refundSummary = (() => {
+        if (!(localStatus === 'cancelled' || localStatus === 'refunded' || localStatus === 'refund_pending')) return null;
+        const refundAmt = localRefundAmount !== null ? localRefundAmount : (booking.refund_amount ?? 0);
+        const refundCurr = localRefundCurrency ?? booking.refund_currency ?? 'USD';
+        const hasRefund = refundAmt > 0;
+        if (!hasRefund && localRefundAmount === null && booking.refund_amount === undefined) return null;
+        return (
+            <div className="rounded-lg bg-slate-50 px-3 py-2 dark:bg-slate-800/60">
+                <p className="text-[11px] text-slate-500 dark:text-slate-400">{t('flightBookingCard.totalRefund')}</p>
+                <p className={`font-mono text-sm font-bold tabular-nums ${hasRefund ? 'text-emerald-700 dark:text-emerald-400' : 'text-slate-500 dark:text-slate-400'}`}>
+                    {hasRefund
+                        ? formatCurrency(convertPrice(refundAmt, refundCurr), displayCurrency)
+                        : t('flightBookingCard.noRefund')}
+                </p>
+                {(booking.refund_penalty_amount ?? 0) > 0 && (
+                    <p className="mt-0.5 text-[11px] text-slate-500 dark:text-slate-400">
+                        {t('flightBookingCard.penaltyApplied', { amount: formatCurrency(convertPrice(booking.refund_penalty_amount!, booking.refund_currency || 'USD'), displayCurrency) })}
+                    </p>
+                )}
+            </div>
+        );
+    })();
+
     // Helper to render the right side state chip
     const renderStateChip = () => {
         const chip = (tone: StateChipTone, icon: React.ReactNode, label: React.ReactNode) => (
@@ -1040,10 +1039,10 @@ export default function FlightBookingCard({ booking, onCancelled }: FlightBookin
             return chip('amber', <AlertTriangle className="w-3 h-3 shrink-0" />, t('flightBookingCard.stateChips.cancelStuck'));
         }
         if (localStatus === 'refund_pending') {
-            return chip('purple', <RefreshCw className="w-3 h-3 shrink-0" />, t('flightBookingCard.stateChips.refundProcessing'));
+            return chip('blue', <RefreshCw className="w-3 h-3 shrink-0" />, t('flightBookingCard.stateChips.refundProcessing'));
         }
         if (localStatus === 'refunded') {
-            return chip('teal', <CheckCircle className="w-3 h-3 shrink-0" />, t('flightBookingCard.stateChips.refunded'));
+            return chip('emerald', <CheckCircle className="w-3 h-3 shrink-0" />, t('flightBookingCard.stateChips.refunded'));
         }
         if (localStatus === 'refund_failed') {
             return chip('rose', <XCircle className="w-3 h-3 shrink-0" />, t('flightBookingCard.stateChips.refundFailed'));
@@ -1062,7 +1061,7 @@ export default function FlightBookingCard({ booking, onCancelled }: FlightBookin
         if (isUpcoming && (localStatus === 'ticketed' || localStatus === 'awaiting_ticket')) {
             return chip(
                 'emerald',
-                <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse shrink-0" />,
+                <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse motion-reduce:animate-none shrink-0" />,
                 t('flightBookingCard.stateChips.upcomingFlight'),
             );
         }
@@ -1078,7 +1077,7 @@ export default function FlightBookingCard({ booking, onCancelled }: FlightBookin
         if (localStatus === 'awaiting_ticket') {
             return chip(
                 'amber',
-                <span className="w-1.5 h-1.5 bg-amber-500 rounded-full animate-pulse shrink-0" />,
+                <span className="w-1.5 h-1.5 bg-amber-500 rounded-full animate-pulse motion-reduce:animate-none shrink-0" />,
                 t('flightBookingCard.stateChips.awaitingConfirmation'),
             );
         }
@@ -1101,7 +1100,7 @@ export default function FlightBookingCard({ booking, onCancelled }: FlightBookin
         if (localStatus === 'booked') {
             return chip(
                 'amber',
-                <span className="w-1.5 h-1.5 bg-amber-500 rounded-full animate-pulse shrink-0" />,
+                <span className="w-1.5 h-1.5 bg-amber-500 rounded-full animate-pulse motion-reduce:animate-none shrink-0" />,
                 t('flightBookingCard.stateChips.processing'),
             );
         }
@@ -1112,7 +1111,7 @@ export default function FlightBookingCard({ booking, onCancelled }: FlightBookin
             return chip('rose', <XCircle className="w-3 h-3 shrink-0" />, t('flightBookingCard.stateChips.bookingFailed'));
         }
         if (localStatus === 'reissued') {
-            return chip('purple', <RotateCcw className="w-3 h-3 shrink-0" />, t('flightBookingCard.stateChips.reissued'));
+            return chip('blue', <RotateCcw className="w-3 h-3 shrink-0" />, t('flightBookingCard.stateChips.reissued'));
         }
         // A status nobody here has a name for is still a status. Saying "Unknown" sends a
         // traveller to support; saying nothing lets them assume the booking is fine.
@@ -1133,348 +1132,140 @@ export default function FlightBookingCard({ booking, onCancelled }: FlightBookin
                 />
             )}
 
-            <div className="bg-white dark:bg-slate-900 rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 shadow-sm hover:shadow-md hover:border-blue-300 dark:hover:border-blue-600 transition-all group cursor-default">
-
-                {/* ── Cancellation success banner ── */}
-                {cancelSuccessStatus && (
-                    <div className={`flex items-center gap-2 px-4 py-2.5 text-xs font-medium ${
-                        cancelSuccessStatus === 'refunded'
-                            ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 border-b border-emerald-200 dark:border-emerald-800'
-                            : cancelSuccessStatus === 'refund_pending'
-                            ? 'bg-purple-50 dark:bg-purple-900/20 text-purple-700 dark:text-purple-400 border-b border-purple-200 dark:border-purple-800'
-                            : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-b border-slate-200 dark:border-slate-700'
-                    }`}>
-                        <CheckCircle className="w-3.5 h-3.5 shrink-0" />
-                        {cancelSuccessStatus === 'refunded'
-                            ? t('flightBookingCard.successBanners.refundProcessed')
-                            : cancelSuccessStatus === 'refund_pending'
-                            ? t('flightBookingCard.successBanners.refundProcessing')
-                            : t('flightBookingCard.successBanners.cancelled')}
+            <BookingCardShell
+                lead={firstSegment ? (
+                    <DateBlock iso={firstSegment.departure} timeZone={null} locale={locale} tone={liveAhead ? 'upcoming' : 'inactive'} />
+                ) : (
+                    <div className="flex h-16 items-center justify-center bg-slate-50 dark:bg-slate-800/60 sm:h-full">
+                        <Plane className="h-6 w-6 text-slate-400 dark:text-slate-500" aria-hidden />
                     </div>
                 )}
-
-                {/* ── MOBILE layout ── */}
-                <div className="flex flex-row md:hidden min-h-[96px]">
-                    {/* Visual Header */}
-                    <div className="relative w-24 min-h-[96px] flex-shrink-0 bg-white dark:bg-slate-800 flex flex-col items-center justify-center rounded-l-xl border-r border-slate-100 dark:border-slate-700">
-                        {/* Airline Logo */}
-                        <div className="w-16 h-16 flex items-center justify-center mb-1">
-                            <Image
-                                src={`https://images.kiwi.com/airlines/64/${firstSegment?.airline}.png`}
-                                alt={firstSegment?.airline ?? ''}
-                                width={64}
-                                height={64}
-                                className="w-16 h-16 object-contain"
-                                onError={(e) => {
-                                    e.currentTarget.style.display = 'none';
-                                    (e.currentTarget.nextSibling as HTMLElement)?.style.removeProperty('display');
-                                }}
-                            />
-                            <span className="hidden text-[clamp(0.6rem,1.5vw,0.7rem)] font-bold text-slate-900 dark:text-white uppercase">
-                                {firstSegment?.airline}
-                            </span>
-                        </div>
-                    </div>
-
-                    {/* Content */}
-                    <div className="flex-1 p-2.5 flex flex-col min-w-0">
-                        {/* The same chip the wide layout draws, in the same words. It leads
-                            the column rather than sitting over the logo: at this width the
-                            logo tile is 96px and a label like "Cancellation stuck — retry
-                            below" has nowhere to go there. `flex` so the chip shrink-wraps
-                            instead of stretching to the column. */}
-                        <div className="flex mb-1">{renderStateChip()}</div>
-                        <h3 className="text-[clamp(0.75rem,2vw,0.875rem)] font-bold text-slate-900 dark:text-white mb-0.5 leading-tight truncate">
-                            {firstSegment ? `${origin} to ${mainDestination}` : t('flightBookingCard.flightBooking')}
-                        </h3>
-                        {firstSegment && lastSegment && (
-                            <div className="text-[clamp(0.625rem,1.5vw,0.75rem)] text-slate-500 dark:text-slate-400 mb-1 flex items-center gap-1.5 truncate">
-                                <span className="bg-slate-100 dark:bg-slate-800 px-1 rounded font-medium shrink-0">{tripType}</span>
-                                <span className="truncate">{formatBookingDate(firstSegment.departure)} · {formatBookingTime(firstSegment.departure)} → {formatBookingTime(lastSegment.arrival)}</span>
-                            </div>
+                typeIcon={Plane}
+                typeLabel={t('flightBookingCard.typeLabel')}
+                status={{ tone: 'slate', label: '' }}
+                statusNode={renderStateChip()}
+                title={firstSegment ? `${origin} → ${mainDestination}` : t('flightBookingCard.flightBooking')}
+                subtitle={tripType}
+                facts={[
+                    ...(firstSegment && lastSegment ? [{
+                        icon: Clock,
+                        label: `${formatBookingTime(firstSegment.departure, locale)} → ${formatBookingTime(lastSegment.arrival, locale)}`,
+                        mono: true,
+                    }] : []),
+                    { icon: Users, label: t('flightBookingCard.pax', { count: booking.passengers?.length || 0 }) },
+                    ...(booking.pnr ? [{ label: booking.pnr, mono: true }] : []),
+                    ...(seats.length > 0 ? [{ icon: Armchair, label: seats.join(', '), mono: true }] : []),
+                ]}
+                footnote={(cancelSuccessStatus || refundSummary) && (
+                    <div className="flex flex-col gap-2">
+                        {cancelSuccessStatus && (
+                            <p className={`flex items-center gap-2 rounded-lg px-3 py-2 text-xs font-medium ${
+                                cancelSuccessStatus === 'refunded'
+                                    ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-400'
+                                    : cancelSuccessStatus === 'refund_pending'
+                                        ? 'bg-blue-50 text-blue-700 dark:bg-blue-900/20 dark:text-blue-400'
+                                        : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400'
+                            }`}>
+                                <CheckCircle className="h-3.5 w-3.5 shrink-0" aria-hidden />
+                                {cancelSuccessStatus === 'refunded'
+                                    ? t('flightBookingCard.successBanners.refundProcessed')
+                                    : cancelSuccessStatus === 'refund_pending'
+                                        ? t('flightBookingCard.successBanners.refundProcessing')
+                                        : t('flightBookingCard.successBanners.cancelled')}
+                            </p>
                         )}
-                        <div className="text-[clamp(0.625rem,1.5vw,0.75rem)] text-slate-500 dark:text-slate-400 mb-1.5 flex flex-wrap gap-2">
-                            <span className="font-mono">{booking.pnr}</span>
-                            <span>·</span>
-                            <span>{t('flightBookingCard.pax', { count: booking.passengers?.length || 0 })}</span>
-                            {/* Seat badges — mobile */}
-                            {booking.passengers?.some(p => p.seat_number) && (
-                                <span className="flex items-center gap-1">
-                                    <span>·</span>
-                                    {booking.passengers.filter(p => p.seat_number).map((p, idx) => (
-                                        <span key={idx} className="font-mono font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 px-1 rounded text-[9px]">
-                                            {p.seat_number}
-                                        </span>
-                                    ))}
-                                </span>
-                            )}
-                        </div>
-                        <div className="mt-auto flex items-center justify-between gap-2">
-                            <span className="text-[clamp(0.875rem,2.5vw,1rem)] font-bold text-slate-900 dark:text-white">
-                                {formatCurrency(
-                                    frozenTotal?.amount ?? (booking.charged_price ?? booking.total_price),
-                                    frozenTotal?.currency ?? bookingCurrency
-                                )}
-                            </span>
-                            {canCancel && (
-                                <button
-                                    onClick={() => setShowCancelModal(true)}
-                                    className="text-[10px] font-medium text-red-500 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 border border-red-200 dark:border-red-800 rounded px-1.5 py-0.5 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors shrink-0"
-                                >
-                                    {t('flightBookingCard.cancel')}
-                                </button>
-                            )}
-                        </div>
-                    </div>
-                </div>
-
-                {/* ── Mystifly Trip Details + Void Quote toggles (mobile) ── */}
-                {isMystifly && booking.pnr && (
-                    <div className="md:hidden border-t border-slate-100 dark:border-slate-800">
-                        <button
-                            onClick={handleViewTripDetails}
-                            className="w-full flex items-center justify-between px-2.5 py-2 text-[10px] text-indigo-600 dark:text-indigo-400 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
-                        >
-                            <span className="flex items-center gap-1"><Plane className="w-3 h-3" /> {t('flightBookingCard.airlineBookingDetails')}</span>
-                            {showTripDetails ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
-                        </button>
-                        {localStatus === 'ticketed' && (<>
-                            {fareEligibility === null || fareEligibility.isVoidable ? (
-                                <button
-                                    onClick={handleVoidQuote}
-                                    className="w-full flex items-center justify-between px-2.5 py-2 text-[10px] text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-900/20 border-t border-slate-100 dark:border-slate-800 transition-colors"
-                                >
-                                    <span className="flex items-center gap-1">
-                                        {loadingVoidQuote ? <Loader2 className="w-3 h-3 animate-spin" /> : <RotateCcw className="w-3 h-3" />}
-                                        {t('flightBookingCard.voidQuote')}
-                                    </span>
-                                    {!loadingVoidQuote && (showVoidQuote ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />)}
-                                </button>
-                            ) : (
-                                <div className="flex items-center gap-1.5 px-2.5 py-2 text-[10px] text-slate-400 dark:text-slate-500 border-t border-slate-100 dark:border-slate-800">
-                                    <XCircle className="w-3 h-3 shrink-0" /> {t('flightBookingCard.voidNotAvailablePolicy')}
-                                </div>
-                            )}
-                            {fareEligibility === null || fareEligibility.isRefundable || isDuffel ? (
-                                <button
-                                    onClick={handleRefundQuote}
-                                    className="w-full flex items-center justify-between px-2.5 py-2 text-[10px] text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 border-t border-slate-100 dark:border-slate-800 transition-colors"
-                                >
-                                    <span className="flex items-center gap-1">
-                                        {['quoting', 'accepting'].includes(refundStep) ? <Loader2 className="w-3 h-3 animate-spin" /> : <RotateCcw className="w-3 h-3" />}
-                                        {t('flightBookingCard.refundQuote')}
-                                    </span>
-                                    {!['quoting', 'accepting'].includes(refundStep) && (showRefundQuote ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />)}
-                                </button>
-                            ) : (
-                                <div className="flex items-center gap-1.5 px-2.5 py-2 text-[10px] text-slate-400 dark:text-slate-500 border-t border-slate-100 dark:border-slate-800">
-                                    <XCircle className="w-3 h-3 shrink-0" /> {t('flightBookingCard.refundNotAvailablePolicy')}
-                                </div>
-                            )}
-                        </>)}
+                        {refundSummary}
                     </div>
                 )}
+                money={{
+                    amount: formatCurrency(
+                        frozenTotal?.amount ?? (booking.charged_price ?? booking.total_price),
+                        frozenTotal?.currency ?? bookingCurrency,
+                    ),
+                    caption: t('flightBookingCard.totalPaid'),
+                    muted: ['cancelled', 'cancelled_provider_missing', 'refunded', 'failed'].includes(localStatus as string),
+                }}
+                primary={
+                    <Link href={`/trips/${booking.id}`} className={primaryActionClass}>
+                        {t('flightBookingCard.details')}
+                    </Link>
+                }
+                actions={
+                    <>
+                        {/* What a traveller does to the booking: change it, or cancel it. Cancelling
+                            is last and in its own danger style, because it cannot be undone. */}
+                        {isMystifly && booking.pnr && isUpcoming && (
+                            <button type="button" onClick={handleOpenReissue} className={ghostActionClass}>
+                                <ArrowLeftRight className="h-4 w-4 shrink-0" aria-hidden />
+                                {showReissue ? t('flightBookingCard.hideChangeFlight') : t('flightBookingCard.changeFlight')}
+                            </button>
+                        )}
+                        {(localStatus === 'cancel_failed' || localStatus === 'refund_failed') ? (
+                            <>
+                                <p className="flex items-center gap-1.5 text-xs font-semibold text-rose-600 dark:text-rose-400">
+                                    <XCircle className="h-3.5 w-3.5 shrink-0" aria-hidden />
+                                    {localStatus === 'cancel_failed' ? t('flightBookingCard.cancellationFailed') : t('flightBookingCard.refundFailed')}
+                                </p>
+                                <button type="button" onClick={() => setShowCancelModal(true)} className={dangerActionClass}>
+                                    <RotateCcw className="h-4 w-4" aria-hidden />
+                                    {t('flightBookingCard.retry')}
+                                </button>
+                            </>
+                        ) : canCancel && (
+                            <button type="button" onClick={() => setShowCancelModal(true)} className={dangerActionClass}>
+                                <RotateCcw className="h-4 w-4" aria-hidden />
+                                {t('flightBookingCard.cancelBooking')}
+                            </button>
+                        )}
+                    </>
+                }
+                links={
+                    <>
+                        <a href={`/trips/invoice/${booking.id}?type=flight`} className={linkActionClass}>
+                            <Download className="h-4 w-4 shrink-0" aria-hidden />
+                            {t('flightBookingCard.receipt')}
+                        </a>
 
-                {/* ── DESKTOP layout ── */}
-                <div className="hidden md:flex flex-row">
-                    {/* Content */}
-                    <div className="flex-1 p-5 flex flex-col min-w-0">
-                        {/* The summary the trips list and a trip's own page share. */}
-                        <FlightSummaryHeader booking={booking} />
-
-                        {/* Seat assignments, when there are any. The e-ticket numbers and
-                            the "changeable" note used to sit here too; the design keeps the
-                            card to what a traveller reads at a glance, and both of those
-                            live on the trip's own page. */}
-                        <div className="space-y-1.5 empty:hidden mt-2">
-                            {/* Seat assignments — shown when seats were pre-selected at booking */}
-                            {booking.passengers?.some(p => p.seat_number) && (
-                                <div className="flex flex-wrap gap-x-4 gap-y-1 items-center">
-                                    <div className="flex items-center gap-1.5">
-                                        <span className="text-blue-500 font-bold px-1 py-0.5 rounded bg-blue-50 dark:bg-blue-900/30 text-[9px] uppercase border border-blue-100 dark:border-blue-800 shrink-0">SEAT</span>
-                                        <span className="font-medium text-[11px] text-slate-600 dark:text-slate-300">{t('flightBookingCard.assignedSeats')}</span>
-                                    </div>
-                                    <div className="flex flex-wrap gap-2 text-[10px]">
-                                        {booking.passengers.filter(p => p.seat_number).map((p, idx) => (
-                                            <span key={idx} className="text-slate-500 flex items-center gap-1">
-                                                {p.first_name} {p.last_name}
-                                                <span className="text-slate-300 dark:text-slate-600">|</span>
-                                                <span className="font-mono font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 px-1.5 py-0.5 rounded">{p.seat_number}</span>
-                                            </span>
-                                        ))}
-                                    </div>
-                                </div>
-                            )}
-
-                        </div>
-                    </div>
-
-                    {/* Right panel — status, price, and the two links. White like the rest
-                        of the card: the divider alone sets it apart. */}
-                    <div className="flex flex-col w-[220px] shrink-0 border-l border-slate-100 dark:border-slate-800">
-                        <div className="flex-1 flex flex-col items-end p-5 gap-2">
-                            {/* The status leads the column. */}
-                            <div className="w-full flex justify-end">{renderStateChip()}</div>
-
-                            {/* "Total paid" and the amount read as one line, not a stacked
-                                label: same size, and only the figure carries the weight. */}
-                            <div className="flex items-baseline justify-end gap-1.5 w-full">
-                                <span className="text-[16px] text-[#939fb1] dark:text-slate-400 whitespace-nowrap">{t('flightBookingCard.totalPaid')}:</span>
-                                <span className="text-[16px] font-bold text-slate-900 dark:text-white">
-                                    {formatCurrency(
-                                        frozenTotal?.amount ?? (booking.charged_price ?? booking.total_price),
-                                        frozenTotal?.currency ?? bookingCurrency
-                                    )}
-                                </span>
-                            </div>
-
-                            {/* Trip details — right under the price, caret down like the
-                                itinerary toggle it echoes. */}
-                            <a
-                                href={`/trips/${booking.id}`}
-                                className="inline-flex items-center gap-1 text-[11px] text-slate-900 dark:text-slate-200 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
-                            >
-                                <ChevronDown className="w-3 h-3" />
-                                {t('flightBookingCard.details')}
-                            </a>
-
-                            {/* The receipt belongs with the figures it is a record of. */}
-                            <a
-                                href={`/trips/invoice/${booking.id}?type=flight`}
-                                className="inline-flex items-center gap-1 text-[11px] text-blue-600 dark:text-blue-400 hover:underline transition-colors"
-                            >
-                                <Download className="w-3.5 h-3.5 shrink-0" />
-                                {t('flightBookingCard.receipt')}
-                            </a>
-
-                            {/* What came back, for a booking that has been cancelled.
-                                empty:hidden because an empty flex child still takes its
-                                share of the column's gap, which padded this column out past
-                                the summary beside it and showed up as blank space under the
-                                flight info. */}
-                            <div className="flex flex-col items-end gap-2 w-full mt-2 empty:hidden">
-                                {(localStatus === 'cancelled' || localStatus === 'refunded' || localStatus === 'refund_pending') && (() => {
-                                    const refundAmt = localRefundAmount !== null ? localRefundAmount : (booking.refund_amount ?? 0);
-                                    const refundCurr = localRefundCurrency ?? booking.refund_currency ?? 'USD';
-                                    const hasRefund = refundAmt > 0;
-                                    if (!hasRefund && localRefundAmount === null && booking.refund_amount === undefined) return null;
-                                    return (
-                                        <div className={`text-right mt-1 p-2 rounded border w-full ${hasRefund ? 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800' : 'bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700'}`}>
-                                            <div className="text-[10px] text-slate-500 dark:text-slate-400">{t('flightBookingCard.totalRefund')}</div>
-                                            <div className={`text-xs font-bold ${hasRefund ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-500 dark:text-slate-400'}`}>
-                                                {hasRefund
-                                                    ? formatCurrency(convertPrice(refundAmt, refundCurr), displayCurrency)
-                                                    : t('flightBookingCard.noRefund')}
-                                            </div>
-                                            {(booking.refund_penalty_amount ?? 0) > 0 && (
-                                                <div className="text-[9px] text-slate-400 dark:text-slate-500 mt-0.5">
-                                                    {t('flightBookingCard.penaltyApplied', { amount: formatCurrency(convertPrice(booking.refund_penalty_amount!, booking.refund_currency || 'USD'), displayCurrency) })}
-                                                </div>
-                                            )}
-                                        </div>
-                                    );
-                                })()}
-                            </div>
-                            {/* Airline details button — desktop. Mystifly-only, so it is
-                                empty for every Duffel booking; hidden when so, for the same
-                                reason as the block above. */}
-                            <div className="hidden md:flex flex-col gap-1.5 w-full empty:hidden">
-                                {isMystifly && booking.pnr && (<>
-                                    <button
-                                        onClick={handleViewTripDetails}
-                                        className="flex w-full items-center justify-center gap-1 text-[10px] font-medium text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 rounded-lg px-2 py-1.5 transition-colors"
-                                    >
-                                        <Plane className="w-3 h-3" />
-                                        {showTripDetails ? t('flightBookingCard.hideDetails') : t('flightBookingCard.airlineDetails')}
-                                        {showTripDetails ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
-                                    </button>
-                                    {localStatus === 'ticketed' && (<>
+                        {isMystifly && booking.pnr && (
+                            <>
+                                <button type="button" onClick={handleViewTripDetails} className={linkActionClass}>
+                                    <Plane className="h-4 w-4 shrink-0" aria-hidden />
+                                    {showTripDetails ? t('flightBookingCard.hideDetails') : t('flightBookingCard.airlineDetails')}
+                                    {showTripDetails ? <ChevronUp className="h-4 w-4" aria-hidden /> : <ChevronDown className="h-4 w-4" aria-hidden />}
+                                </button>
+                                {localStatus === 'ticketed' && (
+                                    <>
                                         {fareEligibility === null || fareEligibility.isVoidable ? (
-                                            <button
-                                                onClick={handleVoidQuote}
-                                                className="flex w-full items-center justify-center gap-1 text-[10px] font-medium text-amber-600 dark:text-amber-400 border border-amber-200 dark:border-amber-800 hover:bg-amber-50 dark:hover:bg-amber-900/20 rounded-lg px-2 py-1.5 transition-colors"
-                                            >
-                                                {loadingVoidQuote ? <Loader2 className="w-3 h-3 animate-spin" /> : <RotateCcw className="w-3 h-3" />}
+                                            <button type="button" onClick={handleVoidQuote} className={linkActionClass}>
+                                                {loadingVoidQuote ? <Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" aria-hidden /> : <RotateCcw className="h-4 w-4" aria-hidden />}
                                                 {showVoidQuote ? t('flightBookingCard.hideVoidQuote') : t('flightBookingCard.voidQuote')}
-                                                {!loadingVoidQuote && (showVoidQuote ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />)}
                                             </button>
                                         ) : (
-                                            <div className="flex w-full items-center gap-1 text-[10px] text-slate-400 dark:text-slate-500 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1.5 cursor-default">
-                                                <XCircle className="w-3 h-3 shrink-0" />
-                                                <span>{t('flightBookingCard.voidNotAvailable')}</span>
-                                            </div>
+                                            <span className="inline-flex min-h-11 items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400">
+                                                <XCircle className="h-3.5 w-3.5 shrink-0" aria-hidden />
+                                                {t('flightBookingCard.voidNotAvailable')}
+                                            </span>
                                         )}
                                         {fareEligibility === null || fareEligibility.isRefundable || isDuffel ? (
-                                            <button
-                                                onClick={handleRefundQuote}
-                                                className="flex w-full items-center justify-center gap-1 text-[10px] font-medium text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg px-2 py-1.5 transition-colors"
-                                            >
-                                                {['quoting', 'accepting'].includes(refundStep) ? <Loader2 className="w-3 h-3 animate-spin" /> : <RotateCcw className="w-3 h-3" />}
+                                            <button type="button" onClick={handleRefundQuote} className={linkActionClass}>
+                                                {['quoting', 'accepting'].includes(refundStep)
+                                                    ? <Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" aria-hidden />
+                                                    : <RotateCcw className="h-4 w-4" aria-hidden />}
                                                 {showRefundQuote ? t('flightBookingCard.hideRefundQuote') : t('flightBookingCard.refundQuote')}
-                                                {!['quoting', 'accepting'].includes(refundStep) && (showRefundQuote ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />)}
                                             </button>
                                         ) : (
-                                            <div className="flex w-full items-center gap-1 text-[10px] text-slate-400 dark:text-slate-500 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1.5 cursor-default">
-                                                <XCircle className="w-3 h-3 shrink-0" />
-                                                <span>{t('flightBookingCard.refundNotAvailable')}</span>
-                                            </div>
+                                            <span className="inline-flex min-h-11 items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400">
+                                                <XCircle className="h-3.5 w-3.5 shrink-0" aria-hidden />
+                                                {t('flightBookingCard.refundNotAvailable')}
+                                            </span>
                                         )}
-                                    </>)}
-                                    {/* Reissue / Change Flight button — upcoming ticketed only */}
-                                    {isUpcoming && (
-                                        <button
-                                            onClick={handleOpenReissue}
-                                            className="flex w-full items-center justify-center gap-1 text-[10px] font-medium text-violet-600 dark:text-violet-400 border border-violet-200 dark:border-violet-800 hover:bg-violet-50 dark:hover:bg-violet-900/20 rounded-lg px-2 py-1.5 transition-colors"
-                                        >
-                                            <ArrowLeftRight className="w-3 h-3" />
-                                            {showReissue ? t('flightBookingCard.hideChangeFlight') : t('flightBookingCard.changeFlight')}
-                                            {showReissue ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
-                                        </button>
-                                    )}
-                                </>)}
-                            </div>
-                        </div>
-
-                        {/* Cancelling sits at the foot of the column, away from the figures
-                            and the links above it: an action that cannot be undone should
-                            not share an edge with one clicked out of habit. No rule above
-                            it — the design gives this column one edge, the divider.
-                            empty:hidden so a booking with nothing to cancel leaves no
-                            padded gap behind. */}
-                        <div className="px-5 pb-5 pt-3 empty:hidden">
-                            {(localStatus === 'cancel_failed' || localStatus === 'refund_failed') ? (
-                                /* ── Cancel/Refund Failed: prominent retry block ── */
-                                <div className="w-full rounded-lg border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20 p-2 space-y-1.5">
-                                    <div className="flex items-center gap-1 text-[10px] font-semibold text-red-600 dark:text-red-400">
-                                        <XCircle className="w-3 h-3 shrink-0" />
-                                        {localStatus === 'cancel_failed' ? t('flightBookingCard.cancellationFailed') : t('flightBookingCard.refundFailed')}
-                                    </div>
-                                    <button
-                                        onClick={() => setShowCancelModal(true)}
-                                        className="w-full text-[10px] font-semibold bg-red-500 hover:bg-red-600 dark:bg-red-600 dark:hover:bg-red-700 text-white rounded px-2 py-1.5 transition-colors flex items-center justify-center gap-1"
-                                    >
-                                        <RotateCcw className="w-3 h-3" />
-                                        {t('flightBookingCard.retry')}
-                                    </button>
-                                </div>
-                            ) : (
-                                <>
-                                    {/* Cancel button — only for upcoming, cancellable bookings (non-failed) */}
-                                    {canCancel && !['cancel_failed', 'refund_failed'].includes(localStatus as string) && (
-                                        <button
-                                            onClick={() => setShowCancelModal(true)}
-                                            className="w-full text-[10px] font-medium text-red-500 dark:text-red-400 hover:text-white border border-red-200 dark:border-red-800 hover:bg-red-500 dark:hover:bg-red-600 rounded-lg px-2 py-1.5 transition-all duration-200 flex items-center justify-center gap-1"
-                                        >
-                                            <RotateCcw className="w-3 h-3" />
-                                            {t('flightBookingCard.cancelBooking')}
-                                        </button>
-                                    )}
-                                </>
-                            )}
-                        </div>
-                    </div>
-                </div>
-
+                                    </>
+                                )}
+                            </>
+                        )}
+                    </>
+                }
+            >
                 {/* ── Flight itinerary toggle (shared mobile + desktop, all providers) ──
                     A compact control that hugs its text, caret first, under the rule that
                     closes the summary off.
@@ -1485,12 +1276,12 @@ export default function FlightBookingCard({ booking, onCancelled }: FlightBookin
                     journey, so the rule runs the whole way across and the divider ends
                     with the summary above it. */}
                 {segments.length > 0 && (
-                    <div className="flex">
-                        <div className="flex-1 min-w-0 px-5 py-3 border-t border-slate-100 dark:border-slate-800">
+                    <div className="border-t border-slate-100 dark:border-slate-800">
+                        <div className="min-w-0 px-4 py-1 sm:px-5">
                             <button
                                 onClick={() => setShowFlightItinerary(v => !v)}
                                 aria-expanded={showFlightItinerary}
-                                className="inline-flex items-center gap-1.5 text-[13px] font-medium text-slate-900 dark:text-white hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+                                className="inline-flex min-h-11 items-center gap-1.5 text-sm font-medium text-slate-900 transition-colors hover:text-blue-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:text-white dark:hover:text-blue-400"
                             >
                                 <ChevronDown
                                     aria-hidden="true"
@@ -1499,9 +1290,6 @@ export default function FlightBookingCard({ booking, onCancelled }: FlightBookin
                                 {showFlightItinerary ? t('flightBookingCard.hideFlightItinerary') : t('flightBookingCard.flightItinerary')}
                             </button>
                         </div>
-                        {!showFlightItinerary && (
-                            <div className="hidden md:block w-[220px] shrink-0 border-l border-slate-100 dark:border-slate-800" />
-                        )}
                     </div>
                 )}
                 {/* The journey slides out from under the rule rather than appearing whole.
@@ -1550,7 +1338,7 @@ export default function FlightBookingCard({ booking, onCancelled }: FlightBookin
                                 <div className="space-y-1.5">
                                     {existingNotes.map((n, i) => (
                                         <div key={i} className="flex items-start gap-2 text-xs bg-slate-50 dark:bg-slate-800/50 rounded-lg px-2.5 py-2 border border-slate-100 dark:border-slate-700">
-                                            <CheckCircle className="w-3 h-3 text-indigo-400 shrink-0 mt-0.5" />
+                                            <CheckCircle className="w-3 h-3 text-blue-400 shrink-0 mt-0.5" />
                                             <div className="flex-1 min-w-0">
                                                 <p className="text-slate-700 dark:text-slate-300">{n.note}</p>
                                                 <p className="text-[10px] text-slate-400 mt-0.5">{new Date(n.created_at).toLocaleString()}</p>
@@ -1571,12 +1359,12 @@ export default function FlightBookingCard({ booking, onCancelled }: FlightBookin
                                     onChange={e => { setNoteText(e.target.value); setNoteSuccess(false); setNoteError(null); }}
                                     onKeyDown={e => e.key === 'Enter' && handleAddNote()}
                                     placeholder={t('flightBookingCard.notePlaceholder')}
-                                    className="flex-1 text-xs px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-indigo-400"
+                                    className="flex-1 text-xs px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-blue-400"
                                 />
                                 <button
                                     onClick={handleAddNote}
                                     disabled={submittingNote || !noteText.trim()}
-                                    className="shrink-0 text-[10px] font-semibold px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white disabled:opacity-50 flex items-center gap-1 transition-colors"
+                                    className="shrink-0 text-[10px] font-semibold px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white disabled:opacity-50 flex items-center gap-1 transition-colors"
                                 >
                                     {submittingNote ? <Loader2 className="w-3 h-3 animate-spin" /> : t('flightBookingCard.save')}
                                 </button>
@@ -1631,7 +1419,7 @@ export default function FlightBookingCard({ booking, onCancelled }: FlightBookin
                                                                         {eTicket && (
                                                                             <button
                                                                                 onClick={() => handleTicketDisplay(eTicket)}
-                                                                                className="flex items-center gap-1 text-[10px] font-medium text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 border border-indigo-200 dark:border-indigo-800 rounded px-1.5 py-0.5 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition-colors"
+                                                                                className="flex items-center gap-1 text-[10px] font-medium text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 border border-blue-200 dark:border-blue-800 rounded px-1.5 py-0.5 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
                                                                             >
                                                                                 {tktLoading ? <Loader2 className="w-2.5 h-2.5 animate-spin" /> : <Receipt className="w-2.5 h-2.5" />}
                                                                                 {tktData && !tktData.error ? 'Hide' : 'Ticket'}
@@ -1675,7 +1463,7 @@ export default function FlightBookingCard({ booking, onCancelled }: FlightBookin
                                                                                         <span className="text-slate-500 block mb-0.5">{t('flightBookingCard.ticketDetails.itinerary')}</span>
                                                                                         {tktData.ItineraryDetails.map((seg: any, si: number) => (
                                                                                             <div key={si} className="flex items-center gap-1.5 text-slate-600 dark:text-slate-400">
-                                                                                                <Plane className="w-2.5 h-2.5 text-indigo-400 shrink-0" />
+                                                                                                <Plane className="w-2.5 h-2.5 text-blue-400 shrink-0" />
                                                                                                 <span>{seg.Origin} → {seg.Destination}</span>
                                                                                                 {seg.FlightNumber && <span className="bg-slate-100 dark:bg-slate-700 px-1 rounded">{seg.FlightNumber}</span>}
                                                                                                 {seg.DepartureDate && <span>{seg.DepartureDate}</span>}
@@ -1721,7 +1509,7 @@ export default function FlightBookingCard({ booking, onCancelled }: FlightBookin
                                                 <div className="space-y-1.5">
                                                     {items.map((seg: any, i: number) => (
                                                         <div key={i} className="flex items-center gap-2 text-slate-600 dark:text-slate-400">
-                                                            <Plane className="w-3 h-3 text-indigo-400 shrink-0" />
+                                                            <Plane className="w-3 h-3 text-blue-400 shrink-0" />
                                                             <span className="font-medium">{seg.DepartureAirportLocationCode} → {seg.ArrivalAirportLocationCode}</span>
                                                             <span className="text-slate-400">·</span>
                                                             <span>{seg.DepartureDateTime?.slice(0, 16).replace('T', ' ')}</span>
@@ -1924,8 +1712,8 @@ export default function FlightBookingCard({ booking, onCancelled }: FlightBookin
 
                 {/* ── Reissue / Change Flight Panel ── */}
                 {showReissue && (
-                    <div className="border-t border-violet-100 dark:border-violet-900/30 px-3 lg:px-5 py-3 bg-violet-50/40 dark:bg-violet-900/10">
-                        <p className="text-[10px] font-semibold text-violet-600 dark:text-violet-400 uppercase tracking-wide mb-2">{tm('reissueTitle')}</p>
+                    <div className="border-t border-blue-100 dark:border-blue-900/30 px-3 lg:px-5 py-3 bg-blue-50/40 dark:bg-blue-900/10">
+                        <p className="text-[10px] font-semibold text-blue-600 dark:text-blue-400 uppercase tracking-wide mb-2">{tm('reissueTitle')}</p>
                         {reissueStep === 'accepted' ? (
                             <div className="flex items-center gap-2 text-xs text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 rounded-lg px-3 py-2 border border-emerald-200 dark:border-emerald-800/40">
                                 <CheckCircle className="w-3.5 h-3.5 shrink-0" />
@@ -1937,7 +1725,7 @@ export default function FlightBookingCard({ booking, onCancelled }: FlightBookin
                                 <div className="space-y-2">
                                     <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide">{tm('newFlightDetails')}</p>
                                     {reissueNewSegments.map((seg, i) => (
-                                        <div key={i} className="bg-white dark:bg-slate-800/60 rounded-lg px-2.5 py-2.5 border border-violet-100 dark:border-violet-800/30 space-y-2">
+                                        <div key={i} className="bg-white dark:bg-slate-800/60 rounded-lg px-2.5 py-2.5 border border-blue-100 dark:border-blue-800/30 space-y-2">
                                             <p className="text-[10px] font-semibold text-slate-500 dark:text-slate-400">
                                                 {seg.label}: {seg.originLocationCode} → {seg.destinationLocationCode}
                                             </p>
@@ -1959,7 +1747,7 @@ export default function FlightBookingCard({ booking, onCancelled }: FlightBookin
                                                         placeholder="7C"
                                                         value={seg.airlineCode}
                                                         onChange={e => setReissueNewSegments(prev => prev.map((s, idx) => idx === i ? { ...s, airlineCode: e.target.value.toUpperCase() } : s))}
-                                                        className="w-full text-xs bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-md px-2 py-1.5 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-violet-400 font-mono uppercase"
+                                                        className="w-full text-xs bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-md px-2 py-1.5 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-blue-400 font-mono uppercase"
                                                     />
                                                 </div>
                                                 <div>
@@ -1967,7 +1755,7 @@ export default function FlightBookingCard({ booking, onCancelled }: FlightBookin
                                                     <select
                                                         value={seg.cabinPreference}
                                                         onChange={e => setReissueNewSegments(prev => prev.map((s, idx) => idx === i ? { ...s, cabinPreference: e.target.value } : s))}
-                                                        className="w-full text-xs bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-md px-2 py-1.5 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-violet-400"
+                                                        className="w-full text-xs bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-md px-2 py-1.5 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-blue-400"
                                                     >
                                                         <option value="Y">{tm('cabinY')}</option>
                                                         <option value="C">{tm('cabinC')}</option>
@@ -1991,7 +1779,7 @@ export default function FlightBookingCard({ booking, onCancelled }: FlightBookin
                                     <button
                                         onClick={handleReissueQuote}
                                         disabled={reissueStep === 'quoting' || reissueNewSegments.length === 0}
-                                        className="w-full flex items-center justify-center gap-1.5 text-xs font-semibold text-white bg-violet-600 hover:bg-violet-500 disabled:opacity-60 rounded-lg px-3 py-2 transition-colors"
+                                        className="w-full flex items-center justify-center gap-1.5 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-500 disabled:opacity-60 rounded-lg px-3 py-2 transition-colors"
                                     >
                                         {reissueStep === 'quoting' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <ArrowLeftRight className="w-3.5 h-3.5" />}
                                         {reissueStep === 'quoting' ? tm('gettingQuote') : tm('getReissueQuote')}
@@ -2016,7 +1804,7 @@ export default function FlightBookingCard({ booking, onCancelled }: FlightBookin
                                                         const changeAmt = p.PriceChange ?? p.TotalChange ?? p.TotalFare;
                                                         const label = [p.TicketNumber, p.PassengerType].filter(Boolean).join(' · ');
                                                         return (
-                                                            <div key={i} className="flex items-center justify-between gap-2 bg-white dark:bg-slate-800/60 rounded-lg px-2.5 py-2 border border-violet-100 dark:border-violet-800/30">
+                                                            <div key={i} className="flex items-center justify-between gap-2 bg-white dark:bg-slate-800/60 rounded-lg px-2.5 py-2 border border-blue-100 dark:border-blue-800/30">
                                                                 <span className="text-slate-700 dark:text-slate-300 font-mono text-[10px]">{label || tm('paxNumber', { number: i + 1 })}</span>
                                                                 <span className={`font-semibold text-[11px] ${(changeAmt ?? 0) >= 0 ? 'text-amber-600 dark:text-amber-400' : 'text-emerald-600 dark:text-emerald-400'}`}>
                                                                     {changeAmt != null ? `${changeAmt >= 0 ? '+' : ''}${changeAmt}` : '—'} {p.Currency}
@@ -2031,7 +1819,7 @@ export default function FlightBookingCard({ booking, onCancelled }: FlightBookin
                                             <button
                                                 onClick={handleConfirmReissue}
                                                 disabled={reissueStep === 'accepting'}
-                                                className="w-full flex items-center justify-center gap-1.5 text-xs font-semibold text-white bg-violet-600 hover:bg-violet-500 disabled:opacity-60 rounded-lg px-3 py-2 transition-colors"
+                                                className="w-full flex items-center justify-center gap-1.5 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-500 disabled:opacity-60 rounded-lg px-3 py-2 transition-colors"
                                             >
                                                 {reissueStep === 'accepting' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle className="w-3.5 h-3.5" />}
                                                 {reissueStep === 'accepting' ? tm('processingChange') : tm('confirmChange')}
@@ -2049,7 +1837,7 @@ export default function FlightBookingCard({ booking, onCancelled }: FlightBookin
                         )}
                     </div>
                 )}
-            </div>
+            </BookingCardShell>
         </>
     );
 }

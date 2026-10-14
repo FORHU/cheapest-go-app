@@ -16,6 +16,7 @@ interface Row {
     status: TripGolfStatus;
     courseName: string;
     courseSlug: string;
+    city: string;
     startsAt: Date;
     timezone: string | null;
     players: number;
@@ -27,7 +28,7 @@ interface Row {
 export async function listGolfBookingsForUser(userId: string): Promise<TripGolfBooking[]> {
     const sql = getSqlAdmin();
     const rows = await sql<Row[]>`
-        SELECT b.id, b.reference, b.status, c.name AS "courseName", c.slug AS "courseSlug",
+        SELECT b.id, b.reference, b.status, c.name AS "courseName", c.slug AS "courseSlug", c.city,
                t.starts_at AS "startsAt", c.timezone, b.players,
                b.charged_total::float8 AS total, b.charge_currency AS currency, b.created_at AS "createdAt"
           FROM golf_bookings b
@@ -44,6 +45,7 @@ export async function listGolfBookingsForUser(userId: string): Promise<TripGolfB
         status: r.status,
         courseName: r.courseName,
         courseSlug: r.courseSlug,
+        city: r.city,
         startsAt: r.startsAt.toISOString(),
         timezone: r.timezone,
         players: r.players,

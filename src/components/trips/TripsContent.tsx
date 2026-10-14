@@ -1,10 +1,11 @@
 "use client";
 
-import React, { useState, useCallback, useEffect } from 'react';
-import { Plane, Luggage, ArrowRight, Heart, ExternalLink, Trash2 } from 'lucide-react';
+import React, { useState, useCallback, useEffect, useMemo } from 'react';
+import { CalendarCheck, Luggage, ArrowRight, Heart, ExternalLink, Trash2, BedDouble, Plane, type LucideIcon } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { toast } from 'sonner';
+import { useLocale, useTranslations } from 'next-intl';
 import { useUser, useAuthLoading } from '@/stores/authStore';
 import type { BookingRecord, FlightBookingRecord } from '@/services/booking.service';
 import BookingCard from './BookingCard';
@@ -12,11 +13,13 @@ import FlightBookingCard from './FlightBookingCard';
 import GolfBookingCard from './GolfBookingCard';
 import type { TripsData } from '@/lib/trips';
 import type { TripGolfBooking } from '@/lib/trips/golfBookings';
-import { useTranslations } from 'next-intl';
-// Realtime replaced with polling — no Supabase client needed
+// Realtime replaced with polling: no Supabase client needed
 
-type TabValue = 'upcoming' | 'past' | 'all' | 'wishlist';
-const VALID_TABS: TabValue[] = ['upcoming', 'past', 'all', 'wishlist'];
+const TABS = ['upcoming', 'past', 'all', 'wishlist'] as const;
+type TabValue = (typeof TABS)[number];
+
+const POLL_MS = 30_000;
+const PAGE_SIZE = 10;
 
 interface SavedTrip {
   id: string;
@@ -44,8 +47,47 @@ function isFlight(b: MixedBooking): b is FlightBookingRecord {
   return !isGolf(b) && 'pnr' in b;
 }
 
+// States a booking can leave without the traveller doing anything: a supplier confirming, an
+// airline ticketing, a refund landing, a course saying yes. Everything else has settled.
+const FLIGHT_IN_FLIGHT = new Set(['booked', 'pnr_created', 'awaiting_ticket', 'cancel_requested', 'refund_pending']);
+
+function isInFlight(b: MixedBooking): boolean {
+  if (isGolf(b)) return b.status === 'requested';
+  if (isFlight(b)) return FLIGHT_IN_FLIGHT.has(b.status);
+  return b.status === 'pending';
+}
+
+const focusRing =
+  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-900';
+
+/** The one empty state: an icon, what is missing, what to do about it. */
+function EmptyState({ icon: Icon, title, description, cta }: {
+  icon: LucideIcon;
+  title: string;
+  description: string;
+  cta: string;
+}) {
+  return (
+    <div className="px-4 py-16 text-center sm:py-20">
+      <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-full bg-slate-100 dark:bg-white/5">
+        <Icon className="h-8 w-8 text-slate-400 dark:text-slate-500" aria-hidden />
+      </div>
+      <h2 className="mb-2 text-lg font-semibold text-slate-900 dark:text-white sm:text-xl">{title}</h2>
+      <p className="mx-auto mb-6 max-w-sm text-sm leading-relaxed text-slate-600 dark:text-slate-400 sm:text-base">{description}</p>
+      <Link
+        href="/"
+        className={`inline-flex min-h-11 items-center gap-2 rounded-xl bg-blue-600 px-5 text-sm font-medium text-white transition-colors hover:bg-blue-700 ${focusRing}`}
+      >
+        {cta}
+        <ArrowRight className="h-4 w-4" aria-hidden />
+      </Link>
+    </div>
+  );
+}
+
 export function TripsContent({ initialData }: TripsContentProps) {
   const t = useTranslations('trips');
+  const locale = useLocale();
   const router = useRouter();
   const searchParams = useSearchParams();
   const user = useUser();
@@ -58,34 +100,25 @@ export function TripsContent({ initialData }: TripsContentProps) {
     }
   }, [user, isLoading, router]);
 
-  // Poll for booking status changes every 30 seconds while the tab is visible.
-  // Replaces the Supabase Realtime subscription (postgres_changes) which required
-  // the Supabase WebSocket service. router.refresh() re-runs Server Components
-  // so the page gets fresh data without a full reload.
+  // Poll for status changes, but only while one is expected. Replaces the Supabase Realtime
+  // subscription; router.refresh() re-runs the server component so the page gets fresh data
+  // without a reload. A page of settled bookings has nothing to wait for, so it asks for nothing.
+  const waiting = useMemo(
+    () => [...initialData.bookings, ...initialData.flightBookings, ...initialData.golfBookings].some(isInFlight),
+    [initialData],
+  );
   useEffect(() => {
-    if (!user) return;
-
-    // Only poll for "in-progress" bookings (awaiting_ticket, pnr_created, booked)
-    // where status changes are expected. Stop polling once stable.
-    let interval: ReturnType<typeof setInterval> | null = null;
-
-    const startPolling = () => {
-      interval = setInterval(() => {
-        if (document.visibilityState === 'visible') {
-          router.refresh();
-        }
-      }, 30_000); // 30-second poll
-    };
-
-    startPolling();
-    return () => { if (interval) clearInterval(interval); };
-  }, [user, router]);
+    if (!user || !waiting) return;
+    const interval = setInterval(() => {
+      if (document.visibilityState === 'visible') router.refresh();
+    }, POLL_MS);
+    return () => clearInterval(interval);
+  }, [user, waiting, router]);
 
   const rawTab = searchParams?.get('tab');
-  const activeTab: TabValue = VALID_TABS.includes(rawTab as TabValue) ? (rawTab as TabValue) : 'upcoming';
+  const activeTab: TabValue = TABS.includes(rawTab as TabValue) ? (rawTab as TabValue) : 'upcoming';
 
-  const [visibleCount, setVisibleCount] = useState(10);
-  const [typeFilter, setTypeFilter] = useState<'all' | 'hotels' | 'flights' | 'golf'>('all');
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const [savedTrips, setSavedTrips] = useState<SavedTrip[]>([]);
   const [savedLoading, setSavedLoading] = useState(false);
 
@@ -101,11 +134,9 @@ export function TripsContent({ initialData }: TripsContentProps) {
 
   const removeSaved = async (id: string) => {
     // Optimistic: drop it from the list immediately so the UI feels instant,
-    // then reconcile with the server. Previously this awaited the round-trip
-    // before removing anything, so the row lingered for the whole request
-    // (worst on a cold dev route compile) with no feedback.
+    // then reconcile with the server.
     const snapshot = savedTrips;
-    setSavedTrips(prev => prev.filter(t => t.id !== id));
+    setSavedTrips(prev => prev.filter(item => item.id !== id));
     try {
       const res = await fetch(`/api/saved-trips/${id}`, { method: 'DELETE' });
       if (!res.ok) throw new Error(`Delete failed: ${res.status}`);
@@ -116,20 +147,6 @@ export function TripsContent({ initialData }: TripsContentProps) {
     }
   };
 
-  const counts = {
-    upcoming: initialData.upcomingBookings.length + initialData.upcomingFlightBookings.length
-      + initialData.upcomingGolfBookings.length,
-    past: initialData.pastBookings.length + initialData.pastFlightBookings.length
-      + initialData.pastGolfBookings.length,
-    all: initialData.bookings.length + initialData.flightBookings.length + initialData.golfBookings.length,
-  };
-
-  const displayedHotels = activeTab === 'upcoming'
-    ? initialData.upcomingBookings
-    : activeTab === 'past'
-      ? [...initialData.pastBookings, ...initialData.cancelledBookings]
-      : initialData.bookings;
-
   const handleTabChange = useCallback((tab: TabValue) => {
     const params = new URLSearchParams(searchParams?.toString() || '');
     if (tab === 'upcoming') {
@@ -138,30 +155,44 @@ export function TripsContent({ initialData }: TripsContentProps) {
       params.set('tab', tab);
     }
     router.replace(`?${params.toString()}`);
-    setVisibleCount(10);
+    setVisibleCount(PAGE_SIZE);
   }, [router, searchParams]);
 
-  const displayedFlights = activeTab === 'upcoming'
-    ? initialData.upcomingFlightBookings
-    : activeTab === 'past'
-      ? [...initialData.pastFlightBookings, ...initialData.cancelledFlightBookings]
-      : initialData.flightBookings;
+  // Arrow keys move between tabs and wrap, Home and End jump: the pattern a tablist promises.
+  const onTabKeyDown = (event: React.KeyboardEvent, index: number) => {
+    const last = TABS.length - 1;
+    const next = event.key === 'ArrowRight' ? (index === last ? 0 : index + 1)
+      : event.key === 'ArrowLeft' ? (index === 0 ? last : index - 1)
+        : event.key === 'Home' ? 0
+          : event.key === 'End' ? last
+            : null;
+    if (next === null) return;
+    event.preventDefault();
+    handleTabChange(TABS[next]);
+    document.getElementById(`trips-tab-${TABS[next]}`)?.focus();
+  };
 
-  // A cancelled or declined tee time is shown with Past, as a cancelled hotel is.
-  const displayedGolf = activeTab === 'upcoming'
-    ? initialData.upcomingGolfBookings
-    : activeTab === 'past'
-      ? [...initialData.pastGolfBookings, ...initialData.cancelledGolfBookings]
-      : initialData.golfBookings;
+  // Upcoming carries a count because it is what needs a traveller's attention; a count on Past
+  // or All is only a total.
+  const upcomingCount = initialData.upcomingBookings.length + initialData.upcomingFlightBookings.length
+    + initialData.upcomingGolfBookings.length;
 
-  const displayedBookings: MixedBooking[] = [...displayedHotels, ...displayedFlights, ...displayedGolf]
-    .filter(b => {
-      if (typeFilter === 'hotels') return !isFlight(b) && !isGolf(b);
-      if (typeFilter === 'flights') return isFlight(b);
-      if (typeFilter === 'golf') return isGolf(b);
-      return true;
-    })
-    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+  const tabLabels: Record<TabValue, string> = {
+    upcoming: t('tabs.upcoming'),
+    past: t('tabs.past'),
+    all: t('tabs.all'),
+    wishlist: t('tabs.wishlist'),
+  };
+
+  const pick = <T,>(upcoming: T[], past: T[], all: T[]) =>
+    activeTab === 'upcoming' ? upcoming : activeTab === 'past' ? past : all;
+
+  // A cancelled or declined booking is shown with Past, whatever it was.
+  const displayedBookings: MixedBooking[] = [
+    ...pick(initialData.upcomingBookings, [...initialData.pastBookings, ...initialData.cancelledBookings], initialData.bookings),
+    ...pick(initialData.upcomingFlightBookings, [...initialData.pastFlightBookings, ...initialData.cancelledFlightBookings], initialData.flightBookings),
+    ...pick(initialData.upcomingGolfBookings, [...initialData.pastGolfBookings, ...initialData.cancelledGolfBookings], initialData.golfBookings),
+  ].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
   // Re-run server component fetch to get fresh data
   const refetch = useCallback(() => {
@@ -170,228 +201,177 @@ export function TripsContent({ initialData }: TripsContentProps) {
 
   if (!user) return null;
 
+  const emptyTitle = activeTab === 'upcoming' ? t('emptyState.upcomingTitle')
+    : activeTab === 'past' ? t('emptyState.pastTitle')
+      : t('emptyState.allTitle');
+
   return (
-    <main className="min-h-screen pt-4 pb-16 px-3 sm:pt-6 sm:pb-20 sm:px-4 md:px-6 lg:px-8">
-      <div className="max-w-7xl mx-auto w-full">
-        {/* Header */}
-        <div className="mb-4 sm:mb-6 md:mb-8">
-          <h1 className="text-[clamp(1.25rem,4vw,1.875rem)] font-display font-bold text-slate-900 dark:text-white mb-1 sm:mb-2 flex items-center gap-2 sm:gap-3">
-            <Plane className="w-6 h-6 sm:w-7 sm:h-7 md:w-8 md:h-8 text-blue-600 flex-shrink-0" />
-            <span>{t('myTrips')}</span>
-          </h1>
-          <p className="text-[clamp(0.75rem,2vw,1rem)] text-slate-500 dark:text-slate-400">
-            {t('subtitle')}
-          </p>
-        </div>
+    <main className="min-h-screen px-4 pt-6 pb-24 sm:px-6 sm:pt-10 lg:px-8">
+      <div className="mx-auto w-full max-w-5xl">
+        {/* Header: the page's name, once. */}
+        <h1 className="mb-6 flex items-center gap-3 font-display text-2xl font-bold tracking-tight text-slate-900 dark:text-white sm:mb-8 sm:text-3xl">
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-50 dark:bg-blue-900/30">
+            <CalendarCheck className="h-5 w-5 text-blue-600 dark:text-blue-400" aria-hidden />
+          </span>
+          <span>{t('myTrips')}</span>
+        </h1>
 
         {/* Tabs */}
-        <div className="flex gap-1 sm:gap-2 mb-4 sm:mb-5 md:mb-6 border-b border-slate-200 dark:border-white/10 overflow-x-auto">
-          <button
-            onClick={() => handleTabChange('upcoming')}
-            className={`px-2 py-2 sm:px-3 sm:py-2.5 md:px-4 md:py-3 text-[clamp(0.6875rem,2vw,0.875rem)] font-medium transition-colors relative whitespace-nowrap flex items-center gap-1 sm:gap-1.5 ${activeTab === 'upcoming'
-              ? 'text-blue-600 dark:text-blue-400'
-              : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300'
-              }`}
-          >
-            <span>{t('tabs.upcoming')}</span>
-            {counts.upcoming > 0 && (
-              <span className="px-1.5 sm:px-2 py-0.5 text-[clamp(0.5625rem,1.5vw,0.75rem)] bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-full">
-                {counts.upcoming}
-              </span>
-            )}
-            {activeTab === 'upcoming' && (
-              <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600 dark:bg-blue-400" />
-            )}
-          </button>
-          <button
-            onClick={() => handleTabChange('past')}
-            className={`px-2 py-2 sm:px-3 sm:py-2.5 md:px-4 md:py-3 text-[clamp(0.6875rem,2vw,0.875rem)] font-medium transition-colors relative whitespace-nowrap ${activeTab === 'past'
-              ? 'text-blue-600 dark:text-blue-400'
-              : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300'
-              }`}
-          >
-            {t('tabs.past')}
-            {activeTab === 'past' && (
-              <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600 dark:bg-blue-400" />
-            )}
-          </button>
-          <button
-            onClick={() => handleTabChange('all')}
-            className={`px-2 py-2 sm:px-3 sm:py-2.5 md:px-4 md:py-3 text-[clamp(0.6875rem,2vw,0.875rem)] font-medium transition-colors relative whitespace-nowrap ${activeTab === 'all'
-              ? 'text-blue-600 dark:text-blue-400'
-              : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300'
-              }`}
-          >
-            {t('tabs.all')}
-            {activeTab === 'all' && (
-              <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600 dark:bg-blue-400" />
-            )}
-          </button>
-          <button
-            onClick={() => handleTabChange('wishlist')}
-            className={`px-2 py-2 sm:px-3 sm:py-2.5 md:px-4 md:py-3 text-[clamp(0.6875rem,2vw,0.875rem)] font-medium transition-colors relative whitespace-nowrap flex items-center gap-1.5 ${activeTab === 'wishlist'
-              ? 'text-rose-500 dark:text-rose-400'
-              : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300'
-              }`}
-          >
-            <Heart size={13} className={activeTab === 'wishlist' ? 'fill-rose-500 text-rose-500' : ''} />
-            {t('tabs.wishlist')}
-            {activeTab === 'wishlist' && (
-              <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-rose-500 dark:bg-rose-400" />
-            )}
-          </button>
+        <div
+          role="tablist"
+          aria-label={t('myTrips')}
+          className="mb-6 flex gap-1 overflow-x-auto border-b border-slate-200 dark:border-white/10 sm:mb-8"
+        >
+          {TABS.map((tab, index) => {
+            const active = tab === activeTab;
+            return (
+              <button
+                key={tab}
+                id={`trips-tab-${tab}`}
+                role="tab"
+                type="button"
+                aria-selected={active}
+                aria-controls="trips-panel"
+                tabIndex={active ? 0 : -1}
+                onClick={() => handleTabChange(tab)}
+                onKeyDown={event => onTabKeyDown(event, index)}
+                className={`relative flex min-h-11 items-center gap-2 whitespace-nowrap px-3 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-500 sm:px-4 ${active
+                  ? 'text-blue-600 dark:text-blue-400'
+                  : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200'}`}
+              >
+                {tab === 'wishlist' && <Heart className="h-4 w-4" aria-hidden />}
+                <span>{tabLabels[tab]}</span>
+                {tab === 'upcoming' && upcomingCount > 0 && (
+                  <span className="rounded-full bg-blue-100 px-2 py-0.5 text-xs font-semibold tabular-nums text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">
+                    {upcomingCount}
+                  </span>
+                )}
+                {active && <span aria-hidden className="absolute inset-x-0 bottom-0 h-0.5 rounded-full bg-blue-600 dark:bg-blue-400" />}
+              </button>
+            );
+          })}
         </div>
 
-        {/* ── Wishlist tab ── */}
-        {activeTab === 'wishlist' && (
-          <div>
-            {savedLoading ? (
+        <div role="tabpanel" id="trips-panel" aria-labelledby={`trips-tab-${activeTab}`}>
+          {/* ── Wishlist tab ── */}
+          {activeTab === 'wishlist' && (
+            savedLoading ? (
               <div className="space-y-3">
                 {[1, 2, 3].map(i => (
-                  <div key={i} className="h-20 rounded-xl bg-slate-100 dark:bg-slate-800 animate-pulse" />
+                  <div key={i} className="h-20 animate-pulse rounded-xl bg-slate-100 motion-reduce:animate-none dark:bg-slate-800" />
                 ))}
               </div>
             ) : savedTrips.length === 0 ? (
-              <div className="text-center py-16">
-                <div className="w-16 h-16 mx-auto mb-4 bg-rose-50 dark:bg-rose-900/20 rounded-full flex items-center justify-center">
-                  <Heart className="w-8 h-8 text-rose-300" />
-                </div>
-                <h2 className="text-lg font-bold text-slate-900 dark:text-white mb-2">{t('wishlist.emptyTitle')}</h2>
-                <p className="text-slate-500 dark:text-slate-400 mb-6 text-sm">
-                  {t('wishlist.emptyDesc')}
-                </p>
-                <Link
-                  href="/"
-                  className="inline-flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-full transition-colors"
-                >
-                  {t('exploreDestinations')}
-                  <ArrowRight className="w-4 h-4" />
-                </Link>
-              </div>
+              <EmptyState
+                icon={Heart}
+                title={t('wishlist.emptyTitle')}
+                description={t('wishlist.emptyDesc')}
+                cta={t('exploreDestinations')}
+              />
             ) : (
-              <div className="space-y-2.5">
+              <ul className="space-y-3">
                 {savedTrips.map(trip => (
-                  <div key={trip.id} className="flex items-center gap-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 hover:border-slate-300 dark:hover:border-slate-600 transition-colors group">
-                    {/* Thumbnail — the saved image, with the type icon as a
-                        fallback behind it (shows through if there's no image or
-                        it fails to load). */}
-                    <div className={`w-12 h-12 rounded-lg overflow-hidden shrink-0 relative flex items-center justify-center ${trip.type === 'flight' ? 'bg-blue-50 dark:bg-blue-900/30' : 'bg-amber-50 dark:bg-amber-900/30'}`}>
+                  <li
+                    key={trip.id}
+                    className="group flex items-center gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 transition-colors hover:border-blue-300 dark:border-slate-700 dark:bg-slate-900 dark:hover:border-blue-700"
+                  >
+                    {/* Thumbnail: the saved image, with the type icon behind it as the fallback.
+                        Type is told by the icon, the same way the booking cards tell it. */}
+                    <div className="relative flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-slate-100 dark:bg-slate-800">
                       {trip.type === 'flight'
-                        ? <Plane size={16} className="text-blue-600 dark:text-blue-400" />
-                        : <Luggage size={16} className="text-amber-600 dark:text-amber-400" />}
+                        ? <Plane className="h-5 w-5 text-blue-600 dark:text-blue-400" aria-hidden />
+                        : <BedDouble className="h-5 w-5 text-blue-600 dark:text-blue-400" aria-hidden />}
                       {trip.image_url && (
                         // eslint-disable-next-line @next/next/no-img-element
                         <img
                           src={trip.image_url}
-                          alt={trip.title}
+                          alt=""
                           loading="lazy"
                           onError={(e) => { e.currentTarget.style.display = 'none'; }}
-                          className="absolute inset-0 w-full h-full object-cover"
+                          className="absolute inset-0 h-full w-full object-cover"
                         />
                       )}
                     </div>
 
-                    {/* Info */}
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold text-slate-900 dark:text-white truncate">{trip.title}</p>
+                    <div className="min-w-0 flex-1">
+                      <p className="line-clamp-2 text-sm font-semibold leading-snug text-slate-900 dark:text-white">{trip.title}</p>
                       {trip.subtitle && (
-                        <p className="text-xs text-slate-500 dark:text-slate-400 truncate">{trip.subtitle}</p>
+                        <p className="truncate text-sm text-slate-600 dark:text-slate-400">{trip.subtitle}</p>
                       )}
-                      <p className="text-[10px] text-slate-400 mt-0.5">
-                        {t('wishlist.savedOn', { date: new Date(trip.created_at).toLocaleDateString() })}
+                      <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
+                        {t('wishlist.savedOn', { date: new Date(trip.created_at).toLocaleDateString(locale) })}
                       </p>
                     </div>
 
-                    {/* Price */}
                     {trip.price && (
-                      <div className="text-right shrink-0">
-                        <p className="text-sm font-bold text-slate-900 dark:text-white">
-                          {new Intl.NumberFormat('en-US', { style: 'currency', currency: trip.currency, maximumFractionDigits: 0 }).format(trip.price)}
+                      <div className="shrink-0 text-right">
+                        <p className="font-mono text-sm font-bold tabular-nums text-slate-900 dark:text-white">
+                          {new Intl.NumberFormat(locale, { style: 'currency', currency: trip.currency, maximumFractionDigits: 0 }).format(trip.price)}
                         </p>
-                        <p className="text-[10px] text-slate-400">{t('wishlist.perPerson')}</p>
+                        <p className="text-xs text-slate-500 dark:text-slate-400">{t('wishlist.perPerson')}</p>
                       </div>
                     )}
 
-                    {/* Actions */}
-                    <div className="flex items-center gap-1.5 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                    {/* Always there on a touch screen, which has no hover; on a pointer device
+                        they appear on hover or when focus is inside the row. */}
+                    <div className="flex shrink-0 items-center sm:opacity-0 sm:transition-opacity sm:group-hover:opacity-100 sm:group-focus-within:opacity-100">
                       <Link
                         href={trip.deep_link}
-                        className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 transition-colors"
+                        className={`flex h-11 w-11 items-center justify-center rounded-xl text-slate-600 transition-colors hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800 ${focusRing}`}
+                        aria-label={t('wishlist.searchAgain')}
                         title={t('wishlist.searchAgain')}
                       >
-                        <ExternalLink size={13} />
+                        <ExternalLink className="h-4 w-4" aria-hidden />
                       </Link>
                       <button
+                        type="button"
                         onClick={() => removeSaved(trip.id)}
-                        className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-rose-50 dark:hover:bg-rose-900/20 text-slate-400 hover:text-rose-500 transition-colors"
+                        className="flex h-11 w-11 items-center justify-center rounded-xl text-slate-600 transition-colors hover:bg-rose-50 hover:text-rose-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500 dark:text-slate-300 dark:hover:bg-rose-900/20 dark:hover:text-rose-400"
+                        aria-label={t('wishlist.removeFromWishlist')}
                         title={t('wishlist.removeFromWishlist')}
                       >
-                        <Trash2 size={13} />
+                        <Trash2 className="h-4 w-4" aria-hidden />
                       </button>
                     </div>
-                  </div>
+                  </li>
                 ))}
-              </div>
-            )}
-          </div>
-        )}
+              </ul>
+            )
+          )}
 
-        {/* Content — data is server-fetched, loading state handled by Suspense */}
-        {activeTab !== 'wishlist' && (displayedBookings.length === 0 ? (
-          <div className="text-center py-12 sm:py-16 md:py-20">
-            <div className="w-16 h-16 sm:w-20 sm:h-20 mx-auto mb-4 sm:mb-6 bg-slate-100 dark:bg-white/5 rounded-full flex items-center justify-center">
-              <Luggage className="w-8 h-8 sm:w-10 sm:h-10 text-slate-400" />
+          {/* Bookings: server-fetched, so loading is the Suspense skeleton's job. */}
+          {activeTab !== 'wishlist' && (displayedBookings.length === 0 ? (
+            <EmptyState
+              icon={Luggage}
+              title={emptyTitle}
+              description={activeTab === 'upcoming' ? t('emptyState.upcomingDesc') : t('emptyState.otherDesc')}
+              cta={t('exploreDestinations')}
+            />
+          ) : (
+            <div className="space-y-3 sm:space-y-4">
+              {displayedBookings.slice(0, visibleCount).map(booking => (
+                isGolf(booking) ? (
+                  <GolfBookingCard key={booking.id} booking={booking} />
+                ) : isFlight(booking) ? (
+                  <FlightBookingCard key={booking.id} booking={booking} />
+                ) : (
+                  <BookingCard key={booking.id} booking={booking} onBookingUpdated={refetch} />
+                )
+              ))}
+              {visibleCount < displayedBookings.length && (
+                <div className="flex justify-center pt-3 sm:pt-4">
+                  <button
+                    type="button"
+                    onClick={() => setVisibleCount(prev => prev + PAGE_SIZE)}
+                    className={`min-h-11 rounded-xl bg-blue-50 px-6 text-sm font-medium text-blue-700 transition-colors hover:bg-blue-100 dark:bg-blue-900/20 dark:text-blue-300 dark:hover:bg-blue-900/30 ${focusRing}`}
+                  >
+                    {t('viewMore', { count: displayedBookings.length - visibleCount })}
+                  </button>
+                </div>
+              )}
             </div>
-            <h2 className="text-[clamp(1rem,3vw,1.25rem)] font-bold text-slate-900 dark:text-white mb-2 px-4">
-              {activeTab === 'upcoming' ? t('emptyState.upcomingTitle') : activeTab === 'past' ? t('emptyState.pastTitle') : t('emptyState.allTitle')}
-            </h2>
-            <p className="text-[clamp(0.8125rem,2vw,1rem)] text-slate-500 dark:text-slate-400 mb-4 sm:mb-6 px-4">
-              {activeTab === 'upcoming'
-                ? t('emptyState.upcomingDesc')
-                : t('emptyState.otherDesc')}
-            </p>
-            <Link
-              href="/"
-              className="inline-flex items-center gap-2 px-4 py-2.5 sm:px-6 sm:py-3 bg-blue-600 hover:bg-blue-700 text-white text-[clamp(0.8125rem,2vw,1rem)] font-medium rounded-full transition-colors"
-            >
-              {t('exploreDestinations')}
-              <ArrowRight className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-            </Link>
-          </div>
-        ) : (
-          <div className="space-y-2 sm:space-y-2.5 md:space-y-3">
-            {displayedBookings.slice(0, visibleCount).map((booking, index) => (
-              isGolf(booking) ? (
-                <GolfBookingCard
-                  key={booking.id}
-                  booking={booking}
-                />
-              ) : isFlight(booking) ? (
-                <FlightBookingCard
-                  key={booking.id}
-                  booking={booking}
-                />
-              ) : (
-                <BookingCard
-                  key={booking.id}
-                  booking={booking}
-                  onBookingUpdated={refetch}
-                  index={index}
-                />
-              )
-            ))}
-            {visibleCount < displayedBookings.length && (
-              <div className="flex justify-center pt-3 sm:pt-4 md:pt-6">
-                <button
-                  onClick={() => setVisibleCount(prev => prev + 10)}
-                  className="px-4 py-2 sm:px-6 sm:py-3 text-[clamp(0.6875rem,2vw,0.875rem)] font-medium text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-900/30 rounded-full transition-colors"
-                >
-                  {t('viewMore', { count: displayedBookings.length - visibleCount })}
-                </button>
-              </div>
-            )}
-          </div>
-        ))}
+          ))}
+        </div>
       </div>
     </main>
   );

@@ -25,7 +25,7 @@ const FUTURE = new Date(Date.now() + 10 * 86_400_000).toISOString();
 const PAST = new Date(Date.now() - 10 * 86_400_000).toISOString();
 
 const golf = (over: Partial<TripGolfBooking> = {}): TripGolfBooking => ({
-    kind: 'golf', id: 'g1', reference: 'CG-ABC234', status: 'confirmed', courseName: 'Wack Wack', courseSlug: 'wack-wack',
+    kind: 'golf', id: 'g1', reference: 'CG-ABC234', status: 'confirmed', courseName: 'Wack Wack', courseSlug: 'wack-wack', city: 'Mandaluyong',
     startsAt: FUTURE, timezone: 'Asia/Manila', players: 2, total: 5000, currency: 'PHP', created_at: PAST, ...over,
 });
 

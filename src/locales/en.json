@@ -2576,6 +2576,7 @@
       "players": "{count} players",
       "reference": "Ref. {reference}",
       "view": "View booking",
+      "chargedOnConfirmation": "Charged on confirmation",
       "status": {
         "requested": "Awaiting confirmation",
         "confirmed": "Confirmed",
@@ -2614,12 +2615,13 @@
       "reviews": "{count} reviews",
       "stayDates": "{from} to {to}",
       "total": "total",
-      "totalPaid": "Total Paid",
-      "tripCompleted": "Trip completed"
+      "totalPaid": "Total paid",
+      "tripCompleted": "Trip completed",
+      "typeLabel": "Hotel"
     },
     "cancellationModal": {
       "bookingId": "Booking ID: {id}",
-      "cancelBooking": "Cancel Booking",
+      "cancelBooking": "Cancel booking",
       "cancelling": "Cancelling...",
       "close": "Close",
       "keepBooking": "Keep Booking",
@@ -2664,7 +2666,7 @@
       "assignedSeats": "Assigned Seats",
       "bookingNotes": "Booking Notes",
       "cancel": "Cancel",
-      "cancelBooking": "Cancel Booking",
+      "cancelBooking": "Cancel booking",
       "cancelModal": {
         "baseFareNonRefundable": "The base fare is non-refundable — only taxes and fees are returned.",
         "cancelling": "Cancelling…",
@@ -2692,6 +2694,7 @@
       "cancellationFailed": "Cancellation failed",
       "changeFlight": "Change flight",
       "couldNotLoadTripDetails": "Could not load trip details",
+      "typeLabel": "Flight",
       "details": "Details",
       "eTicket": "E-TKT",
       "fareBadges": {
@@ -2732,18 +2735,18 @@
       "save": "Save",
       "seat": "SEAT",
       "stateChips": {
-        "awaitingConfirmation": "Awaiting Confirmation",
+        "awaitingConfirmation": "Awaiting confirmation",
         "cancelFailed": "Cancel failed — retry below",
         "cancelStuck": "Cancellation stuck — retry below",
         "cancelled": "Cancelled",
         "contactSupport": "Contact support to cancel",
         "emailToCancel": "Email crm@myfarebox.com to cancel",
         "flightCompleted": "Flight completed",
-        "refundFailed": "Refund Failed",
+        "refundFailed": "Refund failed",
         "refundProcessing": "Refund processing",
         "refunded": "Refunded",
         "supplierNotFound": "Supplier record not found",
-        "upcomingFlight": "Upcoming Flight",
+        "upcomingFlight": "Upcoming flight",
         "flightInProgress": "Flight in progress",
         "processing": "Processing",
         "booked": "Booked",
@@ -2758,7 +2761,7 @@
         "refundProcessed": "Booking cancelled. Refund has been processed.",
         "refundProcessing": "Booking cancelled. Refund is being processed — check back shortly."
       },
-      "totalPaid": "Total Paid",
+      "totalPaid": "Total paid",
       "totalRefund": "Total Refund",
       "tripLegs": {
         "leg": "Leg {number}",
@@ -2794,7 +2797,7 @@
       "provider": "Provider",
       "room": "Room",
       "specialRequests": "Special Requests",
-      "totalPaid": "Total Paid"
+      "totalPaid": "Total paid"
     },
     "modificationModal": {
       "discard": "Discard",
@@ -2833,7 +2836,7 @@
       "failed": "Failed",
       "pending": "Pending",
       "processing": "Processing",
-      "refundFailed": "Refund Failed",
+      "refundFailed": "Refund failed",
       "refundPending": "Refund Pending",
       "refunded": "Refunded",
       "ticketed": "Confirmed",
