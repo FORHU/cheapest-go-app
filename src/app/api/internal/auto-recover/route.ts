@@ -1,9 +1,13 @@
 import { NextResponse } from 'next/server';
 import { createAdminClient } from '@/utils/postgres/admin';
 import { stripe } from '@/lib/stripe/server';
-import { shouldRecoverSession } from '@/lib/server/flights/auto-recover-filter';
+import { shouldRecoverSession, decideAuthorisedRecovery } from '@/lib/server/flights/auto-recover-filter';
 import { env } from '@/utils/env';
 import { createBooking } from '@/lib/server/flights/create-booking';
+import { captureFlowOf } from '@/lib/server/flights/capture-flow';
+import { finaliseDuffelAuthorised } from '@/lib/server/flights/finalise-authorised';
+import { completeDuffelBooking } from '@/lib/server/flights/post-booking';
+import { cancelDuffelOrder } from '@/lib/server/flights/duffel-cancel';
 
 export const dynamic = 'force-dynamic';
 
@@ -38,7 +42,7 @@ export async function POST(req: Request) {
         // Sessions with payment_intent_id set, not booked/expired, older than 5 min
         const { data: stuckSessions, error: fetchErr } = await supabase
             .from('booking_sessions')
-            .select('id, provider, payment_intent_id, status, created_at, contact')
+            .select('id, provider, payment_intent_id, status, created_at, contact, duffel_pre_order_id')
             .not('payment_intent_id', 'is', null)
             // Array, not a "(a,b)" string — the builder maps over this to build
             // placeholders, and a string throws inside it, leaving the query with
@@ -84,6 +88,51 @@ export async function POST(req: Request) {
                 // user abandoned checkout and there is no payment to match the order.
                 if (session.payment_intent_id) {
                     const pi = await stripe.paymentIntents.retrieve(session.payment_intent_id);
+
+                    // Authorise-first Duffel intents (ADR-0050): a held card is finalised or
+                    // released, never "expired" while the hold is still on the traveller's card,
+                    // and never expired while they may still be entering it.
+                    if (session.provider === 'duffel' && captureFlowOf(pi.metadata) === 'authorise_first') {
+                        const ageMs = Date.now() - new Date(session.created_at).getTime();
+                        const decision = decideAuthorisedRecovery(pi.status, ageMs);
+
+                        if (decision === 'wait') continue;
+
+                        if (decision === 'finalise') {
+                            const outcome = await finaliseDuffelAuthorised({ sessionId: session.id, paymentIntentId: pi.id });
+                            if (outcome.kind === 'booked') {
+                                if (!outcome.alreadyBooked) {
+                                    await completeDuffelBooking({
+                                        supabase, sessionId: session.id,
+                                        paymentIntent: { id: pi.id, amount: pi.amount, currency: pi.currency },
+                                        booking: outcome,
+                                    });
+                                }
+                                recovered++;
+                            } else if (outcome.kind === 'refused') {
+                                failed++;
+                            }
+                            // in_progress and not_authorised: another path owns it; look again next run.
+                            continue;
+                        }
+
+                        // Giving up on this session. An order that was bought and staked but never
+                        // captured is ours to cancel too, or the seat stays bought with nothing
+                        // paid for it. A session already marked failed had its order handled (or
+                        // alerted) when it failed.
+                        if (session.duffel_pre_order_id && session.status !== 'failed' && env.DUFFEL_TOKEN) {
+                            await cancelDuffelOrder(env.DUFFEL_TOKEN, session.duffel_pre_order_id, 'authorise-first hold released without a booking');
+                        }
+                        if (decision === 'release') {
+                            console.warn(`[auto-recover] Releasing hold ${pi.id} (session ${session.id}, ${Math.round(ageMs / 60000)} min old, pi.status=${pi.status})`);
+                            try { await stripe.paymentIntents.cancel(pi.id); } catch (cancelErr: any) {
+                                console.error(`[auto-recover] Could not release hold ${pi.id}:`, cancelErr?.message ?? cancelErr);
+                            }
+                        }
+                        await supabase.from('booking_sessions').update({ status: 'expired' }).eq('id', session.id);
+                        continue;
+                    }
+
                     if (!shouldRecoverSession(session, pi.status)) {
                         // PI didn't succeed — user abandoned checkout. Expire the session
                         // so it never appears in the cron again.

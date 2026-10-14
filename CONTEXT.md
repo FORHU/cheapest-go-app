@@ -118,6 +118,9 @@ _Avoid_: treating the Cron Sidecar as part of the deployment — the production 
 
 **Flight Provider** — Duffel (primary, active) or Mystifly (onboarding). Mystifly bookings currently disabled in the booking endpoint.
 
+**Authorise-first** — how a Duffel flight is paid for when `DUFFEL_MANUAL_CAPTURE=on`: the traveller's card is held, then the Duffel order is bought, then the hold is captured. A refusal at the order step releases the hold and nothing is charged. The flow an intent was created under is stamped on it as `captureFlow` and every later step routes by that stamp (`capture-flow.ts`), never by the current flag. Contrast **order-first**, the previous flow, in which the order was bought from the Duffel balance before the card was asked (ADR-0050).
+_Avoid_: reading the flag after the intent exists. Flipping it mid-flight would send an authorised card down the path that expects a captured one.
+
 **Home-Market Fare** — discounted inventory an airline sells only through the distribution channels of its own country (airline direct, plus local OTAs and consolidators), never releasing it to global distribution. Duffel reaches global distribution only, so on a sector priced this way it returns the airline's *published* fare and CheapestGo lands multiples above a local OTA — while the same carrier prices at parity on its international sectors. Measured 2026-08-17 on Korean Air: GMP–CJU round-trip ₩335,318 vs Trip.com ₩100,700 (+233%), ICN–NRT ₩405,740 vs ₩409,800 (−1%).
 _Avoid_: reading a domestic-sector gap as a CheapestGo markup or an FX fault — markup is applied at booking only, never in search, and the international sectors price at parity. _Avoid_: generalising from one carrier's international competitiveness to its domestic sectors, or the reverse.
 
