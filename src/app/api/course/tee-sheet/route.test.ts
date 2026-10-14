@@ -23,6 +23,7 @@ vi.mock('@/lib/server/golf/teeTimes', () => ({
     deleteScheduleCounted: vi.fn(),
 }));
 vi.mock('@/lib/server/golf/blocks', () => ({ addBlock: vi.fn(), removeBlock: vi.fn() }));
+vi.mock('@/lib/server/golf/bookings', () => ({ cancelBookingsByCourse: vi.fn() }));
 vi.mock('@/lib/server/golf/extras', () => ({
     listCourseExtras: vi.fn(async () => [{ code: 'cart', price: 25 }]),
     setCourseExtras: vi.fn(),
@@ -32,6 +33,7 @@ import { GET, POST } from './route';
 import { getTeeSheet } from '@/lib/server/golf/teeSheet';
 import { createScheduleCounted, deleteScheduleCounted, updateSchedule } from '@/lib/server/golf/teeTimes';
 import { addBlock, removeBlock } from '@/lib/server/golf/blocks';
+import { cancelBookingsByCourse } from '@/lib/server/golf/bookings';
 import { setCourseExtras } from '@/lib/server/golf/extras';
 import { recordChange } from '@/lib/server/golf/changes';
 import { CourseNotSchedulableError, LastScheduleError } from '@/lib/server/golf/errors';
@@ -148,6 +150,59 @@ describe('POST /api/course/tee-sheet', () => {
         expect(res.status).toBe(200);
         expect((await res.json()).data.impact.affectedBookings).toEqual(['CG-ABC234']);
         expect(addBlock).toHaveBeenCalledWith(expect.objectContaining({ courseId: mine, userId: 'staff-1', dryRun: false }));
+    });
+
+    describe('cancelling the bookings a block sits on', () => {
+        const block = { startsOn: '2030-01-10', endsOn: '2030-01-10' };
+        const affected = { ...noImpact(), closed: 4, affectedBookings: ['CG-AAA111', 'CG-BBB222'] };
+
+        it('leaves the bookings alone unless asked', async () => {
+            vi.mocked(addBlock).mockResolvedValueOnce({ block: { id: 'b1' } as never, impact: affected });
+            const res = await post({ courseId: mine, action: 'block_add', block });
+            expect(res.status).toBe(200);
+            expect(cancelBookingsByCourse).not.toHaveBeenCalled();
+            expect((await res.json()).data.cancellation).toBeUndefined();
+        });
+
+        it('cancels the affected bookings for this course, records it, and says what happened', async () => {
+            vi.mocked(addBlock).mockResolvedValueOnce({ block: { id: 'b1' } as never, impact: affected });
+            vi.mocked(cancelBookingsByCourse).mockResolvedValueOnce({ cancelled: ['CG-AAA111', 'CG-BBB222'], failed: [] });
+            const res = await post({ courseId: mine, action: 'block_add', block, cancelBookings: true });
+            expect(res.status).toBe(200);
+            expect(cancelBookingsByCourse).toHaveBeenCalledWith({ courseId: mine, references: ['CG-AAA111', 'CG-BBB222'] });
+            expect((await res.json()).data.cancellation).toEqual({ cancelled: ['CG-AAA111', 'CG-BBB222'], failed: [] });
+            expect(recordChange).toHaveBeenCalledWith(expect.objectContaining({
+                kind: 'block_added', summary: expect.stringContaining('2 bookings cancelled and refunded'),
+            }));
+        });
+
+        it('reports the ones that could not be cancelled, in the history as well', async () => {
+            vi.mocked(addBlock).mockResolvedValueOnce({ block: { id: 'b1' } as never, impact: affected });
+            vi.mocked(cancelBookingsByCourse).mockResolvedValueOnce({
+                cancelled: ['CG-AAA111'], failed: [{ reference: 'CG-BBB222', error: 'card network unavailable' }],
+            });
+            const res = await post({ courseId: mine, action: 'block_add', block, cancelBookings: true });
+            expect(res.status).toBe(200);
+            expect((await res.json()).data.cancellation.failed).toEqual([{ reference: 'CG-BBB222', error: 'card network unavailable' }]);
+            expect(recordChange).toHaveBeenCalledWith(expect.objectContaining({
+                summary: expect.stringMatching(/1 booking cancelled and refunded.*1 could not be cancelled/),
+            }));
+        });
+
+        it('never cancels in a preview', async () => {
+            vi.mocked(addBlock).mockResolvedValueOnce({ block: { id: 'b1' } as never, impact: affected });
+            const res = await post({ courseId: mine, action: 'block_add', block, cancelBookings: true, preview: true });
+            expect(res.status).toBe(200);
+            expect(cancelBookingsByCourse).not.toHaveBeenCalled();
+            expect(addBlock).toHaveBeenCalledWith(expect.objectContaining({ dryRun: true }));
+        });
+
+        it('does nothing extra when the block touches no booking', async () => {
+            vi.mocked(addBlock).mockResolvedValueOnce({ block: { id: 'b1' } as never, impact: { ...noImpact(), closed: 4 } });
+            const res = await post({ courseId: mine, action: 'block_add', block, cancelBookings: true });
+            expect(res.status).toBe(200);
+            expect(cancelBookingsByCourse).not.toHaveBeenCalled();
+        });
     });
 
     it('rejects a block with one end of the window', async () => {

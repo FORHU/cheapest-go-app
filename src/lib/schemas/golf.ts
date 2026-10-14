@@ -281,7 +281,7 @@ export type GolfBookingStatus = 'held' | 'requested' | 'confirmed' | 'expired' |
 
 export type GolfCloseReason =
     | 'hold_expired' | 'declined_by_team' | 'not_confirmed_in_time'
-    | 'cancelled_by_customer' | 'cancelled_by_team';
+    | 'cancelled_by_customer' | 'cancelled_by_team' | 'cancelled_by_course';
 
 /** Instants are ISO strings so a booking crosses the server/client boundary as it is. */
 export interface GolfBooking {

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useLocale, useTranslations } from 'next-intl';
 import { GolfDatePicker } from '@/components/golf/GolfDatePicker';
 import { GolfSelect } from '@/components/golf/GolfSelect';
@@ -134,12 +134,19 @@ export function BlockSection({ blocks, hasTimeZone, startDate, openRequest, revi
     const locale = useLocale();
     const [open, setOpen] = useState(false);
     const [formDate, setFormDate] = useState(startDate);
+    const formRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
         if (openRequest > 0) { setFormDate(startDate); setOpen(true); }
         // Opening is triggered by the counter alone; the date is read at that moment.
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [openRequest]);
+
+    // The day view's button sits well above this card, so bring the form into view when it opens.
+    useEffect(() => {
+        if (!open) return;
+        formRef.current?.scrollIntoView?.({ behavior: 'smooth', block: 'center' });
+    }, [open]);
 
     const date = new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeZone: 'UTC' });
     const day = (iso: string) => date.format(new Date(`${iso}T00:00:00Z`));
@@ -163,7 +170,7 @@ export function BlockSection({ blocks, hasTimeZone, startDate, openRequest, revi
             </div>
 
             {open && (
-                <div className="mt-4">
+                <div ref={formRef} className="mt-4">
                     <BlockForm key={formDate} initialDate={formDate} review={review} onCancel={() => setOpen(false)} />
                 </div>
             )}

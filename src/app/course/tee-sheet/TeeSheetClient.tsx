@@ -31,6 +31,8 @@ export function TeeSheetClient({ sheet, courses }: { sheet: TeeSheetOverview; co
     const [pending, setPending] = useState<Pending | null>(null);
     const [busy, setBusy] = useState(false);
     const [applyError, setApplyError] = useState<string | null>(null);
+    /** Whether the course ticked "cancel these bookings and refund" for the change being confirmed. */
+    const [cancelBookings, setCancelBookings] = useState(false);
     const [pageError, setPageError] = useState<string | null>(null);
     const [blockOpenRequest, setBlockOpenRequest] = useState(0);
 
@@ -54,6 +56,7 @@ export function TeeSheetClient({ sheet, courses }: { sheet: TeeSheetOverview; co
                 return { error, fieldErrors: json.fieldErrors };
             }
             setApplyError(null);
+            setCancelBookings(false);
             setPending({ body, impact: json.data.impact });
             return {};
         } catch {
@@ -67,12 +70,17 @@ export function TeeSheetClient({ sheet, courses }: { sheet: TeeSheetOverview; co
         setBusy(true);
         setApplyError(null);
         try {
-            const { ok, json } = await post(pending.body);
+            const cancelling = cancelBookings && pending.body.action === 'block_add';
+            const { ok, json } = await post(cancelling ? { ...pending.body, cancelBookings: true } : pending.body);
             if (!ok) {
                 setApplyError(json.error ?? t('error'));
                 return;
             }
             setPending(null);
+            // The block is in place even when a booking could not be cancelled: say which, so the
+            // course can ask the team to finish them.
+            const failed: { reference: string }[] = json.data?.cancellation?.failed ?? [];
+            if (failed.length > 0) setPageError(t('cancelPartial', { references: failed.map(f => f.reference).join(', ') }));
             router.refresh();
         } catch {
             setApplyError(t('error'));
@@ -189,6 +197,7 @@ export function TeeSheetClient({ sheet, courses }: { sheet: TeeSheetOverview; co
 
             {pending && (
                 <ImpactConfirm impact={pending.impact} busy={busy} error={applyError}
+                    cancelOffer={pending.body.action === 'block_add' ? { checked: cancelBookings, onChange: setCancelBookings } : undefined}
                     onApply={apply} onCancel={() => { setPending(null); setApplyError(null); }} />
             )}
         </div>

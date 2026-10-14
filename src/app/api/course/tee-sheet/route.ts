@@ -10,6 +10,7 @@ import { isCourseAuthError, requireCourseStaff, type CourseStaffActor } from '@/
 import { getTeeSheet } from '@/lib/server/golf/teeSheet';
 import { createScheduleCounted, deleteScheduleCounted, updateSchedule } from '@/lib/server/golf/teeTimes';
 import { addBlock, removeBlock } from '@/lib/server/golf/blocks';
+import { cancelBookingsByCourse } from '@/lib/server/golf/bookings';
 import { listCourseExtras, setCourseExtras } from '@/lib/server/golf/extras';
 import { recordChange } from '@/lib/server/golf/changes';
 import { CourseNotSchedulableError, CourseStaffError, LastScheduleError } from '@/lib/server/golf/errors';
@@ -139,11 +140,26 @@ async function handle(
             const b = parsed.data;
             const range = b.startsOn === b.endsOn ? b.startsOn : `${b.startsOn} to ${b.endsOn}`;
             const window = b.fromTime ? `, ${b.fromTime}–${b.toTime}` : '';
+
+            // The course chose, in the confirmation, to cancel what was sold on these tee times and
+            // refund the customers (ADR-0052). Only ever for a real change, and only this course's.
+            const cancellation = !preview && body.cancelBookings === true && result.impact.affectedBookings.length > 0
+                ? await cancelBookingsByCourse({ courseId, references: result.impact.affectedBookings })
+                : null;
+            const outcome = cancellation
+                ? [
+                    cancellation.cancelled.length > 0 && `${plural(cancellation.cancelled.length, 'booking', 'bookings')} cancelled and refunded`,
+                    cancellation.failed.length > 0 && `${cancellation.failed.length} could not be cancelled`,
+                ].filter(Boolean)
+                : [];
             return done(result.impact, {
                 kind: 'block_added',
-                summary: `Blocked ${range}${window} (${plural(result.impact.closed, 'tee time', 'tee times')} closed)`,
-                details: { blockId: result.block.id, ...b },
-            }, { block: result.block });
+                summary: `Blocked ${range}${window} (${[`${plural(result.impact.closed, 'tee time', 'tee times')} closed`, ...outcome].join(', ')})`,
+                details: {
+                    blockId: result.block.id, ...b,
+                    ...(cancellation ? { cancelledBookings: cancellation.cancelled, failedBookings: cancellation.failed } : {}),
+                },
+            }, { block: result.block, ...(cancellation ? { cancellation } : {}) });
         }
         case 'block_remove': {
             const blockId = uuid.safeParse(body.blockId);

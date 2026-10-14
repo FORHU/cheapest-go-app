@@ -14,10 +14,15 @@ import { primaryButton, secondaryButton } from './shared';
  * The admin's Dialog, as its other confirmations use. It is only mounted while a change is
  * waiting, and it cannot be dismissed while the change is being applied.
  */
-export function ImpactConfirm({ impact, busy, error, onApply, onCancel }: {
+export function ImpactConfirm({ impact, busy, error, cancelOffer, onApply, onCancel }: {
     impact: Impact;
     busy: boolean;
     error: string | null;
+    /**
+     * Offered when the change leaves live bookings on tee times it closes: cancel them too and
+     * refund the customers in full. Off unless the course ticks it (ADR-0052).
+     */
+    cancelOffer?: { checked: boolean; onChange: (checked: boolean) => void };
     onApply: () => void;
     onCancel: () => void;
 }) {
@@ -51,8 +56,19 @@ export function ImpactConfirm({ impact, busy, error, onApply, onCancel }: {
 
                 {impact.affectedBookings.length > 0 && (
                     <p className="mt-4 rounded-lg bg-amber-50 px-3 py-2 text-sm leading-relaxed text-amber-900 dark:bg-amber-950/30 dark:text-amber-200">
-                        {t('impactBookings', { references: impact.affectedBookings.join(', ') })}
+                        {t(cancelOffer?.checked ? 'impactWillCancel' : 'impactBookings', { references: impact.affectedBookings.join(', ') })}
                     </p>
+                )}
+
+                {cancelOffer && impact.affectedBookings.length > 0 && (
+                    <label className="mt-3 flex items-start gap-2 text-sm text-slate-900 dark:text-slate-100">
+                        <input type="checkbox" checked={cancelOffer.checked} disabled={busy}
+                            onChange={e => cancelOffer.onChange(e.target.checked)} className="mt-0.5 accent-blue-600" />
+                        <span>
+                            {t('cancelBookingsLabel', { count: impact.affectedBookings.length })}
+                            <span className="mt-0.5 block text-xs text-slate-500 dark:text-slate-400">{t('cancelBookingsHint')}</span>
+                        </span>
+                    </label>
                 )}
 
                 {error && <p role="alert" className="mt-4 text-sm text-red-600 dark:text-red-400">{error}</p>}

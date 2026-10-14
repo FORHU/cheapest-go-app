@@ -61,7 +61,7 @@ function wording(kind: GolfEmailKind, b: GolfBooking): { subject: string; lead: 
         case 'cancelled':
             return {
                 subject: `Tee time cancelled – ${course}`,
-                lead: b.closeReason === 'cancelled_by_team'
+                lead: b.closeReason === 'cancelled_by_team' || b.closeReason === 'cancelled_by_course'
                     ? `${course} had to cancel this tee time.`
                     : 'Your tee time has been cancelled.',
                 note: b.refundAmount > 0

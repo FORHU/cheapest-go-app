@@ -61,7 +61,7 @@ export interface CourseBlock {
 export interface Impact {
     created: number;
     updated: number;
-    /** Stopped being sellable. Existing bookings on them are not cancelled or changed. */
+    /** Stopped being sellable. Existing bookings on them are not cancelled unless the course asks (ADR-0052). */
     closed: number;
     reopened: number;
     deleted: number;

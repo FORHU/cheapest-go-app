@@ -90,6 +90,71 @@ describe('TeeSheetClient', () => {
         expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     });
 
+    describe('cancelling the bookings a block sits on', () => {
+        const blockPreview = () => reply(200, {
+            success: true, data: { preview: true, impact: impact({ closed: 4, affectedBookings: ['CG-ABC234', 'CG-DEF567'] }) },
+        });
+        const openReview = async () => {
+            page();
+            fireEvent.click(screen.getByRole('button', { name: 'Add block' }));
+            fireEvent.click(screen.getByRole('button', { name: 'Review changes' }));
+            return within(await screen.findByRole('dialog'));
+        };
+
+        it('offers it, unticked, and applies without it by default', async () => {
+            fetchMock.mockResolvedValueOnce(blockPreview())
+                .mockResolvedValueOnce(reply(200, { success: true, data: { preview: false, impact: impact({ closed: 4 }) } }));
+            const dialog = await openReview();
+            const box = dialog.getByRole('checkbox', { name: /cancel these bookings and refund the customers in full/i });
+            expect(box).not.toBeChecked();
+            expect(dialog.getByText(/not cancelled or changed/)).toBeInTheDocument();
+
+            fireEvent.click(dialog.getByRole('button', { name: 'Apply' }));
+            await waitFor(() => expect(router.refresh).toHaveBeenCalled());
+            expect(bodies()[1].cancelBookings).toBeUndefined();
+        });
+
+        it('asks the server to cancel only when ticked, and says what will happen', async () => {
+            fetchMock.mockResolvedValueOnce(blockPreview())
+                .mockResolvedValueOnce(reply(200, {
+                    success: true,
+                    data: { preview: false, impact: impact({ closed: 4 }), cancellation: { cancelled: ['CG-ABC234', 'CG-DEF567'], failed: [] } },
+                }));
+            const dialog = await openReview();
+            fireEvent.click(dialog.getByRole('checkbox', { name: /cancel these bookings/i }));
+            expect(dialog.getByText(/will be cancelled and the customers refunded in full/)).toBeInTheDocument();
+            expect(dialog.queryByText(/not cancelled or changed/)).not.toBeInTheDocument();
+
+            fireEvent.click(dialog.getByRole('button', { name: 'Apply' }));
+            await waitFor(() => expect(router.refresh).toHaveBeenCalled());
+            expect(bodies()[0].cancelBookings).toBeUndefined();
+            expect(bodies()[1]).toMatchObject({ action: 'block_add', cancelBookings: true });
+            expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+        });
+
+        it('names the bookings that could not be cancelled', async () => {
+            fetchMock.mockResolvedValueOnce(blockPreview())
+                .mockResolvedValueOnce(reply(200, {
+                    success: true,
+                    data: {
+                        preview: false, impact: impact({ closed: 4 }),
+                        cancellation: { cancelled: ['CG-ABC234'], failed: [{ reference: 'CG-DEF567', error: 'card network unavailable' }] },
+                    },
+                }));
+            const dialog = await openReview();
+            fireEvent.click(dialog.getByRole('checkbox', { name: /cancel these bookings/i }));
+            fireEvent.click(dialog.getByRole('button', { name: 'Apply' }));
+            expect(await screen.findByRole('alert')).toHaveTextContent('CG-DEF567');
+            expect(router.refresh).toHaveBeenCalled();
+        });
+
+        it('offers nothing when no booking is affected', async () => {
+            fetchMock.mockResolvedValueOnce(reply(200, { success: true, data: { preview: true, impact: impact({ closed: 4 }) } }));
+            const dialog = await openReview();
+            expect(dialog.queryByRole('checkbox')).not.toBeInTheDocument();
+        });
+    });
+
     it('applies nothing when the course cancels', async () => {
         fetchMock.mockResolvedValueOnce(reply(200, { success: true, data: { preview: true, impact: impact({ deleted: 30, closed: 2 }) } }));
         page();
@@ -132,6 +197,15 @@ describe('TeeSheetClient', () => {
         page();
         fireEvent.click(screen.getByRole('button', { name: 'Block this day' }));
         expect(screen.getByRole('button', { name: /From date/ })).toBeInTheDocument();
+    });
+
+    it('scrolls the block form into view when opened from the day view', () => {
+        const scrollIntoView = vi.fn();
+        Element.prototype.scrollIntoView = scrollIntoView;
+        page();
+        fireEvent.click(screen.getByRole('button', { name: 'Block this day' }));
+        expect(scrollIntoView).toHaveBeenCalledTimes(1);
+        expect(scrollIntoView.mock.contexts[0]).toBe(screen.getByRole('button', { name: /From date/ }).closest('form')!.parentElement);
     });
 
     it('saves extras as a set', async () => {

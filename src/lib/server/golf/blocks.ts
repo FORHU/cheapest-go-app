@@ -10,7 +10,9 @@ import { CourseStaffError } from './errors';
  *
  * A block closes the future tee times it matches, on the course's own clock, so that nothing new
  * is sold on them. It never cancels or changes a booking: a tee time that already has one is
- * closed to further sales and its bookings are returned, for the course to deal with.
+ * closed to further sales and its bookings are returned, for the course to deal with. Cancelling
+ * and refunding them is a separate, later step the course opts into (`cancelBookingsByCourse`,
+ * ADR-0052): money cannot be moved inside a transaction a preview rolls back.
  * Removing a block reopens exactly the tee times it closed, and leaves closed any that another
  * block still covers.
  */

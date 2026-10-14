@@ -492,6 +492,84 @@ export async function cancelByTeam(id: string): Promise<GolfBooking> {
 }
 
 /**
+ * The course closed this booking's tee time and chose to cancel what was sold on it (ADR-0052).
+ * Whatever the customer has done so far costs them nothing: a confirmed booking is refunded in
+ * full, a request has its card released, an unpaid hold is ended. A booking of another course
+ * reads as missing, whoever asks.
+ */
+export async function cancelByCourse(id: string, courseId: string, allowRetry = true): Promise<GolfBooking> {
+    const booking = await getBookingById(id);
+    if (!booking || booking.courseId !== courseId) throw new GolfBookingError('not_found', 'Booking not found.');
+
+    let closed: { paymentIntentId: string | null } | null;
+    switch (booking.status) {
+        case 'confirmed':
+            await stripe.refunds.create(
+                { payment_intent: booking.paymentIntentId!, amount: toStripeAmount(booking.total, booking.currency) },
+                { idempotencyKey: `golf-refund-${id}` },
+            );
+            closed = await closeBooking(id, 'confirmed', 'cancelled', 'cancelled_by_course', booking.total);
+            break;
+        case 'requested':
+            await cancelIntent(booking.paymentIntentId!);
+            closed = await closeBooking(id, 'requested', 'cancelled', 'cancelled_by_course');
+            break;
+        case 'held':
+            closed = await closeBooking(id, 'held', 'cancelled', 'cancelled_by_course');
+            if (closed?.paymentIntentId) await cancelIntentQuietly(closed.paymentIntentId);
+            break;
+        default:
+            throw new GolfBookingError('wrong_status', `This booking is ${booking.status}.`);
+    }
+
+    // Another path moved it first. A hold whose payment went through in the meantime is now a
+    // request, which this can still cancel; anything else is already settled.
+    if (!closed) {
+        if (allowRetry && booking.status === 'held') return cancelByCourse(id, courseId, false);
+        return (await getBookingById(id))!;
+    }
+    const updated = (await getBookingById(id))!;
+    // A customer still at checkout has no booking to be told about.
+    if (booking.status !== 'held') await sendGolfBookingEmail('cancelled', updated);
+    return updated;
+}
+
+export interface CourseCancellationOutcome {
+    cancelled: string[];
+    failed: { reference: string; error: string }[];
+}
+
+/**
+ * Cancels the live bookings named by `references` on behalf of a course, one at a time. A failure
+ * (Stripe unreachable, say) is reported and does not stop the rest; the booking it concerns is
+ * left exactly as it was, so it can be tried again. References that are not this course's, or are
+ * no longer live, are skipped.
+ */
+export async function cancelBookingsByCourse(
+    { courseId, references }: { courseId: string; references: string[] },
+): Promise<CourseCancellationOutcome> {
+    const outcome: CourseCancellationOutcome = { cancelled: [], failed: [] };
+    if (references.length === 0) return outcome;
+
+    const sql = getSqlAdmin();
+    const live = await sql<{ id: string; reference: string }[]>`
+        SELECT id, reference FROM golf_bookings
+         WHERE course_id = ${courseId} AND reference IN ${sql(references)}
+           AND status IN ('held', 'requested', 'confirmed')
+         ORDER BY reference`;
+    for (const { id, reference } of live) {
+        try {
+            await cancelByCourse(id, courseId);
+            outcome.cancelled.push(reference);
+        } catch (err) {
+            console.error('[golf] Could not cancel booking for course', reference, err);
+            outcome.failed.push({ reference, error: err instanceof Error ? err.message : String(err) });
+        }
+    }
+    return outcome;
+}
+
+/**
  * Ends unpaid holds (or turns them into requests when the payment went through after all) and
  * declines requests nobody decided by their deadline. Run by cron every few minutes.
  */
