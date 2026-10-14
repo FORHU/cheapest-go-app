@@ -1,5 +1,8 @@
 import { describe, it, expect } from 'vitest';
-import { golfCourseInputSchema, golfExtrasInputSchema, holdRequestSchema, slugify, teeTimeScheduleInputSchema } from './golf';
+import {
+    courseProfileInputSchema, golfCourseInputSchema, golfExtrasInputSchema, golfPhotoIdOf, golfPhotoPath,
+    holdRequestSchema, slugify, teeTimeScheduleInputSchema,
+} from './golf';
 
 const valid = { name: 'Wack Wack East', country: 'Philippines', city: 'Mandaluyong', holes: 18 };
 
@@ -100,5 +103,56 @@ describe('golfExtrasInputSchema', () => {
         expect(golfExtrasInputSchema.parse([{ code: 'caddie', price: 30 }])).toEqual([{ code: 'caddie', price: 30 }]);
         expect(golfExtrasInputSchema.safeParse([{ code: 'caddie', price: -1 }]).success).toBe(false);
         expect(golfExtrasInputSchema.safeParse([{ code: 'cart', price: 1 }, { code: 'cart', price: 2 }]).success).toBe(false);
+    });
+});
+
+const photoId = '6f1c2e0a-9b7d-4c1e-a2f5-3d8e1b0c7a44';
+
+describe('golf photo paths', () => {
+    it('round-trips an id through the app path', () => {
+        expect(golfPhotoPath(photoId)).toBe(`/golf-photos/${photoId}`);
+        expect(golfPhotoIdOf(`/golf-photos/${photoId}`)).toBe(photoId);
+    });
+    it('reads nothing from a URL that is not one of ours', () => {
+        expect(golfPhotoIdOf('https://x.com/a.jpg')).toBeNull();
+        expect(golfPhotoIdOf('/golf-photos/not-an-id')).toBeNull();
+        expect(golfPhotoIdOf(`/golf-photos/${photoId}/../x`)).toBeNull();
+    });
+    it('is accepted in a course image list next to https URLs', () => {
+        const out = golfCourseInputSchema.parse({ ...valid, imageUrls: [`/golf-photos/${photoId}`, 'https://x.com/a.jpg'] });
+        expect(out.imageUrls).toHaveLength(2);
+        expect(golfCourseInputSchema.safeParse({ ...valid, imageUrls: ['/elsewhere/a.jpg'] }).success).toBe(false);
+    });
+});
+
+describe('courseProfileInputSchema', () => {
+    const profile = {
+        description: ' A links course. ', address: '', amenities: ['cart', 'cart'], imageUrls: [`/golf-photos/${photoId}`],
+        par: 72, yardage: null, yearOpened: 1998, designer: '', grass: 'Bermuda',
+        weatherPolicy: 'Play on in light rain.', bookingWindowDays: 30, freeCancelHours: 24,
+    };
+
+    it('takes the editable fields and normalises them like the admin form does', () => {
+        expect(courseProfileInputSchema.parse(profile)).toEqual({
+            ...profile, description: 'A links course.', address: null, amenities: ['cart'], designer: null,
+        });
+    });
+
+    it('refuses what a course may not change, even when it is well-formed', () => {
+        for (const extra of [{ slug: 'x' }, { timezone: 'Asia/Manila' }, { status: 'published' }, { currency: 'PHP' }, { name: 'New' }, { holes: 9 }]) {
+            expect(courseProfileInputSchema.safeParse({ ...profile, ...extra }).success).toBe(false);
+        }
+    });
+
+    it('needs every field, so a missing one is never read as "clear it"', () => {
+        const { weatherPolicy: _w, ...rest } = profile;
+        expect(courseProfileInputSchema.safeParse(rest).success).toBe(false);
+    });
+
+    it('applies the same limits as the admin form', () => {
+        expect(courseProfileInputSchema.safeParse({ ...profile, bookingWindowDays: 91 }).success).toBe(false);
+        expect(courseProfileInputSchema.safeParse({ ...profile, freeCancelHours: -1 }).success).toBe(false);
+        expect(courseProfileInputSchema.safeParse({ ...profile, imageUrls: ['http://x.com/a.jpg'] }).success).toBe(false);
+        expect(courseProfileInputSchema.safeParse({ ...profile, weatherPolicy: 'x'.repeat(501) }).success).toBe(false);
     });
 });

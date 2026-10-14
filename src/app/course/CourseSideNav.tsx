@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { ArrowLeft, CalendarCheck, CalendarRange, ChevronRight } from 'lucide-react';
+import { ArrowLeft, CalendarCheck, CalendarRange, ChevronRight, FileText } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 
 /**
@@ -23,6 +23,7 @@ interface CourseSideNavProps {
 export const COURSE_NAV = [
     { href: '/course', key: 'navRequests', icon: CalendarCheck, exact: true },
     { href: '/course/tee-sheet', key: 'navTeeSheet', icon: CalendarRange, exact: false },
+    { href: '/course/profile', key: 'navProfile', icon: FileText, exact: false },
 ] as const;
 
 export function CourseSideNav({ pathname, waiting, isCollapsed = false, onNavigate }: CourseSideNavProps) {

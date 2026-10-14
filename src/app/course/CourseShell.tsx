@@ -26,11 +26,14 @@ export function CourseShell({
     const pathname = usePathname();
     const tPortal = useTranslations('golf.staff.portal');
     const tSheet = useTranslations('golf.staff.sheet');
+    const tProfile = useTranslations('golf.staff.profile');
     const key = courseBannerKey(pathname);
 
     const banner = key === 'tee-sheet'
         ? { title: tSheet('title'), subtitle: tSheet('subtitle'), image: COURSE_BANNER_IMAGE }
-        : { title: tPortal('title'), subtitle: tPortal('subtitle'), image: COURSE_BANNER_IMAGE };
+        : key === 'profile'
+            ? { title: tProfile('title'), subtitle: tProfile('subtitle'), image: COURSE_BANNER_IMAGE }
+            : { title: tPortal('title'), subtitle: tPortal('subtitle'), image: COURSE_BANNER_IMAGE };
 
     return (
         <StaffShell

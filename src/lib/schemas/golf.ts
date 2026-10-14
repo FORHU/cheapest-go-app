@@ -66,37 +66,74 @@ export function slugify(...parts: string[]): string {
 const requiredText = (label: string, max: number) =>
     z.string().trim().min(1, `${label} is required`).max(max, `${label} is too long`);
 
+// ── Photos ───────────────────────────────────────────────────────────────────
+
+const PHOTO_PATH = /^\/golf-photos\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$/i;
+
+/** Where an uploaded course photo is served from (the app, not the bucket: ADR-0050). */
+export const golfPhotoPath = (id: string) => `/golf-photos/${id}`;
+
+/** The photo id in one of our own photo paths; null for anything else, so it is never guessed at. */
+export function golfPhotoIdOf(url: string): string | null {
+    return PHOTO_PATH.exec(url)?.[1].toLowerCase() ?? null;
+}
+
+/** An https:// link, or one of our own uploaded photos. */
+const imageUrlSchema = z.string().trim().superRefine((url, ctx) => {
+    if (golfPhotoIdOf(url)) return;
+    try {
+        new URL(url);
+    } catch {
+        ctx.addIssue({ code: 'custom', message: 'Not a valid URL' });
+        return;
+    }
+    if (!url.startsWith('https://')) ctx.addIssue({ code: 'custom', message: 'Image URLs must start with https://' });
+});
+
+// The fields a course describes itself with, shared by the admin form and the course portal so
+// both enforce the same limits. Each caller decides what "missing" means for it.
+const profileField = {
+    address: z.string().trim().max(300),
+    description: z.string().trim().max(10_000),
+    par: z.number().int().min(27, 'Par must be between 27 and 144').max(144, 'Par must be between 27 and 144'),
+    imageUrls: z.array(imageUrlSchema).max(20, 'At most 20 images'),
+    amenities: z.array(z.enum(GOLF_AMENITIES)),
+    freeCancelHours: z.number().int().min(0, 'Between 0 and 720 hours').max(720, 'Between 0 and 720 hours'),
+    bookingWindowDays: z.number().int().min(1, 'Between 1 and 90 days').max(MAX_BOOKING_WINDOW_DAYS, 'Between 1 and 90 days'),
+    weatherPolicy: z.string().trim().max(500, 'At most 500 characters'),
+    yardage: z.number().int().min(1000, 'Between 1,000 and 12,000 yards').max(12_000, 'Between 1,000 and 12,000 yards'),
+    yearOpened: z.number().int().min(1800, 'Between 1800 and 2100').max(2100, 'Between 1800 and 2100'),
+    designer: z.string().trim().max(120, 'Too long'),
+    grass: z.string().trim().max(80, 'Too long'),
+};
+
 export const golfCourseInputSchema = z
     .object({
         name: requiredText('Name', 120),
         country: requiredText('Country', 80),
         city: requiredText('City', 80),
         slug: z.string().trim().max(120).optional().default(''),
-        address: z.string().trim().max(300).nullish().transform(v => v || null),
-        description: z.string().trim().max(10_000).optional().default(''),
+        address: profileField.address.nullish().transform(v => v || null),
+        description: profileField.description.optional().default(''),
         holes: z.number().int().refine(v => (GOLF_HOLES as readonly number[]).includes(v), 'Holes must be 9, 18, 27 or 36'),
-        par: z.number().int().min(27, 'Par must be between 27 and 144').max(144, 'Par must be between 27 and 144').nullish().transform(v => v ?? null),
+        par: profileField.par.nullish().transform(v => v ?? null),
         greenFeeFrom: z.number().min(0, 'Green fee cannot be negative').max(100_000).nullish().transform(v => v ?? null),
         currency: z.string().trim().toUpperCase().regex(/^[A-Z]{3}$/, 'Currency must be a 3-letter code').optional().default('USD'),
-        imageUrls: z
-            .array(z.string().trim().url('Not a valid URL').refine(u => u.startsWith('https://'), 'Image URLs must start with https://'))
-            .max(20, 'At most 20 images')
-            .optional()
-            .default([]),
-        amenities: z.array(z.enum(GOLF_AMENITIES)).optional().default([]).transform(a => [...new Set(a)]),
+        imageUrls: profileField.imageUrls.optional().default([]),
+        amenities: profileField.amenities.optional().default([]).transform(a => [...new Set(a)]),
         timezone: z
             .string()
             .trim()
             .nullish()
             .transform(v => v || null)
             .refine(v => v === null || isValidTimeZone(v), 'Use a time zone name such as Asia/Manila'),
-        freeCancelHours: z.number().int().min(0, 'Between 0 and 720 hours').max(720, 'Between 0 and 720 hours').optional().default(48),
-        bookingWindowDays: z.number().int().min(1, 'Between 1 and 90 days').max(MAX_BOOKING_WINDOW_DAYS, 'Between 1 and 90 days').optional().default(HORIZON_DAYS),
-        weatherPolicy: z.string().trim().max(500, 'At most 500 characters').optional().default(''),
-        yardage: z.number().int().min(1000, 'Between 1,000 and 12,000 yards').max(12_000, 'Between 1,000 and 12,000 yards').nullish().transform(v => v ?? null),
-        yearOpened: z.number().int().min(1800, 'Between 1800 and 2100').max(2100, 'Between 1800 and 2100').nullish().transform(v => v ?? null),
-        designer: z.string().trim().max(120, 'Too long').nullish().transform(v => v || null),
-        grass: z.string().trim().max(80, 'Too long').nullish().transform(v => v || null),
+        freeCancelHours: profileField.freeCancelHours.optional().default(48),
+        bookingWindowDays: profileField.bookingWindowDays.optional().default(HORIZON_DAYS),
+        weatherPolicy: profileField.weatherPolicy.optional().default(''),
+        yardage: profileField.yardage.nullish().transform(v => v ?? null),
+        yearOpened: profileField.yearOpened.nullish().transform(v => v ?? null),
+        designer: profileField.designer.nullish().transform(v => v || null),
+        grass: profileField.grass.nullish().transform(v => v || null),
     })
     .transform(v => ({ ...v, slug: v.slug ? slugify(v.slug) : slugify(v.name, v.city) }))
     .refine(v => v.slug.length > 0, {
@@ -108,6 +145,51 @@ export const golfCourseInputSchema = z
 export type GolfCourseInputRaw = z.input<typeof golfCourseInputSchema>;
 /** What the database module accepts. */
 export type GolfCourseInput = z.output<typeof golfCourseInputSchema>;
+
+/**
+ * What a course may change about itself from the portal (ADR-0050): how it is described, what it
+ * promises customers and how far ahead it sells. Name, place, slug, currency, time zone and
+ * status are the team's, so they are not here, and `strictObject` turns a request that names one
+ * into a refusal rather than a quiet ignore. Every field is required: a missing one must never
+ * be read as "clear it".
+ */
+export const courseProfileInputSchema = z.strictObject({
+    description: profileField.description,
+    address: profileField.address.nullable().transform(v => v || null),
+    amenities: profileField.amenities.transform(a => [...new Set(a)]),
+    imageUrls: profileField.imageUrls,
+    par: profileField.par.nullable(),
+    yardage: profileField.yardage.nullable(),
+    yearOpened: profileField.yearOpened.nullable(),
+    designer: profileField.designer.nullable().transform(v => v || null),
+    grass: profileField.grass.nullable().transform(v => v || null),
+    weatherPolicy: profileField.weatherPolicy,
+    bookingWindowDays: profileField.bookingWindowDays,
+    freeCancelHours: profileField.freeCancelHours,
+});
+
+export type CourseProfileInputRaw = z.input<typeof courseProfileInputSchema>;
+export type CourseProfileInput = z.output<typeof courseProfileInputSchema>;
+
+/** Each field that changed, as [before, after]. */
+export type ProfileDiff = Partial<Record<keyof CourseProfileInput, [unknown, unknown]>>;
+
+/** What a shorter booking window does to tee times already on the sheet. Nothing is deleted. */
+export interface WindowImpact {
+    /** Open tee times that fall beyond the new window and stop being sold. */
+    stopsSelling: number;
+    /** Of those, how many already have a live booking; the booking stays. */
+    withBookings: number;
+}
+
+/** The profile fields of a course, in the shape the portal form edits and the API accepts. */
+export function profileOfCourse(c: GolfCourse): CourseProfileInput {
+    return {
+        description: c.description, address: c.address, amenities: c.amenities, imageUrls: c.imageUrls,
+        par: c.par, yardage: c.yardage, yearOpened: c.yearOpened, designer: c.designer, grass: c.grass,
+        weatherPolicy: c.weatherPolicy, bookingWindowDays: c.bookingWindowDays, freeCancelHours: c.freeCancelHours,
+    };
+}
 
 // ── Tee times ────────────────────────────────────────────────────────────────
 

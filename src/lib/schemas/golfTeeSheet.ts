@@ -77,7 +77,8 @@ export const noImpact = (): Impact => ({
 
 export type CourseChangeKind =
     | 'schedule_created' | 'schedule_updated' | 'schedule_deleted'
-    | 'block_added' | 'block_removed' | 'extras_changed';
+    | 'block_added' | 'block_removed' | 'extras_changed'
+    | 'profile_updated';
 
 export interface CourseChange {
     id: string;

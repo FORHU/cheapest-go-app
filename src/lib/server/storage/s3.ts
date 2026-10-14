@@ -119,6 +119,20 @@ export async function presignDownloadUrl({ key, fileName, contentType }: Presign
     );
 }
 
+/**
+ * One object's bytes. Used by the golf photo route, which holds the whole file in memory: photos
+ * are capped well under what an attachment may be.
+ */
+export async function getObject(key: string): Promise<Buffer | null> {
+    try {
+        const out = await getS3Client().send(new GetObjectCommand({ Bucket: attachmentsBucket(), Key: key }));
+        return out.Body ? Buffer.from(await out.Body.transformToByteArray()) : null;
+    } catch (err) {
+        if ((err as { name?: string })?.name === 'NoSuchKey') return null;
+        throw err;
+    }
+}
+
 /** Remove one object. Used when an upload's database row could not be written. */
 export async function deleteObject(key: string): Promise<void> {
     await getS3Client().send(

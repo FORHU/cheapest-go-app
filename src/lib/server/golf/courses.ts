@@ -1,6 +1,6 @@
 import type postgres from 'postgres';
 import { getSqlAdmin } from '@/lib/db/postgres';
-import type { GolfCourse, GolfCourseInput, GolfCourseStatus } from '@/lib/schemas/golf';
+import type { CourseProfileInput, GolfCourse, GolfCourseInput, GolfCourseStatus } from '@/lib/schemas/golf';
 import { CourseHasBookingsError, CourseNotBookableError, SlugTakenError, TimezoneLockedError } from './errors';
 
 /**
@@ -12,7 +12,9 @@ import { CourseHasBookingsError, CourseNotBookableError, SlugTakenError, Timezon
 
 export const ADMIN_PAGE_SIZE = 20;
 
-function columns(sql: postgres.Sql) {
+type Db = postgres.Sql | postgres.TransactionSql;
+
+function columns(sql: Db) {
     return sql`
         id, slug, name, country, city, address, description, holes, par,
         green_fee_from::float8 AS "greenFeeFrom", currency, image_urls AS "imageUrls",
@@ -195,6 +197,38 @@ export async function setCourseStatus(id: string, status: GolfCourseStatus): Pro
     if (rows.length > 0) return true;
     if (await clockState(sql, id)) throw new CourseNotBookableError();
     return false;
+}
+
+/** A course in any status; null when there is none. For the portal and the admin, never a storefront. */
+export async function getCourseById(id: string): Promise<GolfCourse | null> {
+    const sql = getSqlAdmin();
+    const rows = await sql<GolfCourse[]>`SELECT ${columns(sql)} FROM golf_courses WHERE id = ${id}`;
+    return plain(rows)[0] ?? null;
+}
+
+/** The course row, locked for the rest of the transaction; null when there is none. */
+export async function lockCourse(tx: Db, id: string): Promise<GolfCourse | null> {
+    const rows = await tx<GolfCourse[]>`SELECT ${columns(tx)} FROM golf_courses WHERE id = ${id} FOR UPDATE`;
+    return plain(rows)[0] ?? null;
+}
+
+/**
+ * Writes the fields a course describes itself with and nothing else: not its name, place, slug,
+ * currency, time zone or status (ADR-0050). Takes the profile schema's output, so the columns it
+ * can reach are fixed by what that schema allows.
+ */
+export async function writeProfile(tx: Db, id: string, input: CourseProfileInput): Promise<GolfCourse | null> {
+    const rows = await tx<GolfCourse[]>`
+        UPDATE golf_courses SET
+            description = ${input.description}, address = ${input.address},
+            amenities = ${input.amenities}::text[], image_urls = ${input.imageUrls}::text[],
+            par = ${input.par}, yardage = ${input.yardage}, year_opened = ${input.yearOpened},
+            designer = ${input.designer}, grass = ${input.grass}, weather_policy = ${input.weatherPolicy},
+            booking_window_days = ${input.bookingWindowDays}, free_cancel_hours = ${input.freeCancelHours},
+            updated_at = now()
+         WHERE id = ${id}
+        RETURNING ${columns(tx)}`;
+    return plain(rows)[0] ?? null;
 }
 
 /** Sets the clock a course's tee times are on; null when no course has this id. */

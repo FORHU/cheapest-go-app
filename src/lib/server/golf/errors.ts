@@ -78,6 +78,35 @@ export class LastScheduleError extends Error {
     }
 }
 
+/** An image list named an uploaded photo that is not this course's (or does not exist). */
+export class PhotoNotOwnedError extends Error {
+    constructor() {
+        super("One of those photos isn't this course's. Upload it again.");
+        this.name = 'PhotoNotOwnedError';
+    }
+}
+
+export type PhotoRejectedCode = 'empty' | 'too_large' | 'unsupported_type' | 'too_many';
+
+const PHOTO_REJECTED: Record<PhotoRejectedCode, { status: number; message: string }> = {
+    empty: { status: 400, message: 'That file is empty.' },
+    too_large: { status: 413, message: 'Photos must be 5 MB or smaller.' },
+    unsupported_type: { status: 415, message: 'Use a JPEG, PNG or WebP image.' },
+    too_many: { status: 409, message: 'This course has reached its photo limit. Remove some before adding more.' },
+};
+
+/** An uploaded photo refused for a reason the person can fix. */
+export class PhotoRejectedError extends Error {
+    constructor(public readonly code: PhotoRejectedCode) {
+        super(PHOTO_REJECTED[code].message);
+        this.name = 'PhotoRejectedError';
+    }
+
+    get httpStatus(): number {
+        return PHOTO_REJECTED[this.code].status;
+    }
+}
+
 export type CourseStaffErrorCode =
     | 'user_not_found' | 'course_not_found' | 'not_eligible' | 'invalid_email'
     | 'invitation_invalid' | 'wrong_account'

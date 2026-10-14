@@ -14,7 +14,7 @@ export async function recordChange(
 ): Promise<void> {
     await sql`
         INSERT INTO golf_course_changes (course_id, user_id, kind, summary, details)
-        VALUES (${courseId}, ${userId}, ${kind}, ${summary.slice(0, 300)}, ${JSON.stringify(details)}::jsonb)`;
+        VALUES (${courseId}, ${userId}, ${kind}, ${summary.slice(0, 300)}, ${sql.json(details as postgres.JSONValue)})`;
 }
 
 export async function listChanges(courseId: string, limit = 30): Promise<CourseChange[]> {

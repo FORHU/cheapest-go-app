@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { ArrowLeft, CalendarCheck, CalendarRange } from 'lucide-react';
+import { ArrowLeft, CalendarCheck, CalendarRange, FileText } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 
 /** The portal on a phone: the admin's bottom bar with only the portal in it. */
@@ -11,6 +11,7 @@ export function CourseMobileNav({ pathname, waiting }: { pathname: string; waiti
     const tabs = [
         { href: '/course', label: t('navRequests'), icon: CalendarCheck, active: pathname === '/course' },
         { href: '/course/tee-sheet', label: t('navTeeSheet'), icon: CalendarRange, active: pathname.startsWith('/course/tee-sheet') },
+        { href: '/course/profile', label: t('navProfile'), icon: FileText, active: pathname.startsWith('/course/profile') },
         { href: '/golf', label: t('navBackToSite'), icon: ArrowLeft, active: false },
     ];
 
