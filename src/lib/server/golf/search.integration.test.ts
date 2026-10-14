@@ -1,4 +1,17 @@
-import { describe, it, expect, afterAll } from 'vitest';
+import { describe, it, expect, vi, afterAll } from 'vitest';
+
+// Fixed "USD per 1 unit" rates, so a conversion here is exact and needs no network.
+const fx = vi.hoisted(() => ({ rates: { USD: 1, PHP: 0.0175, KRW: 0.0007, THB: 0.03 } as Record<string, number> }));
+vi.mock('@/lib/currency', () => ({
+    EXCHANGE_RATES: fx.rates,
+    refreshExchangeRates: vi.fn(async () => true),
+    convertCurrencyStrict: (amount: number, from: string, to: string) => {
+        if (from === to) return amount;
+        if (!fx.rates[from] || !fx.rates[to]) throw new Error(`No exchange rate for ${from} or ${to}`);
+        return (amount * fx.rates[from]) / fx.rates[to];
+    },
+}));
+
 import type { GolfCourseInput, TeeTimeScheduleInput } from '@/lib/schemas/golf';
 import { createCourse, setCourseStatus, deleteCourses } from './courses';
 import { createSchedule } from './teeTimes';
@@ -78,6 +91,32 @@ describe.skipIf(!reachable)('course search against a real database', () => {
         await published();
         const results = await searchCourses({ country, date: '2030-01-08', players: 1, from: '07:15', to: '07:30' }, NOW);
         expect(results[0].teeTimes.map(t => t.localTime)).toEqual(['07:20', '07:30']);
+    });
+
+    it("prices in the viewer's currency, the figure a hold in that currency would charge", async () => {
+        const c = await published();
+        const results = await searchCourses({ country, date: '2030-01-08', players: 2, currency: 'PHP' }, NOW);
+        const r = results.find(x => x.course.id === c.id)!;
+        const quote = await quoteGolf({ greenFeeTotal: 5000, currency: 'USD', chargeCurrency: 'PHP' });
+        expect(r.from).toMatchObject({ total: quote.total, currency: 'PHP' });
+        expect(r.teeTimes[0]).toMatchObject({ total: quote.total, currency: 'PHP' });
+        expect(r.from!.perPlayer).toBe(Math.round((quote.total / 2) * 100) / 100);
+    });
+
+    it("prices the nearest dates in the viewer's currency too, in whole won", async () => {
+        const c = await published({}, { daysOfWeek: [1] });
+        const results = await searchCourses({ country, date: '2030-01-16', players: 2, currency: 'KRW' }, NOW);
+        const r = results.find(x => x.course.id === c.id)!;
+        expect(r.nearest.length).toBeGreaterThan(0);
+        expect(r.nearest.every(n => n.currency === 'KRW' && Number.isInteger(n.total))).toBe(true);
+    });
+
+    it('falls back to USD for a course priced in a currency customers are not charged in', async () => {
+        const c = await published({ currency: 'THB' }, { pricePerPlayer: 3000 });
+        const results = await searchCourses({ country, date: '2030-01-08', players: 2 }, NOW);
+        const r = results.find(x => x.course.id === c.id)!;
+        const quote = await quoteGolf({ greenFeeTotal: 6000, currency: 'THB', chargeCurrency: 'USD' });
+        expect(r.from).toMatchObject({ total: quote.total, currency: 'USD' });
     });
 
     it('needs enough spots for the party', async () => {

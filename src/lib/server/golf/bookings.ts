@@ -1,7 +1,11 @@
 import type postgres from 'postgres';
 import { getSqlAdmin } from '@/lib/db/postgres';
 import { stripe } from '@/lib/stripe/server';
-import { toStripeAmount } from '@/lib/pricing';
+import { roundToCurrency, toStripeAmount } from '@/lib/pricing';
+import { lockFx } from '@/lib/bookings/fxLock';
+import { capAtDisplayedTotal } from '@/lib/bookings/hotelChargeBase';
+import { isChargeCurrency } from '@/lib/constants/currencies';
+import { defaultChargeCurrency } from '@/lib/golf/currency';
 import { mintUniqueBookingReference } from '@/lib/bookingReference';
 import { canonicalBrandName } from '@/lib/brand';
 import { cancellationFor, decideBy, freeCancelUntil, holdExpiresAt } from '@/lib/golf/rules';
@@ -23,7 +27,9 @@ import { notifyCourseOfRequest } from './staffEmails';
  */
 
 type DateKey = 'startsAt' | 'holdExpiresAt' | 'requestedAt' | 'decideBy' | 'confirmedAt' | 'closedAt' | 'freeCancelUntil';
-type BookingRow = Omit<GolfBooking, DateKey> & {
+type BookingRow = Omit<GolfBooking, DateKey | 'pricePerPlayer'> & {
+    /** The course's price per player, in its own currency. */
+    coursePricePerPlayer: number;
     startsAt: Date;
     holdExpiresAt: Date;
     requestedAt: Date | null;
@@ -36,10 +42,14 @@ type BookingRow = Omit<GolfBooking, DateKey> & {
 const round2 = (n: number) => Math.round(n * 100) / 100;
 const iso = (d: Date | null) => (d ? d.toISOString() : null);
 
-function toBooking(r: BookingRow): GolfBooking {
+function toBooking({ coursePricePerPlayer, ...r }: BookingRow): GolfBooking {
+    const currency = r.currency.trim();
     return {
         ...r,
-        currency: r.currency.trim(),
+        currency,
+        courseCurrency: r.courseCurrency.trim(),
+        // The customer's per-player figure is the course's, converted at the rate fixed at the hold.
+        pricePerPlayer: roundToCurrency(coursePricePerPlayer * r.chargeRate, currency),
         startsAt: r.startsAt.toISOString(),
         holdExpiresAt: r.holdExpiresAt.toISOString(),
         requestedAt: iso(r.requestedAt),
@@ -56,16 +66,19 @@ function selectBookings(sql: postgres.Sql) {
                c.name AS "courseName", c.slug AS "courseSlug", c.timezone,
                b.tee_time_id AS "teeTimeId", t.starts_at AS "startsAt", b.players,
                b.lead_name AS "leadName", b.contact_email AS "contactEmail",
-               b.price_per_player::float8 AS "pricePerPlayer", b.green_fee_total::float8 AS "greenFeeTotal",
-               b.service_fee::float8 AS "serviceFee", b.total::float8 AS total, b.currency,
+               b.price_per_player::float8 AS "coursePricePerPlayer", b.currency AS "courseCurrency",
+               b.green_fee_total::float8 AS "courseGreenFeeTotal", b.charge_rate::float8 AS "chargeRate",
+               b.charged_green_fee_total::float8 AS "greenFeeTotal",
+               b.charged_service_fee::float8 AS "serviceFee", b.charged_total::float8 AS total,
+               b.charge_currency AS currency,
                b.payment_intent_id AS "paymentIntentId", b.status, b.hold_expires_at AS "holdExpiresAt",
                b.requested_at AS "requestedAt", b.decide_by AS "decideBy", b.confirmed_at AS "confirmedAt",
                b.closed_at AS "closedAt", b.close_reason AS "closeReason",
                b.refund_amount::float8 AS "refundAmount", b.free_cancel_until AS "freeCancelUntil",
-               b.weather_policy AS "weatherPolicy", b.extras_total::float8 AS "extrasTotal",
+               b.weather_policy AS "weatherPolicy", b.charged_extras_total::float8 AS "extrasTotal",
                COALESCE((SELECT json_agg(json_build_object(
                                 'code', e.code, 'quantity', e.quantity,
-                                'unitPrice', e.unit_price::float8, 'total', e.total::float8)
+                                'unitPrice', e.charged_unit_price::float8, 'total', e.charged_total::float8)
                             ORDER BY array_position(ARRAY['club_rental', 'caddie', 'cart'], e.code))
                            FROM golf_booking_extras e WHERE e.booking_id = b.id), '[]'::json) AS extras
           FROM golf_bookings b
@@ -210,6 +223,13 @@ export interface HoldInput {
     leadName: string;
     /** Club rental, caddie, cart; priced against the course's current offer. */
     extras?: ExtraChoice[];
+    /**
+     * The Charge Currency the customer chose (KRW, USD or PHP); the course's own when it can be
+     * charged, USD otherwise (ADR-0051).
+     */
+    chargeCurrency?: string;
+    /** The total the customer was shown, in `chargeCurrency`. A small drift is absorbed, a large one refused. */
+    displayedTotal?: number | null;
 }
 
 export interface HoldResult {
@@ -252,6 +272,13 @@ export async function holdTeeTime(input: HoldInput, now = new Date()): Promise<H
     if (!bookable) throw new GolfBookingError('tee_time_unavailable', 'That tee time can no longer be booked. Please pick another.');
     const { teeTime, course } = bookable;
 
+    // What the customer is charged in. A currency we do not charge in is refused here, not left to
+    // fail at Stripe with a hold already taken.
+    const chargeCurrency = (input.chargeCurrency ?? defaultChargeCurrency(teeTime.currency)).trim().toUpperCase();
+    if (!isChargeCurrency(chargeCurrency)) {
+        throw new GolfBookingError('currency_unsupported', `We can't take payment in ${chargeCurrency}.`);
+    }
+
     const choices = input.extras ?? [];
     const priced = priceExtras(choices, await listCourseExtras(course.id), input.players);
     if (!priced.ok) {
@@ -268,16 +295,31 @@ export async function holdTeeTime(input: HoldInput, now = new Date()): Promise<H
         // Resumed only for the same party and the same extras: anything else changes the amount
         // the card must be authorised for.
         const resumed = live.players === input.players ? await resume(live.id) : null;
-        if (resumed && sameExtras(resumed.booking.extras, choices)) return resumed;
+        if (resumed && sameExtras(resumed.booking.extras, choices) && resumed.booking.currency === chargeCurrency) return resumed;
         await endHold(live.id, now);
     }
 
     // No early "enough spots?" check: this customer's own hold may have been holding the spots a
     // moment ago, and the conditional UPDATE below is the real guard either way.
     const greenFeeTotal = round2(teeTime.pricePerPlayer * input.players);
-    const { total, serviceFee, markupRate } = await quoteGolf({
-        greenFeeTotal, extrasTotal: priced.total, currency: teeTime.currency,
+    const quote = await quoteGolf({
+        greenFeeTotal, extraLines: priced.lines.map(line => line.total),
+        currency: teeTime.currency, chargeCurrency,
     });
+    const { markupRate } = quote;
+
+    // The customer is held to the total they were shown: a small drift in the rate is ours to
+    // absorb, a larger one means they should look again before a card is authorised.
+    const held = capAtDisplayedTotal(quote.total, input.displayedTotal, chargeCurrency);
+    if (!held.ok) {
+        throw new GolfBookingError('price_changed', held.message, { serverPrice: held.serverPrice, currency: held.currency });
+    }
+    const total = held.total;
+    const serviceFee = roundToCurrency(total - quote.base, chargeCurrency);
+
+    // The course's columns stay in its own currency: what the course is owed, at the locked rate.
+    const courseTotal = round2(total / quote.rate);
+    const courseServiceFee = Math.max(0, round2(courseTotal - greenFeeTotal - priced.total));
     const brand = canonicalBrandName(process.env.NEXT_PUBLIC_BRAND_NAME);
     const reference = await mintUniqueBookingReference(brand, async ref =>
         (await sql`SELECT 1 FROM golf_bookings WHERE reference = ${ref}`).length > 0);
@@ -295,19 +337,26 @@ export async function holdTeeTime(input: HoldInput, now = new Date()): Promise<H
                 INSERT INTO golf_bookings
                     (reference, user_id, course_id, tee_time_id, players, lead_name, contact_email,
                      price_per_player, green_fee_total, service_fee, extras_total, total, currency,
+                     charge_currency, charge_rate, charged_green_fee_total, charged_extras_total,
+                     charged_service_fee, charged_total,
                      hold_expires_at, free_cancel_until, weather_policy)
                 VALUES
                     (${reference}, ${input.userId}, ${course.id}, ${teeTime.id}, ${input.players},
                      ${input.leadName}, ${input.email}, ${teeTime.pricePerPlayer}, ${greenFeeTotal},
-                     ${serviceFee}, ${priced.total}, ${total}, ${teeTime.currency}, ${holdExpiresAt(now)},
+                     ${courseServiceFee}, ${priced.total}, ${courseTotal}, ${teeTime.currency},
+                     ${chargeCurrency}, ${quote.rate}, ${quote.greenFee}, ${quote.extras},
+                     ${serviceFee}, ${total},
+                     ${holdExpiresAt(now)},
                      ${freeCancelUntil(new Date(teeTime.startsAt), course.freeCancelHours)},
                      ${course.weatherPolicy})
                 RETURNING id`;
             if (priced.lines.length > 0) {
                 await tx`
-                    INSERT INTO golf_booking_extras ${tx(priced.lines.map(line => ({
+                    INSERT INTO golf_booking_extras ${tx(priced.lines.map((line, i) => ({
                         booking_id: row.id, code: line.code, quantity: line.quantity,
                         unit_price: line.unitPrice, total: line.total,
+                        charged_unit_price: roundToCurrency(line.unitPrice * quote.rate, chargeCurrency),
+                        charged_total: quote.extraLines[i],
                     })))}`;
             }
             return row.id;
@@ -329,8 +378,8 @@ export async function holdTeeTime(input: HoldInput, now = new Date()): Promise<H
 
     try {
         const intent = await stripe.paymentIntents.create({
-            amount: toStripeAmount(total, teeTime.currency),
-            currency: teeTime.currency.toLowerCase(),
+            amount: toStripeAmount(total, chargeCurrency),
+            currency: chargeCurrency.toLowerCase(),
             // Authorise now, capture when the team has confirmed with the course.
             capture_method: 'manual',
             metadata: {
@@ -341,10 +390,15 @@ export async function holdTeeTime(input: HoldInput, now = new Date()): Promise<H
                 userId: input.userId,
                 courseSlug: course.slug,
                 teeTimeStartsAt: teeTime.startsAt,
-                greenFeeTotal: String(greenFeeTotal),
-                extrasTotal: String(priced.total),
+                // In the charge currency, as the card is. The course's own are beside them.
+                greenFeeTotal: String(quote.greenFee),
+                extrasTotal: String(quote.extras),
                 serviceFee: String(serviceFee),
                 markupRate: String(markupRate),
+                chargeCurrency,
+                chargeRate: String(quote.rate),
+                courseCurrency: teeTime.currency.trim(),
+                courseGreenFeeTotal: String(greenFeeTotal),
             },
             description: `${reference} · ${course.name} — tee time`,
         }, { idempotencyKey: `golf-pi-${bookingId}` });
@@ -366,6 +420,15 @@ export async function confirmBooking(id: string, now = new Date()): Promise<Golf
     await sql`
         UPDATE golf_bookings SET status = 'confirmed', confirmed_at = ${now}, updated_at = now()
          WHERE id = ${id} AND status = 'requested'`;
+    // The payment has been taken, so restate it in USD at the rate of this moment (ADR-0008). It
+    // never fails the confirmation: a booking without a rate is counted as unconverted and
+    // backfilled, as for hotels and flights.
+    const fx = await lockFx(booking.total, booking.currency);
+    await sql`
+        UPDATE golf_bookings
+           SET usd_amount = ${fx.usd_amount}, fx_rate = ${fx.fx_rate},
+               fx_captured_at = ${fx.fx_captured_at}, fx_source = ${fx.fx_source}
+         WHERE id = ${id} AND usd_amount IS NULL`;
     const updated = (await getBookingById(id))!;
     await sendGolfBookingEmail('confirmed', updated);
     return updated;

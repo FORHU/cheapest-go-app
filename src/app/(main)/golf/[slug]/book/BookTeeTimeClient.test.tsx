@@ -60,3 +60,39 @@ describe('BookTeeTimeClient', () => {
         });
     });
 });
+
+describe('BookTeeTimeClient in the customer\'s currency', () => {
+    const inPhp = () => render(
+        <BookTeeTimeClient teeTimeId="t1" players={2} bookPath="/golf/wack-wack/book" extras={extras} summary={summary}
+            currency="PHP" displayedTotal={12328.57}
+            policy={{ cancel: { kind: 'until', date: 'Oct 5, 2026, 7:00 AM' }, weatherPolicy: '' }} />,
+    );
+
+    it('holds in the currency it priced in, against the total it showed', async () => {
+        inPhp();
+        fireEvent.change(screen.getByLabelText(en.golf.booking.leadName), { target: { value: 'Ana Cruz' } });
+        fireEvent.click(screen.getByRole('button', { name: en.golf.booking.continueToPayment }));
+        expect(await screen.findByText('card form')).toBeInTheDocument();
+        const [, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit];
+        expect(JSON.parse(String(init.body))).toMatchObject({ chargeCurrency: 'PHP', displayedTotal: 12328.57 });
+    });
+
+    it('keeps the currency in the address when an extra changes the price', () => {
+        inPhp();
+        fireEvent.click(screen.getByRole('combobox', { name: /Golf cart/ }));
+        fireEvent.click(screen.getByRole('option', { name: '1' }));
+        expect(router.replace).toHaveBeenCalledWith(
+            '/golf/wack-wack/book?teeTime=t1&players=2&extras=club_rental:1,cart:1&currency=PHP', { scroll: false });
+    });
+
+    it('tells the customer when the price has moved and shows them the new one', async () => {
+        fetchMock.mockResolvedValueOnce(new Response(
+            JSON.stringify({ success: false, code: 'price_changed', serverPrice: 12500, currency: 'PHP' }), { status: 409 }));
+        inPhp();
+        fireEvent.change(screen.getByLabelText(en.golf.booking.leadName), { target: { value: 'Ana Cruz' } });
+        fireEvent.click(screen.getByRole('button', { name: en.golf.booking.continueToPayment }));
+        expect(await screen.findByText(en.golf.booking.priceChanged)).toBeInTheDocument();
+        expect(router.refresh).toHaveBeenCalled();
+        expect(screen.queryByText('card form')).not.toBeInTheDocument();
+    });
+});

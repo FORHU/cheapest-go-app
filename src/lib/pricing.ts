@@ -486,6 +486,18 @@ export function toStripeAmount(price: number, currency: string): number {
 }
 
 /**
+ * Round an amount to the precision its currency is charged in: whole units for the zero-decimal
+ * currencies (KRW, JPY, …), cents otherwise.
+ *
+ * A figure shown to a customer and the figure sent to Stripe must be the same number, and for a
+ * zero-decimal currency `toStripeAmount` rounds to whole units. Rounding here first keeps every
+ * part of a price a whole number too, so the lines on a receipt add up to its total.
+ */
+export function roundToCurrency(amount: number, currency: string): number {
+    return ZERO_DECIMAL_CURRENCIES.has(currency.toLowerCase()) ? Math.round(amount) : round2(amount);
+}
+
+/**
  * Read a Stripe amount back into major currency units. The inverse of
  * {@link toStripeAmount}, and the only correct way to interpret `pi.amount`,
  * `refund.amount`, `balance.available[].amount` or any other Stripe integer.

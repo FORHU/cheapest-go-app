@@ -1,7 +1,21 @@
 import { describe, it, expect, vi } from 'vitest';
-import { applyMarkup, golfServiceFee, GOLF_MARKUP_SPEC } from './pricing';
+import { applyMarkup, golfServiceFee, GOLF_MARKUP_SPEC, roundToCurrency, toStripeAmount } from './pricing';
 
 const same = (amount: number) => amount;
+
+describe('roundToCurrency', () => {
+    it('keeps cents where a currency has them', () => {
+        expect(roundToCurrency(10.005, 'USD')).toBe(10.01);
+        expect(roundToCurrency(1234.567, 'php')).toBe(1234.57);
+    });
+
+    it('rounds to whole units where it has none, so shown and charged agree', () => {
+        expect(roundToCurrency(123456.78, 'KRW')).toBe(123457);
+        expect(roundToCurrency(123456.4, 'krw')).toBe(123456);
+        // The amount Stripe is sent is the amount that was shown.
+        expect(toStripeAmount(roundToCurrency(123456.78, 'KRW'), 'KRW')).toBe(123457);
+    });
+});
 
 describe('golfServiceFee', () => {
     it('follows the hotel numbers, as configured, until golf has its own', async () => {

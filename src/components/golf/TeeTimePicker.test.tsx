@@ -59,3 +59,26 @@ describe('TeeTimePicker all-in prices', () => {
         expect(screen.queryByText(/₱2,500\.00/)).not.toBeInTheDocument();
     });
 });
+
+describe('TeeTimePicker in the viewer\'s currency', () => {
+    it('asks for prices in it, and carries it to checkout so both quote the same', async () => {
+        render(<TeeTimePicker slug="wack-wack" today="2026-10-11" windowDays={60} currency="KRW" />);
+        await screen.findByText('07:00');
+        expect(fetch).toHaveBeenCalledWith('/api/golf/courses/wack-wack/tee-times?date=2026-10-12&players=2&currency=KRW');
+        fireEvent.click(screen.getByRole('button', { name: /07:00/ }));
+        expect(screen.getByRole('link', { name: 'Continue' })).toHaveAttribute(
+            'href', '/golf/wack-wack/book?teeTime=t1&players=2&currency=KRW');
+    });
+
+    it('shows the all-in price in the currency it was quoted in, not the course\'s', async () => {
+        vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({
+            success: true,
+            data: { timezone: 'Asia/Manila', teeTimes: [
+                { id: 't1', startsAt: '2026-10-11T23:00:00.000Z', localTime: '07:00', spots: 4, spotsLeft: 4, pricePerPlayer: 100, allInPerPlayer: 6000, allInCurrency: 'PHP', currency: 'USD' },
+            ] },
+        }))));
+        render(<TeeTimePicker slug="wack-wack" today="2026-10-11" windowDays={60} currency="PHP" />);
+        expect(await screen.findByText(/₱6,000\.00/)).toBeInTheDocument();
+        expect(screen.queryByText(/\$100\.00/)).not.toBeInTheDocument();
+    });
+});

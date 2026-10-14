@@ -39,7 +39,7 @@ describe('GET /api/golf/courses/[slug]/tee-times', () => {
         const { quoteGolf } = await import('@/lib/server/golf/quote');
         vi.mocked(listAvailableTeeTimes).mockResolvedValueOnce(oneTeeTime);
         await get('known', '?date=2026-10-12&players=nine');
-        expect(quoteGolf).toHaveBeenLastCalledWith({ greenFeeTotal: 200, currency: 'USD' });
+        expect(quoteGolf).toHaveBeenLastCalledWith({ greenFeeTotal: 200, currency: 'USD', chargeCurrency: 'USD' });
     });
 
     it('returns the day\'s tee times', async () => {

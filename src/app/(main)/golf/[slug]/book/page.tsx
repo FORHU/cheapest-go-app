@@ -6,6 +6,9 @@ import { getAuthenticatedUser } from '@/lib/server/auth';
 import { getBookableTeeTime } from '@/lib/server/golf/teeTimes';
 import { listCourseExtras } from '@/lib/server/golf/extras';
 import { quoteGolf } from '@/lib/server/golf/quote';
+import { viewerCurrency } from '@/lib/server/golf/viewerCurrency';
+import { chargeCurrencyFor, defaultChargeCurrency } from '@/lib/golf/currency';
+import { roundToCurrency } from '@/lib/pricing';
 import { freeCancelUntil } from '@/lib/golf/rules';
 import { formatExtrasParam, parseExtrasParam, priceExtras, sanitizeExtras, type GolfExtraCode } from '@/lib/golf/extras';
 import { formatMoney } from '@/components/golf/format';
@@ -56,12 +59,25 @@ export default async function BookTeeTimePage({ params, searchParams }: Props) {
     const chosen = sanitizeExtras(asked, offers, players);
     const priced = priceExtras(chosen, offers, players);
     const lines = priced.ok ? priced.lines : [];
-    const extrasTotal = priced.ok ? priced.total : 0;
 
     const startsAt = new Date(teeTime.startsAt);
     const greenFee = round2(teeTime.pricePerPlayer * players);
-    const { total, serviceFee } = await quoteGolf({ greenFeeTotal: greenFee, extrasTotal, currency: teeTime.currency });
-    const money = (amount: number) => formatMoney(amount, teeTime.currency, locale);
+    // Priced in the viewer's Charge Currency, the one the hold will charge in (ADR-0051). When no
+    // rate is available for it the page prices in the course's default instead, and says so by
+    // showing that currency, rather than failing the checkout.
+    const preferred = chargeCurrencyFor(await viewerCurrency(query.currency), teeTime.currency);
+    const price = (chargeCurrency: string) => quoteGolf({
+        greenFeeTotal: greenFee, extraLines: lines.map(line => line.total), currency: teeTime.currency, chargeCurrency,
+    });
+    const quote = await price(preferred).catch(async err => {
+        const fallback = defaultChargeCurrency(teeTime.currency);
+        if (fallback === preferred) throw err;
+        return price(fallback);
+    });
+    const { total, serviceFee } = quote;
+    const money = (amount: number) => formatMoney(amount, quote.currency, locale);
+    /** A course price per item, in the customer's currency, at the rate the quote used. */
+    const each = (amount: number) => roundToCurrency(amount * quote.rate, quote.currency);
     const extraName = (code: GolfExtraCode) => tGolf(`amenities.${code}`);
     const courseClock = (options: Intl.DateTimeFormatOptions, instant: Date) =>
         new Intl.DateTimeFormat(locale, { timeZone: course.timezone, ...options }).format(instant);
@@ -77,7 +93,7 @@ export default async function BookTeeTimePage({ params, searchParams }: Props) {
             extras={offers.map(offer => ({
                 code: offer.code,
                 name: extraName(offer.code),
-                each: t('extraEach', { price: money(offer.price) }),
+                each: t('extraEach', { price: money(each(offer.price)) }),
                 quantity: chosen.find(c => c.code === offer.code)?.quantity ?? 0,
             }))}
             summary={{
@@ -85,15 +101,17 @@ export default async function BookTeeTimePage({ params, searchParams }: Props) {
                 courseHref: `/golf/${course.slug}`,
                 date: courseClock({ dateStyle: 'full' }, startsAt),
                 time: t('courseTime', { time: teeTime.localTime }),
-                greenFeeLabel: t('greenFee', { players, price: money(teeTime.pricePerPlayer) }),
-                greenFee: money(greenFee),
-                extraLines: lines.map(line => ({
+                greenFeeLabel: t('greenFee', { players, price: money(each(teeTime.pricePerPlayer)) }),
+                greenFee: money(quote.greenFee),
+                extraLines: lines.map((line, i) => ({
                     label: t('extraLine', { name: extraName(line.code), count: line.quantity }),
-                    amount: money(line.total),
+                    amount: money(quote.extraLines[i]),
                 })),
                 serviceFee: money(serviceFee),
                 total: money(total),
             }}
+            currency={quote.currency}
+            displayedTotal={total}
             policy={{
                 cancel: cutoff.getTime() > Date.now()
                     ? { kind: 'until', date: courseClock({ dateStyle: 'medium', timeStyle: 'short' }, cutoff) }

@@ -3192,7 +3192,8 @@
       "extrasHint": "可选。我们的团队会在确认开球时间时一并向球场安排。",
       "extraEach": "每项 {price}",
       "extraLine": "{name} × {count}",
-      "extrasUnavailable": "可选的附加服务已有变动。请重新查看后再试。"
+      "extrasUnavailable": "可选的附加服务已有变动。请重新查看后再试。",
+      "priceChanged": "自您打开此页面后价格已变动。请查看更新后的总价后再试。"
     },
     "policy": {
       "heading": "预订规则",

@@ -53,8 +53,9 @@ export function toCourseBookingView(b: GolfBooking): CourseBookingView {
         players: b.players,
         leadName: b.leadName,
         extras: b.extras.map(e => ({ code: e.code, quantity: e.quantity })),
-        greenFeeTotal: b.greenFeeTotal,
-        currency: b.currency,
+        // The course's own figures, in its own currency, whatever the customer paid in (ADR-0051).
+        greenFeeTotal: b.courseGreenFeeTotal,
+        currency: b.courseCurrency,
         decideBy: b.decideBy,
         requestedAt: b.requestedAt,
     };

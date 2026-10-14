@@ -9,6 +9,7 @@ import { ThemeProvider } from '@/components/context/ThemeContext';
 import { QueryProvider } from '@/providers/QueryProvider';
 import { AuthListener } from '@/components/auth/AuthListener';
 import { ExchangeRateListener } from '@/components/exchange/ExchangeRateListener';
+import { CurrencyCookieSync } from '@/components/exchange/CurrencyCookieSync';
 import { GlobalSparkle } from '@/components/ui/GlobalSparkle';
 import AuthModal from '@/components/auth/AuthModal';
 import { PWAInstallProvider } from '@/contexts/PWAInstallContext';
@@ -97,6 +98,7 @@ export default async function RootLayout({
               <PWAInstallProvider>
                 <AuthListener />
                 <ExchangeRateListener />
+                <CurrencyCookieSync />
                 <PWAServiceWorkerRegistrar />
                 <div className="relative min-h-screen w-full bg-alabaster dark:bg-obsidian text-slate-900 dark:text-white transition-colors duration-800 bg-grid-alabaster dark:bg-grid-obsidian bg-size-40px_40px" suppressHydrationWarning>
                   <GlobalSparkle />

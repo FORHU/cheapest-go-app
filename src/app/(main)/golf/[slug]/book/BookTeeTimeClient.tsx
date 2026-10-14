@@ -36,12 +36,15 @@ export interface ExtraOption {
  * prices the whole booking again; the card is authorised, not charged, until the team confirms
  * with the course (CONTEXT.md, "Golf Booking").
  */
-export function BookTeeTimeClient({ teeTimeId, players, bookPath, extras, summary, policy }: {
+export function BookTeeTimeClient({ teeTimeId, players, bookPath, extras, summary, policy, currency, displayedTotal }: {
     teeTimeId: string;
     players: number;
     bookPath: string;
     extras: ExtraOption[];
     summary: TeeTimeSummary;
+    /** The currency this page priced in and the total it showed, so the hold can be held to them. */
+    currency?: string;
+    displayedTotal?: number;
     /** The rules the customer is agreeing to, shown directly above the payment. */
     policy: { cancel: CancelPolicy; weatherPolicy: string };
 }) {
@@ -58,7 +61,10 @@ export function BookTeeTimeClient({ teeTimeId, players, bookPath, extras, summar
     const choose = (code: GolfExtraCode, quantity: number) => {
         const param = formatExtrasParam(extras.map(e => ({ code: e.code, quantity: e.code === code ? quantity : e.quantity })));
         startRepricing(() => {
-            router.replace(`${bookPath}?teeTime=${teeTimeId}&players=${players}${param ? `&extras=${param}` : ''}`, { scroll: false });
+            router.replace(
+                `${bookPath}?teeTime=${teeTimeId}&players=${players}${param ? `&extras=${param}` : ''}${currency ? `&currency=${currency}` : ''}`,
+                { scroll: false },
+            );
         });
     };
 
@@ -70,12 +76,21 @@ export function BookTeeTimeClient({ teeTimeId, players, bookPath, extras, summar
             const response = await fetch('/api/golf/bookings', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'X-Requested-By': 'cheapestgo-client' },
-                body: JSON.stringify({ teeTimeId, players, leadName, extras: chosen }),
+                body: JSON.stringify({
+                    teeTimeId, players, leadName, extras: chosen,
+                    ...(currency ? { chargeCurrency: currency } : {}),
+                    ...(displayedTotal != null ? { displayedTotal } : {}),
+                }),
             });
             const json = await response.json().catch(() => ({}));
             if (response.ok) setPayment({ reference: json.data.reference, clientSecret: json.data.clientSecret });
             else if (json.code === 'not_enough_spots') setError(t('notEnoughSpots', { count: json.spotsLeft ?? 0 }));
             else if (json.code === 'tee_time_unavailable') setError(t('unavailable'));
+            else if (json.code === 'price_changed') {
+                // The server's new total is on the refreshed page; the card form is not shown yet.
+                setError(t('priceChanged'));
+                router.refresh();
+            }
             else if (json.code === 'extras_unavailable') {
                 setError(t('extrasUnavailable'));
                 router.refresh();

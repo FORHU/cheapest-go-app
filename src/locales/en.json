@@ -3192,7 +3192,8 @@
       "extrasHint": "Optional. Our team arranges them with the course when confirming your tee time.",
       "extraEach": "{price} each",
       "extraLine": "{name} × {count}",
-      "extrasUnavailable": "The extras on offer have changed. Please review them and try again."
+      "extrasUnavailable": "The extras on offer have changed. Please review them and try again.",
+      "priceChanged": "The price has changed since you opened this page. Please review the updated total and try again."
     },
     "policy": {
       "heading": "Booking rules",

@@ -5,6 +5,8 @@ import { hreflangAlternates } from '@/lib/seo/hreflang';
 import { listPublishedCountries, listPublishedCourses } from '@/lib/server/golf/courses';
 import { searchCourses } from '@/lib/server/golf/search';
 import { parseSearchParams, searchQuery } from '@/lib/golf/search';
+import { chargeCurrencyFor } from '@/lib/golf/currency';
+import { courseInCurrency, viewerCurrency } from '@/lib/server/golf/viewerCurrency';
 import { GolfCourseCard } from '@/components/golf/GolfCourseCard';
 import { GolfSearchForm } from '@/components/golf/GolfSearchForm';
 import { GolfSearchResultCard } from '@/components/golf/GolfSearchResultCard';
@@ -21,7 +23,10 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function GolfPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
-    const params = parseSearchParams(await searchParams);
+    const raw = await searchParams;
+    const params = parseSearchParams(raw);
+    // Prices are shown in the currency the viewer will be charged in (ADR-0051).
+    const viewer = await viewerCurrency(raw.currency);
     const t = await getTranslations('golf');
     const ts = await getTranslations('golf.search');
     const filtered = Boolean(params.date || params.from || params.to);
@@ -29,11 +34,15 @@ export default async function GolfPage({ searchParams }: { searchParams: Promise
     const [countries, results] = await Promise.all([
         listPublishedCountries(),
         // A search that cannot be priced (an exchange rate is down) degrades to the plain list.
-        searchCourses(params).catch(() => null),
+        searchCourses({ ...params, currency: viewer }).catch(() => null),
     ]);
     // Without a date or time filter every published course stays on the page, bookable now or not.
     const unlisted = !filtered
-        ? (await listPublishedCourses({ country: params.country })).filter(c => !results?.some(r => r.course.id === c.id))
+        ? await Promise.all(
+            (await listPublishedCourses({ country: params.country }))
+                .filter(c => !results?.some(r => r.course.id === c.id))
+                .map(c => courseInCurrency(c, chargeCurrencyFor(viewer, c.currency))),
+        )
         : [];
 
     const tab = (active: boolean) =>

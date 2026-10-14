@@ -45,6 +45,21 @@ describe('/api/admin/golf-courses', () => {
         expect(await res.json()).toEqual({ success: true, data: [], total: 0, page: 1, pageSize: 20, totalPages: 1 });
     });
 
+    it('refuses a course priced in a currency we hold no exchange rate for', async () => {
+        const res = await post({ action: 'create', course: { ...course, currency: 'XYZ' } });
+        expect(res.status).toBe(400);
+        expect((await res.json()).fieldErrors.currency[0]).toMatch(/exchange rate/i);
+        expect(createCourse).not.toHaveBeenCalled();
+        const update = await post({ action: 'update', id: '6f1c2e0a-9b7d-4c1e-a2f5-3d8e1b0c7a44', course: { ...course, currency: 'XYZ' } });
+        expect(update.status).toBe(400);
+        expect(updateCourse).not.toHaveBeenCalled();
+    });
+
+    it('accepts one it can convert, such as a Thai baht course charged in dollars', async () => {
+        const res = await post({ action: 'create', course: { ...course, currency: 'THB' } });
+        expect(res.status).toBe(201);
+    });
+
     it('creates a course from valid input', async () => {
         const res = await post({ action: 'create', course });
         expect(res.status).toBe(201);

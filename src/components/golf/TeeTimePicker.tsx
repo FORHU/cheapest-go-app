@@ -14,8 +14,16 @@ import { GolfPlayersField } from './GolfPlayersField';
  * Picks a tee time on the course page. Times are on the course's clock, the one the customer
  * will play by; `today` is the course-local date, worked out on the server. Tomorrow is the
  * first date offered because the team needs a day to confirm with the course.
+ *
+ * `currency` is the viewer's Charge Currency (ADR-0051), resolved by the page. It is sent to the
+ * prices request and on to checkout, so both quote in the same currency.
  */
-export function TeeTimePicker({ slug, today, windowDays }: { slug: string; today: string; windowDays: number }) {
+export function TeeTimePicker({ slug, today, windowDays, currency }: {
+    slug: string;
+    today: string;
+    windowDays: number;
+    currency?: string;
+}) {
     const t = useTranslations('golf.booking');
     const locale = useLocale();
     const first = addDays(today, 1);
@@ -25,16 +33,18 @@ export function TeeTimePicker({ slug, today, windowDays }: { slug: string; today
     const [failed, setFailed] = useState(false);
     const [selected, setSelected] = useState<string | null>(null);
 
+    const currencyParam = currency ? `&currency=${encodeURIComponent(currency)}` : '';
+
     useEffect(() => {
         let cancelled = false;
         setTeeTimes(null);
         setFailed(false);
-        fetch(`/api/golf/courses/${encodeURIComponent(slug)}/tee-times?date=${date}&players=${players}`)
+        fetch(`/api/golf/courses/${encodeURIComponent(slug)}/tee-times?date=${date}&players=${players}${currencyParam}`)
             .then(response => (response.ok ? response.json() : Promise.reject(new Error(String(response.status)))))
             .then(json => { if (!cancelled) setTeeTimes(json.data.teeTimes); })
             .catch(() => { if (!cancelled) setFailed(true); });
         return () => { cancelled = true; };
-    }, [slug, date, players]);
+    }, [slug, date, players, currencyParam]);
 
     // A different day is a different list; a different party size keeps the chosen time.
     useEffect(() => { setSelected(null); }, [date]);
@@ -76,7 +86,7 @@ export function TeeTimePicker({ slug, today, windowDays }: { slug: string; today
                                         : 'border-g-rule text-g-ink hover:border-g-accent hover:bg-g-sunk'}`}>
                                     <span className="block font-mono text-base font-medium tabular-nums">{tt.localTime}</span>
                                     <span className={`block text-xs tabular-nums ${active ? 'text-g-accent-ink/80' : 'text-g-muted'}`}>
-                                        {t('spotsLeft', { count: tt.spotsLeft })} · {formatMoney(tt.allInPerPlayer ?? tt.pricePerPlayer, tt.currency, locale)}
+                                        {t('spotsLeft', { count: tt.spotsLeft })} · {formatMoney(tt.allInPerPlayer ?? tt.pricePerPlayer, tt.allInPerPlayer != null ? (tt.allInCurrency ?? tt.currency) : tt.currency, locale)}
                                     </span>
                                 </button>
                             </li>
@@ -86,7 +96,7 @@ export function TeeTimePicker({ slug, today, windowDays }: { slug: string; today
             )}
 
             {chosen ? (
-                <Link href={`/golf/${slug}/book?teeTime=${chosen.id}&players=${players}`}
+                <Link href={`/golf/${slug}/book?teeTime=${chosen.id}&players=${players}${currencyParam}`}
                     className="rounded-sm bg-g-accent px-6 py-3 text-center font-semibold text-g-accent-ink transition duration-200 hover:bg-g-accent-hover motion-safe:active:scale-[0.98]">
                     {t('continue')}
                 </Link>

@@ -6,6 +6,7 @@ import { rateLimit } from '@/lib/server/rate-limit';
 import { holdRequestSchema } from '@/lib/schemas/golf';
 import { holdTeeTime } from '@/lib/server/golf/bookings';
 import { GolfBookingError } from '@/lib/server/golf/errors';
+import { ExchangeRateError } from '@/lib/currency';
 
 export const dynamic = 'force-dynamic';
 
@@ -45,6 +46,10 @@ export async function POST(req: NextRequest) {
         }, { status: 201 });
     } catch (err) {
         if (err instanceof GolfBookingError) return fail(err.httpStatus, err.message, { code: err.code, ...err.detail });
+        // No usable exchange rate: we will not guess a price we would charge on.
+        if (err instanceof ExchangeRateError) {
+            return fail(503, "We can't price this in your currency right now. Please try again shortly.", { code: 'rates_unavailable' });
+        }
         throw err;
     }
 }

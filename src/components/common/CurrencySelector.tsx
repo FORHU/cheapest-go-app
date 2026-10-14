@@ -39,6 +39,8 @@ const CurrencySelector: React.FC<CurrencySelectorProps> = ({
         setUserCurrency(currencyCode);
         setUserCountry(countryCode);
 
+        // Golf prices come from the server, which reads the URL's currency before the cookie, so a
+        // choice made on a golf page has to reach the URL too (ADR-0051).
         // Pages whose URL names a currency take it from there, so the URL has to change with
         // the choice. Checkout is the one that bit: it opens as `/checkout?currency=PHP` and
         // gives the URL priority over the store, so switching to USD in the navbar was
@@ -46,7 +48,7 @@ const CurrencySelector: React.FC<CurrencySelectorProps> = ({
         // and flight pages re-quote in the chosen currency from the URL as well.
         const params = new URLSearchParams(searchParams?.toString() || '');
         const urlNamesCurrency = params.has('currency');
-        if (pathname && (urlNamesCurrency || pathname.includes('/property/') || pathname.includes('/flights'))) {
+        if (pathname && (urlNamesCurrency || pathname.includes('/property/') || pathname.includes('/flights') || pathname.startsWith('/golf'))) {
             params.set('currency', currencyCode);
             router.replace(`${pathname}?${params.toString()}`);
         }

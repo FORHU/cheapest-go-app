@@ -2,6 +2,8 @@ import { getSqlAdmin } from '@/lib/db/postgres';
 import type { GolfCourse } from '@/lib/schemas/golf';
 import { MIN_LEAD_HOURS } from '@/lib/golf/rules';
 import { localTime } from '@/lib/golf/time';
+import { chargeCurrencyFor } from '@/lib/golf/currency';
+import { isChargeCurrency, type ChargeCurrency } from '@/lib/constants/currencies';
 import { CHIPS_PER_COURSE, nearestDates, type GolfSearchParams } from '@/lib/golf/search';
 import { getPublishedCoursesByIds } from './courses';
 import { quoteGolf } from './quote';
@@ -52,9 +54,18 @@ interface Row {
     localDate: string;
 }
 
-async function allIn(price: number, players: number, currency: string): Promise<AllIn> {
-    const { total } = await quoteGolf({ greenFeeTotal: Math.round(price * players * 100) / 100, currency: currency.trim() });
-    return { total, perPlayer: Math.round((total / players) * 100) / 100, currency: currency.trim() };
+/**
+ * One party's all-in price, in the currency the viewer will be charged in: their own choice when
+ * they have one, otherwise the course's (or USD when customers are not charged in it).
+ */
+async function allIn(price: number, players: number, courseCurrency: string, viewer: ChargeCurrency | null): Promise<AllIn> {
+    const course = courseCurrency.trim();
+    const quote = await quoteGolf({
+        greenFeeTotal: Math.round(price * players * 100) / 100,
+        currency: course,
+        chargeCurrency: chargeCurrencyFor(viewer, course),
+    });
+    return { total: quote.total, perPlayer: Math.round((quote.total / players) * 100) / 100, currency: quote.currency };
 }
 
 /**
@@ -63,9 +74,16 @@ async function allIn(price: number, players: number, currency: string): Promise<
  * course), then those that only have other days, each with its nearest dates.
  */
 export async function searchCourses(
-    params: GolfSearchParams & { courseId?: string },
+    params: GolfSearchParams & {
+        courseId?: string;
+        /** The viewer's currency (ADR-0051); anything that is not a Charge Currency is ignored. */
+        currency?: string | null;
+    },
     now = new Date(),
 ): Promise<CourseSearchResult[]> {
+    const viewer = params.currency && isChargeCurrency(params.currency)
+        ? (params.currency.toUpperCase() as ChargeCurrency)
+        : null;
     const sql = getSqlAdmin();
     const earliest = new Date(now.getTime() + MIN_LEAD_HOURS * HOUR);
 
@@ -110,14 +128,14 @@ export async function searchCourses(
                     teeTimeId: cheapest.id,
                     startsAt: cheapest.startsAt.toISOString(),
                     localTime: localTime(cheapest.startsAt, tz),
-                    ...(await allIn(cheapest.price, params.players, cheapest.currency)),
+                    ...(await allIn(cheapest.price, params.players, cheapest.currency, viewer)),
                 },
                 teeTimes: await Promise.all(chips.map(async r => ({
                     id: r.id,
                     startsAt: r.startsAt.toISOString(),
                     localTime: localTime(r.startsAt, tz),
                     spotsLeft: r.spotsLeft,
-                    ...(await allIn(r.price, params.players, r.currency)),
+                    ...(await allIn(r.price, params.players, r.currency, viewer)),
                 }))),
                 nearest: [],
             });
@@ -129,7 +147,7 @@ export async function searchCourses(
         const nearest = await Promise.all(dates.map(async date => {
             const day = all.filter(r => r.localDate === date);
             const cheapest = day.reduce((a, b) => (b.price < a.price ? b : a));
-            return { date, ...(await allIn(cheapest.price, params.players, cheapest.currency)) };
+            return { date, ...(await allIn(cheapest.price, params.players, cheapest.currency, viewer)) };
         }));
         results.push({ course, matches: false, from: null, teeTimes: [], nearest });
     }

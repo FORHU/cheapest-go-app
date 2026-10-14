@@ -11,6 +11,7 @@ import {
     CourseHasBookingsError, CourseNotBookableError, SlugTakenError, TimezoneLockedError,
 } from '@/lib/server/golf/errors';
 import { isValidTimeZone } from '@/lib/golf/time';
+import { EXCHANGE_RATES } from '@/lib/currency';
 
 export const dynamic = 'force-dynamic';
 
@@ -54,6 +55,13 @@ export async function POST(req: NextRequest) {
             const parsed = golfCourseInputSchema.safeParse(body.course);
             if (!parsed.success) {
                 return fail(400, 'Some fields need attention', z.flattenError(parsed.error).fieldErrors);
+            }
+            // Customers are charged in their own currency, converted from the course's (ADR-0051),
+            // so a course in a currency we hold no rate for could be listed but never sold.
+            if (!(parsed.data.currency in EXCHANGE_RATES)) {
+                return fail(400, 'Some fields need attention', {
+                    currency: [`We have no exchange rate for ${parsed.data.currency}, so tee times could not be priced.`],
+                });
             }
 
             if (action === 'create') {

@@ -239,6 +239,9 @@ export interface TeeTime {
     pricePerPlayer: number;
     /** All-in per player for the party asked about (CONTEXT.md, "All-in price"); absent when not asked. */
     allInPerPlayer?: number;
+    /** The currency `allInPerPlayer` is in: the viewer's Charge Currency, not necessarily the course's. */
+    allInCurrency?: string;
+    /** The course's own currency, which `pricePerPlayer` is in. */
     currency: string;
 }
 
@@ -259,6 +262,10 @@ export const holdRequestSchema = z.object({
         .optional()
         .default([])
         .refine(list => new Set(list.map(e => e.code)).size === list.length, 'Each extra can be chosen once'),
+    /** The currency the customer chose to pay in; whether we charge in it is the hold's call. */
+    chargeCurrency: z.string().trim().toUpperCase().regex(/^[A-Z]{3}$/, 'Currency must be a 3-letter code').optional(),
+    /** The total they were shown, in that currency; the hold refuses a price that has since moved. */
+    displayedTotal: z.number().positive().max(1_000_000_000).nullish(),
 });
 
 /** The extras a course offers, at its price per item (admin). */
@@ -290,6 +297,8 @@ export interface GolfBooking {
     players: number;
     leadName: string;
     contactEmail: string;
+    // Everything from here down to `currency` is in the CHARGE currency: what the customer saw
+    // and what their card was authorised for (ADR-0051). The course's own figures follow it.
     pricePerPlayer: number;
     greenFeeTotal: number;
     /** Sum of the extras' lines; the service fee is charged on green fee + extras. */
@@ -297,7 +306,13 @@ export interface GolfBooking {
     extras: ExtraLine[];
     serviceFee: number;
     total: number;
+    /** The currency the customer was charged in. */
     currency: string;
+    /** The course's own currency, and its green fee in it: what the course sees. */
+    courseCurrency: string;
+    courseGreenFeeTotal: number;
+    /** Charge currency per 1 unit of course currency, fixed when the hold was taken. */
+    chargeRate: number;
     paymentIntentId: string | null;
     status: GolfBookingStatus;
     holdExpiresAt: string;

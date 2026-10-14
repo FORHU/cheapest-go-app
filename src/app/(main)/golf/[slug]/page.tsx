@@ -9,6 +9,8 @@ import { getPublishedCourseBySlug } from '@/lib/server/golf/courses';
 import { courseHasSchedules } from '@/lib/server/golf/teeTimes';
 import { searchCourses } from '@/lib/server/golf/search';
 import { DEFAULT_PLAYERS } from '@/lib/golf/search';
+import { chargeCurrencyFor } from '@/lib/golf/currency';
+import { courseInCurrency, viewerCurrency } from '@/lib/server/golf/viewerCurrency';
 import { localDate } from '@/lib/golf/time';
 import { formatGreenFee, formatMoney } from '@/components/golf/format';
 import { GolfFactBlock } from '@/components/golf/GolfFactBlock';
@@ -18,7 +20,7 @@ import { TeeTimePicker } from '@/components/golf/TeeTimePicker';
 
 export const dynamic = 'force-dynamic';
 
-type Params = { params: Promise<{ slug: string }> };
+type Params = { params: Promise<{ slug: string }>; searchParams?: Promise<Record<string, string | string[] | undefined>> };
 
 export async function generateMetadata({ params }: Params): Promise<Metadata> {
     const { slug } = await params;
@@ -38,16 +40,21 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
     };
 }
 
-export default async function GolfCoursePage({ params }: Params) {
+export default async function GolfCoursePage({ params, searchParams }: Params) {
     const { slug } = await params;
+    const query = (await searchParams) ?? {};
     // Drafts come back null here, so they 404 like a course that does not exist.
     const course = await getPublishedCourseBySlug(slug);
     if (!course) notFound();
     const sellsTeeTimes = course.timezone ? await courseHasSchedules(course.id) : false;
+    // Prices are shown in the currency the viewer will be charged in (ADR-0051).
+    const viewer = await viewerCurrency(query.currency);
+    const chargeCurrency = chargeCurrencyFor(viewer, course.currency);
     // The all-in price comes from the quote checkout uses; a course with nothing bookable has none.
     const [soonest] = sellsTeeTimes
-        ? await searchCourses({ courseId: course.id, players: DEFAULT_PLAYERS }).catch(() => [])
+        ? await searchCourses({ courseId: course.id, players: DEFAULT_PLAYERS, currency: chargeCurrency }).catch(() => [])
         : [];
+    const priced = await courseInCurrency(course, chargeCurrency);
 
     const [t, locale] = await Promise.all([getTranslations('golf'), getLocale()]);
     const [cover, ...gallery] = course.imageUrls;
@@ -131,13 +138,13 @@ export default async function GolfCoursePage({ params }: Params) {
                         </>
                     ) : course.greenFeeFrom != null && (
                         <p className="font-golf text-2xl font-bold tabular-nums text-g-ink">
-                            {t('greenFeesFrom', { price: formatGreenFee(course.greenFeeFrom, course.currency, locale) })}
+                            {t('greenFeesFrom', { price: formatGreenFee(priced.greenFeeFrom!, priced.currency, locale) })}
                         </p>
                     )}
                     {sellsTeeTimes ? (
                         <>
                             <div className="my-6 border-t border-g-rule" />
-                            <TeeTimePicker slug={course.slug} today={localDate(new Date(), course.timezone!)} windowDays={course.bookingWindowDays} />
+                            <TeeTimePicker slug={course.slug} today={localDate(new Date(), course.timezone!)} windowDays={course.bookingWindowDays} currency={chargeCurrency} />
                             <div className="mt-8">
                                 <GolfPolicyBlock windowDays={course.bookingWindowDays}
                                     cancel={{ kind: 'hours', hours: course.freeCancelHours }} weatherPolicy={course.weatherPolicy} />

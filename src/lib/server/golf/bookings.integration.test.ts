@@ -29,8 +29,21 @@ vi.mock('@/lib/stripe/server', () => ({
 }));
 vi.mock('./emails', () => ({ sendGolfBookingEmail: vi.fn(async () => undefined) }));
 
+// Fixed "USD per 1 unit" rates, so a conversion in a test is exact and needs no network.
+const fx = vi.hoisted(() => ({ rates: { USD: 1, PHP: 0.0175, KRW: 0.0007 } as Record<string, number> }));
+vi.mock('@/lib/currency', () => ({
+    EXCHANGE_RATES: fx.rates,
+    refreshExchangeRates: vi.fn(async () => true),
+    convertCurrencyStrict: (amount: number, from: string, to: string) => {
+        if (from === to) return amount;
+        if (!fx.rates[from] || !fx.rates[to]) throw new Error(`No exchange rate for ${from} or ${to}`);
+        return (amount * fx.rates[from]) / fx.rates[to];
+    },
+}));
+
 import { stripe } from '@/lib/stripe/server';
-import { golfServiceFee, toStripeAmount } from '@/lib/pricing';
+import { golfServiceFee, roundToCurrency, toStripeAmount } from '@/lib/pricing';
+import { toCourseBookingView } from './courseAccess';
 import { addDays } from '@/lib/golf/time';
 import type { ExtraChoice } from '@/lib/golf/extras';
 import type { GolfCourseInput } from '@/lib/schemas/golf';
@@ -291,5 +304,130 @@ describe.skipIf(!reachable)('a hold records the course\'s rules and the all-in p
         } finally {
             await db`UPDATE golf_courses SET booking_window_days = 60 WHERE id = ${courseId}`;
         }
+    });
+});
+
+describe.skipIf(!reachable)('a booking in the customer\'s currency (ADR-0051)', () => {
+    const toPhp = (usd: number) => roundToCurrency((usd * fx.rates.USD) / fx.rates.PHP, 'PHP');
+    const feeIn = (base: number, currency: string) =>
+        roundToCurrency(golfServiceFee(base, currency, (a, f, t) => (f === t ? a : (a * fx.rates[f]) / fx.rates[t])).chargedTotal, currency);
+    const holdIn = (user: number, teeTimeId: string, chargeCurrency: string, over: Record<string, unknown> = {}) =>
+        holdTeeTime({
+            userId: users[user], email: `golf-${run}-${user}@example.com`, teeTimeId, players: 2,
+            leadName: 'Test Player', extras: [], chargeCurrency, ...over,
+        } as never, NOW);
+
+    it('charges in the chosen currency and keeps the course\'s own figures in its currency', async () => {
+        const id = await teeTime(41);
+        const { booking } = await holdIn(0, id, 'PHP');
+        const green = toPhp(200);
+        const total = feeIn(green, 'PHP');
+
+        expect(booking).toMatchObject({
+            currency: 'PHP', greenFeeTotal: green, extrasTotal: 0, total,
+            serviceFee: roundToCurrency(total - green, 'PHP'),
+            courseCurrency: 'USD', courseGreenFeeTotal: 200,
+        });
+        expect(booking.chargeRate).toBeCloseTo(1 / 0.0175, 6);
+        expect(stripe.paymentIntents.create).toHaveBeenLastCalledWith(
+            expect.objectContaining({ amount: toStripeAmount(total, 'PHP'), currency: 'php' }),
+            expect.anything(),
+        );
+
+        const db = await sql();
+        const [row] = await db<{ green: number; total: number; currency: string; charge: string; usd: number | null }[]>`
+            SELECT green_fee_total::float8 AS green, total::float8 AS total, currency, charge_currency AS charge, usd_amount::float8 AS usd
+              FROM golf_bookings WHERE id = ${booking.id}`;
+        // The course-currency columns are what the course is owed, at the locked rate.
+        expect(row).toMatchObject({ green: 200, currency: 'USD', charge: 'PHP', usd: null });
+        expect(row.total).toBeCloseTo(total * 0.0175, 1);
+    });
+
+    it('charges Korean won in whole won, so what is shown is what is sent', async () => {
+        const id = await teeTime(42);
+        const { booking } = await holdIn(0, id, 'KRW');
+        expect(Number.isInteger(booking.total)).toBe(true);
+        expect(Number.isInteger(booking.greenFeeTotal)).toBe(true);
+        expect(booking.greenFeeTotal + booking.serviceFee).toBe(booking.total);
+        expect(stripe.paymentIntents.create).toHaveBeenLastCalledWith(
+            expect.objectContaining({ amount: booking.total, currency: 'krw' }), expect.anything(),
+        );
+    });
+
+    it('converts each extra on its own, so the lines add up in the customer\'s currency', async () => {
+        const id = await teeTime(43);
+        const { booking } = await holdIn(0, id, 'PHP', { extras: [{ code: 'cart', quantity: 1 }, { code: 'club_rental', quantity: 2 }] });
+        const lineSum = booking.extras.reduce((sum, e) => sum + e.total, 0);
+        expect(booking.extrasTotal).toBeCloseTo(lineSum, 2);
+        expect(booking.greenFeeTotal + booking.extrasTotal + booking.serviceFee).toBeCloseTo(booking.total, 2);
+        expect(booking.extras.find(e => e.code === 'cart')).toMatchObject({ quantity: 1, total: toPhp(25), unitPrice: toPhp(25) });
+    });
+
+    it('refuses a currency a customer cannot be charged in', async () => {
+        const id = await teeTime(44);
+        await expect(holdIn(0, id, 'THB')).rejects.toMatchObject({ code: 'currency_unsupported' });
+        expect(await spotsLeft(id)).toBe(2);
+    });
+
+    it('holds the customer to the total they were shown when the rate has drifted a little', async () => {
+        const id = await teeTime(45);
+        const quoted = feeIn(toPhp(200), 'PHP');
+        const shown = roundToCurrency(quoted * 0.999, 'PHP');
+        const { booking } = await holdIn(0, id, 'PHP', { displayedTotal: shown });
+        expect(booking.total).toBe(shown);
+        expect(booking.greenFeeTotal + booking.serviceFee).toBeCloseTo(shown, 2);
+        expect(stripe.paymentIntents.create).toHaveBeenLastCalledWith(
+            expect.objectContaining({ amount: toStripeAmount(shown, 'PHP') }), expect.anything(),
+        );
+    });
+
+    it('asks them to review the new price when it has moved further, and takes no spots', async () => {
+        const id = await teeTime(46);
+        const quoted = feeIn(toPhp(200), 'PHP');
+        const err = await holdIn(0, id, 'PHP', { displayedTotal: roundToCurrency(quoted * 0.9, 'PHP') }).catch(e => e);
+        expect(err).toBeInstanceOf(GolfBookingError);
+        expect(err).toMatchObject({ code: 'price_changed', httpStatus: 409, detail: { serverPrice: quoted, currency: 'PHP' } });
+        expect(await spotsLeft(id)).toBe(2);
+    });
+
+    it('starts a new hold when the same customer comes back in another currency', async () => {
+        const id = await teeTime(47);
+        const first = await holdIn(0, id, 'USD');
+        const second = await holdIn(0, id, 'PHP');
+        expect(second.booking.reference).not.toBe(first.booking.reference);
+        expect(second.booking.currency).toBe('PHP');
+        expect((await getBookingById(first.booking.id))?.status).toBe('expired');
+        expect(await spotsLeft(id)).toBe(0);
+    });
+
+    it('refunds in the currency it was charged in, and locks the USD amount at capture', async () => {
+        const id = await teeTime(48);
+        const { booking } = await holdIn(0, id, 'PHP', { players: 1 });
+        authorise(booking.paymentIntentId);
+        await syncPayment(booking.id, later(5));
+
+        const db = await sql();
+        const usd = async () => (await db<{ usd: number | null; rate: number | null; source: string | null }[]>`
+            SELECT usd_amount::float8 AS usd, fx_rate::float8 AS rate, fx_source AS source FROM golf_bookings WHERE id = ${booking.id}`)[0];
+        expect(await usd()).toEqual({ usd: null, rate: null, source: null });
+
+        await confirmBooking(booking.id, later(60));
+        const locked = await usd();
+        expect(locked.rate).toBe(0.0175);
+        expect(locked.source).toBe('live');
+        expect(locked.usd).toBeCloseTo(booking.total * 0.0175, 2);
+
+        const cancelled = await cancelByCustomer(booking.reference, users[0], later(120));
+        expect(cancelled.refundAmount).toBe(booking.total);
+        expect(stripe.refunds.create).toHaveBeenLastCalledWith(
+            { payment_intent: booking.paymentIntentId, amount: toStripeAmount(booking.total, 'PHP') },
+            expect.anything(),
+        );
+    });
+
+    it('shows the course its own currency, never the customer\'s', async () => {
+        const id = await teeTime(49);
+        const { booking } = await holdIn(0, id, 'KRW');
+        expect(toCourseBookingView(booking)).toMatchObject({ greenFeeTotal: 200, currency: 'USD' });
     });
 });
