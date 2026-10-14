@@ -79,7 +79,7 @@ export function HotelConfirmedContent() {
             const session = readCheckoutSession();
 
             if (!prebookId || !room?.offerId) {
-                setConfirmError('Booking session expired. Please check My Trips or contact support.');
+                setConfirmError('Booking session expired. Please check My Bookings or contact support.');
                 return;
             }
 
@@ -109,11 +109,11 @@ export function HotelConfirmedContent() {
                         store.setBookingId((result.data as any).bookingId);
                         sessionStorage.removeItem('hotelCheckoutSession');
                     } else {
-                        setConfirmError('Could not confirm booking. Check My Trips for your reservation status.');
+                        setConfirmError('Could not confirm booking. Check My Bookings for your reservation status.');
                     }
                 })
                 .catch(() => {
-                    setConfirmError('Could not confirm booking. Check My Trips for your reservation status.');
+                    setConfirmError('Could not confirm booking. Check My Bookings for your reservation status.');
                 })
                 .finally(() => setConfirming(false));
         }

@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import { Suspense } from 'react';
 import { getTranslations } from 'next-intl/server';
 import { redirect } from 'next/navigation';
-import { fetchTripsData } from '@/lib/trips';
+import { fetchTripsData, EMPTY_TRIPS } from '@/lib/trips';
 import { TripsContent } from '@/components/trips';
 import { Skeleton } from '@/components/shared/Skeleton';
 import { getAuthenticatedUser } from '@/lib/server/auth';
@@ -37,11 +37,7 @@ async function TripsLoader() {
     return <TripsContent initialData={initialData} />;
   } catch (err) {
     console.error('[TripsLoader] fetchTripsData threw:', err);
-    const emptyData = {
-      bookings: [], upcomingBookings: [], pastBookings: [], cancelledBookings: [],
-      flightBookings: [], upcomingFlightBookings: [], pastFlightBookings: [], cancelledFlightBookings: [],
-    };
-    return <TripsContent initialData={emptyData} />;
+    return <TripsContent initialData={EMPTY_TRIPS} />;
   }
 }
 

@@ -741,7 +741,7 @@ export function SupportInboxClient({
                                         </DetailSection>
                                     )}
 
-                                    <DetailSection title="Trips">
+                                    <DetailSection title="Bookings">
                                         {detail.bookings && detail.bookings.length > 0 && (
                                             <p className="mb-1 text-xs text-slate-500 dark:text-slate-400">
                                                 {detail.bookings.length} booking

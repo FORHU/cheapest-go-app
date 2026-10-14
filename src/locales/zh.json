@@ -149,7 +149,7 @@
     "learnMore": "了解更多",
     "rating": "应用评分",
     "savings": "额外节省",
-    "subtitle": "获取独家应用专享优惠、即时通知并随时随地管理您的行程。",
+    "subtitle": "获取独家应用专享优惠、即时通知并随时随地管理您的预订。",
     "title": "使用我们的应用，让出行更智慧"
   },
   "auth": {
@@ -298,9 +298,9 @@
       "updating": "更新中…"
     },
     "emailed": "确认信息已发送至您的邮箱",
-    "goToTrips": "前往我的行程",
-    "myTrips": "我的行程",
-    "noBooking": "没有可查看的预订，正在前往我的行程…",
+    "goToTrips": "前往我的预订",
+    "myTrips": "我的预订",
+    "noBooking": "没有可查看的预订，正在前往我的预订…",
     "timeZone": {
       "allZones": "所有时区",
       "auto": "自动",
@@ -454,7 +454,7 @@
       "confirmationSentTo": "确认邮件发送至",
       "emailInfo": "预订确认将在几分钟内通过邮件发送给您。",
       "flightHotelBundle": "航班 + 酒店套餐",
-      "freeCancellationInfo": "如为免费取消的预订，可在“我的行程”中取消或修改。",
+      "freeCancellationInfo": "如为免费取消的预订，可在“我的预订”中取消或修改。",
       "hotel": "酒店",
       "hotelCheckInInfo": "抵达时请向酒店前台出示您的预订编号。",
       "hotelSuccess": "您的酒店已成功预订。",
@@ -469,7 +469,7 @@
       "sent": "已发送",
       "stayDuration": "入住时长",
       "total": "总计",
-      "viewMyTrips": "查看我的行程",
+      "viewMyTrips": "查看我的预订",
       "whatsNext": "接下来"
     },
     "summary": {
@@ -616,7 +616,7 @@
     "searchFailed": "搜索失败，请检查网络连接后重试。",
     "trips": {
       "description": "加载预订记录时出错，请重试。",
-      "title": "无法加载您的行程"
+      "title": "无法加载您的预订"
     }
   },
   "flightBook": {
@@ -912,7 +912,7 @@
       "route": "航线",
       "standardRate": "标准价格",
       "total": "总计",
-      "viewMyTrips": "查看我的行程",
+      "viewMyTrips": "查看我的预订",
       "whatsNext": "下一步"
     },
     "totalPrice": "总价",
@@ -1175,11 +1175,11 @@
     "pageTitle": "客服支持",
     "sections": {
       "changes": {
-        "body": "取消可在“行程”中操作，费用取决于房价条件：部分在截止时间前免费，部分则在任何情况下都不可退。截止时间显示在预订详情中。我们无法直接更改日期或姓名——如果房价条件允许，请取消后重新预订；如不确定，请先联系我们。",
+        "body": "取消可在“预订”中操作，费用取决于房价条件：部分在截止时间前免费，部分则在任何情况下都不可退。截止时间显示在预订详情中。我们无法直接更改日期或姓名——如果房价条件允许，请取消后重新预订；如不确定，请先联系我们。",
         "title": "可以更改或取消预订吗？"
       },
       "confirmation": {
-        "body": "请使用下单时的账户登录并查看“行程”。供应商确认后通常一分钟内即会显示。如果已扣款但行程中没有任何记录，请立即告诉我们——这意味着存在一笔我们看不到的预订，是我们最需要优先处理的情况。",
+        "body": "请使用下单时的账户登录并查看“预订”。供应商确认后通常一分钟内即会显示。如果已扣款但预订中没有任何记录，请立即告诉我们——这意味着存在一笔我们看不到的预订，是我们最需要优先处理的情况。",
         "title": "我已预订，但没有收到确认"
       },
       "payment": {
@@ -2238,13 +2238,13 @@
     "home": "首页",
     "membersSave": "会员可省夐10%或更多",
     "membersSaveSubtitle": "登录后可享选定住宿折扣",
-    "myTrips": "我的行程",
+    "myTrips": "我的预订",
     "profile": "个人资料",
     "scrollToTop": "回到顶部",
     "signIn": "登录",
     "signOut": "退出登录",
     "support": "客服支持",
-    "trips": "行程"
+    "trips": "预订"
   },
   "popularDestinations": {
     "scrollLeft": "向左滚动",
@@ -2745,6 +2745,19 @@
     "subtitle": "来自世界每个角落的标志性体验"
   },
   "trips": {
+    "golfCard": {
+      "badge": "高尔夫",
+      "player": "{count} 位球手",
+      "players": "{count} 位球手",
+      "reference": "预订编号 {reference}",
+      "view": "查看预订",
+      "status": {
+        "requested": "等待确认",
+        "confirmed": "已确认",
+        "declined": "已被拒绝",
+        "cancelled": "已取消"
+      }
+    },
     "bookingCard": {
       "actions": {
         "cancel": "取消",
@@ -2811,11 +2824,11 @@
       "passed": "已过期："
     },
     "emptyState": {
-      "allTitle": "暂无行程",
-      "otherDesc": "开始探索并预订您的第一次旅行",
-      "pastTitle": "暂无过往行程",
+      "allTitle": "暂无预订",
+      "otherDesc": "开始探索并完成您的第一次预订",
+      "pastTitle": "暂无过往预订",
       "upcomingDesc": "是时候计划下一次冒险了！",
-      "upcomingTitle": "暂无即将到来的行程"
+      "upcomingTitle": "暂无即将到来的预订"
     },
     "exploreDestinations": "探索目的地",
     "flightBookingCard": {
@@ -2988,7 +3001,7 @@
       "specialRequests": "特殊要求",
       "title": "修改预订"
     },
-    "myTrips": "我的行程",
+    "myTrips": "我的预订",
     "noSegmentDetails": "暂无航段详情。",
     "pages": {
       "backToBooking": "返回预订",
@@ -3050,7 +3063,7 @@
       "upcoming": "即将出发",
       "wishlist": "心愿单"
     },
-    "title": "我的行程 | CheapestGo",
+    "title": "我的预订 | CheapestGo",
     "tripMap": {
       "away": "距离 {distance}",
       "calculatingDistance": "正在计算距离…",

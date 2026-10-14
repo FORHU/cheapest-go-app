@@ -254,7 +254,7 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({
                 success: false,
                 errorCode: 'booking_pending',
-                error: 'Your payment went through and the booking is still completing. Check your trips page in a few minutes — do not pay again.',
+                error: 'Your payment went through and the booking is still completing. Check your bookings page in a few minutes — do not pay again.',
             }, { status: 202 });
         }
 

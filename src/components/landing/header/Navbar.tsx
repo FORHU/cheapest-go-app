@@ -109,7 +109,7 @@ const HeaderContent = () => {
             {/* NavLinks (Hidden on very small mobile) */}
             <div className="hidden xs:flex items-center gap-2">
               {isLoggedIn && (
-                <NavLink href="/trips" className="text-[10px] sm:text-xs">Trips</NavLink>
+                <NavLink href="/trips" className="text-[10px] sm:text-xs">Bookings</NavLink>
               )}
             </div>
 

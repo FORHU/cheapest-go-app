@@ -115,7 +115,7 @@
     "learnMore": "Learn More",
     "rating": "App Rating",
     "savings": "Extra Savings",
-    "subtitle": "Get exclusive app-only deals, instant notifications, and manage your trips on the go.",
+    "subtitle": "Get exclusive app-only deals, instant notifications, and manage your bookings on the go.",
     "title": "Travel smarter with our app"
   },
   "auth": {
@@ -247,9 +247,9 @@
   "bookingDestination": {
     "confirmed": "Booking confirmed",
     "emailed": "Confirmation sent to your email",
-    "myTrips": "My Trips",
-    "noBooking": "No active booking to explore. Taking you to your trips…",
-    "goToTrips": "Go to My Trips",
+    "myTrips": "My Bookings",
+    "noBooking": "No active booking to explore. Taking you to your bookings…",
+    "goToTrips": "Go to My Bookings",
     "clocks": {
       "ariaTrigger": "Local time at your destination",
       "title": "Local time",
@@ -411,7 +411,7 @@
       "checkOut": "Check-out",
       "confirmationSentTo": "Confirmation sent to",
       "emailInfo": "Your booking confirmation will be emailed to you within a few minutes.",
-      "freeCancellationInfo": "If your booking is free cancellation, you can cancel or modify via My Trips.",
+      "freeCancellationInfo": "If your booking is free cancellation, you can cancel or modify via My Bookings.",
       "hotel": "Hotel",
       "hotelCheckInInfo": "Present your booking ID at the hotel reception upon arrival.",
       "hotelSuccess": "Your hotel has been booked successfully.",
@@ -426,7 +426,7 @@
       "sent": "Sent",
       "stayDuration": "Stay Duration",
       "total": "Total",
-      "viewMyTrips": "View My Trips",
+      "viewMyTrips": "View My Bookings",
       "whatsNext": "What's Next",
       "openingDestination": "Opening your destination…"
     },
@@ -573,7 +573,7 @@
       "description": "We couldn't load this property. It may no longer be available or there was a connection issue."
     },
     "trips": {
-      "title": "Couldn't load your trips",
+      "title": "Couldn't load your bookings",
       "description": "There was an error loading your booking history. Please try again."
     },
     "actions": {
@@ -874,7 +874,7 @@
       "route": "Route",
       "standardRate": "Standard rate",
       "total": "Total",
-      "viewMyTrips": "View My Trips",
+      "viewMyTrips": "View My Bookings",
       "whatsNext": "What's next"
     },
     "totalPrice": "total price",
@@ -2163,12 +2163,12 @@
     "home": "Home",
     "membersSave": "Members save 10% or more",
     "membersSaveSubtitle": "on select stays when signed in",
-    "myTrips": "My trips",
+    "myTrips": "My bookings",
     "profile": "Profile",
     "signIn": "Sign in",
     "signOut": "Sign out",
     "support": "Support",
-    "trips": "Trips",
+    "trips": "Bookings",
     "scrollToTop": "Scroll to top"
   },
   "popularDestinations": {
@@ -2570,6 +2570,19 @@
     "subtitle": "Iconic experiences from every corner of the globe"
   },
   "trips": {
+    "golfCard": {
+      "badge": "Golf",
+      "player": "{count} player",
+      "players": "{count} players",
+      "reference": "Ref. {reference}",
+      "view": "View booking",
+      "status": {
+        "requested": "Awaiting confirmation",
+        "confirmed": "Confirmed",
+        "declined": "Declined",
+        "cancelled": "Cancelled"
+      }
+    },
     "bookingCard": {
       "actions": {
         "cancel": "Cancel",
@@ -2631,11 +2644,11 @@
       "passed": "Passed: "
     },
     "emptyState": {
-      "allTitle": "No trips yet",
-      "otherDesc": "Start exploring and book your first trip",
-      "pastTitle": "No past trips",
+      "allTitle": "No bookings yet",
+      "otherDesc": "Start exploring and make your first booking",
+      "pastTitle": "No past bookings",
       "upcomingDesc": "Time to plan your next adventure!",
-      "upcomingTitle": "No upcoming trips"
+      "upcomingTitle": "No upcoming bookings"
     },
     "exploreDestinations": "Explore destinations",
     "flightBookingCard": {
@@ -2799,7 +2812,7 @@
       "specialRequests": "Special Requests",
       "title": "Modify Booking"
     },
-    "myTrips": "My Trips",
+    "myTrips": "My Bookings",
     "noSegmentDetails": "No segment details available.",
     "sections": {
       "cancellationPolicy": "Cancellation Policy",
@@ -2835,7 +2848,7 @@
       "upcoming": "Upcoming",
       "wishlist": "Wishlist"
     },
-    "title": "My Trips | CheapestGo",
+    "title": "My Bookings | CheapestGo",
     "viewMore": "View more ({count} remaining)",
     "viewReceipt": "View Receipt",
     "wishlist": {
@@ -3063,7 +3076,7 @@
     "sections": {
       "confirmation": {
         "title": "I booked, but I have no confirmation",
-        "body": "Check Trips while signed in with the account you booked on — a booking appears there as soon as the supplier confirms it, usually within a minute. If your card was charged and nothing is in Trips, tell us: that is the one case we want to hear about immediately, because it means a booking exists somewhere we cannot see."
+        "body": "Check Bookings while signed in with the account you booked on — a booking appears there as soon as the supplier confirms it, usually within a minute. If your card was charged and nothing is in Bookings, tell us: that is the one case we want to hear about immediately, because it means a booking exists somewhere we cannot see."
       },
       "refunds": {
         "title": "When do I get my refund?",
@@ -3072,7 +3085,7 @@
       },
       "changes": {
         "title": "Can I change or cancel a booking?",
-        "body": "Cancellation is done from Trips, and what it costs depends on the rate: some are free until a deadline, some are not refundable at any point. The deadline is on the booking. Changing dates or names is not something we can do directly — cancel and rebook if the rate allows it, and message us first if you are unsure."
+        "body": "Cancellation is done from Bookings, and what it costs depends on the rate: some are free until a deadline, some are not refundable at any point. The deadline is on the booking. Changing dates or names is not something we can do directly — cancel and rebook if the rate allows it, and message us first if you are unsure."
       },
       "priceGap": {
         "title": "Why is the total higher than the price I searched?",

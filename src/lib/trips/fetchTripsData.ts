@@ -7,8 +7,10 @@ import { getSqlAdmin } from '@/lib/db/postgres';
 
 import { getAuthenticatedUser } from '@/lib/server/auth';
 import type { BookingRecord, FlightBookingRecord } from '@/services/booking.service';
+import { listGolfBookingsForUser } from '@/lib/server/golf/tripBookings';
+import { groupGolfBookings, type GroupedGolfBookings } from './golfBookings';
 
-export interface TripsData {
+export interface TripsData extends GroupedGolfBookings {
   bookings: BookingRecord[];
   upcomingBookings: BookingRecord[];
   pastBookings: BookingRecord[];
@@ -20,7 +22,7 @@ export interface TripsData {
   cancelledFlightBookings: FlightBookingRecord[];
 }
 
-const EMPTY_TRIPS: TripsData = {
+export const EMPTY_TRIPS: TripsData = {
   bookings: [],
   upcomingBookings: [],
   pastBookings: [],
@@ -30,6 +32,11 @@ const EMPTY_TRIPS: TripsData = {
   upcomingFlightBookings: [],
   pastFlightBookings: [],
   cancelledFlightBookings: [],
+
+  golfBookings: [],
+  upcomingGolfBookings: [],
+  pastGolfBookings: [],
+  cancelledGolfBookings: [],
 };
 
 /**
@@ -46,7 +53,7 @@ export async function fetchTripsData(): Promise<TripsData> {
 
   const sql = getSqlAdmin();
 
-  const [hotelsResponse, rawFlightBookings, rawSegments, rawPassengers] = await Promise.all([
+  const [hotelsResponse, rawFlightBookings, rawSegments, rawPassengers, golfBookings] = await Promise.all([
     supabase
       .from('bookings')
       .select('*')
@@ -64,6 +71,12 @@ export async function fetchTripsData(): Promise<TripsData> {
       JOIN flight_bookings fb ON fb.id = p.booking_id
       WHERE fb.user_id = ${user.id}
     `,
+    // Golf is one more kind of booking on this page, not a reason for the page to fail: if it
+    // cannot be read (a migration not run yet, say) the hotels and flights still show.
+    listGolfBookingsForUser(user.id).catch(err => {
+      console.error('Failed to fetch golf bookings:', err);
+      return [];
+    }),
   ]);
 
   if (hotelsResponse.error) {
@@ -131,5 +144,7 @@ export async function fetchTripsData(): Promise<TripsData> {
     cancelledFlightBookings: flightBookings.filter(b =>
       b.status === 'cancelled' || b.status === 'failed'
     ),
+
+    ...groupGolfBookings(golfBookings, now),
   };
 }

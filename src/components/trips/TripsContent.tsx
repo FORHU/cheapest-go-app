@@ -9,7 +9,9 @@ import { useUser, useAuthLoading } from '@/stores/authStore';
 import type { BookingRecord, FlightBookingRecord } from '@/services/booking.service';
 import BookingCard from './BookingCard';
 import FlightBookingCard from './FlightBookingCard';
+import GolfBookingCard from './GolfBookingCard';
 import type { TripsData } from '@/lib/trips';
+import type { TripGolfBooking } from '@/lib/trips/golfBookings';
 import { useTranslations } from 'next-intl';
 // Realtime replaced with polling — no Supabase client needed
 
@@ -32,10 +34,14 @@ interface TripsContentProps {
   initialData: TripsData;
 }
 
-type MixedBooking = BookingRecord | FlightBookingRecord;
+type MixedBooking = BookingRecord | FlightBookingRecord | TripGolfBooking;
+
+function isGolf(b: MixedBooking): b is TripGolfBooking {
+  return 'kind' in b && b.kind === 'golf';
+}
 
 function isFlight(b: MixedBooking): b is FlightBookingRecord {
-  return 'pnr' in b;
+  return !isGolf(b) && 'pnr' in b;
 }
 
 export function TripsContent({ initialData }: TripsContentProps) {
@@ -79,7 +85,7 @@ export function TripsContent({ initialData }: TripsContentProps) {
   const activeTab: TabValue = VALID_TABS.includes(rawTab as TabValue) ? (rawTab as TabValue) : 'upcoming';
 
   const [visibleCount, setVisibleCount] = useState(10);
-  const [typeFilter, setTypeFilter] = useState<'all' | 'hotels' | 'flights'>('all');
+  const [typeFilter, setTypeFilter] = useState<'all' | 'hotels' | 'flights' | 'golf'>('all');
   const [savedTrips, setSavedTrips] = useState<SavedTrip[]>([]);
   const [savedLoading, setSavedLoading] = useState(false);
 
@@ -111,9 +117,11 @@ export function TripsContent({ initialData }: TripsContentProps) {
   };
 
   const counts = {
-    upcoming: initialData.upcomingBookings.length + initialData.upcomingFlightBookings.length,
-    past: initialData.pastBookings.length + initialData.pastFlightBookings.length,
-    all: initialData.bookings.length + initialData.flightBookings.length,
+    upcoming: initialData.upcomingBookings.length + initialData.upcomingFlightBookings.length
+      + initialData.upcomingGolfBookings.length,
+    past: initialData.pastBookings.length + initialData.pastFlightBookings.length
+      + initialData.pastGolfBookings.length,
+    all: initialData.bookings.length + initialData.flightBookings.length + initialData.golfBookings.length,
   };
 
   const displayedHotels = activeTab === 'upcoming'
@@ -139,10 +147,18 @@ export function TripsContent({ initialData }: TripsContentProps) {
       ? [...initialData.pastFlightBookings, ...initialData.cancelledFlightBookings]
       : initialData.flightBookings;
 
-  const displayedBookings = [...displayedHotels, ...displayedFlights]
+  // A cancelled or declined tee time is shown with Past, as a cancelled hotel is.
+  const displayedGolf = activeTab === 'upcoming'
+    ? initialData.upcomingGolfBookings
+    : activeTab === 'past'
+      ? [...initialData.pastGolfBookings, ...initialData.cancelledGolfBookings]
+      : initialData.golfBookings;
+
+  const displayedBookings: MixedBooking[] = [...displayedHotels, ...displayedFlights, ...displayedGolf]
     .filter(b => {
-      if (typeFilter === 'hotels') return !isFlight(b);
+      if (typeFilter === 'hotels') return !isFlight(b) && !isGolf(b);
       if (typeFilter === 'flights') return isFlight(b);
+      if (typeFilter === 'golf') return isGolf(b);
       return true;
     })
     .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
@@ -345,7 +361,12 @@ export function TripsContent({ initialData }: TripsContentProps) {
         ) : (
           <div className="space-y-2 sm:space-y-2.5 md:space-y-3">
             {displayedBookings.slice(0, visibleCount).map((booking, index) => (
-              isFlight(booking) ? (
+              isGolf(booking) ? (
+                <GolfBookingCard
+                  key={booking.id}
+                  booking={booking}
+                />
+              ) : isFlight(booking) ? (
                 <FlightBookingCard
                   key={booking.id}
                   booking={booking}
