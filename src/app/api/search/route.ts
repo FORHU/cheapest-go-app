@@ -5,9 +5,16 @@
  */
 import { NextRequest, NextResponse } from 'next/server';
 import { fetchSearchProperties, buildSearchQueryParams } from '@/lib/search';
+import { staysUnderMaintenance } from '@/lib/server/maintenance';
 
 export async function POST(req: NextRequest) {
     try {
+        if (await staysUnderMaintenance()) {
+            return NextResponse.json(
+                { maintenance: true, properties: [], totalCount: 0, allMappable: [], queryParams: null },
+                { status: 200 },
+            );
+        }
         const rawParams = await req.json();
         const queryParams = buildSearchQueryParams(rawParams);
         const result = await fetchSearchProperties(rawParams);

@@ -14,6 +14,8 @@ import {
     AlertCircle,
     Loader2,
     Trash2,
+    Wrench,
+    Activity,
 } from 'lucide-react';
 import { Button, Input } from '@/components/ui';
 
@@ -63,6 +65,38 @@ export function SettingsClient({ initialSettings, integrationKeys }: SettingsCli
     const [adminEmail, setAdminEmail] = useState(initialSettings.admin_email || '');
     const [description, setDescription] = useState(initialSettings.platform_description || '');
     const [publicRegistration, setPublicRegistration] = useState(initialSettings.public_registration ?? true);
+    const [staysMaintenance, setStaysMaintenance] = useState(initialSettings.stays_maintenance ?? false);
+    const [health, setHealth] = useState<{ status?: string; detail?: string; checkedAt?: string }>({
+        status: initialSettings.stays_health_status,
+        detail: initialSettings.stays_health_detail,
+        checkedAt: initialSettings.stays_health_checked_at,
+    });
+    const [checkingHealth, setCheckingHealth] = useState(false);
+
+    /** Run the supplier probe now. It may flip the maintenance switch itself, so the
+     *  toggle above is re-read from the response rather than left showing a stale value. */
+    const runHealthCheck = async () => {
+        setCheckingHealth(true);
+        try {
+            const res = await fetch('/api/cron/supplier-health');
+            const data = await res.json();
+            setHealth({ status: data.status, detail: data.detail, checkedAt: data.checkedAt ?? new Date().toISOString() });
+            if (typeof data.maintenance === 'boolean') {
+                setStaysMaintenance(data.maintenance);
+                // The probe already persisted it, so this is not an unsaved edit.
+                savedBaseline.current = { ...savedBaseline.current, stays_maintenance: data.maintenance };
+            }
+            setToast(
+                data.status === 'healthy'
+                    ? { type: 'success', message: `Supplier healthy — ${data.detail}` }
+                    : { type: 'error', message: `Supplier ${data.status} — ${data.detail}` },
+            );
+        } catch {
+            setToast({ type: 'error', message: 'Health check failed to run' });
+        } finally {
+            setCheckingHealth(false);
+        }
+    };
     const [currency, setCurrency] = useState(initialSettings.default_currency || 'USD');
     const [timezone, setTimezone] = useState(initialSettings.timezone || 'Asia/Manila');
     const [cacheDuration, setCacheDuration] = useState(initialSettings.cache_duration ?? 60);
@@ -73,6 +107,7 @@ export function SettingsClient({ initialSettings, integrationKeys }: SettingsCli
         adminEmail !== (baseline.admin_email || '') ||
         description !== (baseline.platform_description || '') ||
         publicRegistration !== (baseline.public_registration ?? true) ||
+        staysMaintenance !== (baseline.stays_maintenance ?? false) ||
         currency !== (baseline.default_currency || 'USD') ||
         timezone !== (baseline.timezone || 'Asia/Manila') ||
         cacheDuration !== (baseline.cache_duration ?? 60);
@@ -90,6 +125,7 @@ export function SettingsClient({ initialSettings, integrationKeys }: SettingsCli
                         admin_email: adminEmail,
                         platform_description: description,
                         public_registration: publicRegistration,
+                        stays_maintenance: staysMaintenance,
                         default_currency: currency,
                         timezone: timezone,
                         cache_duration: cacheDuration,
@@ -104,6 +140,7 @@ export function SettingsClient({ initialSettings, integrationKeys }: SettingsCli
                     admin_email: adminEmail,
                     platform_description: description,
                     public_registration: publicRegistration,
+                    stays_maintenance: staysMaintenance,
                     default_currency: currency,
                     timezone: timezone,
                     cache_duration: cacheDuration,
@@ -263,6 +300,80 @@ export function SettingsClient({ initialSettings, integrationKeys }: SettingsCli
                                             }`} />
                                         </button>
                                     </div>
+                                </div>
+
+                                <div className="pt-6 border-t border-slate-100 dark:border-white/5">
+                                    <div className="flex items-start justify-between gap-4">
+                                        <div className="flex items-center gap-3 min-w-0">
+                                            <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
+                                                health.status === 'healthy' ? 'bg-emerald-500/10 text-emerald-600'
+                                                : health.status === 'down'  ? 'bg-rose-500/10 text-rose-600'
+                                                : 'bg-slate-500/10 text-slate-500'
+                                            }`}>
+                                                <Activity size={20} />
+                                            </div>
+                                            <div className="min-w-0">
+                                                <h4 className="font-black tracking-tight text-slate-900 dark:text-white">
+                                                    Hotel Supplier Health
+                                                    <span className={`ml-2 align-middle text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full ${
+                                                        health.status === 'healthy' ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-400'
+                                                        : health.status === 'down'  ? 'bg-rose-500/15 text-rose-700 dark:text-rose-400'
+                                                        : 'bg-slate-500/15 text-slate-500'
+                                                    }`}>
+                                                        {health.status ?? 'never checked'}
+                                                    </span>
+                                                </h4>
+                                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest truncate">
+                                                    {health.detail || 'Searches a never-empty city; switches maintenance on by itself'}
+                                                </p>
+                                                {health.checkedAt && (
+                                                    <p className="text-[10px] font-bold text-slate-400 mt-0.5">
+                                                        Last checked {new Date(health.checkedAt).toLocaleString()}
+                                                    </p>
+                                                )}
+                                            </div>
+                                        </div>
+                                        <Button
+                                            variant="secondary"
+                                            onClick={runHealthCheck}
+                                            disabled={checkingHealth}
+                                            className="shrink-0"
+                                        >
+                                            {checkingHealth ? <Loader2 size={14} className="animate-spin" /> : null}
+                                            {checkingHealth ? 'Checking…' : 'Check now'}
+                                        </Button>
+                                    </div>
+                                </div>
+
+                                <div className="pt-6 border-t border-slate-100 dark:border-white/5">
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-10 h-10 rounded-xl bg-amber-500/10 text-amber-600 flex items-center justify-center">
+                                                <Wrench size={20} />
+                                            </div>
+                                            <div>
+                                                <h4 className="font-black tracking-tight text-slate-900 dark:text-white">Stays Maintenance Mode</h4>
+                                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                                                    Hotel search and booking off — flights unaffected
+                                                </p>
+                                            </div>
+                                        </div>
+                                        <button
+                                            onClick={() => setStaysMaintenance((prev: boolean) => !prev)}
+                                            className={`w-12 h-6 rounded-full relative cursor-pointer transition-colors shadow-inner ${
+                                                staysMaintenance ? 'bg-amber-500 shadow-amber-600/50' : 'bg-slate-300 dark:bg-white/10'
+                                            }`}
+                                        >
+                                            <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all ${
+                                                staysMaintenance ? 'right-1' : 'left-1'
+                                            }`} />
+                                        </button>
+                                    </div>
+                                    {staysMaintenance && (
+                                        <p className="mt-3 text-xs font-semibold text-amber-700 dark:text-amber-400">
+                                            Visitors see a notice instead of hotel results, and no search reaches the supplier. Turn this off the moment availability returns.
+                                        </p>
+                                    )}
                                 </div>
                             </div>
                         </motion.div>

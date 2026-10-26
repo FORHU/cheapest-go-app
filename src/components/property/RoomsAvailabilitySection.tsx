@@ -4,6 +4,8 @@ import { fetchRoomAvailability, resolveStayDates, type PropertyData, type Search
 import RoomList from './RoomList';
 import PoliciesSection from './PoliciesSection';
 import FAQSection from './FAQSection';
+import { StaysMaintenanceNotice } from '@/components/search/StaysMaintenanceNotice';
+import { staysUnderMaintenance } from '@/lib/server/maintenance';
 
 interface Props {
     hotelId: string;
@@ -12,9 +14,10 @@ interface Props {
 }
 
 export default async function RoomsAvailabilitySection({ hotelId, property, searchParams }: Props) {
-    const [{ fetchedDetails }, t] = await Promise.all([
+    const [{ fetchedDetails }, t, maintenance] = await Promise.all([
         fetchRoomAvailability(hotelId, searchParams),
         getTranslations('property.rooms'),
+        staysUnderMaintenance(),
     ]);
 
     const isEtgHotel = fetchedDetails?.provider === 'etg';
@@ -27,6 +30,7 @@ export default async function RoomsAvailabilitySection({ hotelId, property, sear
 
     return (
         <>
+            {maintenance && <StaysMaintenanceNotice compact className="my-4" />}
             {isEtgHotel ? (
                 <div className="rounded-xl border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20 p-5 my-4">
                     <p className="text-sm font-semibold text-amber-800 dark:text-amber-200 mb-1">
@@ -61,6 +65,7 @@ export default async function RoomsAvailabilitySection({ hotelId, property, sear
                     children: Number(searchParams.children || 0),
                     rooms:    Number(searchParams.rooms    || 1),
                 }}
+                bookingDisabled={maintenance}
             />
             )}
             <PoliciesSection

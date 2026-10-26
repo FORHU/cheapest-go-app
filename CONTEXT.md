@@ -145,6 +145,19 @@ _Avoid_: calling it a failed booking — the order succeeded, it is the payment 
 OTV and ETG are the **same underlying supplier** (RateHawk) through two different API doors — not two suppliers with different hotel sets. Running both simultaneously yields duplicate results, not broader coverage. The ETG fallback is a reliability hedge, not a coverage expansion.
 _Avoid_: assuming OTV and ETG cover different hotels; treating ETG as a separate supplier with distinct inventory; calling ETG "RateHawk" in code (codebase name is `ETG`/`_etg`).
 
+**Availability Blackout** — a supplier state in which RateHawk's content endpoints answer
+normally while every availability call returns an empty set with a success status and no error.
+Because both **OTV** and **ETG** are doors onto the same supplier, a blackout closes both at
+once, and no fallback between them can cover it. Measured on 2026-10-26: the TGX static
+portfolio returned 500 hotels each for KR, JP, PH, GB and ES, and `multicomplete` resolved every
+region asked for, while `hotelX.search` and ETG `serp/region` both returned zero for every city
+and every date horizon tried.
+_Avoid_: reading one empty search as a fact about a destination — the identical answer arrives
+when the account, not the city, is the reason, and at a single call site the two are
+indistinguishable. _Avoid_: treating the OTV credit check as evidence of supplier standing: it
+sums our own `bookings` table against a configured limit and never asks RateHawk for its
+balance, so it reports 0% utilisation throughout a blackout.
+
 **LiteAPI** — a retired hotel supplier. The *integration* is gone: no client, no credentials, nothing calls it, and it supplies no inventory. Its *vocabulary* is not gone, and the difference matters when reading the code. `raw_liteapi_response` is a live column in the schema, LiteAPI's room-and-offer shape is still what v1's room types are modelled on, and v1's rate builder reads that shape before it reads the one OTV actually sends. api-v2 carries a smaller residue that nothing calls at all.
 _Avoid_: reading a LiteAPI name as evidence of a live supplier — every occurrence is either a column name, a type shape, or dead code. _Avoid_: the reverse error of assuming the names are cosmetic and safe to strip — the column is `NOT NULL` and a stored function reads it. _Avoid_: adding new code in LiteAPI's shape because the surrounding code is written that way.
 
