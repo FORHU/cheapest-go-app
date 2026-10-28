@@ -126,12 +126,13 @@ export async function placeDuffelOrder(params: PlaceDuffelOrderParams): Promise<
         let currentTotal = total;
         let currentCurrency = currency;
 
-        // Aborting (or losing the connection to) an order request does NOT cancel the booking
-        // at Duffel — it proceeds regardless. Before reporting failure, check whether the
-        // attempt that started at `sinceIso` actually landed; reporting failure invites the
-        // caller to retry and create a second paid ticket for the same trip. Used by BOTH the
-        // first request and the price_changed retry so the two cannot drift.
-        const reconcileOrTimeout = async (sinceIso: string): Promise<TryPlaceOrderResult> => {
+        // Aborting, losing the connection to, or getting a 5xx from an order request does NOT
+        // mean no booking was made: Duffel can fail after the airline already ticketed, and an
+        // abort never cancels anything. Before reporting failure, check whether the attempt
+        // that started at `sinceIso` actually landed; reporting failure invites the caller to
+        // retry and create a second paid ticket for the same trip. Used by BOTH the first
+        // request and the price_changed retry so the two cannot drift.
+        const findLandedOrder = async (sinceIso: string): Promise<TryPlaceOrderResult | null> => {
             const origin = rawOffer.slices?.[0]?.origin?.iata_code;
             const lastSlice = rawOffer.slices?.[rawOffer.slices.length - 1];
             const destination = lastSlice?.destination?.iata_code;
@@ -160,8 +161,12 @@ export async function placeDuffelOrder(params: PlaceDuffelOrderParams): Promise<
                     finalCurrency: currentCurrency,
                 };
             }
+            return null;
+        };
 
-            return {
+        // No response at all (thrown error or abort): adopt a landed order, else report a timeout.
+        const reconcileOrTimeout = async (sinceIso: string): Promise<TryPlaceOrderResult> =>
+            (await findLandedOrder(sinceIso)) ?? {
                 isPriceChangedError: false,
                 isOfferUnavailable: false,
                 res: new Response(null, { status: 504 }),
@@ -169,7 +174,6 @@ export async function placeDuffelOrder(params: PlaceDuffelOrderParams): Promise<
                 finalTotal: currentTotal,
                 finalCurrency: currentCurrency,
             };
-        };
 
         const orderAbort = new AbortController();
         const orderTimeout = setTimeout(() => orderAbort.abort(), orderTimeoutMs);
@@ -190,14 +194,18 @@ export async function placeDuffelOrder(params: PlaceDuffelOrderParams): Promise<
             data = await res.json();
         } catch (fetchErr: any) {
             clearTimeout(orderTimeout);
-            if (fetchErr?.name === 'AbortError') {
-                console.error(`[placeDuffelOrder] order timed out after ${orderTimeoutMs}ms for offer ${offerId}`);
-
-                return reconcileOrTimeout(attemptStartedAt);
-            }
-            throw fetchErr;
+            // Any thrown error (abort, connection reset, unreadable body) leaves the outcome
+            // unknown. Rethrowing would let the caller fail the booking while a live order exists.
+            console.error(`[placeDuffelOrder] order request failed (${fetchErr?.name === 'AbortError' ? `timed out after ${orderTimeoutMs}ms` : fetchErr?.message}) for offer ${offerId}`);
+            return reconcileOrTimeout(attemptStartedAt);
         }
         clearTimeout(orderTimeout);
+
+        // A 5xx is an unknown outcome too. On a miss, surface the real 5xx unchanged.
+        if (res.status >= 500) {
+            const landed = await findLandedOrder(attemptStartedAt);
+            if (landed) return landed;
+        }
 
         if (res.status === 422 && data?.errors?.[0]?.code === 'offer_no_longer_available') {
             console.warn(`[placeDuffelOrder] 422 offer_no_longer_available on ${offerId}`);
@@ -302,6 +310,11 @@ export async function placeDuffelOrder(params: PlaceDuffelOrderParams): Promise<
                 return reconcileOrTimeout(retryStartedAt);
             }
             clearTimeout(retryTimeout);
+            if (res.status >= 500) {
+                const landed = await findLandedOrder(retryStartedAt);
+                if (landed) return landed;
+                break; // no order found: surface the real 5xx unchanged
+            }
             if (res.ok) break;
         }
 

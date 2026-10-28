@@ -308,3 +308,117 @@ describe('placeDuffelOrder — a price_changed retry that times out', () => {
         expect(seen.offerRequests()).toBe(0);
     });
 });
+
+describe('placeDuffelOrder — unknown outcome of an order POST (thrown error or 5xx)', () => {
+    afterEach(() => { vi.unstubAllGlobals(); vi.restoreAllMocks(); });
+
+    const RAW = { ...RAW_OFFER, slices: [{ origin: { iata_code: 'MNL' }, destination: { iata_code: 'HKG' } }] };
+    const priceChanged = () => new Response(JSON.stringify({ errors: [{ code: 'price_changed', source: { offer_id: 'off_1' } }] }), { status: 422 });
+    const serverError = () => new Response(JSON.stringify({ errors: [{ code: 'airline_unknown_error', message: 'upstream blew up' }] }), { status: 500 });
+
+    /** The n-th POST /air/orders runs posts[n]; a function that throws simulates a dropped connection. */
+    function scripted(posts: Array<() => Response>, listed: unknown[]) {
+        const urls: string[] = [];
+        let orderPosts = 0;
+        vi.stubGlobal('fetch', vi.fn(async (url: string, init?: RequestInit) => {
+            urls.push(url);
+            const method = init?.method ?? 'GET';
+            if (method === 'POST' && url.endsWith('/air/orders')) return posts[orderPosts++]();
+            if (method === 'POST' && url.startsWith('https://api.duffel.com/air/offers/off_1/actions/price')) {
+                return new Response(JSON.stringify({ data: { id: 'off_1', total_amount: '105.00', total_currency: 'USD', available_services: [] } }), { status: 200 });
+            }
+            if (url.startsWith('https://api.duffel.com/air/orders?limit=50')) {
+                return new Response(JSON.stringify({ data: listed }), { status: 200 });
+            }
+            return new Response('{}', { status: 404 });
+        }));
+        return { orderPosts: () => orderPosts, offerRequests: () => urls.filter(u => u.includes('/air/offer_requests')).length };
+    }
+
+    const landed = (total: string) => ({
+        id: 'ord_landed', booking_reference: 'LND123', total_amount: total, total_currency: 'USD',
+        // 1s ahead on purpose: orderMatches tolerates only 1s of back-skew.
+        created_at: new Date(Date.now() + 1000).toISOString(),
+        slices: [{ origin: { iata_code: 'MNL' }, destination: { iata_code: 'HKG' } }],
+        passengers: [{ family_name: 'Sandbox' }],
+        documents: [],
+    });
+
+    const run = (key: string) => placeDuffelOrder({
+        duffelToken: 'duffel_test_abc', rawOffer: RAW, passengers: PAX, total: '100.00', currency: 'USD',
+        priceTolerance: 10, idempotencyKey: key,
+    });
+    const quiet = () => {
+        vi.spyOn(console, 'warn').mockImplementation(() => {});
+        vi.spyOn(console, 'error').mockImplementation(() => {});
+    };
+
+    it('adopts a landed order when the first POST dies with a non-abort error', async () => {
+        quiet();
+        const seen = scripted([() => { throw new TypeError('fetch failed'); }], [landed('100.00')]);
+        const result = await run('idem-d1');
+        expect(result.kind).toBe('success');
+        if (result.kind === 'success') expect(result.order.id).toBe('ord_landed');
+        expect(seen.orderPosts()).toBe(1);
+        expect(seen.offerRequests()).toBe(0);
+    });
+
+    it('reports a timeout, without ordering again, when that error left no order behind', async () => {
+        quiet();
+        const seen = scripted([() => { throw new TypeError('fetch failed'); }], []);
+        const result = await run('idem-d2');
+        expect(result.kind).toBe('error');
+        if (result.kind === 'error') expect(result.status).toBe(504);
+        expect(seen.orderPosts()).toBe(1);
+        expect(seen.offerRequests()).toBe(0);
+    });
+
+    it('adopts a landed order when the first POST answers 5xx', async () => {
+        quiet();
+        const seen = scripted([serverError], [landed('100.00')]);
+        const result = await run('idem-e1');
+        expect(result.kind).toBe('success');
+        if (result.kind === 'success') expect(result.order.id).toBe('ord_landed');
+        expect(seen.orderPosts()).toBe(1);
+        expect(seen.offerRequests()).toBe(0);
+    });
+
+    it('surfaces the real 5xx, unchanged, when the first POST left no order behind', async () => {
+        quiet();
+        const seen = scripted([serverError], []);
+        const result = await run('idem-e2');
+        expect(result.kind).toBe('error');
+        if (result.kind === 'error') {
+            expect(result.status).toBe(500);
+            expect(result.data.errors[0].message).toBe('upstream blew up');
+        }
+        expect(seen.orderPosts()).toBe(1);
+        expect(seen.offerRequests()).toBe(0);
+    });
+
+    it('adopts a landed order when the price_changed retry answers 5xx', async () => {
+        quiet();
+        const seen = scripted([priceChanged, serverError], [landed('105.00')]);
+        const result = await run('idem-e3');
+        expect(result.kind).toBe('success');
+        if (result.kind === 'success') {
+            expect(result.order.id).toBe('ord_landed');
+            expect(result.finalTotal).toBe('105.00');
+        }
+        expect(seen.orderPosts()).toBe(2);
+        expect(seen.offerRequests()).toBe(0);
+    });
+
+    it('surfaces the real 5xx, unchanged, when the price_changed retry left no order behind', async () => {
+        quiet();
+        const seen = scripted([priceChanged, serverError], []);
+        const result = await run('idem-e4');
+        expect(result.kind).toBe('error');
+        if (result.kind === 'error') {
+            expect(result.status).toBe(500);
+            expect(result.data.errors[0].message).toBe('upstream blew up');
+        }
+        expect(seen.orderPosts()).toBe(2);
+        expect(seen.offerRequests()).toBe(0);
+    });
+});
