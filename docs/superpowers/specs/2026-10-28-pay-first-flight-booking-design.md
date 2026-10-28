@@ -33,7 +33,7 @@ Kept: auth, rate limit, passenger/contact validation, passenger-type check, FX g
 
 Removed: `findLivePreOrderForOffer` use, the Duffel `POST /air/orders` call and its refresh pool, claim-staking, the orphan-cancel catch.
 
-Added: a PaymentIntent with `capture_method: 'manual'` for the marked-up quote. Its Stripe idempotency key is derived from user, Duffel offer id, and a hash of passengers, services and charge currency, not from the session id. A repeat submit with unchanged details returns the same PaymentIntent; changed details cancel the superseded unpaid PaymentIntent and create a new one. The request now takes milliseconds, which removes the race window.
+Added: session creation becomes get-or-create on a `quote_hash` (offer id, passengers, extras, charge currency and amount), backed by a partial unique index on `booking_sessions(user_id, quote_hash)` for active statuses, plus a PaymentIntent with `capture_method: 'manual'` for the marked-up quote. A repeat submit with unchanged details returns the existing session and PaymentIntent; changed details expire the superseded unpaid session, cancel its PaymentIntent and create a new one. A repeat submit after the card is already authorised answers `booking_pending` instead of creating anything. The request now takes milliseconds, which removes the race window.
 
 The session stores the quote (`original_price`, `charged_price`, `currency`, `payment_currency`) and `payment_intent_id`, status `payment_initiated`. The raw offer and service ids are already on the session.
 
@@ -41,7 +41,7 @@ The session stores the quote (`original_price`, `charged_price`, `currency`, `pa
 
 Stripe event `payment_intent.amount_capturable_updated`. The webhook currently ignores every provider except Mystifly there; add a Duffel branch that applies only when the session has no `duffel_pre_order_id`. It sets `payment_authorized` and calls `createBooking`.
 
-`createBooking`'s Duffel handler (`create-booking.ts`) gains one step at the top: when the session has no pre-order, place the order with `placeDuffelOrder` (the helper the mobile route already uses; the web route's ~600-line inline copy is deleted), save the order id on the session immediately, write the `duffel_pre_order_*` columns, then continue as today. The placement runs under the same lock as the booking insert, so the webhook and `/confirm` cannot both place an order.
+`createBooking`'s Duffel handler (`create-booking.ts`) gains one step at the top: when the session has no pre-order, place the order with `placeDuffelOrder`, save the order id on the session immediately, write the `duffel_pre_order_*` columns, then continue as today. The helper cannot be used as it stands: the mobile route imports it but never calls it, and it trails the web route's inline logic in two ways that matter here (its timeout-recovery path reads fields the reconcile module does not return and would throw, and its expired-offer refresh matches on carrier and price instead of exact itinerary). It is brought to parity first. The web route's inline copy stays while `FLIGHT_PAY_FIRST` exists and is deleted with the flag. The placement runs under the same lock as the booking insert, so the webhook and `/confirm` cannot both place an order.
 
 - Order placed: capture the PaymentIntent, insert rows, ticket, send confirmation email.
 - Order fails: cancel the PaymentIntent (releases the hold), mark the session `failed`, send the failure email.
@@ -64,7 +64,7 @@ Stripe event `payment_intent.amount_capturable_updated`. The webhook currently i
 ### Client
 
 - `/api/flights/confirm` accepts `requires_capture` for Duffel (today only `succeeded`; otherwise 402).
-- `pollForBooking` window grows from 45 s to about 150 s (the 130 s order timeout plus capture). `/api/flights/booking-status` also returns the session status so the UI can tell "still working" from "failed".
+- `pollForBooking` window grows from 45 s to about 150 s (the 130 s order timeout plus capture). `/api/flights/booking-status` and `/api/flights/confirm` return the failure reason for a pay-first failure (stored in the failed row's `cancellation_log`), so the failure screen can explain it and say the card was not charged.
 - Waiting-state strings added to `en`, `zh`, `ko`, `ja` under `flightBook`.
 - Refresh-recovery keys unchanged: a reload mid-wait resumes the poll.
 
@@ -75,8 +75,8 @@ Stripe event `payment_intent.amount_capturable_updated`. The webhook currently i
 
 ## Rollout
 
-- No new session status, so no schema migration.
-- Feature flag `FLIGHT_PAY_FIRST` switches the web route between the old and new flow, so rollback needs no redeploy.
+- One migration: `booking_sessions.quote_hash` with its unique index, and `booking_not_completed` added to the `email_logs` type check. No new session status.
+- Feature flag `FLIGHT_PAY_FIRST` switches the web route between the old and new flow, so rollback needs no redeploy. The old inline order code stays until the flag is retired.
 - Sessions in flight at deploy time already hold an order and use automatic capture; they finish through the existing `payment_intent.succeeded` path.
 - New ADR marking ADR-0009 superseded for web.
 - Recommended follow-up migration: unique indexes on `flight_bookings(session_id)` and `(duffel_order_id)`. Local data has no violations; check production before applying.
