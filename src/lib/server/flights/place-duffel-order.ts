@@ -15,20 +15,22 @@
  * It is provider-internal: callers pass an already-built set of Duffel order
  * passengers and the raw offer, and receive a normalised result they map to HTTP.
  *
- * NOTE: the web /api/flights/book route still has its own inline copy of this logic.
- * It should be migrated onto this helper in a follow-up (with sandbox QA) so the two
- * booking paths can't drift.
+ * NOTE: the web /api/flights/book route still has its own inline copy of this logic,
+ * used while FLIGHT_PAY_FIRST is off. The pay-first flow calls THIS helper, so it has to
+ * stay at parity with that copy — in particular exact-itinerary matching on a refresh and
+ * recovery of an order whose request timed out.
  */
 
 import { cabinClassFromRawOffer } from './duffel-cabin';
 import { findOrderFromTimedOutAttempt } from './duffel-order-reconcile';
 import { withDuffelServicePrices } from './duffel-service-prices';
+import { sameItineraryOffers } from './offer-itinerary-match';
 
 const DUFFEL_ORDERS_URL = 'https://api.duffel.com/air/orders';
 // Duffel's documented minimum: "You must set a HTTP client timeout of at least 130s".
 // Order creation runs synchronously through to the airline, aborting does NOT cancel it —
 // a shorter timeout orphans a real PNR without recording it.
-const DEFAULT_ORDER_TIMEOUT_MS = 130_000;
+export const DEFAULT_ORDER_TIMEOUT_MS = 130_000;
 const PRICE_ACTION_TIMEOUT_MS = 10_000;
 
 export interface PlaceDuffelOrderParams {
@@ -163,12 +165,14 @@ export async function placeDuffelOrder(params: PlaceDuffelOrderParams): Promise<
                 });
 
                 if (recovered) {
-                    console.warn(`[placeDuffelOrder] Timed-out attempt succeeded — adopting order ${recovered.orderId} (${recovered.pnr})`);
+                    console.warn(`[placeDuffelOrder] Timed-out attempt succeeded — adopting order ${recovered.id} (${recovered.booking_reference})`);
                     return {
                         isPriceChangedError: false,
                         isOfferUnavailable: false,
                         res: new Response(null, { status: 200 }),
-                        data: { data: { id: recovered.orderId, booking_reference: recovered.pnr, documents: recovered.tickets.map((t: string) => ({ type: 'electronic_ticket', unique_identifier: t })) } },
+                        // The raw order, as a normal 201 would carry it: callers read slices,
+                        // passengers and documents off it.
+                        data: { data: recovered },
                         finalTotal: currentTotal,
                         finalCurrency: currentCurrency,
                     };
@@ -334,23 +338,12 @@ export async function placeDuffelOrder(params: PlaceDuffelOrderParams): Promise<
         }
         if (offers.length === 0) return { kind: 'error', status: 422, data: attempt1.data };
 
-        const targetCarrier = rawOffer.validating_carrier_iata_code
-            ?? rawOffer.slices?.[0]?.segments?.[0]?.operating_carrier?.iata_code
-            ?? rawOffer.slices?.[0]?.segments?.[0]?.marketing_carrier?.iata_code;
-        const targetTotal = parseFloat(rawOffer.total_amount ?? '0');
-
-        const matchingOffers = targetCarrier
-            ? offers.filter((o: any) => {
-                const carrier = o.validating_carrier_iata_code
-                    ?? o.slices?.[0]?.segments?.[0]?.operating_carrier?.iata_code
-                    ?? o.slices?.[0]?.segments?.[0]?.marketing_carrier?.iata_code;
-                return carrier === targetCarrier;
-            })
-            : offers;
-
-        const sortedPool = (matchingOffers.length > 0 ? matchingOffers : offers).sort((a: any, b: any) =>
-            Math.abs(parseFloat(a.total_amount) - targetTotal) - Math.abs(parseFloat(b.total_amount) - targetTotal),
-        );
+        // The same journey only: marketing carrier, flight number and departure instant,
+        // segment by segment, cheapest first. A carrier-and-price match is not identity — it
+        // can ticket a 22:00 departure for someone who chose 06:00. Nothing matching means the
+        // flight is unavailable, not that a different one should be bought.
+        const sortedPool = sameItineraryOffers(rawOffer, offers);
+        if (sortedPool.length === 0) return { kind: 'error', status: 422, data: attempt1.data };
 
         const hadAncillaries = (seatServiceIds?.length ?? 0) > 0 || (bagServiceIds?.length ?? 0) > 0;
         const maxAttempts = Math.min(sortedPool.length, refreshPoolSize);

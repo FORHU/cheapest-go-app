@@ -69,3 +69,101 @@ describe('placeDuffelOrder — fare changes while ordering', () => {
         expect(orders[1].payments[0].amount).toBe('117.50');
     });
 });
+
+describe('placeDuffelOrder — an order that timed out but landed', () => {
+    afterEach(() => { vi.unstubAllGlobals(); vi.restoreAllMocks(); });
+
+    it('adopts the raw order Duffel already created instead of throwing', async () => {
+        vi.spyOn(console, 'warn').mockImplementation(() => {});
+        vi.spyOn(console, 'error').mockImplementation(() => {});
+        const abort = Object.assign(new Error('aborted'), { name: 'AbortError' });
+        const landed = {
+            id: 'ord_landed', booking_reference: 'ABC123', total_amount: '100.00', total_currency: 'USD',
+            created_at: new Date(Date.now() + 1000).toISOString(),
+            slices: [{ origin: { iata_code: 'MNL' }, destination: { iata_code: 'HKG' } }],
+            passengers: [{ family_name: 'Sandbox' }],
+            documents: [{ type: 'electronic_ticket', unique_identifier: '1234567890' }],
+        };
+        vi.stubGlobal('fetch', vi.fn(async (url: string, init?: RequestInit) => {
+            if (init?.method === 'POST' && url.endsWith('/air/orders')) throw abort;
+            if (url.startsWith('https://api.duffel.com/air/orders?limit=50')) {
+                return new Response(JSON.stringify({ data: [landed] }), { status: 200 });
+            }
+            return new Response('{}', { status: 404 });
+        }));
+
+        const result = await placeDuffelOrder({
+            duffelToken: 'duffel_test_abc',
+            rawOffer: { ...RAW_OFFER, slices: [{ origin: { iata_code: 'MNL' }, destination: { iata_code: 'HKG' } }] },
+            passengers: PAX, total: '100.00', currency: 'USD', priceTolerance: 10, idempotencyKey: 'idem-timeout',
+        });
+
+        expect(result.kind).toBe('success');
+        if (result.kind === 'success') {
+            expect(result.order.id).toBe('ord_landed');
+            expect(result.order.booking_reference).toBe('ABC123');
+            expect(result.order.documents).toHaveLength(1);
+        }
+    });
+});
+
+describe('placeDuffelOrder — refreshing an expired offer', () => {
+    afterEach(() => { vi.unstubAllGlobals(); vi.restoreAllMocks(); });
+
+    const segment = (departing: string) => ({
+        marketing_carrier: { iata_code: 'PR' }, marketing_carrier_flight_number: '300',
+        origin: { iata_code: 'MNL' }, destination: { iata_code: 'HKG' },
+        departing_at: departing, passengers: [{ cabin_class: 'economy' }],
+    });
+    const offer = (id: string, total: string, departing: string) => ({
+        id, total_amount: total, total_currency: 'USD', passengers: [{ id: 'pas_1' }],
+        slices: [{ origin: { iata_code: 'MNL' }, destination: { iata_code: 'HKG' }, departure_date: departing.slice(0, 10), segments: [segment(departing)] }],
+    });
+    const chosen = offer('off_1', '100.00', '2026-11-01T06:00:00');
+
+    function expiresThenSucceeds() {
+        let calls = 0;
+        return () => (++calls === 1
+            ? { status: 422, body: { errors: [{ code: 'offer_no_longer_available' }] } }
+            : { status: 201, body: { data: { id: 'ord_refreshed' } } });
+    }
+
+    it('books the same journey, not a different departure the same carrier happens to sell', async () => {
+        vi.spyOn(console, 'warn').mockImplementation(() => {});
+        const orders = duffel([
+            ['POST', '/air/orders', expiresThenSucceeds()],
+            // A 22:00 departure at exactly the chosen price would win a "closest price" sort.
+            ['POST', '/air/offer_requests', () => ({ status: 201, body: { data: { id: 'orq_1', offers: [
+                offer('off_wrong', '100.00', '2026-11-01T22:00:00'),
+                offer('off_same', '104.00', '2026-11-01T06:00:00'),
+            ] } } })],
+        ]);
+
+        const result = await placeDuffelOrder({
+            duffelToken: 'duffel_test_abc', rawOffer: chosen, passengers: PAX, total: '100.00', currency: 'USD',
+            priceTolerance: 10, idempotencyKey: 'idem-refresh',
+        });
+
+        expect(result.kind).toBe('success');
+        expect(orders).toHaveLength(2);
+        expect(orders[1].selected_offers).toEqual(['off_same']);
+    });
+
+    it('reports the flight unavailable rather than substituting a different one', async () => {
+        vi.spyOn(console, 'warn').mockImplementation(() => {});
+        const orders = duffel([
+            ['POST', '/air/orders', () => ({ status: 422, body: { errors: [{ code: 'offer_no_longer_available' }] } })],
+            ['POST', '/air/offer_requests', () => ({ status: 201, body: { data: { id: 'orq_1', offers: [
+                offer('off_wrong', '100.00', '2026-11-01T22:00:00'),
+            ] } } })],
+        ]);
+
+        const result = await placeDuffelOrder({
+            duffelToken: 'duffel_test_abc', rawOffer: chosen, passengers: PAX, total: '100.00', currency: 'USD',
+            priceTolerance: 10, idempotencyKey: 'idem-none',
+        });
+
+        expect(result.kind).toBe('error');
+        expect(orders).toHaveLength(1);
+    });
+});
