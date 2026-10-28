@@ -35,9 +35,22 @@ export function computeOrderTotal(
     return { total: (base + seatExtra + bagExtra).toFixed(2), base, seatExtra, bagExtra };
 }
 
+export interface QuoteHashPassenger {
+    firstName?: string;
+    lastName?: string;
+    birthDate?: string;
+    type?: string;
+    gender?: string;
+    passport?: string;
+    passportExpiry?: string;
+    nationality?: string;
+}
+
 export interface QuoteHashInput {
     offerId: string;
-    passengers: Array<{ firstName?: string; lastName?: string; birthDate?: string }>;
+    passengers: QuoteHashPassenger[];
+    /** Part of the attempt's identity: the Duffel order is built from the stored session. */
+    contact?: { email?: string; phone?: string; countryCode?: string };
     seatServiceIds?: string[];
     bagServiceIds?: string[];
     chargeCurrency: string;
@@ -49,14 +62,33 @@ export interface QuoteHashInput {
  * Identity of "this exact booking attempt".
  *
  * Two submits with the same hash are the same attempt and must share one session and one
- * PaymentIntent; a corrected name, an added bag or a moved price produces a new hash and so
- * a new attempt. Names are normalised so a stray space or capital does not split an attempt.
+ * PaymentIntent. The Duffel order is later built from the stored session, which a reused session
+ * never refreshes, so every value that ends up on the order is part of the hash: a corrected name,
+ * passport, phone or email, an added bag or a moved price produces a new hash and so a new attempt.
+ * Text is normalised (trim, collapsed whitespace, lower case) so a stray space or capital does not
+ * split an attempt; the phone is normalised the way `buildDuffelOrderPassengers` builds it.
  */
 export function quoteHash(input: QuoteHashInput): string {
-    const norm = (s?: string) => (s ?? '').trim().toLowerCase().replace(/\s+/g, ' ');
+    const norm = (s?: string | null) => String(s ?? '').trim().replace(/\s+/g, ' ').toLowerCase();
+    const trim = (s?: string | null) => String(s ?? '').trim();
+    const c = input.contact;
     const canonical = JSON.stringify({
         o: input.offerId,
-        p: (input.passengers ?? []).map(p => [norm(p.firstName), norm(p.lastName), (p.birthDate ?? '').trim()]),
+        p: (input.passengers ?? []).map(p => [
+            norm(p.firstName),
+            norm(p.lastName),
+            trim(p.birthDate),
+            norm(p.type),
+            norm(p.gender),
+            norm(p.passport),
+            trim(p.passportExpiry),
+            norm(p.nationality),
+        ]),
+        t: [
+            norm(c?.email),
+            String(c?.phone ?? '').replace(/\D/g, '').replace(/^0+/, ''),
+            String(c?.countryCode ?? '82').replace(/\D/g, '') || '82',
+        ],
         s: [...(input.seatServiceIds ?? [])].sort(),
         b: [...(input.bagServiceIds ?? [])].sort(),
         c: input.chargeCurrency.trim().toLowerCase(),

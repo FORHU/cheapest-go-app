@@ -31,4 +31,59 @@ describe('decideCapture', () => {
         expect(decideCapture({ ...input, finalBase: 0 })).toEqual({ kind: 'capture', amountMinor: 11_000 });
         expect(decideCapture({ ...input, quotedBase: 0, finalBase: 90 })).toEqual({ kind: 'capture', amountMinor: 11_000 });
     });
+
+    describe('tolerance boundary', () => {
+        it('captures a rise of exactly the tolerance', () => {
+            expect(decideCapture({ ...input, finalBase: 100.5 })).toEqual({ kind: 'capture', amountMinor: 11_000 });
+        });
+
+        it('releases a rise just over the tolerance', () => {
+            expect(decideCapture({ ...input, finalBase: 100.51 })).toEqual({ kind: 'release', code: 'price_changed' });
+        });
+
+        it('with tolerance 0 captures an unchanged price and releases any rise', () => {
+            expect(decideCapture({ ...input, tolerance: 0, finalBase: 100 })).toEqual({ kind: 'capture', amountMinor: 11_000 });
+            expect(decideCapture({ ...input, tolerance: 0, finalBase: 100.01 })).toEqual({ kind: 'release', code: 'price_changed' });
+        });
+
+        it.each([['NaN', NaN], ['negative', -5], ['-Infinity', -Infinity]])('treats a %s tolerance as 0', (_l, tolerance) => {
+            expect(decideCapture({ ...input, tolerance, finalBase: 100 })).toEqual({ kind: 'capture', amountMinor: 11_000 });
+            expect(decideCapture({ ...input, tolerance, finalBase: 100.01 })).toEqual({ kind: 'release', code: 'price_changed' });
+        });
+    });
+
+    describe('proportional capture', () => {
+        it('captures slightly less for a tiny discount', () => {
+            const d = decideCapture({ ...input, finalBase: 99.99 });
+            expect(d.kind).toBe('capture');
+            if (d.kind === 'capture') {
+                expect(d.amountMinor).toBeLessThan(11_000);
+                expect(d.amountMinor).toBeGreaterThan(10_990);
+            }
+        });
+
+        it.each([
+            ['zero', () => 0],
+            ['NaN', () => NaN],
+            ['negative', () => -1],
+            ['a zero charge for the quote only', (b: number) => (b === 100 ? 0 : 5)],
+        ])('falls back to the full hold when the markup gives %s', (_l, bad) => {
+            expect(decideCapture({ ...input, finalBase: 90, chargedFor: bad })).toEqual({ kind: 'capture', amountMinor: 11_000 });
+        });
+
+        it('never captures more than a zero hold', () => {
+            expect(decideCapture({ ...input, finalBase: 90, authorizedMinor: 0 })).toEqual({ kind: 'capture', amountMinor: 0 });
+        });
+
+        it('clamps to the hold when the scaled amount would exceed it', () => {
+            // A markup that grows faster than the base: the "cheaper" order scales above the hold.
+            const d = decideCapture({ ...input, finalBase: 90, authorizedMinor: 3, chargedFor: b => (b === 90 ? 500 : 100) });
+            expect(d).toEqual({ kind: 'capture', amountMinor: 3 });
+        });
+
+        it('floors the capture at 1 minor unit for a near-free order', () => {
+            const d = decideCapture({ ...input, finalBase: 0.01, authorizedMinor: 11_000, chargedFor: b => b });
+            expect(d).toEqual({ kind: 'capture', amountMinor: 1 });
+        });
+    });
 });

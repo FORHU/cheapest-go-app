@@ -30,10 +30,15 @@ export function decideCapture({ authorizedMinor, quotedBase, finalBase, toleranc
     // A price we cannot read is not evidence of a discount. Capture what was authorised.
     if (!(quotedBase > 0) || !(finalBase > 0)) return { kind: 'capture', amountMinor: authorizedMinor };
 
-    if (finalBase > quotedBase + tolerance) return { kind: 'release', code: 'price_changed' };
+    // A tolerance that is not a positive number is treated as none: never absorb by accident.
+    const tol = Number.isFinite(tolerance) && tolerance > 0 ? tolerance : 0;
+
+    if (finalBase > quotedBase + tol) return { kind: 'release', code: 'price_changed' };
     if (finalBase >= quotedBase) return { kind: 'capture', amountMinor: authorizedMinor };
 
     const ratio = chargedFor(finalBase) / chargedFor(quotedBase);
-    const scaled = Math.min(authorizedMinor, Math.round(authorizedMinor * ratio));
-    return { kind: 'capture', amountMinor: Math.max(1, scaled) };
+    // A ratio we cannot trust is not evidence of a discount either.
+    if (!Number.isFinite(ratio) || ratio <= 0) return { kind: 'capture', amountMinor: authorizedMinor };
+    const scaled = Math.round(authorizedMinor * ratio);
+    return { kind: 'capture', amountMinor: Math.min(authorizedMinor, Math.max(1, scaled)) };
 }
