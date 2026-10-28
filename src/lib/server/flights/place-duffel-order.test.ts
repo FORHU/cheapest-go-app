@@ -70,6 +70,19 @@ describe('placeDuffelOrder — fare changes while ordering', () => {
     });
 });
 
+/** Every POST /air/orders throws `abort`; the order list returns `listed`. */
+function timingOutFetch(abort: Error, listed: unknown[]) {
+    let postCount = 0;
+    const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
+        if (init?.method === 'POST' && url.endsWith('/air/orders')) { postCount++; throw abort; }
+        if (url.startsWith('https://api.duffel.com/air/orders?limit=50')) {
+            return new Response(JSON.stringify({ data: listed }), { status: 200 });
+        }
+        return new Response('{}', { status: 404 });
+    });
+    return { fetchMock, posts: () => postCount };
+}
+
 describe('placeDuffelOrder — an order that timed out but landed', () => {
     afterEach(() => { vi.unstubAllGlobals(); vi.restoreAllMocks(); });
 
@@ -79,18 +92,14 @@ describe('placeDuffelOrder — an order that timed out but landed', () => {
         const abort = Object.assign(new Error('aborted'), { name: 'AbortError' });
         const landed = {
             id: 'ord_landed', booking_reference: 'ABC123', total_amount: '100.00', total_currency: 'USD',
+            // 1s ahead on purpose: orderMatches tolerates only 1s of back-skew before the attempt began.
             created_at: new Date(Date.now() + 1000).toISOString(),
             slices: [{ origin: { iata_code: 'MNL' }, destination: { iata_code: 'HKG' } }],
             passengers: [{ family_name: 'Sandbox' }],
             documents: [{ type: 'electronic_ticket', unique_identifier: '1234567890' }],
         };
-        vi.stubGlobal('fetch', vi.fn(async (url: string, init?: RequestInit) => {
-            if (init?.method === 'POST' && url.endsWith('/air/orders')) throw abort;
-            if (url.startsWith('https://api.duffel.com/air/orders?limit=50')) {
-                return new Response(JSON.stringify({ data: [landed] }), { status: 200 });
-            }
-            return new Response('{}', { status: 404 });
-        }));
+        const { fetchMock, posts } = timingOutFetch(abort, [landed]);
+        vi.stubGlobal('fetch', fetchMock);
 
         const result = await placeDuffelOrder({
             duffelToken: 'duffel_test_abc',
@@ -103,7 +112,27 @@ describe('placeDuffelOrder — an order that timed out but landed', () => {
             expect(result.order.id).toBe('ord_landed');
             expect(result.order.booking_reference).toBe('ABC123');
             expect(result.order.documents).toHaveLength(1);
+            expect(result.order.slices).toBeDefined();
         }
+        expect(posts()).toBe(1);
+    });
+
+    it('reports a timeout, and orders nothing more, when no landed order matches', async () => {
+        vi.spyOn(console, 'warn').mockImplementation(() => {});
+        vi.spyOn(console, 'error').mockImplementation(() => {});
+        const abort = Object.assign(new Error('aborted'), { name: 'AbortError' });
+        const { fetchMock, posts } = timingOutFetch(abort, []);
+        vi.stubGlobal('fetch', fetchMock);
+
+        const result = await placeDuffelOrder({
+            duffelToken: 'duffel_test_abc',
+            rawOffer: { ...RAW_OFFER, slices: [{ origin: { iata_code: 'MNL' }, destination: { iata_code: 'HKG' } }] },
+            passengers: PAX, total: '100.00', currency: 'USD', priceTolerance: 10, idempotencyKey: 'idem-timeout-miss',
+        });
+
+        expect(result.kind).toBe('error');
+        if (result.kind === 'error') expect(result.status).toBe(504);
+        expect(posts()).toBe(1);
     });
 });
 
@@ -147,6 +176,7 @@ describe('placeDuffelOrder — refreshing an expired offer', () => {
         expect(result.kind).toBe('success');
         expect(orders).toHaveLength(2);
         expect(orders[1].selected_offers).toEqual(['off_same']);
+        expect(orders[1].payments[0].amount).toBe('104.00');
     });
 
     it('reports the flight unavailable rather than substituting a different one', async () => {
@@ -164,6 +194,117 @@ describe('placeDuffelOrder — refreshing an expired offer', () => {
         });
 
         expect(result.kind).toBe('error');
+        if (result.kind === 'error') {
+            expect(result.status).toBe(422);
+            expect(result.data.errors[0].code).toBe('offer_no_longer_available');
+        }
         expect(orders).toHaveLength(1);
+    });
+
+    it("keeps Duffel's own message when the first 422 was not an expiry", async () => {
+        vi.spyOn(console, 'warn').mockImplementation(() => {});
+        const orders = duffel([
+            ['POST', '/air/orders', () => ({ status: 422, body: { errors: [{ code: 'validation_error', message: 'phone_number is invalid' }] } })],
+            ['POST', '/air/offer_requests', () => ({ status: 201, body: { data: { id: 'orq_1', offers: [
+                offer('off_wrong', '100.00', '2026-11-01T22:00:00'),
+            ] } } })],
+        ]);
+
+        const result = await placeDuffelOrder({
+            duffelToken: 'duffel_test_abc', rawOffer: chosen, passengers: PAX, total: '100.00', currency: 'USD',
+            priceTolerance: 10, idempotencyKey: 'idem-validation',
+        });
+
+        expect(result.kind).toBe('error');
+        if (result.kind === 'error') expect(result.data.errors[0].message).toBe('phone_number is invalid');
+        expect(orders).toHaveLength(1);
+    });
+});
+
+describe('placeDuffelOrder — a price_changed retry that times out', () => {
+    afterEach(() => { vi.unstubAllGlobals(); vi.restoreAllMocks(); });
+
+    const RAW = { ...RAW_OFFER, slices: [{ origin: { iata_code: 'MNL' }, destination: { iata_code: 'HKG' } }] };
+
+    /** 1st order POST: 422 price_changed. Price Action: 105.00. 2nd order POST: throws. */
+    function retryThrows(thrown: Error, listed: unknown[]) {
+        const urls: string[] = [];
+        let posts = 0;
+        vi.stubGlobal('fetch', vi.fn(async (url: string, init?: RequestInit) => {
+            urls.push(url);
+            const method = init?.method ?? 'GET';
+            if (method === 'POST' && url.endsWith('/air/orders')) {
+                if (++posts === 1) return new Response(JSON.stringify({ errors: [{ code: 'price_changed', source: { offer_id: 'off_1' } }] }), { status: 422 });
+                throw thrown;
+            }
+            if (method === 'POST' && url.startsWith('https://api.duffel.com/air/offers/off_1/actions/price')) {
+                return new Response(JSON.stringify({ data: { id: 'off_1', total_amount: '105.00', total_currency: 'USD', available_services: [] } }), { status: 200 });
+            }
+            if (url.startsWith('https://api.duffel.com/air/orders?limit=50')) {
+                return new Response(JSON.stringify({ data: listed }), { status: 200 });
+            }
+            return new Response('{}', { status: 404 });
+        }));
+        return { orderPosts: () => posts, offerRequests: () => urls.filter(u => u.includes('/air/offer_requests')).length };
+    }
+
+    const landed = () => ({
+        id: 'ord_retry_landed', booking_reference: 'XYZ789', total_amount: '105.00', total_currency: 'USD',
+        // 1s ahead on purpose: orderMatches tolerates only 1s of back-skew.
+        created_at: new Date(Date.now() + 1000).toISOString(),
+        slices: [{ origin: { iata_code: 'MNL' }, destination: { iata_code: 'HKG' } }],
+        passengers: [{ family_name: 'Sandbox' }],
+        documents: [],
+    });
+
+    it('adopts the order the retry created instead of re-booking the itinerary', async () => {
+        vi.spyOn(console, 'warn').mockImplementation(() => {});
+        vi.spyOn(console, 'error').mockImplementation(() => {});
+        const seen = retryThrows(Object.assign(new Error('aborted'), { name: 'AbortError' }), [landed()]);
+
+        const result = await placeDuffelOrder({
+            duffelToken: 'duffel_test_abc', rawOffer: RAW, passengers: PAX, total: '100.00', currency: 'USD',
+            priceTolerance: 10, idempotencyKey: 'idem-retry-landed',
+        });
+
+        expect(result.kind).toBe('success');
+        if (result.kind === 'success') {
+            expect(result.order.id).toBe('ord_retry_landed');
+            expect(result.finalTotal).toBe('105.00');
+        }
+        expect(seen.orderPosts()).toBe(2);
+        expect(seen.offerRequests()).toBe(0);
+    });
+
+    it('reports a timeout, not an expired offer, when the retry did not land', async () => {
+        vi.spyOn(console, 'warn').mockImplementation(() => {});
+        vi.spyOn(console, 'error').mockImplementation(() => {});
+        const seen = retryThrows(Object.assign(new Error('aborted'), { name: 'AbortError' }), []);
+
+        const result = await placeDuffelOrder({
+            duffelToken: 'duffel_test_abc', rawOffer: RAW, passengers: PAX, total: '100.00', currency: 'USD',
+            priceTolerance: 10, idempotencyKey: 'idem-retry-miss',
+        });
+
+        expect(result.kind).toBe('error');
+        if (result.kind === 'error') expect(result.status).toBe(504);
+        expect(seen.orderPosts()).toBe(2);
+        expect(seen.offerRequests()).toBe(0);
+    });
+
+    it('treats a non-abort failure of the retry the same way', async () => {
+        vi.spyOn(console, 'warn').mockImplementation(() => {});
+        vi.spyOn(console, 'error').mockImplementation(() => {});
+        const seen = retryThrows(new TypeError('fetch failed'), []);
+
+        const result = await placeDuffelOrder({
+            duffelToken: 'duffel_test_abc', rawOffer: RAW, passengers: PAX, total: '100.00', currency: 'USD',
+            priceTolerance: 10, idempotencyKey: 'idem-retry-neterr',
+        });
+
+        expect(result.kind).toBe('error');
+        if (result.kind === 'error') expect(result.status).toBe(504);
+        expect(seen.orderPosts()).toBe(2);
+        expect(seen.offerRequests()).toBe(0);
     });
 });

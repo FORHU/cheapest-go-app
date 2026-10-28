@@ -7,10 +7,13 @@
  * `offer_no_longer_available`, some `price_changed` — and a single attempt turns any
  * of those transient conditions into a hard failure. This helper:
  *
- *   1. Places the order with a per-attempt timeout (Duffel sometimes hangs).
- *   2. On `price_changed`, runs a live Price Action and retries (up to 2×).
- *   3. On `offer_no_longer_available`, rebuilds an offer_request, re-quotes a pool of
- *      fresh offers for the same carrier, and tries them in price order.
+ *   1. Places the order with a per-attempt timeout (Duffel sometimes hangs). A request
+ *      that times out or errors is reconciled against Duffel's order list first — it may
+ *      have landed — and only reported as a timeout when no matching order exists.
+ *   2. On `price_changed`, runs a live Price Action and retries (up to 2×); the retry is
+ *      reconciled the same way.
+ *   3. On `offer_no_longer_available`, rebuilds an offer_request, re-quotes fresh offers,
+ *      keeps only those with the identical itinerary, and tries them cheapest first.
  *
  * It is provider-internal: callers pass an already-built set of Duffel order
  * passengers and the raw offer, and receive a normalised result they map to HTTP.
@@ -123,6 +126,51 @@ export async function placeDuffelOrder(params: PlaceDuffelOrderParams): Promise<
         let currentTotal = total;
         let currentCurrency = currency;
 
+        // Aborting (or losing the connection to) an order request does NOT cancel the booking
+        // at Duffel — it proceeds regardless. Before reporting failure, check whether the
+        // attempt that started at `sinceIso` actually landed; reporting failure invites the
+        // caller to retry and create a second paid ticket for the same trip. Used by BOTH the
+        // first request and the price_changed retry so the two cannot drift.
+        const reconcileOrTimeout = async (sinceIso: string): Promise<TryPlaceOrderResult> => {
+            const origin = rawOffer.slices?.[0]?.origin?.iata_code;
+            const lastSlice = rawOffer.slices?.[rawOffer.slices.length - 1];
+            const destination = lastSlice?.destination?.iata_code;
+            const recovered = await findOrderFromTimedOutAttempt(duffelToken, {
+                sinceIso,
+                origin: origin ?? '',
+                destination: destination ?? '',
+                totalAmount: currentTotal,
+                currency: currentCurrency,
+                familyName: paxList?.[0]?.family_name,
+            }).catch((e: any) => {
+                console.warn('[placeDuffelOrder] reconciliation check failed:', e?.message);
+                return null;
+            });
+
+            if (recovered) {
+                console.warn(`[placeDuffelOrder] Timed-out attempt succeeded — adopting order ${recovered.id} (${recovered.booking_reference})`);
+                return {
+                    isPriceChangedError: false,
+                    isOfferUnavailable: false,
+                    res: new Response(null, { status: 200 }),
+                    // The raw order, as a normal 201 would carry it: callers read slices,
+                    // passengers and documents off it.
+                    data: { data: recovered },
+                    finalTotal: currentTotal,
+                    finalCurrency: currentCurrency,
+                };
+            }
+
+            return {
+                isPriceChangedError: false,
+                isOfferUnavailable: false,
+                res: new Response(null, { status: 504 }),
+                data: { errors: [{ code: 'timeout', message: 'Airline booking system timed out. Please try again.' }] },
+                finalTotal: currentTotal,
+                finalCurrency: currentCurrency,
+            };
+        };
+
         const orderAbort = new AbortController();
         const orderTimeout = setTimeout(() => orderAbort.abort(), orderTimeoutMs);
 
@@ -145,48 +193,7 @@ export async function placeDuffelOrder(params: PlaceDuffelOrderParams): Promise<
             if (fetchErr?.name === 'AbortError') {
                 console.error(`[placeDuffelOrder] order timed out after ${orderTimeoutMs}ms for offer ${offerId}`);
 
-                // Aborting does NOT cancel the booking at Duffel — the airline booking
-                // proceeds regardless. Check whether this attempt actually landed before
-                // reporting failure, which would invite the caller to retry and create a
-                // second paid ticket for the same trip.
-                const origin = rawOffer.slices?.[0]?.origin?.iata_code;
-                const lastSlice = rawOffer.slices?.[rawOffer.slices.length - 1];
-                const destination = lastSlice?.destination?.iata_code;
-                const recovered = await findOrderFromTimedOutAttempt(duffelToken, {
-                    sinceIso: attemptStartedAt,
-                    origin: origin ?? '',
-                    destination: destination ?? '',
-                    totalAmount: currentTotal,
-                    currency: currentCurrency,
-                    familyName: paxList?.[0]?.family_name,
-                }).catch((e: any) => {
-                    console.warn('[placeDuffelOrder] reconciliation check failed:', e?.message);
-                    return null;
-                });
-
-                if (recovered) {
-                    console.warn(`[placeDuffelOrder] Timed-out attempt succeeded — adopting order ${recovered.id} (${recovered.booking_reference})`);
-                    return {
-                        isPriceChangedError: false,
-                        isOfferUnavailable: false,
-                        res: new Response(null, { status: 200 }),
-                        // The raw order, as a normal 201 would carry it: callers read slices,
-                        // passengers and documents off it.
-                        data: { data: recovered },
-                        finalTotal: currentTotal,
-                        finalCurrency: currentCurrency,
-                    };
-                }
-
-                const syntheticRes = new Response(null, { status: 504 });
-                return {
-                    isPriceChangedError: false,
-                    isOfferUnavailable: false,
-                    res: syntheticRes,
-                    data: { errors: [{ code: 'timeout', message: 'Airline booking system timed out. Please try again.' }] },
-                    finalTotal: currentTotal,
-                    finalCurrency: currentCurrency,
-                };
+                return reconcileOrTimeout(attemptStartedAt);
             }
             throw fetchErr;
         }
@@ -274,6 +281,8 @@ export async function placeDuffelOrder(params: PlaceDuffelOrderParams): Promise<
             currentTotal = newTotalNum.toFixed(2);
             const retryAbort = new AbortController();
             const retryTimeout = setTimeout(() => retryAbort.abort(), orderTimeoutMs);
+            // Stamped before the retry so a retry that lands but never answers can be found.
+            const retryStartedAt = new Date().toISOString();
             try {
                 res = await fetch(DUFFEL_ORDERS_URL, {
                     method: 'POST',
@@ -285,7 +294,12 @@ export async function placeDuffelOrder(params: PlaceDuffelOrderParams): Promise<
             } catch (retryErr: any) {
                 clearTimeout(retryTimeout);
                 console.error(`[placeDuffelOrder] price_changed retry failed: ${retryErr.message}`);
-                break;
+                // Falling out of the loop here would leave the earlier 422 price_changed in
+                // res/data, which the caller reads as "offer expired" and answers by booking
+                // the same itinerary again under a fresh key — a second paid order if this
+                // retry actually landed. Reconcile, and never report anything but the outcome
+                // of THIS request (any thrown error, not just an abort, leaves it unknown).
+                return reconcileOrTimeout(retryStartedAt);
             }
             clearTimeout(retryTimeout);
             if (res.ok) break;
@@ -307,8 +321,11 @@ export async function placeDuffelOrder(params: PlaceDuffelOrderParams): Promise<
         return { kind: 'error', status: attempt1.res.status, data: attempt1.data };
     }
 
-    // ── Auto-refresh: the offer expired — re-quote fresh offers for the same carrier ──
+    // ── Auto-refresh: the offer expired — re-quote and find the identical itinerary ──
     console.warn('[placeDuffelOrder] offer expired — rebuilding offer_request');
+    // An expiry answer carries no body, so give refresh failures one callers can map to
+    // "flight no longer available". A non-expiry 422 keeps Duffel's real message.
+    const refreshFailureData = attempt1.data ?? { errors: [{ code: 'offer_no_longer_available', message: 'The selected flight is no longer available' }] };
     try {
         const slices: any[] = (rawOffer.slices ?? []).map((sl: any) => {
             const origin = sl.origin?.iata_code ?? sl.segments?.[0]?.origin?.iata_code;
@@ -317,7 +334,7 @@ export async function placeDuffelOrder(params: PlaceDuffelOrderParams): Promise<
             return { origin, destination, departure_date };
         }).filter((s: any) => s.origin && s.destination && s.departure_date);
 
-        if (slices.length === 0) return { kind: 'error', status: 422, data: attempt1.data };
+        if (slices.length === 0) return { kind: 'error', status: 422, data: refreshFailureData };
 
         const paxTypes: any[] = (rawOffer.passengers ?? []).map((p: any) => ({ type: p.type ?? 'adult' }));
         const cabinClass: string = cabinClassFromRawOffer(rawOffer);
@@ -328,7 +345,7 @@ export async function placeDuffelOrder(params: PlaceDuffelOrderParams): Promise<
             body: JSON.stringify({ data: { slices, passengers: paxTypes, cabin_class: cabinClass } }),
         });
         const orData = await orRes.json();
-        if (!orRes.ok) return { kind: 'error', status: 422, data: attempt1.data };
+        if (!orRes.ok) return { kind: 'error', status: 422, data: refreshFailureData };
 
         let offers: any[] = orData.data?.offers ?? [];
         if (offers.length === 0 && orData.data?.id) {
@@ -336,14 +353,14 @@ export async function placeDuffelOrder(params: PlaceDuffelOrderParams): Promise<
             const offersData = await offersRes.json();
             offers = offersData.data ?? [];
         }
-        if (offers.length === 0) return { kind: 'error', status: 422, data: attempt1.data };
+        if (offers.length === 0) return { kind: 'error', status: 422, data: refreshFailureData };
 
         // The same journey only: marketing carrier, flight number and departure instant,
         // segment by segment, cheapest first. A carrier-and-price match is not identity — it
         // can ticket a 22:00 departure for someone who chose 06:00. Nothing matching means the
         // flight is unavailable, not that a different one should be bought.
         const sortedPool = sameItineraryOffers(rawOffer, offers);
-        if (sortedPool.length === 0) return { kind: 'error', status: 422, data: attempt1.data };
+        if (sortedPool.length === 0) return { kind: 'error', status: 422, data: refreshFailureData };
 
         const hadAncillaries = (seatServiceIds?.length ?? 0) > 0 || (bagServiceIds?.length ?? 0) > 0;
         const maxAttempts = Math.min(sortedPool.length, refreshPoolSize);
@@ -386,9 +403,9 @@ export async function placeDuffelOrder(params: PlaceDuffelOrderParams): Promise<
             return { kind: 'error', status: attempt2.res?.status ?? 422, data: attempt2.data };
         }
 
-        return { kind: 'error', status: 422, data: attempt1.data };
+        return { kind: 'error', status: 422, data: refreshFailureData };
     } catch (refreshErr: any) {
         console.error('[placeDuffelOrder] auto-refresh failed:', refreshErr.message);
-        return { kind: 'error', status: 422, data: attempt1.data };
+        return { kind: 'error', status: 422, data: refreshFailureData };
     }
 }
