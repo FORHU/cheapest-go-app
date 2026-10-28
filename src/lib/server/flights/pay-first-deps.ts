@@ -8,7 +8,8 @@ import type { PayFirstDeps, SessionStore, PaymentGateway } from './pay-first-pay
 /** Statuses in which a session still represents a live attempt (matches the unique index). */
 const LIVE = ['initiated', 'payment_initiated', 'payment_authorized', 'processing'];
 
-function sessionStore(): SessionStore {
+/** Exported for the integration test, which runs the SQL below against the local database. */
+export function createSessionStore(): SessionStore {
     const db = createAdminClient();
     return {
         async getOrCreate(row) {
@@ -18,7 +19,7 @@ function sessionStore(): SessionStore {
                 .select('id, payment_intent_id, booking_reference')
                 .single();
             if (!error && data) {
-                return { sessionId: data.id, created: true, paymentIntentId: data.payment_intent_id ?? null, bookingReference: data.booking_reference };
+                return { sessionId: data.id, paymentIntentId: data.payment_intent_id ?? null, bookingReference: data.booking_reference };
             }
             // 23505 = the partial unique index: an identical live attempt exists. Use it.
             if (error?.code !== '23505') throw new Error(error?.message || 'Failed to create booking session');
@@ -31,32 +32,52 @@ function sessionStore(): SessionStore {
                 .in('status', LIVE)
                 .single();
             if (findError || !existing) throw new Error(findError?.message || 'Booking session conflict could not be resolved');
-            return { sessionId: existing.id, created: false, paymentIntentId: existing.payment_intent_id ?? null, bookingReference: existing.booking_reference };
+            return { sessionId: existing.id, paymentIntentId: existing.payment_intent_id ?? null, bookingReference: existing.booking_reference };
         },
 
         async attachPayment(sessionId, fields) {
-            const { error } = await db
+            // Only a session that is still waiting for its first intent may take one: a row in any
+            // other state was expired or moved on while this request was in flight.
+            const { data, error } = await db
                 .from('booking_sessions')
                 .update({ ...fields, status: 'payment_initiated' })
-                .eq('id', sessionId);
+                .eq('id', sessionId)
+                .eq('status', 'initiated')
+                .select('id');
             if (error) throw new Error(error.message);
+            if (!data || data.length === 0) throw new Error('Booking session is no longer open for payment');
         },
 
-        async supersedeOthers(userId, offerId, keepSessionId) {
+        async listOtherAttempts(userId, offerId, excludeHash) {
             const sql = getSqlAdmin();
             // Only sessions that hold no airline order: an order-bearing session belongs to the
-            // old flow (or a live booking) and must not be touched from here.
+            // old flow (or a live booking) and is not an "attempt" this module can retire.
             const rows = await sql`
-                UPDATE booking_sessions
-                SET status = 'expired'
+                SELECT id, status, payment_intent_id
+                FROM booking_sessions
                 WHERE user_id = ${userId}
-                  AND id <> ${keepSessionId}
-                  AND status IN ('initiated', 'payment_initiated')
+                  AND status IN ${sql(LIVE)}
                   AND duffel_pre_order_id IS NULL
                   AND flight->'_rawOffer'->>'id' = ${offerId}
-                RETURNING payment_intent_id
+                  AND quote_hash IS DISTINCT FROM ${excludeHash}
             `;
-            return rows.map((r: any) => r.payment_intent_id).filter(Boolean) as string[];
+            return rows.map((r: any) => ({
+                sessionId: r.id as string,
+                status: r.status as string,
+                paymentIntentId: (r.payment_intent_id ?? null) as string | null,
+            }));
+        },
+
+        async expireSessions(sessionIds) {
+            if (sessionIds.length === 0) return;
+            const sql = getSqlAdmin();
+            // Never touches a session that is authorised, processing or finished.
+            await sql`
+                UPDATE booking_sessions
+                SET status = 'expired'
+                WHERE id IN ${sql(sessionIds)}
+                  AND status IN ('initiated', 'payment_initiated')
+            `;
         },
     };
 }
@@ -82,7 +103,7 @@ export function defaultPayFirstDeps(): PayFirstDeps {
     return {
         withServicePrices: withDuffelServicePrices,
         convert: convertCurrencyStrict,
-        store: sessionStore(),
+        store: createSessionStore(),
         gateway: paymentGateway(),
     };
 }

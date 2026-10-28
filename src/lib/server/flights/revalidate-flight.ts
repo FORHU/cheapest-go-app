@@ -30,6 +30,8 @@ export interface RevalidateFlightResult {
     priceChanged?: boolean;
     /** Always reported when known — a drop has to reach the caller so it can charge the lower fare. */
     newPrice?: number;
+    /** Duffel only: the currency `newPrice` is quoted in, as Duffel reports it (e.g. 'USD'). */
+    newCurrency?: string;
     farePolicy?: any;
     error?: string;
     /** Set when the input itself was wrong, so the HTTP wrapper can answer 400 rather than 200. */
@@ -233,6 +235,7 @@ async function revalidateDuffel(flight: any): Promise<RevalidateFlightResult> {
         seatsAvailable: true,
         priceChanged,
         ...(newPrice > 0 ? { newPrice } : {}),
+        ...(newPrice > 0 && pricedOffer.total_currency ? { newCurrency: String(pricedOffer.total_currency) } : {}),
         farePolicy,
     };
 }

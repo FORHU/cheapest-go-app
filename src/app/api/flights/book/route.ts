@@ -647,7 +647,7 @@ export async function POST(req: NextRequest) {
                 bagServiceIds,
                 displayCurrency,
                 settlementCurrency,
-                liveBaseTotal: revalNewPrice > 0 ? revalNewPrice : undefined,
+                liveFare: revalNewPrice > 0 && revalData.newCurrency ? { amount: revalNewPrice, currency: revalData.newCurrency } : undefined,
                 serverFarePolicy,
                 bookingReference,
                 brand,
