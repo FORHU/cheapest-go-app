@@ -1133,6 +1133,15 @@ describe('createPayFirstPayment', () => {
         expect(gateway.cancelled).toEqual([first.body.paymentIntentId]);
     });
 
+    it('a corrected phone number is a new attempt, so an order is never built from stale contact data', async () => {
+        const { deps } = makeDeps();
+        const first = await createPayFirstPayment(makeInput(), deps);
+        const fixed = await createPayFirstPayment(makeInput({
+            contact: { email: 'ana@example.com', phone: '9179999999', countryCode: '63' },
+        }), deps);
+        expect(fixed.body.sessionId).not.toBe(first.body.sessionId);
+    });
+
     it('answers booking_pending instead of creating anything once the card is already authorised', async () => {
         const { deps, gateway } = makeDeps();
         const first = await createPayFirstPayment(makeInput(), deps);
@@ -1351,6 +1360,9 @@ export async function createPayFirstPayment(input: PayFirstInput, deps: PayFirst
         passengers: input.passengers,
         seatServiceIds: seatIds,
         bagServiceIds: bagIds,
+        // The Duffel order is built from the stored session, which a reused session never
+        // refreshes — so contact data is part of the attempt's identity (see quoteHash).
+        contact: input.contact,
         chargeCurrency,
         amountMinor,
     });
@@ -1775,6 +1787,13 @@ describe('settleAuthorizedFlight', () => {
         expect(deps.placeOrder).not.toHaveBeenCalled();
     });
 
+    it('refuses an authorisation with no usable amount before buying anything', async () => {
+        const { deps } = makeDeps({ retrievePaymentIntent: vi.fn(async () => payFirstIntent({ amount: 0 })) });
+        const r = await settleAuthorizedFlight(input, deps);
+        expect(r).toMatchObject({ kind: 'failed', code: 'booking_failed' });
+        expect(deps.placeOrder).not.toHaveBeenCalled();
+    });
+
     it('fails with phone_number_invalid before calling the airline', async () => {
         const { deps } = makeDeps();
         const r = await settleAuthorizedFlight({ ...input, session: { ...session, contact: { ...session.contact, phone: '12' } } }, deps);
@@ -1870,6 +1889,11 @@ export async function settleAuthorizedFlight(input: SettleInput, deps: SettleDep
     if (pi.metadata?.payFirst !== 'true') return fail('not_pay_first', 'Payment is not a pay-first payment.');
     if (pi.status !== 'requires_capture' && pi.status !== 'succeeded') {
         return fail('booking_failed', `Payment is not authorised (status: ${pi.status}).`);
+    }
+    // decideCapture trusts its inputs, so check the hold BEFORE buying anything: a hold that is
+    // not a positive whole number of minor units cannot be captured and must not cost an order.
+    if (pi.status === 'requires_capture' && !(Number.isSafeInteger(pi.amount) && pi.amount > 0)) {
+        return fail('booking_failed', 'The authorised amount is not valid.');
     }
 
     const rawOffer = session.flight?._rawOffer;
