@@ -223,6 +223,9 @@ export async function createPayFirstPayment(input: PayFirstInput, deps: PayFirst
         } else {
             const first = input.flight?.segments?.[0];
             const last = input.flight?.segments?.[input.flight.segments.length - 1];
+            // The idempotency key comes from the session, not the quote hash: getOrCreate yields one session per live
+            // attempt (stable across retries of it), whereas the hash recurs when a traveller
+            // edits a detail and changes it back (A -> B -> A) and would replay the cancelled intent.
             intent = await deps.gateway.createIntent({
                 amount: amountMinor,
                 currency: chargeCurrency,
@@ -246,7 +249,7 @@ export async function createPayFirstPayment(input: PayFirstInput, deps: PayFirst
                     ...(input.bundleHotelId ? { bundleHotelId: input.bundleHotelId, type: 'flight_bundle' } : { type: 'flight' }),
                 },
                 description: `${stored.bookingReference} · ${first?.origin ?? ''} → ${last?.destination ?? ''}`,
-            }, `flight-pi-${input.userId}-${hash}`);
+            }, `flight-pi-${input.userId}-${stored.sessionId}`);
         }
     } catch (err: any) {
         console.error('[pay-first] could not create the PaymentIntent:', err?.message ?? err);

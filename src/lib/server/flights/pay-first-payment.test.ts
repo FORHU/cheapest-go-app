@@ -146,6 +146,28 @@ describe('createPayFirstPayment', () => {
         expect(gateway.cancelled).toEqual([first.body.paymentIntentId]);
     });
 
+    // A -> B -> A: the traveller changes a detail and then changes it back. The hash matches the
+    // expired first attempt again, but it must be a fresh attempt with its own intent, not Stripe's
+    // cached (cancelled) one for the old idempotency key.
+    it('REGRESSION: changing a detail and changing it back gets a new session and a new PaymentIntent', async () => {
+        const { deps, store, gateway } = makeDeps();
+        const ana = [{ firstName: 'Ana', lastName: 'Cruz', birthDate: '1990-02-03', gender: 'F', type: 'ADT' }];
+        const anna = [{ firstName: 'Anna', lastName: 'Cruz', birthDate: '1990-02-03', gender: 'F', type: 'ADT' }];
+
+        const a1 = await createPayFirstPayment(makeInput({ passengers: ana }), deps);
+        const b = await createPayFirstPayment(makeInput({ passengers: anna }), deps);
+        const a2 = await createPayFirstPayment(makeInput({ passengers: ana }), deps);
+
+        expect(store.sessions.get(a1.body.sessionId as string)!.status).toBe('expired');
+        expect(a2.status).toBe(200);
+        expect(a2.body.sessionId).not.toBe(a1.body.sessionId);
+        expect(a2.body.paymentIntentId).not.toBe(a1.body.paymentIntentId);
+        expect(a2.body.paymentIntentId).not.toBe(b.body.paymentIntentId);
+        expect(gateway.intents.get(a2.body.paymentIntentId as string)!.status).toBe('requires_payment_method');
+        expect(gateway.createCalls).toHaveLength(3);
+        expect(new Set(gateway.createCalls.map(c => c.key)).size).toBe(3);
+    });
+
     it('a corrected phone number is a new attempt, so an order is never built from stale contact data', async () => {
         const { deps } = makeDeps();
         const first = await createPayFirstPayment(makeInput(), deps);
