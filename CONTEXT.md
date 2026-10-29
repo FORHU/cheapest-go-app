@@ -154,7 +154,12 @@ region asked for, while `hotelX.search` and ETG `serp/region` both returned zero
 and every date horizon tried.
 _Avoid_: reading one empty search as a fact about a destination — the identical answer arrives
 when the account, not the city, is the reason, and at a single call site the two are
-indistinguishable. _Avoid_: treating the OTV credit check as evidence of supplier standing: it
+indistinguishable.
+_Avoid_: treating a failed confirmation as a fact about the room. A blackout window is often
+seconds long, so the same room confirms on the next attempt; a guest told the hotel cannot be
+booked is being given a supplier's momentary silence as if it were the hotel's answer. Anything
+that reports one must stay recoverable where the guest is standing — reloading the page was for
+a time the only way through, which is how this was found. _Avoid_: treating the OTV credit check as evidence of supplier standing: it
 sums our own `bookings` table against a configured limit and never asks RateHawk for its
 balance, so it reports 0% utilisation throughout a blackout.
 

@@ -901,6 +901,7 @@ export function CheckoutContent() {
                                             totalPrice={displayTotalPrice}
                                             prebookError={prebookError}
                                             onSubmit={handleProceedToPayment}
+                                            onRetry={retryPrebook}
                                         />
                                     </div>
                                 </>
@@ -972,6 +973,7 @@ export function CheckoutContent() {
                                         prebookError={prebookError}
                                         priceReady={!!priceData}
                                         onSubmit={handleProceedToPayment}
+                                        onRetry={retryPrebook}
                                     />
                                 </div>
                             )}
