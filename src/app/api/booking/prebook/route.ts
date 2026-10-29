@@ -7,7 +7,6 @@ import { getAuthenticatedUser } from '@/lib/server/auth';
 import { createAdminClient } from '@/utils/postgres/admin';
 import { PREBOOK_QUOTE_TTL_MS, hotelServiceFee } from '@/lib/pricing';
 import { convertCurrencyStrict, refreshExchangeRates } from '@/lib/currency';
-import { pickQuote, type QuoteChoice } from '@/lib/server/stays/pickQuote';
 
 // Worst case is the fresh hotel search (13 s HTTP abort) + OTV's 1.5 s valuation
 // settle + a Quote that runs OTV's full stated 55 s budget (57 s abort) ≈ 72 s.
@@ -15,19 +14,6 @@ import { pickQuote, type QuoteChoice } from '@/lib/server/stays/pickQuote';
 // Inert on EC2 — the app runs as a persistent Node process, not a serverless
 // function — but it must not claim a ceiling the route can legitimately exceed.
 export const maxDuration = 90;
-
-/**
- * How long to keep collecting Quote responses before choosing between them.
- *
- * Quoting is parallel, so this is a *selection* window, not a budget: it starts with the
- * attempts and decides how many answers are on the table when the choice is made. Long
- * enough that a slightly slower response for the room the guest actually picked still gets
- * considered; far short of OTV's 55 s Quote ceiling, which no checkout can wait for.
- *
- * If nothing has landed by the end of it the route waits for the first success instead, so
- * this never turns a bookable room into an unavailable one.
- */
-const QUOTE_SELECTION_WINDOW_MS = 6_000;
 
 /**
  * Convert TGX cancel policy → app-standard CancellationPolicy shape.
@@ -238,54 +224,11 @@ export async function POST(req: Request) {
                 );
             }
 
-            // Collect the quotes that land inside the window, then choose between them.
-            //
-            // This was `Promise.any`, which resolves on the *fastest* success. The candidate
-            // list above is deliberately ordered "preferred room first", but a race ignores
-            // order, so which option a guest was quoted — and charged for — was decided by
-            // network latency. A Jeju room selected at ₩62,407 with a four-step cancellation
-            // ladder prebooked at ₩68,104 with a two-step one: same room name, a different
-            // rate plan of it, and it answered first.
-            //
-            // Bounded rather than `allSettled`, because a single attempt may run OTV's full
-            // 55 s Quote budget and a checkout cannot wait for the slowest attempt in order
-            // to choose between the ones that already arrived.
-            type Landed = QuoteWinner & QuoteChoice;
-            const asLanded = (w: QuoteWinner, order: number): Landed => ({
-                ...w,
-                order,
-                price: w.quote?.price?.gross || w.quote?.price?.net || Number.POSITIVE_INFINITY,
-                roomName: w.room?.roomName || w.room?.roomType || '',
-            });
-            const landed: Landed[] = [];
-            const tracked = quoteAttempts.map((attempt, order) =>
-                attempt.then((w) => { landed.push(asLanded(w, order)); }).catch(() => { /* counted by absence */ }),
-            );
-            await Promise.race([
-                Promise.all(tracked),
-                new Promise((resolve) => setTimeout(resolve, QUOTE_SELECTION_WINDOW_MS)),
-            ]);
-
-            // Nothing yet — wait for a first success rather than reporting a room unavailable
-            // that a slower supplier response would have confirmed. This is the old behaviour,
-            // kept as the fallback so the change can only improve which option is chosen.
-            if (landed.length === 0) {
-                try {
-                    landed.push(asLanded(await Promise.any(quoteAttempts), 0));
-                } catch {
-                    // AggregateError — every parallel attempt rejected
-                }
-            }
-
-            const winner = pickQuote(landed, originalRoomName, roomNamesMatch);
-
-            if (landed.length > 1) {
-                const prices = landed.map((w) => w.price).filter(Number.isFinite);
-                console.log(
-                    `[prebook/tgx] ${landed.length} quotes landed for "${originalRoomName || '(no preference)'}" — chose `
-                    + `${winner?.price} ${winner?.quote?.price?.currency ?? ''} from "${winner?.roomName}"`
-                    + (prices.length > 1 ? ` (range ${Math.min(...prices)}–${Math.max(...prices)})` : ''),
-                );
+            let winner: QuoteWinner | null = null;
+            try {
+                winner = await Promise.any(quoteAttempts);
+            } catch {
+                // AggregateError — every parallel attempt rejected
             }
 
             if (!winner) {
