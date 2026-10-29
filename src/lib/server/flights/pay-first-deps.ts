@@ -1,7 +1,7 @@
 import { createAdminClient } from '@/utils/postgres/admin';
 import { getSqlAdmin } from '@/lib/db/postgres';
 import { stripe } from '@/lib/stripe/server';
-import { convertCurrencyStrict } from '@/lib/currency';
+import { convertCurrencyStrict, refreshExchangeRates } from '@/lib/currency';
 import { withDuffelServicePrices } from './duffel-service-prices';
 import type { PayFirstDeps, SessionStore, PaymentGateway } from './pay-first-payment';
 
@@ -48,16 +48,22 @@ export function createSessionStore(): SessionStore {
             if (!data || data.length === 0) throw new Error('Booking session is no longer open for payment');
         },
 
+        async getPaymentIntentId(sessionId) {
+            const sql = getSqlAdmin();
+            const rows = await sql`SELECT payment_intent_id FROM booking_sessions WHERE id = ${sessionId}`;
+            return (rows[0]?.payment_intent_id ?? null) as string | null;
+        },
+
         async listOtherAttempts(userId, offerId, excludeHash) {
             const sql = getSqlAdmin();
-            // Only sessions that hold no airline order: an order-bearing session belongs to the
-            // old flow (or a live booking) and is not an "attempt" this module can retire.
+            // Order-bearing sessions are included: the post-authorisation step writes the order id
+            // while a pay-first session is still paying, and that session must still block a
+            // second attempt. The module never retires one (`hasOrder`).
             const rows = await sql`
-                SELECT id, status, payment_intent_id
+                SELECT id, status, payment_intent_id, (duffel_pre_order_id IS NOT NULL) AS has_order
                 FROM booking_sessions
                 WHERE user_id = ${userId}
                   AND status IN ${sql(LIVE)}
-                  AND duffel_pre_order_id IS NULL
                   AND flight->'_rawOffer'->>'id' = ${offerId}
                   AND quote_hash IS DISTINCT FROM ${excludeHash}
             `;
@@ -65,19 +71,26 @@ export function createSessionStore(): SessionStore {
                 sessionId: r.id as string,
                 status: r.status as string,
                 paymentIntentId: (r.payment_intent_id ?? null) as string | null,
+                hasOrder: r.has_order === true,
             }));
         },
 
         async expireSessions(sessionIds) {
-            if (sessionIds.length === 0) return;
+            if (sessionIds.length === 0) return [];
             const sql = getSqlAdmin();
-            // Never touches a session that is authorised, processing or finished.
-            await sql`
+            // Never touches a session that is authorised, processing or finished, and reports only
+            // the rows it actually moved — their holds are the only ones the caller may release.
+            const rows = await sql`
                 UPDATE booking_sessions
                 SET status = 'expired'
                 WHERE id IN ${sql(sessionIds)}
                   AND status IN ('initiated', 'payment_initiated')
+                RETURNING id, payment_intent_id
             `;
+            return rows.map((r: any) => ({
+                sessionId: r.id as string,
+                paymentIntentId: (r.payment_intent_id ?? null) as string | null,
+            }));
         },
     };
 }
@@ -103,6 +116,8 @@ export function defaultPayFirstDeps(): PayFirstDeps {
     return {
         withServicePrices: withDuffelServicePrices,
         convert: convertCurrencyStrict,
+        // Cached per instance; only fetches when this instance has no rates or stale ones.
+        ensureRates: async () => { await refreshExchangeRates(); },
         store: createSessionStore(),
         gateway: paymentGateway(),
     };

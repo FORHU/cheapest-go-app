@@ -172,7 +172,9 @@ async function revalidateDuffel(flight: any): Promise<RevalidateFlightResult> {
 
     let priceData: any;
     try {
-        const res = await fetch(`https://api.duffel.com/air/offers/${offerId}/actions/price`, {
+        // Encoded: the id came from the browser, and `off_A/../off_B` would otherwise make Duffel
+        // price a different offer than the one this booking is keyed on.
+        const res = await fetch(`https://api.duffel.com/air/offers/${encodeURIComponent(offerId)}/actions/price`, {
             method: 'POST',
             headers: {
                 'Authorization': `Bearer ${duffelToken}`,

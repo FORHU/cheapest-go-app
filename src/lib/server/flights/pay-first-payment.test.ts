@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi, afterEach } from 'vitest';
 import { applyMarkup, toStripeAmount, FLIGHT_MARKUP_SPEC } from '@/lib/pricing';
 import {
     createPayFirstPayment,
@@ -6,6 +6,7 @@ import {
     type PayFirstDeps,
     type SessionRow,
     type StoredSession,
+    type PaymentFields,
     type IntentSummary,
 } from './pay-first-payment';
 
@@ -13,21 +14,38 @@ import {
 
 const LIVE = ['initiated', 'payment_initiated', 'payment_authorized', 'processing'];
 
+interface FakeSession {
+    id: string;
+    row: SessionRow;
+    paymentIntentId: string | null;
+    status: string;
+    /** Mirrors `duffel_pre_order_id IS NOT NULL`. */
+    hasOrder: boolean;
+    /** The fields attachPayment saved. */
+    payment?: PaymentFields;
+}
+
 class FakeStore {
-    sessions = new Map<string, { id: string; row: SessionRow; paymentIntentId: string | null; status: string }>();
+    sessions = new Map<string, FakeSession>();
     private n = 0;
     async getOrCreate(row: SessionRow): Promise<StoredSession> {
         const key = `${row.user_id}|${row.quote_hash}`;
         const live = [...this.sessions.values()].find(s => `${s.row.user_id}|${s.row.quote_hash}` === key && LIVE.includes(s.status));
         if (live) return { sessionId: live.id, paymentIntentId: live.paymentIntentId, bookingReference: live.row.booking_reference };
         const id = `sess_${++this.n}`;
-        this.sessions.set(id, { id, row, paymentIntentId: null, status: 'initiated' });
+        this.sessions.set(id, { id, row, paymentIntentId: null, status: 'initiated', hasOrder: false });
         return { sessionId: id, paymentIntentId: null, bookingReference: row.booking_reference };
     }
-    async attachPayment(sessionId: string, fields: { payment_intent_id: string }) {
-        const s = this.sessions.get(sessionId)!;
+    // Enforces the real guard (`... AND status = 'initiated'`): a session that has moved on rejects.
+    async attachPayment(sessionId: string, fields: PaymentFields) {
+        const s = this.sessions.get(sessionId);
+        if (!s || s.status !== 'initiated') throw new Error('Booking session is no longer open for payment');
         s.paymentIntentId = fields.payment_intent_id;
         s.status = 'payment_initiated';
+        s.payment = fields;
+    }
+    async getPaymentIntentId(sessionId: string): Promise<string | null> {
+        return this.sessions.get(sessionId)?.paymentIntentId ?? null;
     }
     async listOtherAttempts(userId: string, offerId: string, excludeHash: string) {
         return [...this.sessions.values()]
@@ -35,13 +53,19 @@ class FakeStore {
                 && (s.row.flight as any)?._rawOffer?.id === offerId
                 && s.row.quote_hash !== excludeHash
                 && LIVE.includes(s.status))
-            .map(s => ({ sessionId: s.id, status: s.status, paymentIntentId: s.paymentIntentId }));
+            .map(s => ({ sessionId: s.id, status: s.status, paymentIntentId: s.paymentIntentId, hasOrder: s.hasOrder }));
     }
+    // Returns only the rows it actually transitioned, like `UPDATE ... RETURNING`.
     async expireSessions(ids: string[]) {
+        const moved: Array<{ sessionId: string; paymentIntentId: string | null }> = [];
         for (const id of ids) {
             const s = this.sessions.get(id);
-            if (s && (s.status === 'initiated' || s.status === 'payment_initiated')) s.status = 'expired';
+            if (s && (s.status === 'initiated' || s.status === 'payment_initiated')) {
+                s.status = 'expired';
+                moved.push({ sessionId: id, paymentIntentId: s.paymentIntentId });
+            }
         }
+        return moved;
     }
 }
 
@@ -90,6 +114,7 @@ function makeDeps(over: Partial<PayFirstDeps> = {}) {
     const deps: PayFirstDeps = {
         withServicePrices: async (offer: any) => offer,
         convert: (amount: number) => amount, // same-currency: identity
+        ensureRates: async () => {},
         store, gateway,
         ...over,
     };
@@ -99,6 +124,12 @@ function makeDeps(over: Partial<PayFirstDeps> = {}) {
 const expectedMinor = (base: number) => toStripeAmount(applyMarkup(base, FLIGHT_MARKUP_SPEC, FLIGHT_MARKUP_SPEC.flat).chargedPrice, 'usd');
 
 // ── Tests ────────────────────────────────────────────────────────────────────
+
+afterEach(() => vi.restoreAllMocks());
+
+/** Everything the spy was called with, flattened to one searchable string. */
+const logged = (spy: { mock: { calls: unknown[][] } }) =>
+    spy.mock.calls.map(c => c.map(a => (a instanceof Error ? a.message : String(a))).join(' ')).join('\n');
 
 describe('createPayFirstPayment', () => {
     it('creates one manual-capture intent for the marked-up quote and buys nothing', async () => {
@@ -377,6 +408,171 @@ describe('createPayFirstPayment', () => {
         });
     });
 
+    // ── R1: only ever cancel a hold this request actually retired ────────────
+
+    describe('retiring superseded attempts', () => {
+        it('REGRESSION: does not cancel a stale hold that was authorised in another tab after the attempts were listed', async () => {
+            const { deps, store, gateway } = makeDeps();
+            const first = await createPayFirstPayment(makeInput({ passengers: ANA }), deps);
+            const staleSession = first.body.sessionId as string;
+            const staleIntent = first.body.paymentIntentId as string;
+
+            // The card is entered in the other tab between the list and the retire.
+            const realExpire = store.expireSessions.bind(store);
+            store.expireSessions = async (ids: string[]) => {
+                gateway.intents.get(staleIntent)!.status = 'requires_capture';
+                return realExpire(ids);
+            };
+            const err = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+            const second = await createPayFirstPayment(makeInput({ passengers: ANNA }), deps);
+
+            expect(second.status).toBe(200);
+            expect(gateway.cancelled).toEqual([]);
+            expect(gateway.intents.get(staleIntent)!.status).toBe('requires_capture');
+            // Loud, and names what to look at: the webhook path has to deal with that attempt.
+            expect(logged(err)).toContain(staleSession);
+            expect(logged(err)).toContain(staleIntent);
+        });
+
+        it('cancels nothing, and still answers 200, when the sessions cannot be retired', async () => {
+            const { deps, store, gateway } = makeDeps();
+            await createPayFirstPayment(makeInput({ passengers: ANA }), deps);
+            store.expireSessions = async () => { throw new Error('db down'); };
+            const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+            const second = await createPayFirstPayment(makeInput({ passengers: ANNA }), deps);
+
+            expect(second.status).toBe(200);
+            expect(gateway.cancelled).toEqual([]);
+            expect(logged(warn)).toContain('db down');
+        });
+
+        it('does not cancel the hold of a session the retire did not transition (it moved on after the list)', async () => {
+            const { deps, store, gateway } = makeDeps();
+            const first = await createPayFirstPayment(makeInput({ passengers: ANA }), deps);
+            const staleSession = first.body.sessionId as string;
+            const staleIntent = first.body.paymentIntentId as string;
+
+            // Listed as awaiting a card; authorised (session moved on) before the retire runs.
+            const realList = store.listOtherAttempts.bind(store);
+            store.listOtherAttempts = async (userId: string, offerId: string, excludeHash: string) => {
+                const found = await realList(userId, offerId, excludeHash);
+                store.sessions.get(staleSession)!.status = 'payment_authorized';
+                return found;
+            };
+
+            const second = await createPayFirstPayment(makeInput({ passengers: ANNA }), deps);
+
+            expect(second.status).toBe(200);
+            expect(store.sessions.get(staleSession)!.status).toBe('payment_authorized');
+            // The intent still looks cancellable, so only "the retire did not return it" holds this back.
+            expect(gateway.intents.get(staleIntent)!.status).toBe('requires_payment_method');
+            expect(gateway.cancelled).toEqual([]);
+        });
+
+        it('cancels the hold a session picked up between the list and the retire', async () => {
+            const { deps, store, gateway } = makeDeps();
+            // Listed without an intent...
+            const old = await store.getOrCreate({ ...makeInput() as any, user_id: 'user_1', quote_hash: 'old', booking_reference: 'R0', flight: { _rawOffer: rawOffer } } as SessionRow);
+            const realList = store.listOtherAttempts.bind(store);
+            store.listOtherAttempts = async (userId: string, offerId: string, excludeHash: string) => {
+                const found = await realList(userId, offerId, excludeHash);
+                expect(found.map(f => f.paymentIntentId)).toEqual([null]);
+                // ...then that attempt attaches its card hold before it is retired.
+                const late = await gateway.createIntent({}, 'late-key');
+                const s = store.sessions.get(old.sessionId)!;
+                s.paymentIntentId = late.id;
+                s.status = 'payment_initiated';
+                return found;
+            };
+
+            const res = await createPayFirstPayment(makeInput(), deps);
+
+            expect(res.status).toBe(200);
+            expect(store.sessions.get(old.sessionId)!.status).toBe('expired');
+            expect(gateway.cancelled).toEqual(['pi_1']);
+        });
+
+        it('leaves a stale hold alone when its fresh state cannot be read', async () => {
+            const { deps, gateway } = makeDeps();
+            const first = await createPayFirstPayment(makeInput({ passengers: ANA }), deps);
+            const staleIntent = first.body.paymentIntentId as string;
+
+            // Readable when the attempts are checked, unreadable by the time of the retire.
+            const realRetrieve = gateway.retrieveIntent.bind(gateway);
+            let reads = 0;
+            gateway.retrieveIntent = async (id: string) => {
+                if (id === staleIntent && ++reads > 1) throw new Error('stripe blip');
+                return realRetrieve(id);
+            };
+            const err = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+            const second = await createPayFirstPayment(makeInput({ passengers: ANNA }), deps);
+
+            expect(second.status).toBe(200);
+            expect(reads).toBe(2);
+            expect(gateway.cancelled).toEqual([]);
+            expect(logged(err)).toContain(staleIntent);
+        });
+    });
+
+    // ── R2: an attempt that already holds an airline order is never retired ──
+
+    describe('earlier attempts that already hold an airline order', () => {
+        it('is booking_pending while an order-bearing earlier session is processing', async () => {
+            const { deps, store, gateway } = makeDeps();
+            const first = await createPayFirstPayment(makeInput({ passengers: ANA }), deps);
+            const s = store.sessions.get(first.body.sessionId as string)!;
+            s.status = 'processing';
+            s.hasOrder = true;
+
+            const again = await createPayFirstPayment(makeInput({ passengers: ANNA }), deps);
+            expect(again.status).toBe(409);
+            expect(again.body).toMatchObject({ errorCode: 'booking_pending' });
+            expect(store.sessions.size).toBe(1);
+            expect(gateway.createCalls).toHaveLength(1);
+        });
+
+        it('is booking_pending when an order-bearing earlier session has an authorised intent', async () => {
+            const { deps, store, gateway } = makeDeps();
+            const first = await createPayFirstPayment(makeInput({ passengers: ANA }), deps);
+            store.sessions.get(first.body.sessionId as string)!.hasOrder = true;
+            gateway.intents.get(first.body.paymentIntentId as string)!.status = 'requires_capture';
+
+            const again = await createPayFirstPayment(makeInput({ passengers: ANNA }), deps);
+            expect(again.status).toBe(409);
+            expect(store.sessions.size).toBe(1);
+            expect(gateway.cancelled).toEqual([]);
+        });
+
+        it('fails safe (booking_pending) when the intent of an order-bearing earlier session cannot be read', async () => {
+            const { deps, store, gateway } = makeDeps();
+            const first = await createPayFirstPayment(makeInput({ passengers: ANA }), deps);
+            store.sessions.get(first.body.sessionId as string)!.hasOrder = true;
+            gateway.retrieveIntent = async () => { throw new Error('stripe down'); };
+
+            const again = await createPayFirstPayment(makeInput({ passengers: ANNA }), deps);
+            expect(again.status).toBe(409);
+            expect(store.sessions.size).toBe(1);
+        });
+
+        it('REGRESSION: starts the new attempt but neither expires an order-bearing session that still awaits a card nor cancels its hold', async () => {
+            const { deps, store, gateway } = makeDeps();
+            const first = await createPayFirstPayment(makeInput({ passengers: ANA }), deps);
+            const orderBearing = first.body.sessionId as string;
+            store.sessions.get(orderBearing)!.hasOrder = true;
+
+            const second = await createPayFirstPayment(makeInput({ passengers: ANNA }), deps);
+
+            expect(second.status).toBe(200);
+            expect(second.body.sessionId).not.toBe(orderBearing);
+            expect(store.sessions.get(orderBearing)!.status).toBe('payment_initiated');
+            expect(gateway.cancelled).toEqual([]);
+            expect(gateway.intents.get(first.body.paymentIntentId as string)!.status).toBe('requires_payment_method');
+        });
+    });
+
     it('refuses before creating a session when the charge currency cannot be converted', async () => {
         const { deps, store, gateway } = makeDeps({
             convert: (amount: number, from: string, to: string) => {
@@ -467,6 +663,215 @@ describe('createPayFirstPayment', () => {
             expect(res.status).toBe(502);
             expect(String(res.body.error)).toMatch(/not charged/i);
             expect(gateway.createCalls).toHaveLength(2);
+        });
+
+        // ── R3: two identical submits racing for the same session ────────────
+
+        it('REGRESSION: a concurrent identical submit that loses the attach race shares the winner\'s intent instead of cancelling it', async () => {
+            const { deps, store, gateway } = makeDeps();
+            const winner = await createPayFirstPayment(makeInput(), deps);
+
+            // The loser read the session before the winner attached: its getOrCreate saw no intent
+            // yet, so it asks Stripe for one under the same key and is handed the winner's.
+            const realGetOrCreate = store.getOrCreate.bind(store);
+            store.getOrCreate = async (row: SessionRow) => ({ ...(await realGetOrCreate(row)), paymentIntentId: null });
+
+            const loser = await createPayFirstPayment(makeInput(), deps);
+
+            expect(loser.status).toBe(200);
+            expect(loser.body).toMatchObject({ success: true, sessionId: winner.body.sessionId, paymentIntentId: winner.body.paymentIntentId, clientSecret: 'pi_1_secret' });
+            expect(gateway.cancelled).toEqual([]);
+            expect(store.sessions.get('sess_1')!.status).toBe('payment_initiated');
+            expect(gateway.intents.get('pi_1')!.status).toBe('requires_payment_method');
+            expect(new Set(gateway.createCalls.map(c => c.key)).size).toBe(1);
+        });
+
+        it.each([
+            ['the session holds a different intent', async () => 'pi_other'],
+            ['the session has no intent', async () => null],
+            ['the session cannot be re-read', async () => { throw new Error('db down'); }],
+        ])('still cancels its own hold and retires the session when the save fails and %s', async (_label, reread) => {
+            const { deps, store, gateway } = makeDeps();
+            store.attachPayment = async () => { throw new Error('db down'); };
+            store.getPaymentIntentId = reread as any;
+
+            const res = await createPayFirstPayment(makeInput(), deps);
+
+            expect(res.status).toBe(500);
+            expect(String(res.body.error)).toMatch(/not charged/i);
+            expect(gateway.cancelled).toEqual(['pi_1']);
+            expect(store.sessions.get('sess_1')!.status).toBe('expired');
+        });
+
+        // ── R6: a failed retire is never silent ──────────────────────────────
+
+        it('logs a warning when the session cannot be retired after a failed save', async () => {
+            const { deps, store } = makeDeps();
+            store.attachPayment = async () => { throw new Error('attach failed'); };
+            store.expireSessions = async () => { throw new Error('expire failed'); };
+            vi.spyOn(console, 'error').mockImplementation(() => {});
+            const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+            const res = await createPayFirstPayment(makeInput(), deps);
+
+            expect(res.status).toBe(500);
+            expect(logged(warn)).toContain('expire failed');
+        });
+
+        it('logs a warning when a dead session cannot be retired', async () => {
+            const { deps, store, gateway } = makeDeps();
+            gateway.createIntent = async (params: any, key: string) => {
+                gateway.createCalls.push({ params, key });
+                return { id: 'pi_dead', status: 'canceled', client_secret: null };
+            };
+            store.expireSessions = async () => { throw new Error('expire failed'); };
+            vi.spyOn(console, 'error').mockImplementation(() => {});
+            const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+            const res = await createPayFirstPayment(makeInput(), deps);
+
+            expect(res.status).toBe(502);
+            expect(logged(warn)).toContain('expire failed');
+        });
+    });
+
+    // ── R4: the offer id ends up in a URL, so it must look like an offer id ──
+
+    describe('offer id', () => {
+        const withOfferId = (id: string) => {
+            const flight = { price: 100, currency: 'USD', segments: [{ origin: 'MNL', destination: 'HKG' }], _rawOffer: { ...rawOffer, id } };
+            return makeInput({ flight, sanitizedFlight: { ...flight } });
+        };
+
+        it.each(['off_A/../off_B', 'off_', 'off_a b', 'off_1?x=1', 'ord_123', '../off_1', 'off_1\n'])(
+            'rejects %j with 400 before pricing or creating anything', async (id) => {
+                const priced = vi.fn(async (offer: any) => offer);
+                const { deps, store, gateway } = makeDeps({ withServicePrices: priced as any });
+
+                const res = await createPayFirstPayment(withOfferId(id), deps);
+
+                expect(res.status).toBe(400);
+                expect(res.body).toMatchObject({ success: false });
+                expect(priced).not.toHaveBeenCalled();
+                expect(store.sessions.size).toBe(0);
+                expect(gateway.createCalls).toHaveLength(0);
+            });
+
+        it('accepts a Duffel-shaped offer id', async () => {
+            const { deps } = makeDeps();
+            const res = await createPayFirstPayment(withOfferId('off_0000AbCdEfGh1234'), deps);
+            expect(res.status).toBe(200);
+        });
+    });
+
+    // ── R5: a cold instance has no live rates until someone fetches them ─────
+
+    describe('exchange rates', () => {
+        it('makes sure rates are loaded once, before any conversion', async () => {
+            const events: string[] = [];
+            const { deps } = makeDeps({
+                ensureRates: async () => { events.push('ensure'); },
+                convert: (amount: number) => { events.push('convert'); return amount; },
+            });
+
+            const res = await createPayFirstPayment(makeInput({ displayCurrency: 'PHP' }), deps);
+
+            expect(res.status).toBe(200);
+            expect(events.filter(e => e === 'ensure')).toHaveLength(1);
+            expect(events.filter(e => e === 'convert').length).toBeGreaterThanOrEqual(2);
+            expect(events[0]).toBe('ensure');
+        });
+
+        it('carries on with what it has, and says so, when rates cannot be loaded', async () => {
+            const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+            const { deps, gateway } = makeDeps({
+                ensureRates: async () => { throw new Error('rates provider down'); },
+            });
+
+            const res = await createPayFirstPayment(makeInput(), deps);
+
+            expect(res.status).toBe(200);
+            expect(gateway.createCalls).toHaveLength(1);
+            expect(logged(warn)).toContain('rates provider down');
+        });
+    });
+
+    // ── R7: what the quote is built from ─────────────────────────────────────
+
+    describe('quote inputs', () => {
+        const RATES: Record<string, number> = { USD: 1, PHP: 50, EUR: 0.9, KRW: 1300 };
+        const convertWithRates = (amount: number, from: string, to: string) => {
+            const f = from.toUpperCase();
+            const t = to.toUpperCase();
+            if (f === t) return amount;
+            return (amount / RATES[f]) * RATES[t];
+        };
+        const round2 = (n: number) => Math.round(n * 100) / 100;
+
+        it('charges in the display currency at the converted price and records it', async () => {
+            const { deps, store, gateway } = makeDeps({ convert: convertWithRates });
+            const res = await createPayFirstPayment(makeInput({ displayCurrency: 'PHP' }), deps);
+
+            const usd = applyMarkup(100, FLIGHT_MARKUP_SPEC, FLIGHT_MARKUP_SPEC.flat);
+            const php = round2(usd.chargedPrice * 50);
+            expect(res.status).toBe(200);
+            const { params } = gateway.createCalls[0];
+            expect(params.currency).toBe('php');
+            expect(params.amount).toBe(toStripeAmount(php, 'php'));
+            expect(params.amount).not.toBe(expectedMinor(100));
+            expect(store.sessions.get('sess_1')!.payment).toMatchObject({
+                payment_currency: 'PHP', currency: 'usd', charged_price: php, original_price: usd.originalPrice, markup_pct: usd.markupRate,
+            });
+        });
+
+        it('sends a zero-decimal charge currency in whole units, not hundredths', async () => {
+            const { deps, gateway } = makeDeps({ convert: convertWithRates });
+            const res = await createPayFirstPayment(makeInput({ displayCurrency: 'KRW' }), deps);
+
+            const krw = round2(applyMarkup(100, FLIGHT_MARKUP_SPEC, FLIGHT_MARKUP_SPEC.flat).chargedPrice * 1300);
+            expect(res.status).toBe(200);
+            const { params } = gateway.createCalls[0];
+            expect(params.currency).toBe('krw');
+            expect(params.amount).toBe(toStripeAmount(krw, 'krw'));
+            expect(params.amount).toBe(Math.round(krw));
+            expect(params.amount).not.toBe(Math.round(krw * 100));
+        });
+
+        it('prices a non-USD supplier fare with the flat part converted into that currency', async () => {
+            const convert = vi.fn(convertWithRates);
+            const eurOffer = { ...rawOffer, total_currency: 'EUR' };
+            const flight = { price: 100, currency: 'EUR', segments: [{ origin: 'MNL', destination: 'HKG' }], _rawOffer: eurOffer };
+            const { deps, store, gateway } = makeDeps({ convert });
+
+            const res = await createPayFirstPayment(makeInput({
+                flight, sanitizedFlight: { ...flight },
+                liveFare: { amount: 100, currency: 'EUR' }, settlementCurrency: 'eur', displayCurrency: 'EUR',
+            }), deps);
+
+            const flatEur = convertWithRates(FLIGHT_MARKUP_SPEC.flat, 'usd', 'eur');
+            expect(res.status).toBe(200);
+            expect(convert).toHaveBeenCalledTimes(1);
+            expect(convert).toHaveBeenCalledWith(FLIGHT_MARKUP_SPEC.flat, 'usd', 'eur');
+            const { params } = gateway.createCalls[0];
+            expect(params.currency).toBe('eur');
+            expect(params.amount).toBe(toStripeAmount(applyMarkup(100, FLIGHT_MARKUP_SPEC, flatEur).chargedPrice, 'eur'));
+            expect(params.metadata).toMatchObject({ baseCurrency: 'eur', quotedTotal: '100.00', flatInBase: String(flatEur) });
+            expect((store.sessions.get('sess_1')!.row.flight as any)._rawOffer).toMatchObject({ total_amount: '100.00', total_currency: 'EUR' });
+        });
+
+        it('REGRESSION: prices extras from the server\'s services, never the prices the browser sent', async () => {
+            const clientOffer = { ...rawOffer, available_services: [{ id: 'ase_bag', total_amount: '1.00' }] };
+            const flight = { price: 100, currency: 'USD', segments: [{ origin: 'MNL', destination: 'HKG' }], _rawOffer: clientOffer };
+            const priced = vi.fn(async (offer: any) => ({ ...offer, available_services: [{ id: 'ase_bag', total_amount: '35.00' }] }));
+            const { deps, store, gateway } = makeDeps({ withServicePrices: priced as any });
+
+            const res = await createPayFirstPayment(makeInput({ flight, sanitizedFlight: { ...flight }, bagServiceIds: ['ase_bag'] }), deps);
+
+            expect(res.status).toBe(200);
+            expect(priced).toHaveBeenCalledWith(expect.objectContaining({ id: 'off_1' }), [], ['ase_bag'], 'duffel_test_x');
+            expect(gateway.createCalls[0].params.metadata.quotedTotal).toBe('135.00');
+            expect(gateway.createCalls[0].params.amount).toBe(expectedMinor(135));
+            expect(store.sessions.get('sess_1')!.row.bag_total).toBe(35);
         });
     });
 

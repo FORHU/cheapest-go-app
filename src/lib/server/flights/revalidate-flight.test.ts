@@ -23,6 +23,21 @@ describe('revalidateFlight (Duffel)', () => {
         expect(res).toMatchObject({ success: true, newPrice: 100, newCurrency: 'USD' });
     });
 
+    it('puts the offer id in the Price Action URL as a single, encoded path segment', async () => {
+        const fetchMock = vi.fn(async () => new Response(JSON.stringify({ data: { total_amount: '100.00', total_currency: 'USD', conditions: {} } }), { status: 200 }));
+        vi.stubGlobal('fetch', fetchMock);
+
+        await revalidateFlight({
+            provider: 'duffel',
+            flightPayload: { _rawOffer: { id: 'off_A/../off_B?x=1' }, oldPrice: 100 },
+        });
+
+        expect(fetchMock).toHaveBeenCalledTimes(1);
+        expect((fetchMock.mock.calls[0] as unknown[])[0]).toBe(
+            `https://api.duffel.com/air/offers/${encodeURIComponent('off_A/../off_B?x=1')}/actions/price`,
+        );
+    });
+
     it('does not claim a currency when it could not read a price', async () => {
         stubDuffelPriceAction({ conditions: {} });
 

@@ -10,13 +10,15 @@ import type { SessionRow } from './pay-first-payment';
  * index (23505 on a duplicate live attempt), `IS DISTINCT FROM`, the `IN ${sql(list)}` helper and
  * the status guards, none of which a mocked `sql` can prove.
  *
- * Safety: skipped unless DATABASE_URL names a loopback host. The check runs BEFORE the database
+ * Safety: skipped unless RUN_DB_IT=1 is set AND DATABASE_URL names a loopback host (the explicit
+ * opt-in guards against a localhost tunnel to a remote database). The check runs BEFORE the database
  * module is imported, so nothing connects (and no startup DDL runs) against a remote database.
  * It uses a random user id and unique hashes, deletes everything it created in afterAll, and
  * never calls Stripe or Duffel.
  */
 
 function pointsAtLocalDatabase(): boolean {
+    if (process.env.RUN_DB_IT !== '1') return false;
     const url = process.env.DATABASE_URL;
     if (!url) return false;
     try {
@@ -151,7 +153,7 @@ describe('pay-first session store (real SQL)', () => {
         await expect(s.attachPayment(randomUUID(), fields)).rejects.toThrow();
     });
 
-    it('listOtherAttempts returns live, order-less sessions for this user and offer with a different hash', async (ctx) => {
+    it('listOtherAttempts returns every live session for this user and offer with a different hash, flagging the ones that hold an order', async (ctx) => {
         if (!(await databaseReachable())) return ctx.skip();
         const s = await store();
         const keep = hash('list-keep');
@@ -162,22 +164,30 @@ describe('pay-first session store (real SQL)', () => {
         const paymentInitiated = await insertRaw({ offerId: offerL, status: 'payment_initiated', quoteHash: hash('list-pi'), paymentIntentId: `pi_l1_${run}` });
         const authorized = await insertRaw({ offerId: offerL, status: 'payment_authorized', quoteHash: hash('list-auth'), paymentIntentId: `pi_l2_${run}` });
         const processing = await insertRaw({ offerId: offerL, status: 'processing', quoteHash: hash('list-proc') });
+        // A session that already holds an airline order (the post-authorisation step writes
+        // duffel_pre_order_id while it is still processing; legacy pre-order sessions have it too).
+        const orderPayment = await insertRaw({ offerId: offerL, status: 'payment_initiated', quoteHash: hash('list-order'), preOrderId: `ord_${run}` });
+        const orderProcessing = await insertRaw({ offerId: offerL, status: 'processing', quoteHash: hash('list-order-proc'), preOrderId: `ord2_${run}` });
         // Must NOT be returned:
         const sameHash = await insertRaw({ offerId: offerL, status: 'initiated', quoteHash: keep });
         const otherOffer = await insertRaw({ status: 'initiated', quoteHash: hash('list-offer'), offerId: offerY });
         const otherUser = await insertRaw({ offerId: offerL, status: 'initiated', quoteHash: hash('list-user'), user: otherUserId });
         const expired = await insertRaw({ offerId: offerL, status: 'expired', quoteHash: hash('list-exp') });
         const booked = await insertRaw({ offerId: offerL, status: 'booked', quoteHash: hash('list-booked') });
-        const hasOrder = await insertRaw({ offerId: offerL, status: 'payment_initiated', quoteHash: hash('list-order'), preOrderId: `ord_${run}` });
 
         const found = await s.listOtherAttempts(userId, offerL, keep);
         const byId = new Map(found.map(f => [f.sessionId, f]));
 
-        expect([...byId.keys()].sort()).toEqual([initiated, paymentInitiated, authorized, processing].sort());
-        expect(byId.get(paymentInitiated)).toEqual({ sessionId: paymentInitiated, status: 'payment_initiated', paymentIntentId: `pi_l1_${run}` });
+        expect([...byId.keys()].sort()).toEqual([initiated, paymentInitiated, authorized, processing, orderPayment, orderProcessing].sort());
+        expect(byId.get(paymentInitiated)).toEqual({ sessionId: paymentInitiated, status: 'payment_initiated', paymentIntentId: `pi_l1_${run}`, hasOrder: false });
         expect(byId.get(authorized)!.status).toBe('payment_authorized');
         expect(byId.get(initiated)!.paymentIntentId).toBeNull();
-        for (const excluded of [sameHash, otherOffer, otherUser, expired, booked, hasOrder]) {
+        for (const plain of [initiated, paymentInitiated, authorized, processing]) {
+            expect(byId.get(plain)!.hasOrder).toBe(false);
+        }
+        expect(byId.get(orderPayment)).toEqual({ sessionId: orderPayment, status: 'payment_initiated', paymentIntentId: null, hasOrder: true });
+        expect(byId.get(orderProcessing)!.hasOrder).toBe(true);
+        for (const excluded of [sameHash, otherOffer, otherUser, expired, booked]) {
             expect(byId.has(excluded)).toBe(false);
         }
     });
@@ -196,22 +206,28 @@ describe('pay-first session store (real SQL)', () => {
         expect(found.map(f => f.sessionId)).toEqual([row.id]);
     });
 
-    it('expireSessions retires only initiated / payment_initiated sessions and ignores an empty list', async (ctx) => {
+    it('expireSessions retires only initiated / payment_initiated sessions, returns exactly the rows it moved, and ignores an empty list', async (ctx) => {
         if (!(await databaseReachable())) return ctx.skip();
         const s = await store();
         const ids = {
             initiated: await insertRaw({ status: 'initiated', quoteHash: hash('exp-init') }),
-            paymentInitiated: await insertRaw({ status: 'payment_initiated', quoteHash: hash('exp-pi') }),
-            authorized: await insertRaw({ status: 'payment_authorized', quoteHash: hash('exp-auth') }),
+            paymentInitiated: await insertRaw({ status: 'payment_initiated', quoteHash: hash('exp-pi'), paymentIntentId: `pi_e1_${run}` }),
+            authorized: await insertRaw({ status: 'payment_authorized', quoteHash: hash('exp-auth'), paymentIntentId: `pi_e2_${run}` }),
             processing: await insertRaw({ status: 'processing', quoteHash: hash('exp-proc') }),
             booked: await insertRaw({ status: 'booked', quoteHash: hash('exp-booked') }),
             untouched: await insertRaw({ status: 'initiated', quoteHash: hash('exp-untouched') }),
         };
 
-        await s.expireSessions([]);
+        expect(await s.expireSessions([])).toEqual([]);
         expect(await statusOf(ids.initiated)).toBe('initiated');
 
-        await s.expireSessions([ids.initiated, ids.paymentInitiated, ids.authorized, ids.processing, ids.booked]);
+        const moved = await s.expireSessions([ids.initiated, ids.paymentInitiated, ids.authorized, ids.processing, ids.booked]);
+
+        // Only what the UPDATE transitioned, with the intent the row held at that moment.
+        expect([...moved].sort((a, b) => a.sessionId.localeCompare(b.sessionId))).toEqual([
+            { sessionId: ids.initiated, paymentIntentId: null },
+            { sessionId: ids.paymentInitiated, paymentIntentId: `pi_e1_${run}` },
+        ].sort((a, b) => a.sessionId.localeCompare(b.sessionId)));
 
         expect(await statusOf(ids.initiated)).toBe('expired');
         expect(await statusOf(ids.paymentInitiated)).toBe('expired');
@@ -219,5 +235,23 @@ describe('pay-first session store (real SQL)', () => {
         expect(await statusOf(ids.processing)).toBe('processing');
         expect(await statusOf(ids.booked)).toBe('booked');
         expect(await statusOf(ids.untouched)).toBe('initiated');
+
+        // Already expired: a second call moves nothing and returns nothing.
+        expect(await s.expireSessions([ids.initiated, ids.paymentInitiated])).toEqual([]);
+    });
+
+    it('getPaymentIntentId reads the intent a session currently holds, or null', async (ctx) => {
+        if (!(await databaseReachable())) return ctx.skip();
+        const s = await store();
+        const created = await s.getOrCreate(sessionRow({ quote_hash: hash('getpi') }));
+        expect(await s.getPaymentIntentId(created.sessionId)).toBeNull();
+
+        await s.attachPayment(created.sessionId, {
+            payment_intent_id: `pi_g_${run}`, currency: 'usd', original_price: 100, charged_price: 105, markup_pct: 0.05, payment_currency: 'USD',
+        });
+        expect(await s.getPaymentIntentId(created.sessionId)).toBe(`pi_g_${run}`);
+
+        // No such session: null, not an error.
+        expect(await s.getPaymentIntentId(randomUUID())).toBeNull();
     });
 });

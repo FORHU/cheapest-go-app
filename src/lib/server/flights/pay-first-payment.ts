@@ -84,19 +84,40 @@ export interface OtherAttempt {
     sessionId: string;
     status: string;
     paymentIntentId: string | null;
+    /**
+     * The session already holds an airline order (`duffel_pre_order_id` is set): the
+     * post-authorisation step writes it while a pay-first session is still processing, and
+     * legacy pre-order sessions have it too. Such a session still blocks a second attempt when
+     * it is paid or paying, but is never retired from here.
+     */
+    hasOrder: boolean;
+}
+
+/** A session `expireSessions` actually moved to `expired`, with the intent it held at that moment. */
+export interface RetiredSession {
+    sessionId: string;
+    paymentIntentId: string | null;
 }
 
 export interface SessionStore {
     /** The live session for this exact attempt (same user and quote hash), creating it if needed. */
     getOrCreate(row: SessionRow): Promise<StoredSession>;
+    /** Fills a session that is still `initiated`; rejects when it has moved on or does not exist. */
     attachPayment(sessionId: string, fields: PaymentFields): Promise<void>;
+    /** The intent the session currently holds, or null (no intent yet, or no such session). */
+    getPaymentIntentId(sessionId: string): Promise<string | null>;
     /**
-     * Live, order-less sessions of this user for this offer whose quote hash differs from
-     * `excludeHash`: earlier attempts the traveller has since edited, or already paid.
+     * Live sessions of this user for this offer whose quote hash differs from `excludeHash`:
+     * earlier attempts the traveller has since edited, or already paid. Order-bearing ones are
+     * included (flagged `hasOrder`) so that they can block a second attempt.
      */
     listOtherAttempts(userId: string, offerId: string, excludeHash: string): Promise<OtherAttempt[]>;
-    /** Retire unpaid sessions (only `initiated` / `payment_initiated` ones are touched). */
-    expireSessions(sessionIds: string[]): Promise<void>;
+    /**
+     * Retire unpaid sessions (only `initiated` / `payment_initiated` ones are touched) and return
+     * exactly the ones that were transitioned. A session that moved on in the meantime (for
+     * instance to `payment_authorized`) is not returned, and so must not have its hold cancelled.
+     */
+    expireSessions(sessionIds: string[]): Promise<RetiredSession[]>;
 }
 
 export interface IntentSummary { id: string; status: string; client_secret: string | null }
@@ -111,6 +132,12 @@ export interface PayFirstDeps {
     withServicePrices: typeof withDuffelServicePrices;
     /** Strict currency conversion; throws when a rate is unavailable. */
     convert: (amount: number, from: string, to: string) => number;
+    /**
+     * Loads live exchange rates if this instance has none (or only stale ones). `convert` is
+     * synchronous and throws without rates, which would silently zero the flat markup on a cold
+     * instance, so this is awaited once before any conversion.
+     */
+    ensureRates: () => Promise<void>;
     store: SessionStore;
     gateway: PaymentGateway;
 }
@@ -125,16 +152,77 @@ const BUSY_SESSION = new Set(['payment_authorized', 'processing']);
 /** A new attempt is started at most this many times when the one in hand turns out to be dead. */
 const MAX_ATTEMPTS = 2;
 
+/**
+ * A Duffel offer id. It is interpolated into Duffel URLs and used to find earlier attempts, so
+ * anything that is not a plain `off_…` token (path segments, query strings, whitespace) is refused.
+ */
+const OFFER_ID = /^off_[A-Za-z0-9]+$/;
+
 const round2 = (n: number) => Math.round(n * 100) / 100;
 const fail = (status: number, body: Record<string, unknown>): PayFirstResponse => ({ status, body: { success: false, ...body } });
 const pending = (): PayFirstResponse => fail(409, {
     errorCode: 'booking_pending',
     error: 'Your payment is already being processed. We will email you when the booking is confirmed.',
 });
+const ready = (stored: StoredSession, intent: IntentSummary): PayFirstResponse =>
+    ({ status: 200, body: { success: true, clientSecret: intent.client_secret, sessionId: stored.sessionId, paymentIntentId: intent.id } });
+
+/**
+ * Retire sessions, never throwing. Returns the rows that were actually transitioned, or null when
+ * the retire itself failed (so the caller can tell "nothing moved" from "could not tell").
+ */
+async function expireQuietly(deps: PayFirstDeps, sessionIds: string[], what: string): Promise<RetiredSession[] | null> {
+    try {
+        return await deps.store.expireSessions(sessionIds);
+    } catch (err: any) {
+        console.warn(`[pay-first] could not retire ${what} (${sessionIds.join(', ')}):`, err?.message ?? err);
+        return null;
+    }
+}
+
+/**
+ * Retire earlier unpaid attempts and release their card holds, so they do not linger as an
+ * unexplained Incomplete in Stripe. Best effort: none of this affects the attempt being returned.
+ *
+ * A hold is only ever cancelled when this call itself moved that session to `expired` AND a fresh
+ * read of the intent still shows it awaiting a card. The listing that chose these sessions is
+ * older than this call, and in between the traveller may have entered a card in another tab:
+ * cancelling then would release a hold that was just authorised.
+ */
+async function retireSuperseded(deps: PayFirstDeps, sessionIds: string[]): Promise<void> {
+    if (sessionIds.length === 0) return;
+    const retired = await expireQuietly(deps, sessionIds, 'superseded sessions');
+    if (!retired) return; // Cannot tell what moved, so cancel nothing.
+
+    for (const { sessionId, paymentIntentId } of retired) {
+        // The intent id comes from the retire itself: the session may have attached one after the
+        // listing saw none.
+        if (!paymentIntentId) continue;
+        let fresh: IntentSummary;
+        try {
+            fresh = await deps.gateway.retrieveIntent(paymentIntentId);
+        } catch (err: any) {
+            console.error(`[pay-first] retired session ${sessionId} but could not read its PaymentIntent ${paymentIntentId}; leaving the hold alone:`, err?.message ?? err);
+            continue;
+        }
+        if (AWAITING_CARD.has(fresh.status)) {
+            await deps.gateway.cancelIntent(paymentIntentId).catch((err: any) => {
+                console.warn(`[pay-first] could not cancel PaymentIntent ${paymentIntentId} of retired session ${sessionId}:`, err?.message ?? err);
+            });
+        } else if (PAID_OR_PAYING.has(fresh.status)) {
+            console.error(
+                `[pay-first] LATE AUTHORISATION: session ${sessionId} was retired as superseded, but its PaymentIntent ${paymentIntentId} is now ${fresh.status}. ` +
+                'The hold was NOT cancelled; this attempt has to be settled or released by the webhook path.',
+            );
+        }
+        // 'canceled' (or anything else Stripe may report): nothing to release.
+    }
+}
 
 export async function createPayFirstPayment(input: PayFirstInput, deps: PayFirstDeps): Promise<PayFirstResponse> {
     const rawOffer = input.flight?._rawOffer;
     if (!rawOffer?.id) return fail(400, { error: 'Duffel offer data missing — cannot book.' });
+    if (typeof rawOffer.id !== 'string' || !OFFER_ID.test(rawOffer.id)) return fail(400, { error: 'Invalid Duffel offer id — cannot book.' });
 
     // ── The server's price for the fare ──────────────────────────────────────
     // The offer posted here came from the browser, so its total_amount / total_currency are not
@@ -168,6 +256,15 @@ export async function createPayFirstPayment(input: PayFirstInput, deps: PayFirst
     // The server's fare is always the one charged, whether it is above or below what the
     // traveller was shown (a rise was already refused by /book's revalidation gate).
     const quotedTotal = round2(live.amount + seatExtra + bagExtra);
+
+    // `deps.convert` is synchronous and throws when this instance has no live rates, which would
+    // otherwise silently drop the flat markup below on a cold instance. Load them first. If that
+    // fails the guarded conversions below still cope with whatever is (not) there.
+    try {
+        await deps.ensureRates();
+    } catch (err: any) {
+        console.warn('[pay-first] could not load exchange rates; converting with what is available:', err?.message ?? err);
+    }
 
     // The markup's flat part is USD (Duffel's order fee and Stripe's $0.30), so it is converted
     // into the supplier currency first. Dropped, not thrown, if that fails: failing a sale over
@@ -245,6 +342,8 @@ export async function createPayFirstPayment(input: PayFirstInput, deps: PayFirst
     // The hash includes the amount and every edited detail, so a resubmit after paying can hash
     // differently. Whatever is paid or paying blocks a second attempt outright (a second one
     // would buy a second ticket); the rest are stale and are retired once this attempt is saved.
+    // A session that already holds an airline order is checked like any other but is never
+    // stale: it is not ours to expire or to release the hold of.
     let others: OtherAttempt[];
     try {
         others = await deps.store.listOtherAttempts(input.userId, rawOffer.id, hash);
@@ -252,11 +351,11 @@ export async function createPayFirstPayment(input: PayFirstInput, deps: PayFirst
         console.error('[pay-first] could not look up earlier attempts:', err?.message ?? err);
         return fail(500, { error: 'A session error occurred. Your card was not charged. Please try again.' });
     }
-    const stale: Array<{ sessionId: string; paymentIntentId: string | null; intentStatus: string | null }> = [];
+    const staleSessionIds: string[] = [];
     for (const other of others) {
         if (BUSY_SESSION.has(other.status)) return pending();
-        let intentStatus: string | null = null;
         if (other.paymentIntentId) {
+            let intentStatus: string;
             try {
                 intentStatus = (await deps.gateway.retrieveIntent(other.paymentIntentId)).status;
             } catch (err: any) {
@@ -266,7 +365,7 @@ export async function createPayFirstPayment(input: PayFirstInput, deps: PayFirst
             }
             if (PAID_OR_PAYING.has(intentStatus)) return pending();
         }
-        stale.push({ sessionId: other.sessionId, paymentIntentId: other.paymentIntentId, intentStatus });
+        if (!other.hasOrder) staleSessionIds.push(other.sessionId);
     }
 
     // ── The session and its PaymentIntent ────────────────────────────────────
@@ -338,7 +437,8 @@ export async function createPayFirstPayment(input: PayFirstInput, deps: PayFirst
 
         // The hold is gone, so this session can never be paid. Retire it so the next getOrCreate
         // starts a fresh attempt (with its own idempotency key) instead of returning it again.
-        await deps.store.expireSessions([stored.sessionId]).catch(() => {});
+        // Its intent is already cancelled, so there is no hold to release here.
+        await expireQuietly(deps, [stored.sessionId], 'a dead session');
         if (attempt >= MAX_ATTEMPTS) {
             console.error('[pay-first] two attempts in a row came back with a cancelled PaymentIntent');
             return fail(502, { error: 'Payment could not be started. Your card was not charged. Please try again.' });
@@ -357,29 +457,29 @@ export async function createPayFirstPayment(input: PayFirstInput, deps: PayFirst
             });
         } catch (err: any) {
             console.error('[pay-first] could not save the PaymentIntent on the session:', err?.message ?? err);
-            // Release the hold and retire the session, or the next submit would be handed this
-            // session (no intent saved) and a Stripe replay of the cancelled intent.
+
+            // Two identical submits share one session and, through the idempotency key, one
+            // intent. If the other request attached it first, this intent is theirs too: the
+            // traveller is paying it, so cancelling would kill that hold.
+            let held: string | null = null;
+            try {
+                held = await deps.store.getPaymentIntentId(stored.sessionId);
+            } catch (readErr: any) {
+                console.warn('[pay-first] could not re-read the session after a failed save:', readErr?.message ?? readErr);
+            }
+            if (held === intent.id) return ready(stored, intent);
+
+            // Otherwise release the hold and retire the session, or the next submit would be
+            // handed this session (no intent saved) and a Stripe replay of the cancelled intent.
             await deps.gateway.cancelIntent(intent.id).catch(() => {});
-            await deps.store.expireSessions([stored.sessionId]).catch(() => {});
+            await expireQuietly(deps, [stored.sessionId], 'a session whose intent could not be saved');
             return fail(500, { error: 'A session error occurred. Your card was not charged. Please try again.' });
         }
     }
 
     // A changed detail (a corrected name, a different bag) makes the earlier unpaid attempt
-    // unpayable. Retire it and release its hold so it does not linger as an unexplained
-    // Incomplete in Stripe. Best effort: none of this affects the attempt we are returning.
-    if (stale.length) {
-        try {
-            await deps.store.expireSessions(stale.map(s => s.sessionId));
-        } catch (err: any) {
-            console.warn('[pay-first] could not retire superseded sessions:', err?.message ?? err);
-        }
-        for (const s of stale) {
-            if (s.paymentIntentId && s.intentStatus !== 'canceled') {
-                await deps.gateway.cancelIntent(s.paymentIntentId).catch(() => {});
-            }
-        }
-    }
+    // unpayable: retire it and release its hold, but only the holds this call retired itself.
+    await retireSuperseded(deps, staleSessionIds);
 
-    return { status: 200, body: { success: true, clientSecret: intent.client_secret, sessionId: stored.sessionId, paymentIntentId: intent.id } };
+    return ready(stored, intent);
 }
