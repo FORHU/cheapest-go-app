@@ -372,13 +372,18 @@ export async function placeDuffelOrder(params: PlaceDuffelOrderParams): Promise<
         // segment by segment, cheapest first. A carrier-and-price match is not identity — it
         // can ticket a 22:00 departure for someone who chose 06:00. Nothing matching means the
         // flight is unavailable, not that a different one should be bought.
-        const sortedPool = sameItineraryOffers(rawOffer, offers);
-        if (sortedPool.length === 0) return { kind: 'error', status: 422, data: refreshFailureData };
+        // ...and in the same currency: a refreshed offer priced in another one cannot be compared
+        // with the quote (or captured against the hold), so it is treated as unavailable rather
+        // than bought.
+        const originalCurrency = String(rawOffer.total_currency ?? '').toUpperCase();
+        const samePricedPool = sameItineraryOffers(rawOffer, offers)
+            .filter((o: any) => String(o.total_currency ?? '').toUpperCase() === originalCurrency);
+        if (samePricedPool.length === 0) return { kind: 'error', status: 422, data: refreshFailureData };
 
         const hadAncillaries = (seatServiceIds?.length ?? 0) > 0 || (bagServiceIds?.length ?? 0) > 0;
-        const maxAttempts = Math.min(sortedPool.length, refreshPoolSize);
+        const maxAttempts = Math.min(samePricedPool.length, refreshPoolSize);
         for (let i = 0; i < maxAttempts; i++) {
-            const freshOffer = sortedPool[i];
+            const freshOffer = samePricedPool[i];
             const freshBaseTotal = parseFloat(freshOffer.total_amount ?? '0');
             const oldPriceNum = parseFloat(rawOffer.total_amount ?? '0');
             // Signed: a refreshed offer that is cheaper needs no confirmation.

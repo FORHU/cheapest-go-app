@@ -201,6 +201,25 @@ describe('placeDuffelOrder — refreshing an expired offer', () => {
         expect(orders).toHaveLength(1);
     });
 
+    it('does not buy a refreshed offer priced in a different currency from the original', async () => {
+        vi.spyOn(console, 'warn').mockImplementation(() => {});
+        // The same journey, but quoted in EUR: its number cannot be compared with the USD quote,
+        // nor captured against a USD hold.
+        const inEuro = { ...offer('off_eur', '95.00', '2026-11-01T06:00:00'), total_currency: 'EUR' };
+        const orders = duffel([
+            ['POST', '/air/orders', expiresThenSucceeds()],
+            ['POST', '/air/offer_requests', () => ({ status: 201, body: { data: { id: 'orq_1', offers: [inEuro] } } })],
+        ]);
+
+        const result = await placeDuffelOrder({
+            duffelToken: 'duffel_test_abc', rawOffer: chosen, passengers: PAX, total: '100.00', currency: 'USD',
+            priceTolerance: 10, idempotencyKey: 'idem-currency',
+        });
+
+        expect(result.kind).toBe('error');
+        expect(orders).toHaveLength(1);
+    });
+
     it("keeps Duffel's own message when the first 422 was not an expiry", async () => {
         vi.spyOn(console, 'warn').mockImplementation(() => {});
         const orders = duffel([
