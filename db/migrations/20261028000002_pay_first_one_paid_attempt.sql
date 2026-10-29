@@ -1,3 +1,4 @@
+-- migrate:up
 -- Pay-first: at most one paying or paid attempt per traveller per Duffel offer.
 --
 -- /api/flights/book refuses a second attempt while an earlier one is paid or paying, but it
@@ -11,3 +12,6 @@ CREATE UNIQUE INDEX IF NOT EXISTS booking_sessions_one_paid_attempt_per_offer
     ON public.booking_sessions (user_id, ((flight->'_rawOffer'->>'id')))
     WHERE quote_hash IS NOT NULL
       AND status IN ('payment_authorized', 'processing');
+
+-- migrate:down
+DROP INDEX IF EXISTS public.booking_sessions_one_paid_attempt_per_offer;

@@ -1,3 +1,4 @@
+-- migrate:up
 -- Pay-first flight booking (docs/superpowers/specs/2026-10-28-pay-first-flight-booking-design.md)
 
 -- 1. A booking attempt's identity. NULL for every session created before this migration.
@@ -18,4 +19,17 @@ ALTER TABLE public.email_logs ADD CONSTRAINT email_logs_email_type_check CHECK (
     'support_escalation', 'golf_requested', 'golf_confirmed', 'golf_declined', 'golf_cancelled',
     'golf_course_invitation', 'golf_course_request_approved', 'golf_course_request_rejected',
     'golf_course_new_request', 'booking_not_completed'
+]));
+
+-- migrate:down
+-- Re-adding the old type check fails while any booking_not_completed email row exists;
+-- delete or retype those rows first if this is ever rolled back.
+DROP INDEX IF EXISTS public.booking_sessions_active_quote_uniq;
+ALTER TABLE public.booking_sessions DROP COLUMN IF EXISTS quote_hash;
+ALTER TABLE public.email_logs DROP CONSTRAINT IF EXISTS email_logs_email_type_check;
+ALTER TABLE public.email_logs ADD CONSTRAINT email_logs_email_type_check CHECK (email_type = ANY (ARRAY[
+    'confirmation', 'ticketed', 'refund', 'cancellation', 'awaiting_ticket', 'price_alert',
+    'support_escalation', 'golf_requested', 'golf_confirmed', 'golf_declined', 'golf_cancelled',
+    'golf_course_invitation', 'golf_course_request_approved', 'golf_course_request_rejected',
+    'golf_course_new_request'
 ]));
