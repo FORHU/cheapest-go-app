@@ -146,7 +146,7 @@ export const FLIGHT_MARKUP_SPEC: MarkupSpec = {
 };
 
 /**
- * $2.50 per booking. No proportional component, capped at 12%.
+ * $0.37 per booking — about ₩500. No proportional component, capped at 12%.
  *
  * A deliberate decision to stop pricing hotels off Platform Cost and price them
  * off what a guest will tolerate seeing. One number, the same on every booking,
@@ -177,7 +177,7 @@ export const FLIGHT_MARKUP_SPEC: MarkupSpec = {
  */
 export const HOTEL_MARKUP_SPEC: MarkupSpec = {
     rate: parseMarkupEnv('HOTEL_MARKUP_PERCENTAGE', 0),
-    flat: parseFlatEnv('HOTEL_MARKUP_FLAT_USD', 2.50),
+    flat: parseFlatEnv('HOTEL_MARKUP_FLAT_USD', 0.37),
     cap: parseMarkupEnv('MARKUP_CAP', 0.12),
 };
 

@@ -156,12 +156,12 @@ describe('resolveHotelChargeBase', () => {
 
 describe('the hotel fee a customer is shown is the fee they are charged', () => {
     it('charges a hotel one flat fee, with no proportional part', async () => {
-        // $2.50, the same on every booking. create-payment used to pass the flat part as
+        // $0.37 — about ₩500 — the same on every booking. create-payment used to pass the flat part as
         // zero while the checkout showed a hardcoded 5% on top of it; both read this.
         const { hotelServiceFee } = await import('@/lib/pricing');
         const fee = hotelServiceFee(300, 'USD', (a: number) => a);
-        expect(fee.serviceFee).toBe(2.50);
-        expect(fee.chargedTotal).toBe(302.50);
+        expect(fee.serviceFee).toBe(0.37);
+        expect(fee.chargedTotal).toBe(300.37);
     });
 
     it('charges the same flat fee however expensive the stay is', async () => {
@@ -169,17 +169,17 @@ describe('the hotel fee a customer is shown is the fee they are charged', () => 
         // same fee while Stripe takes ten times as much. Pinned so a proportional component
         // cannot reappear unnoticed.
         const { hotelServiceFee } = await import('@/lib/pricing');
-        expect(hotelServiceFee(300, 'USD', (a: number) => a).serviceFee).toBe(2.50);
-        expect(hotelServiceFee(3_000, 'USD', (a: number) => a).serviceFee).toBe(2.50);
+        expect(hotelServiceFee(300, 'USD', (a: number) => a).serviceFee).toBe(0.37);
+        expect(hotelServiceFee(3_000, 'USD', (a: number) => a).serviceFee).toBe(0.37);
     });
 
     it('caps the flat fee on a cheap room rather than charging a fifth of it', async () => {
-        // $2.50 on a $15 room is 17%. The ceiling is what keeps a flat fee defensible at
-        // the bottom of the range.
+        // At $0.37 the 12% ceiling binds only below about $3.08 of base, so it is close to
+        // theoretical — kept because the fee is env-tunable and a larger one brings it back.
         const { hotelServiceFee } = await import('@/lib/pricing');
-        const fee = hotelServiceFee(15, 'USD', (a: number) => a);
+        const fee = hotelServiceFee(2, 'USD', (a: number) => a);
         expect(fee.capped).toBe(true);
-        expect(fee.serviceFee).toBe(1.80);
+        expect(fee.serviceFee).toBe(0.24);
     });
 
     it('drops the flat part rather than refusing the sale when rates are missing', async () => {

@@ -386,10 +386,10 @@
     },
     "submit": {
       "continueToPayment": "Continue to Payment • {amount}",
-      "goBackDifferentHotel": "Go back & choose a different hotel",
+      "goBackDifferentHotel": "Go back to rooms",
       "goBackReselect": "Go back & reselect room",
       "hotelUnavailable": "Hotel temporarily unavailable",
-      "hotelUnavailableDesc": "This hotel cannot be booked right now. Please go back and choose a different hotel.",
+      "hotelUnavailableDesc": "We could not confirm this room with the supplier. This is usually brief — try again in a moment before choosing another hotel.",
       "processingBooking": "Processing Your Booking...",
       "sessionExpired": "Room session expired",
       "sessionExpiredDesc": "Your room hold has expired. Go back and reselect the room to get a fresh session — you can pick the same room again.",
