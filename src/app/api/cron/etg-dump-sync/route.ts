@@ -156,6 +156,9 @@ async function processDump(dumpUrl: string, opts: { force: boolean; dryRun: bool
 
     console.log(`[etg-dump] ${knownIds.size} known, ${seededIds.size} already seeded`);
 
+    /** How long the download may go without a byte arriving before it is given up on. */
+    const STALL_TIMEOUT_MS = 120_000;
+
     const BATCH = 400;
     const batch: BatchRow[] = [];
     const dec  = new TextDecoder();
@@ -165,55 +168,84 @@ async function processDump(dumpUrl: string, opts: { force: boolean; dryRun: bool
         tail += dec.decode(chunk, { stream: true });
     });
 
-    const res = await fetch(dumpUrl, { signal: AbortSignal.timeout(250_000) });
-    if (!res.ok || !res.body) throw new Error(`Dump download ${res.status}`);
+    // Given up on for silence, not for duration.
+    //
+    // `AbortSignal.timeout` on a `fetch` bounds the body stream as well as the handshake,
+    // so a fixed budget is a bet on the dump's size against the link's speed — and the
+    // dump grows while a connection does not. At 250 s that bet is met on production
+    // egress and missed elsewhere: on api-v2, whose port of this carried the same number,
+    // it aborted at 262 s having already read 1,000,000 lines and matched 323,538 hotels,
+    // and threw all of it away. A stalled connection is the thing worth aborting, and
+    // silence is what identifies one.
+    const stall = new AbortController();
+    let stallTimer: NodeJS.Timeout = setTimeout(() => stall.abort(), STALL_TIMEOUT_MS);
+    const keepAlive = () => {
+        clearTimeout(stallTimer);
+        stallTimer = setTimeout(() => stall.abort(), STALL_TIMEOUT_MS);
+    };
+
+    let res: Response;
+    try {
+        res = await fetch(dumpUrl, { signal: stall.signal });
+    } catch (err) {
+        clearTimeout(stallTimer);
+        throw err;
+    }
+    if (!res.ok || !res.body) {
+        clearTimeout(stallTimer);
+        throw new Error(`Dump download ${res.status}`);
+    }
     const reader = res.body.getReader();
     let done = false;
 
-    while (!done) {
-        const { value, done: d } = await reader.read();
-        done = d;
-        if (value) decompressor.push(value, done);
+    try {
+        while (!done) {
+            const { value, done: d } = await reader.read();
+            done = d;
+            if (value) { keepAlive(); decompressor.push(value, done); }
 
-        let nl: number;
-        while ((nl = tail.indexOf('\n')) !== -1) {
-            const line = tail.slice(0, nl).trim();
-            tail = tail.slice(nl + 1);
-            if (!line) continue;
+            let nl: number;
+            while ((nl = tail.indexOf('\n')) !== -1) {
+                const line = tail.slice(0, nl).trim();
+                tail = tail.slice(nl + 1);
+                if (!line) continue;
 
-            stats.linesRead++;
-            if (stats.linesRead % 50_000 === 0) {
-                console.log(`[etg-dump] ${stats.linesRead} lines | matched=${stats.matched} written=${stats.written}`);
-            }
+                stats.linesRead++;
+                if (stats.linesRead % 50_000 === 0) {
+                    console.log(`[etg-dump] ${stats.linesRead} lines | matched=${stats.matched} written=${stats.written}`);
+                }
 
-            let hotel: any;
-            try { hotel = JSON.parse(line); } catch { stats.errors++; continue; }
+                let hotel: any;
+                try { hotel = JSON.parse(line); } catch { stats.errors++; continue; }
 
-            const hid  = String(hotel.hid ?? '');
-            const slug = String(hotel.id  ?? '');
-            if (!hid || !knownIds.has(hid)) continue;
-            stats.matched++;
+                const hid  = String(hotel.hid ?? '');
+                const slug = String(hotel.id  ?? '');
+                if (!hid || !knownIds.has(hid)) continue;
+                stats.matched++;
 
-            if (!opts.force && seededIds.has(hid)) { stats.skipped++; continue; }
+                if (!opts.force && seededIds.has(hid)) { stats.skipped++; continue; }
 
-            const groups = parseRoomGroups(hotel.room_groups ?? []);
-            if (groups.length > 0) stats.withGroups++;
+                const groups = parseRoomGroups(hotel.room_groups ?? []);
+                if (groups.length > 0) stats.withGroups++;
 
-            if (!opts.dryRun) {
-                const extra = {
-                    ci:   hotel.check_in_time  ?? null,
-                    co:   hotel.check_out_time ?? null,
-                    desc: parseDescription(hotel.description_struct) ?? hotel.description ?? null,
-                    ag:   parseAmenityGroups(hotel.amenity_groups),
-                    imgs: parseHotelImages(hotel.images),
-                    sf:   Array.isArray(hotel.serp_filters) ? hotel.serp_filters : [],
-                    mp:   hotel.metapolicy_struct ?? null,
-                    mpe:  hotel.metapolicy_extra_info ?? null,
-                };
-                batch.push({ hid, slug, rg: JSON.stringify(groups), x: JSON.stringify(extra) });
-                if (batch.length >= BATCH) await flushBatch(sql, batch, stats);
+                if (!opts.dryRun) {
+                    const extra = {
+                        ci:   hotel.check_in_time  ?? null,
+                        co:   hotel.check_out_time ?? null,
+                        desc: parseDescription(hotel.description_struct) ?? hotel.description ?? null,
+                        ag:   parseAmenityGroups(hotel.amenity_groups),
+                        imgs: parseHotelImages(hotel.images),
+                        sf:   Array.isArray(hotel.serp_filters) ? hotel.serp_filters : [],
+                        mp:   hotel.metapolicy_struct ?? null,
+                        mpe:  hotel.metapolicy_extra_info ?? null,
+                    };
+                    batch.push({ hid, slug, rg: JSON.stringify(groups), x: JSON.stringify(extra) });
+                    if (batch.length >= BATCH) await flushBatch(sql, batch, stats);
+                }
             }
         }
+    } finally {
+        clearTimeout(stallTimer);
     }
 
     if (!opts.dryRun) await flushBatch(sql, batch, stats);

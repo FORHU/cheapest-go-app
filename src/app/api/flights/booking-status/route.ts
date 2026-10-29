@@ -35,6 +35,11 @@ export async function GET(req: NextRequest) {
             .maybeSingle();
 
         if (!booking) {
+            // The failed booking row is written without a user, so the lookup above cannot see it.
+            // The session's own record of the refusal is what the traveller should be told.
+            if (failure) {
+                return NextResponse.json({ found: true, failed: true, ...failedBookingBody(failure) });
+            }
             return NextResponse.json({ found: false });
         }
 

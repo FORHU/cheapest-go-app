@@ -119,11 +119,15 @@ export async function placeDuffelOrder(params: PlaceDuffelOrderParams): Promise<
         offerId: string,
         paxList: any[],
         total: string,
+        baseAmount: number,
         currency: string,
         includeServices: boolean,
         key: string,
     ): Promise<TryPlaceOrderResult> => {
         let currentTotal = total;
+        // The bare fare behind `total`. Price changes are reported in bare fares so the number a
+        // traveller confirms is the same unit the next attempt compares against.
+        let currentBase = baseAmount;
         let currentCurrency = currency;
 
         // Aborting, losing the connection to, or getting a 5xx from an order request does NOT
@@ -283,10 +287,11 @@ export async function placeDuffelOrder(params: PlaceDuffelOrderParams): Promise<
             currentCurrency = pricedOffer.total_currency ?? currentCurrency;
 
             if (priceDelta > priceTolerance && !priceAlreadyConfirmed) {
-                return { isPriceChangedError: true, isOfferUnavailable: false, oldPrice: oldTotalNum, newPrice: newTotalNum, newCurrency: currentCurrency };
+                return { isPriceChangedError: true, isOfferUnavailable: false, oldPrice: currentBase, newPrice: freshBase, newCurrency: currentCurrency };
             }
 
             currentTotal = newTotalNum.toFixed(2);
+            currentBase = freshBase;
             const retryAbort = new AbortController();
             const retryTimeout = setTimeout(() => retryAbort.abort(), orderTimeoutMs);
             // Stamped before the retry so a retry that lands but never answers can be found.
@@ -318,11 +323,22 @@ export async function placeDuffelOrder(params: PlaceDuffelOrderParams): Promise<
             if (res.ok) break;
         }
 
+        // Still price_changed after the retries, with a Price Action that did produce a new number:
+        // report it, so the traveller can accept the new fare. A "100 changed to 100" prompt is
+        // worse than none, hence the comparison.
+        if (
+            res.status === 422
+            && data?.errors?.[0]?.code === 'price_changed'
+            && Math.abs(currentBase - baseAmount) > 0.005
+        ) {
+            return { isPriceChangedError: true, isOfferUnavailable: false, oldPrice: baseAmount, newPrice: currentBase, newCurrency: currentCurrency };
+        }
+
         return { isPriceChangedError: false, isOfferUnavailable: false, res, data, finalTotal: currentTotal, finalCurrency: currentCurrency };
     };
 
     // ── Attempt 1: the offer the user selected ──────────────────────────────────
-    const attempt1 = await tryPlaceOrder(rawOffer.id, params.passengers, params.total, params.currency, true, idempotencyKey);
+    const attempt1 = await tryPlaceOrder(rawOffer.id, params.passengers, params.total, parseFloat(rawOffer.total_amount ?? '0'), params.currency, true, idempotencyKey);
     if (attempt1.isPriceChangedError) {
         return { kind: 'price_changed', oldPrice: attempt1.oldPrice!, newPrice: attempt1.newPrice!, currency: attempt1.newCurrency ?? params.currency };
     }
@@ -405,7 +421,7 @@ export async function placeDuffelOrder(params: PlaceDuffelOrderParams): Promise<
                 id: freshPaxTemplates[idx]?.id ?? pax.id,
             }));
 
-            const attempt2 = await tryPlaceOrder(freshOffer.id, refreshedPassengers, freshBaseTotal.toFixed(2), freshOffer.total_currency, false, crypto.randomUUID());
+            const attempt2 = await tryPlaceOrder(freshOffer.id, refreshedPassengers, freshBaseTotal.toFixed(2), freshBaseTotal, freshOffer.total_currency, false, crypto.randomUUID());
 
             if (attempt2.res?.status && attempt2.res.status >= 500) {
                 return { kind: 'error', status: attempt2.res.status, data: attempt2.data };

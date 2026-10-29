@@ -1256,6 +1256,13 @@
     "guestFavorite": "ゲストのお気に入り",
     "headerDefault": "人気のホテルセール",
     "headerPersonalized": "<highlight>{country}</highlight> のホテルセール",
+    "maintenance": {
+      "title": "ホテルのご予約を一時停止しています",
+      "description": "宿泊施設の仕入先から在庫情報が提供されていません。お客様側の問題ではなく、早期の復旧に努めております。",
+      "note": "航空券は通常どおりご利用いただけます",
+      "flightsCta": "航空券を検索",
+      "homeCta": "ホームに戻る"
+    },
     "mapSearch": {
       "placeholder": "地図上の場所を検索..."
     },
@@ -2910,6 +2917,10 @@
         "cancelFailed": "キャンセル失敗 — 下から再試行",
         "cancelStuck": "キャンセル処理が停止中 — 下から再試行",
         "cancelled": "キャンセル済み",
+        "cancelledByDuffel": "Duffelによりキャンセル",
+        "cancelledByYou": "ご自身でキャンセル",
+        "refundedAmount": "{amount} 返金済み",
+        "refundProcessingAmount": "返金処理中 {amount}",
         "contactSupport": "キャンセルはサポートへ連絡",
         "emailToCancel": "キャンセルは crm@myfarebox.com へメール",
         "flightCompleted": "フライト完了",

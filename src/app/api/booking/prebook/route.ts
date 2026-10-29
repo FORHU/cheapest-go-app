@@ -143,20 +143,52 @@ export async function POST(req: Request) {
             console.log(`[prebook/tgx] Fresh search: hotel=${hotelCode} ${checkIn}→${checkOut} adults=${adults} nationality=${nationality}`);
             // bypassCache=true: skip the DB cache so we always get live OTV tokens.
             // Cached tokens from a prior search expire quickly and fail TGX valuation.
-            const freshResult = await runTgxSearch({
-                hotelCode,
-                checkin:  checkIn,
-                checkout: checkOut,
-                adults,
-                children,
-                currency,
-                guest_nationality: nationality,
-                bypassCache: true,
-            });
+            // Retried, because an empty answer here is usually not an empty hotel.
+            //
+            // The supplier intermittently returns no availability at all — an empty set with a
+            // success status and no error, for every hotel and every date (the **Availability
+            // Blackout** in CONTEXT.md, recurring since 2026-10-26). The windows are short and
+            // the empty answer arrives in well under a second, where a real search takes
+            // several, so retrying costs little and frequently lands once it reopens.
+            //
+            // It is worth the wait precisely here: by this point the guest has already typed in
+            // names, an email and a phone number, and giving up sends them back to a hotel list
+            // where every other hotel is failing for the same reason.
+            const SEARCH_ATTEMPTS = 3;
+            let freshResult: Awaited<ReturnType<typeof runTgxSearch>> | null = null;
+            let freshRooms: any[] = [];
 
-            const freshRooms: any[] = freshResult?.data?.roomTypes || [];
+            for (let attempt = 1; attempt <= SEARCH_ATTEMPTS; attempt++) {
+                freshResult = await runTgxSearch({
+                    hotelCode,
+                    checkin:  checkIn,
+                    checkout: checkOut,
+                    adults,
+                    children,
+                    currency,
+                    guest_nationality: nationality,
+                    bypassCache: true,
+                });
+
+                freshRooms = (freshResult as any)?.data?.roomTypes || [];
+                if (freshRooms.length) break;
+
+                if (attempt < SEARCH_ATTEMPTS) {
+                    console.warn(`[prebook/tgx] Empty availability for hotel=${hotelCode} (attempt ${attempt}/${SEARCH_ATTEMPTS}) — retrying`);
+                    await new Promise(resolve => setTimeout(resolve, attempt * 600));
+                }
+            }
+
             if (!freshRooms.length) {
-                return Response.json({ success: false, error: 'Room is no longer available for the selected dates' }, { status: 409 });
+                // Deliberately not "no longer available": a sold-out room and a supplier
+                // serving nothing are indistinguishable from here, and during a blackout every
+                // hotel answers this way — so telling the guest to pick a different one sends
+                // them somewhere that will fail identically.
+                console.warn(`[prebook/tgx] No availability after ${SEARCH_ATTEMPTS} attempts — hotel=${hotelCode} ${checkIn}→${checkOut}`);
+                return Response.json(
+                    { success: false, error: 'Availability for this room could not be confirmed. Please try again in a moment.' },
+                    { status: 409 },
+                );
             }
 
             // Build candidate list: preferred room first (matching user's original selection),

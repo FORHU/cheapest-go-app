@@ -7,12 +7,16 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { runTgxSearch } from '@/lib/server/stays/travelgatex/search';
+import { staysUnderMaintenance } from '@/lib/server/maintenance';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 30;
 
 export async function POST(req: NextRequest) {
     try {
+        if (await staysUnderMaintenance()) {
+            return NextResponse.json({ maintenance: true, data: [], allMappable: [], totalCount: 0 });
+        }
         const body = await req.json();
         const result = await runTgxSearch(body);
         return NextResponse.json(result);

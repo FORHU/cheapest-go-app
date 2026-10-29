@@ -118,6 +118,9 @@ _Avoid_: treating the Cron Sidecar as part of the deployment — the production 
 
 **Flight Provider** — Duffel (primary, active) or Mystifly (onboarding). Mystifly bookings currently disabled in the booking endpoint.
 
+**Authorise-first** — how a Duffel flight is paid for when `DUFFEL_MANUAL_CAPTURE=on`: the traveller's card is held, then the Duffel order is bought, then the hold is captured. A refusal at the order step releases the hold and nothing is charged. The flow an intent was created under is stamped on it as `captureFlow` and every later step routes by that stamp (`capture-flow.ts`), never by the current flag. Contrast **order-first**, the previous flow, in which the order was bought from the Duffel balance before the card was asked (ADR-0050).
+_Avoid_: reading the flag after the intent exists. Flipping it mid-flight would send an authorised card down the path that expects a captured one.
+
 **Home-Market Fare** — discounted inventory an airline sells only through the distribution channels of its own country (airline direct, plus local OTAs and consolidators), never releasing it to global distribution. Duffel reaches global distribution only, so on a sector priced this way it returns the airline's *published* fare and CheapestGo lands multiples above a local OTA — while the same carrier prices at parity on its international sectors. Measured 2026-08-17 on Korean Air: GMP–CJU round-trip ₩335,318 vs Trip.com ₩100,700 (+233%), ICN–NRT ₩405,740 vs ₩409,800 (−1%).
 _Avoid_: reading a domestic-sector gap as a CheapestGo markup or an FX fault — markup is applied at booking only, never in search, and the international sectors price at parity. _Avoid_: generalising from one carrier's international competitiveness to its domestic sectors, or the reverse.
 
@@ -141,6 +144,24 @@ _Avoid_: calling it a failed booking — the order succeeded, it is the payment 
 - **ETG** — the same RateHawk inventory accessed directly via `api.worldota.net`. Used as a reliability fallback when OTV/TGX returns no results, and for the nightly hotel-reviews sync. LiteAPI deprecated.
 OTV and ETG are the **same underlying supplier** (RateHawk) through two different API doors — not two suppliers with different hotel sets. Running both simultaneously yields duplicate results, not broader coverage. The ETG fallback is a reliability hedge, not a coverage expansion.
 _Avoid_: assuming OTV and ETG cover different hotels; treating ETG as a separate supplier with distinct inventory; calling ETG "RateHawk" in code (codebase name is `ETG`/`_etg`).
+
+**Availability Blackout** — a supplier state in which RateHawk's content endpoints answer
+normally while every availability call returns an empty set with a success status and no error.
+Because both **OTV** and **ETG** are doors onto the same supplier, a blackout closes both at
+once, and no fallback between them can cover it. Measured on 2026-10-26: the TGX static
+portfolio returned 500 hotels each for KR, JP, PH, GB and ES, and `multicomplete` resolved every
+region asked for, while `hotelX.search` and ETG `serp/region` both returned zero for every city
+and every date horizon tried.
+_Avoid_: reading one empty search as a fact about a destination — the identical answer arrives
+when the account, not the city, is the reason, and at a single call site the two are
+indistinguishable.
+_Avoid_: treating a failed confirmation as a fact about the room. A blackout window is often
+seconds long, so the same room confirms on the next attempt; a guest told the hotel cannot be
+booked is being given a supplier's momentary silence as if it were the hotel's answer. Anything
+that reports one must stay recoverable where the guest is standing — reloading the page was for
+a time the only way through, which is how this was found. _Avoid_: treating the OTV credit check as evidence of supplier standing: it
+sums our own `bookings` table against a configured limit and never asks RateHawk for its
+balance, so it reports 0% utilisation throughout a blackout.
 
 **LiteAPI** — a retired hotel supplier. The *integration* is gone: no client, no credentials, nothing calls it, and it supplies no inventory. Its *vocabulary* is not gone, and the difference matters when reading the code. `raw_liteapi_response` is a live column in the schema, LiteAPI's room-and-offer shape is still what v1's room types are modelled on, and v1's rate builder reads that shape before it reads the one OTV actually sends. api-v2 carries a smaller residue that nothing calls at all.
 _Avoid_: reading a LiteAPI name as evidence of a live supplier — every occurrence is either a column name, a type shape, or dead code. _Avoid_: the reverse error of assuming the names are cosmetic and safe to strip — the column is `NOT NULL` and a stored function reads it. _Avoid_: adding new code in LiteAPI's shape because the surrounding code is written that way.
@@ -193,8 +214,25 @@ _Avoid_: showing no-availability hotels to users — TGX explicitly recommends a
 **NONE Sentinel** — a row in `tgx_destination_cache` whose `destination_code` is the literal `NONE`, meaning TGX's destinationSearcher has no destination code for that city. A city carrying one skips **Search by Destination** entirely and is served by **Hotel-Code Fallback**, at roughly half the inventory (measured: Seoul, 89 hotels via fallback against 185 via destination code `3124`).
 _Avoid_: treating a NONE Sentinel as a statement about supplier coverage — it records only that one destinationSearcher call failed, and it is written on any TGX `5xx`, including a transient one. _Avoid_: assuming a city recovers on its own once TGX is healthy — nothing expires or overwrites the sentinel, unlike the 7-day window on `tgx_failed_dest_codes`.
 
-**Destination Code** — the supplier's identifier for a place, and what a hotel search is actually asked in terms of. A city name does not identify one: Paris, Rome, Bali, Cambridge and Valencia each name several places in different countries, so a code is only meaningful together with the country it belongs to. Resolved once and cached, because asking the supplier costs an 18-second round trip.
+**Destination Code** — the supplier's identifier for a place, and what a hotel search is actually asked in terms of. A city name does not identify one: Paris, Rome, Bali, Cambridge and Valencia each name several places in different countries, so a code is only meaningful together with the country it belongs to — necessary, but not sufficient. A supplier list can also carry several places of one name *within* a single country, sitting at different levels of its own hierarchy, and the country tells them apart no better than the name does. Resolved once and cached, because asking the supplier costs an 18-second round trip.
 _Avoid_: keying a cached code on the city name alone. A single global row per name means the first country resolved wins forever, and every other country silently inherits it — on 2026-09-09 "Paris, France" searched Paris, Texas, "Bali, Indonesia" searched Bali in Crete, and "Rome, Italy" returned eight hotels in Rome, Georgia. _Avoid_: reading a zero from a wrong-country code as a **No-Availability Hotel** result; the supplier answered honestly about a place nobody asked for.
+
+**Multi-City Destination** — a place a traveller names that the supplier files as more than one
+destination. Jeju is one: TGX lists an island zone with Jeju City and Seogwipo City beneath it,
+and separately a flat city code also called Jeju. Which of them a search should ask is not
+answerable from the names, and not from the hierarchy either — on this access the island zone
+and both cities hold one hotel each, while the flat city code holds four hundred spread across
+the whole island.
+_Avoid_: reading the supplier's hierarchy as a statement about inventory. A parent contains its
+children geographically and need not contain anything bookable, so climbing to the broadest
+destination can narrow a search to almost nothing while looking like the generous choice.
+_Avoid_: deciding which code one resolves to by the supplier's type label. Preferring the zone
+sent "Paris, France" to Alpine-Casparis Municipal Airport, and would send "Jeju" to its airport —
+the only zone the searcher returns for it. Preferring the city decides by the order the supplier
+happened to page its catalog in, which is not a fact about the place.
+_Avoid_: letting two writers hold opposite rules for the same cached code — the answer then
+depends on which ran last, and a destination silently changes meaning between one search and the
+next.
 
 **Unanswered Search** — a hotel search that ended without the supplier ever giving a usable answer: a TGX timeout, a `513` handler overload, a destination code that never resolved, or an empty catalog to fall back on. Distinct from a **No-Availability Hotel**, where the supplier *did* answer and reported no inventory. Only the latter justifies pruning the Phase 1 catalog — an Unanswered Search has learned nothing about availability, so the catalog stays on screen and the user is told prices could not be loaded.
 _Avoid_: rendering an Unanswered Search as "no hotels found" or as the destination lacking supplier coverage — the destination was never actually asked. _Avoid_: caching an Unanswered Search's empty result, or recording its destination code as an OTV miss. _Avoid_: letting a clean zero from the **Hotel-Code Fallback** cancel a destination that was never resolved — asking by hotel code is not the same question as asking by destination, and on 2026-09-02 a Phuket search where the fallback answered zero was followed seconds later by a destination-code search that returned real availability for the same city and dates.
@@ -308,8 +346,10 @@ _Avoid_: treating a converted display price as a quote.
 The guarantee is about **conversion**, not about the total: a displayed price is the supplier's price in the viewer's currency, and the markup is added at booking by deliberate choice, so the checkout total is knowingly higher than the search figure.
 _Avoid_: converting prices in the browser — two independent conversions drift apart and put the customer in front of a price-changed prompt. _Avoid_: using the admin's own currency selector (a per-viewer display preference) as if it were the **Reporting Currency**. _Avoid_: reading the search figure as an all-in quote, or the gap at checkout as a fault — it is the markup, and it widens as the markup grows.
 
-**Nightly Rate** — a room's price for one night. What the storefront advertises and what a guest compares between hotels, so it is the figure on a search card and on a room card. Always derived, never quoted: suppliers price stays, not nights.
+**Nightly Rate** — a room's price for one night, **inclusive of the Service Fee**. What the storefront advertises and what a guest compares between hotels, so it is the figure on a search card and on a room card. Always derived, never quoted: suppliers price stays, not nights.
 _Avoid_: showing a **Stay Total** with a "per night" label — the same number means something different to a supplier and to a guest, and the guest reads it as the cheaper of the two.
+_Note_: a Nightly Rate times the night count is what the guest is charged, exactly. It is advertised inclusive because the terms promise it — "displayed prices include applicable service fees" — and because a rate that is not what you pay is not a rate a guest can compare. A ₩62,407 room that bills ₩66,626 was the symptom: the fee was real, disclosed in the terms, and visible nowhere on the journey.
+_Note_: because the **Service Fee** has a per-booking part, an inclusive Nightly Rate moves slightly with the length of the stay — a one-night rate is a little higher than the same room's seven-night rate. That is a property of deriving a nightly figure from a stay, not a discount: the stay is what was quoted and the stay is what is charged.
 _Note_: derived exactly once, and the search stream is where. A price that has already been divided looks no different from one that has not — both are numbers, and dividing a second time is silent — so a Nightly Rate arriving from a search is rendered and converted, never divided. On 2026-09-10 seven display surfaces divided again and the whole storefront advertised half: ₱1,587 on a map marker for a room the property page sold at ₱3,173. It showed on no one-night stay, which is why it survived.
 _Avoid_: a helper named for the conversion rather than for what it takes. "To per night" reads as safe to apply to anything, including a figure that is already per night; the name is what invited the second division after the first had been fixed.
 _Note_: always live — asked of the supplier when the page is shown, never replayed from an earlier search. A hotel's Nightly Rate is its cheapest room, and cheap rooms are the ones that sell, so a replayed rate is often a room that is gone; the guest's next search then shows the real one and reads as a price rise. Rates do rise over time as rooms sell — that is the market — but a guest should only ever see it happen once, not be shown a price that was already unavailable. Customers reported exactly this in September 2026: search, log out, search again, always higher; the first search was replaying rates up to twelve hours old.
@@ -317,6 +357,21 @@ _Avoid_: blaming the difference on the account or the session. Nothing about a N
 
 **Stay Total** — what a room costs for the whole date range asked about. This is what OTV/TGX actually quotes and what prebook confirms, so it is the only hotel price the platform receives directly and the basis of every charge.
 _Avoid_: passing one as a bare number. A price and the stay it covers travel together; a figure that has lost its night count cannot be restated per night by whoever renders it next, only guessed at.
+
+**Service Fee** — what CheapestGo charges on top of the **Stay Total**, sized to recover **Platform Cost**. Named on the breakdown a guest sees before paying, never folded silently into a total: it is the only part of the price that is ours rather than the supplier's, and the one a guest is entitled to ask about.
+_Avoid_: calling it a tax, or letting it hide inside a "taxes and fees" line. Tax is the hotel's and is quoted inside the **Stay Total**; this is the platform's and is not.
+_Avoid_: treating it as kept on cancellation. It is refunded in the same proportion as the booking — in full when cancellation is free — which is why the rate is set above break-even in the first place: a cancelled booking recovers nothing, so the cost is carried by every other booking.
+_Note_: it exists only on the charge, never on the supplier's side, so no supplier figure includes it. A cancellation schedule quoted by the supplier is computed on the **Stay Total** alone; what the guest gets back is that proportion of what they actually paid, which is the larger number.
+
+**Room** — one bookable kind of room at a hotel, named by the supplier: "1 Bedroom Executive Double room". What a guest chooses between, and what one card on a property page stands for.
+_Avoid_: letting a Room mean one purchasable line. A supplier returns a priced line per **Rate**, not per Room, so a page that draws one card per line shows the same room three times at three prices and reads as a pricing fault. On 2026-10-01 Parque Espana listed "1 Bedroom Executive Double room" three times at ₩119,064, ₩131,640 and ₩135,192 — one room, three rates.
+
+**Rate** — one way to buy a **Room**: a price, a board arrangement, and cancellation terms. Several belong to one Room, and what separates them is the terms, not the room. The cheapest is what the Room advertises; the rest are the choice behind it.
+_Avoid_: ranking rates by price alone when two are otherwise identical. Same board and same refundability at two prices is not a choice, it is the same rate twice, and only the cheaper should survive.
+
+**Room Group** — ETG's unit of static room *content*: photos, amenities, bedding. It is not bookable and carries no price. Tied to a **Room** by name alone, because the two suppliers name the same room differently and share no identifier.
+_Note_: the only source of room photography the platform has. A hotel whose groups were never fetched has no room photos at all, and a room card then has nothing to show but the building.
+_Avoid_: matching a group to a room on a grade word. "Deluxe" hands one set of photos to every deluxe room in the hotel, and a guest books from the photo.
 
 **Default Stay** — the dates a hotel search quotes for when nobody has named usable ones: a landing card that links straight to a city, a link that has gone stale in a chat window, a checkout that falls on or before the arrival. Next Friday to Sunday. It is a *hotel* term and says nothing about flights, where the cheapest departure is weeks out, not next weekend.
 _Avoid_: today or tomorrow. OTV holds near-zero inventory for same-day and next-day stays, so a page that quotes them reports "no rooms available" for a hotel with plenty — indistinguishable, to the traveller, from the hotel being full. On 2026-09-28 a landing card linked with no dates at all, the search bar filled in tomorrow, and every property opened from those results came back empty.
@@ -331,7 +386,7 @@ _Note_: disclosed on the same terms as a Default Stay, on every width. The fligh
 **Booked Amount** — a payment restated into the **Reporting Currency** using the rate in force at the moment it was taken. Fixed permanently at that instant, so a report for a past period returns the same figure however long afterwards it is run.
 _Avoid_: recomputing a past period at today's rate — a closed month never moves.
 
-**Receipt** — the document a traveller is given after paying, stating what was charged and for which trip. It is proof that money was taken, reached through a **Capability Link**, and read by people who were never on the booking — a travel companion, an employer's finance team. It states one total and says that total is inclusive; it breaks out neither tax nor **Platform Cost**, because no tax figure is recorded anywhere and the supplier's cost is not held in the **Charge Currency** ([ADR-0042](docs/adr/0042-a-receipt-states-one-total-because-the-parts-were-never-recorded.md)).
+**Receipt** — the document a traveller is given after paying, stating what was charged and for which trip. It is proof that money was taken, reached through a **Capability Link**, and read by people who were never on the booking — a travel companion, an employer's finance team. It states one total and says that total is inclusive; it breaks out neither tax nor **Platform Cost**, because no tax figure is recorded anywhere and the supplier's cost is not held in the **Charge Currency** ([ADR-0046](docs/adr/0046-a-receipt-states-one-total-because-the-parts-were-never-recorded.md)).
 Titled **E-Receipt** on the document itself, in both the web and downloadable forms, which are the same document and not two.
 _Avoid_: "invoice" — an invoice asks for money that has not been paid, and this is only ever issued afterwards. The route and the document number still say invoice, which is a misnomer the code has not caught up with. _Avoid_: treating it as a tax invoice. That is a third document with statutory content, and issuing one means naming a registered entity and a tax registration number, neither of which is confirmed. _Avoid_: reading its total as a supplier price — what the supplier charged is a different figure, in a different currency, and subtracting one from the other has already produced a sixtyfold error elsewhere in this codebase.
 
@@ -344,7 +399,9 @@ _Avoid_: reading it as a promise to beat a **Home-Market Fare** — a local cons
 _Avoid_: calling this "revenue" — most of it belongs to the airline or hotel.
 
 **Platform Cost** — the third-party cost of operating a booking over and above what the airline or hotel is owed, and the closed set the markup exists to recover: payment processing (Stripe) plus a supplier platform's own fees. Deliberately excludes hosting, monitoring, mapping and every other running cost of the business — those scale with the product rather than with bookings, so recovering them through a fare would be a margin under another name.
-_Avoid_: treating **Platform Cost** as equal to supplier cost — the fare or room rate owed to the provider is not a platform fee. _Avoid_: assuming every supplier carries one. It is presently a **flights-only** cost: Duffel bills FORHU monthly for order and content fees, whereas the OTV monthly invoice is the room cost itself drawn on a credit line, not a fee on top of it.
+_Avoid_: treating **Platform Cost** as equal to supplier cost — the fare or room rate owed to the provider is not a platform fee. _Avoid_: assuming every supplier carries one. The **supplier** component is presently flights-only: Duffel bills FORHU monthly for order and content fees, whereas the OTV monthly invoice is the room cost itself drawn on a credit line, not a fee on top of it.
+_Avoid_: reading that as "hotels carry no Platform Cost". Payment processing applies to every booking of either kind, and on the markets served it is the larger component of the two — so a hotel's Platform Cost is Stripe's, in full. Said loosely, the hotel **Service Fee** looks like margin; it is not.
+_Note_: the payment-processing rate is a property of the **Charge Currency** and the card's country, not a constant. A domestic card, a foreign card and a foreign card requiring conversion are three different prices, and the spread between them is wider than the whole supplier component. A fee rate set for one market and left alone through the launch of another is how under-recovery arrives unannounced.
 _Avoid_: reading it as a single percentage. It is **part flat and part proportional** — Duffel bills a fixed fee on each paid order plus a share of the order's value, and Stripe does the same shape again — so a recovery expressed only as a percentage is too thin on cheap fares and too fat on expensive ones.
 _Avoid_: assuming a cancelled booking costs nothing. Both suppliers charge on the order as created; the customer's refund returns the markup in full, so a cancellation is a **Platform Cost** with no recovery attached to it.
 _Avoid_: conflating the **estimated** and **recorded** figures. A booking has to be priced before it is charged, so the markup is set against an estimate; what each party actually took is only knowable afterwards, from Stripe's balance transaction and the supplier's monthly invoice. Both are **Platform Cost**, and the gap between them is the thing worth watching — a pricing model that is never compared against the recorded figure will keep charging a number that stopped being right without anyone learning of it.

@@ -1,14 +1,15 @@
 import { createAdminClient } from '@/utils/postgres/admin';
 import { NextRequest, NextResponse } from 'next/server';
 import Stripe from 'stripe';
-import { sendFlightBookingConfirmationEmail, mapFlightSegmentsForEmail } from '@/lib/server/email';
 import { createNotification } from '@/lib/server/admin/notify';
 import { awaitBookingRow } from '@/lib/server/flights/await-booking-row';
 import { env } from '@/utils/env';
 import { issueTicket } from '@/lib/server/flights/issue-ticket';
 import { createBooking } from '@/lib/server/flights/create-booking';
 import { fromStripeAmount } from '@/lib/pricing';
-import { fetchStripeFee } from '@/lib/stripe/fee';
+import { fireBookingConfirmationEmail, logFlightPaymentEvent, completeDuffelBooking } from '@/lib/server/flights/post-booking';
+import { captureFlowOf } from '@/lib/server/flights/capture-flow';
+import { finaliseDuffelAuthorised } from '@/lib/server/flights/finalise-authorised';
 
 // Must cover the whole chain this handler drives: create-booking (itself allowed
 // 120s) plus issue-ticket. At 30s the platform killed the request mid-booking,
@@ -200,6 +201,14 @@ export async function POST(req: NextRequest) {
 
         // skip Mystifly here — it's handled by amount_capturable_updated above
         if (provider === 'mystifly_v2') {
+            await commitEvent();
+            return NextResponse.json({ received: true });
+        }
+
+        // Authorise-first intents are finalised (ordered, captured, ticketed, emailed) from
+        // amount_capturable_updated. The auto-refund below assumes an order was bought BEFORE the
+        // charge; run for one of these it could refund a booking that is fine.
+        if (captureFlowOf(pi.metadata) === 'authorise_first') {
             await commitEvent();
             return NextResponse.json({ received: true });
         }

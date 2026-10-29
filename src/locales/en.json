@@ -386,10 +386,10 @@
     },
     "submit": {
       "continueToPayment": "Continue to Payment • {amount}",
-      "goBackDifferentHotel": "Go back & choose a different hotel",
+      "goBackDifferentHotel": "Go back to rooms",
       "goBackReselect": "Go back & reselect room",
       "hotelUnavailable": "Hotel temporarily unavailable",
-      "hotelUnavailableDesc": "This hotel cannot be booked right now. Please go back and choose a different hotel.",
+      "hotelUnavailableDesc": "We could not confirm this room with the supplier. This is usually brief — try again in a moment before choosing another hotel.",
       "processingBooking": "Processing Your Booking...",
       "sessionExpired": "Room session expired",
       "sessionExpiredDesc": "Your room hold has expired. Go back and reselect the room to get a fresh session — you can pick the same room again.",
@@ -1190,6 +1190,13 @@
     "guestFavorite": "Guest Favorite",
     "headerDefault": "Top Hotel Deals",
     "headerPersonalized": "Hotel Deals in <highlight>{country}</highlight>",
+    "maintenance": {
+      "title": "Hotel bookings are paused",
+      "description": "Our accommodation supplier isn't returning availability right now. Nothing on your end caused this, and we're working to bring stays back.",
+      "note": "Flights are unaffected",
+      "flightsCta": "Search flights",
+      "homeCta": "Back to home"
+    },
     "mapSearch": {
       "placeholder": "Search location on map..."
     },
@@ -2726,6 +2733,10 @@
         "cancelFailed": "Cancel failed — retry below",
         "cancelStuck": "Cancellation stuck — retry below",
         "cancelled": "Cancelled",
+        "cancelledByDuffel": "Cancelled by Duffel",
+        "cancelledByYou": "Cancelled by you",
+        "refundedAmount": "Refunded {amount}",
+        "refundProcessingAmount": "Refund processing {amount}",
         "contactSupport": "Contact support to cancel",
         "emailToCancel": "Email crm@myfarebox.com to cancel",
         "flightCompleted": "Flight completed",

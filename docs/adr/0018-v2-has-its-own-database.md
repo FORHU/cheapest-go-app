@@ -1,5 +1,15 @@
 # v2 has its own database, refreshed from v1's
 
+**Status:** Partially superseded (2026-10-26) by `cheapestgo-api-v2` ADR-0001, *api-v2 Owns the Schema,
+and Production Keeps One Database*.
+
+> **Read this first.** What survives is everything below about **local development**: 5433 and 5434 stay
+> separate, and the dump-and-restore refresh is unchanged. Two clauses do not survive the v1 → v2 cutover.
+> **"v2 never writes a migration"** is reversed — `db/migrations/` moves into api-v2, which becomes the
+> schema owner, because the repo holding those migrations is the one being retired. And the isolation
+> argument does not extend to **production**, where both apps point at one database so that cutover and
+> rollback are each a proxy flip rather than a one-way data migration.
+
 v1 keeps the Postgres on port **5433**. v2 — both the api-v2 container and `npm run dev` in either v2 repo — uses the Postgres on port **5434** that api-v2's own `docker-compose.yml` already ran. It is kept comparable to v1's by being rebuilt from it: `pg_dump` 5433, drop and recreate 5434, `pg_restore`. That refresh happens before a slice starts and again before its Side-by-side Check, so the two databases hold the same rows whenever a comparison is made.
 
 This supersedes [ADR-0014](0014-v2-reads-v1s-schema-until-cutover.md), which called for a single shared database. That decision was made from the `.env` files while Docker was down, and did not survive contact with the running containers: api-v2's compose had been overriding the api container onto its own `postgres` service since 2026-08-11, so a second database already existed and had already drifted — 143 fewer hotels, two fewer users, and no `schema_migrations` rows at all. The choice was therefore not "one database or two" but "two databases, acknowledged or not."

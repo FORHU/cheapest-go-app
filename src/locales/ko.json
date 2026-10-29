@@ -1256,6 +1256,13 @@
     "guestFavorite": "게스트 최애",
     "headerDefault": "인기 호텔 특가",
     "headerPersonalized": "<highlight>{country}</highlight> 호텔 특가",
+    "maintenance": {
+      "title": "호텔 예약이 일시 중단되었습니다",
+      "description": "숙박 공급사에서 현재 객실 정보를 제공하지 않고 있습니다. 고객님의 문제가 아니며, 빠른 복구를 위해 조치하고 있습니다.",
+      "note": "항공권은 정상 이용 가능",
+      "flightsCta": "항공권 검색",
+      "homeCta": "홈으로"
+    },
     "mapSearch": {
       "placeholder": "지도에서 위치 검색..."
     },
@@ -2910,6 +2917,10 @@
         "cancelFailed": "취소 실패 — 아래에서 재시도",
         "cancelStuck": "취소 처리 지연 — 아래에서 재시도",
         "cancelled": "취소됨",
+        "cancelledByDuffel": "Duffel에서 취소됨",
+        "cancelledByYou": "직접 취소함",
+        "refundedAmount": "{amount} 환불 완료",
+        "refundProcessingAmount": "환불 처리 중 {amount}",
         "contactSupport": "취소하려면 고객센터로 문의",
         "emailToCancel": "취소하려면 crm@myfarebox.com으로 이메일",
         "flightCompleted": "운항 완료",

@@ -1664,19 +1664,138 @@ export function isSupplierTimeout(warnings: any[]): boolean {
 // Seeded from DB on first use so cold starts also skip known-bad codes.
 const _failedDestCodes = new Set<string>();
 let _failedDestCodesPromise: Promise<void> | null = null;
+let _failedDestCodesLoadedAt = 0;
+
+/**
+ * How long a process may go on believing its own copy of the blacklist.
+ *
+ * `tgx_failed_dest_codes` is shared state — `persistFailedDestCode` writes to it — but this
+ * was memoised for the life of the process and never re-read, so a container could only
+ * ever learn what was true at the moment it booted. Two boxes running the identical image
+ * against the identical database then answered the same search differently and stayed that
+ * way until someone restarted them: on 2026-10-06 cheapestgo.com had learned Seoul's code
+ * was a miss and used the hotel-code path (298 hotels), while airanggo.com had not and used
+ * Search by Destination (66), which is why Gangnam had hotels on one brand and none on the
+ * other.
+ *
+ * Five minutes is well under the seven-day window a row stays relevant for, and the reload
+ * is one indexed query against a table of a few hundred rows.
+ */
+const FAILED_DEST_CODES_TTL_MS = 5 * 60_000;
+
+/**
+ * How much of a city a destination answer has to cover to be taken at its word.
+ *
+ * A ratio, not a floor: a town with eleven hotels can answer completely with eleven, and a
+ * fixed minimum would reject that while waving through a capital's fraction. A third is
+ * deliberately generous — the point is to catch an answer that is a different order of
+ * magnitude from the city, not to referee a close call. Seoul measured 66 against a
+ * 960-hotel catalog, which is 7%.
+ */
+const DEST_CODE_MIN_COVERAGE = 1 / 3;
+
+/**
+ * How many hotels the Hotel-Code Fallback can ask TGX about, and therefore the most of a
+ * city it can ever see.
+ *
+ * The catalog query is capped at this, so the fallback is not "the path that sees more of
+ * the city" for anywhere with a catalog bigger than this — it is the path that sees three
+ * hundred of it. Exported because the thin check has to measure against the alternative it
+ * is actually choosing between, not against the catalog.
+ *
+ * Must stay in step with the LIMIT on the catalog query below, which reads this constant.
+ */
+export const FALLBACK_CODE_LIMIT = 300;
+
+/**
+ * Whether a destination answer covers too little of the city to be worth taking.
+ *
+ * Named and exported because it is the one judgement on this path: everything else is
+ * plumbing, and a threshold nobody can see is a threshold nobody revisits.
+ *
+ * Both guards matter. An answer with no hotels is a *miss*, handled elsewhere and recorded
+ * in `tgx_failed_dest_codes` — calling it thin would stop it ever being recorded. And a
+ * city we hold nothing for gives no yardstick, so the supplier's answer is the only one
+ * there is and stands.
+ */
+/**
+ * How much of a city an answer saw, counted in hotels rather than in options.
+ *
+ * One hotel quoting six rooms is not six hotels, and "more of the city" is the only thing
+ * the thin check was ever trying to express. Counting options instead would let a single
+ * generous property outvote a whole district.
+ */
+export function hotelsIn(options: { hotelCode: string }[]): number {
+    return new Set(options.map(o => o.hotelCode)).size;
+}
+
+export function isThinDestinationAnswer(destHotelCount: number, catalogSize: number): boolean {
+    if (destHotelCount <= 0) return false;
+    if (catalogSize <= 0) return false;
+    return destHotelCount < catalogSize * DEST_CODE_MIN_COVERAGE;
+}
+
+/**
+ * How many hotels we hold for a city, as the yardstick for the check above.
+ *
+ * Deliberately the same WHERE the hotel-code path builds its request from, so the two
+ * numbers are comparable: a count taken a different way would be measuring one thing and
+ * deciding about another. Failures return 0, which disables the check rather than
+ * rejecting a good answer on a database hiccup.
+ */
+async function catalogHotelCountForCity(cityName: string, countryCode?: string): Promise<number> {
+    try {
+        const sql = getSqlAdmin();
+        const baseCity = cityName.split(',')[0].trim();
+        const landTerritory = landTerritoryOfCity(baseCity, countryCode);
+        const cityNames = landTerritory
+            ? territoryCityNames(landTerritory)
+            : resolveHotelDbCities(baseCity, countryCode ?? '').map((c: string) => c.toLowerCase());
+
+        const rows = countryCode
+            ? await sql<{ n: string }[]>`
+                SELECT COUNT(*)::text AS n FROM hotel_content
+                WHERE LOWER(TRIM(city)) = ANY(${cityNames})
+                  AND LOWER(country) = ANY(${storedCountryCodes(countryCode)})
+                  AND hotel_id ~ '^[0-9]+$'
+                  AND lat != 0 AND lng != 0
+                  AND delisted_at IS NULL`
+            : await sql<{ n: string }[]>`
+                SELECT COUNT(*)::text AS n FROM hotel_content
+                WHERE LOWER(TRIM(city)) = ANY(${cityNames})
+                  AND hotel_id ~ '^[0-9]+$'
+                  AND lat != 0 AND lng != 0
+                  AND delisted_at IS NULL`;
+        return Number(rows[0]?.n ?? 0);
+    } catch (e: any) {
+        console.warn('[tgx-search] catalog count failed:', e?.message?.slice(0, 80));
+        return 0;
+    }
+}
 
 function loadFailedDestCodes(): Promise<void> {
-    if (_failedDestCodesPromise) return _failedDestCodesPromise;
+    const stale = Date.now() - _failedDestCodesLoadedAt > FAILED_DEST_CODES_TTL_MS;
+    if (_failedDestCodesPromise && !stale) return _failedDestCodesPromise;
+
+    // Claimed before the await so concurrent requests share this reload rather than each
+    // starting one of their own.
+    _failedDestCodesLoadedAt = Date.now();
     _failedDestCodesPromise = (async () => {
         try {
             const sql = getSqlAdmin();
             // Only load codes blacklisted within the last 7 days — older entries may
             // reflect transient OTV outages, not genuine supplier coverage gaps.
             const rows = await sql`SELECT dest_code FROM tgx_failed_dest_codes WHERE created_at > now() - INTERVAL '7 days'`;
+            // Rebuilt rather than added to: a row that has aged out of the window has to
+            // leave the set too, or a code blacklisted during one outage is skipped forever.
+            _failedDestCodes.clear();
             for (const r of rows) _failedDestCodes.add(r.dest_code as string);
             if (rows.length) console.log(`[tgx-search] Loaded ${rows.length} known-bad dest codes from DB (last 7d)`);
         } catch (e: any) {
             console.warn('[tgx-search] Could not load tgx_failed_dest_codes:', e.message);
+            // Try again on the next request rather than sit on a failed load for five
+            // minutes; the set keeps whatever it already had.
+            _failedDestCodesLoadedAt = 0;
         }
     })();
     return _failedDestCodesPromise;
@@ -1745,12 +1864,49 @@ async function runCityFallback(
     // lands here, so a genuine No-Availability result still returns normally.
     const unansweredReasons: string[] = [];
 
+    /**
+     * A destination answer judged too thin to prefer, kept rather than discarded.
+     *
+     * Thin means "the hotel-code path probably sees more of this city", and that is a
+     * guess made before the hotel-code path has run. It was treated as a verdict: the
+     * options were dropped and the fallback returned whatever it found, however little.
+     * For Jeju on 2026-10-29 the destination answered 110 hotels, 94 of them on the
+     * northern half of the island, and was discarded against a 960-row catalog — then the
+     * fallback returned 72, almost all southern, and that is what the traveller saw. The
+     * better answer had already been paid for.
+     */
+    let thinDestMerchant: TgxOption[] = [];
+
     // Ensure the DB-persisted failed codes are loaded before we check the set.
     await loadFailedDestCodes();
 
+    /**
+     * A sub-area asks about its own hotels, never about its city.
+     *
+     * Search by Destination answers for the whole city and answers *thinly*: measured
+     * 2026-10-06, OTV returned 66 hotels for Seoul where our own catalog holds 960 and the
+     * hotel-code path priced 298. Those 66 are not spread evenly — not one of them was
+     * inside Gangnam — so clipping a city answer to a district's bounds left nothing, and
+     * the page reported no hotels while sitting on 319 catalog rows for that district.
+     *
+     * Which path a container took was accidental: `_failedDestCodes` is per-process, so one
+     * brand's container had learned to skip the dest code and the other had not. Same
+     * build, same database, opposite results for the same search — cheapestgo.com served
+     * Gangnam, airanggo.com served nothing.
+     *
+     * So when the traveller picked an extent, the hotel codes inside it are the question,
+     * and they are already known. The dest-code attempt below is skipped entirely rather
+     * than tried first: it costs an 18-22s round trip to produce a city-wide answer that is
+     * about to be thrown away.
+     */
+    const subAreaBbox = rung && rung !== 'city' && areaBbox?.length === 4 ? areaBbox : null;
+
     // 1. Try TGX destination code first — gives full city catalog, not just DB snapshot.
     console.warn(`[tgx-search] OTV destination search empty for "${cityName}" — resolving TGX destination code`);
-    const resolvedCode = await prefetchDestCode;
+    const resolvedCode = subAreaBbox ? undefined : await prefetchDestCode;
+    if (subAreaBbox) {
+        console.log(`[tgx-search] sub-area (${rung}) — skipping dest-code search, asking about its own hotels`);
+    }
     if (resolvedCode) {
         console.log(`[tgx-search] Got TGX destination code "${resolvedCode}" for "${cityName}" — searching`);
         if (_failedDestCodes.has(resolvedCode)) {
@@ -1794,7 +1950,53 @@ async function runCityFallback(
             const destMerchant = destOptions.filter(
                 (o) => o.paymentType === 'MERCHANT' && (o.status === 'AVAILABLE' || o.status === 'OK')
             );
-            if (destMerchant.length > 0) {
+            const destHotelCount = new Set(destMerchant.map(o => o.hotelCode)).size;
+
+            /**
+             * A destination answer has to be worth taking, not merely non-empty.
+             *
+             * The premise of this path — stated in CONTEXT.md and in the comment above —
+             * is that Search by Destination yields a *broader* set than `hotel_content`,
+             * because TGX maps OTV hotels we have never seen. For Seoul on 2026-10-06 it
+             * yielded 66 hotels where the catalog holds 960 and the hotel-code path priced
+             * 298, and the 66 were not spread across the city: not one was in Gangnam. The
+             * premise is not always true, and nothing was checking it.
+             *
+             * A thin answer is therefore treated as a miss and falls through to the
+             * hotel-code path below, which asks about hotels we can see. Judged as a ratio
+             * rather than a floor: a small town legitimately returns a handful of hotels,
+             * and a fixed minimum would reject its complete answer while accepting a
+             * fraction of a capital's.
+             *
+             * Not blacklisted — the code resolved and the supplier answered, so it is not
+             * a miss in the sense `tgx_failed_dest_codes` records. Only this one search
+             * prefers the other path.
+             */
+            // Only an answer with hotels in it can be thin. Zero options is a different
+            // thing entirely — a miss — and it keeps the handling below, blacklist and all;
+            // treating it as "thin" would quietly stop this code ever being recorded. The
+            // count is skipped in that case rather than queried for nothing.
+            const catalogSize = destMerchant.length > 0
+                ? await catalogHotelCountForCity(cityName, countryCode)
+                : 0;
+            // Thin means "the hotel-code path probably sees more of this city than this", so
+            // the thing to measure against is what that path could actually come back with —
+            // which is capped at FALLBACK_CODE_LIMIT, however large the catalog is. Measured
+            // against the raw catalog instead, the check gets stricter the better stocked a
+            // city is, and ends up preferring a path that cannot possibly do better: Seoul on
+            // 2026-10-29 answered 297 hotels in 7.3s, was called thin against a 2,125-row
+            // catalog, and the fallback it deferred to asked about 300 and returned 44.
+            const yardstick = Math.min(catalogSize, FALLBACK_CODE_LIMIT);
+            const tooThin = isThinDestinationAnswer(destHotelCount, yardstick);
+            if (tooThin) {
+                console.warn(
+                    `[tgx-search] Dest code "${resolvedCode}" answered thin for "${cityName}": `
+                    + `${destHotelCount} hotels against the ${yardstick} the hotel-code path could ask about `
+                    + `(catalog holds ${catalogSize}; under ${Math.round(DEST_CODE_MIN_COVERAGE * 100)}%) — using it instead`,
+                );
+            }
+
+            if (destMerchant.length > 0 && !tooThin) {
                 console.log(`[tgx-search] Destination-code search returned ${destMerchant.length} options for "${cityName}"`);
                 // Dest-code path never calls fetchOtvHotelCodesByCity, so hotel_content stays empty.
                 // Seed it now (background) so the instant catalog shows up on the next request.
@@ -1814,6 +2016,17 @@ async function runCityFallback(
                 }
                 return buildCityResults(destMerchant, cityName, countryCode);
             }
+            // A thin answer is not a miss. The code resolved, OTV replied, and there is
+            // real availability behind it — just less of the city than the hotel-code path
+            // can see. Blacklisting it here would write that verdict into
+            // `tgx_failed_dest_codes` for every other container, and calling it unanswered
+            // would leave the catalog on screen under "prices could not be loaded". It
+            // simply falls through.
+            if (tooThin) {
+                // Nothing to record — but the options are real and already paid for, so
+                // they are held in case the fallback does worse. See thinDestMerchant.
+                thinDestMerchant = destMerchant;
+            } else {
             // No usable MERCHANT options — whether TGX sent an explicit "Empty hotels"
             // error or just a clean empty array (observed for some destination codes,
             // e.g. Tokyo's 504948), this code isn't yielding results either way.
@@ -1851,6 +2064,7 @@ async function runCityFallback(
                     console.warn(`[tgx-search] Dest code "${resolvedCode}" returned 0 options with no errors — recorded as OTV miss`);
                 }
             }
+            } // end else (answered, but not thin)
             } // end else (destResult exists)
         }
     } else {
@@ -1929,10 +2143,17 @@ async function runCityFallback(
             // rather than a circle — see getInstantHotelCatalog for why (La Union's
             // 50km radius swallows Baguio). Both paths must agree or phase 1 and
             // phase 2 return different hotel sets for the same search.
-            const provinceBbox = rung === 'province' && areaBbox?.length === 4 ? areaBbox : null;
+            //
+            // Every bounded rung, not only a province. A district, borough, ward or
+            // arrondissement has real administrative bounds for the same reason a province
+            // does, and taking a 50km radius around its centroid instead asks the supplier
+            // about the wrong city: Gangnam's centroid plus 50km is most of Seoul and some
+            // of Gyeonggi. `rung` here is the caller's `areaRung`, which is what survives
+            // the downgrade to City that ADR-0006 requires.
+            const boundedBbox = subAreaBbox ?? (rung === 'province' && areaBbox?.length === 4 ? areaBbox : null);
 
-            if (provinceBbox) {
-                const [minLng, minLat, maxLng, maxLat] = provinceBbox;
+            if (boundedBbox) {
+                const [minLng, minLat, maxLng, maxLat] = boundedBbox;
                 catalogRows = await sqlAdmin<{ hotel_id: string; lat: number; lng: number }[]>`
                     SELECT hotel_id, lat, lng FROM hotel_content
                     WHERE lat BETWEEN ${minLat} AND ${maxLat}
@@ -1979,14 +2200,14 @@ async function runCityFallback(
                           AND hotel_id ~ '^[0-9]+$'
                           AND lat != 0 AND lng != 0
                           AND delisted_at IS NULL
-                        LIMIT 300`
+                        LIMIT ${FALLBACK_CODE_LIMIT}`
                     : await sqlAdmin<{ hotel_id: string }[]>`
                         SELECT hotel_id FROM hotel_content
                         WHERE LOWER(TRIM(city)) = ANY(${cityNames})
                           AND hotel_id ~ '^[0-9]+$'
                           AND lat != 0 AND lng != 0
                           AND delisted_at IS NULL
-                        LIMIT 300`;
+                        LIMIT ${FALLBACK_CODE_LIMIT}`;
             }
 
             const catalogIds = catalogRows.map(r => r.hotel_id);
@@ -2029,6 +2250,19 @@ async function runCityFallback(
                         (o: any) => o.paymentType === 'MERCHANT' && (o.status === 'AVAILABLE' || o.status === 'OK')
                     ),
                 );
+                // Both paths have now answered, so the guess the thin check made can be
+                // replaced by a comparison. Counted in hotels rather than options, because
+                // one hotel quoting six rooms is not six hotels, and "more of the city" is
+                // the only thing the thin check was ever trying to express.
+                const thinHotels = hotelsIn(thinDestMerchant);
+                if (thinHotels > hotelsIn(merchant)) {
+                    console.log(
+                        `[tgx-search] Hotel-code fallback saw ${hotelsIn(merchant)} hotels for "${cityName}"; `
+                        + `the destination answer it was meant to improve on saw ${thinHotels} — keeping that instead`,
+                    );
+                    return buildCityResults(thinDestMerchant, cityName, countryCode);
+                }
+
                 if (merchant.length > 0) {
                     console.log(`[tgx-search] Hotel-code fallback: ${merchant.length} options for "${cityName}"`);
                     return buildCityResults(merchant, cityName, countryCode);
@@ -2060,6 +2294,14 @@ async function runCityFallback(
             console.warn(`[tgx-search] Hotel-code fallback failed for "${cityName}": ${supplierMessage(e)}`);
             unansweredReasons.push(`hotel-code fallback errored (${supplierMessage(e)})`);
         }
+    }
+
+    // A thin answer beats no answer. Reaching here with one means every later path failed
+    // or found nothing, and showing the traveller an empty city while holding bookable
+    // options is the worst of the available outcomes.
+    if (thinDestMerchant.length > 0) {
+        console.log(`[tgx-search] No other path answered for "${cityName}" — using the thin destination answer`);
+        return buildCityResults(thinDestMerchant, cityName, countryCode);
     }
 
     // Nothing bookable. Distinguish "the supplier answered and had nothing" from

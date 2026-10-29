@@ -10,6 +10,7 @@ import type { SelectedBag } from '@/types/bags';
 import { useUser } from '@/stores/authStore';
 import { useUserCurrency } from '@/stores/searchStore';
 import { clientFetch } from '@/lib/api/client';
+import { priceChangeFromFailure } from '@/lib/flights/price-change-failure';
 
 export type BookingStep = 'form' | 'submitting' | 'payment' | 'success' | 'error';
 
@@ -849,6 +850,15 @@ export function useFlightBooking() {
         // confirm won
         const { data, ok } = winner;
         if (!data || !ok || data.success === false) {
+            const moved = priceChangeFromFailure(data);
+            if (moved) {
+                clearRecovery();
+                setPriceChangedData(moved);
+                setErrorMsg('');
+                setStep('form');
+                idempotencyKeyRef.current = generateId();
+                return;
+            }
             const errMsg = data?.errorCode ? 'CODE:' + data.errorCode : (data?.error || 'CODE:booking_card_not_charged');
             setFailureReason(data?.reason ?? null);
 

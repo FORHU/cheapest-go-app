@@ -30,44 +30,6 @@ import path from 'path';
 import postgres from 'postgres';
 import { versionOf, listMigrationFiles, auditVersions, upSection } from '../db/migration-version.mjs';
 
-const FILES = [
-    // Already recorded — these print SKIP. Kept so a run shows the guard working
-    // rather than silently doing nothing.
-    '20260905000001_support_chat.sql',
-    '20260906000001_support_message_notice_code.sql',
-    '20260906000002_support_turn_claim.sql',
-    '20260906000003_support_escalation_reason.sql',
-    '20260906000004_email_logs_support_escalation.sql',
-    '20260906000005_support_agent_role.sql',
-
-    // Pending. In version order, which is the order dbmate would apply them in — keep it
-    // that way, so this script and `dbmate up` can never produce different results from the
-    // same directory. Order matters within it: support_assistant_retired_notice (…0001)
-    // widens the notice_code CHECK constraint that start_waiting (…0002) then inserts
-    // 'assistant_retired' against, and version order already puts them that way round.
-    '20260906000006_rename_geomeego_to_airanggo.sql',
-    '20260907000001_support_assistant_retired_notice.sql',
-    '20260907000002_support_conversations_start_waiting.sql',
-    '20260907000003_support_conversations_waiting_notified_at.sql',
-    '20260907000004_supplier_booking_attempts.sql',
-
-    // Chat Reference, Linked Bookings and Internal Notes (ADR-0038, ADR-0039).
-    '20260909000001_support_chat_reference_bookings_notes.sql',
-
-    // Support attachments, and the retention rule for them (ADR-0040).
-    '20260910000001_support_message_attachments.sql',
-    '20260910000002_support_attachment_retention.sql',
-
-    // Machine translation stored beside each message (ADR-0033).
-    '20260911000001_support_message_translation.sql',
-
-    // An Agent's translated reply, translated back so the Agent sees what the customer read.
-    '20260911000002_support_message_back_translation.sql',
-
-    // Who a Support Chat was given to, and who handled it — Assignment by admin (ADR-0041).
-    '20260911000003_support_assignment_events.sql',
-];
-
 const dry = process.argv.includes('--dry');
 
 const MIGRATIONS_DIR = 'db/migrations';
@@ -80,19 +42,23 @@ const MIGRATIONS_DIR = 'db/migrations';
  * one cost. Everything wrong is reported in a single pass: finding the second problem
  * should not cost another run.
  *
- * The version audit scans the whole directory rather than FILES, so a collision someone
- * else introduces is caught here even when neither colliding file was going to be applied.
+ * The version audit scans the whole directory, so a collision someone else introduces is
+ * caught here even when the colliding file was already applied.
  */
 const onDisk = listMigrationFiles(MIGRATIONS_DIR);
 const { collisions, malformed } = auditVersions(onDisk);
 
-// Compared against the directory listing, never fs.existsSync: existsSync is
-// case-insensitive on Windows and case-sensitive on Linux, so a case-typo in FILES would
-// pass locally and then die mid-run in CI — precisely what this guard exists to prevent.
-const present = new Set(onDisk);
-const absent = FILES.filter((f) => !present.has(f));
+// Every migration in the directory, in version order.
+//
+// This used to be a hand-maintained array, which drifted to 22 of the 59 files on disk —
+// including 20260601000001_schema.sql and 20260601000002_auth.sql, so a database built
+// with it came up without `users`. Nothing reported that: the preflight only checked the
+// other direction, for names listed here but missing from disk, which is the mistake
+// nobody makes. schema_migrations is what stops a migration applying twice, so reading
+// the whole directory is safe and a new file needs no edit here to be picked up.
+const FILES = onDisk;
 
-if (collisions.length || malformed.length || absent.length) {
+if (collisions.length || malformed.length) {
     console.error('ABORT — db/migrations/ is not in a state worth applying:\n');
 
     for (const { version, files } of collisions) {
@@ -101,10 +67,6 @@ if (collisions.length || malformed.length || absent.length) {
     for (const f of malformed) {
         console.error(`  ${f} has no leading version digits — dbmate would have nothing to record`);
     }
-    for (const f of absent) {
-        console.error(`  ${f} is listed in FILES but is not on disk (renamed? case wrong?)`);
-    }
-
     if (collisions.length) {
         console.error('\ndbmate records the version, not the filename, so applying one of a colliding');
         console.error('pair marks the other applied forever and it never runs. Renumber whichever');
@@ -146,8 +108,18 @@ if (!url) {
 // Say which one, every time. A migration runner that does not name its target is one
 // nobody can tell they pointed at the wrong database until afterwards.
 const host = url.match(/@([^/:?]+)/)?.[1] ?? 'unknown';
-const isLocal = /^(localhost|127\.0\.0\.1)$/.test(host);
-console.log(`target: ${host}${isLocal ? '  (local)' : '  ** LIVE **'}\n`);
+const loopback = /^(localhost|127\.0\.0\.1)$/.test(host);
+
+// A loopback host is not proof of a local database. Production RDS has no public address,
+// so the only way to reach it from a laptop is an SSM port-forward through the app box —
+// and that arrives on 127.0.0.1 like any local Postgres. An explicit sslmode in the URL is
+// what tells them apart: nothing asks for TLS to reach the dev Postgres on :5433, and RDS
+// refuses a connection without it. Before this, such a run announced `(local)` while
+// pointed at production and then died with `no pg_hba.conf entry ... no encryption` —
+// the label being wrong was the more dangerous half.
+const tunnelled = loopback && /[?&]ssl(mode)?=/i.test(url);
+const isLocal = loopback && !tunnelled;
+console.log(`target: ${host}${isLocal ? '  (local)' : `  ** LIVE **${tunnelled ? '  (via tunnel)' : ''}`}\n`);
 
 // Asked for local and about to touch something that is not: stop rather than migrate it.
 if (local && !isLocal) {
@@ -170,7 +142,24 @@ if (!dry) {
     console.log('schema_migrations ready\n');
 }
 
-const done = dry ? new Set() : new Set((await sql`select version from schema_migrations`).map(r => r.version));
+/**
+ * Versions already recorded. Read in dry mode too — a SELECT changes nothing, and without
+ * it `--dry` printed every file on disk rather than the ones a real run would apply, which
+ * is the only question it is asked. That mattered less when the list above was hand-kept
+ * and short; now that it is the whole directory, a dry run that cannot tell applied from
+ * pending is actively misleading.
+ *
+ * Tolerates the table not existing yet (42P01), which is the case on a database this script
+ * has never touched — and only that. A blanket catch here would report every migration as
+ * pending when the real problem was that the connection failed, which is the difference
+ * between "nothing to do" and "about to re-run the entire history against production".
+ */
+const done = new Set(
+    (await sql`select version from schema_migrations`.catch((e) => {
+        if (e.code === '42P01') return [];
+        throw e;
+    })).map(r => r.version)
+);
 
 for (const f of FILES) {
     const version = versionOf(f);

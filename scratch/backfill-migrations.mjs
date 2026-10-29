@@ -11,6 +11,21 @@
  * cannot change the schema; the worst it can do is mark a file applied that in fact was
  * not, which is why the cutoff is a date already known to be live.
  *
+ * Two jobs, because the ledger went wrong in two ways:
+ *
+ *   1. Files applied before anything recorded them — the date cutoff below.
+ *   2. Rows written under the whole filename instead of the version. This script and
+ *      apply-migrations.mjs both did that until 2026-09-15. The note here used to say the
+ *      ledger held no such rows and only minting them needed stopping; that was true of
+ *      local and false of live, where 52 of them sat unnoticed until a run on 2026-09-29
+ *      found every one of their files unrecorded and started replaying applied migrations
+ *      against production. It got two files in before an old CHECK constraint, long since
+ *      widened, was rejected by rows that now legitimately violate it — which is the only
+ *      reason it stopped there.
+ *
+ * A same-version row is restated, never moved: the old full-name row is left where it is,
+ * because deleting rows to repair a ledger is how a ledger stops being evidence.
+ *
  *   node scratch/backfill-migrations.mjs --dry   # list what would be recorded
  *   node scratch/backfill-migrations.mjs         # record
  */
@@ -85,10 +100,42 @@ await sql`CREATE TABLE IF NOT EXISTS public.schema_migrations (
 )`;
 
 const done = new Set((await sql`select version from schema_migrations`).map(r => r.version));
-const todo = versions.filter(v => !done.has(v));
 
-console.log(`${versions.length} historical files, ${done.size} already recorded, ${todo.length} to record\n`);
-todo.forEach(v => console.log(`  ${dry ? 'would record' : 'record'}  ${v}`));
+/**
+ * Rows keyed on the whole filename, restated under the version a runner looks for.
+ *
+ * Derived from the ledger itself rather than from the directory, so the claim is only ever
+ * one the database already made: every row here says that migration ran. No cutoff applies
+ * — a mis-keyed row is wrong whatever its date — and a file that has since been renamed
+ * still repairs correctly, because the version is read off the row, not matched to disk.
+ */
+const misKeyed = [...done]
+    .map(row => ({ row, version: /^(\d+)_/.exec(row)?.[1] }))
+    .filter(({ row, version }) => version && version !== row && !done.has(version));
+
+const todo = [...new Set([...versions.filter(v => !done.has(v)), ...misKeyed.map(m => m.version)])].sort();
+
+console.log(`${versions.length} historical files, ${done.size} rows in the ledger, ${todo.length} versions to record`);
+console.log(`  from ${misKeyed.length} rows keyed on the whole filename\n`);
+misKeyed.forEach(({ row, version }) => console.log(`  ${dry ? 'would restate' : 'restate'}  ${row}  ->  ${version}`));
+todo.filter(v => !misKeyed.some(m => m.version === v))
+    .forEach(v => console.log(`  ${dry ? 'would record' : 'record'}    ${v}`));
+
+/**
+ * Two mis-keyed rows landing on one version means the file was renumbered after it ran.
+ *
+ * Reported rather than resolved: both migrations really were applied, so one row standing
+ * for both loses nothing — but the file now on disk under the old number is a DIFFERENT
+ * migration, and it is about to be read as already applied. Worth a person's eye, because
+ * the alternative reading is that a real migration silently never runs.
+ */
+const byVersion = new Map();
+for (const m of misKeyed) byVersion.set(m.version, [...(byVersion.get(m.version) ?? []), m.row]);
+const collided = [...byVersion].filter(([, rows]) => rows.length > 1);
+if (collided.length) {
+    console.log('\nNOTE — one version, more than one recorded migration. A file was renumbered after it ran:');
+    for (const [version, rows] of collided) console.log(`  ${version}\n${rows.map(r => `      ${r}`).join('\n')}`);
+}
 
 if (!dry && todo.length) {
     await sql`insert into schema_migrations ${sql(todo.map(version => ({ version })))}

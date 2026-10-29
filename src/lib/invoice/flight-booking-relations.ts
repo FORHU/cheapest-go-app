@@ -73,7 +73,7 @@ export async function loadFlightBookingRelations(bookingId: string): Promise<Fli
  * It lives there rather than on `flight_bookings` because the session's `flight` column
  * holds the whole offer document, and `FlightPrice.base` rides along inside it. Bookings
  * taken before Duffel's `base_amount` was parsed hold a zero there, which reads as
- * "not recorded" and yields no breakdown — see ADR-0042.
+ * "not recorded" and yields no breakdown — see ADR-0046.
  */
 export async function loadFlightFareBase(
     sessionId: string | null | undefined,

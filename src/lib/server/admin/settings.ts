@@ -30,6 +30,12 @@ export async function getAdminSettings(): Promise<Record<string, any>> {
         if (typeof v === 'string' && v.length >= 2 && v[0] === '"' && v[v.length - 1] === '"') {
             try { const p = JSON.parse(v); if (typeof p === 'string') v = p; } catch { /* keep */ }
         }
+        // A boolean arrives the same way, as the raw text `true`/`false`, and the unwrap
+        // above cannot catch it — there are no quotes to strip. Left alone it reaches
+        // callers as the string "true", which is truthy either way and so reads correctly
+        // in an `if` and wrongly in a `=== true`. Settled here rather than at each caller.
+        if (v === 'true') v = true;
+        else if (v === 'false') v = false;
         settings[row.key] = v;
     }
     return settings;

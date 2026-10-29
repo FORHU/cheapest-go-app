@@ -134,7 +134,7 @@ export default async function InvoicePage({ params, searchParams }: PageProps) {
     const totalPrice = booking.charged_price ?? booking.total_price;
 
     // What the traveller can be told beyond the total. Derived in one place shared with
-    // the PDF renderer, which used to drift from this page — see ADR-0042.
+    // the PDF renderer, which used to drift from this page — see ADR-0046.
     const cancellation = receiptCancellation(booking, isHotel);
     const discount = receiptDiscount(booking);
 
@@ -176,7 +176,7 @@ export default async function InvoicePage({ params, searchParams }: PageProps) {
 
     // The Figma's Fare and Taxes rows. They render only for a booking whose offer
     // recorded a fare before tax — Duffel sends one on every offer, but nothing parsed
-    // it until recently, so older bookings have none and the rows stay hidden (ADR-0042).
+    // it until recently, so older bookings have none and the rows stay hidden (ADR-0046).
     const fareBase = isHotel ? null : await loadFlightFareBase(booking.session_id);
     const breakdown = fareBreakdown(totalPrice, fareBase?.base, fareBase?.currency, currency);
 
@@ -194,7 +194,7 @@ export default async function InvoicePage({ params, searchParams }: PageProps) {
 
     // ── Itinerary, grouped into the slices the reference band and the cards below draw.
     // Shared with the PDF via itinerary-view.ts so both state the same route and
-    // duration for one booking — see ADR-0042 on the drift this guards against.
+    // duration for one booking — see ADR-0046 on the drift this guards against.
     const slices = isHotel ? [] : buildItinerarySlices(booking.flight_segments ?? []);
     const tripSummary = isHotel ? null : tripSummaryFromSlices(slices, booking.trip_type ?? null);
 
@@ -378,7 +378,7 @@ export default async function InvoicePage({ params, searchParams }: PageProps) {
                         // Each slice is one card spanning its first departure to its last
                         // arrival — a connection's layover counts toward its duration and
                         // stop count exactly once. Grouping and arithmetic live in
-                        // itinerary-view.ts, shared with the PDF (ADR-0042).
+                        // itinerary-view.ts, shared with the PDF (ADR-0046).
                         <div className="flex flex-col rounded-xl border border-slate-100 dark:border-slate-800 overflow-hidden divide-y divide-slate-100 dark:divide-slate-800">
                             {slices.map((slice, i) => (
                                 <div key={i} className="grid grid-cols-[88px_minmax(0,1fr)_64px_minmax(0,1fr)] gap-3 items-center px-4 py-3.5">
@@ -464,7 +464,7 @@ export default async function InvoicePage({ params, searchParams }: PageProps) {
                     Calculation. Restriction Endorsements and Fare Calculation are never
                     rendered — they come from a Mystifly ticket-display call that cannot
                     run while Duffel is the only live provider — and Fare/Taxes render
-                    only when a real per-offer fare was recorded (ADR-0042). A blank label
+                    only when a real per-offer fare was recorded (ADR-0046). A blank label
                     or a zero would read as a fact, so the rows wait for real values. */}
                 <div className="px-8 py-5 grid grid-cols-1 sm:grid-cols-2 gap-x-10 gap-y-5">
                     <div>
@@ -510,7 +510,7 @@ export default async function InvoicePage({ params, searchParams }: PageProps) {
                         <dl className="space-y-1.5 text-sm">
                             {/* Fare and the rest. Derived so the two rows always account for
                                 the whole charge; the second is never called "Tax" alone,
-                                because it carries any platform fee as well (ADR-0042). */}
+                                because it carries any platform fee as well (ADR-0046). */}
                             {breakdown && (
                                 <>
                                     <div className="flex items-baseline justify-between gap-6">

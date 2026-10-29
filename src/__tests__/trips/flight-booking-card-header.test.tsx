@@ -1,6 +1,6 @@
 import React from 'react';
-import { describe, it, expect, vi, beforeAll, afterAll } from 'vitest';
-import { render, screen, within, fireEvent } from '@testing-library/react';
+import { describe, it, expect, vi, beforeAll, afterAll, afterEach } from 'vitest';
+import { render, screen, within, fireEvent, waitFor } from '@testing-library/react';
 import { NextIntlClientProvider } from 'next-intl';
 import en from '@/locales/en.json';
 
@@ -291,5 +291,187 @@ describe('the status chip at narrow widths', () => {
 
     it('falls back to a chip rather than silence for a status it does not know', () => {
         expect(chipsFor('something_new', 'Unknown')).toHaveLength(2);
+    });
+});
+
+/**
+ * A booking that Duffel has cancelled, in its dashboard or by the airline.
+ *
+ * The traveller should be told who ended it. "Refunded" says money came back, not that the trip was
+ * cancelled from outside; and a booking cancelled at Duffel that still read "Upcoming Flight" was
+ * the defect that started this. Two ways in: the stored `cancelled_by` (the booking was reconciled
+ * already) and a look at Duffel when the card opens (it has not been yet).
+ */
+describe('a booking Duffel has cancelled', () => {
+    const SYNC_URL = '/api/flights/sync-booking';
+
+    /** A fetch that answers the sync endpoint with `answer` and every other request with `{}`. */
+    function stubFetch(answer: unknown) {
+        const fn = vi.fn(async (url: string) => {
+            if (String(url).endsWith(SYNC_URL)) {
+                if (answer instanceof Error) throw answer;
+                return new Response(JSON.stringify(answer), { status: 200 });
+            }
+            return new Response('{}', { status: 200 });
+        });
+        vi.stubGlobal('fetch', fn);
+        return fn;
+    }
+    const syncCalls = (fn: ReturnType<typeof stubFetch>) =>
+        fn.mock.calls.filter(([url]) => String(url).endsWith(SYNC_URL));
+
+    afterEach(() => { vi.unstubAllGlobals(); });
+
+    describe('as the stored booking says it', () => {
+        const REFUNDED = { status: 'refunded', refund_amount: 120, refund_currency: 'USD' };
+
+        /**
+         * The one block that says who ended the booking and what came back: the pill, and whatever
+         * sits with it. Both layouts render in jsdom, so there are two; the first is enough.
+         */
+        function block(label: string) {
+            return screen.getAllByText(label)[0].closest('span')!.parentElement!;
+        }
+
+        it('says who cancelled and what came back together, in one block', () => {
+            stubFetch({});
+            renderIntl(<FlightBookingCard booking={{ ...booking, ...REFUNDED, cancelled_by: 'supplier' }} />);
+
+            const text = block('Cancelled by Duffel').textContent;
+            expect(text).toContain('Cancelled by Duffel');
+            expect(text).toContain('Refunded $120');
+        });
+
+        it('has no second refund box beside that block', () => {
+            stubFetch({});
+            renderIntl(<FlightBookingCard booking={{ ...booking, ...REFUNDED, cancelled_by: 'supplier' }} />);
+
+            // The "Total Refund" box was the other half of the same fact, drawn apart from the pill.
+            expect(screen.queryAllByText('Total Refund')).toHaveLength(0);
+        });
+
+        it('says it the same way for a booking the traveller cancelled', () => {
+            stubFetch({});
+            renderIntl(<FlightBookingCard booking={{ ...booking, ...REFUNDED, cancelled_by: 'traveller' }} />);
+
+            const text = block('Cancelled by you').textContent;
+            expect(text).toContain('Cancelled by you');
+            expect(text).toContain('Refunded $120');
+            expect(screen.queryByText('Cancelled by Duffel')).toBeNull();
+        });
+
+        it('says a refund is on its way, with the amount, while it is processing', () => {
+            stubFetch({});
+            renderIntl(<FlightBookingCard booking={{ ...booking, status: 'refund_pending', refund_amount: 120, refund_currency: 'USD', cancelled_by: 'supplier' }} />);
+
+            const text = block('Cancelled by Duffel').textContent;
+            expect(text).toContain('Refund processing $120');
+            expect(text).not.toContain('Refunded');
+        });
+
+        it('says the refund failed beside who cancelled', () => {
+            stubFetch({});
+            renderIntl(<FlightBookingCard booking={{ ...booking, status: 'refund_failed', cancelled_by: 'supplier' }} />);
+
+            expect(block('Cancelled by Duffel').textContent).toContain('Refund Failed');
+        });
+
+        it('says no refund was issued for a cancellation held for a person', () => {
+            stubFetch({});
+            renderIntl(<FlightBookingCard booking={{ ...booking, status: 'cancelled', refund_amount: 0, cancelled_by: 'supplier' }} />);
+
+            const text = block('Cancelled by Duffel').textContent;
+            expect(text).toContain('No refund issued');
+            expect(text).not.toContain('Refunded');
+        });
+
+        it('carries the penalty in the same block', () => {
+            stubFetch({});
+            renderIntl(<FlightBookingCard booking={{ ...booking, ...REFUNDED, refund_penalty_amount: 13.96, cancelled_by: 'supplier' }} />);
+
+            expect(block('Cancelled by Duffel').textContent).toContain('Penalty applied: $14');
+        });
+
+        it('draws the pill in the design\'s shape, whoever cancelled', () => {
+            stubFetch({});
+            renderIntl(<FlightBookingCard booking={{ ...booking, ...REFUNDED, cancelled_by: 'supplier' }} />);
+
+            const classes = String(screen.getAllByText('Cancelled by Duffel')[0].closest('span')!.className);
+            for (const shape of ['rounded-full', 'border', 'px-2', 'py-0.5']) expect(classes).toContain(shape);
+        });
+
+        it('says it at both widths', () => {
+            stubFetch({});
+            renderIntl(<FlightBookingCard booking={{ ...booking, ...REFUNDED, cancelled_by: 'supplier' }} />);
+
+            expect(screen.getAllByText('Cancelled by Duffel')).toHaveLength(2);
+            expect(screen.getAllByText('Refunded $120')).toHaveLength(2);
+        });
+
+        it('keeps the plain "Refunded" pill for a cancellation that predates the record of who cancelled', () => {
+            stubFetch({});
+            renderIntl(<FlightBookingCard booking={{ ...booking, ...REFUNDED }} />);
+
+            expect(screen.queryByText('Cancelled by Duffel')).toBeNull();
+            expect(screen.queryByText('Cancelled by you')).toBeNull();
+            expect(screen.getAllByText('Refunded').length).toBeGreaterThan(0);
+        });
+    });
+
+    describe('as learned by looking at Duffel when the card opens', () => {
+        it('asks about a live Duffel booking, once, by its id', async () => {
+            const fn = stubFetch({ success: true, changed: false, reason: 'live_at_duffel' });
+            renderIntl(<FlightBookingCard booking={booking} />);
+
+            await waitFor(() => expect(syncCalls(fn)).toHaveLength(1));
+            expect(JSON.parse(String(syncCalls(fn)[0][1]!.body))).toEqual({ bookingId: 'fb_1' });
+        });
+
+        it('turns the chip to Cancelled by Duffel when Duffel says it was cancelled', async () => {
+            stubFetch({ success: true, changed: true, status: 'refunded', cancelledBy: 'supplier', refundAmount: 120, refundCurrency: 'USD' });
+            renderIntl(<FlightBookingCard booking={booking} />);
+
+            expect(await screen.findAllByText('Cancelled by Duffel')).toHaveLength(2);
+            expect(screen.queryByText('Upcoming Flight')).toBeNull();
+            // What came back arrives with who cancelled, in the same block, with no refund box beside it.
+            expect(screen.getAllByText('Refunded $120')).toHaveLength(2);
+            expect(screen.queryAllByText('Total Refund')).toHaveLength(0);
+        });
+
+        it('leaves the chip alone when Duffel says the booking is live', async () => {
+            const fn = stubFetch({ success: true, changed: false, reason: 'live_at_duffel' });
+            renderIntl(<FlightBookingCard booking={booking} />);
+
+            await waitFor(() => expect(syncCalls(fn)).toHaveLength(1));
+            expect(screen.getAllByText('Upcoming Flight')).toHaveLength(2);
+            expect(screen.queryByText('Cancelled by Duffel')).toBeNull();
+        });
+
+        it('says nothing and changes nothing when the look fails', async () => {
+            const fn = stubFetch(new Error('network down'));
+            renderIntl(<FlightBookingCard booking={booking} />);
+
+            await waitFor(() => expect(syncCalls(fn)).toHaveLength(1));
+            expect(screen.getAllByText('Upcoming Flight')).toHaveLength(2);
+        });
+
+        it.each(['refunded', 'refund_pending', 'cancelled', 'cancel_requested', 'failed'])(
+            'does not ask about a booking that is already %s',
+            async (status) => {
+                const fn = stubFetch({ success: true, changed: false });
+                renderIntl(<FlightBookingCard booking={{ ...booking, status }} />);
+
+                await Promise.resolve();
+                expect(syncCalls(fn)).toHaveLength(0);
+            },
+        );
+
+        it('does not ask about a Mystifly booking', async () => {
+            const fn = stubFetch({ success: true, changed: false });
+            renderIntl(<FlightBookingCard booking={{ ...booking, provider: 'mystifly_v2' }} />);
+
+            await Promise.resolve();
+            expect(syncCalls(fn)).toHaveLength(0);
+        });
     });
 });

@@ -495,7 +495,7 @@ async function handleDuffel(ctx: {
 // Shared helpers
 // ─────────────────────────────────────────────────────────────────────────────
 
-async function markFailed(
+export async function markFailed(
     sql: ReturnType<typeof getSqlAdmin>,
     db: ReturnType<typeof createAdminClient>,
     sessionId: string,

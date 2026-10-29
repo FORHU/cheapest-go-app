@@ -244,7 +244,7 @@ export function parseDuffelOffer(offer: any, cabinClassFallback?: string) {
     // `FlightPrice` has carried `base` and `taxes` since it was written, and they
     // reach the stored booking through `booking_sessions.flight`; nothing ever filled
     // them, so both were persisted as zero and a receipt could state only one total
-    // (ADR-0042). Duffel sends these on every offer and always has.
+    // (ADR-0046). Duffel sends these on every offer and always has.
     //
     // Parsed defensively: a missing or unparseable amount stays undefined rather than
     // becoming zero, because zero is a number a receipt would print as a fact. Only a

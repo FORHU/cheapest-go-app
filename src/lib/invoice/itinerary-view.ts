@@ -2,7 +2,7 @@
  * Groups flight segments into the slices a receipt draws (Depart / Return / Flight N)
  * and derives the one-line trip summary (route, trip type, dates) shown in the
  * reference band. Shared by the web page and the PDF so the two documents cannot state
- * a different route or duration for the same booking — see ADR-0042 on the drift this
+ * a different route or duration for the same booking — see ADR-0046 on the drift this
  * codebase has already paid for once.
  *
  * Every figure here is derived from `flight_segments` and `trip_type`, both already

@@ -4,7 +4,7 @@ import { buildItinerarySlices, formatDurationShort, tripSummaryFromSlices } from
 /**
  * The receipt draws one card per slice (Depart / Return) and a one-line trip summary
  * above them. Both must be derived the same way for the web page and the PDF, so this
- * covers the grouping and arithmetic once rather than twice — see ADR-0042 on why the
+ * covers the grouping and arithmetic once rather than twice — see ADR-0046 on why the
  * two renderers drifting apart is a real, previously-shipped bug.
  */
 

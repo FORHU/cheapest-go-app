@@ -127,7 +127,7 @@ export function safeJsonParse<T>(json: string, fallback: T): T {
     }
 }
 
-const ROOM_UNAVAILABLE_RE = /no longer available|not available|unavailable|sold out|no availability|try a different hotel|currently unavailable for booking/i;
+const ROOM_UNAVAILABLE_RE = /no longer available|not available|unavailable|sold out|no availability|try a different hotel|currently unavailable for booking|could not be confirmed/i;
 
 /**
  * Whether an error message indicates the room/offer is no longer bookable.

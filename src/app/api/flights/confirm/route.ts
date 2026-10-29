@@ -71,6 +71,9 @@ export async function POST(req: NextRequest) {
         const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
         const provider = paymentIntent.metadata?.provider ?? '';
         const isMystifly = provider === 'mystifly_v2' || provider === 'mystifly';
+        // Duffel intents created authorise-first (ADR-0050) are held, not captured, until the
+        // order has been bought; routed by what the intent was stamped with, never by a flag.
+        const authoriseFirst = !isMystifly && captureFlowOf(paymentIntent.metadata) === 'authorise_first';
 
         // Validate this PaymentIntent belongs to this session
         if (paymentIntent.metadata?.bookingSessionId !== sessionId) {
@@ -140,6 +143,15 @@ export async function POST(req: NextRequest) {
                     { status: 402 },
                 );
             }
+        } else if (authoriseFirst) {
+            // Duffel, authorise-first: the card is held (requires_capture), or the webhook has
+            // already bought and captured (succeeded). Anything else is not authorised.
+            if (paymentIntent.status !== 'requires_capture' && paymentIntent.status !== 'succeeded') {
+                return NextResponse.json(
+                    { success: false, error: `Payment not authorised (status: ${paymentIntent.status})` },
+                    { status: 402 },
+                );
+            }
         } else {
             // Duffel: captured (order-before-payment flow), or authorised and waiting for the
             // order to be placed and captured (pay-first flow).
@@ -182,8 +194,17 @@ export async function POST(req: NextRequest) {
         // inside createBooking carry their own timeouts.
         let bookingData: any;
         try {
-            bookingData = await createBooking({ sessionId });
-            console.log('[/confirm] createBooking result (status', bookingData.httpStatus, '):', JSON.stringify(bookingData));
+            if (authoriseFirst) {
+                // Buys the order (if the webhook has not), captures, records. The claim makes this
+                // and the webhook place one order between them.
+                const outcome = await finaliseDuffelAuthorised({ sessionId, paymentIntentId });
+                const answer = finaliseOutcomeResponse(outcome);
+                if (answer) return NextResponse.json(answer.body, { status: answer.status });
+                bookingData = { success: true, ...(outcome as Extract<typeof outcome, { kind: 'booked' }>) };
+            } else {
+                bookingData = await createBooking({ sessionId });
+            }
+            console.log('[/confirm] booking result (status', bookingData.httpStatus, '):', JSON.stringify(bookingData));
         } catch (bookingErr: any) {
             console.error('[/confirm] createBooking threw:', bookingErr?.message ?? bookingErr);
             return NextResponse.json(

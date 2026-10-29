@@ -216,7 +216,7 @@ export async function GET(
 
     // Flight itinerary, grouped into the slices the reference band and cards draw. Built
     // by the same module the web page uses (itinerary-view.ts), so the two renderers
-    // cannot state a different route or duration for the same booking (ADR-0042). Every
+    // cannot state a different route or duration for the same booking (ADR-0046). Every
     // date and time is pinned to UTC so it agrees with its own arrivalDayOffset.
     const slices = effectiveIsFlight ? buildItinerarySlices(booking.flight_segments ?? []) : [];
     const fmtSliceTime = (d: Date) => d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', timeZone: 'UTC' });
@@ -257,7 +257,7 @@ export async function GET(
     }
 
     // Derived from the same module the web page uses, so the two renderers cannot state
-    // different terms for one booking — they drifted once already (ADR-0042).
+    // different terms for one booking — they drifted once already (ADR-0046).
     const cancelTerms = receiptCancellation(booking, effectiveIsHotel);
     const cancellation = !cancelTerms ? null : (() => {
         switch (cancelTerms.kind) {
@@ -291,7 +291,7 @@ export async function GET(
         : (booking.flight_segments?.[0]?.airline || null);
 
     // The Figma's Fare and Taxes rows. Present only when the booking's offer recorded a
-    // fare before tax; older bookings hold none and the rows stay hidden (ADR-0042).
+    // fare before tax; older bookings hold none and the rows stay hidden (ADR-0046).
     const fareBase = effectiveIsHotel ? null : await loadFlightFareBase(booking.session_id);
     const fareParts = fareBreakdown(totalPrice, fareBase?.base, fareBase?.currency, currency);
     const breakdown = fareParts

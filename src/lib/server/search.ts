@@ -1,6 +1,7 @@
 import { unstable_cache } from 'next/cache';
 import { extractCountryCode, COUNTRY_SEARCH_LIST } from '@/lib/constants/countries';
 import { getSqlAdmin } from '@/lib/db/postgres';
+import { selectDestination } from '@/lib/server/stays/destinationSelection';
 import { CITY_ALIASES, matchAliasQuery, resolveHotelDbCities } from '@/lib/constants/cityAliases';
 import { matchCityEndonym } from '@/lib/constants/cityEndonyms';
 import { storedCountryCodes } from '@/lib/geo/territories';
@@ -532,7 +533,7 @@ function _fetchDestCodeRaw(cityName: string, countryCode?: string): Promise<stri
             const DEST_QUERY = `query TgxResolveCity($access: ID!, $text: String!, $maxSize: Int) {
                    hotelX {
                      destinationSearcher(criteria: { access: $access, text: $text, maxSize: $maxSize }) {
-                       ... on DestinationData { code type texts { text language } }
+                       ... on DestinationData { code type parent texts { text language } }
                      }
                    }
                  }`;
@@ -558,31 +559,47 @@ function _fetchDestCodeRaw(cityName: string, countryCode?: string): Promise<stri
             }
             const result = await res.json();
             const items: any[] = result?.data?.hotelX?.destinationSearcher ?? [];
-            const exactName = cityName.toLowerCase();
-            const matchesName = (i: any) =>
-                (i.texts ?? []).some((t: any) => t.language === 'en' && t.text.toLowerCase() === exactName);
-            const cityItem = items.find((i: any) => i.type === 'CITY' && matchesName(i)) ?? items.find((i: any) => i.type === 'CITY');
-            const zoneItem = items.find((i: any) => i.type === 'ZONE' && matchesName(i)) ?? items.find((i: any) => i.type === 'ZONE');
-            const selectedItem = countryCode ? (zoneItem ?? cityItem) : (cityItem ?? zoneItem);
-            const code      = selectedItem?.code as string | undefined;
-            const dest_type = selectedItem?.type as string | undefined;
+            // One rule for every caller — see lib/server/stays/destinationSelection.ts. The
+            // type preference that used to live here was half of a contradiction: the nightly
+            // catalog sync held the opposite one, and a destination meant whichever ran last.
+            const selectedItem = selectDestination(
+                items.map((i: any) => ({
+                    code:       String(i?.code ?? ''),
+                    type:       String(i?.type ?? ''),
+                    name:       (i?.texts ?? []).find((t: any) => t.language === 'en')?.text ?? '',
+                    parentCode: (i?.parent as string | null) ?? null,
+                })),
+                cityName,
+            );
+            const code       = selectedItem?.code;
+            const dest_type  = selectedItem?.type;
+            const parentCode = selectedItem?.parentCode ?? null;
             if (code) {
                 _destCodeCache.set(key, code);
                 try {
                     const sql = getSqlAdmin();
-                    await sql`INSERT INTO tgx_destination_cache (city_key, destination_code, dest_type)
-                        VALUES (${key}, ${code}, ${dest_type ?? 'CITY'})
-                        -- A fresh NONE Sentinel is still protected: it was written
-                        -- deliberately and should stand for its 7 days. A stale one must be
-                        -- overwritable, or a city whose sentinel the readers now ignore would
-                        -- re-resolve from scratch on every single search — an 18s round-trip
-                        -- each time, because the real code could never be written back.
+                    await sql`INSERT INTO tgx_destination_cache (city_key, destination_code, dest_type, parent_code, source, updated_at)
+                        VALUES (${key}, ${code}, ${dest_type ?? 'CITY'}, ${parentCode}, 'resolver', now())
+                        -- This fills gaps; it does not correct the catalog.
+                        --
+                        -- destinationSearcher is the autocomplete endpoint and answers from a
+                        -- narrower set than the bulk destinations list the sync reads. Asked for
+                        -- "Jeju" it returns two places — the city code 850 and the airport zone —
+                        -- while the bulk catalog also holds Jeju Island and the two cities beneath
+                        -- it. Both are answered by the same rule, but this one is choosing from a
+                        -- poorer set, so letting it overwrite a real code would quietly replace the
+                        -- island with a fraction of it every time a background resolve ran.
+                        --
+                        -- A NONE Sentinel is overwritten at any age: it records that a lookup once
+                        -- failed, and this call is a lookup that just succeeded.
                         ON CONFLICT (city_key) DO UPDATE SET
                             destination_code = EXCLUDED.destination_code,
                             dest_type        = EXCLUDED.dest_type,
+                            parent_code      = EXCLUDED.parent_code,
+                            source           = 'resolver',
+                            updated_at       = now(),
                             created_at       = now()
-                        WHERE tgx_destination_cache.destination_code != 'NONE'
-                           OR tgx_destination_cache.created_at <= now() - INTERVAL '7 days'`;
+                        WHERE tgx_destination_cache.destination_code = 'NONE'`;
                     console.log(`[dest-resolve] Resolved "${cityName}" → ${code} (${dest_type ?? 'CITY'})`);
                 } catch { /* non-fatal */ }
             } else {

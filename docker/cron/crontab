@@ -31,6 +31,22 @@
 
 # ── Daily (UTC) ───────────────────────────────────────────────────────────────
 0 2 * * * curl -sf -X GET $APP_URL/api/cron/etg-reviews-sync   -H "Authorization: Bearer $CRON_SECRET" -o /dev/null
+# Moved here from .github/workflows/cron-etg-dump-sync.yml on 2026-10-14. That
+# workflow ran on a GitHub runner and connected straight to DATABASE_URL — which
+# is a private RDS with no public endpoint, so it had never once completed, and a
+# failing scheduled workflow is quiet unless someone opens the Actions tab. The
+# hotel catalogue had been going stale for as long as it existed.
+#
+# It belongs here rather than in a workflow calling the public URL: Cloudflare
+# cuts an origin response off at about 100 seconds, and this upserts against
+# 1.2M hotel_content rows. The sidecar reaches the app over the Docker network,
+# so nothing in between can time it out.
+#
+# Incremental, matching the schedule it replaces. A full re-dump is a manual job:
+#   curl -sf -X GET "$APP_URL/api/cron/etg-dump-sync?type=full&force=true" \
+#     -H "Authorization: Bearer $CRON_SECRET"
+# run from inside this container, not from a laptop.
+0 3 * * * curl -sf -X GET "$APP_URL/api/cron/etg-dump-sync?type=incremental" -H "Authorization: Bearer $CRON_SECRET" -o /dev/null
 0 3 * * * curl -sf -X GET $APP_URL/api/cron/cache-cleanup       -H "Authorization: Bearer $CRON_SECRET" -o /dev/null
 0 4 * * * curl -sf -X GET $APP_URL/api/cron/cleanup-sessions    -H "Authorization: Bearer $CRON_SECRET" -o /dev/null
 # Retention for support attachments (ADR-0040). Daily and off-peak: the working set is

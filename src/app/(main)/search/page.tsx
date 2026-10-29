@@ -1,8 +1,10 @@
 import { HotelResultsClient } from '@/components/search/HotelResultsClient';
 import { MapResultsClient } from '@/components/search/MapResultsClient';
 import { CountryCityPicker } from '@/components/search/CountryCityPicker';
+import { StaysMaintenanceNotice } from '@/components/search/StaysMaintenanceNotice';
 import { getTranslations } from 'next-intl/server';
 import { canonicalBrandName } from '@/lib/brand';
+import { staysUnderMaintenance } from '@/lib/server/maintenance';
 
 export const dynamic = 'force-dynamic';
 
@@ -28,6 +30,13 @@ export default async function SearchPage(props: {
 
     const dest = flatParams.destination || '';
     const viewMode = flatParams.view || 'map';
+
+    // Supply is off. Say so, and do not call the supplier for results nobody will see —
+    // an empty map with no explanation reads as a broken site, and the calls cost us
+    // the same whether or not anything comes back.
+    if (await staysUnderMaintenance()) {
+        return <StaysMaintenanceNotice />;
+    }
 
     // ─── MAP VIEW ───────────────────────────────────────────────────
     if (viewMode === 'map') {

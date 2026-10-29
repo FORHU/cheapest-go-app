@@ -304,6 +304,12 @@ export interface FlightBookingRecord {
   refund_amount?: number;
   refund_penalty_amount?: number;
   refund_currency?: string;
+  /**
+   * Who ended the booking: 'supplier' when the order was cancelled at Duffel (its dashboard, or the
+   * airline), 'traveller' when the Cancel button did. null for a booking never cancelled, and for
+   * cancellations that predate the record.
+   */
+  cancelled_by?: 'traveller' | 'supplier' | null;
 
   // Joined relation fields
   flight_segments?: FlightSegmentRecord[];

@@ -3,7 +3,7 @@
  *
  * The web page and the PDF are separate components that have already drifted apart
  * once — different footers, one naming a legal entity and one not — so the reasoning
- * lives here and each of them only renders the result. See ADR-0042.
+ * lives here and each of them only renders the result. See ADR-0046.
  *
  * Everything here is deliberately non-personal. The page's credential is the booking
  * UUID in a forwardable URL, which ADR-0027 already records as thin for flights, so
@@ -85,7 +85,7 @@ export interface FareBreakdown {
  *
  * The second row is therefore never "Tax". It holds tax *and* fee, so labelling it as
  * tax would invite a finance team to reclaim against a number that is not all tax —
- * the mislabelling ADR-0042 exists to prevent.
+ * the mislabelling ADR-0046 exists to prevent.
  *
  * Null whenever the split cannot be stood behind: no recorded fare, a fare that is not
  * a usable number, one that is not strictly inside the total, or a currency that does

@@ -7,6 +7,7 @@ import { CITY_ALIASES, resolveHotelDbCities } from '@/lib/constants/cityAliases'
 import { hotelCountry, storedCountryCodes, isTerritory } from '@/lib/geo/territories';
 import { rateLimit } from '@/lib/server/rate-limit';
 import { looseCityKey } from '@/lib/server/search';
+import { staysUnderMaintenance } from '@/lib/server/maintenance';
 
 const COUNTRY_NAME_TO_ISO: Record<string, string> = {
     'indonesia': 'ID', 'france': 'FR', 'italy': 'IT', 'spain': 'ES', 'germany': 'DE',
@@ -395,6 +396,16 @@ export async function POST(req: NextRequest) {
     const rl = await rateLimit(req, { limit: 20, windowMs: 60_000, prefix: 'hotel-search' });
     if (!rl.success) {
         return Response.json({ error: 'Too many requests. Please wait before trying again.' }, { status: 429 });
+    }
+
+    // Guarded here and not only on the search page, because the page is one caller of
+    // many — the map view, the landing sections and anything else that posts here would
+    // otherwise keep calling the supplier while the site says stays are paused.
+    if (await staysUnderMaintenance()) {
+        return Response.json(
+            { maintenance: true, properties: [], allMappable: [], totalCount: 0, unanswered: false },
+            { status: 200 },
+        );
     }
 
     const body = await req.json().catch(() => ({}));
