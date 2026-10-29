@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAuthenticatedUser } from '@/lib/server/auth';
 import { createAdminClient } from '@/utils/postgres/admin';
 import { env } from '@/utils/env';
+import { failureReasonOf, NOT_COMPLETED_ERROR_CODE, NOT_COMPLETED_MESSAGE } from '@/lib/server/flights/booking-failure';
 
 export const dynamic = 'force-dynamic';
 
@@ -28,7 +29,7 @@ export async function GET(req: NextRequest) {
 
         const { data: booking } = await supabase
             .from('flight_bookings')
-            .select('id, pnr, status')
+            .select('id, pnr, status, cancellation_log')
             .eq('session_id', sessionId)
             .eq('user_id', user.id)
             .maybeSingle();
@@ -38,6 +39,17 @@ export async function GET(req: NextRequest) {
         }
 
         if (booking.status === 'failed') {
+            const reason = failureReasonOf(booking);
+            if (reason) {
+                // A pay-first failure: the card was only held, and the hold has been released.
+                return NextResponse.json({
+                    found: true,
+                    failed: true,
+                    errorCode: NOT_COMPLETED_ERROR_CODE,
+                    reason,
+                    error: NOT_COMPLETED_MESSAGE,
+                });
+            }
             return NextResponse.json({
                 found: true,
                 failed: true,

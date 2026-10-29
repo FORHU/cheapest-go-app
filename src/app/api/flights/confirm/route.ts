@@ -9,6 +9,7 @@ import { awaitBookingRow } from '@/lib/server/flights/await-booking-row';
 import { z } from 'zod';
 import { issueTicket } from '@/lib/server/flights/issue-ticket';
 import { createBooking } from '@/lib/server/flights/create-booking';
+import { failedBookingResponse, NOT_COMPLETED_ERROR_CODE, NOT_COMPLETED_MESSAGE } from '@/lib/server/flights/booking-failure';
 
 // Must exceed the create-booking call this handler makes (aborted at 120s) plus
 // the concurrent-path wait below. At 60s the platform killed the request while
@@ -113,11 +114,7 @@ export async function POST(req: NextRequest) {
             // Booking already failed — don't retry, surface the error directly
             if (existingBooking.status === 'failed') {
                 console.log('[/confirm] Booking already failed for session:', sessionId);
-                return NextResponse.json({
-                    success: false,
-                    errorCode: 'booking_failed_refunded',
-                    error: 'Booking failed — the flight offer was no longer available. Your payment has been automatically refunded.',
-                }, { status: 400 });
+                return NextResponse.json(await failedBookingResponse(supabase, sessionId), { status: 400 });
             }
 
             if (existingBooking.pnr) {
@@ -144,12 +141,31 @@ export async function POST(req: NextRequest) {
                 );
             }
         } else {
-            // Duffel: payment must be fully captured
-            if (paymentIntent.status !== 'succeeded') {
+            // Duffel: captured (order-before-payment flow), or authorised and waiting for the
+            // order to be placed and captured (pay-first flow).
+            if (paymentIntent.status !== 'succeeded' && paymentIntent.status !== 'requires_capture') {
                 return NextResponse.json(
                     { success: false, error: `Payment not completed for Duffel (status: ${paymentIntent.status})` },
                     { status: 402 },
                 );
+            }
+        }
+
+        // A pay-first attempt the traveller replaced with newer details. Its hold is released by the
+        // webhook; tell this tab the truth instead of "still processing".
+        if (paymentIntent.metadata?.payFirst === 'true') {
+            const { data: current } = await supabase
+                .from('booking_sessions')
+                .select('status')
+                .eq('id', sessionId)
+                .maybeSingle();
+            if (current?.status === 'expired') {
+                return NextResponse.json({
+                    success: false,
+                    errorCode: NOT_COMPLETED_ERROR_CODE,
+                    reason: 'superseded',
+                    error: NOT_COMPLETED_MESSAGE,
+                }, { status: 409 });
             }
         }
 
@@ -239,11 +255,7 @@ export async function POST(req: NextRequest) {
         // The concurrent path recorded a real failure (and refunded). Report that,
         // not "pending" — the traveller needs to know the money is coming back.
         if (lateBooking?.status === 'failed') {
-            return NextResponse.json({
-                success: false,
-                errorCode: 'booking_failed_refunded',
-                error: 'Booking failed — the flight offer was no longer available. Your payment has been automatically refunded.',
-            }, { status: 400 });
+            return NextResponse.json(await failedBookingResponse(supabase, sessionId), { status: 400 });
         }
 
         // Still nothing after waiting, but the other path never released the session
@@ -261,6 +273,8 @@ export async function POST(req: NextRequest) {
         // Booking explicitly failed
         return NextResponse.json({
             success: false,
+            errorCode: bookingData.errorCode,
+            reason: bookingData.reason,
             error: bookingData.error || 'Booking failed — your card has not been charged.',
         }, { status: 400 });
     } catch (err) {

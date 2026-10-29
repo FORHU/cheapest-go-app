@@ -41,6 +41,9 @@ const webhookSecret = env.STRIPE_WEBHOOK_SECRET;
  *
  * Duffel flow (automatic capture):
  *   payment_intent.succeeded → book with Duffel (existing flow, unchanged)
+ *
+ * Duffel pay-first flow (FLIGHT_PAY_FIRST, manual capture, metadata.payFirst = 'true'):
+ *   payment_intent.amount_capturable_updated → createBooking places the order, then captures
  */
 export async function POST(req: NextRequest) {
     if (!webhookSecret) {
@@ -127,8 +130,14 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ received: true });
         }
 
+        if (provider === 'duffel' && pi.metadata?.payFirst === 'true') {
+            await handlePayFirstAuthorized(supabase, pi, bookingSessionId);
+            await commitEvent();
+            return NextResponse.json({ received: true });
+        }
+
         if (provider !== 'mystifly_v2') {
-            // Only Mystifly uses manual capture — ignore for other providers
+            // Only Mystifly and pay-first Duffel use manual capture — ignore for other providers
             await commitEvent();
             return NextResponse.json({ received: true });
         }
@@ -574,5 +583,110 @@ async function logFlightPaymentEvent(
         }
     } catch (err) {
         console.error('[Stripe Webhook] Ledger insert error:', err);
+    }
+}
+
+// ─── Pay-first Duffel: the card is authorised, buy the order and take the money ──
+
+/**
+ * createBooking does the work under the session lock — place the order, capture, write the rows
+ * — and on failure releases the hold and emails the traveller. This only has to finish a
+ * success (ticket, email, ledger) and make a failure visible to the team. It never refunds:
+ * a failure here means nothing was captured.
+ */
+async function handlePayFirstAuthorized(supabase: any, pi: Stripe.PaymentIntent, bookingSessionId: string) {
+    console.log(`[Webhook] Pay-first card authorised. Session: ${bookingSessionId}`);
+    try {
+        await supabase
+            .from('booking_sessions')
+            .update({ status: 'payment_authorized' })
+            .eq('id', bookingSessionId)
+            .in('status', ['initiated', 'payment_initiated']);
+
+        const bookingData = await createBooking({ sessionId: bookingSessionId, paymentIntentId: pi.id });
+
+        if (bookingData.success) {
+            await finishPayFirstBooking(supabase, bookingData, pi, bookingSessionId);
+            return;
+        }
+
+        if (bookingData.alreadyBooked) {
+            const { data: current } = await supabase
+                .from('booking_sessions')
+                .select('status')
+                .eq('id', bookingSessionId)
+                .maybeSingle();
+            if (current?.status === 'expired') {
+                // Retired before its card was authorised (the traveller moved on to newer details).
+                // Nothing was bought for it, so the hold is released, not captured.
+                try {
+                    await getStripe().paymentIntents.cancel(pi.id);
+                } catch (cancelErr: any) {
+                    console.error(`[Webhook] Could not release late hold ${pi.id} on retired session ${bookingSessionId}:`, cancelErr?.message);
+                }
+                createNotification(
+                    'Late authorisation released',
+                    `Session ${bookingSessionId} was retired before its card was authorised; hold ${pi.id} was released. No order was placed.`,
+                    'booking',
+                );
+                return;
+            }
+            // /confirm (or an earlier delivery) holds the session lock and owns this booking.
+            console.log(`[Webhook] Pay-first session ${bookingSessionId} is being completed by another path — nothing to do`);
+            return;
+        }
+
+        if (bookingData.errorCode === 'booking_not_completed') {
+            createNotification(
+                'Flight booking not completed',
+                `Session ${bookingSessionId} (PI ${pi.id}): ${bookingData.reason}. The hold was released and the traveller emailed. No money moved.`,
+                'booking',
+            );
+            return;
+        }
+
+        console.error(`[Webhook] Pay-first create-booking failed unexpectedly: ${bookingData.error}`);
+        createNotification(
+            'Flight booking needs review',
+            `Pay-first session ${bookingSessionId} (PI ${pi.id}) failed unexpectedly: ${bookingData.error}. Check Stripe and Duffel before taking any action.`,
+            'booking',
+        );
+    } catch (err) {
+        console.error('[Webhook] Pay-first booking error:', err);
+        createNotification(
+            'Flight booking needs review',
+            `Pay-first session ${bookingSessionId} (PI ${pi.id}) threw while booking. Check Stripe and Duffel before taking any action.`,
+            'booking',
+        );
+    }
+}
+
+/**
+ * The same finishing steps as the payment_intent.succeeded branch (ticket, email, ledger), with
+ * the amount taken from what createBooking actually captured rather than the authorised amount.
+ * Fold the two together when FLIGHT_PAY_FIRST is retired.
+ */
+async function finishPayFirstBooking(supabase: any, bookingData: any, pi: Stripe.PaymentIntent, bookingSessionId: string) {
+    if (bookingData.status !== 'ticketed' && !bookingData.alreadyBooked && bookingData.bookingId) {
+        console.log(`[Webhook] Auto-ticketing Duffel order: ${bookingData.bookingId}`);
+        const ticketData = await issueTicket(bookingData.bookingId);
+        console.log(ticketData.success ? '[Webhook] Duffel ticketing OK' : `[Webhook] Duffel ticketing failed: ${ticketData.error}`);
+    }
+
+    console.log(`[Webhook] Pay-first booking complete. PNR: ${bookingData.pnr}`);
+
+    createNotification('Flight Booking Confirmed', `Duffel booking ${bookingData.pnr || bookingSessionId} confirmed.`, 'booking');
+    fireBookingConfirmationEmail(supabase, bookingSessionId, bookingData, 'duffel')
+        .catch(e => console.error('[Webhook] Pay-first email error:', e));
+
+    if (bookingData.bookingId) {
+        logFlightPaymentEvent(supabase, {
+            bookingId: bookingData.bookingId,
+            amount: bookingData.confirmedPrice ?? fromStripeAmount(pi.amount, pi.currency || 'usd'),
+            currency: (bookingData.confirmedCurrency ?? pi.currency ?? 'usd').toUpperCase(),
+            provider: 'duffel',
+            transactionId: pi.id,
+            metadata: { sessionId: bookingSessionId, pnr: bookingData.pnr },
+        });
     }
 }
