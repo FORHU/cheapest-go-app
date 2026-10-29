@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { isThinDestinationAnswer } from '@/lib/server/stays/travelgatex/search';
+import { isThinDestinationAnswer, hotelsIn } from '@/lib/server/stays/travelgatex/search';
 
 /**
  * When the supplier's own answer about a city is not worth taking.
@@ -56,5 +56,46 @@ describe('isThinDestinationAnswer', () => {
         // Exactly a third is not under a third.
         expect(isThinDestinationAnswer(100, 300)).toBe(false);
         expect(isThinDestinationAnswer(99, 300)).toBe(true);
+    });
+});
+
+/**
+ * A thin answer is a guess made before the other path has run, and it used to be treated as a
+ * verdict: the options were dropped and the fallback's result returned however small it was.
+ *
+ * Jeju, 2026-10-29. The destination answered 110 hotels — 94 of them on the northern half of
+ * the island — and was discarded for being under a third of the 960-row catalog. The fallback
+ * then returned 72, almost all southern, and that is what reached the traveller. Both answers
+ * had been paid for; the better one was thrown away.
+ *
+ * The guard still decides which path is *preferred*. What changed is that the loser is kept
+ * until the winner has actually produced something to compare against.
+ */
+describe('choosing between the two answers', () => {
+    const opts = (...codes: string[]) => codes.map(hotelCode => ({ hotelCode }));
+
+    it('counts hotels, not options', () => {
+        // One generous property quoting six rooms is not six hotels.
+        expect(hotelsIn(opts('A', 'A', 'A', 'A', 'A', 'A'))).toBe(1);
+        expect(hotelsIn(opts('A', 'B', 'C'))).toBe(3);
+    });
+
+    it('counts nothing as nothing', () => {
+        expect(hotelsIn([])).toBe(0);
+    });
+
+    // Seoul, 2026-10-06: the destination answered 66 against a catalog of 960 and the
+    // hotel-code path priced 298. The guard was right there, and still is.
+    it('leaves the fallback ahead when the fallback really does see more', () => {
+        expect(isThinDestinationAnswer(66, 960)).toBe(true);
+        expect(hotelsIn(opts(...Array.from({ length: 298 }, (_, i) => `h${i}`)))).toBeGreaterThan(66);
+    });
+
+    // Jeju: thin by the ratio, and still the larger of the two answers.
+    it('keeps the destination answer when the fallback sees less of the city', () => {
+        expect(isThinDestinationAnswer(110, 960)).toBe(true);
+        const dest     = opts(...Array.from({ length: 110 }, (_, i) => `d${i}`));
+        const fallback = opts(...Array.from({ length: 72 },  (_, i) => `f${i}`));
+        expect(hotelsIn(dest)).toBeGreaterThan(hotelsIn(fallback));
     });
 });

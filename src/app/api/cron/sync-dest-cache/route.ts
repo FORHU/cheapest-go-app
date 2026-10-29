@@ -16,6 +16,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSqlAdmin } from '@/lib/db/postgres';
 import { tgxGraphQL, getTgxConfig } from '@/lib/server/stays/travelgatex/client';
+import { isRelatedName, selectDestination, type DestinationCandidate } from '@/lib/server/stays/destinationSelection';
 
 export const dynamic = 'force-dynamic';
 
@@ -49,9 +50,25 @@ export async function GET(req: NextRequest) {
     const cfg = getTgxConfig();
     const t0 = Date.now();
 
-    // city_key (lowercase english name) → {code, type, parent_code}
-    // Built in memory so we can apply CITY > ZONE preference before writing to DB.
-    const destMap = new Map<string, { code: string; type: string; parent_code: string | null }>();
+    // Every destination the supplier lists, kept whole rather than reduced as it arrives.
+    //
+    // This used to collapse to one row per name on the way in, keeping a CITY over a ZONE and
+    // otherwise whichever the supplier paged first. That threw away the siblings that say what
+    // a name means: "Jeju" is a city code, "Jeju Island" is the zone above it, and "Jeju City"
+    // names that zone as its parent. Reduced on arrival, only the first survives and the
+    // hierarchy is gone before anything can read it.
+    const all: DestinationCandidate[] = [];
+
+    // Grouped by first word, so resolving a name does not scan the catalog. Relatedness only
+    // extends a name rightwards ("jeju" to "jeju island"), so the first word is a sound
+    // bucket: anything related to a key shares it.
+    const byFirstWord = new Map<string, DestinationCandidate[]>();
+
+    /** The country code in a "Country Name#CC" parent, when the parent takes that form. */
+    const countryOf = (parent: string | null): string | null =>
+        /#([A-Z]{2})$/.exec(parent ?? "")?.[1] ?? null;
+
+    const firstWord = (name: string): string => name.toLowerCase().trim().split(/\s+/)[0] ?? "";
 
     let token: string | null = null;
     let page = 0;
@@ -97,86 +114,103 @@ export async function GET(req: NextRequest) {
         for (const edge of edges) {
             const dest = edge?.node?.destinationData;
             if (!dest?.code) continue;
-            const englishText = (dest.texts ?? []).find((t: any) => t.language === 'en')?.text;
+            const englishText = (dest.texts ?? []).find((t: any) => t.language === "en")?.text;
             if (!englishText) continue;
-            const key = englishText.toLowerCase().trim();
-            const existing = destMap.get(key);
-            // CITY beats ZONE; first-seen wins on same type
-            if (!existing || (existing.type !== 'CITY' && dest.type === 'CITY')) {
-                destMap.set(key, {
-                    code:        dest.code as string,
-                    type:        dest.type as string,
-                    parent_code: (dest.parent as string | null) ?? null,
-                });
-            }
 
-            // The same name under its own country, so a name two countries share keeps both.
-            //
-            // The bare key above holds one row per name worldwide, and "first-seen wins" is
-            // decided by TGX's paging order rather than by anything about the place. The
-            // United States supplies 4,699 of these names — more than any other country — so
-            // it wins most collisions: `paris` resolved to Paris, Texas, `rome` to Rome,
-            // Georgia, `bali` to Bali in Crete. The French Paris was in the very same
-            // response and was dropped on the floor; 2,282 other French cities were kept.
-            //
-            // A search that knows its country reads `paris:fr` and gets the real code from
-            // TGX's own list. The bare key stays exactly as it was, so an unscoped search is
-            // unaffected and no existing row changes meaning.
-            const cc = /#([A-Z]{2})$/.exec((dest.parent as string | null) ?? '')?.[1];
-            if (cc) {
-                const scopedKey = `${key}:${cc.toLowerCase()}`;
-                const scopedExisting = destMap.get(scopedKey);
-                if (!scopedExisting || (scopedExisting.type !== 'CITY' && dest.type === 'CITY')) {
-                    destMap.set(scopedKey, {
-                        code:        dest.code as string,
-                        type:        dest.type as string,
-                        parent_code: (dest.parent as string | null) ?? null,
-                    });
-                }
+            const candidate: DestinationCandidate = {
+                code:       String(dest.code),
+                type:       String(dest.type ?? ""),
+                name:       englishText,
+                parentCode: (dest.parent as string | null) ?? null,
+            };
+            all.push(candidate);
+
+            const w = firstWord(englishText);
+            if (w) {
+                const bucket = byFirstWord.get(w);
+                if (bucket) bucket.push(candidate); else byFirstWord.set(w, [candidate]);
             }
         }
-
         console.log(
             `[sync-dest-cache] Page ${page}: ${edges.length} edges, ` +
-            `map size: ${destMap.size}${token ? '' : ' (last page)'}`,
+            `collected: ${all.length}${token ? '' : ' (last page)'}`,
         );
     } while (token && page < MAX_PAGES);
 
-    if (destMap.size === 0) {
+    if (all.length === 0) {
         return NextResponse.json({
             ok: false,
-            error: 'No destinations returned from TGX — check access code or query schema',
+            error: "No destinations returned from TGX — check access code or query schema",
             pages: page,
         }, { status: 502 });
     }
 
-    // Batch upsert — always overwrite so stale/wrong codes get corrected
-    const entries = [...destMap.entries()];
+    /**
+     * One row per name the catalog offers, each resolved by the rule the live resolver uses
+     * (`lib/server/stays/destinationSelection.ts`).
+     *
+     * The two used to disagree on purpose — this one preferred CITY, the resolver preferred
+     * ZONE — and since both write the same row with `ON CONFLICT DO UPDATE`, a destination
+     * meant whichever had run last. That is what moved "Jeju" between the island and a
+     * fraction of it with nothing changing in the code or the catalog.
+     */
+    const resolved = new Map<string, DestinationCandidate>();
+
+    const consider = (key: string, pool: DestinationCandidate[]) => {
+        if (resolved.has(key)) return;
+        const picked = selectDestination(pool, key);
+        if (picked) resolved.set(key, picked);
+    };
+
+    for (const c of all) {
+        const key  = c.name.toLowerCase().trim();
+        const pool = (byFirstWord.get(firstWord(c.name)) ?? []).filter((x) => isRelatedName(x.name, key));
+        consider(key, pool);
+
+        // The same name under its own country, so a name two countries share keeps both. A
+        // search that knows its country reads `paris:fr` and gets the French code; the bare
+        // key is left as it was, so an unscoped search is unaffected.
+        const cc = countryOf(c.parentCode);
+        if (cc) {
+            const scoped = pool.filter((x) => countryOf(x.parentCode) === cc);
+            consider(key + ":" + cc.toLowerCase(), scoped.length > 0 ? scoped : [c]);
+        }
+    }
+
+    // Batch upsert
+    const entries = [...resolved.entries()];
     let upserted = 0;
     const BATCH = 500;
 
     for (let i = 0; i < entries.length; i += BATCH) {
-        const rows = entries.slice(i, i + BATCH).map(([city_key, { code, type, parent_code }]) => ({
+        const rows = entries.slice(i, i + BATCH).map(([city_key, c]) => ({
             city_key,
-            destination_code: code,
-            dest_type:        type,
-            parent_code:      parent_code ?? null,
+            destination_code: c.code,
+            dest_type:        c.type,
+            parent_code:      c.parentCode ?? null,
         }));
         try {
             await sql`
-                INSERT INTO tgx_destination_cache ${sql(rows, 'city_key', 'destination_code', 'dest_type', 'parent_code')}
+                INSERT INTO tgx_destination_cache ${sql(rows, "city_key", "destination_code", "dest_type", "parent_code")}
                 ON CONFLICT (city_key) DO UPDATE SET
                     destination_code = EXCLUDED.destination_code,
                     dest_type        = EXCLUDED.dest_type,
-                    parent_code      = EXCLUDED.parent_code
+                    parent_code      = EXCLUDED.parent_code,
+                    source           = 'sync',
+                    updated_at       = now()
+                -- A fresh NONE Sentinel stands for its seven days; see the resolver.
                 WHERE tgx_destination_cache.destination_code != 'NONE'
+                -- A code a person put right is final. The Paris repair to 2734 was done by
+                -- hand, and a sync that overwrites it silently undoes the fix and leaves no
+                -- trace it ever happened. Machines may correct each other; they may not
+                -- correct someone who has already looked.
+                  AND coalesce(tgx_destination_cache.source, 'sync') <> 'manual'
             `;
             upserted += rows.length;
         } catch (e: any) {
             console.warn(`[sync-dest-cache] Batch ${i}–${i + BATCH} upsert failed: ${e.message?.slice(0, 200)}`);
         }
     }
-
     const elapsed = Date.now() - t0;
     // TGX still had more to give when the page ceiling stopped us, so this run saw only
     // part of the catalog. Said out loud, because a truncated sync and a complete one are
@@ -191,13 +225,14 @@ export async function GET(req: NextRequest) {
         );
     }
 
-    console.log(`[sync-dest-cache] Done: ${upserted}/${destMap.size} upserted in ${elapsed}ms`);
+    console.log(`[sync-dest-cache] Done: ${upserted}/${resolved.size} names from ${all.length} destinations in ${elapsed}ms`);
 
     return NextResponse.json({
         ok: true,
         pages: page,
         truncated,
-        totalMapped: destMap.size,
+        totalDestinations: all.length,
+        totalMapped: resolved.size,
         upserted,
         elapsedMs: elapsed,
     });

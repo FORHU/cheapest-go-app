@@ -209,8 +209,25 @@ _Avoid_: showing no-availability hotels to users — TGX explicitly recommends a
 **NONE Sentinel** — a row in `tgx_destination_cache` whose `destination_code` is the literal `NONE`, meaning TGX's destinationSearcher has no destination code for that city. A city carrying one skips **Search by Destination** entirely and is served by **Hotel-Code Fallback**, at roughly half the inventory (measured: Seoul, 89 hotels via fallback against 185 via destination code `3124`).
 _Avoid_: treating a NONE Sentinel as a statement about supplier coverage — it records only that one destinationSearcher call failed, and it is written on any TGX `5xx`, including a transient one. _Avoid_: assuming a city recovers on its own once TGX is healthy — nothing expires or overwrites the sentinel, unlike the 7-day window on `tgx_failed_dest_codes`.
 
-**Destination Code** — the supplier's identifier for a place, and what a hotel search is actually asked in terms of. A city name does not identify one: Paris, Rome, Bali, Cambridge and Valencia each name several places in different countries, so a code is only meaningful together with the country it belongs to. Resolved once and cached, because asking the supplier costs an 18-second round trip.
+**Destination Code** — the supplier's identifier for a place, and what a hotel search is actually asked in terms of. A city name does not identify one: Paris, Rome, Bali, Cambridge and Valencia each name several places in different countries, so a code is only meaningful together with the country it belongs to — necessary, but not sufficient. A supplier list can also carry several places of one name *within* a single country, sitting at different levels of its own hierarchy, and the country tells them apart no better than the name does. Resolved once and cached, because asking the supplier costs an 18-second round trip.
 _Avoid_: keying a cached code on the city name alone. A single global row per name means the first country resolved wins forever, and every other country silently inherits it — on 2026-09-09 "Paris, France" searched Paris, Texas, "Bali, Indonesia" searched Bali in Crete, and "Rome, Italy" returned eight hotels in Rome, Georgia. _Avoid_: reading a zero from a wrong-country code as a **No-Availability Hotel** result; the supplier answered honestly about a place nobody asked for.
+
+**Multi-City Destination** — a place a traveller names that the supplier files as more than one
+destination. Jeju is one: TGX lists an island zone with Jeju City and Seogwipo City beneath it,
+and separately a flat city code also called Jeju. Which of them a search should ask is not
+answerable from the names, and not from the hierarchy either — on this access the island zone
+and both cities hold one hotel each, while the flat city code holds four hundred spread across
+the whole island.
+_Avoid_: reading the supplier's hierarchy as a statement about inventory. A parent contains its
+children geographically and need not contain anything bookable, so climbing to the broadest
+destination can narrow a search to almost nothing while looking like the generous choice.
+_Avoid_: deciding which code one resolves to by the supplier's type label. Preferring the zone
+sent "Paris, France" to Alpine-Casparis Municipal Airport, and would send "Jeju" to its airport —
+the only zone the searcher returns for it. Preferring the city decides by the order the supplier
+happened to page its catalog in, which is not a fact about the place.
+_Avoid_: letting two writers hold opposite rules for the same cached code — the answer then
+depends on which ran last, and a destination silently changes meaning between one search and the
+next.
 
 **Unanswered Search** — a hotel search that ended without the supplier ever giving a usable answer: a TGX timeout, a `513` handler overload, a destination code that never resolved, or an empty catalog to fall back on. Distinct from a **No-Availability Hotel**, where the supplier *did* answer and reported no inventory. Only the latter justifies pruning the Phase 1 catalog — an Unanswered Search has learned nothing about availability, so the catalog stays on screen and the user is told prices could not be loaded.
 _Avoid_: rendering an Unanswered Search as "no hotels found" or as the destination lacking supplier coverage — the destination was never actually asked. _Avoid_: caching an Unanswered Search's empty result, or recording its destination code as an OTV miss. _Avoid_: letting a clean zero from the **Hotel-Code Fallback** cancel a destination that was never resolved — asking by hotel code is not the same question as asking by destination, and on 2026-09-02 a Phuket search where the fallback answered zero was followed seconds later by a destination-code search that returned real availability for the same city and dates.

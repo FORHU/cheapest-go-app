@@ -32,7 +32,13 @@ export function earliestBookableDay(): string {
 
 export function defaultStay(): { checkIn: string; checkOut: string } {
     const now = new Date();
-    const daysUntilFriday = ((5 - now.getDay() + 7) % 7) || 7;   // never today
+    // `|| 7` keeps it off today. The second guard keeps it off tomorrow, which Thursday
+    // otherwise lands on: next Friday is one day away, and one day away is precisely the
+    // arrival `earliestBookableDay` says the supplier holds nothing for. On that one day in
+    // seven the stay moves to the Friday after, rather than quoting dates that come back
+    // empty and read as a city with no rooms left.
+    let daysUntilFriday = ((5 - now.getDay() + 7) % 7) || 7;
+    if (daysUntilFriday < 2) daysUntilFriday += 7;
     const checkIn = new Date(now);
     checkIn.setDate(now.getDate() + daysUntilFriday);
     const checkOut = new Date(checkIn);

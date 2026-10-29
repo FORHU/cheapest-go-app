@@ -1,0 +1,42 @@
+-- migrate:up
+-- Make looking a city up in hotel_content stop being a full table scan.
+--
+-- `hotel_content` carries indexes on fetched_at, serp_filters, (lat,lng), google_enriched_at
+-- and ratehawk_hid — and nothing at all on `city`, which is the column every destination
+-- search filters by. Measured against production on 2026-10-28:
+--
+--   /hotels/count?city=Seoul        2,175 rows   30.4s
+--   /hotels/count?city=Tokyo        4,438 rows   27.5s
+--   /hotels/count?city=Zzzznowhere      0 rows   27.8s
+--
+-- A city that matches nothing costs the same as one that matches thousands, which is the
+-- signature of a sequential scan: the work is reading the table, not finding the answer.
+--
+-- What it cost the traveller: api-v2's search streams a catalog of pins immediately and
+-- fills prices in afterwards, but that first phase is raced against an 8s timeout. The scan
+-- lost that race every time, so no pins were emitted and the results page showed a spinner
+-- for 21 seconds until the supplier answered — the fast path existed and never once ran.
+--
+-- A trigram index rather than a btree, because Prisma's `mode: 'insensitive'` compiles to
+-- `city ILIKE $1`. Postgres will not rewrite that into `lower(city) = lower($1)`, so a
+-- btree on `lower(city)` would sit unused; `gin_trgm_ops` serves ILIKE with wildcards
+-- (`contains`, used by the catalog) and without (`equals`, used by the counts) alike.
+--
+-- pg_trgm is already installed — 20260601000001 creates it for etg_hotel_index_name_trgm.
+--
+-- Built without CONCURRENTLY on purpose: scratch/apply-migrations.mjs runs every file inside
+-- `sql.begin(...)`, and CREATE INDEX CONCURRENTLY cannot run in a transaction block. The
+-- plain form takes a SHARE lock, so reads — every search — continue throughout; only writes
+-- to hotel_content wait, and those are background enrichment and the nightly content syncs.
+-- If the build turns out to be long enough that blocking them matters, cancel this migration
+-- and run it by hand outside a transaction instead:
+--
+--   CREATE INDEX CONCURRENTLY hotel_content_city_trgm
+--     ON public.hotel_content USING gin (city gin_trgm_ops);
+--
+-- then record it as applied so the ledger stays honest.
+CREATE INDEX IF NOT EXISTS hotel_content_city_trgm
+    ON public.hotel_content USING gin (city gin_trgm_ops);
+
+-- migrate:down
+DROP INDEX IF EXISTS public.hotel_content_city_trgm;

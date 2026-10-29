@@ -108,8 +108,18 @@ if (!url) {
 // Say which one, every time. A migration runner that does not name its target is one
 // nobody can tell they pointed at the wrong database until afterwards.
 const host = url.match(/@([^/:?]+)/)?.[1] ?? 'unknown';
-const isLocal = /^(localhost|127\.0\.0\.1)$/.test(host);
-console.log(`target: ${host}${isLocal ? '  (local)' : '  ** LIVE **'}\n`);
+const loopback = /^(localhost|127\.0\.0\.1)$/.test(host);
+
+// A loopback host is not proof of a local database. Production RDS has no public address,
+// so the only way to reach it from a laptop is an SSM port-forward through the app box —
+// and that arrives on 127.0.0.1 like any local Postgres. An explicit sslmode in the URL is
+// what tells them apart: nothing asks for TLS to reach the dev Postgres on :5433, and RDS
+// refuses a connection without it. Before this, such a run announced `(local)` while
+// pointed at production and then died with `no pg_hba.conf entry ... no encryption` —
+// the label being wrong was the more dangerous half.
+const tunnelled = loopback && /[?&]ssl(mode)?=/i.test(url);
+const isLocal = loopback && !tunnelled;
+console.log(`target: ${host}${isLocal ? '  (local)' : `  ** LIVE **${tunnelled ? '  (via tunnel)' : ''}`}\n`);
 
 // Asked for local and about to touch something that is not: stop rather than migrate it.
 if (local && !isLocal) {

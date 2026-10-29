@@ -1705,6 +1705,17 @@ const DEST_CODE_MIN_COVERAGE = 1 / 3;
  * city we hold nothing for gives no yardstick, so the supplier's answer is the only one
  * there is and stands.
  */
+/**
+ * How much of a city an answer saw, counted in hotels rather than in options.
+ *
+ * One hotel quoting six rooms is not six hotels, and "more of the city" is the only thing
+ * the thin check was ever trying to express. Counting options instead would let a single
+ * generous property outvote a whole district.
+ */
+export function hotelsIn(options: { hotelCode: string }[]): number {
+    return new Set(options.map(o => o.hotelCode)).size;
+}
+
 export function isThinDestinationAnswer(destHotelCount: number, catalogSize: number): boolean {
     if (destHotelCount <= 0) return false;
     if (catalogSize <= 0) return false;
@@ -1839,6 +1850,19 @@ async function runCityFallback(
     // see UnansweredSearchError. A path that answered cleanly with zero options never
     // lands here, so a genuine No-Availability result still returns normally.
     const unansweredReasons: string[] = [];
+
+    /**
+     * A destination answer judged too thin to prefer, kept rather than discarded.
+     *
+     * Thin means "the hotel-code path probably sees more of this city", and that is a
+     * guess made before the hotel-code path has run. It was treated as a verdict: the
+     * options were dropped and the fallback returned whatever it found, however little.
+     * For Jeju on 2026-10-29 the destination answered 110 hotels, 94 of them on the
+     * northern half of the island, and was discarded against a 960-row catalog — then the
+     * fallback returned 72, almost all southern, and that is what the traveller saw. The
+     * better answer had already been paid for.
+     */
+    let thinDestMerchant: TgxOption[] = [];
 
     // Ensure the DB-persisted failed codes are loaded before we check the set.
     await loadFailedDestCodes();
@@ -1978,7 +2002,9 @@ async function runCityFallback(
             // would leave the catalog on screen under "prices could not be loaded". It
             // simply falls through.
             if (tooThin) {
-                // nothing to record
+                // Nothing to record — but the options are real and already paid for, so
+                // they are held in case the fallback does worse. See thinDestMerchant.
+                thinDestMerchant = destMerchant;
             } else {
             // No usable MERCHANT options — whether TGX sent an explicit "Empty hotels"
             // error or just a clean empty array (observed for some destination codes,
@@ -2203,6 +2229,19 @@ async function runCityFallback(
                         (o: any) => o.paymentType === 'MERCHANT' && (o.status === 'AVAILABLE' || o.status === 'OK')
                     ),
                 );
+                // Both paths have now answered, so the guess the thin check made can be
+                // replaced by a comparison. Counted in hotels rather than options, because
+                // one hotel quoting six rooms is not six hotels, and "more of the city" is
+                // the only thing the thin check was ever trying to express.
+                const thinHotels = hotelsIn(thinDestMerchant);
+                if (thinHotels > hotelsIn(merchant)) {
+                    console.log(
+                        `[tgx-search] Hotel-code fallback saw ${hotelsIn(merchant)} hotels for "${cityName}"; `
+                        + `the destination answer it was meant to improve on saw ${thinHotels} — keeping that instead`,
+                    );
+                    return buildCityResults(thinDestMerchant, cityName, countryCode);
+                }
+
                 if (merchant.length > 0) {
                     console.log(`[tgx-search] Hotel-code fallback: ${merchant.length} options for "${cityName}"`);
                     return buildCityResults(merchant, cityName, countryCode);
@@ -2234,6 +2273,14 @@ async function runCityFallback(
             console.warn(`[tgx-search] Hotel-code fallback failed for "${cityName}": ${supplierMessage(e)}`);
             unansweredReasons.push(`hotel-code fallback errored (${supplierMessage(e)})`);
         }
+    }
+
+    // A thin answer beats no answer. Reaching here with one means every later path failed
+    // or found nothing, and showing the traveller an empty city while holding bookable
+    // options is the worst of the available outcomes.
+    if (thinDestMerchant.length > 0) {
+        console.log(`[tgx-search] No other path answered for "${cityName}" — using the thin destination answer`);
+        return buildCityResults(thinDestMerchant, cityName, countryCode);
     }
 
     // Nothing bookable. Distinguish "the supplier answered and had nothing" from
