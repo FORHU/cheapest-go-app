@@ -13,7 +13,7 @@ Spec: `docs/superpowers/specs/2026-10-28-pay-first-flight-booking-design.md`
 **Conventions used throughout**
 - Run one test file: `npx vitest run <path>`. Run everything: `npx vitest run`.
 - New server logic is written as plain functions that take their collaborators (`deps`), like `cancelDuffelOrder(…, fetchImpl)` already does. Wiring to the real database and Stripe lives in separate `*-deps.ts` files so tests never import `@/lib/stripe/server`.
-- Commit after every task. Every commit message ends with `Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>` (the examples below omit it for brevity; add it).
+- Commit after every task. Every commit message ends with `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>` (commits made before the model switch carry `Claude Sonnet 5.5`) (the examples below omit it for brevity; add it).
 - Local DB: `docker exec -i cheapest-go-app-postgres-1 psql -U cheapestgo -d cheapestgo -X -P pager=off`. Start Docker Desktop first if `docker ps` fails.
 
 **Findings that shaped this plan (verified while planning)**
@@ -2051,6 +2051,17 @@ export function defaultSettleDeps(): SettleDeps {
 }
 ```
 
+- [ ] **Step 5b: Never refresh into a different currency**
+
+*Added during execution after review:* settle's currency check runs after an order exists, so it can only cancel. Stop it earlier: in `src/lib/server/flights/place-duffel-order.ts`, right after `const sortedPool = sameItineraryOffers(rawOffer, offers);`, keep only offers priced in the original offer's currency:
+```ts
+        // A refreshed offer in another currency cannot be compared with the quote (or captured
+        // against the hold) — treat it as unavailable rather than buying it.
+        const currency = String(rawOffer.total_currency ?? '').toUpperCase();
+        const samePricedPool = sortedPool.filter(o => String(o.total_currency ?? '').toUpperCase() === currency);
+```
+and use `samePricedPool` (not `sortedPool`) for the empty check and the loop. Test first in `place-duffel-order.test.ts`: an expired offer whose only identical-itinerary refresh is priced in EUR (original USD) returns `kind: 'error'` with exactly one order POST.
+
 - [ ] **Step 6: Type-check, then commit**
 
 Run: `npx tsc --noEmit -p . 2>&1 | grep -E "settle-" | head` — expected: no output.
@@ -2471,6 +2482,51 @@ async function notifyBookingNotCompleted(
 }
 ```
 
+- [ ] **Step 5b: Backstop — at most one paying or paid pay-first attempt per traveller per offer**
+
+*Added during execution after review of Task 6:* the checks in `/book` (`listOtherAttempts`) cannot make "list, then create" atomic, so two near-simultaneous edited submits could each produce a payable hold. The database enforces the invariant instead, at the moment an attempt starts paying.
+
+Create `db/migrations/20261028000002_pay_first_one_paid_attempt.sql`:
+```sql
+-- At most one paying or paid pay-first attempt per traveller per Duffel offer. quote_hash is set
+-- only by the pay-first flow, so legacy sessions are unaffected. The webhook's authorise step
+-- and createBooking's lock are the transitions this guards.
+CREATE UNIQUE INDEX IF NOT EXISTS booking_sessions_one_paid_attempt_per_offer
+    ON public.booking_sessions (user_id, ((flight->'_rawOffer'->>'id')))
+    WHERE quote_hash IS NOT NULL
+      AND status IN ('payment_authorized', 'processing');
+```
+Apply it to the local container only, exactly as in Task 5, and prove it inside `BEGIN … ROLLBACK`: two sessions with `quote_hash` set for one user and one `_rawOffer.id`; moving the first to `processing` succeeds, moving the second to `payment_authorized` fails with `23505`.
+
+In `createBooking`, the Step 1 lock is `const locked = await sql\`UPDATE booking_sessions SET status = 'processing' … RETURNING …\``. Change `const` to `let locked: any[];` and wrap that same statement (text unchanged) in a try/catch:
+```ts
+    let locked: any[];
+    try {
+        locked = await sql`/* the existing UPDATE … RETURNING statement, moved here verbatim */`;
+    } catch (err: any) {
+        if (err?.code !== '23505') throw err;
+        // Another pay-first attempt for this traveller and offer is already paying or booked. This
+        // one was only authorised — capture happens after the order — so releasing it is safe.
+        const [row] = await sql`SELECT payment_intent_id, contact, passengers, flight FROM booking_sessions WHERE id = ${sessionId}`;
+        const piId: string = piIdFromCaller ?? row?.payment_intent_id ?? '';
+        await markFailed(sql, db, sessionId, piId, 'Another booking for this flight is already in progress', 'duplicate_attempt');
+        await notifyBookingNotCompleted(sql, { sessionId, session: row ?? {}, flight: row?.flight ?? {}, reason: 'duplicate_attempt' });
+        return NextResponse.json({
+            success: false,
+            errorCode: NOT_COMPLETED_ERROR_CODE,
+            reason: 'duplicate_attempt',
+            error: 'Another booking for this flight is already in progress. Your card was not charged.',
+        }, { status: 409 });
+    }
+```
+(Move the real statement into the `try`; do not retype it from memory.)
+
+In `src/lib/server/flights/booking-not-completed-copy.ts` add two reasons, test-first in its test file:
+- `'duplicate_attempt'` → `'You already have a booking for this flight in progress, so we did not take a second payment.'`
+- `'superseded'` → `'You changed your booking details, so we cancelled this earlier payment.'`
+
+Commit the migration and these edits with the rest of Task 8.
+
 - [ ] **Step 6: Type-check and run the flight tests**
 
 Run: `npx tsc --noEmit -p . 2>&1 | grep -E "create-booking|email.ts" | head` — expected: no output. Then `npx vitest run src/lib/server/flights` — expected: PASS.
@@ -2717,6 +2773,59 @@ async function finishPayFirstBooking(supabase: any, bookingData: any, pi: Stripe
 }
 ```
 
+- [ ] **Step 3b: Release a late authorisation on a retired attempt**
+
+*Added during execution after review of Task 6:* `/book` expires an older unpaid attempt when the traveller submits changed details. If that older tab's card is authorised a moment later, `createBooking` cannot lock the expired session and answers `alreadyBooked`. Without this step the hold would sit on the card for days with no booking and no message.
+
+1. In `handlePayFirstAuthorized` (webhook), replace the `alreadyBooked` branch with:
+```ts
+        if (bookingData.alreadyBooked) {
+            const { data: current } = await supabase
+                .from('booking_sessions')
+                .select('status')
+                .eq('id', bookingSessionId)
+                .maybeSingle();
+            if (current?.status === 'expired') {
+                // Retired before its card was authorised (the traveller moved on to newer details).
+                // Nothing was bought for it, so the hold is released, not captured.
+                try {
+                    await getStripe().paymentIntents.cancel(pi.id);
+                } catch (cancelErr: any) {
+                    console.error(`[Webhook] Could not release late hold ${pi.id} on retired session ${bookingSessionId}:`, cancelErr?.message);
+                }
+                createNotification(
+                    'Late authorisation released',
+                    `Session ${bookingSessionId} was retired before its card was authorised; hold ${pi.id} was released. No order was placed.`,
+                    'booking',
+                );
+                return;
+            }
+            // /confirm (or an earlier delivery) holds the session lock and owns this booking.
+            console.log(`[Webhook] Pay-first session ${bookingSessionId} is being completed by another path — nothing to do`);
+            return;
+        }
+```
+2. In `/api/flights/confirm`, right after the strict per-provider status check (Step 3 in that file) and before the create-booking fallback, add (import `NOT_COMPLETED_ERROR_CODE` and `NOT_COMPLETED_MESSAGE` from `@/lib/server/flights/booking-failure`):
+```ts
+        // A pay-first attempt the traveller replaced with newer details. Its hold is released by the
+        // webhook; tell this tab the truth instead of "still processing".
+        if (paymentIntent.metadata?.payFirst === 'true') {
+            const { data: current } = await supabase
+                .from('booking_sessions')
+                .select('status')
+                .eq('id', sessionId)
+                .maybeSingle();
+            if (current?.status === 'expired') {
+                return NextResponse.json({
+                    success: false,
+                    errorCode: NOT_COMPLETED_ERROR_CODE,
+                    reason: 'superseded',
+                    error: NOT_COMPLETED_MESSAGE,
+                }, { status: 409 });
+            }
+        }
+```
+
 - [ ] **Step 4: Type-check, then run everything**
 
 Run: `npx tsc --noEmit -p . 2>&1 | grep -E "webhooks/stripe|flights/confirm|booking-status" | head` — expected: no output. Then `npx vitest run` — expected: PASS (no regressions).
@@ -2833,6 +2942,18 @@ New:
 ```
 4. Old: `{!isRefunded && !isExpired && (` New: `{!isRefunded && !isExpired && !isNotCompleted && (`
 5. Waiting copy. Old: `<p className="text-xs text-slate-400 dark:text-slate-500">{t('dontClosePage')}</p>` New: `<p className="text-xs text-slate-400 dark:text-slate-500">{t('emailConfirmation', { email: contact.email })}</p>`
+
+- [ ] **Step 4b: Copy for the codes added during execution**
+
+*Added during execution:* the server can now answer `code: 'FARE_UNCONFIRMED'` (the live fare could not be confirmed; retryable), and a pay-first failure can carry `reason: 'duplicate_attempt'` or `'superseded'`. Add `'FARE_UNCONFIRMED'`, `'duplicate_attempt'` and `'superseded'` to `TRANSLATED_ERROR_CODES`, and extend the Step 5 script: add these three keys to each language object and assign them to `fb.error.codes.FARE_UNCONFIRMED`, `fb.error.codes.duplicate_attempt` and `fb.error.codes.superseded`.
+
+| key | en | zh | ko | ja |
+|---|---|---|---|---|
+| FARE_UNCONFIRMED | We couldn't confirm the current fare with the airline. Please try again. | 我们无法向航空公司确认当前票价，请重试。 | 항공사에서 현재 요금을 확인하지 못했습니다. 다시 시도해 주세요. | 航空会社で現在の運賃を確認できませんでした。もう一度お試しください。 |
+| duplicate_attempt | You already have a booking for this flight in progress, so we did not take a second payment. | 您已有此航班的预订正在处理中，因此我们没有收取第二笔款项。 | 이 항공편의 예약이 이미 진행 중이어서 두 번째 결제는 진행하지 않았습니다. | この便の予約はすでに処理中のため、2回目のお支払いはお受けしていません。 |
+| superseded | You changed your booking details, so we cancelled this earlier payment. | 您更改了预订信息，因此我们取消了这笔较早的付款。 | 예약 정보를 변경하셔서 이전 결제를 취소했습니다. | 予約内容が変更されたため、以前のお支払いを取り消しました。 |
+
+`FARE_UNCONFIRMED` is retryable, so keep "Try Again" visible for it (it is not `booking_not_completed`, so the existing rule already does).
 
 - [ ] **Step 5: Update the four locale files with a one-off script**
 
