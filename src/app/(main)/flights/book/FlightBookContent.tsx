@@ -40,6 +40,7 @@ const TRANSLATED_ERROR_CODES = new Set([
     'balance_insufficient',
     'booking_failed',
     'booking_failed_refunded',
+    'booking_not_completed',
     'booking_pending',
     'booking_timeout',
     // Normally handled by the duplicate panel on the form step; this covers a
@@ -50,10 +51,16 @@ const TRANSLATED_ERROR_CODES = new Set([
     'offer_replaced_seats_cleared',
     'pending',
     'phone_number_invalid',
+    'price_changed',
     'seats_unavailable',
     'server_error',
     'supplier_outage',
     'unauthenticated',
+    // Pay-first: the live fare could not be confirmed (retryable), and the reasons a booking
+    // whose card was only held could not be completed.
+    'FARE_UNCONFIRMED',
+    'duplicate_attempt',
+    'superseded',
 ]);
 
 type FlightBookTranslator = ReturnType<typeof useTranslations<'flightBook'>>;
@@ -79,10 +86,10 @@ function AncillaryExpiredNotice() {
 }
 
 const FLIGHT_BOOKING_STEPS = [
-    'Verifying payment...',
-    'Securing your seat...',
-    'Confirming with the airline...',
-    'Finalizing booking details...',
+    'Payment authorized',
+    'Placing your booking',
+    'Issuing your ticket',
+    'Sending your confirmation',
 ] as const;
 
 function BookingContent() {
@@ -118,6 +125,7 @@ function BookingContent() {
         setSelectedBags,
         router,
         clientSecret,
+        failureReason,
         setStep,
         pollForBooking,
         setErrorMsg,
@@ -247,7 +255,7 @@ function BookingContent() {
                             </div>
                         ))}
                     </div>
-                    <p className="text-xs text-slate-400 dark:text-slate-500">{t('dontClosePage')}</p>
+                    <p className="text-xs text-slate-400 dark:text-slate-500">{t('emailConfirmation', { email: contact.email })}</p>
                 </div>
             </main>
         );
@@ -267,8 +275,14 @@ function BookingContent() {
         // Only render a code we have copy for — anything else (including a raw
         // exception message that reached this far) falls back to the generic line
         // rather than leaking an internal string into the failure screen.
+        // A pay-first failure: the card was only held and the hold has been released. Say why,
+        // when we have copy for the reason, and don't offer "Try Again" on a dead offer.
+        const isNotCompleted = errorCode === 'booking_not_completed';
+        const reasonMsg = isNotCompleted && failureReason && TRANSLATED_ERROR_CODES.has(failureReason)
+            ? messageForCode(t, failureReason)
+            : null;
         const displayMsg = errorCode
-            ? messageForCode(t, errorCode)
+            ? (reasonMsg ? `${messageForCode(t, errorCode)} ${reasonMsg}` : messageForCode(t, errorCode))
             : (errorMsg || t('error.defaultMessage'));
         return (
             <main className="min-h-screen flex items-center justify-center bg-linier-to-br from-red-50/60 via-white/40 to-orange-50/60 dark:from-slate-950/60 dark:via-slate-900/40 dark:to-red-950/60 px-4">
@@ -297,7 +311,7 @@ function BookingContent() {
                         }
                     </p>
                     {/* Only show Try Again if the error happened before payment was taken */}
-                    {!isRefunded && !isExpired && (
+                    {!isRefunded && !isExpired && !isNotCompleted && (
                         <button
                             onClick={() => setStep('form')}
                             className="w-full mb-2 py-2.5 rounded-md bg-indigo-600 hover:bg-indigo-500 text-white font-normal text-[11px] transition-colors"

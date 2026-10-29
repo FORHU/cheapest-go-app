@@ -615,12 +615,12 @@
       "weight": "up to {weight} kg"
     },
     "bookingSteps": [
-      "Verifying payment...",
-      "Securing your seat...",
-      "Confirming with the airline...",
-      "Finalizing booking details..."
+      "Payment authorized",
+      "Placing your booking",
+      "Issuing your ticket",
+      "Sending your confirmation"
     ],
-    "confirmingBooking": "Confirming your booking",
+    "confirmingBooking": "Thanks, we're confirming your booking",
     "contact": {
       "email": "Email Address *",
       "phone": "Phone Number *",
@@ -693,7 +693,6 @@
       "somethingWrong": "Something went wrong. Please try again.",
       "tryAgain": "Try Again"
     },
-    "dontClosePage": "Please don't close this page",
     "duplicate": {
       "description": "An active booking was found departing {route} on {date}. Cancel existing booking first, or go back.",
       "bookAnyway": "Book anyway",
@@ -719,7 +718,12 @@
         "seats_unavailable": "The seats or bags you selected are no longer available. Please review your extras and try again.",
         "supplier_outage": "The airline booking system is not responding right now. Please try again in a few minutes.",
         "server_error": "Something went wrong on our side. Your card has not been charged — please try again.",
-        "unauthenticated": "Please sign in to complete your booking."
+        "unauthenticated": "Please sign in to complete your booking.",
+        "booking_not_completed": "We couldn't complete your booking with the airline.",
+        "price_changed": "The fare changed while we were confirming your booking.",
+        "FARE_UNCONFIRMED": "We couldn't confirm the current fare with the airline. Please try again.",
+        "duplicate_attempt": "You already have a booking for this flight in progress, so we did not take a second payment.",
+        "superseded": "You changed your booking details, so we cancelled this earlier payment."
       },
       "defaultMessage": "Your booking could not be completed.",
       "flightUnavailable": "Flight Unavailable",
@@ -888,7 +892,8 @@
     "itinerary": {
       "outbound": "Outbound",
       "return": "Return"
-    }
+    },
+    "emailConfirmation": "We'll email your confirmation to {email}. You don't need to wait on this page."
   },
   "flights": {
     "book": {

@@ -649,12 +649,12 @@
       "weight": "最多 {weight} 公斤"
     },
     "bookingSteps": [
-      "正在确认付款...",
-      "正在保留座位...",
-      "正在与航司确认...",
-      "正在最终确定预订详情..."
+      "付款已授权",
+      "正在提交预订",
+      "正在出票",
+      "正在发送确认邮件"
     ],
-    "confirmingBooking": "正在确认您的预订",
+    "confirmingBooking": "感谢您，我们正在确认您的预订",
     "contact": {
       "email": "电子邮件 *",
       "phone": "电话号码 *",
@@ -727,7 +727,6 @@
       "somethingWrong": "出错了，请重试。",
       "tryAgain": "重试"
     },
-    "dontClosePage": "请不要关闭此页面",
     "duplicate": {
       "bookAnyway": "仍然预订",
       "description": "发现 {date} 从 {route} 出发的有效预订。请先取消现有预订，或返回。",
@@ -753,7 +752,12 @@
         "seats_unavailable": "您选择的座位或行李已不可用。请重新确认附加服务后再试。",
         "server_error": "我们这边出现了问题。您的银行卡未被扣款，请重试。",
         "supplier_outage": "航空公司预订系统暂无响应，请几分钟后重试。",
-        "unauthenticated": "请登录以完成预订。"
+        "unauthenticated": "请登录以完成预订。",
+        "booking_not_completed": "我们无法通过航空公司完成您的预订。",
+        "price_changed": "我们确认预订时票价发生了变化。",
+        "FARE_UNCONFIRMED": "我们无法向航空公司确认当前票价，请重试。",
+        "duplicate_attempt": "您已有此航班的预订正在处理中，因此我们没有收取第二笔款项。",
+        "superseded": "您更改了预订信息，因此我们取消了这笔较早的付款。"
       },
       "defaultMessage": "无法完成您的预订。",
       "flightUnavailable": "航班不可用",
@@ -922,7 +926,8 @@
       "nameIcao": "请使用英文字母（例如：Jose，而非 José）",
       "phoneDigitsOnly": "电话号码只能包含数字",
       "phoneRequired": "请输入电话号码"
-    }
+    },
+    "emailConfirmation": "我们会将确认邮件发送至 {email}。您无需停留在此页面。"
   },
   "flights": {
     "book": {
