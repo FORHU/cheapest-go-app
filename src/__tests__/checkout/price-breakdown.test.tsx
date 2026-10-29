@@ -137,7 +137,7 @@ describe('usePricingCalculation', () => {
         // This test used to pin 417.30 — the supplier total plus 5% — while create-payment
         // charged 5.9%, so it was pinning a checkout that showed less than it billed.
         // Without the server's display block the page estimates with the same function the
-        // charge uses: 397.43 + 4.7% + $0.40 = 416.51.
+        // charge uses: 397.43 + a flat $2.50 = 399.93.
         const { result } = renderHook(() =>
             usePricingCalculation({
                 priceData: { price: 397.43, tax: 0, total: 397.43, currency: 'USD' },
@@ -145,8 +145,8 @@ describe('usePricingCalculation', () => {
         );
 
         expect(result.current.totalPrice).toBe(397.43);
-        expect(result.current.serviceFee).toBe(19.08);
-        expect(result.current.chargedTotal).toBe(416.51);
+        expect(result.current.serviceFee).toBe(2.50);
+        expect(result.current.chargedTotal).toBe(399.93);
     });
 
     it('renders the server figures when prebook sent them', () => {

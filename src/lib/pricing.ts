@@ -146,38 +146,38 @@ export const FLIGHT_MARKUP_SPEC: MarkupSpec = {
 };
 
 /**
- * 4.7% + $0.40, capped at 12%.
+ * $2.50 per booking. No proportional component, capped at 12%.
  *
- * Hotels have no per-booking supplier fee to recover — the OTV monthly invoice
- * is the room cost itself, not a fee on top of it. What is left to recover is
- * Stripe: {@link STRIPE_RATE} plus {@link STRIPE_FLAT_FEE}, grossed up for
- * Stripe's cut of the markup itself and for cancellations, which return the
- * markup in full and so recover nothing. The flat component is Stripe's $0.30
- * with headroom, not a supplier fee.
+ * A deliberate decision to stop pricing hotels off Platform Cost and price them
+ * off what a guest will tolerate seeing. One number, the same on every booking,
+ * easy to state and easy to compare — and materially below the 5.9% that made a
+ * ₩62,407 room bill ₩66,626.
  *
- * **Was 5.9%.** The extra 1.2 points were an earmarked provision against
- * TravelgateX's connection fee — a fee that is still not billed. Charging a
- * customer today for a cost that has not arrived is margin wearing a
- * provision's name, so it is not collected until the invoice exists. Restore it
- * by raising HOTEL_MARKUP_PERCENTAGE when TGX starts billing; nothing else
- * needs to change.
+ * **This does not recover Stripe, and is not meant to.** Stripe's cut is
+ * proportional ({@link STRIPE_RATE}) while this is not, so the two diverge the
+ * moment a booking is worth more than about $58: at a 4.4% tier a one-night stay
+ * clears, a three-night stay loses roughly ₩4,800, a week loses ₩15,800. The
+ * loss has no ceiling — it grows with the booking for as long as the booking
+ * grows. On a KRW charge (~5.4%) it is worse, and every hotel cancellation
+ * refunds the fee in full while Stripe keeps its cut, so a cancelled booking is
+ * a pure loss.
  *
- * ## What this rate assumes, and neither figure is measured
+ * That trade was made with the numbers in hand. It is a customer-acquisition
+ * subsidy on long stays, not an oversight, and it is the reason the cap still
+ * applies: a flat fee on a cheap room is a large percentage, and 12% is the
+ * ceiling that stops a ₩20,000 room carrying a fifth of its price in fee.
  *
- * At {@link STRIPE_RATE} (4.4%, measured on Philippine cards) this is roughly
- * break-even at a **5%** hotel cancellation rate. ADR-0036's 20% came from
- * flights — Duffel billed all seven August orders including the six cancelled —
- * and hotel cancellation behaviour was never measured against it. At 20% this
- * rate under-recovers by about a third.
+ * ## If this is revisited
  *
- * It also assumes the Philippine Stripe tier. A KRW charge is international
- * *and* converted, so it attracts roughly 5.4%, at which this rate under-recovers
- * at any cancellation rate. **Measure both before trusting this number**: the
- * cancellation rate from `bookings`, the KR tier from `scratch/stripe-fees.mjs`.
+ * `HOTEL_MARKUP_PERCENTAGE` is still read; setting it restores a proportional
+ * component without any code change. The figures that would justify doing so —
+ * the real hotel cancellation rate from `bookings`, and the KR Stripe tier from
+ * `scratch/stripe-fees.mjs` — are both still unmeasured. ADR-0036 derives the
+ * proportional form and remains the reference for what cost recovery requires.
  */
 export const HOTEL_MARKUP_SPEC: MarkupSpec = {
-    rate: parseMarkupEnv('HOTEL_MARKUP_PERCENTAGE', 0.047),
-    flat: parseFlatEnv('HOTEL_MARKUP_FLAT_USD', 0.40),
+    rate: parseMarkupEnv('HOTEL_MARKUP_PERCENTAGE', 0),
+    flat: parseFlatEnv('HOTEL_MARKUP_FLAT_USD', 2.50),
     cap: parseMarkupEnv('MARKUP_CAP', 0.12),
 };
 
@@ -407,11 +407,15 @@ export function applyMarkup(
  * 6%, so a $300 room displayed $315.00 and billed $317.70. Deriving both from here, with the
  * same spec and the same conversion, is what makes them agree by construction.
  *
- * The flat component is quoted in USD (it covers Stripe's $0.30 per charge) and is converted
- * into `currency` here. If that conversion is not possible the flat part is dropped rather
- * than the booking refused: failing a sale over forty cents is the wrong trade, and a fee
- * shown without it is never *higher* than the one charged with it — see `create-payment`,
+ * The flat component is quoted in USD and is converted into `currency` here. If that
+ * conversion is not possible the flat part is dropped rather than the booking refused, and a
+ * fee shown without it is never *higher* than the one charged with it — see `create-payment`,
  * which never bills above what was displayed.
+ *
+ * Since {@link HOTEL_MARKUP_SPEC} became flat-only, dropping that part drops the **whole**
+ * hotel fee, not the forty cents this originally traded away. The trade still stands — an FX
+ * outage is brief and refusing the sale costs more than the fee is worth — but it is now a
+ * free booking rather than a slightly cheap one, so a run of them is worth noticing.
  *
  * @param convert  A strict converter; throwing is how it says it cannot convert.
  */

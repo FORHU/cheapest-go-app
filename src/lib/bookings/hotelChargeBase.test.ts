@@ -155,20 +155,39 @@ describe('resolveHotelChargeBase', () => {
 });
 
 describe('the hotel fee a customer is shown is the fee they are charged', () => {
-    it('charges a hotel the rate plus the flat component ADR-0036 set', async () => {
-        // $0.40 + 4.7%. Both were decided; create-payment used to pass the flat part as zero,
-        // and the checkout showed a hardcoded 5% on top of that.
+    it('charges a hotel one flat fee, with no proportional part', async () => {
+        // $2.50, the same on every booking. create-payment used to pass the flat part as
+        // zero while the checkout showed a hardcoded 5% on top of it; both read this.
         const { hotelServiceFee } = await import('@/lib/pricing');
         const fee = hotelServiceFee(300, 'USD', (a: number) => a);
-        expect(fee.serviceFee).toBe(14.50);
-        expect(fee.chargedTotal).toBe(314.50);
+        expect(fee.serviceFee).toBe(2.50);
+        expect(fee.chargedTotal).toBe(302.50);
+    });
+
+    it('charges the same flat fee however expensive the stay is', async () => {
+        // The point of the flat form, and its cost: a stay worth ten times as much pays the
+        // same fee while Stripe takes ten times as much. Pinned so a proportional component
+        // cannot reappear unnoticed.
+        const { hotelServiceFee } = await import('@/lib/pricing');
+        expect(hotelServiceFee(300, 'USD', (a: number) => a).serviceFee).toBe(2.50);
+        expect(hotelServiceFee(3_000, 'USD', (a: number) => a).serviceFee).toBe(2.50);
+    });
+
+    it('caps the flat fee on a cheap room rather than charging a fifth of it', async () => {
+        // $2.50 on a $15 room is 17%. The ceiling is what keeps a flat fee defensible at
+        // the bottom of the range.
+        const { hotelServiceFee } = await import('@/lib/pricing');
+        const fee = hotelServiceFee(15, 'USD', (a: number) => a);
+        expect(fee.capped).toBe(true);
+        expect(fee.serviceFee).toBe(1.80);
     });
 
     it('drops the flat part rather than refusing the sale when rates are missing', async () => {
+        // Now the whole fee, since there is no proportional part left to fall back on.
         const { hotelServiceFee } = await import('@/lib/pricing');
         const fee = hotelServiceFee(17_400, 'PHP', () => { throw new Error('no rates'); });
         expect(fee.markupFlat).toBe(0);
-        expect(fee.serviceFee).toBe(817.80);
+        expect(fee.serviceFee).toBe(0);
     });
 });
 
