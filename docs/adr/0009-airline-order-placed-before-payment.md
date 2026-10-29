@@ -1,5 +1,7 @@
 # The airline order is placed before the customer pays
 
+> **Superseded for the web flow by [ADR-0045](0045-flight-orders-are-placed-after-the-card-is-authorised.md)** when `FLIGHT_PAY_FIRST=on`. Still accurate for the mobile route and while the flag is off.
+
 `/api/flights/book` calls Duffel's `POST /air/orders` and only then creates the Stripe PaymentIntent, deriving the charge amount from the order Duffel actually returned. The customer enters their card against a seat that already exists. We chose this because Duffel offers are quotes with a 20–30 minute expiry and no price guarantee: ordering after capture means charging a number the airline may no longer honour, then either eating the difference or asking a customer who has already paid to accept a new price. Ordering first makes the amount charged the amount owed, by construction.
 
 The cost is that the failure mode inverts. The usual risk in a booking system is money taken without a ticket; here it is a ticket held — sometimes issued — without money taken.
