@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { isThinDestinationAnswer, hotelsIn } from '@/lib/server/stays/travelgatex/search';
+import { isThinDestinationAnswer, hotelsIn, FALLBACK_CODE_LIMIT } from '@/lib/server/stays/travelgatex/search';
 
 /**
  * When the supplier's own answer about a city is not worth taking.
@@ -97,5 +97,43 @@ describe('choosing between the two answers', () => {
         const dest     = opts(...Array.from({ length: 110 }, (_, i) => `d${i}`));
         const fallback = opts(...Array.from({ length: 72 },  (_, i) => `f${i}`));
         expect(hotelsIn(dest)).toBeGreaterThan(hotelsIn(fallback));
+    });
+});
+
+/**
+ * The check has to measure against the alternative it is choosing between, not against the
+ * catalog, because the Hotel-Code Fallback is capped at FALLBACK_CODE_LIMIT codes however
+ * large the catalog grows. Measured against the raw catalog it gets stricter the better
+ * stocked a city is, and prefers a path that cannot possibly do better.
+ *
+ * Seoul, 2026-10-29, from the production log:
+ *   Dest code "3124" answered thin: 297 hotels against 2125 in the catalog — using the
+ *   hotel-code path instead
+ *   Hotel-code fallback: querying TGX with 300 IDs in 2 batch(es)
+ *   Hotel-code fallback: 44 options
+ */
+describe('what the thin check measures against', () => {
+    const yardstick = (catalogSize: number) => Math.min(catalogSize, FALLBACK_CODE_LIMIT);
+
+    it('does not call Seoul thin for answering 297 when the alternative can ask about 300', () => {
+        expect(isThinDestinationAnswer(297, 2125)).toBe(true);            // the old yardstick
+        expect(isThinDestinationAnswer(297, yardstick(2125))).toBe(false); // the new one
+    });
+
+    it('still calls the original Seoul incident thin — 66 against the same 300', () => {
+        expect(isThinDestinationAnswer(66, yardstick(960))).toBe(true);
+    });
+
+    it('keeps Jeju out of the fallback', () => {
+        expect(isThinDestinationAnswer(150, 960)).toBe(true);             // the old yardstick
+        expect(isThinDestinationAnswer(150, yardstick(960))).toBe(false); // the new one
+    });
+
+    // A small town whose whole catalog is under the cap is judged against its own size, so a
+    // complete answer is still a complete answer.
+    it('judges a small town against itself', () => {
+        expect(yardstick(11)).toBe(11);
+        expect(isThinDestinationAnswer(11, yardstick(11))).toBe(false);
+        expect(isThinDestinationAnswer(2, yardstick(11))).toBe(true);
     });
 });

@@ -1695,6 +1695,19 @@ const FAILED_DEST_CODES_TTL_MS = 5 * 60_000;
 const DEST_CODE_MIN_COVERAGE = 1 / 3;
 
 /**
+ * How many hotels the Hotel-Code Fallback can ask TGX about, and therefore the most of a
+ * city it can ever see.
+ *
+ * The catalog query is capped at this, so the fallback is not "the path that sees more of
+ * the city" for anywhere with a catalog bigger than this — it is the path that sees three
+ * hundred of it. Exported because the thin check has to measure against the alternative it
+ * is actually choosing between, not against the catalog.
+ *
+ * Must stay in step with the LIMIT on the catalog query below, which reads this constant.
+ */
+export const FALLBACK_CODE_LIMIT = 300;
+
+/**
  * Whether a destination answer covers too little of the city to be worth taking.
  *
  * Named and exported because it is the one judgement on this path: everything else is
@@ -1966,12 +1979,20 @@ async function runCityFallback(
             const catalogSize = destMerchant.length > 0
                 ? await catalogHotelCountForCity(cityName, countryCode)
                 : 0;
-            const tooThin = isThinDestinationAnswer(destHotelCount, catalogSize);
+            // Thin means "the hotel-code path probably sees more of this city than this", so
+            // the thing to measure against is what that path could actually come back with —
+            // which is capped at FALLBACK_CODE_LIMIT, however large the catalog is. Measured
+            // against the raw catalog instead, the check gets stricter the better stocked a
+            // city is, and ends up preferring a path that cannot possibly do better: Seoul on
+            // 2026-10-29 answered 297 hotels in 7.3s, was called thin against a 2,125-row
+            // catalog, and the fallback it deferred to asked about 300 and returned 44.
+            const yardstick = Math.min(catalogSize, FALLBACK_CODE_LIMIT);
+            const tooThin = isThinDestinationAnswer(destHotelCount, yardstick);
             if (tooThin) {
                 console.warn(
                     `[tgx-search] Dest code "${resolvedCode}" answered thin for "${cityName}": `
-                    + `${destHotelCount} hotels against ${catalogSize} in the catalog `
-                    + `(under ${Math.round(DEST_CODE_MIN_COVERAGE * 100)}%) — using the hotel-code path instead`,
+                    + `${destHotelCount} hotels against the ${yardstick} the hotel-code path could ask about `
+                    + `(catalog holds ${catalogSize}; under ${Math.round(DEST_CODE_MIN_COVERAGE * 100)}%) — using it instead`,
                 );
             }
 
@@ -2179,14 +2200,14 @@ async function runCityFallback(
                           AND hotel_id ~ '^[0-9]+$'
                           AND lat != 0 AND lng != 0
                           AND delisted_at IS NULL
-                        LIMIT 300`
+                        LIMIT ${FALLBACK_CODE_LIMIT}`
                     : await sqlAdmin<{ hotel_id: string }[]>`
                         SELECT hotel_id FROM hotel_content
                         WHERE LOWER(TRIM(city)) = ANY(${cityNames})
                           AND hotel_id ~ '^[0-9]+$'
                           AND lat != 0 AND lng != 0
                           AND delisted_at IS NULL
-                        LIMIT 300`;
+                        LIMIT ${FALLBACK_CODE_LIMIT}`;
             }
 
             const catalogIds = catalogRows.map(r => r.hotel_id);
