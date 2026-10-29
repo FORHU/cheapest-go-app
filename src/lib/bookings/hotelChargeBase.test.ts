@@ -156,19 +156,19 @@ describe('resolveHotelChargeBase', () => {
 
 describe('the hotel fee a customer is shown is the fee they are charged', () => {
     it('charges a hotel the rate plus the flat component ADR-0036 set', async () => {
-        // $0.40 + 5.9%. Both were decided; create-payment used to pass the flat part as zero,
+        // $0.40 + 4.7%. Both were decided; create-payment used to pass the flat part as zero,
         // and the checkout showed a hardcoded 5% on top of that.
         const { hotelServiceFee } = await import('@/lib/pricing');
         const fee = hotelServiceFee(300, 'USD', (a: number) => a);
-        expect(fee.serviceFee).toBe(18.10);
-        expect(fee.chargedTotal).toBe(318.10);
+        expect(fee.serviceFee).toBe(14.50);
+        expect(fee.chargedTotal).toBe(314.50);
     });
 
     it('drops the flat part rather than refusing the sale when rates are missing', async () => {
         const { hotelServiceFee } = await import('@/lib/pricing');
         const fee = hotelServiceFee(17_400, 'PHP', () => { throw new Error('no rates'); });
         expect(fee.markupFlat).toBe(0);
-        expect(fee.serviceFee).toBe(1026.60);
+        expect(fee.serviceFee).toBe(817.80);
     });
 });
 

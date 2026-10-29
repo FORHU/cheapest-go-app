@@ -128,11 +128,16 @@ export interface MarkupSpec {
 }
 
 /**
- * 5.1% + $4.30, capped at 10%.
+ * 7.2% + $4.40, capped at 12%.
  *
  * Recovers Duffel's 1% + $3.00 and Stripe's rate + flat fee, grossed up for
  * Stripe's cut of the markup itself and for an assumed 20% cancellation rate.
  * The cap binds below roughly $88 of base fare.
+ *
+ * The figures above are the ones below. This read "5.1% + $4.30, capped at 10%"
+ * against values of 7.2%, $4.40 and 12% — a docstring on the charge path that
+ * described a rate nobody had charged for some time, which is how the hotel fee
+ * came to look unexplainable when read from this file.
  */
 export const FLIGHT_MARKUP_SPEC: MarkupSpec = {
     rate: parseMarkupEnv('FLIGHT_MARKUP_PERCENTAGE', 0.072),
@@ -141,15 +146,37 @@ export const FLIGHT_MARKUP_SPEC: MarkupSpec = {
 };
 
 /**
- * 5%, no flat component.
+ * 4.7% + $0.40, capped at 12%.
  *
  * Hotels have no per-booking supplier fee to recover — the OTV monthly invoice
- * is the room cost itself, and TravelgateX's connection fee is not yet billed.
- * ~1.2 points of this is an earmarked provision against that incoming fee
- * rather than margin; see the header and ADR-0036.
+ * is the room cost itself, not a fee on top of it. What is left to recover is
+ * Stripe: {@link STRIPE_RATE} plus {@link STRIPE_FLAT_FEE}, grossed up for
+ * Stripe's cut of the markup itself and for cancellations, which return the
+ * markup in full and so recover nothing. The flat component is Stripe's $0.30
+ * with headroom, not a supplier fee.
+ *
+ * **Was 5.9%.** The extra 1.2 points were an earmarked provision against
+ * TravelgateX's connection fee — a fee that is still not billed. Charging a
+ * customer today for a cost that has not arrived is margin wearing a
+ * provision's name, so it is not collected until the invoice exists. Restore it
+ * by raising HOTEL_MARKUP_PERCENTAGE when TGX starts billing; nothing else
+ * needs to change.
+ *
+ * ## What this rate assumes, and neither figure is measured
+ *
+ * At {@link STRIPE_RATE} (4.4%, measured on Philippine cards) this is roughly
+ * break-even at a **5%** hotel cancellation rate. ADR-0036's 20% came from
+ * flights — Duffel billed all seven August orders including the six cancelled —
+ * and hotel cancellation behaviour was never measured against it. At 20% this
+ * rate under-recovers by about a third.
+ *
+ * It also assumes the Philippine Stripe tier. A KRW charge is international
+ * *and* converted, so it attracts roughly 5.4%, at which this rate under-recovers
+ * at any cancellation rate. **Measure both before trusting this number**: the
+ * cancellation rate from `bookings`, the KR tier from `scratch/stripe-fees.mjs`.
  */
 export const HOTEL_MARKUP_SPEC: MarkupSpec = {
-    rate: parseMarkupEnv('HOTEL_MARKUP_PERCENTAGE', 0.059),
+    rate: parseMarkupEnv('HOTEL_MARKUP_PERCENTAGE', 0.047),
     flat: parseFlatEnv('HOTEL_MARKUP_FLAT_USD', 0.40),
     cap: parseMarkupEnv('MARKUP_CAP', 0.12),
 };
