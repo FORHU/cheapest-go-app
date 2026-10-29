@@ -146,26 +146,26 @@ export const FLIGHT_MARKUP_SPEC: MarkupSpec = {
 };
 
 /**
- * $2.50 per booking. No proportional component, capped at 12%.
+ * $0.37 per booking — about ₩500. No proportional component, capped at 12%.
  *
  * A deliberate decision to stop pricing hotels off Platform Cost and price them
- * off what a guest will tolerate seeing. One number, the same on every booking,
- * easy to state and easy to compare — and materially below the 5.9% that made a
- * ₩62,407 room bill ₩66,626.
+ * off what a guest will tolerate seeing. The supplier's price is shown as it
+ * comes back, and this is the only thing added to it: ₩62,407 bills ₩62,903.
+ * Set from the Korean side, where Agoda sells the same rooms at our own net
+ * rate, so anything larger reads as a surcharge for booking with us.
  *
- * **This does not recover Stripe, and is not meant to.** Stripe's cut is
- * proportional ({@link STRIPE_RATE}) while this is not, so the two diverge the
- * moment a booking is worth more than about $58: at a 4.4% tier a one-night stay
- * clears, a three-night stay loses roughly ₩4,800, a week loses ₩15,800. The
- * loss has no ceiling — it grows with the booking for as long as the booking
- * grows. On a KRW charge (~5.4%) it is worse, and every hotel cancellation
- * refunds the fee in full while Stripe keeps its cut, so a cancelled booking is
- * a pure loss.
+ * **This recovers none of Stripe, and is not meant to.** Stripe takes a
+ * proportional cut ({@link STRIPE_RATE}) of a total this fee barely moves, so
+ * every hotel booking loses money from the first night: on the ₩62,407 room
+ * above, ₩496 collected against roughly ₩3,170 taken — about ₩2,670 down, before
+ * any cancellation. The loss grows with the booking and has no ceiling, and a
+ * cancellation refunds the fee in full while Stripe keeps its cut.
  *
- * That trade was made with the numbers in hand. It is a customer-acquisition
- * subsidy on long stays, not an oversight, and it is the reason the cap still
- * applies: a flat fee on a cheap room is a large percentage, and 12% is the
- * ceiling that stops a ₩20,000 room carrying a fifth of its price in fee.
+ * That trade was made with the numbers in hand: hotels are sold at a loss to
+ * stay comparable on price. It is a customer-acquisition subsidy, not an
+ * oversight — but it is one that scales with volume, so it wants a deliberate
+ * review rather than a drift. The cap is kept because a flat fee is a large
+ * percentage of a cheap room, though at this size it effectively never binds.
  *
  * ## If this is revisited
  *
@@ -177,7 +177,7 @@ export const FLIGHT_MARKUP_SPEC: MarkupSpec = {
  */
 export const HOTEL_MARKUP_SPEC: MarkupSpec = {
     rate: parseMarkupEnv('HOTEL_MARKUP_PERCENTAGE', 0),
-    flat: parseFlatEnv('HOTEL_MARKUP_FLAT_USD', 2.50),
+    flat: parseFlatEnv('HOTEL_MARKUP_FLAT_USD', 0.37),
     cap: parseMarkupEnv('MARKUP_CAP', 0.12),
 };
 

@@ -143,8 +143,13 @@ export function useBookingFlow(): UseBookingFlowReturn {
    */
   const refreshPrebook = useCallback(
     async (offerId: string, currency: string, voucherCode?: string): Promise<PrebookResponse> => {
-      const params: { offerId: string; currency: string; voucherCode?: string } = { offerId, currency };
+      // roomName is what prebook matches the guest's selection against after it re-searches
+      // the hotel. Omitted, it has no preference to honour and quotes whatever the hotel
+      // offers — so a session refresh could silently move the booking to a different room at
+      // a different price. Only `startPrebook` was sending it.
+      const params: { offerId: string; currency: string; voucherCode?: string; roomName?: string } = { offerId, currency };
       if (voucherCode) params.voucherCode = voucherCode;
+      if (selectedRoom?.title) params.roomName = selectedRoom.title;
 
       const result = await apiFetch<PrebookResponse>('/api/booking/prebook', params as unknown as Record<string, unknown>);
       if (!result.success) {
@@ -175,7 +180,7 @@ export function useBookingFlow(): UseBookingFlowReturn {
 
       return data;
     },
-    [setPrebookId, prebookMutation]
+    [setPrebookId, prebookMutation, selectedRoom?.title]
   );
 
   /**
@@ -190,6 +195,7 @@ export function useBookingFlow(): UseBookingFlowReturn {
         offerId: selectedRoom.offerId,
         currency: currentCurrency,
         voucherCode,
+        roomName: selectedRoom.title,
       });
 
       if (!result.success) {
@@ -219,7 +225,7 @@ export function useBookingFlow(): UseBookingFlowReturn {
 
       return data;
     },
-    [selectedRoom?.offerId, setPrebookId, prebookMutation]
+    [selectedRoom?.offerId, selectedRoom?.title, setPrebookId, prebookMutation]
   );
 
   /**
@@ -233,6 +239,7 @@ export function useBookingFlow(): UseBookingFlowReturn {
       const result = await apiFetch<PrebookResponse>('/api/booking/prebook', {
         offerId: selectedRoom.offerId,
         currency: currentCurrency,
+        roomName: selectedRoom.title,
       });
 
       if (!result.success) {
@@ -262,7 +269,7 @@ export function useBookingFlow(): UseBookingFlowReturn {
 
       return data;
     },
-    [selectedRoom?.offerId, setPrebookId, prebookMutation]
+    [selectedRoom?.offerId, selectedRoom?.title, setPrebookId, prebookMutation]
   );
 
   /**
