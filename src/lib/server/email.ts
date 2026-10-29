@@ -6,6 +6,7 @@ import { calculateNights } from '@/lib/utils';
 import { derivePolicyType, getFreeCancelDeadline, formatPolicyDescription } from '@/lib/policy-formatter';
 import { getAirlineName } from '@/types/flights';
 import { canonicalBrandName, brandWordmark } from '@/lib/brand';
+import { notCompletedReasonCopy } from '@/lib/server/flights/booking-not-completed-copy';
 
 // ─── Sending addresses ────────────────────────────────────────────────
 // Verified domain: mail.cheapestgo.com (Resend, ap-northeast-1)
@@ -107,7 +108,7 @@ function escapeHtml(str: string | null | undefined): string {
 // ─── Email Logging ────────────────────────────────────────────────────
 
 export type EmailLogStatus = 'queued' | 'sent' | 'failed';
-export type EmailType = 'confirmation' | 'ticketed' | 'refund' | 'cancellation' | 'awaiting_ticket' | 'price_alert';
+export type EmailType = 'confirmation' | 'ticketed' | 'refund' | 'cancellation' | 'awaiting_ticket' | 'price_alert' | 'booking_not_completed';
 
 /**
  * Returns true if an email of this type has already been sent (or queued)
@@ -2539,6 +2540,160 @@ export async function sendFlightRefundEmail(
         return { success: false, error: 'RESEND_API_KEY not configured' };
     } catch (error) {
         console.error('[sendFlightRefundEmail] Error:', error);
+        return { success: false, error: error instanceof Error ? error.message : 'Failed to send email' };
+    }
+}
+
+// ═════════════════════════════════════════════════════════════════════
+//  FLIGHT BOOKING NOT COMPLETED  (card held, airline order failed, hold released)
+// ═════════════════════════════════════════════════════════════════════
+
+export interface SendFlightBookingNotCompletedEmailParams {
+    /** The failed flight_bookings row — email_logs dedups on (booking_id, email_type). */
+    bookingId: string;
+    email: string;
+    passengerName: string;
+    segments: FlightSegmentEmail[];
+    /** A pay-first failure code, e.g. 'price_changed'. */
+    reason: string;
+}
+
+/** Pure render — no I/O. Mirrors the refund email's layout without any refund language. */
+export function buildFlightBookingNotCompletedEmailHtml(params: SendFlightBookingNotCompletedEmailParams): string {
+    const { bookingId, passengerName, segments, reason } = params;
+    const siteUrl = env.SITE_URL;
+    const searchUrl = `${siteUrl}/search`;
+
+    const firstName = escapeHtml((passengerName || '').trim().split(/\s+/)[0] || 'there');
+    const { route } = flightRouteSummary(segments);
+    const itineraryRows = renderFlightItineraryRows(segments);
+    const reasonCopy = escapeHtml(notCompletedReasonCopy(reason));
+    const preheader = escapeHtml(`We couldn't complete your booking for ${route}. Your card was not charged.`);
+
+    return `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light">
+<meta name="supported-color-schemes" content="light">
+<title>We couldn't complete your booking</title>
+<style>
+  @media only screen and (max-width: 620px) {
+    .container { width: 100% !important; }
+    .px { padding-left: 20px !important; padding-right: 20px !important; }
+  }
+</style>
+</head>
+<body style="margin:0;padding:0;background-color:#eef2f7;">
+<span style="display:none;font-size:1px;color:#eef2f7;line-height:1px;max-height:0;max-width:0;opacity:0;overflow:hidden;">${preheader}</span>
+
+<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color:#eef2f7;">
+<tr><td align="center" style="padding:20px 12px 32px 12px;">
+
+<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="600" class="container" style="width:600px;max-width:600px;">
+
+  <!-- Masthead -->
+  <tr><td class="px" style="padding:8px 4px 14px 4px;font-family:Arial,Helvetica,sans-serif;">
+    <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
+      <tr>
+        <td align="left">
+          <table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr>
+            <td style="padding-right:9px;line-height:0;"><img src="${BRAND_ICON_URL}" width="26" height="26" alt="${BRAND_NAME}" style="display:block;width:26px;height:26px;border:0;border-radius:13px;"></td>
+            <td style="font-family:Arial,Helvetica,sans-serif;font-size:18px;font-weight:bold;color:#0f172a;letter-spacing:-0.4px;">${BRAND_WORDMARK_HTML}</td>
+          </tr></table>
+        </td>
+        <td align="right" style="font-size:15px;font-weight:bold;color:#0f172a;letter-spacing:-0.2px;">Hello, ${firstName}</td>
+      </tr>
+    </table>
+  </td></tr>
+
+  <!-- Panel: not completed -->
+  <tr><td style="padding:0 0 12px 0;">
+    <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color:#ffffff;border:1px solid #e2e8f0;border-radius:18px;">
+      <tr><td class="px" style="padding:28px 28px 26px 28px;font-family:Arial,Helvetica,sans-serif;">
+        <div style="font-size:20px;line-height:26px;font-weight:bold;color:#0f172a;letter-spacing:-0.4px;">We couldn't complete your booking</div>
+        <div style="height:12px;line-height:12px;">&nbsp;</div>
+        <div style="font-size:14px;line-height:22px;color:#475569;">${reasonCopy} <strong style="color:#0f172a;">Your card was not charged</strong> &mdash; we've released the hold on it. Your bank may take a few days to drop the pending amount from your statement.</div>
+        <div style="height:22px;line-height:22px;">&nbsp;</div>
+        <table role="presentation" cellpadding="0" cellspacing="0" border="0" align="center">
+          <tr><td align="center" bgcolor="#2563eb" style="border-radius:14px;">
+            <a href="${searchUrl}" style="display:block;padding:14px 34px;font-family:Arial,Helvetica,sans-serif;font-size:14px;font-weight:bold;color:#ffffff;text-decoration:none;border-radius:14px;mso-line-height-rule:exactly;line-height:18px;">Search flights again</a>
+          </td></tr>
+        </table>
+      </td></tr>
+    </table>
+  </td></tr>
+
+  <!-- Panel: what you tried to book -->
+  <tr><td style="padding:0 0 12px 0;">
+    <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color:#ffffff;border:1px solid #e2e8f0;border-radius:18px;">
+      <tr><td class="px" style="padding:20px 28px 4px 28px;">
+        <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="font-family:Arial,Helvetica,sans-serif;font-size:14px;">
+          <tr>
+            <td style="padding:14px 0;color:#64748b;">Passenger</td>
+            <td align="right" style="padding:14px 0;color:#0f172a;font-weight:bold;">${escapeHtml(passengerName)}</td>
+          </tr>
+${itineraryRows}
+          <tr>
+            <td style="padding:14px 0;border-top:1px solid #eef2f7;color:#64748b;">Status</td>
+            <td align="right" style="padding:14px 0;border-top:1px solid #eef2f7;">
+              <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin-left:auto;">
+                <tr><td bgcolor="#fff1f2" style="border-radius:999px;padding:5px 11px;font-family:Arial,Helvetica,sans-serif;font-size:10px;font-weight:bold;letter-spacing:1px;text-transform:uppercase;color:#e11d48;">Not booked</td></tr>
+              </table>
+            </td>
+          </tr>
+        </table>
+      </td></tr>
+    </table>
+  </td></tr>
+
+  <!-- Footer -->
+  <tr><td class="px" style="padding:16px 8px 8px 8px;font-family:Arial,Helvetica,sans-serif;font-size:12px;line-height:19px;color:#94a3b8;">
+    This is a transactional message about booking attempt ${escapeHtml(bookingId)}.<br>
+    &copy; ${new Date().getFullYear()} ${escapeHtml(BRAND_NAME)}. All rights reserved.<br>
+    <a href="${siteUrl}/account" style="color:#64748b;text-decoration:underline;">Email preferences</a>
+  </td></tr>
+
+</table>
+
+</td></tr>
+</table>
+</body>
+</html>`;
+}
+
+export async function sendFlightBookingNotCompletedEmail(
+    params: SendFlightBookingNotCompletedEmailParams,
+): Promise<SendFlightBookingEmailResult> {
+    const { bookingId, email, segments } = params;
+    if (!email || !bookingId) return { success: false, error: 'Missing required fields' };
+
+    try {
+        const { route } = flightRouteSummary(segments);
+        const emailHtml = buildFlightBookingNotCompletedEmailHtml(params);
+        const subject = `We couldn't complete your booking – ${route}`;
+        const resendApiKey = env.RESEND_API_KEY;
+
+        if (resendApiKey) {
+            const res = await fetch('https://api.resend.com/emails', {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${resendApiKey}`, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ from: FROM_NOREPLY, to: [email], subject, html: emailHtml }),
+            });
+            const text = await res.text();
+            if (res.ok) {
+                await logEmail({ bookingId, recipient: email, subject, emailType: 'booking_not_completed', status: 'sent' });
+                return { success: true };
+            }
+            await logEmail({ bookingId, recipient: email, subject, emailType: 'booking_not_completed', status: 'failed', errorMessage: text, htmlBody: emailHtml });
+            return { success: false, error: `Resend ${res.status}: ${text}` };
+        }
+
+        await logEmail({ bookingId, recipient: email, subject, emailType: 'booking_not_completed', status: 'queued', htmlBody: emailHtml });
+        return { success: false, error: 'RESEND_API_KEY not configured' };
+    } catch (error) {
+        console.error('[sendFlightBookingNotCompletedEmail] Error:', error);
         return { success: false, error: error instanceof Error ? error.message : 'Failed to send email' };
     }
 }

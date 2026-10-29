@@ -10,6 +10,10 @@ export function notCompletedReasonCopy(reason: string | null | undefined): strin
             return 'The seats or bags you selected are no longer available.';
         case 'phone_number_invalid':
             return 'The airline rejected the contact phone number.';
+        case 'duplicate_attempt':
+            return 'You already have a booking for this flight in progress, so we did not take a second payment.';
+        case 'superseded':
+            return 'You changed your booking details, so we cancelled this earlier payment.';
         default:
             return 'The airline could not confirm the booking.';
     }

@@ -7,6 +7,8 @@ describe('notCompletedReasonCopy', () => {
         ['flight_unavailable', /no longer available/i],
         ['seats_unavailable', /seats or bags/i],
         ['phone_number_invalid', /phone number/i],
+        ['duplicate_attempt', /already have a booking for this flight in progress/i],
+        ['superseded', /changed your booking details/i],
         ['something_else', /could not confirm/i],
         [null, /could not confirm/i],
     ])('%s', (reason, pattern) => {

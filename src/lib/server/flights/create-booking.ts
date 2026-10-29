@@ -33,6 +33,14 @@ import { stripe } from '@/lib/stripe/server';
 import { mystiflyRequest } from '@/lib/server/flights/mystifly-client';
 import { lockFx } from '@/lib/bookings/fxLock';
 import { canonicalBrandName } from '@/lib/brand';
+import { env } from '@/utils/env';
+import { getFlightPriceTolerance } from '@/lib/pricing';
+import { settleAuthorizedFlight } from '@/lib/server/flights/settle-authorized-flight';
+import { defaultSettleDeps } from '@/lib/server/flights/settle-deps';
+import { withBookedItinerary } from '@/lib/server/flights/duffel-order-segments';
+import { payFirstFailureEntry, NOT_COMPLETED_ERROR_CODE } from '@/lib/server/flights/booking-failure';
+import { segmentsForNotCompletedEmail } from '@/lib/server/flights/booking-not-completed-copy';
+import { sendFlightBookingNotCompletedEmail } from '@/lib/server/email';
 
 // ── Main handler ─────────────────────────────────────────────────────────────
 
@@ -78,29 +86,51 @@ async function createBookingResponse(input: CreateBookingInput): Promise<NextRes
         // ── Step 1: Atomically lock the session ──────────────────────────────
         // If status is already 'processing', 'booked', or 'failed' this UPDATE
         // returns 0 rows → idempotency guard fires.
-        const locked = await sql`
-            UPDATE booking_sessions
-            SET status = 'processing'
-            WHERE id = ${sessionId}
-              AND status IN ('pending', 'initiated', 'payment_initiated', 'payment_authorized')
-            RETURNING
-                id,
-                user_id,
-                provider,
-                flight,
-                passengers,
-                contact,
-                payment_intent_id,
-                fare_policy,
-                duffel_pre_order_id,
-                duffel_pre_order_pnr,
-                duffel_pre_order_tickets,
-                duffel_pre_order_ticketed,
-                currency,
-                original_price,
-                booking_reference,
-                charged_price
-        `;
+        let locked: any[];
+        try {
+            locked = await sql`
+                UPDATE booking_sessions
+                SET status = 'processing'
+                WHERE id = ${sessionId}
+                  AND status IN ('pending', 'initiated', 'payment_initiated', 'payment_authorized')
+                RETURNING
+                    id,
+                    user_id,
+                    provider,
+                    flight,
+                    passengers,
+                    contact,
+                    payment_intent_id,
+                    fare_policy,
+                    duffel_pre_order_id,
+                    duffel_pre_order_pnr,
+                    duffel_pre_order_tickets,
+                    duffel_pre_order_ticketed,
+                    currency,
+                    original_price,
+                    booking_reference,
+                    charged_price,
+                    seat_service_ids,
+                    bag_service_ids
+            `;
+        } catch (err: any) {
+            if (err?.code !== '23505') throw err;
+            // booking_sessions_one_paid_attempt_per_offer: another pay-first attempt for this
+            // traveller and offer is already paying or booked. This one was only authorised —
+            // capture happens after the order — so releasing it is safe, and buying would mean a
+            // second ticket.
+            const [row] = await sql`SELECT payment_intent_id, contact, passengers, flight FROM booking_sessions WHERE id = ${sessionId}`;
+            const piId: string = piIdFromCaller ?? row?.payment_intent_id ?? '';
+            console.warn(`[create-booking] Session ${sessionId} is a second paying attempt for an offer already being booked — releasing hold ${piId}`);
+            await markFailed(sql, db, sessionId, piId, 'Another booking for this flight is already in progress', 'duplicate_attempt');
+            await notifyBookingNotCompleted(sql, { sessionId, session: row ?? {}, flight: row?.flight ?? {}, reason: 'duplicate_attempt' });
+            return NextResponse.json({
+                success: false,
+                errorCode: NOT_COMPLETED_ERROR_CODE,
+                reason: 'duplicate_attempt',
+                error: 'Another booking for this flight is already in progress. Your card was not charged.',
+            }, { status: 409 });
+        }
 
         if (locked.length === 0) {
             // Check if already booked
@@ -242,7 +272,7 @@ async function handleMystifly(ctx: {
     if (paymentIntentId) {
         try {
             const pi = await stripe.paymentIntents.retrieve(paymentIntentId);
-            confirmedPrice = pi.amount / 100;
+            confirmedPrice = (pi.amount_received || pi.amount) / 100;
             confirmedCurrency = (pi.currency ?? 'usd').toUpperCase();
         } catch { /* non-critical */ }
     }
@@ -321,17 +351,56 @@ async function handleDuffel(ctx: {
 }): Promise<NextResponse> {
     const { db, sql, session, sessionId, flight, passengers, paymentIntentId } = ctx;
 
-    // Duffel pre-order was created synchronously in /api/flights/book (or /api/mobile/flights/book).
-    // The order data is stored directly in the session columns.
-    const preOrderId: string = session.duffel_pre_order_id ?? '';
-    const preOrderPnr: string = session.duffel_pre_order_pnr ?? '';
-    const preOrderTickets: string[] = session.duffel_pre_order_tickets ?? [];
-    const preOrderTicketed: boolean = session.duffel_pre_order_ticketed === true;
+    // Sessions from the order-before-payment flow (/api/flights/book with FLIGHT_PAY_FIRST off,
+    // or /api/mobile/flights/book) already carry their Duffel order in these columns. A
+    // pay-first session reaches here with the card authorised and NO order yet: it is bought
+    // below, under this same lock.
+    let preOrderId: string = session.duffel_pre_order_id ?? '';
+    let preOrderPnr: string = session.duffel_pre_order_pnr ?? '';
+    let preOrderTickets: string[] = session.duffel_pre_order_tickets ?? [];
+    let preOrderTicketed: boolean = session.duffel_pre_order_ticketed === true;
+    let flightForSegments: any = flight;
 
     if (!preOrderId) {
-        console.error(`[create-booking] Duffel session ${sessionId} has no pre-order — this session was created without Step 1.5`);
-        await sql`UPDATE booking_sessions SET status = 'failed' WHERE id = ${sessionId}`;
-        return NextResponse.json({ success: false, error: 'Duffel pre-order missing from session' }, { status: 400 });
+        const settled = paymentIntentId
+            ? await settleAuthorizedFlight({
+                session: {
+                    id: sessionId, passengers, contact: session.contact, flight,
+                    seat_service_ids: session.seat_service_ids, bag_service_ids: session.bag_service_ids,
+                },
+                paymentIntentId,
+                duffelToken: env.DUFFEL_TOKEN,
+                priceTolerance: getFlightPriceTolerance(),
+            }, defaultSettleDeps())
+            : { kind: 'failed' as const, code: 'not_pay_first', message: 'No payment on this session.' };
+
+        if (settled.kind === 'failed') {
+            if (settled.code === 'not_pay_first') {
+                // Not one of ours: a legacy session that lost its order. Unchanged behaviour.
+                console.error(`[create-booking] Duffel session ${sessionId} has no pre-order — this session was created without Step 1.5`);
+                await sql`UPDATE booking_sessions SET status = 'failed' WHERE id = ${sessionId}`;
+                return NextResponse.json({ success: false, error: 'Duffel pre-order missing from session' }, { status: 400 });
+            }
+
+            // Pay-first failure: nothing was captured. Release the hold, keep a failed row that
+            // records why, and tell the traveller — they were promised an email either way.
+            console.warn(`[create-booking] Pay-first session ${sessionId} could not be completed: ${settled.code} — ${settled.message}`);
+            await markFailed(sql, db, sessionId, paymentIntentId, settled.message, settled.code);
+            await notifyBookingNotCompleted(sql, { sessionId, session, flight, reason: settled.code });
+            return NextResponse.json({
+                success: false,
+                errorCode: NOT_COMPLETED_ERROR_CODE,
+                reason: settled.code,
+                error: settled.message,
+            }, { status: 409 });
+        }
+
+        preOrderId = settled.order.orderId;
+        preOrderPnr = settled.order.pnr;
+        preOrderTickets = settled.order.tickets;
+        preOrderTicketed = settled.order.isTicketed;
+        // The itinerary the airline actually holds, not the one the browser posted.
+        flightForSegments = withBookedItinerary(flight, settled.order.rawOrder);
     }
 
     console.log(`[create-booking] Duffel pre-order found: orderId=${preOrderId} pnr=${preOrderPnr} tickets=${preOrderTickets.length}`);
@@ -342,7 +411,7 @@ async function handleDuffel(ctx: {
     if (paymentIntentId) {
         try {
             const pi = await stripe.paymentIntents.retrieve(paymentIntentId);
-            confirmedPrice = pi.amount / 100;
+            confirmedPrice = (pi.amount_received || pi.amount) / 100;
             confirmedCurrency = (pi.currency ?? 'usd').toUpperCase();
         } catch { /* non-critical */ }
     }
@@ -401,7 +470,7 @@ async function handleDuffel(ctx: {
     const bookingId: string = bookingRows[0]?.id;
 
     // ── Insert flight_segments ───────────────────────────────────────────
-    await insertFlightSegments(sql, bookingId, flight);
+    await insertFlightSegments(sql, bookingId, flightForSegments);
 
     // ── Insert passengers ────────────────────────────────────────────────
     await insertPassengers(sql, bookingId, passengers, session.user_id, preOrderTickets);
@@ -432,6 +501,8 @@ async function markFailed(
     sessionId: string,
     paymentIntentId: string,
     reason: string,
+    /** A pay-first failure code; stored on the failed row so the UI can say "not charged". */
+    failureCode?: string,
 ) {
     await sql`UPDATE booking_sessions SET status = 'failed' WHERE id = ${sessionId}`;
 
@@ -448,22 +519,63 @@ async function markFailed(
     try {
         await sql`
             INSERT INTO flight_bookings (
-                session_id, provider, status, payment_intent_id, booking_reference
+                session_id, user_id, pnr, total_price,
+                provider, status, payment_intent_id, booking_reference, cancellation_log
             )
             SELECT
                 bs.id,
+                -- user_id, pnr and total_price are NOT NULL with no default. Leaving them out made
+                -- this insert fail on every call (swallowed by the catch below), so no failed row
+                -- was ever written. No PNR exists and nothing was taken, hence '' and 0.
+                bs.user_id,
+                '',
+                0,
                 bs.provider,
                 'failed',
                 ${paymentIntentId || null},
                 -- A booking that failed after the customer was charged is the row that most
                 -- needs attributing: the money reached the pooled payout regardless, and
                 -- without the reference there is nothing tying it back to this platform.
-                bs.booking_reference
+                bs.booking_reference,
+                -- NOT NULL (default '[]'), so never bind null. sql.json, not JSON.stringify: a string
+                -- bound as jsonb is stored as a JSON string scalar, and the reason is then unreadable.
+                ${failureCode ? sql.json(payFirstFailureEntry(failureCode)) : sql.json([])}
             FROM booking_sessions bs
             WHERE bs.id = ${sessionId}
             ON CONFLICT DO NOTHING
         `;
-    } catch { /* best-effort */ }
+    } catch (err: any) {
+        // Best-effort, but never silent: without this row a pay-first traveller's screen cannot
+        // learn that the booking failed and that the card was not charged.
+        console.error(`[create-booking] could not record the failed booking for session ${sessionId}:`, err?.message ?? err);
+    }
+}
+
+/**
+ * Tell the traveller their booking could not be completed and their card was not charged.
+ * Best-effort: the failure has already been recorded, and an email problem must not replace it.
+ */
+async function notifyBookingNotCompleted(
+    sql: ReturnType<typeof getSqlAdmin>,
+    ctx: { sessionId: string; session: any; flight: any; reason: string },
+) {
+    try {
+        const email: string | undefined = ctx.session.contact?.email;
+        if (!email) return;
+        const rows = await sql`SELECT id FROM flight_bookings WHERE session_id = ${ctx.sessionId} AND status = 'failed' LIMIT 1`;
+        const bookingId: string | undefined = rows[0]?.id;
+        if (!bookingId) return;
+        const pax0 = ctx.session.passengers?.[0];
+        await sendFlightBookingNotCompletedEmail({
+            bookingId,
+            email,
+            passengerName: pax0 ? `${pax0.firstName} ${pax0.lastName}` : 'Traveler',
+            segments: segmentsForNotCompletedEmail(ctx.flight),
+            reason: ctx.reason,
+        });
+    } catch (err: any) {
+        console.error('[create-booking] could not send the booking-not-completed email:', err?.message ?? err);
+    }
 }
 
 /** Build Mystifly passenger objects from our internal passenger array */
