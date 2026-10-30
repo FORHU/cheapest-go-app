@@ -56,6 +56,13 @@ export const DEFINITIVE_FAILURE_CODES = new Set([
 export const PAYMENT_RECOVERY_WINDOW_MS = 30 * 60 * 1000;
 
 /**
+ * How long the post-payment screen keeps polling for the booking. With pay-first the airline
+ * order is placed after the traveller pays, and that call can take up to 130 s, so this has to
+ * outlast it (the server-side timeout is DEFAULT_ORDER_TIMEOUT_MS in place-duffel-order.ts).
+ */
+export const BOOKING_POLL_TIMEOUT_MS = 150_000;
+
+/**
  * Should the booking page resume a payment it finds in session storage?
  *
  * Only for a reload during payment: recent, both ids present, and no offer freshly chosen —
@@ -152,6 +159,8 @@ export function useFlightBooking() {
         tickets?: { name: string; number: string }[];
     } | null>(null);
     const [clientSecret, setClientSecret] = useState('');
+    // Why a pay-first booking could not be completed (price_changed, flight_unavailable, …).
+    const [failureReason, setFailureReason] = useState<string | null>(null);
 
     // HIGH-2 FIX: Idempotency key to prevent double bookings
     // Helper to generate UUIDs safely on HTTP or HTTPS
@@ -775,10 +784,10 @@ export function useFlightBooking() {
             }, 3000);
         });
 
-        // ── DB polling loop (every 2s, up to 45s total) ───────────────
+        // ── DB polling loop (every 2s, up to BOOKING_POLL_TIMEOUT_MS) ─
         const pollPromise = new Promise<{ type: 'poll'; data: any }>(resolve => {
             const POLL_INTERVAL_MS = 2000;
-            const POLL_TIMEOUT_MS = 45000;
+            const POLL_TIMEOUT_MS = BOOKING_POLL_TIMEOUT_MS;
             const pollStart = Date.now();
 
             const tick = async () => {
@@ -827,16 +836,7 @@ export function useFlightBooking() {
             const d = winner.data;
             if (d.failed) {
                 clearRecovery();
-                // Authorised, then the fare moved: the hold is already released, so offer the new
-                // price on the form, exactly as a change found before payment would.
-                const moved = priceChangeFromFailure(d);
-                if (moved) {
-                    setPriceChangedData(moved);
-                    setErrorMsg('');
-                    setStep('form');
-                    idempotencyKeyRef.current = generateId();
-                    return;
-                }
+                setFailureReason(d.reason ?? null);
                 setErrorMsg(d.errorCode ? 'CODE:' + d.errorCode : (d.error || 'CODE:booking_failed_refunded'));
                 setStep('error');
                 return;
@@ -860,6 +860,7 @@ export function useFlightBooking() {
                 return;
             }
             const errMsg = data?.errorCode ? 'CODE:' + data.errorCode : (data?.error || 'CODE:booking_card_not_charged');
+            setFailureReason(data?.reason ?? null);
 
             // `booking_pending` means the payment landed and the booking is still
             // completing elsewhere. Keep the recovery keys: reloading should resume
@@ -992,6 +993,7 @@ export function useFlightBooking() {
         },
         bookingResult,
         clientSecret,
+        failureReason,
         passengers,
         contact,
         updatePassenger,

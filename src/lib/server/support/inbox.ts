@@ -58,7 +58,37 @@ export interface InboxRow {
     urgency: Urgency;
     lastMessageAt: string;
     createdAt: string;
+    /**
+     * The newest thing anyone said, for the queue row. A system notice is skipped — it is not
+     * a message, and "This chat was resolved" under every resolved chat tells nobody anything.
+     * A customer's words in their English rendering, because that is what the Agent reads.
+     */
+    lastMessagePreview?: string | null;
+    lastMessageSenderType?: 'guest' | 'ai' | 'agent' | null;
+    lastMessageSenderAdminId?: string | null;
 }
+
+/**
+ * The newest non-system message, for the list only. `idx_support_messages_conversation` makes
+ * this one index probe per row, and a page is at most INBOX_PAGE_SIZE rows.
+ */
+const LAST_MESSAGE_JOIN = `
+    LEFT JOIN LATERAL (
+        SELECT CASE WHEN m.sender_type = 'guest' THEN COALESCE(m.translated_body, m.body) ELSE m.body END AS preview,
+               m.sender_type,
+               m.sender_admin_id
+          FROM support_messages m
+         WHERE m.conversation_id = c.id AND m.sender_type <> 'system'
+         ORDER BY m.created_at DESC
+         LIMIT 1
+    ) lm ON true
+`;
+
+const LAST_MESSAGE_COLUMNS = `,
+    lm.preview           AS "lastMessagePreview",
+    lm.sender_type       AS "lastMessageSenderType",
+    lm.sender_admin_id   AS "lastMessageSenderAdminId"
+`;
 
 const ROW_COLUMNS = `
     c.id,
@@ -122,8 +152,9 @@ export async function listInbox({ filter, adminId }: ListInboxInput): Promise<In
     const params = filter === 'mine' ? [adminId ?? null] : [];
 
     const rows = await sql.unsafe<(InboxRow & { urgencyRank?: number })[]>(
-        `SELECT ${ROW_COLUMNS}
+        `SELECT ${ROW_COLUMNS}${LAST_MESSAGE_COLUMNS}
            FROM support_conversations c
+           ${LAST_MESSAGE_JOIN}
           WHERE ${where}
           ORDER BY ${order}
           LIMIT ${INBOX_PAGE_SIZE}`,

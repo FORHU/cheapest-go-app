@@ -108,6 +108,40 @@ describe('SupportInboxClient', () => {
         expect(screen.getByText('CheapestGo')).toBeInTheDocument();
     });
 
+    it('says who spoke last on each row, and what they said', () => {
+        // A row ending in the customer's words is a customer waiting on an answer.
+        mockApi();
+        render(
+            <SupportInboxClient
+                initialFilter="unassigned"
+                initialConversations={[
+                    conversation({ id: 'a', lastMessagePreview: 'Where is my refund?', lastMessageSenderType: 'guest' }),
+                    conversation({ id: 'b', guestName: 'Ben', lastMessagePreview: 'On it.', lastMessageSenderType: 'agent', lastMessageSenderAdminId: 'admin-1' }),
+                ]}
+                initialCounts={{ unassigned: 2, mine: 0, waiting: 2 }}
+                currentAdminId="admin-1"
+            />,
+        );
+
+        expect(screen.getByText('User: Where is my refund?')).toBeInTheDocument();
+        expect(screen.getByText('You: On it.')).toBeInTheDocument();
+    });
+
+    it('badges the tab with how many are waiting', () => {
+        mockApi();
+        render(
+            <SupportInboxClient
+                initialFilter="unassigned"
+                initialConversations={waiting}
+                initialCounts={{ unassigned: 2, mine: 0, waiting: 2 }}
+                currentAdminId="admin-1"
+            />,
+        );
+
+        expect(screen.getByRole('button', { name: /unassigned/i })).toContainElement(screen.getByLabelText('2 waiting'));
+        expect(screen.queryByLabelText('0 waiting')).not.toBeInTheDocument();
+    });
+
     it('says when there is nothing to hand out, rather than showing an empty box', () => {
         mockApi();
         render(
@@ -145,6 +179,29 @@ describe('SupportInboxClient', () => {
         await waitFor(() => expect(screen.getByText('I want a refund.')).toBeInTheDocument());
         // The queue stays visible — that is the reason for two panes.
         expect(screen.getByText('김민준')).toBeInTheDocument();
+    });
+
+    it('says when a conversation could not be loaded, rather than showing a blank pane', async () => {
+        mockApi();
+        fetchMock.mockImplementation(async (url: string) =>
+            /conversations\/[^/?]+$/.test(url)
+                ? { ok: false, status: 500, json: async () => ({}) }
+                : { ok: true, status: 200, json: async () => ({ conversations: [], counts: { unassigned: 0, mine: 0, waiting: 0 } }) },
+        );
+
+        render(
+            <SupportInboxClient
+                initialFilter="unassigned"
+                initialConversations={waiting}
+                initialCounts={{ unassigned: 2, mine: 0, waiting: 2 }}
+                currentAdminId="admin-1"
+            />,
+        );
+
+        fireEvent.click(screen.getByText('Ana Reyes'));
+
+        expect(await screen.findByRole('alert')).toHaveTextContent(/could not be loaded/i);
+        expect(screen.getByRole('button', { name: 'Try again' })).toBeInTheDocument();
     });
 
     it("shows the model's reason for handing over", async () => {
@@ -297,10 +354,10 @@ describe('a machine translation in the inbox', () => {
 
         fireEvent.click(screen.getByText('Ana Reyes'));
         await screen.findByText('When will the refund be processed?');
-        expect(screen.getByText(/machine-translated/i)).toBeInTheDocument();
+        expect(screen.getByText(/machine translated/i)).toBeInTheDocument();
 
         // The original to check it against, one click away and never replaced.
-        fireEvent.click(screen.getByRole('button', { name: 'Show original' }));
+        fireEvent.click(screen.getByRole('button', { name: 'See Original' }));
         expect(screen.getByText('\uD658\uBD88 \uC5B8\uC81C \uB418\uB098\uC694?')).toBeInTheDocument();
     });
 
@@ -331,7 +388,7 @@ describe('a machine translation in the inbox', () => {
         fireEvent.click(screen.getByText('Ana Reyes'));
         await screen.findByText('I want a refund.');
 
-        expect(screen.queryByText(/machine-translated/i)).not.toBeInTheDocument();
+        expect(screen.queryByText(/machine translated/i)).not.toBeInTheDocument();
     });
 
     it("warns when a customer's message could not be translated, rather than hiding it", async () => {
@@ -458,7 +515,7 @@ describe('Assignment on screen', () => {
         // An admin writes anywhere — the reply box is there even though it is unassigned.
         expect(screen.getByRole('textbox', { name: /reply to the customer/i })).toBeInTheDocument();
 
-        fireEvent.click(screen.getByRole('button', { name: /team · handled in/i }));
+        fireEvent.click(screen.getByRole('button', { name: /^team$/i }));
         expect(screen.getByText('7')).toBeInTheDocument();
     });
 

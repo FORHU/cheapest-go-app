@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAuthenticatedUser } from '@/lib/server/auth';
 import { createAdminClient } from '@/utils/postgres/admin';
 import { env } from '@/utils/env';
-import { failedBookingBody } from '@/lib/server/flights/failure-response';
+import { failureReasonOf, NOT_COMPLETED_ERROR_CODE, NOT_COMPLETED_MESSAGE } from '@/lib/server/flights/booking-failure';
 
 export const dynamic = 'force-dynamic';
 
@@ -27,22 +27,12 @@ export async function GET(req: NextRequest) {
 
         const supabase = createAdminClient();
 
-        const [{ data: booking }, { data: session }] = await Promise.all([
-            supabase
-                .from('flight_bookings')
-                .select('id, pnr, status')
-                .eq('session_id', sessionId)
-                .eq('user_id', user.id)
-                .maybeSingle(),
-            // A refusal after authorisation records why on the session. Older failures have none.
-            supabase
-                .from('booking_sessions')
-                .select('failure')
-                .eq('id', sessionId)
-                .eq('user_id', user.id)
-                .maybeSingle(),
-        ]);
-        const failure = (session as any)?.failure ?? null;
+        const { data: booking } = await supabase
+            .from('flight_bookings')
+            .select('id, pnr, status, cancellation_log')
+            .eq('session_id', sessionId)
+            .eq('user_id', user.id)
+            .maybeSingle();
 
         if (!booking) {
             // The failed booking row is written without a user, so the lookup above cannot see it.
@@ -54,7 +44,23 @@ export async function GET(req: NextRequest) {
         }
 
         if (booking.status === 'failed') {
-            return NextResponse.json({ found: true, failed: true, ...failedBookingBody(failure) });
+            const reason = failureReasonOf(booking);
+            if (reason) {
+                // A pay-first failure: the card was only held, and the hold has been released.
+                return NextResponse.json({
+                    found: true,
+                    failed: true,
+                    errorCode: NOT_COMPLETED_ERROR_CODE,
+                    reason,
+                    error: NOT_COMPLETED_MESSAGE,
+                });
+            }
+            return NextResponse.json({
+                found: true,
+                failed: true,
+                errorCode: 'booking_failed_refunded',
+                error: 'Booking failed — the flight offer was no longer available. Your payment has been automatically refunded.',
+            });
         }
 
         return NextResponse.json({

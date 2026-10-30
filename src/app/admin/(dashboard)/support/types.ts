@@ -50,6 +50,10 @@ export interface InboxConversation {
     urgency: UrgencyView;
     lastMessageAt: string;
     createdAt: string;
+    /** The newest non-system message, for the queue row. List rows only; absent on detail. */
+    lastMessagePreview?: string | null;
+    lastMessageSenderType?: 'guest' | 'ai' | 'agent' | null;
+    lastMessageSenderAdminId?: string | null;
 }
 
 /** Ordered least to most urgent, mirroring URGENCY_RANK on the server. */

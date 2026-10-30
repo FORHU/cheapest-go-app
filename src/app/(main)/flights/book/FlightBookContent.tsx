@@ -3,7 +3,7 @@
 import React, { useEffect } from 'react';
 import { useTranslations } from 'next-intl';
 import { motion } from 'framer-motion';
-import { Plane, Mail, Loader2, CheckCircle, AlertTriangle, PartyPopper, Info, Clock, Shield, XCircle, X, BadgeDollarSign, RefreshCw, BedDouble, ArrowRight, Armchair, Luggage, Sparkles } from 'lucide-react';
+import { Plane, Mail, Loader2, CheckCircle, AlertTriangle, PartyPopper, Info, Clock, X, BedDouble, ArrowRight, Armchair, Luggage, Sparkles } from 'lucide-react';
 import { FlightCard } from '@/components/flights/flightCard';
 import { useSearchParams, useRouter } from 'next/navigation';
 import BackButton from '@/components/common/BackButton';
@@ -12,7 +12,6 @@ import { Confetti, Balloons } from '@/components/ui/Animations';
 import { formatPrice } from '@/utils/flight-utils';
 import { useFlightBooking } from '@/hooks/flights/useFlightBooking';
 import { useUserCurrency } from '@/stores/searchStore';
-import type { FarePolicy } from '@/types/flights';
 import { getAirportInfo } from '@/utils/airport-info';
 import { getAirportByCode } from '@/lib/airports';
 import { FareRulesPanel } from './FareRulesPanel';
@@ -23,8 +22,8 @@ import DuplicateBookingModal from '@/components/flights/DuplicateBookingModal';
 import { FlightBookColumns } from '@/components/flights/booking/FlightBookColumns';
 import { PassengerDetailsCard } from '@/components/flights/booking/PassengerDetailsCard';
 import { BillingAddressCard, ContactInformationCard } from '@/components/flights/booking/ContactCards';
-import { BOOK_CARD, BOOK_CARD_ICON, BOOK_CARD_PADDING, BOOK_CARD_TITLE, BookCollapsibleCard } from '@/components/flights/booking/BookCard';
-import { cn } from '@/lib/utils';
+import { FarePolicyPanel, OfferExpiryBanner } from '@/components/flights/booking/FareNotices';
+import { BookCollapsibleCard } from '@/components/flights/booking/BookCard';
 import { } from 'zod';
 
 // ─── Error codes ─────────────────────────────────────────────────────
@@ -41,6 +40,7 @@ const TRANSLATED_ERROR_CODES = new Set([
     'balance_insufficient',
     'booking_failed',
     'booking_failed_refunded',
+    'booking_not_completed',
     'booking_pending',
     'booking_timeout',
     // Normally handled by the duplicate panel on the form step; this covers a
@@ -51,10 +51,16 @@ const TRANSLATED_ERROR_CODES = new Set([
     'offer_replaced_seats_cleared',
     'pending',
     'phone_number_invalid',
+    'price_changed',
     'seats_unavailable',
     'server_error',
     'supplier_outage',
     'unauthenticated',
+    // Pay-first: the live fare could not be confirmed (retryable), and the reasons a booking
+    // whose card was only held could not be completed.
+    'FARE_UNCONFIRMED',
+    'duplicate_attempt',
+    'superseded',
 ]);
 
 type FlightBookTranslator = ReturnType<typeof useTranslations<'flightBook'>>;
@@ -64,115 +70,6 @@ function messageForCode(t: FlightBookTranslator, code: string, fallbackKey = 'er
     return TRANSLATED_ERROR_CODES.has(code)
         ? t(`error.codes.${code}` as Parameters<FlightBookTranslator>[0])
         : t(fallbackKey as Parameters<FlightBookTranslator>[0]);
-}
-
-// ─── Fare Policy Panel ───────────────────────────────────────────────
-
-interface FarePolicyPanelProps {
-    policy: FarePolicy;
-    policyChanged?: boolean;
-}
-
-function FarePolicyPanel({ policy, policyChanged }: FarePolicyPanelProps) {
-    const t = useTranslations('flightBook');
-    const isRefundable = policy.isRefundable;
-    const penalty = policy.refundPenaltyAmount;
-    const isLocked = policy.policyVersion === 'revalidated';
-
-    let badge: React.ReactNode;
-    if (isRefundable && penalty === 0) {
-        badge = (
-            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-normal bg-emerald-100 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-400">
-                <Shield className="w-3 h-3" /> {t('farePolicy.freeCancellation')}
-            </span>
-        );
-    } else if (isRefundable) {
-        const feeLabel = penalty != null && penalty > 0
-            ? t('farePolicy.refundableFee', { fee: `${policy.refundPenaltyCurrency ?? ''}${penalty}` })
-            : t('farePolicy.refundableFeesMayApply');
-        badge = (
-            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-normal bg-amber-100 dark:bg-amber-500/20 text-amber-700 dark:text-amber-400">
-                <BadgeDollarSign className="w-3 h-3" /> {feeLabel}
-            </span>
-        );
-    } else {
-        badge = (
-            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-normal bg-red-100 dark:bg-red-500/20 text-red-700 dark:text-red-400">
-                <XCircle className="w-3 h-3" /> {t('farePolicy.nonRefundable')}
-            </span>
-        );
-    }
-
-    return (
-        <div className={cn(BOOK_CARD, BOOK_CARD_PADDING, 'mb-3 lg:mb-6 space-y-3')}>
-            {/* Policy downgrade warning */}
-            {policyChanged && (
-                <div className="flex items-center gap-2 p-2.5 rounded-md bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-400 text-[11px]">
-                    <AlertTriangle className="w-4 h-4 shrink-0" />
-                    <span dangerouslySetInnerHTML={{ __html: t.raw('farePolicy.policyUpdated') }} />
-                </div>
-            )}
-            <div className="flex items-center justify-between">
-                <h3 className={cn(BOOK_CARD_TITLE, 'flex items-center gap-1.5')}>
-                    <RefreshCw className={BOOK_CARD_ICON} strokeWidth={1.75} aria-hidden />
-                    {t('farePolicy.title')}
-                </h3>
-                {isLocked && (
-                    <span className="text-[9px] lg:text-[11px] text-emerald-600 dark:text-emerald-400 font-normal">{t('farePolicy.airlineConfirmed')}</span>
-                )}
-            </div>
-            <div className="flex flex-wrap gap-1.5 items-center">
-                {badge}
-                {policy.isChangeable && (
-                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-normal bg-blue-50 dark:bg-blue-500/10 border border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-400">
-                        {t('farePolicy.changesAllowed')}
-                    </span>
-                )}
-            </div>
-            <p className="text-[9px] lg:text-[11px] text-slate-400 dark:text-slate-500 leading-relaxed">
-                {isLocked
-                    ? t('farePolicy.finalRules')
-                    : t('farePolicy.indicativeOnly')}
-            </p>
-        </div>
-    );
-}
-
-// ─── Component ───────────────────────────────────────────────────────
-
-
-// ─── Offer expiry countdown ──────────────────────────────────────────
-
-function useCountdown(expiresAt: Date | null) {
-    const [secsLeft, setSecsLeft] = React.useState<number | null>(null);
-    useEffect(() => {
-        if (!expiresAt) return;
-        const tick = () => setSecsLeft(Math.max(0, Math.floor((expiresAt.getTime() - Date.now()) / 1000)));
-        tick();
-        const id = setInterval(tick, 1000);
-        return () => clearInterval(id);
-    }, [expiresAt]);
-    return secsLeft;
-}
-
-function OfferExpiryBanner({ expiresAt }: { expiresAt: Date }) {
-    const t = useTranslations('flightBook');
-    const secsLeft = useCountdown(expiresAt);
-    if (secsLeft === null || secsLeft > 10 * 60) return null;
-    const mins = Math.floor(secsLeft / 60);
-    const secs = secsLeft % 60;
-    const isUrgent = secsLeft < 2 * 60;
-    return (
-        <div className={`flex items-center gap-2 px-3 py-2 rounded-md text-[11px] font-normal mb-3 lg:mb-6 border ${isUrgent
-            ? 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800 text-red-600 dark:text-red-400'
-            : 'bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-400'
-            }`}>
-            <Clock className="w-3.5 h-3.5 shrink-0" />
-            {secsLeft === 0
-                ? t('offerExpiry.expired')
-                : t('offerExpiry.expiresIn', { time: `${mins}:${String(secs).padStart(2, '0')}` })}
-        </div>
-    );
 }
 
 function AncillaryExpiredNotice() {
@@ -189,10 +86,10 @@ function AncillaryExpiredNotice() {
 }
 
 const FLIGHT_BOOKING_STEPS = [
-    'Verifying payment...',
-    'Securing your seat...',
-    'Confirming with the airline...',
-    'Finalizing booking details...',
+    'Payment authorized',
+    'Placing your booking',
+    'Issuing your ticket',
+    'Sending your confirmation',
 ] as const;
 
 function BookingContent() {
@@ -228,6 +125,7 @@ function BookingContent() {
         setSelectedBags,
         router,
         clientSecret,
+        failureReason,
         setStep,
         pollForBooking,
         setErrorMsg,
@@ -357,7 +255,7 @@ function BookingContent() {
                             </div>
                         ))}
                     </div>
-                    <p className="text-xs text-slate-400 dark:text-slate-500">{t('dontClosePage')}</p>
+                    <p className="text-xs text-slate-400 dark:text-slate-500">{t('emailConfirmation', { email: contact.email })}</p>
                 </div>
             </main>
         );
@@ -377,8 +275,14 @@ function BookingContent() {
         // Only render a code we have copy for — anything else (including a raw
         // exception message that reached this far) falls back to the generic line
         // rather than leaking an internal string into the failure screen.
+        // A pay-first failure: the card was only held and the hold has been released. Say why,
+        // when we have copy for the reason, and don't offer "Try Again" on a dead offer.
+        const isNotCompleted = errorCode === 'booking_not_completed';
+        const reasonMsg = isNotCompleted && failureReason && TRANSLATED_ERROR_CODES.has(failureReason)
+            ? messageForCode(t, failureReason)
+            : null;
         const displayMsg = errorCode
-            ? messageForCode(t, errorCode)
+            ? (reasonMsg ? `${messageForCode(t, errorCode)} ${reasonMsg}` : messageForCode(t, errorCode))
             : (errorMsg || t('error.defaultMessage'));
         return (
             <main className="min-h-screen flex items-center justify-center bg-linier-to-br from-red-50/60 via-white/40 to-orange-50/60 dark:from-slate-950/60 dark:via-slate-900/40 dark:to-red-950/60 px-4">
@@ -407,7 +311,7 @@ function BookingContent() {
                         }
                     </p>
                     {/* Only show Try Again if the error happened before payment was taken */}
-                    {!isRefunded && !isExpired && (
+                    {!isRefunded && !isExpired && !isNotCompleted && (
                         <button
                             onClick={() => setStep('form')}
                             className="w-full mb-2 py-2.5 rounded-md bg-indigo-600 hover:bg-indigo-500 text-white font-normal text-[11px] transition-colors"

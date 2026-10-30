@@ -36,8 +36,9 @@ import { mintBookingReference } from '@/lib/bookingReference';
 import { revalidateFlight } from '@/lib/server/flights/revalidate-flight';
 import { withDuffelServicePrices } from '@/lib/server/flights/duffel-service-prices';
 import { canonicalBrandName } from '@/lib/brand';
-import { resolveCaptureFlow } from '@/lib/server/flights/capture-flow';
-import { toE164Phone } from '@/lib/server/flights/duffel-order-passengers';
+import { isPayFirstEnabled } from '@/lib/server/flights/pay-first-flag';
+import { createPayFirstPayment } from '@/lib/server/flights/pay-first-payment';
+import { defaultPayFirstDeps } from '@/lib/server/flights/pay-first-deps';
 
 export const dynamic = 'force-dynamic';
 
@@ -635,6 +636,32 @@ export async function POST(req: NextRequest) {
         // airline's PNR, which the airline owns and we cannot make unique to this platform.
         const brand = canonicalBrandName(process.env.NEXT_PUBLIC_BRAND_NAME);
         const bookingReference = mintBookingReference(brand);
+
+        // ── Pay-first (FLIGHT_PAY_FIRST=on): hold the card now, buy the airline order after ──
+        // Everything above (auth, validation, FX guard, duplicate-day warning, revalidation and
+        // its price gate) has already run. See docs/adr/0045-… . Off, the order-before-payment
+        // flow below is unchanged.
+        if (provider === 'duffel' && isPayFirstEnabled()) {
+            const payFirst = await createPayFirstPayment({
+                userId,
+                flight: flight as any,
+                sanitizedFlight,
+                passengers,
+                contact: contact as any,
+                seatServiceIds,
+                bagServiceIds,
+                displayCurrency,
+                settlementCurrency,
+                liveFare: revalNewPrice > 0 && revalData.newCurrency ? { amount: revalNewPrice, currency: revalData.newCurrency } : undefined,
+                serverFarePolicy,
+                bookingReference,
+                brand,
+                bundleHotelId,
+                expiresAt,
+                duffelToken: env.DUFFEL_TOKEN,
+            }, defaultPayFirstDeps());
+            return NextResponse.json(payFirst.body, { status: payFirst.status });
+        }
 
         const { data: sessionRow, error: sessionError } = await db
             .from('booking_sessions')
