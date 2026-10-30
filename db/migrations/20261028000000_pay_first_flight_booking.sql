@@ -1,3 +1,9 @@
+-- Renumbered from 20261028000001, which collided with 20261028000001_hotel_content_city_trgm.sql
+-- when feat/support-agent-only merged. dbmate keys on the version, not the filename, so the
+-- hotel migration having been applied first would have marked this one applied for ever and it
+-- would never have run. Moved below its sibling rather than above, to keep the order the
+-- pay-first pair was written in.
+
 -- migrate:up
 -- Pay-first flight booking (docs/superpowers/specs/2026-10-28-pay-first-flight-booking-design.md)
 

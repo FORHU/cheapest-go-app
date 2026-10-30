@@ -3,6 +3,7 @@ import { getAuthenticatedUser } from '@/lib/server/auth';
 import { createAdminClient } from '@/utils/postgres/admin';
 import { env } from '@/utils/env';
 import { failureReasonOf, NOT_COMPLETED_ERROR_CODE, NOT_COMPLETED_MESSAGE } from '@/lib/server/flights/booking-failure';
+import { failedBookingBody } from '@/lib/server/flights/failure-response';
 
 export const dynamic = 'force-dynamic';
 
@@ -27,12 +28,22 @@ export async function GET(req: NextRequest) {
 
         const supabase = createAdminClient();
 
-        const { data: booking } = await supabase
-            .from('flight_bookings')
-            .select('id, pnr, status, cancellation_log')
-            .eq('session_id', sessionId)
-            .eq('user_id', user.id)
-            .maybeSingle();
+        const [{ data: booking }, { data: session }] = await Promise.all([
+            supabase
+                .from('flight_bookings')
+                .select('id, pnr, status, cancellation_log')
+                .eq('session_id', sessionId)
+                .eq('user_id', user.id)
+                .maybeSingle(),
+            // A refusal after authorisation records why on the session. Older failures have none.
+            supabase
+                .from('booking_sessions')
+                .select('failure')
+                .eq('id', sessionId)
+                .eq('user_id', user.id)
+                .maybeSingle(),
+        ]);
+        const failure = (session as any)?.failure ?? null;
 
         if (!booking) {
             // The failed booking row is written without a user, so the lookup above cannot see it.

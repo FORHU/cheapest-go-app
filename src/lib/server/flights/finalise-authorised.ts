@@ -147,6 +147,10 @@ async function orderAndCapture(session: ClaimedSession, pi: Stripe.PaymentIntent
     const phone = toE164Phone(session.contact ?? {});
     if (!phone.ok) return refuse('phone_number_invalid');
 
+    const built = buildDuffelOrderPassengers(rawOffer, session.passengers ?? [], session.contact ?? {});
+    if (!built.ok) return refuse('phone_number_invalid');
+    const builtPassengers = built.passengers;
+
     let order: any = null;
     let orderTotal = computed.total;
     let orderCurrency = currency;
@@ -183,9 +187,10 @@ async function orderAndCapture(session: ClaimedSession, pi: Stripe.PaymentIntent
         const placed = await d.placeOrder({
             duffelToken: token,
             rawOffer,
-            passengers: buildDuffelOrderPassengers({
-                passengers: session.passengers ?? [], contact: session.contact ?? {}, rawOffer, e164: phone.e164,
-            }),
+            // The phone was already judged above, so this cannot refuse on that ground — but
+            // the builder owns the shape and is the thing the tests pin, so it stays the one
+            // that constructs passengers rather than a second copy of the mapping here.
+            passengers: builtPassengers,
             total: computed.total,
             currency,
             seatServiceIds: seats,
