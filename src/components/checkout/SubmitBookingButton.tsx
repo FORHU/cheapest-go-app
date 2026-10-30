@@ -17,6 +17,8 @@ interface SubmitBookingButtonProps {
     onSubmit: () => void;
     /** Re-runs the prebook in place. Without it an unavailable room needs a page reload. */
     onRetry?: () => void;
+    /** A background attempt is still outstanding — not confirmed, but not failed either. */
+    confirming?: boolean;
 }
 
 export function SubmitBookingButton({
@@ -29,6 +31,7 @@ export function SubmitBookingButton({
     prebookError,
     onSubmit,
     onRetry,
+    confirming = false,
 }: SubmitBookingButtonProps) {
     const t = useTranslations('checkout');
     const currency = useCheckoutStore((state) => state.selectedCurrency);
@@ -45,11 +48,16 @@ export function SubmitBookingButton({
         return 'bg-yellow-400 hover:bg-yellow-500 text-slate-900 shadow-yellow-400/20 cursor-pointer';
     };
 
+    // While a background attempt is outstanding there is nothing to report yet: the supplier's
+    // silence is usually shorter than the time it takes to fill this form in, and a red panel
+    // over a problem that resolves itself costs bookings that were never actually at risk.
+    // Every failure branch below is suppressed until the attempts are spent.
+    //
     // Supplier-side hard failure — the hotel itself can't be booked right now.
     // Telling the user to "reselect the room" won't help; they need a different hotel.
-    const isHotelUnavailable = !!prebookError && /try a different hotel|currently unavailable for booking|could not be confirmed/i.test(prebookError);
+    const isHotelUnavailable = !confirming && !!prebookError && /try a different hotel|currently unavailable for booking|could not be confirmed/i.test(prebookError);
     // Session expiry — the token staled between search and checkout; retrying the same room works.
-    const isSessionExpired = !!prebookError && !isHotelUnavailable && /no longer available|not available|sold out/i.test(prebookError);
+    const isSessionExpired = !confirming && !!prebookError && !isHotelUnavailable && /no longer available|not available|sold out/i.test(prebookError);
     const isUnavailable = isHotelUnavailable || isSessionExpired;
     // Offer the retry in place. The supplier returns "unavailable" for every hotel during a
     // blackout and recovers within seconds, but the prebook key is marked failed so the
@@ -82,7 +90,7 @@ export function SubmitBookingButton({
             <button
                 type="button"
                 onClick={canRetry ? onRetry : isUnavailable ? () => window.history.back() : onSubmit}
-                disabled={loading || (prebooking && !prebookId) || isPriceVerifying || (!!prebookError && !isUnavailable)}
+                disabled={loading || confirming || (prebooking && !prebookId) || isPriceVerifying || (!!prebookError && !isUnavailable)}
                 className={`w-full py-2 lg:py-3 font-bold text-[12px] lg:text-base rounded-lg lg:rounded-xl shadow-lg transition-all flex items-center justify-center gap-1.5 lg:gap-3 ${
                     isUnavailable ? 'bg-red-600 hover:bg-red-700 text-white cursor-pointer' : getButtonClasses()
                 }`}
@@ -92,7 +100,10 @@ export function SubmitBookingButton({
                         <Loader2 className="w-4 h-4 lg:w-5 lg:h-5 animate-spin" />
                         <span>{t('submit.processingBooking')}</span>
                     </>
-                ) : (prebooking && !prebookId) ? (
+                ) : (confirming || (prebooking && !prebookId)) ? (
+                    // A re-attempt reads as the same thing to the guest as the first one:
+                    // the room is being checked. Reusing the copy rather than minting a
+                    // "still trying" variant keeps that honest and adds no translation debt.
                     <>
                         <Loader2 className="w-4 h-4 lg:w-5 lg:h-5 animate-spin" />
                         <span>{t('submit.verifyingRoom')}</span>
