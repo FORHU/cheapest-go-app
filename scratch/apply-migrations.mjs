@@ -86,7 +86,11 @@ if (collisions.length || malformed.length) {
  *   RDS_DATABASE_URL="$(...)" node scratch/apply-migrations.mjs   # explicit target
  *   node scratch/apply-migrations.mjs                             # .env, i.e. live
  */
-const fileEnv = fs.readFileSync('.env', 'utf8');
+// Optional. A developer checkout has a .env; a container does not — there the URL comes
+// from the process environment, set by docker run --env-file. Reading it unconditionally
+// threw ENOENT before the RDS_DATABASE_URL check below ever ran, which made this script
+// unusable anywhere but a checkout and is part of why migrations stayed a manual step.
+const fileEnv = fs.existsSync('.env') ? fs.readFileSync('.env', 'utf8') : '';
 const readEnv = (name) => fileEnv
     .match(new RegExp(`^\\s*${name}\\s*=\\s*(.*?)\\s*$`, 'm'))?.[1]
     .replace(/^["']|["']$/g, '');

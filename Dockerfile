@@ -65,6 +65,14 @@ COPY --from=builder /app/public ./public
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
 
+# The migration runner and the migrations themselves. Nothing here serves a request:
+# they ship because the production database is private to the VPC, so the only compute
+# that can reach it is a container on this box — a GitHub runner cannot, which is the
+# same reason the hotel-content cron workflows fail. `postgres` is already traced into
+# .next/standalone via src/lib/db/postgres.ts, so this needs no extra install.
+COPY --from=builder /app/db ./db
+COPY --from=builder /app/scratch/apply-migrations.mjs ./scratch/apply-migrations.mjs
+
 EXPOSE 3000
 ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"

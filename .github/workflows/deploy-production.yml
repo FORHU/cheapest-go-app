@@ -498,3 +498,95 @@ jobs:
           fi
 
           echo "Deploy succeeded on: $INSTANCE_IDS"
+
+      # Migrations run here rather than in `ci` or anywhere else on the runner, because
+      # the production database is private to the VPC and a GitHub runner cannot reach
+      # it at all. The only compute that can is this box, so the runner script and
+      # db/migrations/ ship inside the image for this step alone — see the Dockerfile's
+      # runner stage.
+      #
+      # Until 2026-11-03 nothing ran them. scratch/apply-migrations.mjs was referenced by
+      # no workflow, no package.json script and no document, so a schema change only
+      # landed when somebody remembered to log in and run it by hand. A deploy needing a
+      # new column still went green and then 500ed at runtime: that is how production
+      # ended up missing hotel_content.etg_content_seeded_at and most of hotel_deals.
+      #
+      # After the container swap, not before, because the script only exists inside the
+      # new image. Migrations are additive by convention, so the old container tolerates
+      # the new schema; the dangerous direction is new code on an old schema, and this
+      # narrows that window to the seconds between the two steps rather than leaving it
+      # open until someone notices.
+      - name: Apply database migrations
+        env:
+          TAG_KEY: ${{ vars.EC2_TARGET_TAG_KEY }}
+          TAG_VALUE: ${{ vars.EC2_TARGET_TAG_VALUE }}
+        run: |
+          set -euo pipefail
+
+          # The URL is read inside the container, never passed through SSM: send-command
+          # parameters are retained in command history and readable from the console.
+          # DATABASE_URL_UNPOOLED first — DDL through a transaction-mode pooler can land
+          # on a different backend than the one holding the session state.
+          cat > migrate-remote.sh <<EOF
+          set -euo pipefail
+          docker exec ${CONTAINER_NAME} sh -c 'RDS_DATABASE_URL="\${DATABASE_URL_UNPOOLED:-\$DATABASE_URL}" node scratch/apply-migrations.mjs'
+          EOF
+
+          PARAMS=$(jq -n --rawfile script migrate-remote.sh \
+            '{commands: ($script | split("\n") | map(select(length > 0)))}')
+
+          COMMAND_ID=$(aws ssm send-command \
+            --document-name "AWS-RunShellScript" \
+            --comment "Migrate ${CONTAINER_NAME}" \
+            --targets "Key=tag:${TAG_KEY},Values=${TAG_VALUE}" \
+            --parameters "$PARAMS" \
+            --timeout-seconds 600 \
+            --output text \
+            --query "Command.CommandId")
+
+          echo "Sent migration command $COMMAND_ID targeting tag:${TAG_KEY}=${TAG_VALUE}"
+          sleep 8
+
+          STATUS="Pending"
+          for i in $(seq 1 40); do
+            STATUS=$(aws ssm list-commands --command-id "$COMMAND_ID" \
+              --query "Commands[0].Status" --output text 2>/dev/null || echo "Pending")
+            if [[ "$STATUS" != "Pending" && "$STATUS" != "InProgress" ]]; then
+              break
+            fi
+            echo "Migration status: $STATUS (attempt $i/40)"
+            sleep 10
+          done
+
+          echo "Final migration status: $STATUS"
+
+          FAILED=0
+          INSTANCE_IDS=$(aws ssm list-command-invocations --command-id "$COMMAND_ID" \
+            --query "CommandInvocations[].InstanceId" --output text)
+
+          if [[ -z "$INSTANCE_IDS" ]]; then
+            echo "No instances matched tag:${TAG_KEY}=${TAG_VALUE} for the migration command."
+            exit 1
+          fi
+
+          for INSTANCE_ID in $INSTANCE_IDS; do
+            echo "::group::Instance $INSTANCE_ID"
+            aws ssm get-command-invocation \
+              --command-id "$COMMAND_ID" \
+              --instance-id "$INSTANCE_ID" \
+              --query "{Status:Status,Stdout:StandardOutputContent,Stderr:StandardErrorContent}" \
+              --output json > migration.json
+            cat migration.json
+            INV_STATUS=$(jq -r ".Status" migration.json)
+            if [[ "$INV_STATUS" != "Success" ]]; then
+              FAILED=1
+            fi
+            echo "::endgroup::"
+          done
+
+          if [[ "$FAILED" -ne 0 ]]; then
+            echo "Migrations failed. The new container is serving against the old schema."
+            exit 1
+          fi
+
+          echo "Migrations applied on: $INSTANCE_IDS"
