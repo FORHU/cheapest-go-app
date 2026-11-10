@@ -29,7 +29,7 @@ Empty means level. Anything listed must be ported before the watermark advances.
 | C5 | Admin | `6b0ced4` | the Support Desk half, which is C8 | **mostly done** — see below |
 | C6 | Ops | `8bdd4a4` | support crons only, which are C8 | **done** — see below |
 | C7 | Mobile and misc | `8bdd4a4` | empty as of 2026-09-17 | **done** — see below |
-| C8 | Support Chat | `6b0ced4` | **35 commits** | not started — slice added 2026-09-16 |
+| C8 | Support Chat | `6b0ced4` | **35 commits** | **customer half shipped** — see below |
 
 Re-measure with `bash scratch/port-delta.sh` (`-v` for the commits themselves). Both v2 repos were
 green on 2026-09-16: api-v2 196 tests, app-v2 147 tests, both typechecking.
@@ -1847,3 +1847,23 @@ Meanwhile v1's no-show and early-departure disclosure — `extractNoShowPenalty`
 `hotel_review_items.id` is a Postgres `bigint`, which Prisma returns as a JS `BigInt`, and `JSON.stringify` throws on one. `getProperty` returns `reviewItems`, so **every hotel with a review row — 3,827 of them — was answering `500 INTERNAL_ERROR`**. The container running pre-change code fails identically, so this predates the metapolicy work; it surfaced only because verifying the metapolicy meant calling the endpoint. `findHotelReviewItems` now stringifies the id. The client keys these rows by array index, so nothing downstream changes.
 
 api-v2 after C2c: **196 tests** (was 175), typecheck clean.
+
+## C8 — Support Chat
+
+**The customer half is shipped; this row said "not started" until 2026-11-04.** The delta is measured
+against v1's commits, and 35 of them are still unported — but that number says nothing about whether a
+customer can reach support, and reading it as "no support in v2" is how an audit for a tester handover
+nearly shipped the wrong brief.
+
+What is in app-v2 today: `features/support/` with `SupportWidget`, `SupportPanel`, `useSupportChat`,
+staged attachments, reader-side translation, agent availability with reopen times, and the quick
+questions. `SupportWidget` is mounted in `app/[locale]/layout.tsx` on every page under the segment, and
+`SupportDeskView` exists for the staff side at `/admin/desk`.
+
+**It is offered only to someone signed in** — `available: Boolean(user)` — per
+[ADR-0032](adr/0032-a-support-chat-requires-an-account.md): a chat started by a visitor with no
+account is one an Agent answers into a void. A signed-out tester sees no support entry point anywhere,
+which is the design and not a defect.
+
+What the 35 commits still hold is unmeasured. This row is honest about the capability existing and
+dishonest about nothing else: the delta has not been walked commit by commit.
