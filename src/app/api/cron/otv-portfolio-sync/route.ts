@@ -66,13 +66,20 @@ export async function GET(req: NextRequest) {
     const maxPages     = Number(sp.get('max_pages')) > 0 ? Number(sp.get('max_pages')) : undefined;
     const limit        = parseLimit(sp.get('limit'));
 
+    // Said before anything can go wrong, so that "the job did not run" and "the job was never
+    // asked" are distinguishable in the log. Reserving the connection below used to sit outside
+    // the try, so a pool that handed one out slowly produced a request with no trace at all.
+    console.log(`[otv-sync] asked (dry_run=${dryRun} skip_backfill=${skipBackfill} limit=${limit})`);
+
     // One connection for the whole run, holding the lock and doing the work. The pool is five
     // wide and shared with everything else the app does; a job of this length must not sit on
     // more of it than it needs.
-    const held = await getSqlAdmin().reserve();
+    let held: Awaited<ReturnType<ReturnType<typeof getSqlAdmin>['reserve']>> | null = null;
     let locked = false;
 
     try {
+        held = await getSqlAdmin().reserve();
+
         const [{ got }] = await held<{ got: boolean }[]>`
             SELECT pg_try_advisory_lock(${SYNC_LOCK_KEY}) AS got
         `;
@@ -106,9 +113,11 @@ export async function GET(req: NextRequest) {
         // Releasing the connection would drop the lock with it, but only once this process
         // lets go of it. Unlocking first keeps a crashed run from leaving a lock behind for as
         // long as the pool holds the connection open.
-        if (locked) {
-            await held`SELECT pg_advisory_unlock(${SYNC_LOCK_KEY})`.catch(() => {});
+        if (held) {
+            if (locked) {
+                await held`SELECT pg_advisory_unlock(${SYNC_LOCK_KEY})`.catch(() => {});
+            }
+            held.release();
         }
-        held.release();
     }
 }
